@@ -1,0 +1,58 @@
+//
+//  StopDataRowView.swift
+//  ThePoolApp
+//
+//  Created by Michael Espineli on 12/10/23.
+//
+
+import SwiftUI
+
+struct StopDataRowView: View {
+    var stopData:StopData
+    var readingTemplates:[ReadingsTemplate]
+    var dosageTemplate:[DosageTemplate]
+
+    var body: some View {
+            HStack{
+                date
+                readings
+                dosages
+                Spacer()
+            }
+        
+    }
+}
+extension StopDataRowView {
+
+
+    var date: some View {
+        Text("00-00-0000")
+            .foregroundColor(Color.clear)
+            .overlay( Text(fullDate(date:stopData.date)))
+       
+    }
+    var readings: some View {
+        HStack{
+            ForEach(readingTemplates){ reading in
+                Text("\(reading.name)")
+                    .frame(minWidth: 35)
+                    .foregroundColor(Color.clear)
+                    .overlay(
+                Text("\(stopData.readings.first(where: {$0.templateId == reading.id})?.amount ?? "0")")
+                )
+            }
+        }
+    }
+    var dosages: some View {
+        HStack{
+            ForEach(dosageTemplate){ dosage in
+                Text("\(dosage.name ?? "")")
+                    .frame(minWidth: 35)
+                    .foregroundColor(Color.clear)
+                    .overlay(
+                        Text("\(stopData.dosages.first(where: {$0.templateId == dosage.id})?.amount ?? "0")")
+                )
+            }
+        }
+    }
+}

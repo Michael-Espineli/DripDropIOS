@@ -1,0 +1,134 @@
+//
+//  SettingsView.swift
+//  BuisnessSide
+//
+//  Created by Michael Espineli on 12/1/23.
+//
+
+
+import SwiftUI
+
+struct SettingsView: View {
+    //    @StateObject private var viewModel = SettingsViewModel()
+    @StateObject private var customerVM : CustomerViewModel
+    @EnvironmentObject var dataService : ProductionDataService
+
+    init(dataService:any ProductionDataServiceProtocol){
+        _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
+    }
+    //    @StateObject private var trainingVM = TrainingViewModel()
+    @StateObject private var VM : AuthenticationViewModel
+    @StateObject private var companyVM = CompanyViewModel()
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @StateObject private var userAccessVM = UserAccessViewModel()
+
+    @EnvironmentObject var customerViewModel: CustomerViewModel
+    @State var isLoading = false
+    @State var company:Company = Company(id: "",name: "")
+    @State var companyIdList:[Company] = []
+    @State var showChangeEmailScreen:Bool = false
+    var body: some View {
+        ZStack{
+            VStack(alignment:.leading){
+                VStack{
+                    HStack{
+                        Spacer()
+                        Button(action: {
+                            Task{
+                                do {
+                                    try VM.signOut()
+                                    masterDataManager.showSignInView = true
+                                    
+                                } catch {
+                                    print("Error: \(error)")
+                                }
+                            }
+                        }, label: {
+                            Text("Log out")
+                                .foregroundColor(Color.white)
+                        })
+                        .padding(5)
+                        .background(Color.red)
+                        .cornerRadius(5)
+                    }
+                    .padding()
+                    //Developer FIX ADD USER MANAGMENT VIA FIREBASE
+                    HStack{
+                        Spacer()
+                        Button(action: {
+                            print("Change Password")
+                            Task{
+                                do {
+                                    try VM.resetPassword()
+                                } catch {
+                                    print("Error Reseting Password")
+                                }
+                            }
+                        }, label: {
+                            Text("Reset Password")
+                        })
+                    }
+                    .padding()
+                    HStack{
+                        Spacer()
+                        Button(action: {
+                            print("Send Password Reset Email")
+                            showChangeEmailScreen.toggle()
+                        }, label: {
+                            Text("Change Email")
+                        })
+                    }
+                    .padding()
+                    .sheet(isPresented: $showChangeEmailScreen, content: {
+                        ChangeUserEmailView(dataService: dataService)
+                    })
+                    HStack{
+                        Text("Company")
+                        if companyVM.listOfCompanies.count != 0 {
+                            Picker("", selection: $company) {
+                                Text("Pick Company")
+                                ForEach(companyVM.listOfCompanies) {
+                                    Text($0.name ?? "..Loading").tag($0)
+                                }
+                            }
+                        } else {
+                           NavigationLink(destination: {
+                               Text("Build Reedem Invite Code with a Tech that Already has an Account")
+                           }, label: {
+                               Text("Reedem Invite Code")
+                           })
+                        }
+                    }
+                }
+                Spacer()
+            }
+        }
+        .onChange(of: company, perform: { change in
+            if company.id != "" {
+                masterDataManager.selectedCompany = change
+            }
+        })
+        .task {
+            do {
+                if let user = masterDataManager.user {
+                    print("\(user.id)")
+                    try await companyVM.getCompaniesByUserAccessList(userId: user.id )
+                    print("Success")
+                } else {
+                    masterDataManager.showSignInView = true
+                }
+            } catch {
+                print("Failed to get User Access List - Page: Settings View")
+            }
+            if companyVM.listOfCompanies.count != 0 {
+                company = companyVM.listOfCompanies.first!
+                masterDataManager.selectedCompany = company
+                companyIdList = companyVM.listOfCompanies
+            }
+        }
+//        .navigationTitle("Settings")
+        
+    }
+}
+
