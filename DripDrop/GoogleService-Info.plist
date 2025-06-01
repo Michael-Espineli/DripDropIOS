@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>Espineli-LLC.ThePoolApp2</string>
+	<string>Espineli-LLC.DripDrop</string>
 	<key>PROJECT_ID</key>
 	<string>the-pool-app-3e652</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:389359518314:ios:0cdb1d6517312646390013</string>
+	<string>1:389359518314:ios:ba35df12e93600c4390013</string>
 </dict>
 </plist>

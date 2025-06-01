@@ -1,15 +1,15 @@
 //
-//  LaborContractViewModel.swift
+//  RecurringLaborContractViewModel.swift
 //  DripDrop
 //
-//  Created by Michael Espineli on 5/23/25.
+//  Created by Michael Espineli on 7/7/24.
 //
 
 import Foundation
 import SwiftUI
 
 @MainActor
-final class LaborContractViewModel:ObservableObject{
+final class RecurringLaborContractViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService

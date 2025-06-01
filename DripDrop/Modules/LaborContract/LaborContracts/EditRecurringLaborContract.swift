@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct EditLaborContract: View {
+struct EditRecurringLaborContract: View {
     //Init
     init(dataService:any ProductionDataServiceProtocol,laborContract:ReccuringLaborContract,isPresented:Binding<Bool>,isFullScreenCover:Bool){
         _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
