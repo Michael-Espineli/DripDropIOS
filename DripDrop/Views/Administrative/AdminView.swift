@@ -30,7 +30,7 @@ struct AdminView: View {
             } else {
                 
                 TabView {
-                    JobView()
+                    JobView(dataService: dataService)
                         .tabItem {
                             Label("Job", systemImage: "doc.on.doc.fill")
                         }
@@ -48,7 +48,7 @@ struct AdminView: View {
                             Label("Route Builder", systemImage: "car")
                         }
                     
-                    CompanyProfileView()
+                    CompanyProfileView(dataService: dataService, company: company)
                         .tabItem {
                             Label("Company Profile", systemImage: "person.circle")
                         }
@@ -62,7 +62,7 @@ struct AdminView: View {
         .task {
             isLoading = true
             try? await profileVM.loadCurrentUser()
-            let user:DBUser = profileVM.user ?? DBUser(id: "1",exp: 0)
+            let user:DBUser = profileVM.user ?? DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
             let id = user.id
             if id != "" && id != "1"{
                 print("Current User Loaded :\(id)")
@@ -75,7 +75,7 @@ struct AdminView: View {
 struct AdminView_Previews: PreviewProvider {
     static var previews: some View {
         @State var showSignInView: Bool = false
-        AdminView(showSignInView:$showSignInView, user: DBUser(id: "",exp: 0), company:Company(id: ""))
+        AdminView(showSignInView:$showSignInView, user: DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""), company:MockDataService.mockCompany)
         
     }
 }

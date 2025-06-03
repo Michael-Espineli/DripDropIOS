@@ -13,44 +13,36 @@ import SwiftUI
 import CoreLocation
 import MapKit
 
-struct JobTaskGroupItem:Identifiable, Codable, Equatable{
-    var id:String
-    var name:String
-    var type:String
-    var description:String
-    var contractedRate:Int // Cents
-    var estimatedTime:Int // Seconds
-    
-    static func == (lhs: JobTaskGroupItem, rhs: JobTaskGroupItem) -> Bool {
-        return lhs.id == rhs.id
-    }
-}
+
 extension ProductionDataService {
-    func TaskGroupSettingsDocument(companyId:String) -> DocumentReference{
-        db.collection("companies/\(companyId)/settings").document("taskGroup")
-   }
-     func TaskGroupCollection(companyId:String) -> CollectionReference{
-         db.collection("companies/\(companyId)/settings/taskGroup/taskGroup")
+    func TaskGroupItemCollection(companyId:String,taskGroupId:String) -> CollectionReference{
+         db.collection("companies/\(companyId)/settings/taskGroup/taskGroup/\(taskGroupId)/taskItems")
     }
-      func TaskGroupDocument(companyId:String,taskGroupId:String)-> DocumentReference{
-          TaskGroupCollection(companyId: companyId).document(taskGroupId)
+    func TaskGroupItemDocument(companyId:String,taskGroupId:String,taskId:String)-> DocumentReference{
+        TaskGroupItemCollection(companyId: companyId,taskGroupId: taskGroupId)
+            .document(taskId)
      }
     //CREATE
-    func uploadNewTaskGroup(companyId:String,taskGroup:JobTaskGroup) async throws {
-        
+    func uploadNewTaskGroupItem(companyId:String,taskGroupId:String,taskGroupItem:JobTaskGroupItem) async throws {
+        try TaskGroupItemDocument(companyId: companyId, taskGroupId: taskGroupId, taskId: taskGroupItem.id)
+            .setData(from:taskGroupItem, merge: false)
     }
+
     //READ
-    func getAllTaskGroupById(companyId:String,taskGroupId:String) async throws -> JobTaskGroup {
-        return try await TaskGroupDocument(companyId: companyId, taskGroupId: taskGroupId)
-            .getDocument(as: JobTaskGroup.self)
+    func getTaskGroupItemById(companyId:String, taskGroupId:String,taskItemId:String) async throws -> JobTaskGroupItem {
+        return try await TaskGroupItemDocument(companyId: companyId, taskGroupId: taskGroupId, taskId: taskItemId)
+            .getDocument(as: JobTaskGroupItem.self)
 
     }
-    func getAllTaskGroups(companyId:String) async throws ->[JobTaskGroup] {
-        return try await TaskGroupCollection(companyId: companyId)
-            .getDocuments(as:JobTaskGroup.self)
+    func getAllTaskGroupItems(companyId:String, taskGroupId:String) async throws ->[JobTaskGroupItem] {
+        return try await TaskGroupItemCollection(companyId: companyId, taskGroupId: taskGroupId)
+            .getDocuments(as:JobTaskGroupItem.self)
     }
     //UPDATE
     
     //DELETE
-    
+    func deleteTaskGroupItem(companyId:String,taskGroupId:String,taskId:String) async throws {
+        try await TaskGroupItemDocument(companyId: companyId, taskGroupId: taskGroupId, taskId: taskId)
+            .delete()
+    }
 }

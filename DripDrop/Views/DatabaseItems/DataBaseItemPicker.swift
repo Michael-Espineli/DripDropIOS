@@ -4,68 +4,76 @@
 //
 //  Created by Michael Espineli on 5/26/25.
 //
-
+@MainActor
+final class DataBaseItemPickerViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    
+    @Published var dataBaseItems: [DataBaseItem] = []
+    @Published var filteredDataBaseItems: [DataBaseItem] = []
+    @Published var searchTerm: String = ""
+    
+    func onLoad(companyId:String) async throws {
+        self.filteredDataBaseItems = try await dataService.getAllDataBaseItems(companyId: companyId)
+        self.dataBaseItems = filteredDataBaseItems
+    }
+    func searchFunction() {
+        if searchTerm != "" {
+            var filteredItems:[DataBaseItem] = []
+            for item in dataBaseItems {
+                if item.name.lowercased().contains(searchTerm.lowercased()) || item.sku.lowercased().contains(searchTerm.lowercased()) || item.description.lowercased().contains(searchTerm.lowercased()) || item.color.lowercased().contains(searchTerm.lowercased()) || item.category.rawValue.lowercased().contains(searchTerm.lowercased()) {
+                    filteredItems.append(item)
+                }
+            }
+            self.filteredDataBaseItems = filteredItems
+        } else {
+            self.filteredDataBaseItems = dataBaseItems
+        }
+    }
+}
 import SwiftUI
 
 struct DataBaseItemPicker: View {
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var masterDataManager : MasterDataManager
-
-    @StateObject var dataBaseVM : ReceiptDatabaseViewModel
-    @State var category:String
-    @Binding var jobDBItem : WODBItem
-    
     init(
         dataService:any ProductionDataServiceProtocol,
-        jobDBItem:Binding<WODBItem>,
-        category:String
+        DBItem:Binding<DataBaseItem>,
+        category:DataBaseItemCategory
     ){
-        _dataBaseVM = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
-        self._jobDBItem = jobDBItem
+        _VM = StateObject(wrappedValue: DataBaseItemPickerViewModel(dataService: dataService))
+        self._DBItem = DBItem
         _category = State(wrappedValue: category)
     }
     
-    @State var search:String = ""
-    @State var dataBaseItems:[DataBaseItem] = []
-    var body: some View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @EnvironmentObject var dataService : ProductionDataService
+
+    @StateObject var VM : DataBaseItemPickerViewModel
+    @State var category : DataBaseItemCategory
+    @Binding var DBItem : DataBaseItem
+    
+    @State var showAddNew : Bool = false
+
+        var body: some View {
         VStack{
-            
-         dataBaseList
+            dataBaseList
             searchBar
         }
         .padding()
         .task {
             do {
                 if let company = masterDataManager.currentCompany {
+                    try await VM.onLoad(companyId: company.id)
                 }
             } catch {
                 print("Error")
-
+                print(error)
             }
         }
-        .onChange(of: search, perform: { term in
-            if term == "" {
-                Task{
-                    do {
-                        if let company = masterDataManager.currentCompany {
-                 
-                        }
-                    } catch {
-                        print("Error")
-
-                    }
-                }
-            } else {
-                Task{
-                    do {
-                        if let company = masterDataManager.currentCompany {
-                       
-                        }
-                    } catch {
-                        print("Error")
-                    }
-                }
-            }
+        .onChange(of: VM.searchTerm, perform: { term in
+            VM.searchFunction()
         })
     }
 }
@@ -73,35 +81,52 @@ extension DataBaseItemPicker {
     var searchBar: some View {
         HStack{
             TextField(
-                text: $search,
+                text: $VM.searchTerm,
                 label: {
                     Text("Search: ")
                 })
+            .modifier(TextFieldModifier())
+            .modifier(OutLineButtonModifier())
             Button(action: {
-                search = ""
+                VM.searchTerm = ""
             }, label: {
                 Image(systemName: "xmark")
             })
         }
-        .modifier(SearchTextFieldModifier())
+        .modifier(ListButtonModifier())
+        .modifier(OutLineButtonModifier())
         .padding(8)
     }
     var dataBaseList: some View {
         ScrollView{
-            ForEach(dataBaseItems){ datum in
+            ForEach(VM.filteredDataBaseItems){ datum in
                 Button(action: {
+                    DBItem = datum
                     dismiss()
                 }, label: {
-                   
-                    Text("\(datum.name)")
-                
+                    HStack{
+                        Spacer()
+                        Text("\(datum.name)")
+                        Spacer()
+                    }
                 })
-                .padding(5)
-                .background(Color.accentColor)
-                .foregroundColor(Color.basicFontText)
-                .cornerRadius(5)
-                .padding(5)
+                .modifier(ListButtonModifier())
             }
+            Button(action: {
+                showAddNew.toggle()
+            }, label: {
+                HStack{
+                    Spacer()
+                    Text("Add New Item")
+                    Spacer()
+                }
+                .modifier(BlueButtonModifier())
+            })
+            .sheet(isPresented: $showAddNew, onDismiss: {
+                
+            }, content: {
+                AddNewDatabaseItem(dataService: dataService)
+            })
         }
     }
 }

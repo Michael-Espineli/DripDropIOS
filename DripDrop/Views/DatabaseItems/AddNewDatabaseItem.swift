@@ -10,8 +10,10 @@ import SwiftUI
 struct AddNewDatabaseItem: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
-
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
+    init(dataService: any ProductionDataServiceProtocol){
+        _viewModel = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+    }
+    @StateObject private var viewModel : ReceiptDatabaseViewModel
     @StateObject private var storeViewModel = StoreViewModel()
  
     @State var store:Vender = Vender(id: "",address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0))
@@ -168,7 +170,7 @@ struct AddNewDatabaseItem: View {
             }
             Button(action: {
                 Task{
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         do {
                             let pushName = name
                             let pushRate = rate
@@ -220,12 +222,14 @@ struct AddNewDatabaseItem: View {
                 }
             }, label: {
                 Text("Submit")
+                    .modifier(SubmitButtonModifier())
+
             })
             
         }
         .padding(.init(top: 40, leading: 20, bottom: 0, trailing: 0))
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await storeViewModel.getAllStores(companyId:company.id)
                     if storeViewModel.stores.count != 0 {

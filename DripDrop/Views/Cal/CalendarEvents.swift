@@ -49,9 +49,6 @@ struct CalendarEvents: View {
         }
         .frame(width:checkForOtherEventsDuringThisTimeWidth(events: events, event: event),height: CGFloat(event.duration))
         .cornerRadius(10)
-        .onAppear(perform: {
-            print("Y Offset for Start Of Day \(fullDateAndTime(date: Date().startOfDay())) - Start Time:\(fullDateAndTime(date: event.serviceDate)) - \( CGFloat(Int(((event.serviceDate?.timeIntervalSince((event.serviceDate?.startOfDay())!))!) / 3600)))")
-        })
     }
     func checkForOtherEventsDuringThisTimeWidth(events:[ServiceStop],event:ServiceStop)->CGFloat{
         var numberOfOverlappingEvents:Int = 0
@@ -61,17 +58,17 @@ struct CalendarEvents: View {
         var returnOffset:CGFloat = 1
         //check to see if event is inside of another event.
         for item in events {
-            let endTime:Date = calendar.date(byAdding: .minute, value: item.duration, to: item.serviceDate!) ?? Date()
+            let endTime:Date = calendar.date(byAdding: .minute, value: item.duration, to: item.serviceDate) ?? Date()
 
-            if event.serviceDate! > item.serviceDate! && event.serviceDate! < endTime || event.serviceDate == item.serviceDate{
+            if event.serviceDate > item.serviceDate && event.serviceDate < endTime || event.serviceDate == item.serviceDate{
                 numberOfOverlappingEvents = numberOfOverlappingEvents + 1
             }
         }
         //check to see if any event is inside this event
         for item in events {
-            let endTime:Date = calendar.date(byAdding: .minute, value: event.duration, to: event.serviceDate!) ?? Date()
+            let endTime:Date = calendar.date(byAdding: .minute, value: event.duration, to: event.serviceDate) ?? Date()
 
-            if item.serviceDate! > event.serviceDate! && item.serviceDate! < endTime || event.serviceDate == item.serviceDate{
+            if item.serviceDate > event.serviceDate && item.serviceDate < endTime || event.serviceDate == item.serviceDate{
                 numberOfInsideEvents = numberOfInsideEvents + 1
             }
         }

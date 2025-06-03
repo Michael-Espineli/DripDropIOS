@@ -12,9 +12,15 @@ import Combine
 struct DataBaseItemView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
-    let dataBaseItem: DataBaseItem
+    @EnvironmentObject var dataService : ProductionDataService
+
+    @StateObject private var viewModel : ReceiptDatabaseViewModel
+    @State var dataBaseItem: DataBaseItem
     
+    init(dataService: any ProductionDataServiceProtocol,dataBaseItem:DataBaseItem){
+        _viewModel = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+        _dataBaseItem = State(wrappedValue: dataBaseItem)
+    }
     
     @State var name = ""
     @State var rate = ""
@@ -48,7 +54,7 @@ struct DataBaseItemView: View {
                                 .cornerRadius(5)
                         })
                         .sheet(isPresented: $showEdit, content: {
-                            EditDataBaseItemView(dataBaseItem: dataBaseItem)
+                            EditDataBaseItemView(dataService: dataService, dataBaseItem: dataBaseItem)
                         })
                     }
                     HStack{

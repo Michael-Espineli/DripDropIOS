@@ -23,8 +23,6 @@ struct Address:Codable, Hashable{
     var longitude : Double
     var coordinates : CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-//        CLLocationCoordinate2D(latitude: latitude ?? 32, longitude: longitude ?? -117)
-
     }
     init(
         streetAddress: String,
@@ -33,8 +31,6 @@ struct Address:Codable, Hashable{
         zip: String,
         latitude: Double,
         longitude: Double
-
-
     ){
         self.streetAddress = streetAddress
         self.city = city
@@ -42,7 +38,6 @@ struct Address:Codable, Hashable{
         self.zip = zip
         self.latitude = latitude
         self.longitude = longitude
-
     }
         enum CodingKeys:String, CodingKey {
             case streetAddress = "streetAddress"
@@ -51,12 +46,9 @@ struct Address:Codable, Hashable{
             case zip = "zip"
             case latitude = "latitude"
             case longitude = "longitude"
-
         }
 }
-
 //B
-
 struct BillingTemplate:Identifiable, Codable{
     var id:String
     var title:String
@@ -66,30 +58,9 @@ struct BillingTemplate:Identifiable, Codable{
     var notes:String
 
 }
-//C
-//struct CompanyUser:Codable,Identifiable,Hashable{
-//
-//    var id :String
-//    let email :String
-//    let photoUrl : String?
-//    let dateCreated : Date?
-//
-//    let firstName: String?
-//    let lastName: String?
-//
-//    var company : String? //need to add these into the rest of my code
-//    var companyId : String
-//    let displayName : String?//need to add these into the rest of my code
-//    var position : String
-//    var hireDate : Date?
-//    var fireDate : Date?
-//    var favorites: [String]?
-//
-//}
 struct CustomerArray: Codable{
     let serviceStops: [ServiceStop]
     let total, skip, limit : Int
-    
 }
 struct Contact:Identifiable, Codable,Hashable{
     var id:String
@@ -97,15 +68,12 @@ struct Contact:Identifiable, Codable,Hashable{
     var phoneNumber:String
     var email:String
     var notes:String?
-    
     init(
         id: String,
         name :String,
         phoneNumber :String,
         email :String,
         notes: String? = nil
-
-
     ){
         
         self.id = id
@@ -113,17 +81,13 @@ struct Contact:Identifiable, Codable,Hashable{
         self.phoneNumber = phoneNumber
         self.email = email
         self.notes = notes
-
     }
-    
         enum CodingKeys:String, CodingKey {
             case id = "id"
             case name = "name"
             case phoneNumber = "phoneNumber"
             case email = "email"
             case notes = "notes"
-
-
         }
     static func == (lhs: Contact, rhs: Contact) -> Bool {
         return lhs.id == rhs.id &&
@@ -132,8 +96,6 @@ struct Contact:Identifiable, Codable,Hashable{
         lhs.email == rhs.email &&
         lhs.notes == rhs.notes
     }
-
-
 }
 struct CheckListItems:Identifiable, Codable{
     var id:String
@@ -148,7 +110,6 @@ struct CheckListTemplate:Identifiable, Codable{
     var Name:String
     var email:String
     var notes:String?
-    
 }
 
 
@@ -187,18 +148,6 @@ struct CustomerMonthlySummary:Identifiable, Codable,Hashable{
     }
     
 }
-
-//struct ClientBillingTemplate:Identifiable, Codable{
-//    var id:String
-//    var title:String
-//    var serviceLocationType:String //per Location,
-//    var f:String
-//    var chemType:String //All inclusive, Without Chems, Includes specific Chems, Excludes Specific Chems
-//    var notes:String
-//
-//}
-
-
 //D
 struct Dosage:Identifiable, Codable,Hashable{
     
@@ -237,9 +186,6 @@ struct Dosage:Identifiable, Codable,Hashable{
     
     //--Alkalinity--
     //  Baking Soda
-    
-
-    
 }
 struct DosageTemplate:Identifiable, Codable,Hashable{
     
@@ -255,99 +201,21 @@ struct DosageTemplate:Identifiable, Codable,Hashable{
     let order : Int
 
 }
-enum UnitOfMeasurment: String, Codable, CaseIterable {
-    case gallon = "Gallon"
-    case lbs = "Lbs"
-    case oz = "Oz"
-    case ft = "Feet"
-    case sqft = "Sq Ft"
-    case liter = "Liter"
-
-    case inch = "Inch"
-    case quart = "Qt"
-    case tab = "Tab"
-
-    case unit = "Unit"
+struct SavedDosageTemplate:Identifiable, Codable,Hashable{
+    
+    let id :String
+    let dosageTemplateId: String //Universal Template Id
+    let name: String?
+    let amount : [String]?
+    let UOM : String?
+    let rate : String?
+    let linkedItemId:String?
+    let strength :Double
+    let editable :Bool
+    let chemType :String
+    let order : Int
 
 }
-enum DataBaseItemCategory: String, CaseIterable, Codable {
-    case pvc = "PVC"
-    case galvanized = "Galvanized"
-
-    case chems = "Chemicals"
-    case useables = "Useables"
-    case equipment = "Equipment"
-    case parts = "Parts"
-    case electrical = "Electrical"
-    case tools = "Tools"
-    
-    case misc = "Misc"
-
-}
-enum DataBaseItemSubCategory: String, CaseIterable, Codable {
-    //PVC
-    case pipe = "Pipe"
-    case glue = "Glue"
-    case primer = "Primer"
-
-    case pipeExtender = "Pipe Extender"
-    case fittingExtender = "Fitting Extender"
-
-    case insideCoupler = "Inside Coupler"
-    case sweep = "Sweep"
-    case street = "Street"
-
-    case valve = "Valve"
-    case bushing = "Bushing"
-    case tee = "Tee"
-    case elbow = "Elbow"
-    case elbow45 = "45"
-    case coupler = "Coupler"
-    case union = "Union"
-    case maleAdaptor  = "Male Adaptor"
-
-    
-    //Galvanized
-    case nipple = "Nipple"
-    
-    //Equipment
-    case heater = "Heater"
-
-    case filter = "Filter"
-    case pump = "Pump"
-    case cleaner = "Cleaner"
-    case saltCell = "Salt Cell"
-
-    //Electrical
-    case wire = "Wire"
-
-    
-    case misc = "Misc"
-
-}
-enum DataBaseItemSubCategoryPVC: String, CaseIterable, Codable {
-    
-    case glue = "Glue"
-    case primer = "Primer"
-
-    case pipeExtender = "Pipe Extender"
-    case fittingExtender = "Fitting Extender"
-
-    case insideCoupler = "Inside Coupler"
-    case sweep = "Sweep"
-    case street = "Street"
-
-    case valve = "Valve"
-    case bushing = "Bushing"
-    case tee = "Tee"
-    case elbow = "Elbow"
-    case elbow45 = "45"
-    case coupler = "Coupler"
-    case union = "Union"
-    case maleAdaptor  = "Male Adaptor"
-    case misc = "Misc"
-}
-
 struct DataBaseItem:Identifiable,Codable,Hashable{
     var id : String
     var name: String
@@ -356,7 +224,6 @@ struct DataBaseItem:Identifiable,Codable,Hashable{
     var venderId : String
     var category : DataBaseItemCategory
     var subCategory : DataBaseItemSubCategory
-
     var description : String
     var dateUpdated : Date
     var sku : String
@@ -424,66 +291,6 @@ struct DataBaseSubCategories:Identifiable,Codable,Hashable{
     }
 }
 
-enum day: String, Hashable, CaseIterable, Identifiable {
-    case sunday
-    case monday
-    case tuesday
-    case wednesday
-
-    case thursday
-    case friday
-    case saturday
-
-    var id: String {
-        return self.rawValue
-    }
-    
-    func title() -> (short:String,long:String) {
-        switch self {
-        case .sunday:
-            return (short:"Maps",long:"map.circle")
-        case .monday:
-            return (short:"Calendar",long:"calendar")
-        case .tuesday:
-            return (short:"Contacts",long:"doc.plaintext")
-        case .wednesday:
-            return (short:"Management",long:"display")
-        case .thursday:
-            return (short:"Management",long:"display")
-        case .friday:
-            return (short:"Management",long:"display")
-        case .saturday:
-            return (short:"Management",long:"display")
-        }
-    }
-}
-enum DaylyDisplayAlert: String, Hashable, CaseIterable, Identifiable {
-    case parts
-    case emergency
-    case messages
-    case chems
-    case alets
-    var id: String {
-        return self.rawValue
-    }
-    
-    func alertInfo() -> (title:String,imageName:String,color:Color) {
-        switch self {
-        case .parts:
-            return (title:"Parts To Install",imageName:"wrench.adjustable.fill",color:Color.purple)
-        case .emergency:
-            return (title:"Emergency",imageName:"exclamationmark.triangle.fill",color:Color.red)
-        case .messages:
-            return (title:"Messages",imageName:"exclamationmark.bubble.fill",color:Color.poolGreen)
-        case .chems:
-            return (title:"Chems Out Of Balance",imageName:"testtube.2",color:Color.blue)
-        case .alets:
-            return (title:"Alerts",imageName:"exclamationmark.circle.fill",color:Color.yellow)
-
-
-        }
-    }
-}
 //E
 
 //F
@@ -564,8 +371,6 @@ struct MapLocation:Identifiable, Codable,Equatable{
         lhs.name == rhs.name &&
         lhs.latitude == rhs.latitude &&
         lhs.longitude == rhs.longitude
-
-
     }
     
     var id = UUID().uuidString
@@ -602,7 +407,7 @@ struct PurchasedItem:Identifiable,Codable,Equatable,Hashable{
     var name : String
     var price : Double
     var quantityString : String
-    var date : Date
+    var date : Date	
     var billable : Bool
     var invoiced : Bool
     var returned : Bool?
@@ -630,8 +435,6 @@ struct PurchasedItem:Identifiable,Codable,Equatable,Hashable{
         lhs.invoiceNum == rhs.invoiceNum &&
         lhs.receiptId == rhs.receiptId &&
         lhs.itemId == rhs.itemId
-
-
     }
 }
 struct LineItem:Identifiable,Codable,Equatable{
@@ -666,7 +469,6 @@ struct LineItem:Identifiable,Codable,Equatable{
     var totalAfterTax : Double{
         total * 1.085
     }
-    
     //    var soldPrice : Double
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -674,18 +476,13 @@ struct LineItem:Identifiable,Codable,Equatable{
         hasher.combine(invoiceNum)
         hasher.combine(receiptId)
         hasher.combine(itemId)
-        
     }
-
-
     static func == (lhs: LineItem, rhs: LineItem) -> Bool {
         return lhs.id == rhs.id &&
         lhs.name == rhs.name &&
         lhs.invoiceNum == rhs.invoiceNum &&
         lhs.receiptId == rhs.receiptId &&
         lhs.itemId == rhs.itemId
-
-
     }
 }
 struct PurchasedItemSummary:Identifiable,Codable{
@@ -693,7 +490,6 @@ struct PurchasedItemSummary:Identifiable,Codable{
     var purchasedItemId: String
     var purchasedItemName: String
     var purchasedItemRate: Double
-
     var quantityPurchased: Double
     var totalCost: Double {
         purchasedItemRate * quantityPurchased
@@ -701,7 +497,6 @@ struct PurchasedItemSummary:Identifiable,Codable{
     var totalCostAfterTax: Double {
         purchasedItemRate * quantityPurchased
     }
-
 }
 
 struct PNLChem:Identifiable, Codable,Hashable{
@@ -714,8 +509,6 @@ struct PNLChem:Identifiable, Codable,Hashable{
     var totalCost:Double {
         amount * rate
     }
-
-
 }
 struct PNLDataPointArray: Codable,Hashable{
     let id :String
@@ -734,7 +527,7 @@ struct ReceiptItemArray: Codable{
     let total, skip, limit : Int
     
 }
-struct Receipt:Identifiable,Codable{
+struct Receipt:Identifiable,Codable,Equatable{
     var id :String
     var invoiceNum :String?
     var date : Date?
@@ -793,6 +586,12 @@ struct Receipt:Identifiable,Codable{
             case pdfUrlList = "pdfUrlList"
 
         }
+    static func == (lhs: Receipt, rhs: Receipt) -> Bool {
+        return lhs.id == rhs.id &&
+        lhs.invoiceNum == rhs.invoiceNum &&
+        lhs.storeId == rhs.storeId &&
+        lhs.techId == rhs.techId
+    }
 }
 struct RecurringServiceStopArray: Codable{
     let recurringServiceStop: [RecurringServiceStop]
@@ -830,7 +629,7 @@ struct idealRoute:Identifiable, Codable,Hashable{
     let workOrderType : String
     let workOrderId : String
 }
-
+/*
 struct RecurringRoute:Identifiable, Codable,Hashable{
     static func == (lhs: RecurringRoute, rhs: RecurringRoute) -> Bool {
         return lhs.id == rhs.id &&
@@ -851,6 +650,7 @@ struct RecurringRoute:Identifiable, Codable,Hashable{
     // DEVELOPER ADD STATUS
     //R124-R126
 }
+ */
 struct RateSheetItem:Identifiable, Codable,Hashable{
     var id :String
     var name: String
@@ -927,7 +727,7 @@ struct WorkOrderArray: Codable{
     
 }
 
-struct WODBItem:Identifiable, Codable{// work order data base item
+struct WODBItem:Identifiable, Codable{ // work order data base item
     var id:String
     var name:String
     var quantity:Double
@@ -941,22 +741,6 @@ struct WODBItem:Identifiable, Codable{// work order data base item
 //X
 //Y
 //Z
-
-
-//struct WorkOrder:Identifiable, Codable{
-//
-//    let id :String
-//    let type: String?
-//    let finished : Bool?
-//    let customerId : String?
-//    let address: Address?
-//    let dateCreated : Date?
-//    let serviceDate : Date?
-//    let rate : Int?
-//    let tech: String?
-//    let techId: String?
-//    let routeId: String?
-//}
 
 //Mac app Specific Models
 
@@ -989,9 +773,7 @@ struct CSVCustomer{
         email = raw[9] ?? ""
         hireDate = raw[10] ?? ""
     }
-
 }
-
 
 struct mapCoordinates{
     var lat:Double

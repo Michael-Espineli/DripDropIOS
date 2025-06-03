@@ -11,9 +11,14 @@ import Combine
 struct EditDataBaseItemView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
-    
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
-    @StateObject var settingsVM = SettingsViewModel()
+    init(dataService: any ProductionDataServiceProtocol,dataBaseItem:DataBaseItem){
+        _viewModel = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+        _settingsVM = StateObject(wrappedValue: SettingsViewModel(dataService: dataService))
+        _dataBaseItem = State(wrappedValue: dataBaseItem)
+
+    }
+    @StateObject private var viewModel : ReceiptDatabaseViewModel
+    @StateObject var settingsVM : SettingsViewModel
 
     @State var dataBaseItem:DataBaseItem
     
@@ -51,7 +56,7 @@ struct EditDataBaseItemView: View {
                         if name != dataBaseItem.name || rate != String(dataBaseItem.rate) || storeName != dataBaseItem.storeName || storeId != dataBaseItem.venderId || category != dataBaseItem.category || description != dataBaseItem.description || dateUpdated != dataBaseItem.dateUpdated || sku != dataBaseItem.sku || billable != dataBaseItem.billable || color != dataBaseItem.color || size != dataBaseItem.size || subCategory == dataBaseItem.subCategory || UOM == dataBaseItem.UOM || sellPrice == String(dataBaseItem.sellPrice ?? 0) || tracking == dataBaseItem.tracking ?? ""{
                             Button(action: {
                                 Task{
-                                    if let company = masterDataManager.selectedCompany {
+                                    if let company = masterDataManager.currentCompany {
                                         do {
                                             try await viewModel.updateDataBaseItem(dataBaseItem: dataBaseItem, companyId: company.id, name: name, rate: Double(rate)!, category: category, description: description, sku: sku, billable: billable, color: color, size: size,sellPrice: Double(sellPrice)!,UOM: UOM, subCategory: subCategory, tracking: tracking) //DEVELOPER REMOVE EXPLICIT
                                             dismiss()
@@ -62,10 +67,8 @@ struct EditDataBaseItemView: View {
                                 }
                             }, label: {
                                 Text("Save Changes")
-                                    .foregroundStyle(Color.white)
-                                    .padding(8)
-                                    .background(Color.poolGreen)
-                                    .cornerRadius(8)
+                                    .modifier(SubmitButtonModifier())
+
                             })
                         }
                         Spacer()
@@ -248,7 +251,7 @@ struct EditDataBaseItemView: View {
             
         })
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await settingsVM.getDosageTemplates(companyId: company.id)
                     if let trackingId = dataBaseItem.tracking {

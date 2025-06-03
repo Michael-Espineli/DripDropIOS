@@ -45,7 +45,7 @@ struct DataBaseItemCardView: View {
                     }
                     .font(.footnote)
                 }
-                .padding(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
+                .modifier(ListButtonModifier())
         }
     }
 }

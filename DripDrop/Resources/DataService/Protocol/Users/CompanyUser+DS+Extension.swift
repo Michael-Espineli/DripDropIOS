@@ -14,5 +14,13 @@ import CoreLocation
 import MapKit
 
 extension ProductionDataService {
-    
+    func companyUsersCollection(companyId:String) -> CollectionReference{
+        db.collection("companies/\(companyId)/companyUsers")
+    }
+    func companyUsersRateSheetCollection(companyId:String,companyUserId:String) -> CollectionReference{
+        db.collection("companies/\(companyId)/companyUsers/\(companyUserId)/rateSheet")
+    }
+    func TrainingCollection(companyId:String,techId:String) -> CollectionReference{
+        db.collection("companies/\(companyId)/users/\(techId)/trainings")
+    }
 }

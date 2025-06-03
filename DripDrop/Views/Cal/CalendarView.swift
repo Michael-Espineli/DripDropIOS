@@ -17,6 +17,7 @@ struct Event: Identifiable {
 }
 
 struct CalendarView: View {
+    @EnvironmentObject var dataService : ProductionDataService
     @StateObject private var techViewModel = TechViewModel()
     @Binding var showSignInView:Bool
     @State var user:DBUser
@@ -89,7 +90,7 @@ struct CalendarView: View {
                         ForEach(techViewModel.techList) { tech in
                             //Put the Events Here
                             HStack{
-                                UserCalendarEventView(user: user, company: company, tech: tech, date: dateSelected)
+                                UserCalendarEventView(dataService: dataService,user: user, company: company, tech: tech, date: dateSelected)
                             }
                         }
                         Spacer()
@@ -190,18 +191,18 @@ func checkForOtherEventsDuringThisTime(events:[ServiceStop],event:ServiceStop)->
     var returnOffset:CGFloat = 1
     //check to see if event is inside of another event.
     for item in events {
-        let endTime:Date = calendar.date(byAdding: .minute, value: item.duration, to: item.serviceDate!)!
+        let endTime:Date = calendar.date(byAdding: .minute, value: item.duration, to: item.serviceDate)!
 
-        if (event.serviceDate!) > (item.serviceDate!) && (event.serviceDate!) < endTime || (event.serviceDate == item.serviceDate){
+        if (event.serviceDate) > (item.serviceDate) && (event.serviceDate) < endTime || (event.serviceDate == item.serviceDate){
             numberOfOverlappingEvents = numberOfOverlappingEvents + 1
         }
     }
     
     //check to see if any event is inside this event
     for item in events {
-        let endTime:Date = calendar.date(byAdding: .minute, value: event.duration, to: event.serviceDate!) ?? Date()
+        let endTime:Date = calendar.date(byAdding: .minute, value: event.duration, to: event.serviceDate) ?? Date()
 
-        if item.serviceDate! > event.serviceDate! && item.serviceDate! < endTime || event.serviceDate == item.serviceDate{
+        if item.serviceDate > event.serviceDate && item.serviceDate < endTime || event.serviceDate == item.serviceDate{
             numberOfInsideEvents = numberOfInsideEvents + 1
         }
     }
@@ -229,6 +230,6 @@ func checkForOtherEventsDuringThisTime(events:[ServiceStop],event:ServiceStop)->
 struct CalendarView_Previews: PreviewProvider {
     static var previews: some View {
         @State var showSignInView:Bool = false
-        CalendarView(showSignInView: $showSignInView, user: DBUser(id: "", exp: 0),company: Company(id: ""))
+        CalendarView(showSignInView: $showSignInView, user: DBUser(id: "", email: "", firstName: "", lastName: "", exp: 0,recentlySelectedCompany: "") ,company: MockDataService.mockCompany)
     }
 }

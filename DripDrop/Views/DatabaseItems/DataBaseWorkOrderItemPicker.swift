@@ -11,12 +11,16 @@ struct DataBaseWorkOrderItemPicker: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
 
-    @StateObject var dataBaseVM = ReceiptDatabaseViewModel()
+    @StateObject var dataBaseVM : ReceiptDatabaseViewModel
     @State var category:String
     @Binding var jobDBItem : WODBItem
     
-    init(jobDBItem:Binding<WODBItem>,category:String){
-        
+    init(
+        dataService:any ProductionDataServiceProtocol,
+        jobDBItem:Binding<WODBItem>,
+        category:String
+    ){
+        _dataBaseVM = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
         self._jobDBItem = jobDBItem
         _category = State(wrappedValue: category)
     }
@@ -32,7 +36,7 @@ struct DataBaseWorkOrderItemPicker: View {
         .padding()
         .task {
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                 }
             } catch {
                 print("Error")
@@ -43,7 +47,7 @@ struct DataBaseWorkOrderItemPicker: View {
             if term == "" {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                  
                         }
                     } catch {
@@ -54,7 +58,7 @@ struct DataBaseWorkOrderItemPicker: View {
             } else {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                        
                         }
                     } catch {
@@ -67,19 +71,20 @@ struct DataBaseWorkOrderItemPicker: View {
 }
 extension DataBaseWorkOrderItemPicker {
     var searchBar: some View {
-        TextField(
-            text: $search,
-            label: {
-                Text("Search: ")
+        HStack{
+            TextField(
+                text: $search,
+                label: {
+                    Text("Search: ")
+                })
+            Button(action: {
+                search = ""
+            }, label: {
+                Image(systemName: "xmark")
             })
-        .textFieldStyle(PlainTextFieldStyle())
-        .font(.headline)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 5)
-        .background(Color.white)
-        .clipShape(Capsule())
-        .foregroundColor(Color.basicFontText)
-        
+        }
+        .modifier(SearchTextFieldModifier())
+        .padding(8)
     }
     var dataBaseList: some View {
         ScrollView{

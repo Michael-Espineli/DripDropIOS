@@ -27,7 +27,7 @@ extension Array where Element: Equatable {
 }
 func isValidEmail(_ email: String) -> Bool {
     let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-
+    
     let emailPred = NSPredicate(format:"SELF MATCHES %@", emailRegEx)
     return emailPred.evaluate(with: email)
 }
@@ -69,7 +69,7 @@ extension Query {
 func daysBetween(start: Date, end: Date) -> Int {
     return Calendar.current.dateComponents([.day], from: start, to: end).day!
 }
-func timeBetween(start: Date, end: Date) -> Int {
+func minBetween(start: Date, end: Date) -> Int {
     return Calendar.current.dateComponents([.minute], from: start, to: end).minute!
 }
 func timeBetweenAsSeconds(start: Date, end: Date) -> Int {
@@ -98,7 +98,18 @@ func makeDate(year: Int, month: Int, day: Int, hr: Int, min: Int, sec: Int) -> D
 }
 func fullDateAndTime(date:Date?)->String{
     let dateFormatter = DateFormatter()
-    dateFormatter.dateFormat = "MM-dd-yyyy' 'HH:mm"//this your string date format
+    dateFormatter.dateFormat = "MM/dd/yyyy' 'HH:mm"//this your string date format
+    if date != nil{
+        return String(dateFormatter.string(from:date!))
+        
+    } else {
+        return "no service Date"
+    }
+    
+}
+func shortDateAndTime(date:Date?)->String{
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "MM/dd/yy' 'HH:mm"//this your string date format
     if date != nil{
         return String(dateFormatter.string(from:date!))
         
@@ -130,7 +141,7 @@ func displayPreviousMonthAndCurrentYear(date:Date)->String{
 }
 func displayCurrentMonthAndPreviousYear(date:Date)->String{
     let calendar = Calendar.current
-//    let components = calendar.dateComponents([.year, .month, .day], from: date)
+    //    let components = calendar.dateComponents([.year, .month, .day], from: date)
     let previousYear = calendar.date(byAdding: .year, value: -1, to: date)!
     
     
@@ -150,13 +161,13 @@ func numberOfWeeksBetween(_ from: Date,_ to: Date) -> Double {
     let weeks = numberOfDays.day!/7
     return floor(Double(weeks))
 }
-func displayNumberAsMinAndHour(duration:Int) ->String {
+func displayMinAsMinAndHour(min:Int) ->String {
     let formatter = DateComponentsFormatter()
     
     formatter.unitsStyle = .abbreviated
     formatter.zeroFormattingBehavior = .pad
     formatter.allowedUnits = [.hour, .minute]
-    let time:TimeInterval = TimeInterval(duration*60)
+    let time:TimeInterval = TimeInterval(min*60)
     
     return formatter.string(from: time)!
 }
@@ -238,7 +249,7 @@ func time(date:Date?)->String{
 }
 func fullDate(date:Date?)->String{
     let dateFormatter = DateFormatter()
-    dateFormatter.dateFormat = "MM-dd-yyyy"//this your string date format
+    dateFormatter.dateFormat = "MM/dd/yyyy"//this your string date format
     if date != nil{
         return String(dateFormatter.string(from:date!))
         
@@ -263,7 +274,6 @@ func weekDay(date:Date?)->String{
     dateFormatter.dateFormat = "EEEE"//this your string date format
     if date != nil{
         return String(dateFormatter.string(from:date!))
-        
     } else {
         return "no service Date"
     }
@@ -282,7 +292,7 @@ func shortWeekDay(date:Date?)->String{
 }
 func shortDate(date:Date?)->String{
     let dateFormatter = DateFormatter()
-    dateFormatter.dateFormat = "MM-dd-yy"//this your string date format
+    dateFormatter.dateFormat = "MM/dd/yy"//this your string date format
     if date != nil{
         let newDate = date?.zeroSeconds
         
@@ -295,7 +305,7 @@ func shortDate(date:Date?)->String{
 }
 func dayMonth(date:Date?)->String{
     let dateFormatter = DateFormatter()
-    dateFormatter.dateFormat = "MM-dd"//this your string date format
+    dateFormatter.dateFormat = "MM/dd"//this your string date format
     if date != nil{
         let newDate = date?.zeroSeconds
         
@@ -348,13 +358,7 @@ extension Encodable {
     }
 }
 extension Date {
-    func startOfMonth() -> Date {
-        return Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Calendar.current.startOfDay(for: self)))!
-    }
     
-    func endOfMonth() -> Date {
-        return Calendar.current.date(byAdding: DateComponents(month: 1, day: -1), to: self.startOfMonth())!
-    }
     func startOfDay() -> Date {
         return Calendar.current.date(from: Calendar.current.dateComponents([.year, .month, .day], from: Calendar.current.startOfDay(for: self)))!
     }
@@ -362,6 +366,22 @@ extension Date {
     func endOfDay() -> Date {
         return Calendar.current.date(byAdding: DateComponents(month: 0, day: +1), to: self.startOfDay())!
     }
+    
+    func startOfWeek() -> Date {
+        return Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Calendar.current.startOfDay(for: self)))!
+    }
+    
+    func endOfWeek() -> Date {
+        return Calendar.current.date(byAdding: DateComponents(month: 0, day: 7), to: self.startOfWeek())!
+    }
+    func startOfMonth() -> Date {
+        return Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Calendar.current.startOfDay(for: self)))!
+    }
+    
+    func endOfMonth() -> Date {
+        return Calendar.current.date(byAdding: DateComponents(month: 1, day: -1), to: self.startOfMonth())!
+    }
+
     func previousMonth() -> Date {
         return Calendar.current.date(byAdding: DateComponents(month: -1, day: 0), to: self.startOfMonth())!
     }
@@ -376,7 +396,7 @@ extension Date {
     public func distance(to other: Date) -> TimeInterval {
         return other.timeIntervalSinceReferenceDate - self.timeIntervalSinceReferenceDate
     }
-
+    
     public func advanced(by n: TimeInterval) -> Date {
         return self + n
     }
@@ -445,48 +465,68 @@ extension String {
 //Color Variables
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 extension Color {
-    public static var lightBlue: Color {return Color("lightBlue")}
-
+    //    public static var lightBlue: Color {return Color("lightBlue")}
+    
     public static var promt: Color {return Color("textFieldPrompt")}
-
-    public static var poolRed: Color {return Color("poolRed")}
-    public static var poolGreen: Color {return Color("poolGreen")}
-    public static var poolBlue: Color {return Color("poolBlue")}
-    public static var poolWhite: Color {return Color("poolWhite")}
-
+    
+    //    public static var poolRed: Color {return Color("poolRed")}
+    //    public static var poolGreen: Color {return Color("poolGreen")}
+    //    public static var poolBlue: Color {return Color("poolBlue")}
+    //    public static var poolWhite: Color {return Color("poolWhite")}
+    //    public static var poolYellow: Color {return Color("poolYellow")}
+    
     public static var headerColor: Color {return Color("headerColor")}
-
-    public static var realYellow: Color {return Color("RealYellow")}
+    
+    //    public static var realYellow: Color {return Color("RealYellow")}
     public static var basicFontText: Color {return Color("fontColor")}
     public static var reverseFontText: Color {return Color("Other")}
-
+    
     public static var simpleBG: Color {return Color("simpleBG")}
     public static var listColor: Color {return Color("listColor")}
-    public static var bronze: Color {return Color("Bronze")}
-    public static var darkGray: Color {return Color("DarkGray")}
 
-    public static var silver: Color {return Color("Silver")}
-    public static var gold: Color {return Color("Gold")}
+//    public static var defaultBackground: Color {return Color("defaultBackground")}
+
+    //    public static var bronze: Color {return Color("Bronze")}
+    //    public static var darkGray: Color {return Color("DarkGray")}
+    //
+    //    public static var silver: Color {return Color("Silver")}
+    //    public static var gold: Color {return Color("Gold")}
     public static var BNW: Color {return Color("BNW")}
     
-        static subscript(name: String) -> Color {
-            switch name {
-                case "green":
-                    return Color.poolGreen
-                case "white":
-                    return Color.white
-                case "black":
-                    return Color.basicFontText
-            case "red":
-                return Color.red
-            case "blue":
-                return Color.blue
-            case "orange":
-                return Color.orange
-                default:
-                    return Color.accentColor
-            }
+    static subscript(name: String) -> Color {
+        switch name {
+        case "black":
+            return Color.black
+        case "blue":
+            return Color.blue
+        case "brown":
+            return Color.brown
+        case "cyan":
+            return Color.cyan
+        case "green":
+            return Color.poolGreen
+        case "indigo":
+            return Color.indigo
+        case "mint":
+            return Color.mint
+        case "orange":
+            return Color.orange
+        case "pink":
+            return Color.pink
+        case "purple":
+            return Color.purple
+        case "red":
+            return Color.red
+        case "teal":
+            return Color.teal
+        case "white":
+            return Color.white
+        case "yellow":
+            return Color.yellow
+        default:
+            return Color.accentColor
         }
+    }
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //Google Functions
@@ -496,7 +536,7 @@ func suggestionChems(_ DosageDictionary:[String:String],_ chem:String,_ gallons:
     
     let currentString = "1"
     let desiredString = "1"
-//    let calcType = ""
+    //    let calcType = ""
     let current:Double = Double(currentString) ?? 0.0
     let desired:Double = Double(desiredString) ?? 0.0
     
@@ -580,18 +620,18 @@ func suggestionChems(_ DosageDictionary:[String:String],_ chem:String,_ gallons:
     
 }
 
-func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingList:[Reading],hasAlgea:Bool)-> String{
-//    print("Calculating Recommendations...")
-//    print("gallons >> \(gallons)")
-//    print("Dosage >> \(String(describing: dosageTemplate.name))")
-//    print("hasAlgea >> \(hasAlgea)")
+func recommendationChems(gallons:Double,dosageTemplate:SavedDosageTemplate,readingList:[Reading],hasAlgea:Bool)-> String{
+    //    print("Calculating Recommendations...")
+    //    print("gallons >> \(gallons)")
+    //    print("Dosage >> \(String(describing: dosageTemplate.name))")
+    //    print("hasAlgea >> \(hasAlgea)")
     let dosageType = dosageTemplate.chemType
     var currentString:String = ""
     
-//    let desiredString:String = "1"
-//    let calcType = ""
-//    let current:Double = Double(currentString) ?? 0.0
-//    let desired:Double = Double(desiredString) ?? 0.0
+    //    let desiredString:String = "1"
+    //    let calcType = ""
+    //    let current:Double = Double(currentString) ?? 0.0
+    //    let desired:Double = Double(desiredString) ?? 0.0
     
     let chlorine:Double = 0.0825
     let acid:Double = 10//ounces at 15% change to 5 if acid is 30% //0.30
@@ -607,14 +647,14 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
             return "Oz: 0"
         }
     case "Tabs":
-//        print("Calculating Chlorine Reccomendation")
+        //        print("Calculating Chlorine Reccomendation")
         if let foo = readingList.first(where: {$0.dosageType == "Free Chlorine"}) {
-//            print(" - \(foo)")
+            //            print(" - \(foo)")
             currentString = foo.amount ?? "0"
         } else {
             currentString = "0"
         }
-//        print(currentString)
+        //        print(currentString)
         let currentChlorine:Double = Double(currentString) ?? 0.0
         let desiredChlorine:Double = 5.0
         
@@ -623,7 +663,7 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
         amountToAdd  = workingNumber * (gallons/10000) * (change/1)
         gallonsToAdd = amountToAdd/128
         if gallonsToAdd > 0 {
-//            let formatted = String(format:  "%.2f", gallonsToAdd)
+            //            let formatted = String(format:  "%.2f", gallonsToAdd)
             let tabs = gallons/8000
             return "Tabs: " + String(format:"%.2f",tabs)
             //            return "Gallons " + String(formatted)
@@ -634,14 +674,14 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
         }
         
     case "Liquid Chlorine":
-//        print("Calculating Chlorine Reccomendation")
+        //        print("Calculating Chlorine Reccomendation")
         if let foo = readingList.first(where: {$0.dosageType == "Free Chlorine"}) {
             print(" - \(foo)")
             currentString = foo.amount ?? "0"
         } else {
             currentString = "0"
         }
-//        print(currentString)
+        //        print(currentString)
         let currentChlorine:Double = Double(currentString) ?? 0.0
         let desiredChlorine:Double = 5.0
         
@@ -654,11 +694,11 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
         }
         if gallonsToAdd > 0 {
             let formatted = String(format:  "%.2f", gallonsToAdd)
-//            print("Liquid Chlorine  - Gallons : \(String(formatted))")
-
+            //            print("Liquid Chlorine  - Gallons : \(String(formatted))")
+            
             return "Gallons: " + String(formatted)
         }else{
-//            print("Chlorine too High")
+            //            print("Chlorine too High")
             return "Chlorine too High"
         }
         //    case "Chlorine Tabs":
@@ -669,8 +709,8 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
         //        let formatted = String(format:  "%.2f", gallonsToAdd)
         //        return "Gallons " + String(formatted)
     case "Muriatic Acid":
-//        print("Calculating pH Reccomendation - Muriatic Acid")
-
+        //        print("Calculating pH Reccomendation - Muriatic Acid")
+        
         if let foo = readingList.first(where: {$0.dosageType == "pH"}) {
             print(" - \(foo)")
             currentString = foo.amount ?? "0"
@@ -682,8 +722,8 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
         change = desiredAcid - currentAcid
         
         if change > 0 {
-//            print("Muriatic Acid  - Gallons : 0")
-
+            //            print("Muriatic Acid  - Gallons : 0")
+            
             return "Do not Add"
             
         }else {
@@ -693,17 +733,17 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
             gallonsToAdd = amountToAdd/128
             
             let formatted = String(format:  "%.2f", gallonsToAdd)
-//            print("Muriatic Acid  - Gallons : \(String(formatted))")
-
+            //            print("Muriatic Acid  - Gallons : \(String(formatted))")
+            
             return "Gallons: " + String(formatted)
             
         }
         
     case "Soda Ash":
-//        print("Calculating pH Reccomendation - Soda Ash")
-
+        //        print("Calculating pH Reccomendation - Soda Ash")
+        
         if let foo = readingList.first(where: {$0.dosageType == "pH"}) {
-//            print(" - \(foo)")
+            //            print(" - \(foo)")
             currentString = foo.amount ?? "0"
         } else {
             currentString = "0"
@@ -720,11 +760,11 @@ func recommendationChems(gallons:Double,dosageTemplate:DosageTemplate,readingLis
             amountToAdd  = (gallons/10000) * (lbsSodaAsh*5.3)
             let lbs = amountToAdd/16
             let formatted = String(format:  "%.2f", lbs)
-//            print("Soda Ash  - Oz : \(String(formatted))")
+            //            print("Soda Ash  - Oz : \(String(formatted))")
             return "Oz: " + String(formatted)
         }else {
-//            print("Soda Ash  - Oz: 0")
-
+            //            print("Soda Ash  - Oz: 0")
+            
             return "0"
             
         }
@@ -801,7 +841,7 @@ func convertAddressToCordinates1(address:Address) async throws ->CLLocationCoord
     geoCoder.geocodeAddressString(fulladdress) {
         placemarks, error in
         let placemark = placemarks?.first
-
+        
         addressCoordinates.latitude = placemark?.location?.coordinate.latitude ?? 32
         addressCoordinates.longitude = placemark?.location?.coordinate.longitude ?? -117
         print("Address Coordinates >> \(addressCoordinates)")
@@ -881,11 +921,11 @@ struct Line:Shape{
 }
 func isDate(_ date: Date, inDayContaining referenceDate: Date) -> Bool {
     let calendar = Calendar.current
-
+    
     // Extract components from both dates
     let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
     let referenceComponents = calendar.dateComponents([.year, .month, .day], from: referenceDate)
-
+    
     // Compare date components to check if they are in the same day
     return dateComponents == referenceComponents
 }
@@ -910,23 +950,23 @@ func getNextServiceDate(lastServiceDate:Date?,every:String?,frequency:String?) -
         case "Day":
             print("Day")
             date = calendar.date(byAdding: .day, value: repeatingEvery, to: lastServiceDateValidated)!
-
+            
         case "Week":
             print("Week")
-
+            
             let week = repeatingEvery * 7
             date = calendar.date(byAdding: .day, value: week, to: lastServiceDateValidated)!
-
+            
         case "Month":
             print("Month")
-
+            
             date = calendar.date(byAdding: .month, value: repeatingEvery, to: lastServiceDateValidated)!
-
+            
         case "Year":
             print("Year")
-
+            
             date = calendar.date(byAdding: .year, value: repeatingEvery, to: lastServiceDateValidated)!
-
+            
         default:
             print("None")
             return nil
@@ -1081,7 +1121,7 @@ enum Alphebet: String, Hashable, CaseIterable, Identifiable {
             return "z"
         }
     }
-
+    
 }
 
 func calculateLevel(exp:Int)->(level:Int,percentage:Double,expToNextlevel:Double){
@@ -1207,7 +1247,7 @@ func calculateLevel(exp:Int)->(level:Int,percentage:Double,expToNextlevel:Double
         let expInLevel:Double = Double(exp)  - 16_384_00
         expToNextlevel = expInLevel
         percentage = Double(expInLevel / 16_384_00)
-
+        
     } else if exp > 32_768_00 && exp <= 65_536_00 {
         //Level 18
         level = 18
@@ -1283,7 +1323,7 @@ public struct FrameReader: View {
         self.coordinateSpace = coordinateSpace
         self.onChange = onChange
     }
-
+    
     public var body: some View {
         GeometryReader { geo in
             Text("")
@@ -1342,7 +1382,7 @@ struct FrameReader_Previews: PreviewProvider {
             .overlay(Text("Offset: \(yOffset)"))
         }
     }
-
+    
     static var previews: some View {
         PreviewView()
     }
@@ -1355,7 +1395,7 @@ struct DragGestureViewModifier: ViewModifier {
     @State private var lastOffset: CGSize = .zero
     @State private var rotation: Double = 0
     @State private var scale: CGFloat = 1
-
+    
     let axes: Axis.Set
     let minimumDistance: CGFloat
     let resets: Bool
@@ -1364,7 +1404,7 @@ struct DragGestureViewModifier: ViewModifier {
     let scaleMultiplier: CGFloat
     let onChanged: ((_ dragOffset: CGSize) -> ())?
     let onEnded: ((_ dragOffset: CGSize) -> ())?
-
+    
     init(
         _ axes: Axis.Set = [.horizontal, .vertical],
         minimumDistance: CGFloat = 0,
@@ -1383,7 +1423,7 @@ struct DragGestureViewModifier: ViewModifier {
             self.onChanged = onChanged
             self.onEnded = onEnded
         }
-        
+    
     func body(content: Content) -> some View {
         content
             .scaleEffect(scale)
@@ -1408,7 +1448,7 @@ struct DragGestureViewModifier: ViewModifier {
                         } else {
                             onEnded?(value.translation)
                         }
-
+                        
                         withAnimation(animation) {
                             offset = .zero
                             rotation = 0
@@ -1490,7 +1530,7 @@ public extension View {
         onChanged: ((_ dragOffset: CGSize) -> ())? = nil,
         onEnded: ((_ dragOffset: CGSize) -> ())? = nil) -> some View {
             modifier(DragGestureViewModifier(axes, minimumDistance: minimumDistance, resets: resets, animation: animation, rotationMultiplier: rotationMultiplier, scaleMultiplier: scaleMultiplier, onChanged: onChanged, onEnded: onEnded))
-    }
+        }
     
 }
 
@@ -1502,7 +1542,7 @@ struct DragGestureViewModifier_Previews: PreviewProvider {
             .withDragGesture(
                 [.vertical, .horizontal],
                 resets: true,
-                animation: .easeIn, 
+                animation: .easeIn,
                 rotationMultiplier: 1.1,
                 scaleMultiplier: 1.1,
                 onChanged: { dragOffset in
@@ -1518,14 +1558,14 @@ struct DragGestureViewModifier_Previews: PreviewProvider {
 }
 
 func longestWord(str: String) -> String {
-   let wordArray = str.components(separatedBy: .whitespacesAndNewlines)
-   var longWord = ""
+    let wordArray = str.components(separatedBy: .whitespacesAndNewlines)
+    var longWord = ""
     
-   for w in wordArray {
-      if w.count > longWord.count {
-         longWord = w
-      }
-   }
-   
-   return longWord
+    for w in wordArray {
+        if w.count > longWord.count {
+            longWord = w
+        }
+    }
+    
+    return longWord
 }

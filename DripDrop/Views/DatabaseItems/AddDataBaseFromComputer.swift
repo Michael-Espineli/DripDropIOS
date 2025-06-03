@@ -37,7 +37,7 @@ struct AddDataBaseFromComputer: View {
               }
               Button(action: {
                   Task{
-                      if let company = masterDataManager.selectedCompany {
+                      if let company = masterDataManager.currentCompany {
                           do {
                               isLoading = true
                               try await viewModel.uploadFileTo(companyId: company.id, pathName: pathName,fileName: fileName,storeName: store.name ?? "Store",storeId: store.id)
@@ -55,7 +55,7 @@ struct AddDataBaseFromComputer: View {
       }
     }
       .task{
-          if let company = masterDataManager.selectedCompany {
+          if let company = masterDataManager.currentCompany {
               do {
                   try await storeViewModel.getAllStores(companyId: company.id)
               } catch {

@@ -12,12 +12,11 @@ struct ActiveRouteCardView: View {
 
     let activeRoute: ActiveRoute
     var body: some View {
-        HStack{
-            Text("\(fullDate(date: activeRoute.date))")
-            Spacer()
+
             VStack{
                 HStack{
-                    Text("\(time(date: activeRoute.startTime)) - \(time(date: activeRoute.endTime))")
+                    Text("\(shortDate(date: activeRoute.date))")
+                    Spacer()
                 }
                 HStack{
                     if let start = activeRoute.startMilage{
@@ -34,8 +33,25 @@ struct ActiveRouteCardView: View {
 
                     }
                 }
+                HStack{
+                    Spacer()
+                    if let startMilage = activeRoute.startMilage, let endMilage = activeRoute.endMilage {
+                        Text(" (\(Measurement(value: Double(endMilage)-Double(startMilage), unit: UnitLength.miles).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))))")
+
+                    }
+                }
+                HStack{
+                    Text("\(time(date: activeRoute.startTime)) - \(time(date: activeRoute.endTime))")
+                }
+                HStack{
+                    Spacer()
+                    if let startTime = activeRoute.startTime,let endTime = activeRoute.endTime {
+                        Text(" (\(displayMinAsMinAndHour(min:minBetween(start: startTime, end: endTime))))")
+                    }
+                }
+
             }
-        }
+        
     }
 }
 
@@ -53,10 +69,11 @@ struct ActiveRouteCardView_Previews: PreviewProvider {
                                                      techName: "",
                                                      traineeId: "",
                                                      traineeName: "",
-                                                     durationSeconds: 0,
+                                                     durationMin: 0,
                                                      distanceMiles: 0,
                                                      status: .didNotStart,
                                                      totalStops: 0,
-                                                     finishedStops: 0))
+                                                     finishedStops: 0,
+                                                     vehicalId: ""))
     }
 }

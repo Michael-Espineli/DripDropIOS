@@ -12,12 +12,18 @@ struct SquareSnapShot: View {
     let footer : Color
     let textColor : Color
     let text : String
+    var text2 : String?
+
     let iconName : String
 
     var body: some View {
-        Rectangle()
-            .fill(color)
-            .frame(width: 100, height: 100)
+//        Rectangle()
+//            .fill(color)
+//            .frame(width: 100, height: 125)
+//            .cornerRadius(8)
+        Image("grayback")
+            .frame(width: 100, height: 125)
+            .cornerRadius(8)
             .overlay(
                     Image(systemName: iconName)
                         .font(.largeTitle)
@@ -27,14 +33,21 @@ struct SquareSnapShot: View {
             )
             .overlay(
                 ZStack{
-                    Text(text)
-                        .font(.footnote)
-                        .foregroundColor(textColor)
-                        .lineLimit(2,reservesSpace: true)
+                    VStack{
+                        Text(text)
+                            .font(.footnote)
+                            .foregroundColor(textColor)
+                            .lineLimit(2,reservesSpace: true)
+                        if let text2 {
+                            Text(text2)
+                                .font(.footnote)
+                                .foregroundColor(textColor)
+                                .lineLimit(1,reservesSpace: true)
+                        }
+                    }
                 }
-   
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50)
+                    .frame(height: 75)
                     .background(
                         LinearGradient(colors: [
                             footer.opacity(0.0),
@@ -43,6 +56,7 @@ struct SquareSnapShot: View {
                                        startPoint: .top,
                                        endPoint: .bottom)
                     )
+                    .cornerRadius(8)
                 ,alignment: .bottomLeading
             )
     }
