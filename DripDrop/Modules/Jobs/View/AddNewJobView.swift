@@ -454,13 +454,17 @@ struct AddNewJobView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                HStack{
-                    Picker("", selection: $VM.jobDetailType) {
-                        Text("Simple").tag("Simple")
-                        Text("Complex").tag("Complex")
-                    }
-                    .pickerStyle(.segmented)
-                }
+                    //----------------------------------------
+                    //Add Back in During Roll out of Phase 2
+                    //----------------------------------------
+
+//                HStack{
+//                    Picker("", selection: $VM.jobDetailType) {
+//                        Text("Simple").tag("Simple")
+//                        Text("Complex").tag("Complex")
+//                    }
+//                    .pickerStyle(.segmented)
+//                }
                 if  VM.jobDetailType == "Complex" {
                     ScrollView(.horizontal, showsIndicators: false){
                         HStack{
@@ -522,20 +526,21 @@ struct AddNewJobView: View {
             Button("OK", role: .cancel) { }
         }
         .toolbar{
-            Button(action: {
-                if VM.jobDetailType == "Simple" {
-                    VM.jobDetailType = "Complex"
-                } else {
-                    VM.jobDetailType = "Simple"
-                }
-            }, label: {
-                Text(VM.expandJobDetails ? "Simplify": "Expand")
-                    .padding(8)
-                    .background(Color.poolBlue)
-                    .cornerRadius(8)
-                    .foregroundColor(Color.basicFontText)
-            })
-        
+            if !UIDevice.isIPhone {
+                Button(action: {
+                    if VM.jobDetailType == "Simple" {
+                        VM.jobDetailType = "Complex"
+                    } else {
+                        VM.jobDetailType = "Simple"
+                    }
+                }, label: {
+                    Text(VM.expandJobDetails ? "Simplify": "Expand")
+                        .padding(8)
+                        .background(Color.poolBlue)
+                        .cornerRadius(8)
+                        .foregroundColor(Color.basicFontText)
+                })
+            }
         }
         .task {
             do {

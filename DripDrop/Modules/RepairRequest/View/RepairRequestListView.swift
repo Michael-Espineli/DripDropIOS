@@ -223,8 +223,8 @@ var icons: some View{
                             }
                             .padding(16)
                         }
-                       
                     }
+                    .presentationDetents([.fraction(0.4)])
                   
                 })
                 Button(action: {

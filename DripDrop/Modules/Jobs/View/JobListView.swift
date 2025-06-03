@@ -322,7 +322,7 @@ extension JobListView {
                             
                         }
                         .padding(8)
-                        
+                        .presentationDetents([.fraction(0.4)])
                     })
                     if let role = masterDataManager.role {
                         if role.permissionIdList.contains("3") {

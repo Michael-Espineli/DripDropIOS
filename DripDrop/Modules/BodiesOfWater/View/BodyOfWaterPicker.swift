@@ -30,12 +30,11 @@ struct BodyOfWaterPicker: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-
-                    searchBar
-                BodyOfWaterList
-                    
+                bodyOfWaterListView
+                searchBar
                 
             }
+            .padding(8)
         }
         .task {
             do {
@@ -77,7 +76,7 @@ extension BodyOfWaterPicker {
         .modifier(SearchTextFieldModifier())
     }
 
-    var BodyOfWaterList: some View {
+    var bodyOfWaterListView: some View {
         ScrollView{
             ForEach(bodyOfWaterList){ datum in
                 
@@ -90,8 +89,8 @@ extension BodyOfWaterPicker {
                         Text("\(bodyOfWater.name)")
                         Spacer()
                     }
+                    .modifier(ListButtonModifier())
                     .padding(.horizontal,8)
-                    .foregroundColor(Color.basicFontText)
                 })
                 
                 Divider()

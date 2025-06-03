@@ -156,30 +156,41 @@ extension EmployeeDailyDashboard {
                 })
             }
             Spacer()
-            Button(action:{
-                showRepairSheet.toggle()
-            }, label: {
+//            Button(action:{
+//                showRepairSheet.toggle()
+//            }, label: {
+//                Image(systemName: "wrench.adjustable.fill")
+//                    .font(.title)
+//                    .foregroundColor(Color.poolBlue)
+//            })
+            NavigationLink(value: Route.createRepairRequest(dataService: dataService), label: {
                 Image(systemName: "wrench.adjustable.fill")
-                    .font(.title)
+                    .font(.headline)
+                    .bold()
                     .foregroundColor(Color.poolBlue)
             })
+            .padding(.horizontal,8)
             NavigationLink(value: Route.shoppingList(dataService: dataService), label: {
                 shoppingListIcon
             })
+            .padding(.horizontal,8)
             NavigationLink(value: Route.createNewJob(dataService: dataService), label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title)
+                Image(systemName: "plus")
+                    .font(.headline)
+                    .bold()
                     .foregroundColor(Color.poolBlue)
                 
             })
+            .padding(.horizontal,8)
         }
-        .padding(EdgeInsets(top: 4, leading: 10, bottom: 0, trailing: 10))
+        .padding(8)
         .padding(.horizontal,8)
     }
     var shoppingListIcon: some View {
         ZStack{
             Image(systemName: "list.clipboard.fill")
-                .font(.title)
+                .font(.headline)
+                .bold()
                 .foregroundColor(Color.poolBlue)
             
             .overlay(
@@ -191,6 +202,7 @@ extension EmployeeDailyDashboard {
                             Image(systemName: "\(String(listOfShoppingListItems)).circle.fill")
                                 .foregroundColor(Color.red)
                         }
+                        .padding(4)
                         Spacer()
                     }
                     Spacer()

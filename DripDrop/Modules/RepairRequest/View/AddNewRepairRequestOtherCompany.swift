@@ -1,14 +1,21 @@
 //
-//  AddNewRepairRequest.swift
-//  ThePoolApp
+//  AddNewRepairRequestOtherCompany.swift
+//  DripDrop
 //
-//  Created by Michael Espineli on 1/8/24.
+//  Created by Michael Espineli on 6/2/25.
 //
+
 import PhotosUI
 import SwiftUI
 import Darwin
+enum photoPickerType:Identifiable{
+    case album, camera
+    var id:Int {
+        hashValue
+    }
+}
 
-struct AddNewRepairRequest: View {
+struct AddNewRepairRequestOtherCompany: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = CameraDataModel()
     @EnvironmentObject var masterDataManager : MasterDataManager
@@ -17,11 +24,11 @@ struct AddNewRepairRequest: View {
     @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @StateObject var VM : AddRepairRequestViewModel
     
-    @Binding var isPresented:Bool
-    init(dataService:any ProductionDataServiceProtocol,isPresented:Binding<Bool>){
+    init(dataService: any ProductionDataServiceProtocol,associatedBusiness: AssociatedBusiness){
         _VM = StateObject(wrappedValue: AddRepairRequestViewModel(dataService: dataService))
-        _isPresented = isPresented
+        _associatedBusiness = State(initialValue: associatedBusiness)
     }
+    @State var associatedBusiness:AssociatedBusiness
     @FocusState var descriptionField:Bool
 
     var body: some View {
@@ -104,7 +111,7 @@ struct AddNewRepairRequest: View {
 }
 
 
-extension AddNewRepairRequest{
+extension AddNewRepairRequestOtherCompany{
     var info: some View {
         VStack{
             customerView

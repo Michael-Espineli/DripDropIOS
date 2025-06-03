@@ -152,7 +152,6 @@ extension WorkPreviewBasedOnCompany {
                                 Text("No Work Today")
                                     .modifier(ListButtonModifier())
                             })
-                            Text("Next Shift")
                         } else {
                             Button(action: {
                                 masterDataManager.selectedCategory = .dailyDisplay
@@ -160,7 +159,6 @@ extension WorkPreviewBasedOnCompany {
                                 Text("No Work Today")
                                     .modifier(ListButtonModifier())
                             })
-                            Text("Next Shift")
                         }
                     case .employee:
                         if UIDevice.isIPhone {
@@ -168,7 +166,6 @@ extension WorkPreviewBasedOnCompany {
                                 Text("No Work Today")
                                     .modifier(ListButtonModifier())
                             })
-                            Text("Next Shift")
                         } else {
                             Button(action: {
                                 masterDataManager.selectedCategory = .dailyDisplay
@@ -176,7 +173,6 @@ extension WorkPreviewBasedOnCompany {
                                 Text("No Work Today")
                                     .modifier(ListButtonModifier())
                             })
-                            Text("Next Shift")
                         }
                     case .notAssigned:
                         if UIDevice.isIPhone {
@@ -184,7 +180,6 @@ extension WorkPreviewBasedOnCompany {
                                 Text("No Work Today")
                                     .modifier(ListButtonModifier())
                             })
-                            Text("Next Shift")
                         } else {
                             Button(action: {
                                 masterDataManager.selectedCategory = .dailyDisplay
@@ -192,7 +187,6 @@ extension WorkPreviewBasedOnCompany {
                                 Text("No Work Today")
                                     .modifier(ListButtonModifier())
                             })
-                            Text("Next Shift")
                         }
                     }
                 }

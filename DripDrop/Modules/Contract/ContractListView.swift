@@ -211,6 +211,7 @@ var list: some View {
                                 }
                         }
                         .padding(8)
+                        .presentationDetents([.fraction(0.4)])
                     })
                             Button(action: {
                                 showAddNewContract.toggle()

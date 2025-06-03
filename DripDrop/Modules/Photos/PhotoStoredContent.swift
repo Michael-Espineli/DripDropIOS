@@ -168,7 +168,7 @@ extension PhotoStoredContent {
                             }
                             .padding(8)
                             TextField("Name", text: $vm.imageName, prompt:Text("Name"),axis: .vertical)
-                            .focused($nameField, equals: true)
+                            .focused($nameField)
                             .textFieldStyle(.roundedBorder)
                             .padding(.horizontal,8)
                             HStack {

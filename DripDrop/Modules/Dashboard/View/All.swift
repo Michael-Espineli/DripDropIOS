@@ -1068,6 +1068,7 @@ extension All {
                     }
                 }
             }
+            Divider()
         }
     }
     var toDos: some View {

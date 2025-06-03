@@ -100,7 +100,7 @@ extension PhotoContentView {
                             TextField("Image Name", text: $vm.imageName) { isEditing in
                                 vm.isEditing = isEditing
                             }
-                            .focused($nameField, equals: true)
+                            .focused($nameField)
                             .textFieldStyle(.roundedBorder)
                             .padding(.horizontal,8)
                             HStack {

@@ -60,6 +60,7 @@ struct RecurringLaborContractListView: View {
                     
                 }, content: {
                     filters
+                        .presentationDetents([.fraction(0.4)])
                 })
             Text("")
                 .sheet(isPresented: $VM.showAddNewLaborContract, onDismiss: {

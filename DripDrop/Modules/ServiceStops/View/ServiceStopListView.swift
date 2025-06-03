@@ -152,7 +152,8 @@ extension ServiceStopListView {
                                 }
                                 Spacer()
                             }
-                            .padding()
+                            .padding(8)
+                            .presentationDetents([.fraction(0.4)])
                         })
                         Button(action: {
                             showAddNew.toggle()

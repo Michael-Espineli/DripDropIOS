@@ -46,7 +46,7 @@ struct DripDropStoredImageRow: View {
                 TextField("Image Name", text: $iamgeName) { isEditing in
                         //                    vm.isEditing = isEditing
                 }
-                    //                .focused($nameField, equals: true)
+                    //                .focused($nameField)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal,8)
                 HStack {
