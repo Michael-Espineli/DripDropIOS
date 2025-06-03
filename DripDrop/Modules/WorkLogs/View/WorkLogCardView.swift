@@ -13,19 +13,19 @@ struct WorkLogCardView: View {
         VStack{
             HStack{
                 Spacer()
-                Text(sheet.type.rawValue)
+                Text(workLog.type.rawValue)
                 Spacer()
             }
             HStack{
-                Text("Start : \(time(date: sheet.startTime))")
+                Text("Start : \(time(date: workLog.startTime))")
                 Spacer()
             }
             .font(.footnote)
             HStack{
-                if let endTime = sheet.endTime {
-                    Text("End : \(time(date: endTime)) (\(displayNumberAsMinAndHourAndSecond(seconds: timeBetweenAsSeconds(start: sheet.startTime, end: endTime))))")
+                if let endTime = workLog.endTime {
+                    Text("End : \(time(date: endTime)) (\(displayNumberAsMinAndHourAndSecond(seconds: timeBetweenAsSeconds(start: workLog.startTime, end: endTime))))")
                 } else {
-                    Text("(\(displayNumberAsMinAndHourAndSecond(seconds: timeBetweenAsSeconds(start: sheet.startTime, end: sheet.endTime ?? Date()))))")
+                    Text("(\(displayNumberAsMinAndHourAndSecond(seconds: timeBetweenAsSeconds(start: workLog.startTime, end: workLog.endTime ?? Date()))))")
                 }
                 Spacer()
             }
@@ -34,7 +34,7 @@ struct WorkLogCardView: View {
         .modifier(ListButtonModifier())
     }
 }
-
-#Preview {
-    WorkLogCardView()
-}
+    
+//#Preview {
+//    WorkLogCardView()
+//}

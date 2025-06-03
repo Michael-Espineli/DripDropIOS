@@ -9,7 +9,7 @@ import SwiftUI
 
 struct TechRateSheet: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @StateObject var companyUserVM = CompanyUserViewModel()
     let tech:DBUser
     @State var isLoading:Bool = true
@@ -25,7 +25,7 @@ struct TechRateSheet: View {
             }
         }
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     isLoading = true
                     try await settingsVM.getWorkOrderTemplates(companyId: company.id)
@@ -46,7 +46,7 @@ struct TechRateSheet: View {
 
 struct TechRateSheet_Previews: PreviewProvider {
     static var previews: some View {
-        TechRateSheet(tech: DBUser(id: "",exp: 0))
+        TechRateSheet(tech: DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
     }
 }
 

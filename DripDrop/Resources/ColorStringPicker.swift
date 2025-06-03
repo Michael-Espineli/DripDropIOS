@@ -15,7 +15,6 @@ struct ColorStringPicker: View {
          GridItem(.fixed(50)),
          GridItem(.fixed(50)),
          GridItem(.fixed(50)),
-         GridItem(.fixed(50)),
          GridItem(.fixed(50))
      ]
     @State var colors: [String] = [
@@ -42,7 +41,8 @@ struct ColorStringPicker: View {
                 Button(action: {
                     dismiss()
                 }, label: {
-                    Text("Dismiss")
+                    Image(systemName: "xmark")
+                        .modifier(DismissButtonModifier())
                 })
             }
             .padding()
@@ -54,12 +54,12 @@ struct ColorStringPicker: View {
                                 color = i
                             }, label: {
                                 Rectangle()
-                                    .fill(Color[color])
-                                    .frame(width:10,height: 10)
-                                    .padding(3)
+                                    .fill(Color[i])
+                                    .frame(width:50,height: 50)
+                                    .padding(5)
                                     .background(color == i ? .white.opacity(0.5) : .gray.opacity(0.5))
-                                    .cornerRadius(3)
-                                    .padding(3)
+                                    .cornerRadius(5)
+                                    .padding(5)
                             })
                         }
                 

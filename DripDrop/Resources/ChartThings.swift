@@ -6,3 +6,17 @@
 //
 
 import Foundation
+import Charts
+
+struct BuildActivity: Identifiable, Codable {
+    var id: TimeInterval { date.timeIntervalSince1970 }
+    let date: Date
+    let name: String
+    let numberOfUnits: Int
+}
+struct BuildActivityDouble: Identifiable, Codable {
+    var id: TimeInterval { date.timeIntervalSince1970 }
+    let date: Date
+    let name: String
+    let numberOfUnits: Double
+}

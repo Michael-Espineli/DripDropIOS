@@ -1,9 +1,9 @@
-//
-//  MockDataService.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 4/23/24.
-//
+    //
+    //  MockDataService.swift
+    //  ThePoolApp
+    //
+    //  Created by Michael Espineli on 4/23/24.
+    //
 
 import Foundation
 import Firebase
@@ -13,8 +13,851 @@ import SwiftUI
 import CoreLocation
 import MapKit
 
+
 @MainActor
 final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
+    func removeListenerForSentLaborContracts() {
+        
+    }
+    
+    func removeListenerForReceivedLaborContracts() {
+        
+    }
+    
+
+    
+    func deleteRecurringServiceStopTask(companyId: String, recurringServiceStopId: String, taskId: String) async throws {
+        
+    }
+    
+    func updateTaskGroupName(companyId: String, taskGroupId: String, name: String) async throws {
+        
+    }
+    
+    func updateTaskGroupDescription(companyId: String, taskGroupId: String, description: String) async throws {
+        
+    }
+    
+    func updateTaskGroupNumberOfTasks(companyId: String, taskGroupId: String, numberOfTasks: Int) async throws {
+        
+    }
+    
+    func getAllTaskGroupItems(companyId: String, taskGroupId: String) async throws -> [JobTaskGroupItem] {
+        return []
+    }
+    
+    func uploadNewTaskGroupItem(companyId:String,taskGroupId:String,taskGroupItem:JobTaskGroupItem) async throws {
+        
+    }
+    //READ
+    func getTaskGroupItemById(companyId:String, taskGroupId:String,taskItemId:String) async throws -> JobTaskGroupItem {
+        return JobTaskGroupItem(id: "", name: "", type: .basic, description: "", contractedRate: 0, estimatedTime: 0)
+
+    }
+    func deleteTaskGroupItem(companyId:String,taskGroupId:String,taskId:String) async throws {
+    }
+    func deleteTaskGroup(companyId:String,taskGroupId:String) async throws {
+    }
+//    func getAllTaskGroups(companyId:String, taskGroupId:String) async throws ->[JobTaskGroupItem] {
+//        return []
+//
+//    }
+    
+    func uploadNewTaskGroup(companyId:String,taskGroup:JobTaskGroup) async throws {
+    }
+    func getAllTaskGroupById(companyId:String,taskGroupId:String) async throws -> JobTaskGroup {
+        return JobTaskGroup(id: "", name: "", description: "", numberOfTasks: 0)
+
+    }
+    func getAllTaskGroups(companyId:String) async throws ->[JobTaskGroup] {
+        return []
+    }
+    func uploadRecurringServiceStopTask(companyId:String,recurringServiceStopId:String,task:RecurringServiceStopTask) async throws {
+    }
+    //Read
+    func getRecurringServiceStopTasks(companyId:String,recurringServiceStopId:String) async throws -> [RecurringServiceStopTask] {
+        return []
+    }
+    //Update
+    func updateRecurringServiceStopTaskStatus(companyId:String,recurringServiceStopId:String,taskId:String,status:JobTaskStatus){
+        
+    }
+    func updateRepairRequestPhotoURLs(companyId: String, repairRequest: String, photoUrls: [DripDropStoredImage]) async throws {
+        
+    }
+    
+    func uploadServiceStopImage(companyId: String, serviceStopId: String, image: DripDropImage) async throws -> (path: String, name: String) {
+        return (path: "", name: "")
+    }
+    
+    func updateServiceStopPhotoURLs(companyId: String, serviceStopId: String, photoUrls: [DripDropStoredImage]) async throws {
+        
+    }
+    
+    func getUniversalEquipmentTypes() async throws -> [UniversalEquipmentType] {
+        return []
+    }
+    func getUniversalEquipmentBrandsByType(type:UniversalEquipmentType) async throws -> [UniversalEquipmentMake] {
+        return []
+    }
+    func getUniversalEquipmentByTypeAndBrand(type:UniversalEquipmentType,make:UniversalEquipmentMake) async throws -> [UniversalEquipment] {
+        return []
+    }
+    func getUniversalEquipmentPartsEquipment(equipmentId:String) async throws -> [UniversalPart] {
+        return []
+    }
+    func deleteBodyOfWater(companyId:String,bodyOfWaterId:String) async throws {
+        try await bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWaterId)
+            .delete()
+    }
+    func updateEquipmentName(companyId:String,equipmentId:String,name:String) throws {
+        
+    }
+    func updateEquipmentCategory(companyId:String,equipmentId:String,category:EquipmentCategory) throws {
+        
+    }
+
+    func updateEquipmentMake(companyId:String,equipmentId:String,make:String) throws {
+        
+    }
+    func updateEquipmentModel(companyId:String,equipmentId:String,model:String) throws {
+        
+    }
+    func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:String) throws {
+        
+    }
+    func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws {
+        
+    }
+    func updateEquipmentStatus(companyId:String,equipmentId:String,status:EquipmentStatus) throws {
+        
+    }
+    func updateEquipmentCleanFilterPressure(companyId:String,equipmentId:String,cleanFilterPressure:Int) throws {
+        
+    }
+    func updateEquipmentCurrentPressure(companyId:String,equipmentId:String,currentPressure:Int) throws {
+        
+    }
+    func updateEquipmentCleanLastServiceDate(companyId:String,equipmentId:String,lastServiceDate:Date) throws {
+        
+    }
+    func updateEquipmentServiceFrequency(companyId:String,equipmentId:String,serviceFrequency:String) throws {
+        
+    }
+    func updateEquipmentNextServiceDate(companyId:String,equipmentId:String,nextServiceDate:Date) throws {
+        
+    }
+    func updateEquipmentNotes(companyId:String,equipmentId:String,notes:String) throws {
+        
+    }
+    func updateEquipmentPhotoUrls(companyId:String,equipmentId:String,image:DripDropStoredImage) throws {
+        
+    }
+    func updateCustomerActive(companyId:String,customerId:String,active:Bool) async throws {
+    }
+    func updateServiceStopTaskStatus(companyId:String,serviceStopId:String,taskId:String,status:JobTaskStatus) async throws {
+    }
+    func uploadServiceStopTask(companyId:String,serviceStopId:String,task:ServiceStopTask) async throws {
+    }
+    func updateJobTaskName(companyId:String,jobId:String,taskId:String,name:String) throws {
+    }
+    func updateJobTaskType(companyId:String,jobId:String,taskId:String,type:String) throws {
+    }
+    func updateJobTaskWorkerType(companyId:String,jobId:String,taskId:String,workerType:WorkerTypeEnum) throws {
+    }
+    func updateJobTaskWorkerName(companyId:String,jobId:String,taskId:String,workerName:String) throws {
+    }
+    func updateJobTaskWorkerId(companyId:String,jobId:String,taskId:String,workerId:String) throws {
+    }
+    func updateJobTaskStatus(companyId:String,jobId:String,taskId:String,status:JobTaskStatus) throws {
+    }
+    func updateJobTaskServiceStopId(companyId:String,jobId:String,taskId:String,serviceStopId:IdInfo) throws {
+    }
+    func updateJobTaskLaborContractId(companyId:String,jobId:String,taskId:String,laborContractId:String) throws {
+    }
+    func updateJobDateEstimateAccepted(companyId: String, jobId: String, date: Date) async throws{
+    }
+    func updateJobEstiamteAcceptedById(companyId: String, jobId: String, id: String) async throws{
+    }
+    func updateJobEstiamteAcceptedByType(companyId: String, jobId: String, type: JobEstiamteAcceptanceType) async throws {
+    }    
+    func updateJobInvoiceDate(companyId: String, jobId: String, date: Date) async throws {
+        
+    }
+    func updateJobInvoiceRef(companyId: String, jobId: String, ref: String) async throws {
+        
+    }
+    func updateJobInvoiceNotes(companyId: String, jobId: String, notes: String) async throws {
+        
+    }
+    func updateJobInvoiceType(companyId: String, jobId: String, type: JobInvoiceType) async throws{
+        
+    }
+
+    func updateLaborContractStatus(contractId:String,status:LaborContractStatus)  async throws {
+    }
+    func updateJobEstimateAcceptedNotes(companyId: String, jobId: String, notes: String) async throws{
+    }
+    func uploadWorkOrderTask(companyId:String,workOrderId:String,task:JobTask) throws {
+    }
+    func updateActiveRouteName(companyId:String,activeRouteId:String,name:String){
+    }
+    func updateActiveRouteDate(companyId:String,activeRouteId:String,date:Date){
+    }
+    func updateActiveRouteStartTime(companyId:String,activeRouteId:String,startTime:Date){
+    }
+    func updateActiveRouteEndTime(companyId:String,activeRouteId:String,endTime:Date){
+    }
+    func updateActiveRouteDuration(companyId:String,activeRouteId:String,duration:Int){
+    }
+    func updateActiveRouteDistnace(companyId:String,activeRouteId:String,distance:Double){
+    }
+    func updateActiveRouteStatus(companyId:String,activeRouteId:String,status:ActiveRouteStatus){
+    }
+    func updateActiveRouteStartMilage(companyId:String,activeRouteId:String,startMilage:Int){
+    }
+    func updateActiveRouteEndMilage(companyId:String,activeRouteId:String,endMilage:Int){
+    }
+    func updateActiveRouteFinishedStop(companyId:String,activeRouteId:String,finishedStops:Int){
+    }
+    func updateActiveRouteTotalStop(companyId:String,activeRouteId:String,totalStops:Int){
+    }
+    func updateActiveRouteVehicalId(companyId:String,activeRouteId:String,vehicalId:String){
+        
+    }
+    func updateCustomerFirstName(companyId:String,customerId:String,firstName:String) async throws {
+    }
+    func updateCustomerLastName(companyId:String,customerId:String,lastName:String) async throws {
+    }
+    func updateCustomerEmail(companyId:String,customerId:String,email:String) async throws {
+    }
+    func updateCustomerAddress(companyId:String,customerId:String,billingAddress:Address) async throws {
+    }
+    func updateCustomerPhoneNumber(companyId:String,customerId:String,phoneNumber:String) async throws {
+    }
+    func updateCustomerPhoneLabel(companyId:String,customerId:String,phoneLabel:String) async throws {
+    }
+    func updateCustomerCompany(companyId:String,customerId:String,company:String) async throws {
+    }
+    func updateCustomerDisplayAsCompany(companyId:String,customerId:String,displayAsCompany:Bool) async throws {
+    }
+    func updateCustomerBillingNotes(companyId:String,customerId:String,billingNotes:String) async throws {
+    }
+    func updateCustomerTags(companyId:String,customerId:String,tags:[String]) async throws {
+    }
+    func updateCustomerLinkedInviteId(companyId:String,customerId:String,linkedInviteId:String) async throws {
+    }
+    func getServiceStopByServiceLocationId(companyId: String, serviceLocationId: String) async throws-> [ServiceStop] {
+        return []
+    }
+    
+    func getRecurringServiceStopByServiceLocationId(companyId: String, serviceLocationId: String) async throws-> [RecurringServiceStop] {
+        return []
+    }
+    
+    func updateServiceStopAddress(companyId: String, serviceStopId: String, address: Address) async throws {
+    }
+    func updateServiceStopIsInvoiced(companyId:String,serviceStopId:String,isInvoiced:Bool) async throws{
+        
+    }
+    func updateRecurringServiceStopAddress(companyId: String, recurringServiceStopId: String, address: Address) async throws {
+    }
+    func updateHomeOwnerServiceStopFinish(companyId: String, serviceStop: ServiceStop, finished: Bool) async throws {
+    }
+    
+    func getServiceStopByJobId(companyId: String, jobId: String) async throws -> [ServiceStop] {
+            //DEVELOPER
+        return []
+    }
+    
+    func updateServicestopOperationStatus(companyId: String, serviceStop: ServiceStop, operationStatus: ServiceStopOperationStatus) async throws {
+            //DEVELOPER
+        
+    }
+    
+    func updateServicestopBillingStatus(companyId: String, serviceStop: ServiceStop, billingStatus: ServiceStopBillingStatus) async throws {
+            //DEVELOPER
+        
+    }
+    func uploadJobTask(companyId:String,jobId:String,task:JobTask) async throws {
+        
+    }
+    func getEquipmentByBodyOfWaterId(companyId:String,bodyOfWaterId:String) async throws ->[Equipment] {
+        return []
+    }
+    func getEquipmentByServiceLocationId(companyId:String,serviceLocationId:String) async throws ->[Equipment] {
+        return []
+    }
+    func getEquipmentByServiceLocationIdAndCategory(companyId:String,serviceLocationId:String,category:EquipmentCategory) async throws ->[Equipment] {
+        return []
+    }
+    
+    func updateVehicalMilage(companyId:String,vehicalId:String,miles:Double) async throws {
+        
+    }
+    func updateEmailConfigurationBody(companyId:String,newBody:String) async throws {
+        
+    }
+    func updateCustomerEmailConfig(companyId:String,customerEmailConfigId:String,emailIsOn:Bool) async throws {
+        
+    }
+    func createCustomerEmailConfiguration(companyId:String,customerEmailConfig:CustomerEmailConfiguration) async throws {
+        
+    }
+    func updateEmailConfigurationIsOn(companyId:String,emailIsOn:Bool) async throws {
+        
+    }
+    func upLoadInitialEmailSettings(companyId:String) async throws {
+        
+    }
+    func getJobTasks(companyId:String,jobId:String) async throws -> [JobTask] {
+        return []
+    }
+    func getRecentActiveRouteForTech(companyId: String,techId:String,days:Int) async throws -> [ActiveRoute] {
+    return []
+    }
+    func getActiveWorkLogsByUser(companyId:String,userId:String) async throws -> [WorkLog] {
+        return []
+    }
+    func getCurrentShift(companyId:String,userId:String) async throws -> [WorkShift] {
+        return []
+    }
+    func updateWorkLogEndTime(companyId:String,workLogId:String,endTime:Date) async throws {
+        
+    }
+    func updateWorkLogEndLatAndLong(companyId:String,workLogId:String,lat:Double,long:Double) async throws {
+        
+    }
+    func updateWorkLogActive(companyId:String,workLogId:String,current:Bool) async throws {
+        
+    }
+    func uploadWorkLog(companyId:String,workLog:WorkLog) async throws {
+        
+    }    
+    func updateWorkShiftActive(companyId:String, workShiftId:String,current:Bool) async throws {
+ 
+    }
+    func uploadWorkShift(companyId:String, workShift:WorkShift) async throws {
+        
+    }
+    func getWorkLogByShift(companyId:String,shiftId:String,userId:String) async throws -> [WorkLog] {
+        return []
+    }
+    func getShiftByUserIdBetweenDates(companyId:String, userId:String, start:Date, end:Date) async throws -> [WorkShift] {
+        return []
+    }
+    func getPreviousShiftByUserId(companyId:String, userId:String, count:Int) async throws -> [WorkShift] {
+        return []
+    }
+    func getNextShiftByUserId(companyId:String, userId:String,  count:Int) async throws -> [WorkShift] {
+        return []
+    }
+    func getServiceStopTasks(companyId:String,serviceStopId:String) async throws -> [ServiceStopTask] {
+        return []
+        
+    }
+    func getLaborContractTasks(companyId:String,laborContractId:String) async throws -> [LaborContractTask] {
+        return []
+    }
+    func getEmailConfigurationSettings(companyId:String) async throws -> CompanyEmailConfiguration {
+        return CompanyEmailConfiguration(emailIsOn: false, emailBody: "", requirePhoto: false)
+    }
+    func getCustomerEmailConfigurationSettings(companyId:String) async throws -> [CustomerEmailConfiguration] {
+        return []
+    }
+    func getCustomerEmailConfigurationSettingDocument(companyId:String,id:String) async throws -> CustomerEmailConfiguration {
+        return CustomerEmailConfiguration(id: "", customerId: "", emailIsOn: false)
+    }
+    func updateEmailConfigurationRequirePhoto(companyId:String,requirePhoto:Bool) async throws {
+        
+    }
+    
+    func uploadReadingTemplate(readingTemplate: SavedReadingsTemplate, companyId: String) async throws {
+        
+    }
+    
+    func uploadDosageTemplate(dosageTemplate: SavedDosageTemplate, companyId: String) async throws {
+        
+    }
+    
+    func getAllReadingTemplates(companyId: String) async throws -> [SavedReadingsTemplate] {
+        return []
+    }
+    
+    func getReadingTemplate(companyId: String, readingTemplateId: String) async throws -> SavedReadingsTemplate {
+        return SavedReadingsTemplate(id: "", readingsTemplateId: "", name: "", amount: [], UOM: "", chemType: "", linkedDosage: "", editable: false, order: 0, highWarning: 0, lowWarning: 0)
+    }
+    
+    func getAllDosageTemplates(companyId: String) async throws -> [SavedDosageTemplate] {
+        return []
+        
+    }
+    func getAllUniversalReadingTemplates(companyId:String) async throws -> [ReadingsTemplate] {
+        return []
+    }
+    func getAllUniversalDosageTemplates(companyId:String) async throws -> [DosageTemplate] {
+        return []
+    }
+    func getDosageTemplate(companyId: String, dosageTemplateId: String) async throws -> SavedDosageTemplate {
+        return SavedDosageTemplate(id: "", dosageTemplateId: "", name: "", amount: [], UOM: "", rate: "", linkedItemId: "", strength: 0, editable: false, chemType: "", order: 0)
+    }
+    
+    func getAllpurchasedItemsByPrice(companyId: String, start: Date, end: Date,descending: Bool,techIds:[String]) async throws -> [PurchasedItem]{
+        let endDate = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate)!
+        
+        if techIds.isEmpty {
+            return try await PurchaseItemCollection(companyId: companyId)
+                .whereField("date", isGreaterThan: startDate)
+                .whereField("date", isLessThan: endDate)
+                .order(by: "date", descending: descending)
+                .getDocuments(as:PurchasedItem.self)
+        } else {
+            return try await PurchaseItemCollection(companyId: companyId)
+                .whereField("date", isGreaterThan: startDate)
+                .whereField("date", isLessThan: endDate)
+                .order(by: "date", descending: descending)
+                .whereField("techId", in: techIds)
+                .getDocuments(as:PurchasedItem.self)
+        }
+    }
+    func modifyRecurringServiceStopToNew(
+        companyId:String,
+        recurringServiceStop:RecurringServiceStop,
+        customFrequencyType:String,
+        CustomFrequency:String,
+        daysOfWeek:[String],
+        oldRss:RecurringServiceStop,
+        old:[ServiceStop]
+    ) async throws ->(String?){
+        return ""
+    }
+    func addNewRecurringServiceStop(companyId: String, recurringServiceStop: RecurringServiceStop) async throws -> (String?) {
+        return ""
+    }
+    
+    
+    func addLaborContractRecurringWork(companyId: String, laborContractId: String, laborContractRecurringWork: LaborContractRecurringWork) async throws {
+        
+    }
+    func updateLaborContractIsActive(contractId:String,isActive:Bool)  async throws {
+
+    }
+    func getLaborContractRecurringWork(companyId: String, laborContractId: String, recurringWorkId: String) async throws -> LaborContractRecurringWork {
+        return MockDataService.mockLaborContractRecurringWork.first!
+    }
+    
+    func getLaborContractRecurringWorkList(companyId: String, laborContractId: String) async throws -> [LaborContractRecurringWork] {
+        return MockDataService.mockLaborContractRecurringWork
+        
+    }
+    
+    func updateLaborContractRecurringWorkRate(companyId: String, laborContractId: String, laborContractRecurringWorkId: String, rate: Double) async throws {
+        
+    }
+    func updateLaborContractRecurringWorkLastBilled(companyId: String, laborContractId: String, laborContractRecurringWorkId: String, lastBilled: Date) async throws {
+
+    }
+    func updateLaborContractRecurringWorkIsActive(companyId: String, laborContractId: String, laborContractRecurringWorkId: String, isActive: Bool) async throws {
+
+    }
+    func updateLaborContractRecurringWorkRateRateSheetLaborType(companyId: String, laborContractId: String, laborContractRecurringWorkId: String, laborType: RateSheetLaborType) async throws {
+        
+    }
+    
+    func updateLaborContractRecurringWorkRateLaborContractFrequency(companyId: String, laborContractId: String, laborContractRecurringWorkId: String, frequency: LaborContractFrequency) async throws {
+        
+    }
+    func uploadTaskToLaborContract(laborContractId:String,task:LaborContractTask) async throws {
+
+    }
+    //Create
+    func uploadLaborContract(laborContractId:String,laborContract:LaborContract) async throws {
+
+    }
+    //Read
+    func getLaborContract(laborContractId: String) async throws -> LaborContract {
+        return MockDataService.mockLaborContract
+    }
+    
+    func getLaborContractsBySenderId(senderId: String) async throws -> [LaborContract] {
+        return []
+    }
+    
+    func getLaborContractsByReceiverId(receiverId: String) async throws -> [LaborContract] {
+        return []
+    }
+    
+    
+    func getLaborContractsBySenderReceiverIsInvoiced(senderId: String,receiverId: String,isInvoiced: Bool) async throws -> [LaborContract] {
+        return []
+    }
+    func getLaborContractsBySenderReceiverIsInvoicedStatus(senderId: String,receiverId: String,isInvoiced: Bool, status:LaborContractStatus) async throws -> [LaborContract] {
+        return MockDataService.mockLaborContracts
+    }
+    //Read
+    func updateOneTimeLaborContractAsAcceptedByReceiver(contractId:String,accepted:Bool)  async throws {
+
+    }
+    func updateOneTimeLaborContractAsAcceptedBySender(contractId:String,accepted:Bool)  async throws {
+  
+    }
+    func deleteLaborContract(contractId:String) async throws {
+        
+    }
+
+    func getLaborContractTask(laborContractId: String, taskId: String) async throws -> LaborContractTask {
+        return LaborContractTask(
+            name: "",
+            type: .basic,
+            contractedRate: 0,
+            estimatedTime: 0,
+            status: .accepted,
+            customerApproval: false,
+            laborContractId: "",
+            serviceStopId: IdInfo(
+                id: "",
+                internalId: ""
+            ),
+            jobIsCreated: false,
+            receiverJobId: [],
+            senderJobTaskId: "",
+            
+            equipmentId: "",
+            serviceLocationId: "",
+            bodyOfWaterId: "",
+            shoppingListItemId: ""
+        )
+    }
+    
+    func getLaborContractWork(companyId: String, laborContractId: String) async throws -> [LaborContractTask] {
+        return []
+    }
+    func updateLaborContractTaskStatus(laborContractId:String,laborContractTaskId:String,status:JobTaskStatus) async throws {
+        
+    }
+    func updateLaborContractTaskJobIsCreated(laborContractId:String,laborContractTaskId:String,jobIsCreated:Bool) async throws {
+        
+    }
+    func updateLaborContractTaskReceiverJobId(laborContractId:String,laborContractTaskId:String,jobIdInfo:IdInfo) async throws {
+        
+    }
+    func updateLaborContractRecurringWorkSetUpRoute(companyId: String, laborContractId: String, laborContractRecurringWorkId: String, setUpRoute: Bool) async throws {
+        
+    }
+    
+    func getLaborContractsSnapShot(companyId: String) async throws -> [ReccuringLaborContract] {
+        return []
+    }
+    
+    func getLaborContractsSentCountByStatus(companyId: String,status:LaborContractStatus) async throws -> Int {
+        return 8
+    }
+    
+    func getLaborContractsReceivedCountByStatus(companyId: String,status:LaborContractStatus) async throws -> Int {
+        return 8
+    }
+    
+    func getLaborContractsTotal(companyId: String) async throws -> Double {
+        return 8
+    }
+    
+    
+    func updateLaborContractAsAcceptedByReceiver(companyId:String,contractId:String,accepted:Bool)  async throws {
+        
+    }
+    func updateLaborContractIsInvoiced(companyId:String, contractId:String, isInvoiced:Bool)  async throws {
+        
+    }
+    func updateLaborContractInvoiceRef(companyId:String, contractId:String, invoiceInfo:IdInfo)  async throws{
+        
+    }
+    func deleteRecurringLaborContract(companyId:String,contractId:String) async throws {
+        
+    }
+    func updateLaborContractAsAcceptedBySender(companyId:String,contractId:String,accepted:Bool)  async throws {
+        
+    }
+    func getPersonalAlertsCount(userId:String) async throws -> Int {
+        return 1
+    }
+    func getPersonalAlerts(userId:String) async throws -> [DripDropAlert] {
+        return []
+        
+    }
+    func getDripDropAlertsCount(companyId:String) async throws -> Int {
+        return 1
+    }
+    func getLaborContract(companyId: String, laborContractId: String) async throws -> ReccuringLaborContract {
+        return MockDataService.mockRecurringLaborContracts.first!
+    }
+    
+    func getActiveRoute(companyId: String, activeRouteId: String) async throws -> ActiveRoute {
+        return ActiveRoute(
+            id: "",
+            name: "",
+            date: Date(),
+            serviceStopsIds: [],
+            order: [],
+            startTime: Date(),
+            endTime: Date(),
+            startMilage: 0,
+            endMilage: 0,
+            techId: "",
+            techName: "",
+            traineeId: "",
+            traineeName: "",
+            durationMin: 0,
+            distanceMiles: 0,
+            status: .didNotStart,
+            totalStops: 0,
+            finishedStops: 0,
+            vehicalId: ""
+        )
+    }
+    
+    func getReceipt(companyId: String, receiptId: String) async throws -> Receipt {
+        return Receipt(
+            id: "",
+            numberOfItems: 0,
+            cost: 0,
+            costAfterTax: 0
+        )
+    }
+    
+    func getJobTemplate(companyId: String, templateId: String) async throws -> JobTemplate {
+        return JobTemplate(
+            id: "",
+            name: "",
+            type: "",
+            typeImage: "",
+            dateCreated: Date(),
+            rate: "",
+            color: "",
+            locked: false
+        )
+    }
+    
+    func getReadingTemplate(companyId: String, readingTemplateId: String) async throws -> ReadingsTemplate {
+        return ReadingsTemplate(
+            id: "",
+            name: "",
+            amount: [],
+            UOM: "",
+            chemType: "",
+            linkedDosage: "",
+            editable: true,
+            order: 0,
+            highWarning: 0,
+            lowWarning: 0
+        )
+    }
+    
+    func getDosageTemplate(companyId: String, dosageTemplateId: String) async throws -> DosageTemplate {
+        return DosageTemplate(
+            id: "",
+            name: "",
+            amount: [],
+            UOM: "",
+            rate: "",
+            linkedItemId: "",
+            strength: 0,
+            editable: true,
+            chemType: "",
+            order: 0
+        )
+    }
+    
+    func getAccountsReceivableInvoice(companyId: String, invoiceId: String) async throws -> StripeInvoice {
+        return StripeInvoice(
+            id: "",
+            internalIdenifier: "",
+            senderId: "",
+            senderName: "",
+            receiverId: "",
+            receiverName: "",
+            dateSent: Date(),
+            total: 9,
+            terms: .net15,
+            paymentStatus: .paid,
+            paymentType: .cash,
+            paymentRefrence: "",
+            paymentDate: nil,
+            lineItems: []
+        )
+        
+    }
+    
+    func getAccountsPayableInvoice(companyId: String, invoiceId: String) async throws -> StripeInvoice {
+        return StripeInvoice(
+            id: "",
+            internalIdenifier: "",
+            senderId: "",
+            senderName: "",
+            receiverId: "",
+            receiverName: "",
+            dateSent: Date(),
+            total: 9,
+            terms: .net15,
+            paymentStatus: .paid,
+            paymentType: .cash,
+            paymentRefrence: "",
+            paymentDate: nil,
+            lineItems: []
+        )
+    }
+    func addPersonalAlert(userId:String,dripDropAlert:DripDropAlert) async throws {
+        
+    }
+    func addDripDropAlert(companyId:String,dripDropAlert:DripDropAlert) async throws {
+        
+    }
+    func createNewJobPost(jobPost:JobPost) async throws{
+        
+    }
+    func getDripDropAlerts(companyId:String) async throws -> [DripDropAlert] {
+        return []
+    }
+    func getLaborContracts(companyId:String) async throws -> [ReccuringLaborContract] {
+        return []
+    }
+    func getReceivedLaborContracts(companyId:String) async throws -> [ReccuringLaborContract] {
+        return []
+
+    }
+    func getJobPostsByBoard(boardId:String) async throws -> [JobPost] {
+        return []
+    }
+    func getSentLaborContracts(companyId:String) async throws -> [ReccuringLaborContract] {
+        return []
+
+    }
+    func getPublicJobBoards() async throws -> [JobBoard] {
+        return []
+    }
+    
+    func getJobPostsByUserId(userId:String) async throws -> [JobPost] {
+        return []
+    }
+    func getSavedJobBoards(userId:String) async throws -> [JobBoard] {
+        return []
+    }
+    func addNewRecurringServiceStopFromLaborContract(companyId:String,recurringServiceStop:RecurringServiceStop,laborContract:ReccuringLaborContract) async throws ->(String?){
+        return nil
+    }
+    func getSentLaborContractsByStatus(companyId:String,status:LaborContractStatus) async throws -> [ReccuringLaborContract] {
+        return []
+    }
+    func getLaborContractsByStatus(companyId:String,status:LaborContractStatus) async throws -> [ReccuringLaborContract] {
+        return []
+        
+    }
+    func searchForUsers(searchTerm:String) async throws -> [DBUser] {
+        return []
+    }
+    func updateBodyOfWaterPhotoURLs(companyId: String, bodyOfWaterId: String, photoUrls: [DripDropStoredImage]) async throws {
+    }
+    func updateBodyOfWaterLastFilledDate(companyId: String, bodyOfWaterId: String, lastFilled: Date) async throws {
+ 
+    }
+    func updateServiceLocationPhotoURLs(companyId: String, serviceLocationId: String, photoUrls: [DripDropStoredImage]) async throws {
+    }
+    func getLaborContractsByAssociatedBusiness(companyId:String,associatedBusinessCompanyId:String) async throws -> [ReccuringLaborContract] {
+        return MockDataService.mockRecurringLaborContracts
+    }
+    func getLaborContractsByAssociatedBusinessIsActive(companyId:String,associatedBusinessCompanyId:String,isActive:Bool) async throws -> [ReccuringLaborContract] {
+        return MockDataService.mockRecurringLaborContracts
+
+    }
+    func addLaborContract(companyId:String,laborContract:ReccuringLaborContract) async throws {
+        
+    }
+    func addTermsTemplate(companyId:String,termsTemplate:TermsTemplate) async throws{
+        
+    }
+    func addTermsToTermsTemplate(companyId:String,termsTemplateId:String,terms:ContractTerms) async throws {
+        
+    }
+    
+    func getTermsTemplate(companyId:String,termsTemplateId:String) async throws -> TermsTemplate{
+        return TermsTemplate(name: "")
+    }
+    func getTermsTemplateList(companyId:String) async throws -> [TermsTemplate]{
+        return []
+    }
+    func getTermsTemplateListByCategory(companyId:String,category:String) async throws -> [TermsTemplate]{
+        return []
+        
+    }
+    func getTermsByTermsTemplate(companyId:String,termsTemplateId:String) async throws-> [ContractTerms] {
+        return []
+    }
+    
+    func editTermsTemplateName(companyId:String,termsTemplateId:String,termsTemplateName:String) async throws{
+        
+    }
+    
+    func deleteTermsTemplate(companyId:String,termsTemplateId:String) async throws{
+        
+    }
+    func deleteTerms(companyId:String,termsTemplateId:String,termsId:String) async throws{
+        
+    }
+    
+    func getCompanysBySearchTerm(searchTerm: String) async throws -> [Company]{
+        return []
+    }
+    func deleteAssociatedBusinessToCompany(companyId:String,businessId:String) async throws {
+        
+    }
+    
+    func saveAssociatedBusinessToCompany(companyId:String,business:AssociatedBusiness) async throws {
+        
+    }
+    func getVehical(companyId: String,vehicalId:String) async throws -> Vehical {
+        return MockDataService.mockVehical
+    }
+    func addNewVehical(companyId:String,vehical:Vehical) async throws {
+        
+    }
+    func getAssociatedBusinesses(companyId:String) async throws -> [AssociatedBusiness] {
+        return []
+    }
+    func getAssociatedBusiness(companyId:String,businessId:String) async throws -> AssociatedBusiness {
+        return AssociatedBusiness(id: "", companyId: "", companyName: "")
+    }
+    func getAssociatedBusinessByCompanyId(companyId:String,businessCompanyId:String) async throws -> AssociatedBusiness {
+        return AssociatedBusiness(id: "", companyId: "", companyName: "")
+    }
+    func getFleet(companyId: String) async throws -> [Vehical] {
+        return MockDataService.mockFleet
+    }
+    
+    func getActiveVehicalFleet(companyId: String) async throws -> [Vehical] {
+        return MockDataService.mockFleet
+    }
+    func getCompanyFleetSnapShot(companyId: String) async throws -> [Vehical] {
+        return []
+    }
+    func updateShoppingListDescription(companyId: String, shoppingListItemId: String, newDescription: String) async throws {
+        
+    }
+    func updateShoppingListItemStatus(companyId: String, shoppingListItemId: String, status: ShoppingListStatus) async throws {
+  
+    }
+    func uploadBodyOfWaterImage(companyId: String,bodyOfWaterId:String, image: DripDropImage) async throws ->(path:String, name:String){
+        print("uploadBodyOfWaterImage")
+        return (path:"",name:"")
+    }
+    
+    func uploadEquipmentImage(companyId: String,equipmentId:String, image: DripDropImage) async throws ->(path:String, name:String){
+        print("uploadEquipmentImage")
+        return (path:"",name:"")
+    }
+    func uploadServiceLocationImage(companyId: String,serviceLocationId:String, image: DripDropImage) async throws ->(path:String, name:String){
+        return (path:"",name:"")
+
+    }
     func updateDataBaseItem(dataBaseItem: DataBaseItem, companyId: String, name: String, rate: Double, category: DataBaseItemCategory, description: String, sku: String, billable: Bool, color: String, size: String, sellPrice: Double, UOM: String, subCategory: DataBaseItemSubCategory) async throws {
         
     }
@@ -41,26 +884,26 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     func updatePVCobParts(companyId: String, jobId: String, pvc: WODBItem) async throws {
         print("updatePVCobParts")
-
+        
     }
     
     func updateElectricalJobParts(companyId: String, jobId: String, electical: WODBItem) async throws {
         print("updateElectricalJobParts")
-
+        
     }
     
     func updateChemicalsJobParts(companyId: String, jobId: String, chemical: WODBItem) async throws {
         print("updateChemicalsJobParts")
-
+        
     }
     
     func updateMiscJobParts(companyId: String, jobId: String, misc: WODBItem) async throws {
         print("updateMiscJobParts")
-
+        
     }
     
     func getAllVehicals(companyId:String) async throws -> [Vehical] {
-        return MockDataService.mockVehical
+        return MockDataService.mockFleet
     }
     
     func getAllVehicalsCount(companyId:String) async throws -> Int {
@@ -101,14 +944,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     func updateInvoiceAsPaid(stripeInvoiceId: String, paymentType: InvoicePaymentType) async throws {
         print("updateInvoiceAsPaid")
-
+        
     }
     
     func deleteInvoice(stripeInvoiceId: String) async throws {
         print("deleteInvoice")
-
+        
     }
     
+    func updateEquipmentIsActive(companyId:String,equipmentId:String,isActive:Bool) throws {
+    }
+    func updateEquipmentDateUninstalled(companyId:String,equipmentId:String,dateUninstalled:Date) throws {
+    }
     func uploadRoute(companyId: String, activeRoute: ActiveRoute) async throws {
         print("Upload Route")
     }
@@ -117,11 +964,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return []
     }
     
+    func getAllActiveRoutesBasedOnVehical(companyId: String, vehicalId:String, count: Int) async throws -> [ActiveRoute] {
+        return []
+    }
+    func getAllActiveRoutesBasedOnDate(companyId: String,date:Date,tech:CompanyUser) async throws -> [ActiveRoute] {
+        return []
+    }
+    
     static func == (lhs: MockDataService, rhs: MockDataService) -> Bool {
         return lhs.id == rhs.id
     }
     let id = UUID().uuidString
-
+    
     func getAccountsPayableInvoice(companyId: String) async throws -> [StripeInvoice] {
         return [
             StripeInvoice(
@@ -137,18 +991,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .paid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Caleb Short",
                 receiverId: UUID().uuidString,
@@ -159,18 +1014,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .paid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Michael Espineli",
                 receiverId: UUID().uuidString,
@@ -181,18 +1037,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .paid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Kaden Brownsberg",
                 receiverId: UUID().uuidString,
@@ -203,17 +1060,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .unpaid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-]
+                ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Keller Short",
                 receiverId: UUID().uuidString,
@@ -224,12 +1082,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .unpaid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             )
         ]
@@ -240,7 +1099,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Michael Maziuss",
                 receiverId: UUID().uuidString,
@@ -251,18 +1110,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .paid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Caleb Short",
                 receiverId: UUID().uuidString,
@@ -273,18 +1133,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .paid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Michael Espineli",
                 receiverId: UUID().uuidString,
@@ -295,18 +1156,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .paid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Kaden Brownsberg",
                 receiverId: UUID().uuidString,
@@ -317,17 +1179,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .unpaid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-]
+                ]
             ),
             StripeInvoice(
                 id: UUID().uuidString,
                 internalIdenifier: "",
-
+                
                 senderId: UUID().uuidString,
                 senderName: "Keller Short",
                 receiverId: UUID().uuidString,
@@ -338,12 +1201,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 paymentStatus: .unpaid,
                 paymentType: .cash,
                 paymentRefrence: "",
+                paymentDate: nil,
                 lineItems: [
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "1", description: "Residential Pool Cleaning", induvidualCost: 15_00, total: 40),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "2", description: "Commercial Pool Cleaning", induvidualCost: 25_00, total: 15),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "3", description: "Filter Cleaning", induvidualCost: 60_00, total: 4),
                     StripeInvoiceLineItems(id: UUID().uuidString, itemId: "4", description: "Salt Cell Cleaning", induvidualCost: 40_00, total: 7)
-
+                    
                 ]
             )
         ]
@@ -360,40 +1224,40 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return decoder
     }()
     private let db = Firestore.firestore()
-
     
-    //        ********     ********         **           **             ***********    ********      ********     ********    ********    **      **
-    //        ****         **    **         **           **             **             ****             **           **       **    **    ****    **
-    //        **           **    **         **           **             **             **               **           **       **    **    ** **   **
-    //        **           **    **         **           **             *********      **               **           **       **    **    **  **  **
-    //        **           **    **         **           **             *********      **               **           **       **    **    **   ** **
-    //        **           **    **         **           **             **             **               **           **       **    **    **    ****
-    //        ****         **    **         **           **             **             ****             **           **       **    **    **     ***
-    //        ********     ********         *********    *********      ***********    ********         **        ********    ********    **      **
-
     
-    //----------------------------------------------------
-    //                    High Level Collections
-    //----------------------------------------------------
+        //        ********     ********         **           **             ***********    ********      ********     ********    ********    **      **
+        //        ****         **    **         **           **             **             ****             **           **       **    **    ****    **
+        //        **           **    **         **           **             **             **               **           **       **    **    ** **   **
+        //        **           **    **         **           **             *********      **               **           **       **    **    **  **  **
+        //        **           **    **         **           **             *********      **               **           **       **    **    **   ** **
+        //        **           **    **         **           **             **             **               **           **       **    **    **    ****
+        //        ****         **    **         **           **             **             ****             **           **       **    **    **     ***
+        //        ********     ********         *********    *********      ***********    ********         **        ********    ********    **      **
+    
+    
+        //----------------------------------------------------
+        //                    High Level Collections
+        //----------------------------------------------------
     
     private func chatCollection() -> CollectionReference{
         db.collection("chats")
     }
-    //----------------------------------------------------
-    //                    Messages Collections
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Messages Collections
+        //----------------------------------------------------
     private func messageCollection() -> CollectionReference{
         db.collection("messages")
     }
-    //----------------------------------------------------
-    //                    Invites Collections
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Invites Collections
+        //----------------------------------------------------
     private func inviteCollection() -> CollectionReference{
         db.collection("invites")
     }
-    //----------------------------------------------------
-    //                    Users Collections
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Users Collections
+        //----------------------------------------------------
     private func userCollection() -> CollectionReference{
         db.collection("users")
     }
@@ -403,13 +1267,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private func userAccessCollection(userId:String) -> CollectionReference{
         db.collection("users/\(userId)/userAccess")
     }
-    //----------------------------------------------------
-    //                    Companies Collections
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Companies Collections
+        //----------------------------------------------------
     private func companyCollection() -> CollectionReference{
         db.collection("companies")
     }
-    //                    Settings Collections
+        //                    Settings Collections
     
     private func SettingsCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/settings")
@@ -441,77 +1305,77 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private func WorkOrderTemplateCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/settings/workOrders/workOrders")
     }
-    //                    repairRequests Collections
+        //                    repairRequests Collections
     private func repairRequestCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/repairRequests")
     }
-    //                    toDos Collections
+        //                    toDos Collections
     
     private func ToDoCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/toDos")
     }
-    //                    receipts Collections
+        //                    receipts Collections
     
     private func ReceiptItemCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/receipts")
     }
-    //                    recurringRoutes Collections
+        //                    recurringRoutes Collections
     
     private func recurringRouteCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/recurringRoutes")
     }
-    //                    recurringRoutes Collections
+        //                    recurringRoutes Collections
     private func contractCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/contracts")
     }
-    //                    workOrders Collections
+        //                    workOrders Collections
     private func workOrderCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/workOrders")
     }
     private func workOrderInstallationPartsCollection(companyId:String,workOrderId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/workOrders/\(workOrderId)/installationParts")
     }
-    //                    stopData Collections
+        //                    stopData Collections
     private func stopDataCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/stopData")
     }
-    //                    invoices Collections
+        //                    invoices Collections
     private func InvoiceCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/invoices")
     }
-    //                    recurringServiceStop Collections
+        //                    recurringServiceStop Collections
     private func recurringServiceStopCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/recurringServiceStop")
     }
-    //                    trainings Collections
+        //                    trainings Collections
     private func TrainingCollection(companyId:String,techId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/users/\(techId)/trainings")
     }
-    //                    serviceLocations Collections
+        //                    serviceLocations Collections
     private func serviceLocationCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/serviceLocations")
     }
-    //                    serviceStops Collections
+        //                    serviceStops Collections
     private func serviceStopCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/serviceStops")
     }
     private func readingCollectionForServiceStop(serviceStopId:String,companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/serviceStops/\(serviceStopId)/stores")
     }
-    //                    stopData Collections
+        //                    stopData Collections
     
     private func readingCollectionForCustomerHistory(customerId:String,companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/stopData")
     }
-    //                    roles Collections
+        //                    roles Collections
     private func roleCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/roles")
     }
-    //                    shoppingList Collections
+        //                    shoppingList Collections
     private func shoppingListCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/shoppingList")
     }
-    //                    equipment Collections
+        //                    equipment Collections
     
     private func equipmentCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/equipment")
@@ -519,15 +1383,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private func equipmentPartCollection(companyId:String,equipmentId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/equipment/\(equipmentId)/parts")
     }
-    //                    customers Collections
+        //                    customers Collections
     private func customerCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/customers")
     }
-    //                    purchasedItems Collections
+        //                    purchasedItems Collections
     private func PurchaseItemCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/purchasedItems")
     }
-    //                    companyUsers Collections
+        //                    companyUsers Collections
     
     private func companyUsersCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/companyUsers")
@@ -535,19 +1399,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private func companyUsersRateSheetCollection(companyId:String,companyUserId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/companyUsers/\(companyUserId)/rateSheet")
     }
-    //                    bodiesOfWater Collections
+        //                    bodiesOfWater Collections
     private func bodyOfWaterCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/bodiesOfWater")
     }
-    //        *******       ********      *********      ********       **       **     ******     ******     ********     **      **   ********
-    //        **    **      **    **      **     **      **             **       **     **  ***   **   **     **           ****    **      **
-    //        **      **    **    **      **     **      **             **       **     **   **  **    **     **           ** **   **      **
-    //        **       **   **    **      **     **      **             **       **     **    ****     **     ****         **  **  **      **
-    //        **       **   **    **      **     **      **             **       **     **             **     ****         **   ** **      **
-    //        **      **    **    **      **     **      **             **       **     **             **     **           **    ****      **
-    //        **    **      **    **      **     **      **             **       **     **             **     **           **     ***      **
-    //        *******       ********      *********      *********      ***********     **             **     ********     **      **      **
-
+        //        *******       ********      *********      ********       **       **     ******     ******     ********     **      **   ********
+        //        **    **      **    **      **     **      **             **       **     **  ***   **   **     **           ****    **      **
+        //        **      **    **    **      **     **      **             **       **     **   **  **    **     **           ** **   **      **
+        //        **       **   **    **      **     **      **             **       **     **    ****     **     ****         **  **  **      **
+        //        **       **   **    **      **     **      **             **       **     **             **     ****         **   ** **      **
+        //        **      **    **    **      **     **      **             **       **     **             **     **           **    ****      **
+        //        **    **      **    **      **     **      **             **       **     **             **     **           **     ***      **
+        //        *******       ********      *********      *********      ***********     **             **     ********     **      **      **
+    
     private func ReadingsTemplateDocument(readingTemplateId:String,companyId:String)-> DocumentReference{
         ReadingsCollection(companyId: companyId).document(readingTemplateId)
     }
@@ -634,9 +1498,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private func userDocument(userId:String) -> DocumentReference{
         userCollection().document(userId)
     }
-    //    private func userCompanyDocument(userId:String,companyId:String) -> DocumentReference{
-    //        companyUserCollection().document(userId)
-    //    }
+        //    private func userCompanyDocument(userId:String,companyId:String) -> DocumentReference{
+        //        companyUserCollection().document(userId)
+        //    }
     private func GenericItemDocument(companyId:String,genericItemId:String)-> DocumentReference{
         GenericItemCollection(companyId: companyId).document(genericItemId)
     }
@@ -677,9 +1541,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private func equipmentPartDoc(companyId:String,equipmentId:String,partId:String)-> DocumentReference{
         equipmentPartCollection(companyId: companyId, equipmentId: equipmentId).document(partId)
     }
-    //----------------------------------------------------
-    //                    Listeners
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Listeners
+        //----------------------------------------------------
     private var serviceStopListener: ListenerRegistration? = nil
     private var chatListener: ListenerRegistration? = nil
     private var messageListener: ListenerRegistration? = nil
@@ -688,19 +1552,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private var dataBaseListener: ListenerRegistration? = nil
     private var requestListener: ListenerRegistration? = nil
     private var jobListener: ListenerRegistration? = nil
-
-    //----------------------------------------------------
-    //                    Coordinates
-    //----------------------------------------------------
+    
+        //----------------------------------------------------
+        //                    Coordinates
+        //----------------------------------------------------
     
     @Published private(set) var Coordinates: CLLocationCoordinate2D? = nil
     
     let geoCoder = CLGeocoder()
-    //------------------------------------------------------------------------------------------------------------------------------------------------------------
-    //
-    //                    BASIC CRUD FUNCTIONS
-    //
-    //---------------------------------------------------------------------------------------------------------------------------------------------------------
+        //------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //
+        //                    BASIC CRUD FUNCTIONS
+        //
+        //---------------------------------------------------------------------------------------------------------------------------------------------------------
     
     
     
@@ -708,9 +1572,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     
     
-    //----------------------------------------------------
-    //                    Create Functions
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Create Functions
+        //----------------------------------------------------
     func addNewToDo(companyId:String, todo:ToDo) async throws {
         try ToDoDocument(toDoId: todo.id, companyId: companyId)
             .setData(from:todo, merge: false)
@@ -734,44 +1598,48 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     
     func updateCompanyUser(user:DBUser,updatingUser:DBUser) throws {
-        //        let ref = userDocument(userId: updatingUser.id, companyId: user.companyId)
-        //
-        //         ref.updateData([
-        //            "email": updatingUser.email,
-        //            "photoUrl": updatingUser.photoUrl as Any,
-        //            "dateCreated": updatingUser.dateCreated as Any,
-        //            "firstName": updatingUser.firstName as Any,
-        //            "lastName": updatingUser.lastName as Any,
-        //            "company": updatingUser.company as Any,
-        //            "companyId": updatingUser.companyId,
-        //            "position": updatingUser.position,
-        //            "hireDate": updatingUser.hireDate as Any,
-        //            "fireDate": updatingUser.fireDate as Any,
-        //            "favorites": updatingUser.favorites as Any,
-        //        ]) { err in
-        //            if let err = err {
-        //                print("Error updating document: \(err)")
-        //            } else {
-        //                print("Updated Company User Successfully")
-        //            }
-        //        }
+            //        let ref = userDocument(userId: updatingUser.id, companyId: user.companyId)
+            //
+            //         ref.updateData([
+            //            "email": updatingUser.email,
+            //            "photoUrl": updatingUser.photoUrl as Any,
+            //            "dateCreated": updatingUser.dateCreated as Any,
+            //            "firstName": updatingUser.firstName as Any,
+            //            "lastName": updatingUser.lastName as Any,
+            //            "company": updatingUser.company as Any,
+            //            "companyId": updatingUser.companyId,
+            //            "position": updatingUser.position,
+            //            "hireDate": updatingUser.hireDate as Any,
+            //            "fireDate": updatingUser.fireDate as Any,
+            //            "favorites": updatingUser.favorites as Any,
+            //        ]) { err in
+            //            if let err = err {
+            //                print("Error updating document: \(err)")
+            //            } else {
+            //                print("Updated Company User Successfully")
+            //            }
+            //        }
     }
-    //DEVELOPER MAKE SURE THIS IS NOT NEEDED
-//    func createNewUser(user:DBUser) async throws{
-//        try userDocument(userId: user.id).setData(from: user,merge: false)
-//        //        try userDocument(userId: user.id).setData(from: user,merge: false)
-//
-//        print("New User Created")
-//    }
-
-//DEVELOPER MAKE SURE THIS IS NOT NEEDED
-//    func loadCurrentUser() async throws -> DBUser{
-//
-//        let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
-//
-//        return try await DBUserManager.shared.getCurrentUser(userId: authDataResult.uid)
-//
-//    }
+    func updateCompanyUserRole(companyId:String,companyUserId:String,roleId:String,roleName:String) async throws{
+    }
+    func updateCompanyUserWorkerType(companyId:String,companyUserId:String,workerType:WorkerTypeEnum) async throws {
+    }
+        //DEVELOPER MAKE SURE THIS IS NOT NEEDED
+        //    func createNewUser(user:DBUser) async throws{
+        //        try userDocument(userId: user.id).setData(from: user,merge: false)
+        //        //        try userDocument(userId: user.id).setData(from: user,merge: false)
+        //
+        //        print("New User Created")
+        //    }
+    
+        //DEVELOPER MAKE SURE THIS IS NOT NEEDED
+        //    func loadCurrentUser() async throws -> DBUser{
+        //
+        //        let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
+        //
+        //        return try await DBUserManager.shared.getCurrentUser(userId: authDataResult.uid)
+        //
+        //    }
     func uploadUserAccess(userId : String,companyId:String,userAccess:UserAccess) async throws {
         print("Attempting to Up Load \(userId) Have access to \(userAccess.companyName) to Firestore")
         
@@ -810,13 +1678,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             let placemark = placemarks?.first
             self.Coordinates = placemark?.location?.coordinate
         }
-        //add back in before production or if I am adding more than 50 customers
+            //add back in before production or if I am adding more than 50 customers
         let hireDateString = customer.hireDate
         
-        // Create Date Formatter
+            // Create Date Formatter
         let dateFormatter = DateFormatter()
         
-        // Convert String to Date
+            // Convert String to Date
         let hireDate:Date = dateFormatter.date(from: hireDateString) ?? Date()
         
         usleep(1201000)
@@ -826,10 +1694,23 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         DBAddress.longitude = pushCoordinates?.longitude ?? -117.8
         print("Received Coordinates from geoCoder : \(String(describing: pushCoordinates))")
         
-        let DBCustomer:Customer = Customer(id: identification,firstName: customer.firstName ,lastName:customer.lastName,email:customer.email, billingAddress:DBAddress , phoneNumber: customer.phone, active: true, rate: Double(customer.rate), company: "", displayAsCompany: false, hireDate: hireDate, billingNotes: "NA")
+        let DBCustomer:Customer = Customer(
+            id: identification,
+            firstName: customer.firstName ,
+            lastName:customer.lastName,
+            email:customer.email,
+            billingAddress:DBAddress ,
+            phoneNumber: customer.phone,
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: hireDate,
+            billingNotes: "NA" ,
+            linkedInviteId: UUID().uuidString
+        )
         
         print("Uploading Customer - \(customer.firstName) - \(customer.lastName)")
-        try await CustomerManager.shared.uploadCustomer(companyId: companyId, customer: DBCustomer)
+            //        try await dataService.uploadCustomer(companyId: companyId, customer: DBCustomer)
         let serviceLocationId:String = UUID().uuidString
         let bodyOfWaterId:String = UUID().uuidString
         
@@ -837,28 +1718,28 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         
         sleep(1)
-        //Uploading Customer Billing Type
+            //Uploading Customer Billing Type
         let billingTempalte = try await BillingManager.shared.getDefaultBillingTempalte(companyId: companyId)
         
-        //Uploading Customer Service Locations
+            //Uploading Customer Service Locations
         
         let serviceLocation:ServiceLocation = ServiceLocation(id: serviceLocationId,
-                                                                      nickName: ((DBCustomer.firstName) + " " + (DBCustomer.lastName)),
-                                                                      address: DBCustomer.billingAddress,
-                                                                      gateCode: "",
-                                                                      mainContact: Contact(id: UUID().uuidString,
-                                                                                           name: ((DBCustomer.firstName) + " " + (DBCustomer.lastName)),
-                                                                                           phoneNumber: DBCustomer.phoneNumber ?? "",
-                                                                                           email: DBCustomer.email,
-                                                                                           notes: ""),
-                                                                      bodiesOfWaterId: [bodyOfWaterId],
-                                                                      rateType: billingTempalte.title,
-                                                                      laborType: billingTempalte.laborType,
-                                                                      chemicalCost: billingTempalte.chemType,
-                                                                      laborCost: "15",
-                                                                      rate: customer.rate,
-                                                                      customerId: DBCustomer.id,
-                                                                      customerName: ((DBCustomer.firstName) + " " + (DBCustomer.lastName)),
+                                                              nickName: ((DBCustomer.firstName) + " " + (DBCustomer.lastName)),
+                                                              address: DBCustomer.billingAddress,
+                                                              gateCode: "",
+                                                              mainContact: Contact(id: UUID().uuidString,
+                                                                                   name: ((DBCustomer.firstName) + " " + (DBCustomer.lastName)),
+                                                                                   phoneNumber: DBCustomer.phoneNumber ?? "",
+                                                                                   email: DBCustomer.email,
+                                                                                   notes: ""),
+                                                              bodiesOfWaterId: [bodyOfWaterId],
+                                                              rateType: billingTempalte.title,
+                                                              laborType: billingTempalte.laborType,
+                                                              chemicalCost: billingTempalte.chemType,
+                                                              laborCost: "15",
+                                                              rate: customer.rate,
+                                                              customerId: DBCustomer.id,
+                                                              customerName: ((DBCustomer.firstName) + " " + (DBCustomer.lastName)),
                                                               preText: false)
         
         try await ServiceLocationManager.shared.uploadCustomerServiceLocations(
@@ -870,7 +1751,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             " - Service Location - Check"
         )
         
-        //Uploading Body of water
+            //Uploading Body of water
         
         let bodyOfwater = BodyOfWater(
             id: bodyOfWaterId,
@@ -878,7 +1759,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             gallons: "16000",
             material: "Plaster",
             customerId: DBCustomer.id,
-            serviceLocationId: serviceLocation.id
+            serviceLocationId: serviceLocation.id, 
+            lastFilled: Date()
         )
         try await BodyOfWaterManager.shared.uploadBodyOfWaterByServiceLocation(
             companyId:companyId,
@@ -900,7 +1782,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             customerName: fullName,
             customerId: DBCustomer.id,
             serviceLocationId: serviceLocation.id,
-            bodyOfWaterId: bodyOfwater.id
+            bodyOfWaterId: bodyOfwater.id,
+            isActive: true
         )
         let filter = Equipment(
             id: UUID().uuidString,
@@ -918,7 +1801,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             customerName: fullName,
             customerId: DBCustomer.id,
             serviceLocationId: serviceLocation.id,
-            bodyOfWaterId: bodyOfwater.id
+            bodyOfWaterId: bodyOfwater.id,
+            isActive: true
         )
         
         try await EquipmentManager.shared.addNewEquipmentWithParts(
@@ -1416,7 +2300,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .setData(from:template, merge: false)
     }
     
-    //Readings settings
+        //Readings settings
     
     
     func uploadReadingTemplate(readingTemplate : ReadingsTemplate,companyId:String) async throws {
@@ -1429,7 +2313,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     
     
-    //Dosages settings
+        //Dosages settings
     
     
     func uploadDosageTemplate(dosageTemplate : DosageTemplate,companyId:String) async throws {
@@ -1438,7 +2322,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     
-    //recurringServiceStop Settings
+        //recurringServiceStop Settings
     func upLoadStartingCompanySettings(companyId:String) async throws{
         
         let WOIncrement = Increment(category: "workOrders", increment: 0)
@@ -1472,7 +2356,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
     }
     func upLoadIntialWorkOrdersAndReadingsAndDosages(companyId:String) async throws->[TrainingTemplate]{
-        let weeklyCleaningId = UUID().uuidString
+        let weeklyCleaningId = "2"
         let saltCellId = UUID().uuidString
         let filterCleaningId = UUID().uuidString
         let esitmateId = UUID().uuidString
@@ -1480,6 +2364,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let DrainandfillID = UUID().uuidString
         let isntallId = UUID().uuidString
         let repairID = UUID().uuidString
+        let startUpEstimateId = "2"
         
         let serviceStopEstiamteId = UUID().uuidString
         let serviceStopFollowUpId = UUID().uuidString
@@ -1494,8 +2379,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             JobTemplate(id: serviceCallId, name: "Service Call", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "blue"),
             JobTemplate(id: DrainandfillID, name: "Drain and Fill", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
             JobTemplate(id: isntallId, name: "Installation", type: "Installation", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
-            
-            JobTemplate(id: repairID, name: "Repair", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple")
+            JobTemplate(id: repairID, name: "Repair", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
+            JobTemplate(id: startUpEstimateId, name: "Start Up Estimate", type: "Estimate", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "black",locked: true)
             
         ]
         let InitialServiceStopTemplates:[ServiceStopTemplate] = [
@@ -1510,7 +2395,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             TrainingTemplate(id: UUID().uuidString, name: "Filter Cleaning", description: "", workOrderIds: [filterCleaningId]),
             TrainingTemplate(id: UUID().uuidString, name: "General Repair", description: "", workOrderIds: [repairID]),
             TrainingTemplate(id: UUID().uuidString, name: "Drain and Fill", description: "", workOrderIds: [DrainandfillID]),
-            TrainingTemplate(id: UUID().uuidString, name: "Managment Training", description: "", workOrderIds: [serviceCallId,esitmateId]),
+            TrainingTemplate(id: UUID().uuidString, name: "Managment Training", description: "", workOrderIds: [serviceCallId,esitmateId,startUpEstimateId]),
             TrainingTemplate(id: UUID().uuidString, name: "Filter Repair / Install", description: "", workOrderIds: [isntallId,repairID]),
             TrainingTemplate(id: UUID().uuidString, name: "Pump Repair / Install", description: "", workOrderIds: [isntallId,repairID]),
             TrainingTemplate(id: UUID().uuidString, name: "Heater Repair / Install", description: "", workOrderIds: [isntallId,repairID]),
@@ -1671,9 +2556,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .setData(from:billingTempalte, merge: false)
     }
     func uploadGenericBillingTempaltes(companyId:String) async throws {
-        //        var laborType:String //per Stop, Weekly, Monthly
-        //        var chemType:String //All inclusive, Without Chems, Includes specific Chems, Excludes Specific Chems
-        //
+            //        var laborType:String //per Stop, Weekly, Monthly
+            //        var chemType:String //All inclusive, Without Chems, Includes specific Chems, Excludes Specific Chems
+            //
         
         let tempalteArray:[BillingTemplate] = [
             BillingTemplate(id: UUID().uuidString, title: "No Worry Service", defaultSelected: false, laborType: "per Stop", chemType: "All inclusive", notes: ""),
@@ -1704,14 +2589,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         try TrainingTemplateDocument(trainingTemplateId: trainingTemplate.id, companyId: companyId).setData(from:trainingTemplate, merge: false)
     }
     func uploadGenericTraingTempaltes(companyId: String,templateList:[TrainingTemplate]) async throws{
-        //        let genericTemplateList:[TrainingTemplate] = [
-        //            TrainingTemplate(id: UUID().uuidString, name: "Pool Cleaning", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Filter Cleaning", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Filter Repair / Install", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Pump Repair / Install", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Heater Repair / Install", description: "", workOrderIds: ["FUCK"]),
-        //
-        //        ]
+            //        let genericTemplateList:[TrainingTemplate] = [
+            //            TrainingTemplate(id: UUID().uuidString, name: "Pool Cleaning", description: "", workOrderIds: ["FUCK"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Filter Cleaning", description: "", workOrderIds: ["FUCK"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Filter Repair / Install", description: "", workOrderIds: ["FUCK"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Pump Repair / Install", description: "", workOrderIds: ["FUCK"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Heater Repair / Install", description: "", workOrderIds: ["FUCK"]),
+            //
+            //        ]
         for tempalte in templateList {
             try TrainingTemplateDocument(trainingTemplateId: tempalte.id, companyId: companyId).setData(from:tempalte, merge: false)
         }
@@ -1746,7 +2631,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
         var readingData:[String:Any] = [:]
         var dosageData:[String:Any] = [:]
-        //Attempting to append each reading to the reading array in firestore .In side of Stop Data in the specific Customer Document
+            //Attempting to append each reading to the reading array in firestore .In side of Stop Data in the specific Customer Document
         if stopData.readings.isEmpty {
             readingData = [
                 "readings": [[
@@ -1793,7 +2678,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 }
             }
         }
-        //Attempting to append each reading to the reading array in firestore. In side of Stop Data in the specific Customer Document
+            //Attempting to append each reading to the reading array in firestore. In side of Stop Data in the specific Customer Document
         
         if stopData.dosages.isEmpty {
             dosageData = [
@@ -1868,427 +2753,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                                     customFrequencyType:String,
                                     CustomFrequency:String,
                                     daysOfWeek:[String]) async throws{
-        let calendar = Calendar.current
-        //~~~~~~~~~~~~~~~~Variables Received~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //here
-        //        let standardFrequencyNumber:Int = 4
-        //        let customFrequencyType:String = "Year"
-        //        let CustomFrequency:String = "1"
-        //        let daysOfWeek:[String] = ["Monday","Wednesday","Friday"]
-        if recurringServiceStop.startDate == nil {return}
-        let startDate:Date = recurringServiceStop.startDate ?? Date()
         
-        let endDate:Date = recurringServiceStop.endDate ?? Date()
-        let noEndDate:Bool = recurringServiceStop.noEndDate
-        var daysOfWeekList:[String] = daysOfWeek
-        if standardFrequencyNumber == 1 {
-            daysOfWeekList = [weekDay(date: recurringServiceStop.startDate)]
-            
-        }
-        daysOfWeekList = daysOfWeek
-        //initial Creating of the Route
-        let recurringServiceStopCount = try await SettingsManager.shared.getRecurringServiceStopCount(companyId: companyId)
-        sleep(1)
-        let recurringServiceStopId = "R" + String(recurringServiceStopCount)
-        
-        let pushRecurringServiceStop = RecurringServiceStop(id: recurringServiceStopId,
-                                                            type: recurringServiceStop.type,
-                                                            typeId: recurringServiceStop.typeId,
-                                                            typeImage: recurringServiceStop.typeImage,
-                                                            customerName: recurringServiceStop.customerName,
-                                                            customerId: recurringServiceStop.customerId,
-                                                            locationId: recurringServiceStop.locationId,
-                                                            frequency: recurringServiceStop.frequency,
-                                                            address: recurringServiceStop.address,
-                                                            dateCreated: recurringServiceStop.dateCreated,
-                                                            tech: recurringServiceStop.tech,
-                                                            endDate: recurringServiceStop.endDate,
-                                                            startDate: recurringServiceStop.startDate,
-                                                            techId: recurringServiceStop.techId,
-                                                            noEndDate: recurringServiceStop.noEndDate,
-                                                            customMeasuresOfTime: customFrequencyType,
-                                                            customEvery: CustomFrequency,
-                                                            daysOfWeek: daysOfWeekList,
-                                                            description: recurringServiceStop.description,
-                                                            lastCreated: Date(),
-                                                            serviceLocationId: recurringServiceStop.serviceLocationId,
-                                                            estimatedTime: recurringServiceStop.estimatedTime ?? "15")
-        
-        try? await RecurringServiceStopManager.shared.uploadRecurringServiceStop(companyId: companyId, recurringServiceStop: pushRecurringServiceStop)
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        
-        var functionalStartDate = Date()
-        var functionalEndDate = Date()
-        var skipWeekEnds:Bool = false
-        var custom:Bool = false
-        var month:Bool = false
-        var counter:Int = 0
-        var monthCounter:Int = 0
-        var numFrequency:Int = 0
-        var lastCreated:Date = Date()
-        switch standardFrequencyNumber{
-        case 0:
-            numFrequency = 1
-            print("Making Stops Daily")
-            
-            //Daily
-        case 1:
-            numFrequency = 7
-            //weekly
-            print("Making Stops Weekly")
-            
-        case 2:
-            month = true
-            //Monthly
-            print("Making Stops Monthly")
-        case 3:
-            numFrequency = 30
-            //30 days
-            print("Making Stops 30 days")
-            
-        case 4:
-            numFrequency = 1
-            skipWeekEnds = true
-            //skipped weekends
-            print("Making Stops on Weekdays")
-            
-        case 5:
-            custom = true
-            numFrequency = 1
-            print("Making Stops every \(CustomFrequency) \(customFrequencyType) on =>")
-            if customFrequencyType == "Week" {
-                for day in daysOfWeek {
-                    print(day)
-                }
-            }
-        default:
-            numFrequency = 100
-        }
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        if custom {
-            print("Creating Custom: ")
-            while counter < daysBetween {
-                var pushDate = Date()
-                pushDate = startDate
-                switch customFrequencyType{
-                case "Day":
-                    numFrequency = Int(CustomFrequency) ?? 1
-                    while counter < daysBetween {
-                        //                        var customCounter = counter
-                        
-                        pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-                        
-                        let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                     typeId: recurringServiceStop.typeId,
-                                                                     customerName: recurringServiceStop.customerName,
-                                                                     customerId: recurringServiceStop.customerId,
-                                                                     address: recurringServiceStop.address,
-                                                                     dateCreated: Date(),
-                                                                     serviceDate: pushDate,
-                                                                     duration: 0,
-                                                                     rate:0,
-                                                                     tech: pushRecurringServiceStop.tech,
-                                                                     techId: pushRecurringServiceStop.techId,
-                                                                     recurringServiceStopId: pushRecurringServiceStop.id,
-                                                                     description: pushRecurringServiceStop.id,
-                                                                     serviceLocationId: recurringServiceStop.locationId ?? "1",
-                                                                     type: recurringServiceStop.type,
-                                                                     typeImage: recurringServiceStop.typeImage,
-                                                                     jobId: "",
-                                                                     finished: false,
-                                                                     skipped: false,
-                                                                     invoiced: false,
-                                                                     checkList: [],
-                                                                     includeReadings: true,
-                                                                     includeDosages: true)
-                        
-                        //                        let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                        //                        let serviceStopId = "S" + String(serviceStopCount)
-                        
-                        try await ServiceStopManager.shared.uploadServiceStop(companyId:companyId, serviceStop: singleRecurringServiceStop)
-                        
-                        if pushDate > lastCreated {
-                            lastCreated = pushDate
-                        }
-                        
-                        counter = counter + numFrequency
-                    }
-                case "Week":
-                    numFrequency = 7
-                    while counter < daysBetween {
-                        let customCounter = counter
-                        for day in daysOfWeek {
-                            let dayOfWeek = String(dateFormatter.string(from:startDate))
-                            var dayOfWeekNum:Int = 0
-                            var dayNum:Int = 0
-                            var C:Int = 0
-                            //A
-                            switch dayOfWeek{
-                            case "Sunday":
-                                dayOfWeekNum = 1
-                            case "Monday":
-                                dayOfWeekNum = 2
-                            case "Tuesday":
-                                dayOfWeekNum = 3
-                            case "Wednesday":
-                                dayOfWeekNum = 4
-                            case "Thursday":
-                                dayOfWeekNum = 5
-                            case "Friday":
-                                dayOfWeekNum = 6
-                            case "Saturday":
-                                dayOfWeekNum = 7
-                            default:
-                                dayOfWeekNum = 0
-                            }
-                            //B
-                            switch day{
-                            case "Sunday":
-                                dayNum = 1
-                            case "Monday":
-                                dayNum = 2
-                            case "Tuesday":
-                                dayNum = 3
-                            case "Wednesday":
-                                dayNum = 4
-                            case "Thursday":
-                                dayNum = 5
-                            case "Friday":
-                                dayNum = 6
-                            case "Saturday":
-                                dayNum = 7
-                            default:
-                                dayNum = 0
-                            }
-                            if dayNum >= dayOfWeekNum{
-                                C =  dayNum - dayOfWeekNum
-                            } else {
-                                C =  dayNum - dayOfWeekNum + 7
-                            }
-                            let intCounter = C + customCounter
-                            
-                            pushDate = Calendar.current.date(byAdding: .day, value: intCounter, to: startDate)!
-                            let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                         typeId: recurringServiceStop.typeId,
-                                                                         customerName: recurringServiceStop.customerName,
-                                                                         customerId: recurringServiceStop.customerId,
-                                                                         address: recurringServiceStop.address,
-                                                                         dateCreated: Date(),
-                                                                         serviceDate: pushDate,
-                                                                         duration: 0,
-                                                                         rate:0,
-                                                                         tech: pushRecurringServiceStop.tech,
-                                                                         techId: pushRecurringServiceStop.techId,
-                                                                         recurringServiceStopId: pushRecurringServiceStop.id,
-                                                                         description: pushRecurringServiceStop.id,
-                                                                         serviceLocationId: recurringServiceStop.locationId ?? "1",
-                                                                         type: recurringServiceStop.type,
-                                                                         typeImage: recurringServiceStop.typeImage,
-                                                                         jobId: "",
-                                                                         finished: false,
-                                                                         skipped: false,
-                                                                         invoiced: false,
-                                                                         checkList: [],
-                                                                         includeReadings: true,
-                                                                         includeDosages: true)
-                            
-                            //                            let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                            //                            let serviceStopId = "S" + String(serviceStopCount)
-                            
-                            try await ServiceStopManager.shared.uploadServiceStop(companyId:companyId, serviceStop: singleRecurringServiceStop)
-                            
-                            if pushDate > lastCreated {
-                                lastCreated = pushDate
-                            }
-                            
-                        }
-                        counter = counter + 7
-                    }
-                    
-                case "Month":
-                    numFrequency = 30
-                    
-                    pushDate = Calendar.current.date(byAdding: .day, value: 0, to: startDate)!
-                    let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                 typeId: recurringServiceStop.typeId,
-                                                                 customerName: recurringServiceStop.customerName,
-                                                                 customerId: recurringServiceStop.customerId,
-                                                                 address: recurringServiceStop.address,
-                                                                 dateCreated: Date(),
-                                                                 serviceDate: pushDate,
-                                                                 duration: 0,
-                                                                 rate:0,
-                                                                 tech: pushRecurringServiceStop.tech,
-                                                                 techId: pushRecurringServiceStop.techId,
-                                                                 recurringServiceStopId: pushRecurringServiceStop.id,
-                                                                 description: pushRecurringServiceStop.id,
-                                                                 serviceLocationId: recurringServiceStop.locationId ?? "1",
-                                                                 type: recurringServiceStop.type,
-                                                                 typeImage: recurringServiceStop.typeImage,
-                                                                 jobId: "",
-                                                                 finished: false,
-                                                                 skipped: false,
-                                                                 invoiced: false,
-                                                                 checkList: [],
-                                                                 includeReadings: true,
-                                                                 includeDosages: true)
-                    
-                    //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                    //                    let serviceStopId = "S" + String(serviceStopCount)
-                    
-                    try await ServiceStopManager.shared.uploadServiceStop(companyId:companyId, serviceStop: singleRecurringServiceStop)
-                    if pushDate > lastCreated {
-                        lastCreated = pushDate
-                    }
-                    counter = counter + numFrequency
-                    
-                case "Year":
-                    numFrequency = 365
-                    
-                    pushDate = Calendar.current.date(byAdding: .day, value: 0, to: startDate)!
-                    let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                 typeId: recurringServiceStop.typeId,
-                                                                 customerName: recurringServiceStop.customerName,
-                                                                 customerId: recurringServiceStop.customerId,
-                                                                 address: recurringServiceStop.address,
-                                                                 dateCreated: Date(),
-                                                                 serviceDate: pushDate,
-                                                                 duration: 0,
-                                                                 rate:0,
-                                                                 tech: pushRecurringServiceStop.tech,
-                                                                 techId: pushRecurringServiceStop.techId,
-                                                                 recurringServiceStopId: pushRecurringServiceStop.id,
-                                                                 description: pushRecurringServiceStop.id,
-                                                                 serviceLocationId: recurringServiceStop.locationId ?? "1",
-                                                                 type: recurringServiceStop.type,
-                                                                 typeImage: recurringServiceStop.typeImage,
-                                                                 jobId: "",
-                                                                 finished: false,
-                                                                 skipped: false,
-                                                                 invoiced: false,
-                                                                 checkList: [],
-                                                                 includeReadings: true,
-                                                                 includeDosages: true)
-                    
-                    //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                    //                    let serviceStopId = "S" + String(serviceStopCount)
-                    
-                    try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-                    
-                    if pushDate > lastCreated {
-                        lastCreated = pushDate
-                    }
-                    counter = counter + numFrequency
-                    
-                default:
-                    numFrequency = 365
-                }
-                counter = counter + numFrequency
-            }
-        } else {
-            print("Creating standard Recurring service stop")
-            while counter < daysBetween {
-                var pushDate = Date()
-                if month {
-                    pushDate = Calendar.current.date(byAdding: .month, value: monthCounter, to: startDate)!
-                } else {
-                    pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-                }
-                if skipWeekEnds {
-                    
-                    if String(dateFormatter.string(from:pushDate)) == "Saturday" || String(dateFormatter.string(from:pushDate)) == "Sunday" {
-                        print(String(dateFormatter.string(from:pushDate)))
-                        
-                        print("Skipped")
-                    }else {
-                        let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                     typeId: recurringServiceStop.typeId,
-                                                                     customerName: recurringServiceStop.customerName,
-                                                                     customerId: recurringServiceStop.customerId,
-                                                                     address: recurringServiceStop.address,
-                                                                     dateCreated: Date(),
-                                                                     serviceDate: pushDate,
-                                                                     duration: 0,
-                                                                     rate:0,
-                                                                     tech: pushRecurringServiceStop.tech,
-                                                                     techId: pushRecurringServiceStop.techId,
-                                                                     recurringServiceStopId: pushRecurringServiceStop.id,
-                                                                     description: pushRecurringServiceStop.id,
-                                                                     serviceLocationId: recurringServiceStop.locationId ?? "1",
-                                                                     type: recurringServiceStop.type,
-                                                                     typeImage: recurringServiceStop.typeImage,
-                                                                     jobId: "",
-                                                                     finished: false,
-                                                                     skipped: false,
-                                                                     invoiced: false,
-                                                                     checkList: [],
-                                                                     includeReadings: true,
-                                                                     includeDosages: true)
-                        
-                        //                        let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                        //                        let serviceStopId = "S" + String(serviceStopCount)
-                        
-                        try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-                        
-                        if pushDate > lastCreated {
-                            lastCreated = pushDate
-                        }
-                    }
-                } else {
-                    let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                 typeId: recurringServiceStop.typeId,
-                                                                 customerName: recurringServiceStop.customerName,
-                                                                 customerId: recurringServiceStop.customerId,
-                                                                 address: recurringServiceStop.address,
-                                                                 dateCreated: Date(),
-                                                                 serviceDate: pushDate,
-                                                                 duration: 0,
-                                                                 rate:0,
-                                                                 tech: pushRecurringServiceStop.tech,
-                                                                 techId: pushRecurringServiceStop.techId,
-                                                                 recurringServiceStopId: pushRecurringServiceStop.id,
-                                                                 description: pushRecurringServiceStop.id,
-                                                                 serviceLocationId: recurringServiceStop.locationId ?? "1",
-                                                                 type: recurringServiceStop.type,
-                                                                 typeImage: recurringServiceStop.typeImage,
-                                                                 jobId: "",
-                                                                 finished: false,
-                                                                 skipped: false,
-                                                                 invoiced: false,
-                                                                 checkList: [],
-                                                                 includeReadings: true,
-                                                                 includeDosages: true)
-                    
-                    //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                    //                    let serviceStopId = "S" + String(serviceStopCount)
-                    
-                    try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-                    if pushDate > lastCreated {
-                        lastCreated = pushDate
-                    }
-                    
-                }
-                if month {
-                    monthCounter = monthCounter + 1
-                    counter = counter + 30
-                }
-                counter = counter + numFrequency
-            }
-        }
-        print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
     }
     
     func uploadDataBaseItem(companyId:String,dataBaseItem : DataBaseItem) async throws {
@@ -2310,10 +2775,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             boolToken = true
         }
         
-        //DEVELOPER FIX
-//        let DBItem:DataBaseItem = DataBaseItem(id: identification, name: CSVItem.name, rate: Double(CSVItem.rate) ?? 12.34, storeName: storeName, venderId:storeId, category: CSVItem.category, description: CSVItem.description, dateUpdated: Date(), sku: CSVItem.sku, billable: boolToken,color: CSVItem.color,size: CSVItem.size)
-//        print(DBItem)
-//        try await DatabaseManager.shared.uploadDataBaseItemWithUser(dataBaseItem: DBItem,companyId: companyId)
+            //DEVELOPER FIX
+            //        let DBItem:DataBaseItem = DataBaseItem(id: identification, name: CSVItem.name, rate: Double(CSVItem.rate) ?? 12.34, storeName: storeName, venderId:storeId, category: CSVItem.category, description: CSVItem.description, dateUpdated: Date(), sku: CSVItem.sku, billable: boolToken,color: CSVItem.color,size: CSVItem.size)
+            //        print(DBItem)
+            //        try await DatabaseManager.shared.uploadDataBaseItemWithUser(dataBaseItem: DBItem,companyId: companyId)
         
     }
     func uploadReceipt(companyId: String,receiptItem : Receipt) async throws {
@@ -2330,792 +2795,71 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                                     customFrequencyType:String,
                                     CustomFrequency:String,
                                     daysOfWeek:[String]) async throws ->(String?){
-        let calendar = Calendar.current
-        guard let startDate:Date = recurringServiceStop.startDate else {
-            return nil
-        }
-        guard let endDate:Date = recurringServiceStop.endDate else {
-            return nil
-        }
-        let noEndDate:Bool = recurringServiceStop.noEndDate
-        //initial Creating of the Route
-        let recurringServiceStopCount = try await SettingsManager.shared.getRecurringServiceStopCount(companyId: companyId)
-        sleep(1)
-        let recurringServiceStopId = "R" + String(recurringServiceStopCount)
+        return ""
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        
-        //        var functionalStartDate = Date()
-        //        var functionalEndDate = Date()
-        //        var skipWeekEnds:Bool = false
-        //        var custom:Bool = false
-        //        var month:Bool = false
-        //        var counter:Int = 0
-        //        var monthCounter:Int = 0
-        //        var numFrequency:Int = 0
-        //        var lastCreated:Date = Date()
-        var pushRecurring = recurringServiceStop
-        pushRecurring.id = recurringServiceStopId
-        switch recurringServiceStop.frequency{
-        case "Daily":
-            print("Making Stops Daily")
-            try await helpCreateDailyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-            //Daily
-        case "WeekDay":
-            //skipped weekends
-            print("Making Stops on Week days")
-            try await helpCreateWeekDayRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-        case "Weekly":
-            //weekly
-            print("Making Stops Weekly")
-            try await helpCreateWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-        case "Bi-Weekly":
-            //weekly
-            print("Making Stops Bi Weekly")
-            try await helpCreateBiWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-            
-        case "Monthly":
-            //Monthly
-            print("Making Stops Monthly")
-            try await helpCreateMonthlyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-            
-        case "Custom":
-            print("Making Custom Stops")
-            
-            //            helpCreateCustomRecurringRoute()
-            
-        default:
-            print("Error in add New Recurring Service Stop - Recurring Route Manager")
-        }
-        print("Finished Creating Recurring Route and Returning recurringServiceStopId >>\(recurringServiceStopId)")
-        return recurringServiceStopId
     }
     
     func helpCreateDailyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                       noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        
-        var counter :Int = 0
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-            
-            
-            let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                         typeId: recurringServiceStop.typeId,
-                                                         customerName: recurringServiceStop.customerName,
-                                                         customerId: recurringServiceStop.customerId,
-                                                         address: recurringServiceStop.address,
-                                                         dateCreated: Date(),
-                                                         serviceDate: pushDate,
-                                                         duration: Int(recurringServiceStop.estimatedTime ?? "15") ?? 15,
-                                                         rate:0,
-                                                         tech: recurringServiceStop.tech,
-                                                         techId: recurringServiceStop.techId,
-                                                         recurringServiceStopId: recurringServiceStop.id,
-                                                         description: recurringServiceStop.id,
-                                                         serviceLocationId: recurringServiceStop.serviceLocationId,
-                                                         type: recurringServiceStop.type,
-                                                         typeImage: recurringServiceStop.typeImage,
-                                                         jobId: "",
-                                                         finished: false,
-                                                         skipped: false,
-                                                         invoiced: false,
-                                                         checkList: [],
-                                                         includeReadings: true,
-                                                         includeDosages: true)
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            
-            print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
-            
-            counter = counter + 1
-        }
-    }
-    //WeekDay
+                                       noEndDate:Bool,startDate:Date,endDate:Date) async throws{}
+        //WeekDay
     func helpCreateWeekDayRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        var counter :Int = 0
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            
-            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-            
-            
-            
-            if String(dateFormatter.string(from:pushDate)) == "Saturday" || String(dateFormatter.string(from:pushDate)) == "Sunday" {
-                print(String(dateFormatter.string(from:pushDate)))
-                
-                print("Skipped")
-            }else {
-                let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                             typeId: recurringServiceStop.typeId,
-                                                             customerName: recurringServiceStop.customerName,
-                                                             customerId: recurringServiceStop.customerId,
-                                                             address: recurringServiceStop.address,
-                                                             dateCreated: Date(),
-                                                             serviceDate: pushDate,
-                                                             duration: Int(recurringServiceStop.estimatedTime!) ?? 15,
-                                                             rate:0,
-                                                             tech: recurringServiceStop.tech,
-                                                             techId: recurringServiceStop.techId,
-                                                             recurringServiceStopId: recurringServiceStop.id,
-                                                             description: recurringServiceStop.id,
-                                                             serviceLocationId: recurringServiceStop.serviceLocationId,
-                                                             type: recurringServiceStop.type,
-                                                             typeImage: recurringServiceStop.typeImage,
-                                                             
-                                                             jobId: "",
-                                                             finished: false,
-                                                             skipped: false,
-                                                             invoiced: false,
-                                                             checkList: [],
-                                                             includeReadings: true,
-                                                             includeDosages: true)
-                
-                //                        let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                //                        let serviceStopId = "S" + String(serviceStopCount)
-                
-                
-                try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-                if pushDate > lastCreated {
-                    lastCreated = pushDate
-                }
-                
-            }
-            
-            counter = counter + 1
-        }
-    }
-    //Weeekly
+                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws{}
+        //Weeekly
     func helpCreateWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                        noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        
-        var counter :Int = 0
-        
-        if noEndDate {
-            print("No End Date")
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            print("Has End Date")
-            
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        print("days Between \(daysBetween)")
-        
-        while counter < daysBetween {
-            //Check to Make sure the day you are adding is the proper day.
-            
-            
-            print("\(counter) / \(daysBetween)")
-            var pushDate = Date()
-            let startDayOfWeek = String(dateDisplayFornmatter.string(from:startDate))
-            //Check if the start day is the day of the week you would like to be adding.
-            if recurringServiceStop.daysOfWeek.contains(startDayOfWeek) {
-                pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-                
-            } else {
-                //Get the actual start Day
-                if let serviceDayOfWeek = recurringServiceStop.daysOfWeek.first {
-                    var serviceDayOfWeekAsNumber = 0
-                    switch serviceDayOfWeek {
-                    case "Sunday":
-                        serviceDayOfWeekAsNumber = 1
-                    case "Monday":
-                        serviceDayOfWeekAsNumber = 2
-                    case "Tuesday":
-                        serviceDayOfWeekAsNumber = 3
-                    case "Wednesday":
-                        serviceDayOfWeekAsNumber = 4
-                    case "Thursday":
-                        serviceDayOfWeekAsNumber = 5
-                    case "Friday":
-                        serviceDayOfWeekAsNumber = 6
-                    case "Satruday":
-                        serviceDayOfWeekAsNumber = 7
-                    default:
-                        throw FireBasePublish.unableToPublish
-                    }
-                    var startDayOfWeekAsNumber = 0  //This ONly Works For Monday
-                    switch dateFormatter.string(from:startDate) {
-                    case "Sunday":
-                        startDayOfWeekAsNumber = 1
-                    case "Monday":
-                        startDayOfWeekAsNumber = 2
-                    case "Tuesday":
-                        startDayOfWeekAsNumber = 3
-                    case "Wednesday":
-                        startDayOfWeekAsNumber = 4
-                    case "Thursday":
-                        startDayOfWeekAsNumber = 5
-                    case "Friday":
-                        startDayOfWeekAsNumber = 6
-                    case "Satruday":
-                        startDayOfWeekAsNumber = 7
-                    default:
-                        throw FireBasePublish.unableToPublish
-                    }
-                    let difference = serviceDayOfWeekAsNumber - startDayOfWeekAsNumber
-                    print("startDayOfWeekAsNumber \(startDayOfWeekAsNumber)")
-                    print("serviceDayOfWeekAsNumber \(serviceDayOfWeekAsNumber)")
-                    print("difference \(difference)")
-                    
-                    if difference >= 0 {
-                        
-                        pushDate = Calendar.current.date(byAdding: .day, value: difference + counter, to: startDate)!
-                    } else {
-                        pushDate = Calendar.current.date(byAdding: .day, value: difference + counter + 7, to: startDate)!
-                    }
-                } else {
-                    throw FireBasePublish.unableToPublish
-                }
-            }
-            print("Create Stops on \(fullDate(date: pushDate)) - \(dateFormatter.string(from:pushDate)) - days Of Week \(recurringServiceStop.daysOfWeek)")
-            
-            let SSId = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
-            
-            let singleRecurringServiceStop = ServiceStop(id: "S" + String(SSId),
-                                                         typeId: recurringServiceStop.typeId,
-                                                         customerName: recurringServiceStop.customerName,
-                                                         customerId: recurringServiceStop.customerId,
-                                                         address: recurringServiceStop.address,
-                                                         dateCreated: Date(),
-                                                         serviceDate: pushDate,
-                                                         duration: Int(recurringServiceStop.estimatedTime ?? "15") ?? 15,
-                                                         rate:0,
-                                                         tech: recurringServiceStop.tech,
-                                                         techId: recurringServiceStop.techId,
-                                                         recurringServiceStopId: recurringServiceStop.id,
-                                                         description: recurringServiceStop.id,
-                                                         serviceLocationId: recurringServiceStop.serviceLocationId,
-                                                         type: recurringServiceStop.type,
-                                                         typeImage: recurringServiceStop.typeImage,
-                                                         jobId: "",
-                                                         finished: false,
-                                                         skipped: false,
-                                                         invoiced: false,
-                                                         checkList: [],
-                                                         includeReadings: true,
-                                                         includeDosages: true)
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            
-            
-            
-            counter = counter + 7
-        }
-        print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
-        var pushRecurring = recurringServiceStop
-        pushRecurring.lastCreated = lastCreated
-        print("Adding Recurring Service Stop with id - \(pushRecurring.id) *helpCreateWeeklyRecurringRoute on RecurringRouteManager")
-        try await RecurringServiceStopManager.shared.uploadRecurringServiceStop(companyId: companyId, recurringServiceStop: pushRecurring)
-    }
-    //Bi Weekly
+                                        noEndDate:Bool,startDate:Date,endDate:Date) async throws{}
+        //Bi Weekly
     
     func helpCreateBiWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                          noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        
-        var counter :Int = 0
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-            
-            
-            let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                         typeId: recurringServiceStop.typeId,
-                                                         customerName: recurringServiceStop.customerName,
-                                                         customerId: recurringServiceStop.customerId,
-                                                         address: recurringServiceStop.address,
-                                                         dateCreated: Date(),
-                                                         serviceDate: pushDate,
-                                                         duration: Int(recurringServiceStop.estimatedTime ?? "15") ?? 15,
-                                                         rate:0,
-                                                         tech: recurringServiceStop.tech,
-                                                         techId: recurringServiceStop.techId,
-                                                         recurringServiceStopId: recurringServiceStop.id,
-                                                         description: recurringServiceStop.id,
-                                                         serviceLocationId: recurringServiceStop.serviceLocationId,
-                                                         type: recurringServiceStop.type,
-                                                         typeImage: recurringServiceStop.typeImage,
-                                                         jobId: "",
-                                                         finished: false,
-                                                         skipped: false,
-                                                         invoiced: false,
-                                                         checkList: [],
-                                                         includeReadings: true,
-                                                         includeDosages: true)
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            
-            
-            
-            counter = counter + 14
-        }
-    }
-    //Monthly
+                                          noEndDate:Bool,startDate:Date,endDate:Date) async  throws{}
+        //Monthly
     
     func helpCreateMonthlyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        var counter :Int = 0
-        var monthCounter :Int = 0
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            pushDate = Calendar.current.date(byAdding: .month, value: monthCounter, to: startDate)!
-            
-            let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                         typeId: recurringServiceStop.typeId,
-                                                         customerName: recurringServiceStop.customerName,
-                                                         customerId: recurringServiceStop.customerId,
-                                                         address: recurringServiceStop.address,
-                                                         dateCreated: Date(),
-                                                         serviceDate: pushDate,
-                                                         duration: Int(recurringServiceStop.estimatedTime ?? "15") ?? 15,
-                                                         rate:0,
-                                                         tech: recurringServiceStop.tech,
-                                                         techId: recurringServiceStop.techId,
-                                                         recurringServiceStopId: recurringServiceStop.id,
-                                                         description: recurringServiceStop.id,
-                                                         serviceLocationId: recurringServiceStop.serviceLocationId,
-                                                         type: recurringServiceStop.type,
-                                                         typeImage: recurringServiceStop.typeImage,
-                                                         jobId: "",
-                                                         finished: false,
-                                                         skipped: false,
-                                                         invoiced: false,
-                                                         checkList: [],
-                                                         includeReadings: true,
-                                                         includeDosages: true)
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            
-        }
-        monthCounter = monthCounter + 1
-        counter = counter + 30
-        
-    }
+                                         noEndDate:Bool,startDate:Date,endDate:Date) async  throws{}
     
-    //Custom
-    func helpCreateCustomRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                        standardFrequencyNumber:Int,
-                                        customFrequencyType:String,
-                                        CustomFrequency:String,
-                                        daysOfWeek:[String]){
-        /*
-         let calendar = Calendar.current
-         
-         if noEndDate {
-         functionalStartDate = startDate
-         functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-         } else {
-         functionalStartDate = startDate
-         functionalEndDate = endDate
-         }
-         let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-         print("Creating Custom: ")
-         while counter < daysBetween {
-         var pushDate = Date()
-         pushDate = startDate
-         switch customFrequencyType{
-         case "Day":
-         numFrequency = Int(CustomFrequency) ?? 1
-         while counter < daysBetween {
-         //                        var customCounter = counter
-         
-         pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-         
-         let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-         typeId: recurringServiceStop.typeId,
-         customerName: recurringServiceStop.customerName,
-         customerId: recurringServiceStop.customerId,
-         address: recurringServiceStop.address,
-         dateCreated: Date(),
-         serviceDate: pushDate,
-         duration: Int(recurringServiceStop.estimatedTime!) ?? 15,
-         rate:0,
-         tech: pushRecurringServiceStop.tech,
-         techId: pushRecurringServiceStop.techId,
-         recurringServiceStopId: pushRecurringServiceStop.id,
-         description: pushRecurringServiceStop.id,
-         serviceLocationId: recurringServiceStop.serviceLocationId,
-         type: recurringServiceStop.type,
-         typeImage: recurringServiceStop.typeImage,
-         workOrderId: "",
-         finished: false,
-         skipped: false,
-         invoiced: false,
-         checkList: [],
-         includeReadings: true,
-         includeDosages: true)
-         
-         //                        let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-         //                        let serviceStopId = "S" + String(serviceStopCount)
-         
-         try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-         
-         if pushDate > lastCreated {
-         lastCreated = pushDate
-         }
-         
-         counter = counter + numFrequency
-         }
-         case "Week":
-         numFrequency = 7
-         while counter < daysBetween {
-         let customCounter = counter
-         for day in daysOfWeek {
-         let dayOfWeek = String(dateFormatter.string(from:startDate))
-         var dayOfWeekNum:Int = 0
-         var dayNum:Int = 0
-         var C:Int = 0
-         //A
-         switch dayOfWeek{
-         case "Sunday":
-         dayOfWeekNum = 1
-         case "Monday":
-         dayOfWeekNum = 2
-         case "Tuesday":
-         dayOfWeekNum = 3
-         case "Wednesday":
-         dayOfWeekNum = 4
-         case "Thursday":
-         dayOfWeekNum = 5
-         case "Friday":
-         dayOfWeekNum = 6
-         case "Saturday":
-         dayOfWeekNum = 7
-         default:
-         dayOfWeekNum = 0
-         }
-         //B
-         switch day{
-         case "Sunday":
-         dayNum = 1
-         case "Monday":
-         dayNum = 2
-         case "Tuesday":
-         dayNum = 3
-         case "Wednesday":
-         dayNum = 4
-         case "Thursday":
-         dayNum = 5
-         case "Friday":
-         dayNum = 6
-         case "Saturday":
-         dayNum = 7
-         default:
-         dayNum = 0
-         }
-         if dayNum >= dayOfWeekNum{
-         C =  dayNum - dayOfWeekNum
-         } else {
-         C =  dayNum - dayOfWeekNum + 7
-         }
-         let intCounter = C + customCounter
-         
-         pushDate = Calendar.current.date(byAdding: .day, value: intCounter, to: startDate)!
-         let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-         typeId: recurringServiceStop.typeId,
-         customerName: recurringServiceStop.customerName,
-         customerId: recurringServiceStop.customerId,
-         address: recurringServiceStop.address,
-         dateCreated: Date(),
-         serviceDate: pushDate,
-         duration: Int(recurringServiceStop.estimatedTime!) ?? 15,
-         
-         rate:0,
-         tech: pushRecurringServiceStop.tech,
-         techId: pushRecurringServiceStop.techId,
-         recurringServiceStopId: pushRecurringServiceStop.id,
-         description: pushRecurringServiceStop.id,
-         serviceLocationId: recurringServiceStop.serviceLocationId,
-         type: recurringServiceStop.type,
-         typeImage: recurringServiceStop.typeImage,
-         
-         workOrderId: "",
-         finished: false,
-         skipped: false,
-         invoiced: false,
-         checkList: [],
-         includeReadings: true,
-         includeDosages: true)
-         
-         //                            let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-         //                            let serviceStopId = "S" + String(serviceStopCount)
-         
-         try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-         
-         if pushDate > lastCreated {
-         lastCreated = pushDate
-         }
-         
-         }
-         counter = counter + 7
-         }
-         
-         case "Month":
-         numFrequency = 30
-         
-         pushDate = Calendar.current.date(byAdding: .day, value: 0, to: startDate)!
-         let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-         typeId: recurringServiceStop.typeId,
-         customerName: recurringServiceStop.customerName,
-         customerId: recurringServiceStop.customerId,
-         address: recurringServiceStop.address,
-         dateCreated: Date(),
-         serviceDate: pushDate,
-         duration: Int(recurringServiceStop.estimatedTime!) ?? 15,
-         rate:0,
-         tech: pushRecurringServiceStop.tech,
-         techId: pushRecurringServiceStop.techId,
-         recurringServiceStopId: pushRecurringServiceStop.id,
-         description: pushRecurringServiceStop.id,
-         serviceLocationId: recurringServiceStop.serviceLocationId,
-         type: recurringServiceStop.type,
-         typeImage: recurringServiceStop.typeImage,
-         
-         workOrderId: "",
-         finished: false,
-         skipped: false,
-         invoiced: false,
-         checkList: [],
-         includeReadings: true,
-         includeDosages: true)
-         
-         //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-         //                    let serviceStopId = "S" + String(serviceStopCount)
-         //
-         try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-         if pushDate > lastCreated {
-         lastCreated = pushDate
-         }
-         counter = counter + numFrequency
-         
-         case "Year":
-         numFrequency = 365
-         
-         pushDate = Calendar.current.date(byAdding: .day, value: 0, to: startDate)!
-         let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-         typeId: recurringServiceStop.typeId,
-         customerName: recurringServiceStop.customerName,
-         customerId: recurringServiceStop.customerId,
-         address: recurringServiceStop.address,
-         dateCreated: Date(),
-         serviceDate: pushDate,
-         duration: Int(recurringServiceStop.estimatedTime!) ?? 15,
-         rate:0,
-         tech: pushRecurringServiceStop.tech,
-         techId: pushRecurringServiceStop.techId,
-         recurringServiceStopId: pushRecurringServiceStop.id,
-         description: pushRecurringServiceStop.id,
-         serviceLocationId: recurringServiceStop.serviceLocationId,
-         type: recurringServiceStop.type,
-         typeImage: recurringServiceStop.typeImage,
-         
-         workOrderId: "",
-         finished: false,
-         skipped: false,
-         invoiced: false,
-         checkList: [],
-         includeReadings: true,
-         includeDosages: true)
-         
-         //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-         //                    let serviceStopId = "S" + String(serviceStopCount)
-         
-         try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-         
-         if pushDate > lastCreated {
-         lastCreated = pushDate
-         }
-         counter = counter + numFrequency
-         
-         default:
-         numFrequency = 365
-         }
-         counter = counter + numFrequency
-         }
-         */
+        //Custom
+    func helpCreateCustomRecurringRoute(companyId: String, recurringServiceStop: RecurringServiceStop, standardFrequencyNumber: Int, customFrequencyType: String, CustomFrequency: String, daysOfWeek: [String]) {
+        
     }
     
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws {
         try workOrderDocument(workOrderId: workOrder.id, companyId: companyId).setData(from:workOrder, merge: false)
     }
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
-        
-        let wo = try await workOrderDocument(workOrderId: workOrder.id, companyId: companyId).getDocument(as: Job.self)
-        
-        //        let itemRef = workOrderDocument(workOrderId: workOrder.id, companyId: user.companyId)
-        
-        let auxiliaryParts = wo.installationParts
-        print(auxiliaryParts)
-        //        for id in ids {
-        //            if wo.auxiliaryParts.contains(id) {
-        //
-        //            } else {
-        //                auxiliaryParts.append(id)
-        //            }
-        //        }
-        //        print(auxiliaryParts)
-        //
-        //        itemRef.updateData([
-        //            "installationParts":auxiliaryParts
-        //        ]) { err in
-        //            if let err = err {
-        //                print("Error updating document: \(err)")
-        //            } else {
-        //                print("Document successfully updated")
-        //            }
-        //        }
+            //DEVELOPER REMOVE THIS FUNCTION
     }
     func addPurchaseItemsToWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
         
         let wo = try await workOrderDocument(workOrderId: workOrder.id, companyId: companyId).getDocument(as: Job.self)
-        //
-        //        let itemRef = workOrderDocument(workOrderId: workOrder.id, companyId: user.companyId)
-        //
-        //        var auxiliaryParts = wo.pvcParts
-        //        print(auxiliaryParts)
-        //        for id in ids {
-        //            if wo.auxiliaryParts.contains(id) {
-        //
-        //            } else {
-        //                auxiliaryParts.append(id)
-        //            }
-        //        }
-        //        print(auxiliaryParts)
-        //
-        //        itemRef.updateData([
-        //            "auxiliaryParts":auxiliaryParts
-        //        ]) { err in
-        //            if let err = err {
-        //                print("Error updating document: \(err)")
-        //            } else {
-        //                print("Document successfully updated")
-        //            }
-        //        }
+            //
+            //        let itemRef = workOrderDocument(workOrderId: workOrder.id, companyId: user.companyId)
+            //
+            //        var auxiliaryParts = wo.pvcParts
+            //        print(auxiliaryParts)
+            //        for id in ids {
+            //            if wo.auxiliaryParts.contains(id) {
+            //
+            //            } else {
+            //                auxiliaryParts.append(id)
+            //            }
+            //        }
+            //        print(auxiliaryParts)
+            //
+            //        itemRef.updateData([
+            //            "auxiliaryParts":auxiliaryParts
+            //        ]) { err in
+            //            if let err = err {
+            //                print("Error updating document: \(err)")
+            //            } else {
+            //                print("Document successfully updated")
+            //            }
+            //        }
     }
     func uploadStopData(companyId:String,stopData:StopData) throws {
         try stopDataDocument(companyId: companyId,stopDataId: stopData.id)
             .setData(from:stopData, merge: true)
         
     }
-    func uploadContact(companyId:String,contract:Contract) async throws {
+    func uploadContact(companyId:String,contract:RecurringContract) async throws {
         
         try contractCollection(companyId: companyId).document(contract.id).setData(from:contract, merge: false)
     }
@@ -3125,9 +2869,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     
     
-    //----------------------------------------------------
-    //                    Read Functions
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Read Functions
+        //----------------------------------------------------
     
     func getAllCompanyToDoItems(companyId:String) -> [ToDo]{
         return [
@@ -3151,8 +2895,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             print(snapshot.count)
             return snapshot.count as! Int
         } catch {
-            return 0
             print(error)
+            return 0
         }
     }
     func getAllTechnicanToDoItems(companyId:String,techId:String) async throws -> [ToDo]{
@@ -3162,25 +2906,25 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
     }
     func getCurrentUser(userId:String) async throws -> DBUser{
-        //        let DBUser = try await DBUserManager.shared.loadCurrentUser()
+            //        let DBUser = try await DBUserManager.shared.loadCurrentUser()
         
         return try await userDocument(userId: userId).getDocument(as: DBUser.self)
     }
     
-
+    
     func getRecentActivityByUser(userId:String) async throws -> [RecentActivityModel]{
         return try await userRecentActivityCollection(userId: userId)
-            .order(by: RecentActivityModel.CodingKeys.date.rawValue, descending: true)
+            .order(by: "date", descending: true)
             .limit(to: 8)
             .getDocuments(as:RecentActivityModel.self)
         
     }
     func getOneUser(userId:String) async throws -> DBUser{
         try await userDocument(userId: userId).getDocument(as: DBUser.self,decoder: decoder)
-        //        try await userDocument(userId: userId).getDocument(as: DBUser.self)
+            //        try await userDocument(userId: userId).getDocument(as: DBUser.self)
         
     }
-    //for some reason this does not work
+        //for some reason this does not work
     func getAllTechs() async throws ->[DBUser]{
         print("Get all techs")
         
@@ -3208,7 +2952,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         print("Attempting to get User Access \(userId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
         return try await userAccessCollection(userId: userId)
             .getDocuments(as:UserAccess.self) // DEVELOPER FIX LATER, BUT FOR NOW I WANNA TEST WHAT IT LOOKS LIKE WITH OUT HAVING A COMPANY
-        //        return []
+                                              //        return []
     }
     func getUserAccessCompanies(userId:String,companyId:String) async throws ->UserAccess{
         return try await userDocument(userId: userId, accessId: companyId).getDocument(as: UserAccess.self)
@@ -3318,104 +3062,104 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     
-    //    func getNumberOfItemsPurchasedIn30DaysPrior(companyId: String) async throws->(total:Double,totalBillable:Double,Invoiced:Double,TotalSpent:Double,totalSoldInDollars:Double,TotalSpentBillable:Double,TotalBilled:Double,NonBillableList:[PurchasedItem],purchasedItemsChart:[customerChartSeriesData]){
-    //
-    //        let calendar = Calendar(identifier: .gregorian)
-    //        var purchasedItemsChart:[customerChartSeriesData] = []
-    //        var endDate = calendar.date(byAdding: .day, value: 1, to: Date())!
-    //        endDate = calendar.date(byAdding: .month, value: -1, to: endDate)!
-    //
-    //        let startDate = calendar.date(byAdding: .month, value: -2, to: endDate)!
-    //        let nonBillableList = try await ReceiptItemCollection(companyId: user.companyId)
-    //            .whereField("date", isGreaterThan: startDate)
-    //            .whereField("date", isLessThan: endDate)
-    //            .whereField("billable", isEqualTo: false)
-    //            .getDocuments(as:PurchasedItem.self)
-    //
-    //        let list = try await ReceiptItemCollection(companyId: user.companyId)
-    //            .whereField("date", isGreaterThan: startDate)
-    //            .whereField("date", isLessThan: endDate)
-    //            .whereField("billable", isEqualTo: true)
-    //            .getDocuments(as:PurchasedItem.self)
-    //        var countOfInvoiced:Double = 0
-    //        var countOfTotalBillable:Double = 0
-    //        var costOfTotal:Double = 0
-    //        var counterOfTotalBilled:Double = 0
-    //        var totalProfitDolalrsOfBillable:Double = 0
-    //
-    //
-    //        for item in list {
-    //            if item.invoiced{
-    //                countOfInvoiced = countOfInvoiced + 1
-    //                counterOfTotalBilled = counterOfTotalBilled + item.totalAfterTax
-    //            }
-    //            totalProfitDolalrsOfBillable = (item.billingRate ?? 0) + totalProfitDolalrsOfBillable
-    //            countOfTotalBillable = item.totalAfterTax + countOfTotalBillable
-    //        }
-    //
-    //        for item in nonBillableList {
-    //            if item.invoiced{
-    //                countOfInvoiced = countOfInvoiced + 1
-    //                counterOfTotalBilled = counterOfTotalBilled + item.totalAfterTax
-    //            }
-    //            costOfTotal = item.totalAfterTax + costOfTotal
-    //        }
-    //        let twoLists = list.count + nonBillableList.count
-    //        let totalBillabledAndNonBillable = countOfTotalBillable + costOfTotal
-    //        let twoItemList = nonBillableList + list
-    //
-    //        var billableChartList:[customerDateSummary] = []
-    //        var nonBillableChartList:[customerDateSummary] = []
-    //        var totalChartList:[customerDateSummary] = []
-    //        var bothChartList:[customerDateSummary] = []
-    //
-    //        var total:Double = 0
-    //        var i = 30
-    //        while i > 1 {
-    //            var billableCount:Double = 0
-    //            var nonbillableCount:Double = 0
-    //            let adding = i * -1
-    //            let initalDate = Calendar.current.date(byAdding: .day, value: adding, to:endDate)!
-    //            let startDate = initalDate.startOfDay()
-    //            let endDate = initalDate.endOfDay()
-    //            for item in twoItemList {
-    //                if item.billable == false {
-    //
-    //                    if item.date > startDate && item.date < endDate {
-    //                        nonbillableCount = nonbillableCount + item.totalAfterTax
-    //                    }
-    //                }
-    //                if item.billable == true {
-    //                    if item.date > startDate && item.date < endDate {
-    //                        billableCount = billableCount + item.totalAfterTax
-    //                    }
-    //                }
-    //            }
-    //            let both = billableCount + nonbillableCount
-    //            total = total + both
-    //            billableChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: billableCount))
-    //            nonBillableChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: nonbillableCount))
-    //            totalChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: total))
-    //            bothChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: both))
-    //
-    //            i = i - 1
-    //        }
-    //        purchasedItemsChart = [
-    //            customerChartSeriesData(id:UUID().uuidString,type: "Both", data: bothChartList),
-    //            customerChartSeriesData(id:UUID().uuidString,type: "Billable", data: billableChartList),
-    //            customerChartSeriesData(id:UUID().uuidString,type: "Non Billable", data: nonBillableChartList),
-    //            customerChartSeriesData(id:UUID().uuidString,type: "Total", data: totalChartList)
-    //        ]
-    //        return (total:Double(twoLists),
-    //                totalBillable:Double(list.count),
-    //                Invoiced:countOfInvoiced,
-    //                TotalSpent:totalBillabledAndNonBillable,
-    //                totalSoldInDollars:totalProfitDolalrsOfBillable,
-    //                TotalSpentBillable:countOfTotalBillable,
-    //                TotalBilled:counterOfTotalBilled,
-    //                NonBillableList:nonBillableList,
-    //                purchasedItemsChart:purchasedItemsChart)
-    //    }
+        //    func getNumberOfItemsPurchasedIn30DaysPrior(companyId: String) async throws->(total:Double,totalBillable:Double,Invoiced:Double,TotalSpent:Double,totalSoldInDollars:Double,TotalSpentBillable:Double,TotalBilled:Double,NonBillableList:[PurchasedItem],purchasedItemsChart:[customerChartSeriesData]){
+        //
+        //        let calendar = Calendar(identifier: .gregorian)
+        //        var purchasedItemsChart:[customerChartSeriesData] = []
+        //        var endDate = calendar.date(byAdding: .day, value: 1, to: Date())!
+        //        endDate = calendar.date(byAdding: .month, value: -1, to: endDate)!
+        //
+        //        let startDate = calendar.date(byAdding: .month, value: -2, to: endDate)!
+        //        let nonBillableList = try await ReceiptItemCollection(companyId: user.companyId)
+        //            .whereField("date", isGreaterThan: startDate)
+        //            .whereField("date", isLessThan: endDate)
+        //            .whereField("billable", isEqualTo: false)
+        //            .getDocuments(as:PurchasedItem.self)
+        //
+        //        let list = try await ReceiptItemCollection(companyId: user.companyId)
+        //            .whereField("date", isGreaterThan: startDate)
+        //            .whereField("date", isLessThan: endDate)
+        //            .whereField("billable", isEqualTo: true)
+        //            .getDocuments(as:PurchasedItem.self)
+        //        var countOfInvoiced:Double = 0
+        //        var countOfTotalBillable:Double = 0
+        //        var costOfTotal:Double = 0
+        //        var counterOfTotalBilled:Double = 0
+        //        var totalProfitDolalrsOfBillable:Double = 0
+        //
+        //
+        //        for item in list {
+        //            if item.invoiced{
+        //                countOfInvoiced = countOfInvoiced + 1
+        //                counterOfTotalBilled = counterOfTotalBilled + item.totalAfterTax
+        //            }
+        //            totalProfitDolalrsOfBillable = (item.billingRate ?? 0) + totalProfitDolalrsOfBillable
+        //            countOfTotalBillable = item.totalAfterTax + countOfTotalBillable
+        //        }
+        //
+        //        for item in nonBillableList {
+        //            if item.invoiced{
+        //                countOfInvoiced = countOfInvoiced + 1
+        //                counterOfTotalBilled = counterOfTotalBilled + item.totalAfterTax
+        //            }
+        //            costOfTotal = item.totalAfterTax + costOfTotal
+        //        }
+        //        let twoLists = list.count + nonBillableList.count
+        //        let totalBillabledAndNonBillable = countOfTotalBillable + costOfTotal
+        //        let twoItemList = nonBillableList + list
+        //
+        //        var billableChartList:[customerDateSummary] = []
+        //        var nonBillableChartList:[customerDateSummary] = []
+        //        var totalChartList:[customerDateSummary] = []
+        //        var bothChartList:[customerDateSummary] = []
+        //
+        //        var total:Double = 0
+        //        var i = 30
+        //        while i > 1 {
+        //            var billableCount:Double = 0
+        //            var nonbillableCount:Double = 0
+        //            let adding = i * -1
+        //            let initalDate = Calendar.current.date(byAdding: .day, value: adding, to:endDate)!
+        //            let startDate = initalDate.startOfDay()
+        //            let endDate = initalDate.endOfDay()
+        //            for item in twoItemList {
+        //                if item.billable == false {
+        //
+        //                    if item.date > startDate && item.date < endDate {
+        //                        nonbillableCount = nonbillableCount + item.totalAfterTax
+        //                    }
+        //                }
+        //                if item.billable == true {
+        //                    if item.date > startDate && item.date < endDate {
+        //                        billableCount = billableCount + item.totalAfterTax
+        //                    }
+        //                }
+        //            }
+        //            let both = billableCount + nonbillableCount
+        //            total = total + both
+        //            billableChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: billableCount))
+        //            nonBillableChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: nonbillableCount))
+        //            totalChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: total))
+        //            bothChartList.append(customerDateSummary(id: UUID().uuidString, date: initalDate, amount: both))
+        //
+        //            i = i - 1
+        //        }
+        //        purchasedItemsChart = [
+        //            customerChartSeriesData(id:UUID().uuidString,type: "Both", data: bothChartList),
+        //            customerChartSeriesData(id:UUID().uuidString,type: "Billable", data: billableChartList),
+        //            customerChartSeriesData(id:UUID().uuidString,type: "Non Billable", data: nonBillableChartList),
+        //            customerChartSeriesData(id:UUID().uuidString,type: "Total", data: totalChartList)
+        //        ]
+        //        return (total:Double(twoLists),
+        //                totalBillable:Double(list.count),
+        //                Invoiced:countOfInvoiced,
+        //                TotalSpent:totalBillabledAndNonBillable,
+        //                totalSoldInDollars:totalProfitDolalrsOfBillable,
+        //                TotalSpentBillable:countOfTotalBillable,
+        //                TotalBilled:counterOfTotalBilled,
+        //                NonBillableList:nonBillableList,
+        //                purchasedItemsChart:purchasedItemsChart)
+        //    }
     func getNumberOfItemsPurchasedAndBilledIn30Days(companyId: String) async throws -> Double{
         let calendar = Calendar(identifier: .gregorian)
         
@@ -3497,7 +3241,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
             .getDocuments(as:PurchasedItem.self)
     }
-    func GetPurchasesByBillableAndSortByPrice(companyId: String,billable:Bool,price:Bool,techIds:[String]) async throws -> [PurchasedItem] {
+    func GetPurchasesByBillableAndSortByPrice(companyId: String, start:Date, end:Date, billable:Bool, price:Bool, techIds:[String]) async throws -> [PurchasedItem] {
         let endDate = Date()
         let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate)!
         
@@ -3509,7 +3253,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("techId", in: techIds)
             .getDocuments(as:PurchasedItem.self)
     }
-    func GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: String,billable:Bool,invoiced:Bool,price:Bool,techIds:[String]) async throws -> [PurchasedItem] {
+    func GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: String, start:Date, end:Date, billable:Bool,invoiced:Bool,price:Bool,techIds:[String]) async throws -> [PurchasedItem] {
         let endDate = Date()
         let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate)!
         
@@ -3524,7 +3268,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
             .getDocuments(as:PurchasedItem.self)
     }
-    func GetPurchasesByBillableAndSortByDate(companyId: String,billable:Bool,date:Bool,techIds:[String]) async throws -> [PurchasedItem] {
+    func GetPurchasesByBillableAndSortByDate(companyId: String, start: Date, end: Date,billable:Bool,date:Bool,techIds:[String]) async throws -> [PurchasedItem] {
         let endDate = Date()
         let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate)!
         
@@ -3536,7 +3280,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("techId", in: techIds)
             .getDocuments(as:PurchasedItem.self)
     }
-    func GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: String,billable:Bool,invoiced:Bool,date:Bool,techIds:[String]) async throws -> [PurchasedItem] {
+    func GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: String, start:Date, end:Date, billable:Bool,invoiced:Bool,date:Bool,techIds:[String]) async throws -> [PurchasedItem] {
         let endDate = Date()
         let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate)!
         
@@ -3577,8 +3321,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .order(by: "date", descending: true)
             .whereField("date", isGreaterThan: startDate)
             .whereField("date", isLessThan: endDate)
-        //            .limit(to: 30)
-        //            .order(by: "invoiceNum")
+            //            .limit(to: 30)
+            //            .order(by: "invoiceNum")
             .getDocuments()
         
         var receiptItems: [PurchasedItem] = []
@@ -3596,8 +3340,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("date", isGreaterThan: startDate)
             .whereField("date", isLessThan: endDate)
             .whereField("billable", isEqualTo: viewBillable)
-        //            .limit(to: 30)
-        //            .order(by: "invoiceNum")
+            //            .limit(to: 30)
+            //            .order(by: "invoiceNum")
             .getDocuments()
         
         var receiptItems: [PurchasedItem] = []
@@ -3635,18 +3379,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
         return receiptItems
     }
-    func getAllpurchasedItemsByPrice(companyId: String,descending: Bool,techIds:[String]) async throws -> [PurchasedItem]{
-        let endDate = Date()
-        let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate)!
-        
-        return try await PurchaseItemCollection(companyId: companyId)
-            .whereField("date", isGreaterThan: startDate)
-            .whereField("date", isLessThan: endDate)
-            .order(by: "date", descending: descending)
-            .whereField("techId", in: techIds)
-            .getDocuments(as:PurchasedItem.self)
-        
-    }
+    
     func getAllpurchasedItemsByTech(companyId: String,techId: String) async throws -> [PurchasedItem]{
         
         return try await PurchaseItemCollection(companyId: companyId)
@@ -3860,7 +3593,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:ServiceLocation.self)
         
     }
-    func getServiceLocationsCustomerAndLocationId(companyId:String,customerId:String,locationId:String) async throws -> ServiceLocation {
+    func getServiceLocationById(companyId:String,locationId:String) async throws -> ServiceLocation {
         return  try await serviceLocationDoc(companyId: companyId, serviceLocationId: locationId)
             .getDocument(as:ServiceLocation.self)
         
@@ -3947,13 +3680,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getSinglePieceOfEquipment(companyId:String,equipmentId:String) async throws ->Equipment{
         
         return try await equipmentDoc(companyId: companyId,equipmentId: equipmentId).getDocument(as: Equipment.self)
-        //            .getDocuments(as:Equipment.self)
+            //            .getDocuments(as:Equipment.self)
     }
     func getPartsUnderEquipment(companyId:String,equipmentId:String) async throws ->[EquipmentPart]{
         
         return try await equipmentPartCollection(companyId: companyId, equipmentId: equipmentId)
             .getDocuments(as:EquipmentPart.self)
-        //            .getDocuments(as:Equipment.self)
+            //            .getDocuments(as:Equipment.self)
     }
     func getHistoryServiceStopsBy(companyId:String,serviceStop: ServiceStop) async throws -> [History]{
         
@@ -3963,10 +3696,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getBillableServiceStopsByDate(startDate: Date,endDate:Date,companyId:String) async throws -> [ServiceStop]{
         let user = try await UserManager.shared.loadCurrentUser()
         
-        //        let calendar = Calendar.current
-        //        let components = calendar.dateComponents([.year, .month, .day], from: startDate)
-        //        let start = calendar.date(from: components)!
-        //        let end = calendar.date(byAdding: .day, value: 1, to: start)!
+            //        let calendar = Calendar.current
+            //        let components = calendar.dateComponents([.year, .month, .day], from: startDate)
+            //        let start = calendar.date(from: components)!
+            //        let end = calendar.date(byAdding: .day, value: 1, to: start)!
         
         return try await serviceStopCollection(companyId: companyId)
             .whereField("finished", isEqualTo: true)
@@ -4003,7 +3736,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:ServiceStop.self)
     }
     func getAllServiceStopsByTechAndDate(companyId: String,date:Date,tech:DBUser) async throws -> [ServiceStop]{
-        //DEVELOPER WHY DOES THIS FUNCTION RUN TWICE
+            //DEVELOPER WHY DOES THIS FUNCTION RUN TWICE
         print("Getting All Service Stops By Tech For \(tech.firstName ?? "") \(tech.lastName ?? "") and Day by \(fullDate(date: date))")
         let stops = try await serviceStopCollection(companyId: companyId)
             .whereField(ServiceStop.CodingKeys.serviceDate.rawValue, isGreaterThan: date.startOfDay())
@@ -4013,6 +3746,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         print("Got \(stops.count) Stops Between \(dateAndTime(date: date.startOfDay())) and \(dateAndTime(date: date.endOfDay())) for \(tech.firstName) - \(tech.id)")
         return stops
     }
+    func getAllServiceStopsByTechAndDate(companyId: String,date:Date,tech:CompanyUser) async throws -> [ServiceStop] {
+        return []
+    }
+    
     func getAllServiceStopsByTechAndDateCount(companyId: String,date:Date,tech:DBUser) async throws -> Int{
         return try await serviceStopCollection(companyId: companyId)
             .whereField(ServiceStop.CodingKeys.serviceDate.rawValue, isGreaterThan: date.startOfDay())
@@ -4026,8 +3763,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField(ServiceStop.CodingKeys.serviceDate.rawValue, isGreaterThan: date.startOfDay())
             .whereField(ServiceStop.CodingKeys.serviceDate.rawValue, isLessThan: date.endOfDay())
             .whereField(ServiceStop.CodingKeys.techId.rawValue, isEqualTo: tech.id)
-            .whereField(ServiceStop.CodingKeys.finished.rawValue, isEqualTo: true)
-        
+            .whereField(ServiceStop.CodingKeys.operationStatus.rawValue, isEqualTo: ServiceStopOperationStatus.finished.rawValue)
             .getDocuments(as:ServiceStop.self).count
         
     }
@@ -4048,20 +3784,20 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .order(by: "rate", descending: descending).getDocuments(as:ServiceStop.self)
         
     }
-    //    func getAllServiceStopsByDateAndTech(date: Date,user:DBUser,companyUser:CompanyUser) async throws -> [ServiceStop]{
-    //
-    //        let calendar = Calendar.current
-    //        let components = calendar.dateComponents([.year, .month, .day], from: date)
-    //        let start = calendar.date(from: components)!
-    //        let end = calendar.date(byAdding: .day, value: 1, to: start)!
-    //        let stops = try await serviceStopCollection(companyId: user.companyId)
-    //            .whereField("serviceDate", isGreaterThan: start)
-    //            .whereField("techId", isEqualTo: companyUser.id)
-    //            .whereField("serviceDate", isLessThan: end)
-    //            .getDocuments(as:ServiceStop.self)
-    //
-    //        return stops
-    //    }
+        //    func getAllServiceStopsByDateAndTech(date: Date,user:DBUser,companyUser:CompanyUser) async throws -> [ServiceStop]{
+        //
+        //        let calendar = Calendar.current
+        //        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        //        let start = calendar.date(from: components)!
+        //        let end = calendar.date(byAdding: .day, value: 1, to: start)!
+        //        let stops = try await serviceStopCollection(companyId: user.companyId)
+        //            .whereField("serviceDate", isGreaterThan: start)
+        //            .whereField("techId", isEqualTo: companyUser.id)
+        //            .whereField("serviceDate", isLessThan: end)
+        //            .getDocuments(as:ServiceStop.self)
+        //
+        //        return stops
+        //    }
     func getAllServiceStopsByDate(companyId:String,date: Date) async throws -> [ServiceStop]{
         
         let calendar = Calendar.current
@@ -4115,6 +3851,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("serviceDate", isGreaterThan: Date())
             .whereField("recurringServiceStopId", isEqualTo: recurringsServicestop.id)
             .getDocuments(as:ServiceStop.self)
+    }
+    func getServiceStopsByRecurringsServiceStopBetweenDates(companyId:String,recurringsServicestopId:String,startDate: Date, endDate: Date) async throws -> [ServiceStop]{
+
+        return []
     }
     func getServiceStopsByRecurringsServiceStopNotFinished(companyId:String,recurringsServicestop:RecurringServiceStop) async throws -> [ServiceStop]{
         
@@ -4210,21 +3950,21 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         if let lastDocument {
             return try await serviceStopCollection(companyId: companyId)
-            //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
+                //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
                 .limit(to: count)
                 .start(afterDocument: lastDocument)
                 .getDocumentsWithSnapshot(as: ServiceStop.self)
         }else {
             return try await serviceStopCollection(companyId: companyId)
-            //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
+                //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
                 .limit(to: count)
                 .getDocumentsWithSnapshot(as: ServiceStop.self)
         }
     }
     func getAllCompanyRoles(companyId : String) async throws ->[Role] {
         return try await roleCollection(companyId: companyId)
-        //            .whereField(Role.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
-        //            .whereField(Role.CodingKeys.status.rawValue, isEqualTo: "Pending")
+            //            .whereField(Role.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
+            //            .whereField(Role.CodingKeys.status.rawValue, isEqualTo: "Pending")
             .getDocuments(as:Role.self)
     }
     
@@ -4247,6 +3987,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getAllShoppingListItemsByCompany(companyId: String) async throws -> [ShoppingListItem] {
         return try await shoppingListCollection(companyId: companyId)
             .getDocuments(as:ShoppingListItem.self)
+    }
+    func getAllShoppingListItemsSnapShotByCompany(companyId:String) async throws -> [ShoppingListItem] {
+        return try await shoppingListCollection(companyId: companyId)
+            .getDocuments(as:ShoppingListItem.self)
+    }
+    func getAllShoppingListItemsByCompanyCustomer(companyId: String,customerId: String) async throws -> [ShoppingListItem]{
+        return []
     }
     
     func getAllShoppingListItemsByUser(companyId: String, userId: String) async throws -> [ShoppingListItem] {
@@ -4271,8 +4018,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("category", isEqualTo: category)
             .getDocuments(as:ShoppingListItem.self)
     }
-
-    func getAllDataBaseItems(companyId:String) async throws -> [GenericItem]{
+    
+    func getAllGenericDataBaseItems(companyId:String) async throws -> [GenericItem]{
         
         return try await GenericItemCollection(companyId: companyId)
             .getDocuments(as:GenericItem.self)
@@ -4313,11 +4060,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
             .getDocuments(as:Chat.self)
     }
-    func getSpecificChat(userID:String,chatId:String) async throws ->Chat{
+    func getSpecificChat(chatId:String) async throws ->Chat{
         
         return try await chatDocument(chatId: chatId)
             .getDocument(as: Chat.self)
-        //            .getDocuments(as:Equipment.self)
+            //            .getDocuments(as:Equipment.self)
     }
     func deleteCustomerContact(companyId:String,customerId:String,contactId:String)async throws {
         
@@ -4362,7 +4109,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getSpecificRepairRequest(companyId:String,repairRequestId:String) async throws ->RepairRequest{
         
         return try await repairRequestDocument(companyId: companyId,repairRequestId: repairRequestId).getDocument(as: RepairRequest.self)
-        //            .getDocuments(as:Equipment.self)
+            //            .getDocuments(as:Equipment.self)
     }
     func getRepairRequestsByCustomer(companyId: String,customerId:String) async throws ->[RepairRequest]{
         return try await repairRequestCollection(companyId: companyId)
@@ -4382,20 +4129,20 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         return count as! Int
     }
-    func getAllContrats(companyId:String) async throws -> [Contract] {
+    func getAllContrats(companyId:String) async throws -> [RecurringContract] {
         
         return try await contractCollection(companyId: companyId)
-            .getDocuments(as:Contract.self)
+            .getDocuments(as:RecurringContract.self)
     }
-    func getSpecificContract(companyId:String,contractId:String) async throws ->Contract{
+    func getSpecificContract(companyId:String,contractId:String) async throws ->RecurringContract{
         
-        return try await contractDocument(companyId: companyId,contractId: contractId).getDocument(as: Contract.self)
-        //            .getDocuments(as:Equipment.self)
+        return try await contractDocument(companyId: companyId,contractId: contractId).getDocument(as: RecurringContract.self)
+            //            .getDocuments(as:Equipment.self)
     }
-    func getContractsByCustomer(companyId: String,customerId:String) async throws ->[Contract]{
+    func getContractsByCustomer(companyId: String,customerId:String) async throws ->[RecurringContract]{
         return try await contractCollection(companyId: companyId)
             .whereField("customerId", isEqualTo: customerId)
-            .getDocuments(as:Contract.self)
+            .getDocuments(as:RecurringContract.self)
     }
     func getContractsByCustomerCount(companyId: String,customerId:String) async throws ->Int?{
         let count = try await contractCollection(companyId: companyId)
@@ -4448,17 +4195,17 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:StopData.self)
     }
     func getHistoryByWorkOrder(workOrder: Job) async throws -> [History]{
-        //        let user = try await UserManager.shared.loadCurrentUser()
+            //        let user = try await UserManager.shared.loadCurrentUser()
         
         return try await db.collection("workOrders/" + workOrder.id + "/history")
             .getDocuments(as:History.self)
     }
     func getBillableWorkOrdersByDate(companyId:String,startDate: Date,endDate:Date) async throws -> [Job]{
         
-        //        let calendar = Calendar.current
-        //        let components = calendar.dateComponents([.year, .month, .day], from: startDate)
-        //        let start = calendar.date(from: components)!
-        //        let end = calendar.date(byAdding: .day, value: 1, to: start)!
+            //        let calendar = Calendar.current
+            //        let components = calendar.dateComponents([.year, .month, .day], from: startDate)
+            //        let start = calendar.date(from: components)!
+            //        let end = calendar.date(byAdding: .day, value: 1, to: start)!
         
         return try await workOrderCollection(companyId: companyId)
             .whereField("finished", isEqualTo: true)
@@ -4491,7 +4238,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getAllJobsByUser(companyId: String,userId:String) async throws -> [Job] {
         return []
     }
-
+    
     func getAllWorkOrdersSortedByPrice(companyId:String,descending: Bool) async throws -> [Job]{
         
         return try await workOrderCollection(companyId: companyId)
@@ -4548,13 +4295,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         if let lastDocument {
             return try await workOrderCollection(companyId: companyId)
-            //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
+                //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
                 .limit(to: count)
                 .start(afterDocument: lastDocument)
                 .getDocumentsWithSnapshot(as: Job.self)
         }else {
             return try await workOrderCollection(companyId: companyId)
-            //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
+                //                .order(by: ServiceStop.CodingKeys.rate.rawValue, descending: true)
                 .limit(to: count)
                 .getDocumentsWithSnapshot(as: Job.self)
         }
@@ -4580,11 +4327,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return try await reccuringRouteDoc(companyId: companyId, recurringRouteId: recurringRouteId)
             .getDocument(as: RecurringRoute.self)
     }
+    func getSingleRouteFromTechIdAndDay(companyId: String, techId: String, day: String) async throws -> RecurringRoute? {
+        return try await reccuringRouteDoc(companyId: companyId, recurringRouteId: "1")
+            .getDocument(as: RecurringRoute.self)
+    }
     func getAllActiveRoutes(companyId:String,param:String) async throws -> [RecurringRoute] {
         
         return try await  recurringRouteCollection(companyId: companyId)
             .getDocuments(as: RecurringRoute.self)
-        //            .getDocuments(as:Equipment.self)
+            //            .getDocuments(as:Equipment.self)
     }
     
     func getAllActiveRoutesBasedOnDate(companyId:String,day:String,techId:String) async throws -> [RecurringRoute] {
@@ -4600,23 +4351,23 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("day", isEqualTo: day)
             .getDocuments(as: RecurringRoute.self)
         
-        //            .whereField(recurringRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
-        //            .whereField(recurringRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
-        //            .whereField(recurringRoute.CodingKeys.techId.rawValue, isEqualTo: tech.id)
+            //            .whereField(recurringRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            //            .whereField(recurringRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
+            //            .whereField(recurringRoute.CodingKeys.techId.rawValue, isEqualTo: tech.id)
     }
     func getRecurringRouteByDay(companyId:String,day:String) async throws ->[RecurringRoute] {
         return try await  recurringRouteCollection(companyId: companyId)
             .whereField("day", isEqualTo: day)
             .getDocuments(as: RecurringRoute.self)
         
-        //            .whereField(recurringRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
-        //            .whereField(recurringRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
-        //            .whereField(recurringRoute.CodingKeys.techId.rawValue, isEqualTo: tech.id)
+            //            .whereField(recurringRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            //            .whereField(recurringRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
+            //            .whereField(recurringRoute.CodingKeys.techId.rawValue, isEqualTo: tech.id)
     }
     func getRecurringRouteByDayCount(companyId:String,day:String) async throws ->Int {
         return 9
     }
-
+    
     func getAllReceipts(companyId: String) async throws -> [Receipt] {
         
         let snapshot = try await ReceiptItemCollection(companyId: companyId).getDocuments()
@@ -4632,7 +4383,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getAllpurchasedItemsByPrice(companyId:String,descending: Bool) async throws -> [Receipt]{
         
         return try await ReceiptItemCollection(companyId: companyId)
-        //            .order(by: "price", descending: descending)
+            //            .order(by: "price", descending: descending)
             .getDocuments(as:Receipt.self)
         
     }
@@ -4750,14 +4501,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return try await recurringServiceStopCollection(companyId: companyId)
             .getDocuments(as:RecurringServiceStop.self)
     }
-    //    func getRecurringServiceStopsByTechAndDay(user:DBUser,tech:CompanyUser,day:String) async throws -> [RecurringServiceStop] {
-    //
-    //        return try await recurringServiceStopCollection(companyId: user.companyId)
-    //            .whereField("techId", isEqualTo: tech.id)
-    //            .whereField("daysOfWeek", arrayContains: day)
-    //            .getDocuments(as:RecurringServiceStop.self)
-    //
-    //    }
+        //    func getRecurringServiceStopsByTechAndDay(user:DBUser,tech:CompanyUser,day:String) async throws -> [RecurringServiceStop] {
+        //
+        //        return try await recurringServiceStopCollection(companyId: user.companyId)
+        //            .whereField("techId", isEqualTo: tech.id)
+        //            .whereField("daysOfWeek", arrayContains: day)
+        //            .getDocuments(as:RecurringServiceStop.self)
+        //
+        //    }
     func getReucrringServiceStopsWithOutEndDate(companyId:String) async throws -> [RecurringServiceStop] {
         
         return try await recurringServiceStopCollection(companyId: companyId)
@@ -4822,18 +4573,26 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("serviceStopId", isEqualTo: serviceStopId)
             .whereField("bodyOfWaterId", isEqualTo: bodyOfWaterId)
             .getDocuments(as:StopData.self)
-        //        return stopData.first!
+            //        return stopData.first!
         print(stopData.first!)
-        return stopData.first ?? StopData(id: "", date: Date(), serviceStopId: "", readings: [], dosages: [], bodyOfWaterId: "",
-                                          customerId: "",
-                                          serviceLocationId: "",
-                                          userId: "")
+        return stopData.first ?? StopData(
+            id: "",
+            date: Date(),
+            serviceStopId: "",
+            readings: [],
+            dosages: [],
+            observation: [],
+            bodyOfWaterId: "",
+            customerId: "",
+            serviceLocationId: "",
+            userId: ""
+        )
     }
     func readAllHistory(companyId:String,customer : Customer) async throws -> [StopData]{
         print("Trying to get data")
         return try await readingCollectionForCustomerHistory(customerId: customer.id, companyId: companyId)
             .order(by: "date", descending: true)
-        //            .limit(to: 5)
+            //            .limit(to: 5)
             .getDocuments(as:StopData.self)
         
     }
@@ -4894,7 +4653,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:BillingTemplate.self)
         return templates.first!
     }
-    //start up functions
+        //start up functions
     
     func getStoreCount(companyId:String) async throws-> Int{
         var serviceStopCount = 0
@@ -4913,17 +4672,21 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         print("Service Stop Count " + String(serviceStopCount))
         return updatedServiceStopCount
-        //        return 1
+            //        return 1
         
     }
-    func getGenericItem(companyId:String,workOrderId:String) async throws -> JobTemplate{
-        return try await GenericItemDocument(genericItemId: workOrderId,companyId: companyId).getDocument(as: JobTemplate.self)
+    func getGenericItem(companyId:String,genericItemId:String) async throws -> GenericItem{
+        return try await GenericItemDocument(genericItemId: genericItemId,companyId: companyId).getDocument(as: GenericItem.self)
     }
     func getGenericItems(companyId:String) async throws -> [GenericItem]{
         
         return try await GenericItemCollection(companyId: companyId)
             .getDocuments(as:GenericItem.self)
     }
+    func getInvoiceCount(companyId:String) async throws-> Int {
+        return 0
+    }
+
     func getWorkOrderCount(companyId:String) async throws-> Int{
         
         var workOrderCount = 0
@@ -4981,10 +4744,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         print("Service Stop Count " + String(serviceStopCount))
         return updatedServiceStopCount
-        //        return 1
+            //        return 1
         
     }
-    //recurringServiceStop Settings
+        //recurringServiceStop Settings
     func getRecurringServiceStopCount(companyId:String) async throws-> Int{
         
         var recurringServiceStopCount = 0
@@ -5005,7 +4768,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         print("recurringServiceStop Count " + String(updatedRecurringServiceStopCount))
         return updatedRecurringServiceStopCount
-        //        return 2
+            //        return 2
         
     }
     func getAllWorkOrderTemplate(companyId:String,workOrderId:String) async throws -> JobTemplate{
@@ -5046,9 +4809,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:ServiceStopTemplate.self)
     }
     
-    //----------------------------------------------------
-    //                    Update Functions
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Update Functions
+        //----------------------------------------------------
     func removingReadingTemplateAmountArray(companyId:String,readingTemplateId : String,amount:String) async throws {
         
         try await  ReadingsTemplateDocument(readingTemplateId: readingTemplateId, companyId: companyId).updateData([
@@ -5075,7 +4838,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func markInviteAsAccepted(invite:Invite) async throws {
         let itemRef = inviteDoc(inviteId: invite.id)
         
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         itemRef.updateData([
             Invite.CodingKeys.status.rawValue:"Accepted"
             
@@ -5087,7 +4850,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }    }
     func endRecurringServiceStop(companyId:String,recurringServiceStopId:String,endDate:Date) async throws {
-        //DEVELOPER ADD LOGIC
+            //DEVELOPER ADD LOGIC
         print("End Recurring Service Stop Logic")
         try await recurringServiceStopDocument(recurringServiceStopId: recurringServiceStopId, companyId: companyId)
             .updateData([
@@ -5131,7 +4894,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     ) async throws {
         let itemRef = DataBaseDocument(dataBaseId: dataBaseItem.id, companyId: companyId)
         
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         itemRef.updateData([
             "name":name,
             "rate":rate,
@@ -5177,13 +4940,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func removeRouteServiceStopId(companyId:String,activeRoute:ActiveRoute,serviceStopId:String) async throws{
         
     }
-
+    
     func endRecurringRoute(companyId:String,recurringRouteId:String,endDate:Date) async throws {
-        //DEVELOPER ADD LOGIC
+            //DEVELOPER ADD LOGIC
         print("End Recurring Route Logic")
         try await reccuringRouteDoc(companyId: companyId, recurringRouteId: recurringRouteId).delete()
         
-        //Delete Recurring Route
+            //Delete Recurring Route
     }
     func updateActiveRouteOrderList(companyId:String,activeRouteId:String,serviceStopOrderList:[ServiceStopOrder]) async throws {
         
@@ -5210,7 +4973,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
     }
     func updatePVCPartsListOfWorkOrder(companyId: String,workOrderId:String,pvcPart:WODBItem) async throws{
-        //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
+            //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
         workOrderCollection(companyId: companyId).document(workOrderId).updateData([
             "pvcParts": [
                 [
@@ -5232,7 +4995,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
     }
     func updateElectricalPartsListOfWorkOrder(companyId: String,workOrderId:String,electricalPart:WODBItem) async throws{
-        //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
+            //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
         
         workOrderCollection(companyId: companyId).document(workOrderId).updateData([
             "electricalParts": [
@@ -5256,7 +5019,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
     }
     func updateChemicalListOfWorkOrder(companyId: String,workOrderId:String,chemical:WODBItem) async throws{
-        //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
+            //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
         
         workOrderCollection(companyId: companyId).document(workOrderId).updateData([
             "chemicals": [
@@ -5278,7 +5041,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
     }
     func updateMiscPartsListOfWorkOrder(companyId: String,workOrderId:String,miscPart:WODBItem) async throws{
-        //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
+            //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
         workOrderCollection(companyId: companyId).document(workOrderId).updateData([
             "miscParts": [
                 [
@@ -5319,15 +5082,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         
         
-        //        let history:History =  History(id: UUID().uuidString, date: Date(), tech: user.firstName ?? "UNKNOWN", changes: [])
-        //        var historyArray:[String] = []
-        //        let pushHistoryArray:[String] = []
-        //
-        //
-        //        let historyText = ""
-        //        var dateAndTech = ""
-        //        var valueChange = ""
-        //check if there was a chnage in tech
+            //        let history:History =  History(id: UUID().uuidString, date: Date(), tech: user.firstName ?? "UNKNOWN", changes: [])
+            //        var historyArray:[String] = []
+            //        let pushHistoryArray:[String] = []
+            //
+            //
+            //        let historyText = ""
+            //        var dateAndTech = ""
+            //        var valueChange = ""
+            //check if there was a chnage in tech
         
         let ref = db.collection("companies/\(companyId)/serviceStops").document(workOrder.id)
         ref.updateData([
@@ -5341,7 +5104,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
         
     }
-    //Fix later when I have more time
+        //Fix later when I have more time
     
     
     func updateWorkOrder(originalJob:Job,newJob:Job) async throws{
@@ -5532,11 +5295,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
     }
     
-    func updateContract(companyId:String,contract:Contract) async throws {
+    func updateContract(companyId:String,contract:RecurringContract) async throws {
         
         try contractCollection(companyId: companyId).document(contract.id).setData(from:contract, merge: true)
     }
-    func updateContractStatus(companyId:String,contractId:String,status:String) async throws {
+    func updateContractStatus(companyId:String,contractId:String,status:RecurringContractStatus) async throws {
         let contractRef = contractDocument(companyId: companyId, contractId: contractId)
         
         
@@ -5620,7 +5383,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
     }
-    
+    func uploadRepairRequestImage(companyId: String, requestId: String, image: DripDropImage) async throws -> (path: String, name: String) {
+        return ("","")
+    }
     func markChatAsRead(userId:String, chat: Chat) async throws {
         
         var array:[String] = chat.participantIds
@@ -5693,61 +5458,6 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateServiceStopLocations(newServiceStop:ServiceStop,serviceLocation:ServiceLocation,companyId:String) async throws{
     }
     
-    func updateServiceStopFinish(companyId:String,serviceStop:ServiceStop,finished:Bool) async throws {
-        let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
-        ref.updateData([
-            ServiceStop.CodingKeys.finished.rawValue: finished
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
-        
-    }
-    func updateServiceStopSkipped(companyId:String,serviceStop:ServiceStop,skipped:Bool) async throws {
-        let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
-        ref.updateData([
-            ServiceStop.CodingKeys.skipped.rawValue: skipped
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
-        
-    }
-    func updateBillingStatusOfServiceStop(companyId:String,serviceStop:ServiceStop,billingStatus:Bool) async throws{
-        
-        //        let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
-        
-        //        let history:History =  History(id: UUID().uuidString, date: Date(), tech: user.firstName ?? "UNKNOWN", changes: [])
-        var historyArray:[String] = []
-        let _:[String] = []
-        
-        
-        //        let historyText = ""
-        //        var dateAndTech = ""
-        var valueChange = ""
-        //check if there was a chnage in tech
-        //        dateAndTech = " ** " + (serviceStop.invoiced.description.capitalized) + " on " + fullDate(date: Date()) + " changed ** "
-        valueChange = " **" + (serviceStop.invoiced.description.capitalized) + " ** "
-        historyArray.append(valueChange)
-        
-        let ref = db.collection("serviceStops").document(serviceStop.id)
-        ref.updateData([
-            "invoiced": billingStatus
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Updated Billing Status Successfully")
-            }
-        }
-        
-    }
     func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws{
         let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
         ref.updateData([
@@ -5764,127 +5474,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
         
     }
-    func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,newServiceStop:ServiceStop) async throws{
+    func updateServiceStop(
+        companyId:String,
+        user:DBUser,
+        originalServiceStop:ServiceStop,
+        newServiceStop:ServiceStop
+    ) async throws{
         
-        //        let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
-        
-        var history:History =  History(id: UUID().uuidString, date: Date(), tech: user.firstName ?? "UNKNOWN", changes: [])
-        var historyArray:[String] = []
-        var pushHistoryArray:[String] = []
-        
-        
-        let historyText = ""
-        var dateAndTech = ""
-        var valueChange = ""
-        var counter = 0
-        //check if there was a chnage in tech
-        if originalServiceStop.tech != newServiceStop.tech {
-            counter = counter + 1
-            dateAndTech = " ** " + (originalServiceStop.tech ?? "") + " on " + fullDate(date: Date()) + " changed ** "
-            valueChange = " ** " + (originalServiceStop.tech ?? "") + " --> " + (newServiceStop.tech ?? "") + " ** "
-            historyArray.append(valueChange)
-            
-            let ref = db.collection("serviceStops").document(originalServiceStop.id)
-            ref.updateData([
-                "tech": newServiceStop.tech ?? ""
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
-        }
-        if originalServiceStop.description != newServiceStop.description {
-            
-            counter = counter + 1
-            print(counter)
-            dateAndTech = " ** " + (originalServiceStop.tech ?? "") + " on " + fullDate(date: Date()) + " changed ** "
-            valueChange = " ** " + (originalServiceStop.description ) + " --> " + (newServiceStop.description ) + " ** "
-            print(valueChange)
-            historyArray.append(valueChange)
-            let ref = db.collection("serviceStops").document(originalServiceStop.id)
-            ref.updateData([
-                "description": newServiceStop.description
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
-        }
-        
-        if originalServiceStop.typeId != newServiceStop.typeId {
-            
-            counter = counter + 1
-            dateAndTech = " ** " + (originalServiceStop.tech ?? "") + " on " + fullDate(date: Date()) + " changed ** "
-            valueChange = " ** " + (originalServiceStop.typeId ) + " --> " + (newServiceStop.typeId ) + " ** "
-            print(valueChange)
-            
-            historyArray.append(valueChange)
-            let ref = db.collection("serviceStops").document(originalServiceStop.id)
-            ref.updateData([
-                "typeId": newServiceStop.typeId
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
-        }
-        if originalServiceStop.finished != newServiceStop.finished {
-            
-            counter = counter + 1
-            dateAndTech = " ** " + (originalServiceStop.tech ?? "") + " on " + fullDate(date: Date()) + " changed ** "
-            valueChange = " ** " + (originalServiceStop.finished.description.capitalized ) + " --> " + (newServiceStop.finished.description.capitalized ) + " ** "
-            print(valueChange)
-            historyArray.append(valueChange)
-            let ref = db.collection("serviceStops").document(originalServiceStop.id)
-            ref.updateData([
-                "finished": newServiceStop.finished
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
-        }
-        history.changes = historyArray
-        if counter > 0 {
-            pushHistoryArray.append(dateAndTech + historyText)
-            if historyArray != pushHistoryArray{
-                try db.collection("serviceStops/" + originalServiceStop.id + "/history").document(history.id).setData(from:history, merge: false)
-            }
-        } else {
-            print("no change made")
-        }
-    }
-    func finishServicestop(companyId:String,serviceStop:ServiceStop,finish:Bool) async throws {
-        let itemRef = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
-        itemRef.updateData([
-            "finish":finish
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
-    }
-    func skipServicestop(companyId:String,serviceStop:ServiceStop,skip:Bool) async throws {
-        let itemRef = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
-        itemRef.updateData([
-            "skip":skip
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
     }
     func updatePart(companyId:String,equipmentId:String,part:EquipmentPart) async throws {
         
@@ -6061,7 +5657,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateServiceLocationAddress(companyId:String,currentCustomerId:String,serviceLocationId:String,address:Address) async throws {
         let customerRef = serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocationId)
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         customerRef.updateData([
             
             "address": [
@@ -6089,7 +5685,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func updateServiceLocationDogName(companyId:String,serviceLocationId:String,dogNames:[String])async throws{
-
+        
     }
     
     func updateServiceLocationEstimatedTime(companyId: String, serviceLocationId: String, estimatedTime: Int) async throws {
@@ -6106,7 +5702,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateServiceLocation(companyId:String,currentCustomerId:String,serviceLocation:ServiceLocation) async throws {
         
         let customerRef = serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocation.id)
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         customerRef.updateData([
             "nickName": serviceLocation.nickName,
             "gateCode": serviceLocation.gateCode,
@@ -6159,7 +5755,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
             
         }
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         customerRef.updateData([
             "firstName":customerWithUpdates.firstName,
             "lastName":customerWithUpdates.lastName,
@@ -6189,7 +5785,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateCurrentCustomer(companyId:String,currentCustomer:Customer) async throws {
         let customerRef = customerDocument(customerId: currentCustomer.id, companyId: companyId)
         
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         customerRef.updateData([
             "firstName":currentCustomer.firstName,
             "lastName":currentCustomer.lastName,
@@ -6216,7 +5812,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
     }
-    func updateCustomerInfoWithValidation(currentCustomer:Customer,companyId: String,firstName:String,lastName:String,email:String,phoneNumber:String,company:String,displayAsCompany:Bool,billingAddress:Address) async throws {
+    func updateCustomerInfoWithValidation(
+        currentCustomer:Customer,
+        companyId: String,
+        firstName:String,
+        lastName:String,
+        email:String,
+        phoneNumber:String,
+        company:String,
+        displayAsCompany:Bool,
+        billingAddress:Address,
+        active:Bool
+    ) async throws {
         let customerRef = customerDocument(customerId: currentCustomer.id, companyId: companyId)
         print("Customer id \(currentCustomer.id)")
         customerRef.updateData([
@@ -6244,7 +5851,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateCustomerAddress(companyId:String,currentCustomerId:String,address:Address) async throws {
         let customerRef = customerDocument(customerId: currentCustomerId, companyId: companyId)
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         customerRef.updateData([
             
             "billingAddress": [
@@ -6269,7 +5876,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func makeCustomerInactive(companyId:String,currentCustomerId:String,fireDate:Date,fireReason:String,fireCategory:String) async throws {
         let customerRef = customerDocument(customerId: currentCustomerId, companyId: companyId)
         
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         customerRef.updateData([
             
             "active":false,
@@ -6287,7 +5894,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     func updatePurchaseItem(purchaseItem:PurchasedItem,companyId: String) async throws {
         
-        // Add a new document in collection "cities"
+            // Add a new document in collection "cities"
         PurchaseItemDocument(purchaseItemId: purchaseItem.id, companyId: companyId).setData([
             "workOrderId": "0"
         ]) { err in
@@ -6327,7 +5934,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updatePurchasedItemBillingStatus(currentItem:PurchasedItem,newBillingStatus:Bool,companyId: String) async throws {
         let itemRef = PurchaseItemDocument(purchaseItemId: currentItem.id, companyId: companyId)
         
-        // Set the "capital" field of the city 'DC'
+            // Set the "capital" field of the city 'DC'
         itemRef.updateData([
             "invoiced":newBillingStatus
             
@@ -6372,17 +5979,17 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
     }
     func updateCompanyUserFavorites(user:DBUser,updatingUser:DBUser,favorites:[String]) async throws {
-        //        let ref = userDocument(userId: updatingUser.id)
-        //        //Change to Array Append
-        //         ref.updateData([
-        //            DBUser.CodingKeys.favorites.rawValue: favorites,
-        //        ]) { err in
-        //            if let err = err {
-        //                print("Error updating document: \(err)")
-        //            } else {
-        //                print("Updated Tech Favorite List Successfully")
-        //            }
-        //        }
+            //        let ref = userDocument(userId: updatingUser.id)
+            //        //Change to Array Append
+            //         ref.updateData([
+            //            DBUser.CodingKeys.favorites.rawValue: favorites,
+            //        ]) { err in
+            //            if let err = err {
+            //                print("Error updating document: \(err)")
+            //            } else {
+            //                print("Updated Tech Favorite List Successfully")
+            //            }
+            //        }
     }
     func updateUserImagePath(updatingUser:DBUser,path:String) async throws {
         let ref = userDocument(userId: updatingUser.id)
@@ -6396,6 +6003,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 print("Updated Tech Image List Successfully")
             }
         }
+    }
+    
+    func updateUserRecentlySelectedCompany(user:DBUser,recentlySelectedCompanyId:String) async throws {
+        
     }
     func updateToDoTitle(companyId:String,toDoId:String,newTitle:String) async throws {
         ToDoDocument(toDoId: toDoId, companyId: companyId)
@@ -6508,15 +6119,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     
     
-    //----------------------------------------------------
-    //                    Delete Functions
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Delete Functions
+        //----------------------------------------------------
     func deleteRecurringServiceStop(companyId:String,recurringServiceStopId : String) async throws {
         try await recurringServiceStopDocument(recurringServiceStopId: recurringServiceStopId, companyId: companyId).delete()
         
     }
     func deleteRecurringRoute(companyId:String,recurringRouteId : String) async throws{
-
+        
     }
     
     
@@ -7049,7 +6660,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         try await workOrderDocument(workOrderId: jobId, companyId: companyId).delete()
     }
     func deletePart(companyId:String,jobId:String,part:WODBItem,category:String) async throws {
-
+        
     }
     func deleteContract(companyId:String,contractId:String) async throws{
         try await contractDocument(companyId: companyId,contractId: contractId).delete()
@@ -7063,6 +6674,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func deleteServiceStop(companyId:String,serviceStop:ServiceStop)async throws {
         try await serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).delete()
+        
+    }
+    func deleteServiceStopById(companyId:String,serviceStopId:String)async throws {
+        try await serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId).delete()
         
     }
     func deleteEquipment(companyId:String,equipmentId:String) async throws {
@@ -7102,192 +6717,192 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func deleteToDo(companyId:String,toDoId:String) async throws {
         try await ToDoDocument(toDoId: toDoId, companyId: companyId).delete()
     }
-    //----------------------------------------------------
-    //                    WORKING Functions
-    //----------------------------------------------------
-
-  
+        //----------------------------------------------------
+        //                    WORKING Functions
+        //----------------------------------------------------
+    
+    
     func RegenerateCustomerSummaries(companyId:String,customers:[Customer],dosageTemplates:[DosageTemplate]) async throws {
-        for customer in customers {
-            //Delete all current monthlySummaries
-            try await CustomerManager.shared.deleteAllCustomerSummaries(companyId: companyId, customer: customer)
-            let serviceLocations = try await ServiceLocationManager.shared.getAllCustomerServiceLocationsId(companyId: companyId,customerId: customer.id)
-            
-            for location in serviceLocations {
-                for months in 1...13 {
-                    let multiplier = (months * -1) + 1
-                    let calendar = Calendar.current
-                    let components = calendar.dateComponents([.year, .month, .day], from: Date())
-                    let dateComponents = calendar.date(from: components)!
-                    let changingDate = calendar.date(byAdding: .month, value: multiplier, to: dateComponents)!
-                    
-                    let pushEndDate = changingDate.endOfMonth()
-                    let pushStartDate = changingDate.startOfMonth()
-                    //working spot
-                    print(pushStartDate)
-                    print(pushEndDate)
-                    
-                    let specificSummary = try await CustomerManager.shared.getMonthlySummaryByCustomerAndMonthAndServiceLocation(companyId: companyId, customer: customer,month: pushStartDate,serviceLocationId: location.id).first
-                    
-                    
-                    let stopHistory = try await readingCollectionForCustomerHistory(customerId: customer.id, companyId: companyId)
-                        .whereField("date", isGreaterThan: pushStartDate)
-                        .whereField("date", isLessThan: pushEndDate)
-                        .getDocuments(as:StopData.self)
-                    
-                    //                let stopHistory = try await ReadingsManager.shared.readAllHistory(customer: customer)
-                    
-                    print("stopHistory")
-                    print(stopHistory)
-                    
-                    var totalData:[PNLDataPointArray] = []
-                    var dataPoints:[PNLChem] = []
-                    var dataPointsByDay:[PNLChem] = []
-                    var dateList:[Date] = []
-                    for stop in stopHistory {
-                        print("stop")
-                        print(stop)
-                        if stop.date > pushStartDate && stop.date < pushEndDate {
-                            for template in dosageTemplates {
-                                let PNLDataPoint = PNLChem(id: UUID().uuidString, chemName: template.name ?? "NA", date: stop.date, amount: Double(stop.dosages[template.name ?? ""] as! String) ?? 0.00, rate: Double(template.rate ?? "0.00") ?? 0.00, serviceStopId: stop.serviceStopId)
-                                dataPoints.append(PNLDataPoint)
-                            }
-                            
-                        }
-                    }
-                    for uniqueDay in dataPoints{
-                        if !dateList.contains(uniqueDay.date) {
-                            dateList.append(uniqueDay.date)
-                            for day in dataPoints {
-                                if uniqueDay.date == day.date {
-                                    dataPointsByDay.append(day)
-                                }
-                            }
-                            let serviceStop = try! await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
-                            
-                            totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
-                            dataPointsByDay = []
-                        }
-                    }
-                    var chemicalCost: Double = 0.00
-                    var laborCost: Double = 0.00
-                    
-                    for data in dataPoints {
-                        chemicalCost = data.totalCost + chemicalCost
-                    }
-                    for data in totalData {
-                        laborCost = data.laborCost + laborCost
-                    }
-                    let totalCost = laborCost + chemicalCost
-                    print("chemicalCost")
-                    print(chemicalCost)
-                    print("laborCost")
-                    print(laborCost)
-                    print("totalCost")
-                    print(totalCost)
-                    let fullName = (customer.firstName ) + " " + (customer.lastName )
-                    
-                    try await CustomerManager.shared.uploadingCustomerMonthlySummary(companyId: companyId, customer: customer, customerMonthlySummary: CustomerMonthlySummary(id: specificSummary?.id ?? "1",date: pushStartDate, customerId: customer.id, customerDisplayName: fullName, serviceLocationId:location.id, monthlyRate: Double(location.rate) ?? 200.00, chemicalCost: chemicalCost, laborCost: laborCost, serviceStops: Double(dateList.count)))
-                }
-            }
-            
-        }
-        
-        
+            //        for customer in customers {
+            //            //Delete all current monthlySummaries
+            //            try await CustomerManager.shared.deleteAllCustomerSummaries(companyId: companyId, customer: customer)
+            //            let serviceLocations = try await ServiceLocationManager.shared.getAllCustomerServiceLocationsId(companyId: companyId,customerId: customer.id)
+            //            
+            //            for location in serviceLocations {
+            //                for months in 1...13 {
+            //                    let multiplier = (months * -1) + 1
+            //                    let calendar = Calendar.current
+            //                    let components = calendar.dateComponents([.year, .month, .day], from: Date())
+            //                    let dateComponents = calendar.date(from: components)!
+            //                    let changingDate = calendar.date(byAdding: .month, value: multiplier, to: dateComponents)!
+            //                    
+            //                    let pushEndDate = changingDate.endOfMonth()
+            //                    let pushStartDate = changingDate.startOfMonth()
+            //                    //working spot
+            //                    print(pushStartDate)
+            //                    print(pushEndDate)
+            //                    
+            //                    let specificSummary = try await CustomerManager.shared.getMonthlySummaryByCustomerAndMonthAndServiceLocation(companyId: companyId, customer: customer,month: pushStartDate,serviceLocationId: location.id).first
+            //                    
+            //                    
+            //                    let stopHistory = try await readingCollectionForCustomerHistory(customerId: customer.id, companyId: companyId)
+            //                        .whereField("date", isGreaterThan: pushStartDate)
+            //                        .whereField("date", isLessThan: pushEndDate)
+            //                        .getDocuments(as:StopData.self)
+            //                    
+            //                    //                let stopHistory = try await ReadingsManager.shared.readAllHistory(customer: customer)
+            //                    
+            //                    print("stopHistory")
+            //                    print(stopHistory)
+            //                    
+            //                    var totalData:[PNLDataPointArray] = []
+            //                    var dataPoints:[PNLChem] = []
+            //                    var dataPointsByDay:[PNLChem] = []
+            //                    var dateList:[Date] = []
+            //                    for stop in stopHistory {
+            //                        print("stop")
+            //                        print(stop)
+            //                        if stop.date > pushStartDate && stop.date < pushEndDate {
+            //                            for template in dosageTemplates {
+            //                                let PNLDataPoint = PNLChem(id: UUID().uuidString, chemName: template.name ?? "NA", date: stop.date, amount: Double(stop.dosages[template.name ?? ""] as! String) ?? 0.00, rate: Double(template.rate ?? "0.00") ?? 0.00, serviceStopId: stop.serviceStopId)
+            //                                dataPoints.append(PNLDataPoint)
+            //                            }
+            //                            
+            //                        }
+            //                    }
+            //                    for uniqueDay in dataPoints{
+            //                        if !dateList.contains(uniqueDay.date) {
+            //                            dateList.append(uniqueDay.date)
+            //                            for day in dataPoints {
+            //                                if uniqueDay.date == day.date {
+            //                                    dataPointsByDay.append(day)
+            //                                }
+            //                            }
+            //                            let serviceStop = try await serviceStopDocument(serviceStopId: uniqueDay.serviceStopId, companyId: companyId).getDocument(as: ServiceStop.self)
+            //                            //DEVELOPER Investigate
+            ////                            totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
+            //                            dataPointsByDay = []
+            //                        }
+            //                    }
+            //                    var chemicalCost: Double = 0.00
+            //                    var laborCost: Double = 0.00
+            //                    
+            //                    for data in dataPoints {
+            //                        chemicalCost = data.totalCost + chemicalCost
+            //                    }
+            //                    for data in totalData {
+            //                        laborCost = data.laborCost + laborCost
+            //                    }
+            //                    let totalCost = laborCost + chemicalCost
+            //                    print("chemicalCost")
+            //                    print(chemicalCost)
+            //                    print("laborCost")
+            //                    print(laborCost)
+            //                    print("totalCost")
+            //                    print(totalCost)
+            //                    let fullName = (customer.firstName ) + " " + (customer.lastName )
+            //                    
+            //                    try await CustomerManager.shared.uploadingCustomerMonthlySummary(companyId: companyId, customer: customer, customerMonthlySummary: CustomerMonthlySummary(id: specificSummary?.id ?? "1",date: pushStartDate, customerId: customer.id, customerDisplayName: fullName, serviceLocationId:location.id, monthlyRate: Double(location.rate) ?? 200.00, chemicalCost: chemicalCost, laborCost: laborCost, serviceStops: Double(dateList.count)))
+            //                }
+            //            }
+            //            
+            //        }
+            //        
+            //        
     }
     func RegenerateSingleCustomer(companyId:String,customer:Customer,dosageTemplates:[DosageTemplate]) async throws {
-        //Delete all current monthlySummaries
-        try await CustomerManager.shared.deleteAllCustomerSummaries(companyId:companyId,customer: customer)
-        let serviceLocations = try await ServiceLocationManager.shared.getAllCustomerServiceLocationsId(companyId: companyId,customerId: customer.id)
-        
-        for location in serviceLocations {
-            for months in 1...13 {
-                let multiplier = (months * -1) + 1
-                let calendar = Calendar.current
-                let components = calendar.dateComponents([.year, .month, .day], from: Date())
-                let dateComponents = calendar.date(from: components)!
-                let changingDate = calendar.date(byAdding: .month, value: multiplier, to: dateComponents)!
-                
-                let pushEndDate = changingDate.endOfMonth()
-                let pushStartDate = changingDate.startOfMonth()
-                //working spot
-                print(pushStartDate)
-                print(pushEndDate)
-                
-                //                let specificSummary = try await CustomerManager.shared.getMonthlySummaryByCustomerAndMonthAndServiceLocation(customer: customer, companyId: companyId,month: pushStartDate,serviceLocationId: location.id).first
-                
-                
-                let stopHistory = try await readingCollectionForCustomerHistory(customerId: customer.id, companyId: companyId)
-                    .whereField("date", isGreaterThan: pushStartDate)
-                    .whereField("date", isLessThan: pushEndDate)
-                    .getDocuments(as:StopData.self)
-                
-                //                let stopHistory = try await ReadingsManager.shared.readAllHistory(customer: customer)
-                
-                print("stopHistory")
-                print(stopHistory)
-                
-                var totalData:[PNLDataPointArray] = []
-                var dataPoints:[PNLChem] = []
-                var dataPointsByDay:[PNLChem] = []
-                var dateList:[Date] = []
-                for stop in stopHistory {
-                    print("stop")
-                    print(stop)
-                    if stop.date > pushStartDate && stop.date < pushEndDate {
-                        for template in dosageTemplates {
-                            for dosage in stop.dosages{
-                                if dosage.templateId == template.id {
-                                    let amount:String = dosage.amount ?? "0.00"
-                                    
-                                    let PNLDataPoint = PNLChem(id: UUID().uuidString, chemName: template.name ?? "NA", date: stop.date, amount: Double(amount) ?? 0, rate: Double(template.rate ?? "0.00") ?? 0.00, serviceStopId: stop.serviceStopId)
-                                    dataPoints.append(PNLDataPoint)
-                                }
-                            }
-                        }
-                        
-                    }
-                }
-                for uniqueDay in dataPoints{
-                    if !dateList.contains(uniqueDay.date) {
-                        dateList.append(uniqueDay.date)
-                        for day in dataPoints {
-                            if uniqueDay.date == day.date {
-                                dataPointsByDay.append(day)
-                            }
-                        }
-                        let serviceStop = try? await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
-                        
-                        totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop?.techId! ?? "1",tech:serviceStop?.tech! ?? "1", laborCost: Double(serviceStop?.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
-                        
-                        dataPointsByDay = []
-                    }
-                }
-                var chemicalCost: Double = 0.00
-                var laborCost: Double = 0.00
-                
-                for data in dataPoints {
-                    chemicalCost = data.totalCost + chemicalCost
-                }
-                for data in totalData {
-                    laborCost = data.laborCost + laborCost
-                }
-                let totalCost = laborCost + chemicalCost
-                print("chemicalCost")
-                print(chemicalCost)
-                print("laborCost")
-                print(laborCost)
-                print("totalCost")
-                print(totalCost)
-                let fullName = (customer.firstName ) + " " + (customer.lastName )
-                
-                try await CustomerManager.shared.uploadingCustomerMonthlySummary(companyId: companyId, customer: customer, customerMonthlySummary: CustomerMonthlySummary(id: UUID().uuidString,date: pushStartDate, customerId: customer.id, customerDisplayName: fullName, serviceLocationId:location.id, monthlyRate: Double(location.rate) ?? 200.00, chemicalCost: chemicalCost, laborCost: laborCost, serviceStops: Double(dateList.count)))
-            }
-            
-            
-        }
-        
-        
+            //        //Delete all current monthlySummaries
+            //        try await CustomerManager.shared.deleteAllCustomerSummaries(companyId:companyId,customer: customer)
+            //        let serviceLocations = try await ServiceLocationManager.shared.getAllCustomerServiceLocationsId(companyId: companyId,customerId: customer.id)
+            //        
+            //        for location in serviceLocations {
+            //            for months in 1...13 {
+            //                let multiplier = (months * -1) + 1
+            //                let calendar = Calendar.current
+            //                let components = calendar.dateComponents([.year, .month, .day], from: Date())
+            //                let dateComponents = calendar.date(from: components)!
+            //                let changingDate = calendar.date(byAdding: .month, value: multiplier, to: dateComponents)!
+            //                
+            //                let pushEndDate = changingDate.endOfMonth()
+            //                let pushStartDate = changingDate.startOfMonth()
+            //                //working spot
+            //                print(pushStartDate)
+            //                print(pushEndDate)
+            //                
+            //                //                let specificSummary = try await CustomerManager.shared.getMonthlySummaryByCustomerAndMonthAndServiceLocation(customer: customer, companyId: companyId,month: pushStartDate,serviceLocationId: location.id).first
+            //                
+            //                
+            //                let stopHistory = try await readingCollectionForCustomerHistory(customerId: customer.id, companyId: companyId)
+            //                    .whereField("date", isGreaterThan: pushStartDate)
+            //                    .whereField("date", isLessThan: pushEndDate)
+            //                    .getDocuments(as:StopData.self)
+            //                
+            //                //                let stopHistory = try await ReadingsManager.shared.readAllHistory(customer: customer)
+            //                
+            //                print("stopHistory")
+            //                print(stopHistory)
+            //                
+            //                var totalData:[PNLDataPointArray] = []
+            //                var dataPoints:[PNLChem] = []
+            //                var dataPointsByDay:[PNLChem] = []
+            //                var dateList:[Date] = []
+            //                for stop in stopHistory {
+            //                    print("stop")
+            //                    print(stop)
+            //                    if stop.date > pushStartDate && stop.date < pushEndDate {
+            //                        for template in dosageTemplates {
+            //                            for dosage in stop.dosages{
+            //                                if dosage.templateId == template.id {
+            //                                    let amount:String = dosage.amount ?? "0.00"
+            //                                    
+            //                                    let PNLDataPoint = PNLChem(id: UUID().uuidString, chemName: template.name ?? "NA", date: stop.date, amount: Double(amount) ?? 0, rate: Double(template.rate ?? "0.00") ?? 0.00, serviceStopId: stop.serviceStopId)
+            //                                    dataPoints.append(PNLDataPoint)
+            //                                }
+            //                            }
+            //                        }
+            //                        
+            //                    }
+            //                }
+            //                for uniqueDay in dataPoints{
+            //                    if !dateList.contains(uniqueDay.date) {
+            //                        dateList.append(uniqueDay.date)
+            //                        for day in dataPoints {
+            //                            if uniqueDay.date == day.date {
+            //                                dataPointsByDay.append(day)
+            //                            }
+            //                        }
+            //                        let serviceStop = try? await serviceStopDocument(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
+            //                        //Developer INvestigate
+            ////                        totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop?.techId! ?? "1",tech:serviceStop?.tech! ?? "1", laborCost: Double(serviceStop?.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
+            //                        
+            //                        dataPointsByDay = []
+            //                    }
+            //                }
+            //                var chemicalCost: Double = 0.00
+            //                var laborCost: Double = 0.00
+            //                
+            //                for data in dataPoints {
+            //                    chemicalCost = data.totalCost + chemicalCost
+            //                }
+            //                for data in totalData {
+            //                    laborCost = data.laborCost + laborCost
+            //                }
+            //                let totalCost = laborCost + chemicalCost
+            //                print("chemicalCost")
+            //                print(chemicalCost)
+            //                print("laborCost")
+            //                print(laborCost)
+            //                print("totalCost")
+            //                print(totalCost)
+            //                let fullName = (customer.firstName ) + " " + (customer.lastName )
+            //                
+            //                try await CustomerManager.shared.uploadingCustomerMonthlySummary(companyId: companyId, customer: customer, customerMonthlySummary: CustomerMonthlySummary(id: UUID().uuidString,date: pushStartDate, customerId: customer.id, customerDisplayName: fullName, serviceLocationId:location.id, monthlyRate: Double(location.rate) ?? 200.00, chemicalCost: chemicalCost, laborCost: laborCost, serviceStops: Double(dateList.count)))
+            //            }
+            //            
+            //            
+            //        }
+            //        
+            //        
     }
     func convertDatabaseItemToCSVStruct(contents: String) async throws -> [CSVDataBaseItem]{
         var csvToStruct = [CSVDataBaseItem]()
@@ -7335,19 +6950,19 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             print("Converted \(customerStruct.firstName) \(customerStruct.lastName)")
             
             csvToStruct.append(customerStruct)
-            //            if customerStruct.firstName == "Sue" && customerStruct.lastName == "Thomas" {
-            //
-            //                return csvToStruct
-            //                print("Cut Out Early")
-            //
-            //            }
+                //            if customerStruct.firstName == "Sue" && customerStruct.lastName == "Thomas" {
+                //
+                //                return csvToStruct
+                //                print("Cut Out Early")
+                //
+                //            }
         }
         print("Successfully Converted Customer List")
         return csvToStruct
     }
-    //----------------------------------------------------
-    //                    Listeners
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    Listeners
+        //----------------------------------------------------
     func uploadCustomer(companyId:String,customer : Customer) async throws {
         print("Attempting to Up Load \(customer.firstName) \(customer.lastName) to Firestore")
         
@@ -7415,25 +7030,25 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         self.messageListener = listener
     }
     func addListenerForAllRepairRequests(companyId:String,status:[RepairRequestStatus],requesterIds:[String],startDate:Date,endDate:Date,completion:@escaping (_ serviceStops:[RepairRequest]) -> Void){
-
+        
         var listener:ListenerRegistration? = nil
-   
-            print("All Filters ")
-            
-            listener = repairRequestCollection(companyId: companyId)
-                .whereField("status", in: status)
-                .whereField("requesterId", in: requesterIds)
-                .whereField("date", isGreaterThan: startDate.startOfDay())
-                .whereField("date", isLessThan: endDate.endOfDay())
-                .order(by: "date", descending: false)
-                .addSnapshotListener { querySnapshot, error in
-                    guard let documents = querySnapshot?.documents else {
-                        print("There are no documents in the Repair Request Collection")
-                        return
-                    }
-                    let chats: [RepairRequest] = documents.compactMap({try? $0.data(as: RepairRequest.self)})
-                    completion(chats)
+        
+        print("All Filters ")
+        
+        listener = repairRequestCollection(companyId: companyId)
+            .whereField("status", in: status)
+            .whereField("requesterId", in: requesterIds)
+            .whereField("date", isGreaterThan: startDate.startOfDay())
+            .whereField("date", isLessThan: endDate.endOfDay())
+            .order(by: "date", descending: false)
+            .addSnapshotListener { querySnapshot, error in
+                guard let documents = querySnapshot?.documents else {
+                    print("There are no documents in the Repair Request Collection")
+                    return
                 }
+                let chats: [RepairRequest] = documents.compactMap({try? $0.data(as: RepairRequest.self)})
+                completion(chats)
+            }
         
         self.requestListener = listener
     }
@@ -7723,15 +7338,25 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         self.customerListener = listener
     }
+    func addListenerForSentLaborContracts(companyId:String,status:[LaborContractStatus], isInvoiced:Bool, completion:@escaping (_ customers:[LaborContract]) -> Void){
+    }
+    func addListenerForReceivedLaborContracts(companyId:String,status:[LaborContractStatus], isInvoiced:Bool, completion:@escaping (_ customers:[LaborContract]) -> Void){
+    }
+    func addListenerForReceivedLaborContractsAllInvoiceStatus(companyId:String, status:[LaborContractStatus], completion:@escaping (_ customers:[LaborContract]) -> Void){
+        
+    }
     func addListenerForAllJobsBilling(companyId:String,status:[JobBillingStatus],requesterIds:[String],startDate:Date,endDate:Date,completion:@escaping (_ serviceStops:[Job]) -> Void){
         
     }
+    func addListenerForSentLaborContractsAllInvoiceStatus(companyId:String, status:[LaborContractStatus], completion:@escaping (_ customers:[LaborContract]) -> Void){
+    }
+    
     func addListenerForAllJobsOperations(companyId:String,status:[JobOperationStatus],requesterIds:[String],startDate:Date,endDate:Date,completion:@escaping (_ serviceStops:[Job]) -> Void){
         
     }
     func removeListenerForJobs(){
         self.jobListener?.remove()
-
+        
     }    
     func removeListenerForAllCustomers(){
         self.dataBaseListener?.remove()
@@ -7745,18 +7370,298 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func removeListenerForRequests(){
         self.requestListener?.remove()
     }
-
+    
     func removeListenerForAllServiceStops(){
         self.serviceStopListener?.remove()
     }
     func removeEquipmentListener() {
         self.equipmentListener?.remove()
     }
-    //----------------------------------------------------
-    //                    All Mock Data
-    //----------------------------------------------------
+        //----------------------------------------------------
+        //                    All Mock Data
+        //----------------------------------------------------
     
-    // Service Locations
+        // Service Locations
+    
+    static let mockCustomer:Customer = Customer(
+        id: UUID().uuidString,
+        firstName: "Jane",
+        lastName: "Doe",
+        email: "JD2000@gmail.com",
+        billingAddress: Address(
+            streetAddress: "One Apple Park Way",
+            city: "Cupertino",
+            state: "CA",
+            zip: "95014",
+            latitude: 37.332279,
+            longitude: -122.010979
+        ),
+        phoneNumber: "",
+        phoneLabel: "",
+        active: true,
+        company: "",
+        displayAsCompany: false,
+        hireDate: Date(),
+        billingNotes: "",
+        tags: [] ,
+        linkedInviteId: UUID().uuidString
+    )
+    static let mockCustomerList:[Customer] =  [
+        
+        Customer(
+            id: "1",
+            firstName: "Aphrodite",
+            lastName: "Love, Sex and Beauty",
+            email: "HotSex@hotmail.com",
+            billingAddress: Address(
+                streetAddress: "Akti Sachtouri 10",
+                city: "Rhodes",
+                state: "Greece",
+                zip: "851 31",
+                latitude: 36.44591,
+                longitude: 28.22736
+            ),
+            phoneNumber: "Aphrodite",
+            phoneLabel: "619-555-6969",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "2",
+            firstName: "Athena",
+            lastName: "Reason, Wisdom and War",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "3",
+            firstName: "Artemis",
+            lastName: "Hunt",
+            email: "HotSex@hotmail.com",
+            billingAddress: Address(
+                streetAddress: "Akti Sachtouri 10",
+                city: "Rhodes",
+                state: "Greece",
+                zip: "851 31",
+                latitude: 36.44591,
+                longitude: 28.22736
+            ),
+            phoneNumber: "Aphrodite",
+            phoneLabel: "619-555-6969",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "4",
+            firstName: "Aries",
+            lastName: "Bloodlust and War",
+            email: "HotSex@hotmail.com",
+            billingAddress: Address(
+                streetAddress: "Akti Sachtouri 10",
+                city: "Rhodes",
+                state: "Greece",
+                zip: "851 31",
+                latitude: 36.44591,
+                longitude: 28.22736
+            ),
+            phoneNumber: "Aphrodite",
+            phoneLabel: "619-555-6969",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "5",
+            firstName: "Apollo",
+            lastName: "Son of Zeus",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "6",
+            firstName: "Demeter",
+            lastName: "Agriculture",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "7",
+            firstName: "Dionysus",
+            lastName: "Drunken Wine",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "8",
+            firstName: "Hades",
+            lastName: "Ruler of the Underworld",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "9",
+            firstName: "Hera",
+            lastName: "Hearth",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "10",
+            firstName: "Poseidon",
+            lastName: "Ocean, Horses and Earthquakes",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "11",
+            firstName: "Zeus",
+            lastName: "King of the Gods",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        )
+    ]
+    
     static let mockServiceLocation:ServiceLocation = ServiceLocation(
         id: "1",
         nickName: "Main",
@@ -8177,45 +8082,452 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             preText: false
         )
     ]
+    let mockServiceStops:[ServiceStop] = []
+    
     static let mockRecurringServiceStop:RecurringServiceStop = RecurringServiceStop(
-        id: UUID().uuidString,
+        id: "",
+        internalId: "",
         type: "",
         typeId: "",
         typeImage: "",
         customerName: "",
         customerId: "",
-        locationId: "",
-        frequency: "",
         address: Address(
             streetAddress: "",
             city: "",
             state: "",
             zip: "",
-            latitude: 32,
-            longitude: -116
+            latitude: 0,
+            longitude: 0
         ),
-        dateCreated: Date(),
         tech: "",
-        endDate: Date(),
-        startDate: Date(),
         techId: "",
+        dateCreated: Date(),
+        startDate: Date(),
+        endDate: Date(),
         noEndDate: false,
-        customMeasuresOfTime: "",
-        customEvery: "",
-        daysOfWeek: [],
+        frequency: .biWeekly,
+        daysOfWeek: "",
         description: "",
         lastCreated: Date(),
         serviceLocationId: "",
-        estimatedTime: ""
+        estimatedTime: "",
+        otherCompany: false
     )
-    static let mockCompany:Company = Company(id: "", ownerId: "", name: "", photoUrl: "", dateCreated: Date())
-    static let mockServicestop: ServiceStop =      ServiceStop(id: UUID().uuidString, typeId: "Estimate", customerName: "Kellie Lewis", customerId: "", address: Address(streetAddress: "3300 W Camelback Rd", city: "Phoeniz", state: "Az", zip: "85017", latitude: 33.30389, longitude: -112.07432), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "list.bullet.clipboard", jobId: "", finished: true, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true)
-    static let mockVehical : [Vehical] = [
-        Vehical(id: UUID().uuidString, nickName: "Betsy", vehicalType: "Truck", year: "2019", make: "Toyota", model: "Tundra", color: "White", plate: "7FKHNUD", datePurchased: Date(), miles: 2234654),
-        Vehical(id: UUID().uuidString, nickName: "jordan", vehicalType: "Truck", year: "1994", make: "Toyota", model: "Pick Up", color: "Red", plate: "7FKHNUD", datePurchased: Date(), miles: 245654),
-        Vehical(id: UUID().uuidString, nickName: "Green", vehicalType: "Truck", year: "2013", make: "Nissan", model: "Datsun", color: "Green", plate: "7FKHNUD", datePurchased: Date(), miles: 34566),
-        Vehical(id: UUID().uuidString, nickName: "Blue", vehicalType: "Truck", year: "2000", make: "Nissan", model: "Frontier", color: "Blue", plate: "7FKHNUD", datePurchased: Date(), miles: 35463456),
-        Vehical(id: UUID().uuidString, nickName: "White", vehicalType: "Truck", year: "2020", make: "Toyota", model: "Tacoma", color: "White", plate: "7FKHNUD", datePurchased: Date(), miles: 356346),
-        Vehical(id: UUID().uuidString, nickName: "Black", vehicalType: "Van", year: "2004", make: "Ford", model: "Ranger", color: "Black", plate: "7FKHNUD", datePurchased: Date(), miles: 3456456)
+    static let mockCompany:Company = Company(
+        id: UUID().uuidString,
+        ownerId: UUID().uuidString,
+        ownerName: "Michael Angelo",
+        name: "Angelo Arts",
+        photoUrl: "",
+        dateCreated: Date(),
+        email: "DaVinciSucks@gmail.com",
+        phoneNumber: "6195556969",
+        verified: false,
+        serviceZipCodes: [],
+        services: []
+    )
+    static let mockAssociatedBusiness : AssociatedBusiness = AssociatedBusiness(
+        id: UUID().uuidString,
+        companyId: UUID().uuidString,
+        companyName: "Mock Company Name"
+    )
+    static let mockServicestop: ServiceStop = ServiceStop(
+        id: "",
+        internalId: "",
+        companyId: "",
+        companyName: "",
+        customerId: "",
+        customerName: "",
+        address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+        dateCreated: Date(),
+        serviceDate: Date(),
+        startTime: Date(),
+        endTime: Date(),
+        duration: 0,
+        estimatedDuration: 0,
+        tech: "",
+        techId: "",
+        recurringServiceStopId: "",
+        description: "",
+        serviceLocationId: "",
+        typeId: "",
+        type: "",
+        typeImage: "",
+        jobId: "",
+        jobName: "",
+        operationStatus: .finished,
+        billingStatus: .notInvoiced,
+        includeReadings: true,
+        includeDosages: true,
+        otherCompany: false,
+        laborContractId: "",
+        contractedCompanyId: "",
+        isInvoiced: false
+    )
+    static let mockVehical : Vehical = Vehical(
+        id: UUID().uuidString,
+        nickName: "Betsy",
+        vehicalType: .truck,
+        year: "2019",
+        make: "Toyota",
+        model: "Tundra",
+        color: "White",
+        plate: "7FKHNUD",
+        datePurchased: Date(),
+        miles: 2234654,
+        status: .active
+    )
+    
+    static let mockFleet : [Vehical] = [
+        Vehical(
+            id: UUID().uuidString,
+            nickName: "Betsy",
+            vehicalType: .truck,
+            year: "2019",
+            make: "Toyota",
+            model: "Tundra",
+            color: "White",
+            plate: "7FKHNUD",
+            datePurchased: Date(),
+            miles: 2234654,
+            status: .active
+        ),
+        Vehical(
+            id: UUID().uuidString,
+            nickName: "jordan",
+            vehicalType: .truck,
+            year: "1994",
+            make: "Toyota",
+            model: "Pick Up",
+            color: "Red",
+            plate: "7FKHNUD",
+            datePurchased: Date(),
+            miles: 245654,
+            status: .active
+        ),
+        Vehical(
+            id: UUID().uuidString,
+            nickName: "Green",
+            vehicalType: .truck,
+            year: "2013",
+            make: "Nissan",
+            model: "Datsun",
+            color: "Green",
+            plate: "7FKHNUD",
+            datePurchased: Date(),
+            miles: 34566,
+            status: .active
+        ),
+        Vehical(
+            id: UUID().uuidString,
+            nickName: "Blue",
+            vehicalType: .truck,
+            year: "2000",
+            make: "Nissan",
+            model: "Frontier",
+            color: "Blue",
+            plate: "7FKHNUD",
+            datePurchased: Date(),
+            miles: 35463456,
+            status: .active
+        ),
+        Vehical(
+            id: UUID().uuidString,
+            nickName: "White",
+            vehicalType: .truck,
+            year: "2020",
+            make: "Toyota",
+            model: "Tacoma",
+            color: "White",
+            plate: "7FKHNUD",
+            datePurchased: Date(),
+            miles: 356346,
+            status: .active
+        ),
+        Vehical(
+            id: UUID().uuidString,
+            nickName: "Black",
+            vehicalType: .van,
+            year: "2004",
+            make: "Ford",
+            model: "Ranger",
+            color: "Black",
+            plate: "7FKHNUD",
+            datePurchased: Date(),
+            miles: 3456456,
+            status: .active
+        )
+    ]
+    static let mockLaborContract: LaborContract =
+    LaborContract(
+        id: UUID().uuidString,
+        senderName: "Sender Name",
+        senderId: UUID().uuidString,
+        senderAcceptance: false,
+        receiverName: "Receiver Name",
+        receiverId: UUID().uuidString,
+        receiverAcceptance: false,
+        type: .businessToBusiness,
+        dateSent: Date(),
+        lastDateToAccept: Date(),
+        dateAccepted: Date(),
+        status: .accepted,
+        terms: [
+            
+        ],
+        notes: "Notes",
+        rate: 0,
+        senderJobId: IdInfo(
+            id: UUID().uuidString,
+            internalId: "J123"
+        ),
+        customerId: UUID().uuidString,
+        customerName: "Customer Name",
+        serviceLocationId: UUID().uuidString,
+        serviceLocationName: "Location Name",
+        jobTemplateId: UUID().uuidString,
+        jobTemplateName: "Job Template Name",
+        isInvoiced: true
+    )
+
+    static let mockLaborContracts: [LaborContract] = [
+        LaborContract(
+            id: UUID().uuidString,
+            senderName: "Sender Name",
+            senderId: UUID().uuidString,
+            senderAcceptance: false,
+            receiverName: "Receiver Name",
+            receiverId: UUID().uuidString,
+            receiverAcceptance: false,
+            type: .businessToBusiness,
+            dateSent: Date(),
+            lastDateToAccept: Date(),
+            dateAccepted: Date(),
+            status: .accepted,
+            terms: [
+                
+            ],
+            notes: "Notes",
+            rate: 0,
+            senderJobId: IdInfo(
+                id: UUID().uuidString,
+                internalId: "J123"
+            ),
+            customerId: UUID().uuidString,
+            customerName: "Customer Name",
+            serviceLocationId: UUID().uuidString,
+            serviceLocationName: "Location Name",
+            jobTemplateId: UUID().uuidString,
+            jobTemplateName: "Job Template Name",
+            isInvoiced: true
+        ),
+        
+        LaborContract(
+            id: UUID().uuidString,
+            senderName: "Sender Name",
+            senderId: UUID().uuidString,
+            senderAcceptance: false,
+            receiverName: "Receiver Name",
+            receiverId: UUID().uuidString,
+            receiverAcceptance: false,
+            type: .businessToBusiness,
+            dateSent: Date(),
+            lastDateToAccept: Date(),
+            dateAccepted: Date(),
+            status: .accepted,
+            terms: [
+                
+            ],
+            notes: "Notes",
+            rate: 0,
+            senderJobId: IdInfo(
+                id: UUID().uuidString,
+                internalId: "J123"
+            ),
+            customerId: UUID().uuidString,
+            customerName: "Customer Name",
+            serviceLocationId: UUID().uuidString,
+            serviceLocationName: "Location Name",
+            jobTemplateId: UUID().uuidString,
+            jobTemplateName: "Job Template Name",
+            isInvoiced: true
+        )
+    ]
+    
+    static let mockRecurringLaborContracts : [ReccuringLaborContract] = [
+        ReccuringLaborContract(
+            id: UUID().uuidString,
+            senderName: "Murdock Pool Service",
+            senderId: UUID().uuidString,
+            senderAcceptance: true,
+            receiverName: "Michael Espineli",
+            receiverId: UUID().uuidString,
+            receiverAcceptance: false,
+            dateSent: Date(), 
+            lastDateToAccept: Date(),
+            startDate: Date(),
+            endDate: Date(),
+            status: .accepted,
+            isActive: true,
+            terms:[],
+            notes: "Notes",
+            atWill:false
+        )
+        ,
+        
+        ReccuringLaborContract(
+            id: UUID().uuidString,
+            senderName: "Murdock Pool Service",
+            senderId: UUID().uuidString,
+            senderAcceptance: true,
+            receiverName: "Michael Espineli",
+            receiverId: UUID().uuidString,
+            receiverAcceptance: false,
+            dateSent: Date(),
+            lastDateToAccept: Date(),
+            startDate: Date(),
+            endDate: Date(),
+            status: .accepted,
+            isActive: true,
+            terms:[],
+            notes: "Notes",
+            atWill:false
+        )
+        ,
+        
+        ReccuringLaborContract(
+            id: UUID().uuidString,
+            senderName: "Murdock Pool Service",
+            senderId: UUID().uuidString,
+            senderAcceptance: true,
+            receiverName: "Michael Espineli",
+            receiverId: UUID().uuidString,
+            receiverAcceptance: false,
+            dateSent: Date(),
+            lastDateToAccept: Date(),
+            startDate: Date(),
+            endDate: Date(),
+            status: .accepted,
+            isActive: true,
+            terms:[],
+            notes: "Notes",
+            atWill:false
+        )
+    ]
+    static let mockPerformaceHistory : [PerformaceHistory] = [
+        PerformaceHistory(
+            id: UUID().uuidString,
+            userId: UUID().uuidString,
+            userName: "John Doe",
+            date: Date(),
+            description: "Description",
+            photoUrls: [],
+            performaceHistoryType: .kudo
+        ),
+        PerformaceHistory(
+            id: UUID().uuidString,
+            userId: UUID().uuidString,
+            userName: "John Doe",
+            date: Date(),
+            description: "Description",
+            photoUrls: [],
+            performaceHistoryType: .kudo
+        ),
+        PerformaceHistory(
+            id: UUID().uuidString,
+            userId: UUID().uuidString,
+            userName: "John Doe",
+            date: Date(),
+            description: "Description",
+            photoUrls: [],
+            performaceHistoryType: .complaint
+        ),
+        PerformaceHistory(
+            id: UUID().uuidString,
+            userId: UUID().uuidString,
+            userName: "John Doe",
+            date: Date(),
+            description: "Description",
+            photoUrls: [],
+            performaceHistoryType: .complaint
+        )
+    ]
+    static let mockShoppingListItem : ShoppingListItem = ShoppingListItem(
+        id: UUID().uuidString,
+        category: .customer,
+        subCategory: .chemical,
+        status: .installed,
+        purchaserId: "",
+        purchaserName: "",
+        genericItemId: "",
+        name: "",
+        description: "",
+        datePurchased: Date(),
+        quantiy: "",
+        jobId: "",
+        customerId: "",
+        customerName: "",
+        userId: "",
+        userName: ""
+    )
+    static let mockLaborContractRecurringWork : [LaborContractRecurringWork] = [
+        LaborContractRecurringWork(
+            id: UUID().uuidString,
+            customerId: UUID().uuidString,
+            customerName: "Customer Name 1",
+            serviceLocationId: UUID().uuidString,
+            serviceLocationName: "Location Name 1",
+            jobTemplateId: UUID().uuidString,
+            jobTemplateName: "Tempalte Name 1",
+            rate: 1500,
+            laborType: .job,
+            frequency: .weekly,
+            timesPerFrequency: 1,
+            timesPerFrequencySetUp: 1,
+            routeSetUp: true,
+            recurringServiceStopIdList: [],
+            isActive: true,
+            lastBilled: Date()
+        )
+        ,
+        LaborContractRecurringWork(
+            id: UUID().uuidString,
+            customerId: UUID().uuidString,
+            customerName: "Customer Name 2",
+            serviceLocationId: UUID().uuidString,
+            serviceLocationName: "Location Name 2",
+            jobTemplateId: UUID().uuidString,
+            jobTemplateName: "Tempalte Name 2",
+            rate: 1500,
+            laborType: .job,
+            frequency: .weekly,
+            timesPerFrequency: 1,
+            timesPerFrequencySetUp: 1,
+            routeSetUp: true,
+            recurringServiceStopIdList: [],
+            isActive: true,
+            lastBilled: Date()
+        )
+        ,
+        LaborContractRecurringWork(
+            id: UUID().uuidString,
+            customerId: UUID().uuidString,
+            customerName: "Customer Name 3",
+            serviceLocationId: UUID().uuidString,
+            serviceLocationName: "Location Name 3",
+            jobTemplateId: UUID().uuidString,
+            jobTemplateName: "Tempalte Name 3",
+            rate: 1500,
+            laborType: .job,
+            frequency: .weekly,
+            timesPerFrequency: 1,
+            timesPerFrequencySetUp: 1,
+            routeSetUp: true,
+            recurringServiceStopIdList: [],
+            isActive: true,
+            lastBilled: Date()
+        )
+        
     ]
 }

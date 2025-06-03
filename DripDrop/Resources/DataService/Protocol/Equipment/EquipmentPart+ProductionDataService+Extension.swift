@@ -21,4 +21,12 @@ struct EquipmentPart:Identifiable, Codable{
 
 }
 extension ProductionDataService {
+    
+    func equipmentPartCollection(companyId:String,equipmentId:String) -> CollectionReference{
+        db.collection("companies/\(companyId)/equipment/\(equipmentId)/parts")
+    }
+    func equipmentMeasurmentsCollection(companyId:String,equipmentId:String) -> CollectionReference{
+        db.collection("companies/\(companyId)/equipment/\(equipmentId)/equipmentMeasurments")
+    }
+    
 }

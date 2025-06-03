@@ -41,7 +41,7 @@ struct StoreDetailView: View {
         }
         .task {
             do {
-                try await storeVM.getStoreInfo(companyId: masterDataManager.selectedCompany!.id, vender: store)
+                try await storeVM.getStoreInfo(companyId: masterDataManager.currentCompany!.id, vender: store)
             } catch {
                 print("Failed to get store Info")
             }

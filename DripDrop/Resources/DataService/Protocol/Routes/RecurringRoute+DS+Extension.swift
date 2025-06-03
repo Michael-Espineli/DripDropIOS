@@ -22,7 +22,7 @@ struct RecurringRoute:Identifiable, Codable,Hashable{
         lhs.description == rhs.description
     }
     
-    var id :String // DEVELOPER CHANGE ID TO NOT BE DAY + TECHID THIS IS GOING TO CREATE ISSUES WHEN CREATED AND MODIFYING ROUTES
+    var id :String 
     var tech: String
     var techId: String
     var day:String

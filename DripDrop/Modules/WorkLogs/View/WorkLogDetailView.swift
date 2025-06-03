@@ -7,6 +7,15 @@
 
 import SwiftUI
 
+@MainActor
+final class WorkLogDetailViewModel:ObservableObject{
+    private var dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    
+}
+
 struct WorkLogDetailView: View {
     init(dataService: any ProductionDataServiceProtocol, workLog:WorkLog){
         
@@ -16,6 +25,6 @@ struct WorkLogDetailView: View {
     }
 }
 
-#Preview {
-    WorkLogDetailView()
-}
+//#Preview {
+//    WorkLogDetailView()
+//}

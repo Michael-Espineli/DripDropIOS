@@ -96,7 +96,7 @@ struct AddNewVenderView: View {
             
             Button(action: {
                 Task{
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         let pushName = name
                         let pushEmail = email
                         let pushPhoneNumber = phoneNumber
@@ -127,6 +127,8 @@ struct AddNewVenderView: View {
             },
                    label: {
                 Text("Submit")
+                    .modifier(SubmitButtonModifier())
+
             })
             
         }

@@ -54,7 +54,7 @@ struct TechTableView: View {
 struct TechTableView_Previews: PreviewProvider {
     static var previews: some View {
         @State var show:Bool = false
-        TechTableView(showSignInView: $show, user: DBUser(id: "",exp: 0), company: Company(id: ""))
+        TechTableView(showSignInView: $show, user: DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""), company: MockDataService.mockCompany )
     }
 }
 extension TechTableView {

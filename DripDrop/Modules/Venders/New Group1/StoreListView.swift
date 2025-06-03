@@ -74,16 +74,20 @@ struct StoreListView: View {
                             "CustomerName",
                             text: $searchTerm
                         )
-                        .padding()
-                        .background(Color.basicFontText.opacity(0.5))
-                        .cornerRadius(10)
+                        Button(action: {
+                            searchTerm = ""
+                        }, label: {
+                            Image(systemName: "xmark")
+                        })
                     }
+                    .modifier(SearchTextFieldModifier())
+                    .padding(8)
                 }
             }
 
         }
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await viewModel.getAllStores(companyId: company.id)
                 } catch {
