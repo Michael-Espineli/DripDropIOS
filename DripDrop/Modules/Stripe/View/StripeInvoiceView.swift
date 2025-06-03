@@ -68,6 +68,22 @@ struct StripeInvoiceView: View {
 }
 
 #Preview {
-    StripeInvoiceView(invoice: StripeInvoice(id: "", internalIdenifier: "", senderId: "", senderName: "", receiverId: "", receiverName: "", dateSent: Date(), total: 0, terms: .net15, paymentStatus: .paid,     paymentType: .cash,
-                                             paymentRefrence: "534726", lineItems: []))
+    StripeInvoiceView(
+        invoice: StripeInvoice(
+            id: "",
+            internalIdenifier: "",
+            senderId: "",
+            senderName: "",
+            receiverId: "",
+            receiverName: "",
+            dateSent: Date(),
+            total: 0,
+            terms: .net15,
+            paymentStatus: .paid,
+            paymentType: .cash,
+            paymentRefrence: "534726",
+            paymentDate: nil,
+            lineItems: []
+        )
+    )
 }

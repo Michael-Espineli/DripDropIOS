@@ -15,13 +15,13 @@ struct StopData:Identifiable, Codable,Equatable{
     var serviceStopId: String
     var readings: [Reading]
     var dosages: [Dosage]
+    var observation: [String]
     var bodyOfWaterId: String
     var customerId: String
     var serviceLocationId: String
     var userId: String
-
-    
 }
+
 protocol StopDataManagerProtocol {
     
     //----------------------------------------------------
@@ -48,6 +48,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "1", templateId: "1", name: "1", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "1")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -60,6 +62,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "2", templateId: "2", name: "2", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "2")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
@@ -74,6 +78,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "3", templateId: "3", name: "3", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "3")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -86,6 +92,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "4", templateId: "4", name: "4", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "4")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
@@ -100,6 +108,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "5", templateId: "5", name: "5", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "5")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -112,6 +122,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "6", templateId: "6", name: "6", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "6")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
@@ -126,6 +138,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "7", templateId: "7", name: "7", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "7")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -138,6 +152,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "8", templateId: "8", name: "8", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "8")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
@@ -152,6 +168,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "9", templateId: "9", name: "9", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "9")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -164,6 +182,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "10", templateId: "10", name: "10", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "10")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
@@ -178,6 +198,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "11", templateId: "11", name: "11", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "11")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -190,6 +212,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "12", templateId: "12", name: "12", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "12")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
@@ -204,6 +228,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "13", templateId: "13", name: "13", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "13")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -216,6 +242,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "14", templateId: "14", name: "14", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "14")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
@@ -230,6 +258,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  dosages: [
                     Dosage(id: "15", templateId: "15", name: "15", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "15")
                  ],
+                 observation: [
+                 ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
@@ -242,6 +272,8 @@ final class MockStopDataManager:StopDataManagerProtocol {
                  ],
                  dosages: [
                     Dosage(id: "16", templateId: "16", name: "16", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "16")
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",

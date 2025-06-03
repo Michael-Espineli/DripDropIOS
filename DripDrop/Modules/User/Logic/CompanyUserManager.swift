@@ -10,11 +10,7 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 import Firebase
 import Darwin
-enum CompanyUserStatus:String, Codable {
-    case active = "Active"
-    case pending = "Pending"
-    case past = "Past"
-}
+
 struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will Always be the same as the companyId
     var id :String
     var userId : String
@@ -23,22 +19,20 @@ struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will A
     var roleName: String
     var dateCreated : Date
     var status : CompanyUserStatus
+    var workerType : WorkerTypeEnum
+    var linkedCompanyId : String?
+    var linkedCompanyName : String?
 }
 struct RateSheet:Codable,Identifiable,Hashable{
     var id :String
+    var templateName : String
     var templateId : String
     var rate : Double
     var dateImplemented : Date
     var status : RateSheetStatus
+    var laborType:RateSheetLaborType
 }
-enum RateSheetStatus:String ,Codable{
-    case active = "Active"
-    case inactive = "Inactive"
-    case past = "Past"
-    case offered = "Offered"
-    case rejected = "Rejected"
 
-}
 final class CompanyUserManager {
     
     static let shared = CompanyUserManager()
@@ -75,7 +69,7 @@ final class CompanyUserManager {
             .getDocument(as:CompanyUser.self)
     }
 
-    func getCompanyUserByDBUserId(companyId:String,userId:String) async throws -> CompanyUser{
+    func getCompanyUserByDBUserId(companyId:String,userId:String) async throws -> CompanyUser {
         return try await companyUsersCollection(companyId: companyId)
             .whereField("userId", isEqualTo: userId)
             .getDocuments(as:CompanyUser.self).first! // DEVELOPER PROPPERLY UNWRAP
@@ -87,6 +81,7 @@ final class CompanyUserManager {
     }
     func getAllCompanyUsers(companyId:String) async throws -> [CompanyUser]{
         return try await companyUsersCollection(companyId: companyId)
+            .order(by: "userName", descending: false)
             .getDocuments(as:CompanyUser.self)
     }
     func getAllCompanyUsersByStatus(companyId:String,status:String) async throws -> [CompanyUser]{

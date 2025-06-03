@@ -77,7 +77,7 @@ struct ToDoDetailView: View {
         }
         .onChange(of: status, perform: { status in
             Task{
-                if let company = masterDataManager.selectedCompany, let toDo = masterDataManager.selectedToDo {
+                if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
                     do {
                         try await toDoVM.updateToDoWithValidation(companyId: company.id,
                                                                   title: toDo.title,
@@ -97,7 +97,7 @@ struct ToDoDetailView: View {
         })
         .onChange(of: title, perform: { title in
             Task{
-                if let company = masterDataManager.selectedCompany, let toDo = masterDataManager.selectedToDo {
+                if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
                     do {
                         try await toDoVM.updateToDoWithValidation(companyId: company.id,
                                                                   title: title,
@@ -117,7 +117,7 @@ struct ToDoDetailView: View {
         })
         .onChange(of: description, perform: { description in
             Task{
-                if let company = masterDataManager.selectedCompany, let toDo = masterDataManager.selectedToDo {
+                if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
                     do {
                         try await toDoVM.updateToDoWithValidation(companyId: company.id,
                                                                   title: toDo.title,
@@ -143,7 +143,7 @@ struct ToDoDetailView: View {
    
                     Task{
                         print("Deleting...")
-                        if let company = masterDataManager.selectedCompany, let toDo = masterDataManager.selectedToDo {
+                        if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
                             do {
                                 try await toDoVM.deleteToDoItem(companyId: company.id, toDoId: toDo.id)
                                 dismiss()

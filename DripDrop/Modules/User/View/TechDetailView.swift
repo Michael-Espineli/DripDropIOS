@@ -39,18 +39,7 @@ struct TechDetailView: View {
                             .frame(maxWidth:100 ,maxHeight:100)
                             .cornerRadius(100)
                     }
-                    HStack{
-                        Spacer()
-                        Button(action: {
-                            showSheet.toggle()
-                        }, label: {
-                            Image(systemName: "square.and.pencil")
-                        })
-                        .sheet(isPresented: $showSheet, content: {
-                            EditTechView(dataService: dataService, tech: tech)
-                        })
-                    }
-                    .padding()
+
                 }
                 Text("\(tech.firstName ?? "") \(tech.lastName ?? "")")
                 Text("Position: ")
@@ -65,7 +54,20 @@ struct TechDetailView: View {
                         .background(Color.accentColor)
                         .cornerRadius(5)
                 })
+                .sheet(isPresented: $showSheet, content: {
+                    EditTechView(dataService: dataService, tech: tech)
+                })
             }
+        }
+        .toolbar{
+            ToolbarItem(content: {
+                Button(action: {
+                    showSheet.toggle()
+                }, label: {
+                    Text("Edit")
+                        .modifier(EditButtonModifier())
+                })
+            })
         }
     }
 }

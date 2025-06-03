@@ -11,9 +11,14 @@ struct RecentActivity: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) var dismiss
-    
-    @StateObject var activeRouteVM = ActiveRouteViewModel()
-    @StateObject var recurringRouteVM = RecurringRouteViewModel()
+    @Environment(\.locale) var locale
+    init(dataService: any ProductionDataServiceProtocol){
+        _recurringRouteVM = StateObject(wrappedValue: RecurringRouteViewModel(dataService: dataService))
+        _activeRouteVM = StateObject(wrappedValue: ActiveRouteViewModel(dataService: dataService))
+
+    }
+    @StateObject var activeRouteVM : ActiveRouteViewModel
+    @StateObject var recurringRouteVM : RecurringRouteViewModel
     
     var body: some View {
         ScrollView{
@@ -22,8 +27,9 @@ struct RecentActivity: View {
 
             routeList
         }
+        .navigationTitle("Recent Activity")
         .task {
-            if let company = masterDataManager.selectedCompany, let user = masterDataManager.user {
+            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                 do {
                     //Get Recent Routes - 7 Days -> 30 days
                     try await activeRouteVM.getRecentActiveRouteForTech(companyId: company.id, techId: user.id, days: 7)
@@ -39,15 +45,12 @@ struct RecentActivity: View {
 
 struct RecentActivity_Previews: PreviewProvider {
     static var previews: some View {
-        RecentActivity()
+        RecentActivity(dataService: MockDataService())
     }
 }
 extension RecentActivity {
     var summary: some View {
         VStack{
-            Text("Summary")
-                .font(.headline)
-            Divider()
             HStack{
                 Text("Stops : ")
                 if let finished = activeRouteVM.finishedStops {
@@ -65,6 +68,15 @@ extension RecentActivity {
                     Text("\(String(format:  "%.2f",finished / total))")
                 }
             }
+
+            HStack{
+                Spacer()
+                if let total = activeRouteVM.totalMiles {
+                    Text(" (\(Measurement(value:total, unit: UnitLength.miles).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))))")
+
+                        .foregroundColor(Color.white)
+                }
+            }
             HStack{
                 Text("Total Time : ")
 
@@ -75,11 +87,9 @@ extension RecentActivity {
                 }
             }
             HStack{
-                Text("Total Miles : ")
-                if let total = activeRouteVM.totalMiles {
-                    Text("\(String(format:  "%.2f",total))")
-                } else {
-                    Text("Error")
+                Spacer()
+                if let total = activeRouteVM.totalTime {
+                    Text(" (\(displayMinAsMinAndHour(min:Int(total))))")
                 }
             }
         }
@@ -89,11 +99,10 @@ extension RecentActivity {
             
             Text("Recent Routes")
                 .font(.headline)
-            Divider()
             ForEach(activeRouteVM.listOfActiveRoutes){ activeRoute in
                 ActiveRouteCardView(activeRoute: activeRoute)
-                    .padding(5)
-                Divider()
+                    .modifier(ListButtonModifier())
+                    .padding(.horizontal,8)
             }
         }
     }

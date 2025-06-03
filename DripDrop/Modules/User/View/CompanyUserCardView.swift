@@ -47,10 +47,23 @@ struct CompanyUserCardView: View {
                 }
             }
             Spacer()
-            Text("\(companyUser.userName)")
-            Text(" - \(companyUser.roleName)")
+            VStack{
+                HStack{
+                    Text("\(companyUser.userName)")
+                    Text(" - \(companyUser.roleName)")
+                }
+                    Text(companyUser.workerType.rawValue)
+                    if companyUser.workerType == .contractor {
+                        if let linkedCompanyName = companyUser.linkedCompanyName {
+                            Text("\(linkedCompanyName)")
+                                .font(.footnote)
+                        }
+                    }
+                
+            }
         }
-        .padding(5)
+        .padding(8)
+        .modifier(ListButtonModifier())
         .task {
             //DEVELOPER WHY DOES THIS CRASH MY APP
 //            do {

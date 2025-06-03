@@ -21,42 +21,70 @@ struct ShoppingListView: View {
     }
     @State var showAddNewShoppingListItem:Bool = false
     var body: some View {
-        VStack{
+        ZStack{
+            Color.listColor.ignoresSafeArea()
             ScrollView{
                 personalItemList
                 customerItemList
                 jobItemList
+                Text("")                
+                    .sheet(isPresented: $showAddNewShoppingListItem,onDismiss: {
+                    Task{
+                        if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
+                      
+                            do{
+                                try await shoppingVM.getAllShoppingListItemsByUserForPersonal(companyId: company.id, userId: user.id)
+                                try await shoppingVM.getAllShoppingListItemsByUserForCustomers(companyId: company.id, userId: user.id)
+                                try await shoppingVM.getAllShoppingListItemsByCompanyForJobs(companyId: company.id)
+                            } catch {
+                                print("failed to get All Shopping List Items By User For Personal")
+                            }
+                        }
+                    }
+                }, content: {
+                    ZStack{
+                        Color.listColor.ignoresSafeArea()
+                        VStack{
+                            HStack{
+                                Spacer()
+                                Button(action: {
+                                    showAddNewShoppingListItem.toggle()
+                                }, label: {
+                                    Text("X")
+                                        .modifier(DismissButtonModifier())
+                                })
+                            }
+                            .padding(.horizontal,8)
+                            AddNewItemToShoppingList(dataService: dataService)
+                        }
+                    }
+                })
             }
         }
+        .fontDesign(.monospaced)
         .toolbar{
             ToolbarItem{
                 Button(action: {
                     showAddNewShoppingListItem.toggle()
                 }, label: {
-                    Image(systemName: "plus.square.fill")
+                    Text("Add")
+                        .fontDesign(.monospaced)
+                    
                 })
-                .sheet(isPresented: $showAddNewShoppingListItem, content: {
-                    AddNewItemToShoppingList(dataService: dataService)
-                })
+
             }
         }
         .task {
-            if let company = masterDataManager.selectedCompany, let user = masterDataManager.user {
-                do{
-                    try await shoppingVM.getAllShoppingListItemsByUserForJobs(companyId: company.id, userId: user.id)
-                } catch {
-                    print("failed to get All Shopping ListItems By User For Jobs")
-                }
+            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
+            
                 do{
                     try await shoppingVM.getAllShoppingListItemsByUserForPersonal(companyId: company.id, userId: user.id)
-                } catch {
-                    print("failed to get All Shopping List Items By User For Personal")
-                }
-                do{
                     try await shoppingVM.getAllShoppingListItemsByUserForCustomers(companyId: company.id, userId: user.id)
+                    try await shoppingVM.getAllShoppingListItemsByCompanyForJobs(companyId: company.id)
                 } catch {
-                    print("failed to get All Shopping List Items By User For Customers")
+                    print("failed to get All Shopping List Items By User")
                     print(error)
+
                 }
             }
         }
@@ -64,77 +92,35 @@ struct ShoppingListView: View {
 }
 extension ShoppingListView {
     var personalItemList: some View {
-        VStack{
-            Text("List of Personal Items")
-                .font(.headline)
-            Divider()
-            ForEach(shoppingVM.personalShoppingItems){ item in
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.shoppingListDetail(dataService: dataService), label: {
-                        ShoppingListItemCardView(shoppingListItem: item)
-
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedShoppingListItem = item
-                    }, label: {
-                        
-                        ShoppingListItemCardView(shoppingListItem: item)
-                    })
-                }
-                Divider()
-
-            }
-        }
+        ShoppingList(list: shoppingVM.personalShoppingItems, header: "List of Personal Items",icon:"figure.stand.line.dotted.figure.stand")
     }
     var customerItemList: some View {
-        VStack{
-            Text("List of Items for Customers")
-                .font(.headline)
-            Divider()
-            ForEach(shoppingVM.customerShoppingItems){ item in
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.shoppingListDetail(dataService: dataService), label: {
-                        ShoppingListItemCardView(shoppingListItem: item)
-
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedShoppingListItem = item
-                    }, label: {
-                        
-                        ShoppingListItemCardView(shoppingListItem: item)
-                    })
-                }
-                Divider()
-
-            }
-        }
+        ShoppingList(list: shoppingVM.customerShoppingItems, header: "List of Items for Customers",icon:"testtube.2")
     }
     var jobItemList: some View {
         VStack{
-            Text("List of Items for Jobs")
+            HStack{
+                Image(systemName: "spigot.fill")
+                Spacer()
+                Text("List of Items for Jobs")
+                Spacer()
+            }
                 .font(.headline)
             Divider()
             ForEach(Array(shoppingVM.jobShoppingItems.keys)){ key in
                 VStack{
-                    HStack{
-                        Spacer()
-                        Text("\(key.id) ")
-                    }
+                    JobIdCardView(dataService: dataService, jobId: key.id)
                     if let shoppingListItems = shoppingVM.jobShoppingItems[key] {
-                        
                         ForEach(shoppingListItems){ data in
                             if UIDevice.isIPhone {
-                                NavigationLink(value: Route.shoppingListDetail(dataService: dataService), label: {
-                                    ShoppingListItemCardView(shoppingListItem: data)
+                                NavigationLink(value: Route.shoppingListDetail(item:data,dataService: dataService), label: {
+                                    ShoppingListItemCardView(dataService: dataService, shoppingListItem: data)
                                 })
                             } else {
                                 Button(action: {
                                     masterDataManager.selectedShoppingListItem = data
                                 }, label: {
-                                    
-                                    ShoppingListItemCardView(shoppingListItem: data)
+                                    ShoppingListItemCardView(dataService: dataService, shoppingListItem: data)
                                 })
                             }
                         }
@@ -144,4 +130,41 @@ extension ShoppingListView {
         }
     }
   
+}
+struct ShoppingList: View {
+    //Enviromental
+    @EnvironmentObject var dataService: ProductionDataService
+    @EnvironmentObject var masterDataManager : MasterDataManager
+
+    //Received
+    let list:[ShoppingListItem]
+    let header:String
+    let icon:String
+
+    var body: some View {
+        VStack{
+            HStack{
+                Image(systemName: icon)
+                Spacer()
+                Text(header)
+                Spacer()
+            }
+                .font(.headline)
+            Divider()
+            ForEach(list){ item in
+                if UIDevice.isIPhone {
+                    NavigationLink(value: Route.shoppingListDetail(item:item,dataService: dataService), label: {
+                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
+                    })
+                } else {
+                    Button(action: {
+                        masterDataManager.selectedShoppingListItem = item
+                    }, label: {
+                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
+                    })
+                }
+                Divider()
+            }
+        }
+    }
 }

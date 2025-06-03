@@ -29,47 +29,8 @@ struct ToDo:Identifiable,Codable{
 
     var assignedTechId: String
     var creatorId : String
-
-}
-enum toDoStatus: String, CaseIterable, Codable {
-    case toDo = "To Do"
-    case inProgress = "In Progress"
-    case finished = "Finished"
-    func title() -> String {
-        switch self {
-        case .toDo:
-            return "To Do"
-        case .inProgress:
-            return "In Progress"
-        case .finished:
-            return "Finished"
-        }
-    }
-    func color() -> Color {
-        switch self {
-        case .toDo:
-            return .red
-        case .inProgress:
-            return .yellow
-        case .finished:
-            return .green
-        }
-    }
 }
 
-enum ToDoError: Error {
-    case invalidTechId
-    case invalidTitle
-    
-    func errorDescription() -> String {
-        switch self {
-        case .invalidTechId:
-            return "No Tech Id"
-        case .invalidTitle:
-            return "No Title"
-        }
-    }
-}
 protocol ToDoManagerProtocol {
     func addNewToDo(companyId:String, todo:ToDo) async throws
     func getAllCompanyToDoItems(companyId:String) -> [ToDo]

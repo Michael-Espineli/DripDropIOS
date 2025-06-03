@@ -25,59 +25,56 @@ struct TechListView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                ScrollView{
-                    Picker("Pick Type", selection: $selected) {
-                        Text("Active").tag("Active")
-                        Text("Accepted").tag("Accepted")
-                        Text("Pending").tag("Pending")
-                        Text("Past").tag("Past")
+                Picker("Pick Type", selection: $selected) {
+                    Text("Active").tag("Active")
+                    Text("Pending").tag("Pending")
+                    Text("Past").tag("Past")
+                }
+                .pickerStyle(.segmented)
+                .fontDesign(.monospaced)
 
-                    }
-                    .pickerStyle(.segmented)
-                    .confirmationDialog("Select Type", isPresented: self.$showPick, actions: {
-                        Button(action: {
-                            showInviteSheet.toggle()
-                        }, label: {
-                            Text("Add Tech with out app")
-                        })
-             
-                        Button(action: {
-                            showInviteSheetForTechWithApp.toggle()
-                        }, label: {
-                            Text("Add Tech with app")
-                        })
-             
+                .confirmationDialog("Select Type", isPresented: self.$showPick, actions: {
+                    Button(action: {
+                        showInviteSheet.toggle()
+                    }, label: {
+                        Text("Add Tech with out app")
                     })
-                    .sheet(isPresented: $showInviteSheetForTechWithApp, content: {
-                        Text("Build invite tech with app. Something like a search bar for all Users")
+         
+                    Button(action: {
+                        showInviteSheetForTechWithApp.toggle()
+                    }, label: {
+                        Text("Add Tech with app")
                     })
-               
+         
+                })
+                .sheet(isPresented: $showInviteSheetForTechWithApp, content: {
+                    InviteExistingTechView(dataService:dataService)
+                })
+           
+                ScrollView{
+             
                     Group{
                         switch selected{
                         case "Active":
                             companyUserTechList
                         case "Pending":
-                            Text("pendingTechList")
-//                            pendingTechList
-                        case "Accepted":
-                            Text("acceptedTechList")
-//                            acceptedTechList
+                            pendingTechList
                         case "Past":
-                            companyUserTechList
+                            Text("Developer add Past Tech List")
                         default:
                             companyUserTechList
                         }
                     }
                     .sheet(isPresented: $showInviteSheet, content: {
-//                        InviteNewTechView()
+                        InviteNewTechView()
                     })
                 }
             }
-            icons
+//            icons
         }
 
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await VM.onFirstLoad(companyId: company.id)
                 } catch {
@@ -90,7 +87,7 @@ struct TechListView: View {
         }
         .onChange(of: selected, perform: { status in
             Task{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     if status == "Active" || status == "Past" || status == "Pending" {
                         do {
                             try await VM.onChangeOfSelectedStatus(companyId: company.id, status: status)
@@ -104,6 +101,16 @@ struct TechListView: View {
                 }
             }
         })
+        .toolbar{
+            ToolbarItem(content: {
+                Button(action: {
+                    self.showPick.toggle()
+                }, label: {
+                    Text("Add")
+                        .fontDesign(.monospaced)
+                })
+            })
+        }
     }
 }
 
@@ -162,9 +169,21 @@ extension TechListView {
     }
     var companyUserTechList: some View {
         ForEach(VM.companyUsers){ user in
-            NavigationLink(value: Route.companyUserDetailView(user: user, dataService: dataService), label: {
-                CompanyUserCardView(dataService: dataService, companyUser: user)
-            })
+            HStack{
+                if UIDevice.isIPhone {
+                    NavigationLink(value: Route.companyUserDetailView(user: user, dataService: dataService), label: {
+                        CompanyUserCardView(dataService: dataService, companyUser: user)
+                    })
+                } else {
+                    Button(action: {
+                        masterDataManager.selectedCompanyUser = user
+                    }, label: {
+                        CompanyUserCardView(dataService: dataService, companyUser: user)
+                    })
+                }
+            }
+            .padding(.horizontal,8)
+            .padding(.vertical,3)
             Divider()
         }
     }

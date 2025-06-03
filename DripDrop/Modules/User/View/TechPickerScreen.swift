@@ -33,7 +33,7 @@ struct TechPickerScreen: View {
         .padding()
         .task {
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     try await companyUserVM.getAllCompanyUsers(companyId: company.id)
                     techs = companyUserVM.companyUsers
                 }
@@ -46,7 +46,7 @@ struct TechPickerScreen: View {
             if term == "" {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             try await companyUserVM.getAllCompanyUsers(companyId: company.id)
                             techs = companyUserVM.companyUsers
                         }
@@ -68,14 +68,8 @@ extension TechPickerScreen {
             label: {
                 Text("Search: ")
             })
-        .textFieldStyle(PlainTextFieldStyle())
-        .font(.headline)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 5)
-        .background(Color.white)
-        .clipShape(Capsule())
-        .foregroundColor(Color.basicFontText)
-        
+        .modifier(SearchTextFieldModifier())
+        .padding(8)
     }
     var techList: some View {
         ScrollView{

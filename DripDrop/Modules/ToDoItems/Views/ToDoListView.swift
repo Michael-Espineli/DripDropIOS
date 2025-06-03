@@ -43,7 +43,7 @@ struct ToDoListView: View {
             })
         }
         .task {
-            if let company = masterDataManager.selectedCompany, let tech = masterDataManager.user {
+            if let company = masterDataManager.currentCompany, let tech = masterDataManager.user {
                 do {
                     try await toDoVM.readToDoTechList(companyId: company.id, techId: tech.id)
                 } catch {

@@ -69,9 +69,7 @@ final class DBUserManager {
 
     }
     func getOneUser(userId:String) async throws -> DBUser{
-        try await userDocument(userId: userId).getDocument(as: DBUser.self,decoder: decoder)
-//        try await userDocument(userId: userId).getDocument(as: DBUser.self)
-
+        try await userDocument(userId: userId).getDocument(as: DBUser.self)
     }
     //for some reason this does not work
     func getAllTechs() async throws ->[DBUser]{

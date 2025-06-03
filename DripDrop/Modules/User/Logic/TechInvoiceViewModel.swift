@@ -22,7 +22,7 @@ final class TechInvoiceViewModel:ObservableObject{
     @Published var stripeLineItems: [StripeInvoiceLineItems] = []
 
     func onInitialLoad(companyId:String,userId:String,startDate:Date,endDate:Date) async throws{
-        self.serviceStops = try await ServiceStopManager.shared.getAllServiceStopsBetweenDateByUserId(companyId: companyId, startDate: startDate, endDate: endDate, userId: userId)
+        self.serviceStops = try await dataService.getAllServiceStopsBetweenDateByUserId(companyId: companyId, startDate: startDate, endDate: endDate, userId: userId)
         print("- Got Service Stops")
         self.jobTemplates = try await SettingsManager.shared.getAllWorkOrderTemplates(companyId: companyId)
         print("- Got Job Templates")

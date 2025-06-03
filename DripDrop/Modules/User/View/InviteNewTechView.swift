@@ -20,6 +20,8 @@ struct InviteNewTechView: View {
     @State var email:String = ""
     @State var birthday:Date = Date()
     @State var role:String = ""
+    @State var workerType:WorkerTypeEnum = .employee
+
     @State var inviteCode:String = UUID().uuidString
     @State var selectedRole:Role = Role(id: "", name: "", permissionIdList: [], listOfUserIdsToManage: [], color: "", description: "")
     @State var showAlert:Bool = false
@@ -30,7 +32,7 @@ struct InviteNewTechView: View {
                 VStack{
                     VStack{
                         HStack{
-                            Text("First Name")
+                            Text("First Name:")
                             TextField(
                                 "First Name",
                                 text: $firstName
@@ -40,7 +42,7 @@ struct InviteNewTechView: View {
                             .cornerRadius(3)
                         }
                         HStack{
-                            Text("Last Name")
+                            Text("Last Name:")
                             TextField(
                                 "Last Name",
                                 text: $lastName
@@ -50,7 +52,7 @@ struct InviteNewTechView: View {
                             .cornerRadius(3)
                         }
                         HStack{
-                            Text("Email")
+                            Text("Email:")
                             TextField(
                                 "Email",
                                 text: $email
@@ -71,8 +73,14 @@ struct InviteNewTechView: View {
                                 Text($0)
                             }
                         }
+                        Picker("Worker Type", selection: $workerType) {
+                            Text(WorkerTypeEnum.employee.rawValue).tag(WorkerTypeEnum.employee)
+                            Text(WorkerTypeEnum.contractor.rawValue).tag(WorkerTypeEnum.contractor)
+                        }
+                        .pickerStyle(.segmented)
                         HStack{
-                            Text("Invite Code")
+                            Text("Invite Code:")
+                                .bold()
                             Text("\(inviteCode)")
                                 .padding(3)
                                 .background(Color.gray.opacity(0.3))
@@ -82,17 +90,20 @@ struct InviteNewTechView: View {
                     VStack{
                         Button(action: {
                             Task{
-                                if let company = masterDataManager.selectedCompany {
+                                if let company = masterDataManager.currentCompany {
                                     do {
-                                        try await inviteVM.createInvite(invite:Invite(id: inviteCode,
+                                        try await inviteVM.createInvite(invite:Invite(id: inviteCode, 
+                                                                                      userId: "",
                                                                                       firstName: firstName,
                                                                                       lastName: lastName,
                                                                                       email: email,
-                                                                                      companyName: company.name ?? "",
+                                                                                      companyName: company.name,
                                                                                       companyId: company.id,
                                                                                       roleId: selectedRole.id,
                                                                                       roleName: selectedRole.name,
-                                                                                      status: "Pending"))
+                                                                                      status: "Pending",
+                                                                                      workerType: workerType,
+                                                                                      currentUser: false))
                                         alertMesage = "Successfully Sending Invite"
                                         print(alertMesage)
                                         showAlert = true
@@ -110,6 +121,7 @@ struct InviteNewTechView: View {
                             }
                         }, label: {
                             Text("Invite")
+                                .modifier(AddButtonModifier())
                         })
                     }
                 }
@@ -122,7 +134,7 @@ struct InviteNewTechView: View {
         }
         .task{
             do {
-                try await roleVM.getAllCompanyRoles(companyId: masterDataManager.selectedCompany!.id)
+                try await roleVM.getAllCompanyRoles(companyId: masterDataManager.currentCompany!.id)
                 if roleVM.roleList.count == 0 {
                     print("No Roles Found should not happen")
                     dismiss()

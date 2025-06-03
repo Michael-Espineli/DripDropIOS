@@ -25,8 +25,8 @@ struct CompileInvoice: View {
     @State var showDetailSheet : Bool = false
 
     
-    @State var company:Company = Company(id: "")
-    @State var billableCompany:Company = Company(id: "")
+    @State var company:Company = Company(id: "", ownerId: "", ownerName: "", name: "", photoUrl: "", dateCreated: Date(), email: "", phoneNumber: "", verified: false, serviceZipCodes: [], services: [])
+    @State var billableCompany:Company = Company(id: "", ownerId: "", ownerName: "", name: "", photoUrl: "", dateCreated: Date(), email: "", phoneNumber: "", verified: false, serviceZipCodes: [], services: [])
     
     @State var invoiceTerms:AcountingTermsTypes = .net15
     var body: some View {
@@ -45,7 +45,7 @@ struct CompileInvoice: View {
             .clipped()
         }
         .task {
-            if let selectedCompany = masterDataManager.selectedCompany, let user = masterDataManager.user, let companyUser = masterDataManager.companyUser {
+            if let selectedCompany = masterDataManager.currentCompany, let user = masterDataManager.user, let companyUser = masterDataManager.companyUser {
                 company = selectedCompany
                 do {
                     let startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
@@ -130,7 +130,7 @@ extension CompileInvoice {
             }
             Button(action: {
                 Task {
-                    if let company = masterDataManager.selectedCompany,let total = VM.invoiceTotal {
+                    if let company = masterDataManager.currentCompany,let total = VM.invoiceTotal {
                         if VM.stripeLineItems.count != 0 {
                             do {
                                 try await VM.sendInvoice(
@@ -148,6 +148,7 @@ extension CompileInvoice {
                                         paymentStatus: .unpaid,
                                         paymentType: .check,
                                         paymentRefrence: "",
+                                        paymentDate: nil,
                                         lineItems: VM.stripeLineItems
                                     )
                                 )
@@ -182,7 +183,7 @@ extension CompileInvoice {
     var header: some View {
         VStack{
             HStack{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     
                     Text("Current Company \(company.name ?? "")")
                 }
@@ -200,6 +201,7 @@ extension CompileInvoice {
                 })
                 .sheet(isPresented: $showCompanyChangeSheet, content: {
                     CompanyPickerScreen(company: $company)
+                        .presentationDetents([.medium])
                 })
             }
             Text("Last Invoice Date: \(fullDate(date:lastInvoiceDate))")

@@ -30,10 +30,10 @@ final class StopDataViewModel:ObservableObject{
                  date: Calendar.current.date(byAdding: .day, value: -7, to: Date())!,
                  serviceStopId: "serviceStop",
                  readings: [
-
                  ],
                  dosages: [
-  
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "bodyOfWater",
                 customerId: "",
@@ -43,10 +43,10 @@ final class StopDataViewModel:ObservableObject{
                  date: Calendar.current.date(byAdding: .day, value: -14, to: Date())!,
                  serviceStopId: "serviceStop",
                  readings: [
-
                  ],
                  dosages: [
-     
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
@@ -57,10 +57,10 @@ final class StopDataViewModel:ObservableObject{
                  date: Calendar.current.date(byAdding: .day, value: -21, to: Date())!,
                  serviceStopId: "serviceStop",
                  readings: [
-     
                  ],
                  dosages: [
- 
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
@@ -71,10 +71,10 @@ final class StopDataViewModel:ObservableObject{
                  date: Calendar.current.date(byAdding: .day, value: -28, to: Date())!,
                  serviceStopId: "serviceStop",
                  readings: [
-
                  ],
                  dosages: [
-
+                 ],
+                 observation: [
                  ],
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",

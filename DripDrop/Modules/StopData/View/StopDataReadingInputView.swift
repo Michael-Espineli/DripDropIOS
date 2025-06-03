@@ -36,91 +36,65 @@ struct StopDataReadingInputView: View {
                 Spacer()
             }
             .padding(EdgeInsets(top: 0, leading: 15, bottom: 0, trailing: 0))
+            VStack{
+                if selectedId == template.readingsTemplateId {
+                    
+                    HStack{
+                        Text(template.name)
+                            .font(.footnote)
+                        Spacer()
+                    }
+                    ScrollView(.horizontal,showsIndicators: false){
+                        HStack(spacing: 8){
 
-                VStack{
-                    if selectedId == template.readingsTemplateId {
-                        
-                        HStack{
-                            Text(template.name)
-                                .font(.footnote)
-                            Spacer()
-                        }
-                        ScrollView(.horizontal,showsIndicators: false){
-                            HStack(spacing: 8){
-
-                                TextField("Input", text: $input)
-                                    .padding(5)
-                                    .background(Color.gray.opacity(0.5)
-                                    .foregroundColor(Color.white)
-                                    .cornerRadius(10))
-                                    .keyboardType(.decimalPad)
-                                ForEach(template.amount,id:\.self){ amount in
-                                    Button(action: {
-                                        input = amount
-                                    }, label: {
-                                        if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                            if reading.amount == amount {
-                                                Text("\(amount)")
-                                                    .frame(minWidth: 30,minHeight: 30)
-                                                    .padding(.horizontal,8)
-                                                    .background(Color.poolGreen)
-                                                    .foregroundColor(Color.white)
-                                                    .cornerRadius(5)
-                                            } else {
-                                                
-                                                Text("\(amount)")
-                                                    .frame(minWidth: 30,minHeight: 30)
-                                                    .padding(.horizontal,8)
-                                                    .background(Color.gray)
-                                                    .foregroundColor(Color.white)
-                                                    .cornerRadius(5)
-                                            }
+                            TextField("Input", text: $input)
+                                .modifier(TextFieldModifier())
+                                .modifier(OutLineButtonModifier())
+                            ForEach(template.amount,id:\.self){ amount in
+                                Button(action: {
+                                    input = amount
+                                }, label: {
+                                    if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                        if reading.amount == amount {
+                                            Text("\(amount)")
+                                                .modifier(SubmitButtonModifier())
                                         } else {
                                             
                                             Text("\(amount)")
-                                                .frame(minWidth: 30,minHeight: 30)
-                                                .padding(.horizontal,8)
-                                                .background(Color.gray)
-                                                .foregroundColor(Color.white)
-                                                .cornerRadius(5)
+                                                .modifier(ListButtonModifier())
+
                                         }
-                                    })
-                                }
+                                    } else {
+                                        
+                                        Text("\(amount)")
+                                            .modifier(ListButtonModifier())
+                                    }
+                                })
                             }
                         }
-                    } else {
-                        if input == "" {
-                            HStack{
-                                Text(template.name)
-                                if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                    Text(" - \(reading.amount ?? "")")
-                                }
-                            }
-                            .padding(5)
-                            .background(Color.gray)
-                            .foregroundColor(Color.white)
-                            .cornerRadius(5)
-                            .padding(5)
-                        } else {
-                            HStack{
-                                Text(template.name)
-                                if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                    Text(" - \(reading.amount ?? "")")
-                                }
-                            }
-                            .padding(5)
-                            .background(Color.poolGreen.opacity(0.5))
-                            .foregroundColor(Color.white)
-                            .cornerRadius(5)
-                            .padding(5)
-                        }
-
                     }
-                    
+                } else {
+                    if input == "" {
+                        HStack{
+                            Text(template.name)
+                            if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                Text(" - \(reading.amount ?? "")")
+                            }
+                        }
+                        .modifier(ListButtonModifier())
+                    } else {
+                        HStack{
+                            Text(template.name)
+                            if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                Text(" - \(reading.amount ?? "")")
+                            }
+                        }
+                        .modifier(SubmitButtonModifier())
+                    }
                 }
-                .padding(EdgeInsets(top: 0, leading: 30, bottom: 5, trailing: 0))
-
-            
+                
+            }
+            .padding(EdgeInsets(top: 0, leading: 28, bottom: 5, trailing: 0))
         }
         .onChange(of: stopData, perform: { datum in
             if let reading = datum.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {

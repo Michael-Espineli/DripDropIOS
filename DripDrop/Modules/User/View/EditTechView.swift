@@ -27,7 +27,7 @@ struct EditTechView: View {
                 Spacer()
                 Button(action: {
                     Task{
-                        if let company = masterDataManager.selectedCompany, let user = masterDataManager.user {
+                        if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                             //DEVELOPER - I think I might put employment history under each user so that a specific company to edit the Roles
                             do {
                                 try await techVM.updateTech(user: user,
@@ -40,7 +40,9 @@ struct EditTechView: View {
                                                                           accountType: tech.accountType,
                                                                           profileImagePath: tech.profileImagePath,
                                                                           color: tech.color,
-                                                                          exp: 0))
+                                                                          exp: 0,
+                                                                          recentlySelectedCompany: tech.recentlySelectedCompany)
+                                )
                             } catch {
                                 print(error)
                             }
@@ -48,6 +50,8 @@ struct EditTechView: View {
                     }
                 }, label: {
                     Text("Save")
+                        .modifier(SubmitButtonModifier())
+
                 })
             }
             Text("\(tech.firstName ?? "") \(tech.lastName ?? "")")
@@ -56,7 +60,7 @@ struct EditTechView: View {
             Text("Company: ")
             Text("Email: \(tech.email ?? "")")
             HStack{
-                Text("Roles")
+                Text("Roles 1 ")
                 
                 Picker("", selection: $selectedRole) {
                     Text("Pick store")
@@ -68,7 +72,7 @@ struct EditTechView: View {
                 }
             }        }
         .task {
-            if let company = masterDataManager.selectedCompany{
+            if let company = masterDataManager.currentCompany{
                 do {
                     try await VM.onFirstLoad(companyId: company.id, userId: tech.id)
                 } catch {
@@ -85,6 +89,6 @@ struct EditTechView: View {
 
 struct EditTechView_Previews: PreviewProvider {
     static var previews: some View {
-        EditTechView(dataService: MockDataService(), tech:DBUser(id: "",exp: 0))
+        EditTechView(dataService: MockDataService(), tech: DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
     }
 }

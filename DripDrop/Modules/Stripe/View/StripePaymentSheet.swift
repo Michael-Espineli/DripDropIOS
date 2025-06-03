@@ -25,7 +25,7 @@ struct StripePaymentSheet: View {
         ZStack{
             switch sheetType {
             case .invoice:
-                if let invoice = masterDataManager.accountsPayableInvoice {
+                if let invoice = masterDataManager.selectedAccountsPayableInvoice {
                     StripeInvoiceView(invoice: invoice)
                 }
             case .manageCards:

@@ -13,33 +13,34 @@ import Darwin
 
  struct DBUser:Codable,Identifiable,Hashable{
     var id :String
-    var email :String?
+    var email :String
     var photoUrl : String?
     var dateCreated : Date?
-    var firstName: String?
-    var lastName: String?
-    var accountType: String? // Change to Account Type (Buisness, Technican, Client)
+    var firstName: String
+    var lastName: String
+    var accountType: String? // Change to Account Type (Buisness, Technican, Homeowner)
     var profileImagePath: String?
     var color: String?
     var bio: String?
     var exp: Int
     var stripeId: String?
-
+    var recentlySelectedCompany: String
+    var phoneNumber: String?
     init(
         id: String,
-        email :String? = nil,
+        email :String,
         photoUrl : String? = nil,
         dateCreated : Date? = nil,
-        firstName: String? = nil,
-        lastName: String? = nil,
+        firstName: String,
+        lastName: String,
         accountType: String? = nil,
         profileImagePath: String? = nil,
         color: String? = nil,
         bio: String? = nil,
         exp: Int,
-        stripeId: String? = nil
-
-
+        stripeId: String? = nil,
+        recentlySelectedCompany: String,
+        phoneNumber: String? = nil
     ){
         self.id = id
         self.email = email
@@ -53,6 +54,8 @@ import Darwin
         self.bio = bio
         self.exp = exp
         self.stripeId = stripeId
+        self.recentlySelectedCompany = recentlySelectedCompany
+        self.phoneNumber = phoneNumber
 
         
     }
@@ -69,39 +72,21 @@ import Darwin
             case bio = "bio"
             case exp = "exp"
             case stripeId = "stripeId"
+            case recentlySelectedCompany = "recentlySelectedCompany"
+            case phoneNumber = "phoneNumber"
 
         }
 }
 struct RecentActivityModel:Codable,Identifiable,Hashable{
     
     var id : String
-    var route : String
-    var date : Date
     var companyId:String
-    var itemId: String?
+    var category:MacCategories
+    var route:RouteString
+    var itemId:String
+    var name:String
+    var date:Date
     
-    init(
-        id: String,
-        route :String,
-        date : Date,
-        companyId :String,
-        itemId :String? = nil
-
-    ){
-        self.id = id
-        self.route = route
-        self.date = date
-        self.companyId = companyId
-        self.itemId = itemId
-
-    }
-        enum CodingKeys:String, CodingKey {
-            case id = "id"
-            case route = "route"
-            case date = "date"
-            case companyId = "companyId"
-            case itemId = "itemId"
-        }
 }
 
 final class UserManager {
@@ -193,7 +178,7 @@ final class UserManager {
     }
     func getRecentActivityByUser(userId:String) async throws -> [RecentActivityModel]{
         return try await userRecentActivityCollection(userId: userId)
-            .order(by: RecentActivityModel.CodingKeys.date.rawValue, descending: true)
+            .order(by: "date", descending: true)
             .limit(to: 8)
             .getDocuments(as:RecentActivityModel.self)
         

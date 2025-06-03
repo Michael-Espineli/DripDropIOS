@@ -27,7 +27,7 @@ final class TechViewModel:ObservableObject{
     //                             Get Recordings
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     func getAllCompanyTechs(companyId:String) async throws{
-        self.techList = try await DBUserManager.shared.getAllCompayTechs(companyId: companyId)
+        self.techList = try await DBUserManager.shared.getAllCompayTechs(companyId: companyId)  //DEVELOPER REMOVE
     }
     func getOneTech(techId: String) async throws{
         self.specificTech = try await DBUserManager.shared.getOneUser(userId: techId)

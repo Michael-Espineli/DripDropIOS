@@ -40,41 +40,56 @@ struct AddToDoItem: View {
     //Ints
     //Custom
     @State var status:toDoStatus = .toDo
-    @State var customerEntity:Customer = Customer(id: "",
-                                                  firstName: "",
-                                                  lastName: "",
-                                                  email: "",
-                                                  billingAddress: Address(streetAddress: "",
-                                                                          city: "",
-                                                                          state: "",
-                                                                          zip: "",
-                                                                          latitude: 0,
-                                                                          longitude: 0),
-                                                  active: true,
-                                                  displayAsCompany: false,
-                                                  hireDate: Date(),
-                                                  billingNotes: "")
+    @State var customerEntity:Customer = Customer(
+        id: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        billingAddress: Address(
+            streetAddress: "",
+            city: "",
+            state: "",
+            zip: "",
+            latitude: 0,
+            longitude: 0
+        ),
+        active: true,
+        displayAsCompany: false,
+        hireDate: Date(),
+        billingNotes: "",
+        linkedInviteId: UUID().uuidString
+    )
 
-    @State var jobEntity:Job = Job(id: "",
-                                         type: "",
-                                         dateCreated: Date(),
-                                         description: "",
-                                   operationStatus: .estimatePending,
-                                   billingStatus: .draft,
-                                         customerId: "",
-                                         customerName: "",
-                                         serviceLocationId: "",
-                                         serviceStopIds: [],
-                                         adminId: "",
-                                         adminName: "",
-                                         jobTemplateId: "",
-                                         installationParts: [],
-                                         pvcParts: [],
-                                         electricalParts: [],
-                                         chemicals: [],
-                                         miscParts: [],
-                                         rate: 0,
-                                         laborCost: 0)
+    @State var jobEntity:Job = Job(
+        id: "",
+        internalId: "",
+        type: "",
+        dateCreated: Date(),
+        description: "",
+        operationStatus: .estimatePending,
+        billingStatus: .draft,
+        customerId: "",
+        customerName: "",
+        serviceLocationId: "",
+        serviceStopIds: [],
+        laborContractIds: [],
+        adminId: "",
+        adminName: "",
+        rate: 0,
+        laborCost: 0,
+        otherCompany: false,
+        receivedLaborContractId: "",
+        receiverId: "",
+        senderId : "",
+        dateEstimateAccepted: nil,
+        estimateAcceptedById: nil,
+        estimateAcceptType: nil,
+        estimateAcceptedNotes: nil,
+        invoiceDate: nil,
+        invoiceRef: nil,
+        invoiceType: nil,
+        invoiceNotes: nil
+    )
     
     @State var tech:CompanyUser = CompanyUser(id: "",
                                               userId: "",
@@ -82,7 +97,7 @@ struct AddToDoItem: View {
                                               roleId: "",
                                               roleName: "",
                                               dateCreated: Date(),
-                                              status: .active)
+                                              status: .active,workerType: .contractor)
 
     var body: some View {
         VStack{
@@ -227,7 +242,7 @@ extension AddToDoItem{
             Spacer()
             Button(action: {
                 Task{
-                    if let company = masterDataManager.selectedCompany, let user = masterDataManager.user {
+                    if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                         do {
                             try await toDoVM.createToDoWithValidation(companyId: company.id,
                                                                       title: title,
@@ -257,10 +272,8 @@ extension AddToDoItem{
                 }
             }, label: {
                 Text("Save")
-                    .foregroundColor(Color.black)
-                    .padding(5)
-                    .background(Color.accentColor)
-                    .cornerRadius(5)
+                    .modifier(SubmitButtonModifier())
+
             })
         }
         .padding(5)

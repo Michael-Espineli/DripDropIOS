@@ -50,11 +50,8 @@ struct StopDataDosageInputView: View {
                             HStack(spacing: 0){
                                 
                                 TextField("Input", text: $input)
-                                    .cornerRadius(8)
-                                    .background(Color.gray.opacity(0.5)
-                                    .foregroundColor(Color.white)
-                                    .cornerRadius(8))
-                                    .keyboardType(.decimalPad)
+                                    .modifier(TextFieldModifier())
+                                    .modifier(OutLineButtonModifier())
                                 ForEach(template.amount ?? [],id:\.self){ amount in
                            
                                     Button(action: {
@@ -67,117 +64,68 @@ struct StopDataDosageInputView: View {
                                             if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))")
-                                                        .padding(8)
-                                                        .background(Color.poolGreen)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(SubmitButtonModifier())
                                                 } else {
                                                     Text("\(String(amount.dropLast(3)))")
-                                                        .padding(8)
-                                                        .background(Color.gray)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(ListButtonModifier())
                                                 }
                                             } else {
                                                 
                                                 Text("\(String(amount.dropLast(3)))")
-                                                    .padding(8)
-                                                    .background(Color.gray)
-                                                    .foregroundColor(Color.white)
-                                                    .cornerRadius(8)
+                                                    .modifier(ListButtonModifier())
                                             }
 
                                         } else if suffix == ".25" {
                                             if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))¼")
-                                                        .padding(8)
-                                                        .background(Color.poolGreen)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(SubmitButtonModifier())
                                                 } else {
                                                     Text("\(String(amount.dropLast(3)))¼")
-                                                        .padding(8)
-                                                        .background(Color.gray)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(ListButtonModifier())
                                                 }
                                             } else {
                                                 
                                                 Text("\(String(amount.dropLast(3)))¼")
-                                                    .padding(8)
-                                                    .background(Color.gray)
-                                                    .foregroundColor(Color.white)
-                                                    .cornerRadius(8)
+                                                    .modifier(ListButtonModifier())
                                             }
                                         } else if suffix == ".50" {
                                             if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))½")
-                                                        .padding(8)
-                                                        .background(Color.poolGreen)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(SubmitButtonModifier())
                                                 } else {
                                                     Text("\(String(amount.dropLast(3)))½")
-                                                        .padding(8)
-                                                        .background(Color.gray)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(ListButtonModifier())
                                                 }
                                             } else {
-                                                
                                                 Text("\(String(amount.dropLast(3)))½")
-                                                    .padding(8)
-                                                    .background(Color.gray)
-                                                    .foregroundColor(Color.white)
-                                                    .cornerRadius(8)
+                                                    .modifier(ListButtonModifier())
                                             }
                                         } else if suffix == ".75" {
                                             if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))¾")
-                                                        .padding(8)
-                                                        .background(Color.poolGreen)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(SubmitButtonModifier())
                                                 } else {
-                                                    Text("\(String(amount.dropLast(3)))¾")
-                                                        .padding(8)
-                                                        .background(Color.gray)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                    Text("\(String(amount.dropLast(3)))¾") .modifier(ListButtonModifier())
                                                 }
                                             } else {
                                                 
-                                                Text("\(String(amount.dropLast(3)))¾")
-                                                    .padding(8)
-                                                    .background(Color.gray)
-                                                    .foregroundColor(Color.white)
-                                                    .cornerRadius(8)
+                                                Text("\(String(amount.dropLast(3)))¾") .modifier(ListButtonModifier())
                                             }
                                         } else {
                                             if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(amount)")
-                                                        .padding(8)
-                                                        .background(Color.poolGreen)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                        .modifier(SubmitButtonModifier())
                                                 } else {
-                                                    Text("\(amount)")
-                                                        .padding(8)
-                                                        .background(Color.gray)
-                                                        .foregroundColor(Color.white)
-                                                        .cornerRadius(8)
+                                                    Text("\(amount)") 
+                                                        .modifier(ListButtonModifier())
                                                 }
                                             } else {
-                                                
-                                                Text("\(amount)")
-                                                    .padding(8)
-                                                    .background(Color.gray)
-                                                    .foregroundColor(Color.white)
-                                                    .cornerRadius(8)
+                                                Text("\(amount)") 
+                                                    .modifier(ListButtonModifier())
                                             }
                                         }
                                     })
@@ -195,11 +143,7 @@ struct StopDataDosageInputView: View {
                                 Text(" - \(reading.amount ?? "")")
                             }
                         }
-                        .padding(5)
-                        .background(Color.gray)
-                        .foregroundColor(Color.white)
-                        .cornerRadius(5)
-                        .padding(5)
+                        .modifier(ListButtonModifier())
                     } else {
                         HStack{
                             Text(template.name ?? "")
@@ -207,16 +151,11 @@ struct StopDataDosageInputView: View {
                                 Text(" - \(reading.amount ?? "")")
                             }
                         }
-                        .padding(5)
-                        .background(Color.poolGreen.opacity(0.5))
-                        .foregroundColor(Color.white)
-                        .cornerRadius(5)
-                        .padding(5)
+                        .modifier(AddButtonModifier())
                     }
-
                 }
             }
-            .padding(EdgeInsets(top: 0, leading: 30, bottom: 5, trailing: 0))
+            .padding(EdgeInsets(top: 0, leading: 28, bottom: 5, trailing: 0))
             
             
         }
