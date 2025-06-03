@@ -10,25 +10,28 @@ import SwiftUI
 struct WeatherSnapShotView: View {
     var weather:Weather
     var body: some View {
-        VStack{
-            VStack{
+        Button(action: {
+#if os(iOS)
+            let url = URL(string: "Weather://?saddr")
+            if UIApplication.shared.canOpenURL(url!) {
+                UIApplication.shared.open(url!, options: [:], completionHandler: nil)
+            }
+#endif
+        }, label: {
+            HStack{
                 weather.weatherCode.image
                     .frame(width: 20)
-                    .foregroundColor(Color.white)
-//                    .foregroundColor(weather.weatherCode.color)
-                Spacer()
-                Text("\(String(weather.weatherCode.title))")
-                    .foregroundColor(Color.white)
-                Spacer()
-                Text("\(String(weather.temperature)) °F")
-                    .foregroundColor(Color.white)
+                    .foregroundColor(Color.black)
+                VStack{
+                    Text("\(String(weather.weatherCode.title))")
+                        .foregroundColor(Color.black)
+                    Text("\(String(weather.temperature)) °F")
+                        .foregroundColor(Color.black)
+                }
             }
-            .padding(5)
-            .background(Color.gray)
-
-//            .background(weather.weatherCode.color)
-            .cornerRadius(10)
-        }
+            .modifier(ListButtonModifier())
+            .modifier(OutLineButtonModifier())
+        })
     }
 }
 

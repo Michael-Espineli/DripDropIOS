@@ -12,7 +12,7 @@ struct MapView: View {
     @State private var region = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 51.507222, longitude: -0.1275), span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5))
     @State var mapPinLocations:[MapLocation] = []
     var coordinates: CLLocationCoordinate2D
-    var locations:[ServiceableLocation]
+    var locations:[ServiceLocation]
     var body: some View {
         Map(coordinateRegion: $region,
             interactionModes: .zoom,

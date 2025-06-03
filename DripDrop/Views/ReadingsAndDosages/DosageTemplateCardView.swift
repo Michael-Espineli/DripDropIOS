@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct DosageTemplateCardView: View {
-    let template : DosageTemplate
+    let template : SavedDosageTemplate
     var body: some View {
         VStack{
             HStack{
@@ -17,17 +17,15 @@ struct DosageTemplateCardView: View {
                 Text("\(template.rate ?? "")")
                 Text("\(template.UOM ?? "")")
             }
-            .padding(20)
+            .padding(8)
         }
-        .padding(5)
-        .background(Color.gray.opacity(0.75))
-        .cornerRadius(5)
-        .padding(10)
+        .modifier(ListButtonModifier())
+
     }
 }
 
 struct DosageTemplateCardView_Previews: PreviewProvider {
     static var previews: some View {
-        DosageTemplateCardView(template: DosageTemplate(id: "", name: "", amount: [], UOM: "", rate: "", linkedItemId: "", strength: 0, editable: true, chemType: "", order: 0))
+        DosageTemplateCardView(template: SavedDosageTemplate(id: "",dosageTemplateId: "", name: "", amount: [], UOM: "", rate: "", linkedItemId: "", strength: 0, editable: true, chemType: "", order: 0))
     }
 }

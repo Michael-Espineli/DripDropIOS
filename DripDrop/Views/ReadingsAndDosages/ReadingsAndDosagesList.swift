@@ -8,22 +8,32 @@
 import SwiftUI
 
 struct ReadingsAndDosagesList: View {
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @EnvironmentObject var navigationManager: NavigationStateManager
     @EnvironmentObject var masterDataManager : MasterDataManager
 
     @EnvironmentObject var dataService: ProductionDataService
-
+    @State var templateType:String = "Readings"
     var body: some View {
-        ScrollView{
-            readingTemplateList
-            Divider()
-            dosageTemplateList
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            ScrollView{
+                Picker("Customer", selection: $templateType) {
+                    Text("Readings").tag("Readings")
+                    Text("Dosages").tag("Dosages")
+                    
+                }
+                .pickerStyle(.segmented)
+                if templateType == "Readings" {
+                    readingTemplateList
+                } else if templateType == "Dosages" {
+                    dosageTemplateList
+                }
+            }
+            .padding(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
         }
-        .padding(EdgeInsets(top: 20, leading: 0, bottom: 0, trailing: 0))
-
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await settingsVM.getDosageTemplates(companyId: company.id)
                     try await settingsVM.getReadingTemplates(companyId: company.id)
@@ -46,39 +56,36 @@ struct ReadingsAndDosagesList_Previews: PreviewProvider {
 extension ReadingsAndDosagesList {
     var readingTemplateList: some View {
         VStack{
-            Text("Reading List")
-                .font(.headline)
-            ForEach(settingsVM.readingTemplates) { template in
-                if UIDevice.isIPhone {
-                    
-                    NavigationLink(value: Route.readingTemplate(tempalte: template, dataService: dataService), label: {
-                        ReadingTemplateCardView(template: template)
-
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedDosageTemplate = nil
-                        
-                        masterDataManager.selectedReadingsTemplate = template
-                        
-                    
-                           }, label: {
-                        ReadingTemplateCardView(template: template)
-                    })
+            ForEach(settingsVM.savedReadingTemplates) { template in
+                HStack{
+                    if UIDevice.isIPhone {
+                        NavigationLink(value: Route.readingTemplate(tempalte: template, dataService: dataService), label: {
+                            ReadingTemplateCardView(template: template)
+                        })
+                    } else {
+                        Button(action: {
+                            masterDataManager.selectedDosageTemplate = nil
+                            masterDataManager.selectedReadingsTemplate = template
+                        }, label: {
+                            ReadingTemplateCardView(template: template)
+                        })
+                    }
                 }
+                .padding(.horizontal,8)
+                .padding(.vertical,3)
+                Divider()
             }
         }
     }
     
     var dosageTemplateList: some View {
         VStack{
-            Text("Dosage List")
-                .font(.headline)
-            ForEach(settingsVM.dosageTemplates) { template in
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.dosageTemplate(template: template, dataService: dataService), label: {
-                        DosageTemplateCardView(template: template)
-                    })
+            ForEach(settingsVM.savedDosageTemplates) { template in
+                HStack{
+                    if UIDevice.isIPhone {
+                        NavigationLink(value: Route.dosageTemplate(template: template, dataService: dataService), label: {
+                            DosageTemplateCardView(template: template)
+                        })
                     } else {
                         Button(action: {
                             masterDataManager.selectedReadingsTemplate = nil
@@ -87,6 +94,10 @@ extension ReadingsAndDosagesList {
                             DosageTemplateCardView(template: template)
                         })
                     }
+                }
+                .padding(.horizontal,8)
+                .padding(.vertical,3)
+                Divider()
             }
         }
     }

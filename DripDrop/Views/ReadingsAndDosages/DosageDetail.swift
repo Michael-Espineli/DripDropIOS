@@ -8,23 +8,28 @@
 import SwiftUI
 
 struct DosageDetail: View {
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @State var dosageTemplate:DosageTemplate? = nil
+    @State var dosageTemplate:SavedDosageTemplate?
+    @State var isSaved:Bool = false
     var body: some View {
         ScrollView{
             content
         }
-        .padding(10)
-
+        .padding(8)
+        .navigationTitle("\(dosageTemplate?.name ?? "name")")
         .task {
             //Set local dosage Template equal to globally selected dosage template
-            dosageTemplate = masterDataManager.selectedDosageTemplate
-            
+            if !UIDevice.isIPhone {
+                dosageTemplate = masterDataManager.selectedDosageTemplate
+            }
         }
+        
         //Watch the globally selected dosage template for changes, to update screen to reflect that
         .onChange(of: masterDataManager.selectedDosageTemplate, perform: { template in
-            dosageTemplate = template
+            if !UIDevice.isIPhone {
+                dosageTemplate = template
+            }
         })
     }
 }
@@ -44,19 +49,19 @@ extension DosageDetail {
                         Spacer()
                         Button(action: {
                             print("Edit Dosage Detail View")
+                            isSaved.toggle()
+
                         }, label: {
-                            Image(systemName: "square.and.pencil")
+                            Image(systemName: isSaved ? "heart.fill" : "heart")
                         })
                     }
                 }
                 VStack{
                     Text("\(template.UOM ?? "UOM")")
                     Text("Rate: \(Double(template.rate ?? "0") ?? 0, format: .currency(code: "USD").precision(.fractionLength(0)))")
-
                 }
                         ScrollView(.horizontal){
                             HStack{
-
                             Button(action: {
                                 
                             }, label: {
@@ -72,7 +77,7 @@ extension DosageDetail {
 
                 }
             } else {
-                Text("No Reading Template Selected")
+                Text("No Dosage Template Selected")
             }
         }
     }

@@ -12,8 +12,8 @@ struct ServiceLocationMapView: View {
 
     @StateObject var locationVM : ServiceLocationViewModel
 
-    init(companyId:String,serviceLocationDataService:ServiceLocationManagerProtocol){
-        _locationVM = StateObject(wrappedValue: ServiceLocationViewModel(serviceLocationDataService: serviceLocationDataService))
+    init(companyId:String,serviceLocationDataService:any ProductionDataServiceProtocol){
+        _locationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: serviceLocationDataService))
         self.companyId = companyId
     }
 
@@ -34,7 +34,7 @@ struct ServiceLocationMapView: View {
                     MapAnnotation(coordinate: location.coordinate, content: {
                                             Button(action: {
                                                 print(location.name)
-                                                navigationManager.selectedMapLocation = location
+//                                                navigationManager.selectedMapLocation = location
                                             }, label: {
                                                 Image(systemName: "house")
                                             })

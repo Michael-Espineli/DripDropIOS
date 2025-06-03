@@ -11,7 +11,7 @@ struct DosageTemplatePicker: View {
     @Environment(\.dismiss) private var dismiss
 
     @Binding var template:DosageTemplate
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @EnvironmentObject var masterDataManager: MasterDataManager
     var body: some View {
         ZStack{
@@ -22,7 +22,7 @@ struct DosageTemplatePicker: View {
             }
         }
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await settingsVM.getDosageTemplates(companyId: company.id)
                 } catch {

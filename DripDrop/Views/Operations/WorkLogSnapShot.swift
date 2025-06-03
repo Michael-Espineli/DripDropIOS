@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct WorkLogSnapShot: View {
-    @StateObject var workLogVM : WorkLogViewModel
+//    @StateObject var workLogVM : WorkLogViewModel
     var body: some View {
         VStack{
             Button(action: {

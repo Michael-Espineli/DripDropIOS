@@ -8,22 +8,28 @@
 import SwiftUI
 
 struct ReadingsDetail: View {
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @State var readingTemplate:ReadingsTemplate? = nil
+    @State var readingTemplate:SavedReadingsTemplate?
+    @State var isSaved:Bool = false
+
     var body: some View {
         ScrollView{
             content
         }
-        .padding(10)
+        .padding(8)
+        .navigationTitle("\(readingTemplate?.name ?? "name")")
         .task {
             //Set local readingTemplate equal to globally selected reading template
-            readingTemplate = masterDataManager.selectedReadingsTemplate
-            
+            if !UIDevice.isIPhone {
+                readingTemplate = masterDataManager.selectedReadingsTemplate
+            }
         }
         //Watch the globally selected reading tempalte for changes, to update screen to reflect that
         .onChange(of: masterDataManager.selectedReadingsTemplate, perform: { template in
-            readingTemplate = template
+            if !UIDevice.isIPhone {
+                readingTemplate = template
+            }
         })
     }
 }
@@ -43,8 +49,9 @@ extension ReadingsDetail {
                         Spacer()
                         Button(action: {
                             print("Edit Reading Detail View")
+                            isSaved.toggle()
                         }, label: {
-                            Image(systemName: "square.and.pencil")
+                            Image(systemName: isSaved ? "heart.fill" : "heart")
                         })
                     }
                 }
