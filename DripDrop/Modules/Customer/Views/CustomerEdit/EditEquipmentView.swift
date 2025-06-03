@@ -6,68 +6,137 @@
 //
 
 import SwiftUI
+@MainActor
+final class EditEquipmentViewModel:ObservableObject{
+    private var dataService: any ProductionDataServiceProtocol
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
+    }
+    @Published var category:EquipmentCategory = .pump
+    @Published var name:String = ""
 
+    @Published var make:String = ""
+    @Published var model:String = ""
+    @Published var dateInstalled:Date = Date()
+    @Published var status:EquipmentStatus = .operational
+    @Published var notes:String = ""
+    
+    @Published var needsService:Bool = false
+    @Published var lastServiced:Date = Date()
+    @Published var lastServicedOptional:Date? = Date()
+    @Published var currentPressure:String = ""
+    @Published var cleanPressure:String = ""
+
+    @Published var serviceFrequency:String? = ""
+    @Published var serviceFrequencyEvery:String? = ""
+    @Published var alertMessage:String = ""
+    @Published var showAlert:Bool = false
+    
+    func deleteEquipment(companyId:String,equipmentId:String) async throws {
+        try await dataService.deleteEquipment(companyId: companyId, equipmentId: equipmentId)
+    }
+    func updateEquipmentWithValidation(
+        companyId : String,
+        equipmentId : String,
+        equipment : Equipment
+    ) async throws {
+
+        if needsService {
+//            guard let validatedLastServiceDate = lastServiced else {
+//                throw FireBasePublish.unableToPublish
+//            }
+            guard let validatedServiceFrequency = serviceFrequency else {
+                throw FireBasePublish.unableToPublish
+            }
+            guard let validatedServiceFrequencyEvery = serviceFrequencyEvery else {
+                throw FireBasePublish.unableToPublish
+            }
+            guard let validedNextDate = getNextServiceDate(lastServiceDate: lastServiced, every: serviceFrequencyEvery, frequency: serviceFrequency) else {
+                throw FireBasePublish.unableToPublish
+            }
+            
+            if equipment.serviceFrequency != serviceFrequency {
+                try dataService.updateEquipmentServiceFrequency(companyId: companyId, equipmentId: equipmentId, serviceFrequency: validatedServiceFrequency)
+            }
+            if equipment.serviceFrequencyEvery != serviceFrequencyEvery {
+                try dataService.updateEquipmentServiceFrequencyEvery(companyId: companyId, equipmentId: equipmentId, serviceFrequencyEvery: validatedServiceFrequencyEvery)
+            }
+            try dataService.updateEquipmentNextServiceDate(companyId: companyId, equipmentId: equipmentId, nextServiceDate: validedNextDate)
+        }
+        if equipment.name != name {
+            try dataService.updateEquipmentName(companyId: companyId, equipmentId: equipmentId, name: notes)
+        }
+        if equipment.category != category {
+            try dataService.updateEquipmentCategory(companyId: companyId, equipmentId: equipmentId, category: category)
+        }
+        if equipment.make != make {
+            try dataService.updateEquipmentMake(companyId: companyId, equipmentId: equipmentId, make: make)
+        }
+        if equipment.model != model {
+            try dataService.updateEquipmentModel(companyId: companyId, equipmentId: equipmentId, model: model)
+        }
+        if equipment.status != status {
+            try dataService.updateEquipmentStatus(companyId: companyId, equipmentId: equipmentId, status: status)
+        }
+        if equipment.dateInstalled != dateInstalled {
+            try dataService.updateEquipmentDateInstalled(companyId: companyId, equipmentId: equipmentId, dateInstalled: dateInstalled)
+        }
+        if let pressureInt = Int(cleanPressure) {
+            if equipment.cleanFilterPressure != pressureInt {
+                try dataService.updateEquipmentCleanFilterPressure(companyId: companyId, equipmentId: equipmentId, cleanFilterPressure: pressureInt)
+            }
+        }
+        if let pressureInt = Int(currentPressure) {
+            
+            if equipment.currentPressure != pressureInt {
+                try dataService.updateEquipmentCurrentPressure(companyId: companyId, equipmentId: equipmentId, currentPressure: pressureInt)
+            }
+        }
+        if equipment.lastServiceDate != lastServiced {
+            try dataService.updateEquipmentCleanLastServiceDate(companyId: companyId, equipmentId: equipmentId, lastServiceDate: lastServiced)
+        }
+        
+        if equipment.notes != notes {
+            try dataService.updateEquipmentNotes(companyId: companyId, equipmentId: equipmentId, notes: notes)
+        }
+    }
+}
 struct EditEquipmentView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject var equipmentVM : EquipmentViewModel
+    @EnvironmentObject var dataService : ProductionDataService
+
+    @StateObject var VM : EditEquipmentViewModel
     @State var equipment : Equipment
     
     init(dataService:any ProductionDataServiceProtocol,equipment:Equipment){
-        _equipmentVM = StateObject(wrappedValue: EquipmentViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: EditEquipmentViewModel(dataService: dataService))
         _equipment = State(wrappedValue: equipment)
     }
 
-    @State var category:EquipmentCategory = .pump
-    @State var name:String = ""
-
-    @State var make:String = ""
-    @State var model:String = ""
-    @State var dateInstalled:Date = Date()
-    @State var status:EquipmentStatus = .operational
-    @State var notes:String = ""
-    
-    @State var needsService:Bool = false
-    @State var lastServiced:Date = Date()
-    @State var lastServicedOptional:Date? = Date()
-
-    @State var serviceFrequency:String? = ""
-    @State var serviceFrequencyEvery:String? = ""
-    @State var alertMessage:String = ""
-    @State var showAlert:Bool = false
     var body: some View {
         VStack{
             ScrollView{
-                HStack{
-                    Button(action: {
-                        
-                    }, label: {
-                        Image(systemName: "trash")
-                            .foregroundColor(Color.red)
-                            .font(.title)
-                    })
-                    Spacer()
-                    button
-                }
-                .padding(EdgeInsets(top: 10, leading: 10, bottom: 5, trailing: 10))
                 form
                 button
             }
+            .padding(8)
+
         }
-        .alert(alertMessage, isPresented: $showAlert) {
+        .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
         .task {
-            category = equipment.category
-            name = equipment.name
-            make = equipment.make
-            model = equipment.model
-            dateInstalled = equipment.dateInstalled
-            status = equipment.status
-            notes = equipment.notes
-            needsService = equipment.needsService
-            lastServiced = equipment.lastServiceDate ?? Date()
-            serviceFrequency = equipment.serviceFrequency
-            serviceFrequencyEvery = equipment.serviceFrequencyEvery
+            VM.category = equipment.category
+            VM.name = equipment.name
+            VM.make = equipment.make
+            VM.model = equipment.model
+            VM.dateInstalled = equipment.dateInstalled
+            VM.status = equipment.status
+            VM.notes = equipment.notes
+            VM.needsService = equipment.needsService
+            VM.lastServiced = equipment.lastServiceDate ?? Date()
+            VM.serviceFrequency = equipment.serviceFrequency
+            VM.serviceFrequencyEvery = equipment.serviceFrequencyEvery
 
         }
     }
@@ -82,7 +151,7 @@ extension EditEquipmentView {
                         .bold(true)
                     TextField(
                         "Name",
-                        text: $name
+                        text: $VM.name
                     )
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
@@ -91,7 +160,7 @@ extension EditEquipmentView {
                 HStack{
                     Text("Category")
                         .bold(true)
-                    Picker("Appearance", selection: $category) {
+                    Picker("Appearance", selection: $VM.category) {
                         ForEach(EquipmentCategory.allCases,id:\.self) {category in
                             Text(category.rawValue).tag(category)
                         }
@@ -101,8 +170,8 @@ extension EditEquipmentView {
                     Text("Make")
                         .bold(true)
                     TextField(
-                        "make",
-                        text: $make
+                        "Make",
+                        text: $VM.make
                     )
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
@@ -112,8 +181,8 @@ extension EditEquipmentView {
                     Text("Model")
                         .bold(true)
                     TextField(
-                        "model",
-                        text: $model
+                        "Model",
+                        text: $VM.model
                     )
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
@@ -122,13 +191,13 @@ extension EditEquipmentView {
                 HStack{
                     Text("Date Installed")
                         .bold(true)
-                    DatePicker(selection: $dateInstalled, displayedComponents: .date) {
+                    DatePicker(selection: $VM.dateInstalled, displayedComponents: .date) {
                     }
                 }
                 HStack{
                     Text("Status")
                         .bold(true)
-                    Picker("Frequency", selection: $status) {
+                    Picker("Frequency", selection: $VM.status) {
                         Text("Operational").tag("Operational")
                         Text("Needs Repair").tag("Needs Repair")
                         Text("Nonoperational").tag("Nonoperational")
@@ -139,7 +208,7 @@ extension EditEquipmentView {
                         .bold(true)
                     TextField(
                         "notes",
-                        text: $notes,
+                        text: $VM.notes,
                         axis: .vertical
                     )
                     .padding(3)
@@ -148,29 +217,28 @@ extension EditEquipmentView {
                 }
             }
             VStack{
-                Toggle(isOn: $needsService, label: {
+                Toggle(isOn: $VM.needsService, label: {
                     Text("Needs Service")
                 })
-                if needsService {
+                if VM.needsService {
                     HStack{
                         Text("Last Serviced")
                             .bold(true)
-                        DatePicker(selection: $lastServiced, displayedComponents: .date) {
+                        DatePicker(selection: $VM.lastServiced, displayedComponents: .date) {
                         }
                     }
                     HStack{
-                        Picker("Every", selection: $serviceFrequencyEvery) {
+                        Picker("Every", selection: $VM.serviceFrequencyEvery) {
                             Text("Pick WorkSheet")
                             ForEach(0...100,id:\.self) {
                                 Text(String($0)).tag(String($0))
                             }
                         }
-                        Picker("Frequency", selection: $serviceFrequency) {
+                        Picker("Frequency", selection: $VM.serviceFrequency) {
                             Text("Day").tag("Day")
                             Text("Week").tag("Week")
                             Text("Month").tag("Month")
                             Text("Year").tag("Year")
-
                         }
                     }
                 }
@@ -182,55 +250,27 @@ extension EditEquipmentView {
             Button(action: {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
-                            if !needsService {
-                                lastServicedOptional = nil
-                                serviceFrequency = nil
-                                serviceFrequencyEvery = nil
+                        if let company = masterDataManager.currentCompany {
+                            if !VM.needsService {
+                                VM.lastServicedOptional = nil
+                                VM.serviceFrequency = nil
+                                VM.serviceFrequencyEvery = nil
                                 
                             } else {
-                                lastServicedOptional = lastServiced
+                                VM.lastServicedOptional = VM.lastServiced
                             }
-                            try await equipmentVM.updateEquipmentWithValidation(companyId: company.id,
-                                                                                category: category,
-                                                                                equipmentId: equipment.id,
-                                                                                make: make,
-                                                                                model: model,
-                                                                                dateInstalled: dateInstalled, status: status,
-                                                                                notes: notes, 
-                                                                                customerName: equipment.customerName ?? "",
-                                                                                customerId:  equipment.customerId,
-                                                                                serviceLocationId: equipment.serviceLocationId,
-                                                                                bodyOfWaterId: equipment.bodyOfWaterId,
-                                                                                name: name,
-                                                                                needsService: needsService,
-                                                                                lastServiceDate: lastServicedOptional,
-                                                                                serviceFrequency: serviceFrequency,
-                                                                                serviceFrequencyEvery: serviceFrequencyEvery)
-                        category = .filter
-                            name = ""
-
-                            make = ""
-                            model = ""
-                            dateInstalled = Date()
-                            status = .operational
-                            notes = ""
-                            
-                            needsService = false
-                            lastServiced = Date()
-                            lastServicedOptional = Date()
-
-                            serviceFrequency = ""
-                            serviceFrequencyEvery = ""
-
+                            try await VM.updateEquipmentWithValidation(companyId: company.id, equipmentId: equipment.id, equipment: equipment)
                         }
                         
                     } catch {
                         print("Error")
+                        print(error)
                     }
                 }
             }, label: {
-                Text("Submit")
+                Text("Save")
+                    .modifier(SubmitButtonModifier())
+
             })
         }
     }

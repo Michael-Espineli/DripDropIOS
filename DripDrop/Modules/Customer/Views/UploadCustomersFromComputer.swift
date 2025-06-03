@@ -15,10 +15,11 @@ struct UploadCustomersFromComputer: View {
 
     init(dataService:any ProductionDataServiceProtocol){
         _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
-        
+        _customerFileVM = StateObject(wrappedValue: CustomerFileManager(dataService: dataService))
+
     }
     @StateObject private var storeViewModel = StoreViewModel()
-    @StateObject private var customerFileVM = CustomerFileManager()
+    @StateObject private var customerFileVM : CustomerFileManager
 
 
     @State var pathName = ""
@@ -49,7 +50,7 @@ struct UploadCustomersFromComputer: View {
               }
               Button(action: {
                   Task{
-                      if let company = masterDataManager.selectedCompany {
+                      if let company = masterDataManager.currentCompany {
                           isLoading = true
                           switch fileType{
                           case "CSV":

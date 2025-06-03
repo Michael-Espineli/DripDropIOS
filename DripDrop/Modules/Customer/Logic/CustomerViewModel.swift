@@ -58,6 +58,10 @@ enum CustomerSortOptions:String, CaseIterable{
 
 @MainActor
 final class CustomerViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                             Variables
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,10 +103,7 @@ final class CustomerViewModel:ObservableObject{
 //Subscribers Variables
     private var lastDocument :DocumentSnapshot? = nil
 
-    let dataService:any ProductionDataServiceProtocol
-    init(dataService:any ProductionDataServiceProtocol){
-        self.dataService = dataService
-    }
+ 
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                             CREATE
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -339,9 +340,31 @@ final class CustomerViewModel:ObservableObject{
         try await dataService.updateCurrentCustomer(companyId: companyId, currentCustomer: currentCustomer)
         
     }
-    func updateCustomerInfoWithValidation(currentCustomer:Customer,companyId: String,firstName:String,lastName:String,email:String,phoneNumber:String,company:String,displayAsCompany:Bool,billingAddress:Address) async throws {
+    func updateCustomerInfoWithValidation(
+        currentCustomer:Customer,
+        companyId: String,
+        firstName:String,
+        lastName:String,
+        email:String,
+        phoneNumber:String,
+        company:String,
+        displayAsCompany:Bool,
+        billingAddress:Address,
+        active:Bool
+    ) async throws {
         
-        try await dataService.updateCustomerInfoWithValidation(currentCustomer: currentCustomer, companyId: companyId, firstName: firstName, lastName: lastName, email: email, phoneNumber: phoneNumber, company: company, displayAsCompany: displayAsCompany,billingAddress: billingAddress)
+        try await dataService.updateCustomerInfoWithValidation(
+            currentCustomer: currentCustomer,
+            companyId: companyId,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            phoneNumber: phoneNumber,
+            company: company,
+            displayAsCompany: displayAsCompany,
+            billingAddress: billingAddress,
+            active: active
+        )
         
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -384,7 +407,7 @@ final class CustomerViewModel:ObservableObject{
     }
     
     func getRecurringServiceStopPreview(companyId: String,customerId:String) async throws{
-        self.recurringServiceStopPreview = try await RecurringServiceStopManager.shared.getAllRecurringServiceStopByCustomerId( companyId: companyId, customerId: customerId)
+        self.recurringServiceStopPreview = try await dataService.getAllRecurringServiceStopByCustomerId( companyId: companyId, customerId: customerId)
     }
     func uploadCsvFileTo(pathName:String,fileName:String,companyId: String) async {
         let fileURL = URL(fileURLWithPath: pathName).appendingPathExtension("csv")
@@ -439,7 +462,8 @@ final class CustomerViewModel:ObservableObject{
         DBAddress.latitude = pushCoordinates?.latitude ?? 32.8
         DBAddress.longitude = pushCoordinates?.longitude ?? -117.8
         print("Received Coordinates from geoCoder : \(String(describing: pushCoordinates))")
-        let finalCustomer:Customer = Customer(id: customerId,
+        let finalCustomer:Customer = Customer(
+            id: customerId,
                                               firstName: customer.firstName,
                                               lastName: customer.lastName,
                                               email: customer.email,
@@ -447,13 +471,12 @@ final class CustomerViewModel:ObservableObject{
                                               phoneNumber: customer.phoneNumber,
                                               phoneLabel: customer.phoneLabel,
                                               active: customer.active,
-                                              rate: customer.rate,
                                               company: customer.company,
                                               displayAsCompany: customer.displayAsCompany,
                                               hireDate: customer.hireDate,
-                                              fireDate: customer.fireDate,
-                                              fireCategory: customer.fireCategory,
-                                              billingNotes: customer.billingNotes)
+                                              billingNotes: customer.billingNotes,
+                                              linkedInviteId: UUID().uuidString
+        )
         try await dataService.uploadCustomer(companyId: companyId, customer: finalCustomer)
     }
     func addNewCustomerWithLocation(customer:Customer,serviceLocation:ServiceLocation,companyId: String) async throws{
@@ -489,17 +512,19 @@ final class CustomerViewModel:ObservableObject{
                                               phoneNumber: customer.phoneNumber,
                                               phoneLabel: customer.phoneLabel,
                                               active: customer.active,
-                                              rate: customer.rate,
                                               company: customer.company,
                                               displayAsCompany: customer.displayAsCompany,
                                               hireDate: customer.hireDate,
-                                              fireDate: customer.fireDate,
-                                              fireCategory: customer.fireCategory,
-                                              billingNotes: customer.billingNotes)
+                                              billingNotes: customer.billingNotes,
+                                              linkedInviteId: UUID().uuidString)
         try await dataService.uploadCustomer(companyId: companyId, customer: finalCustomer)
+        
         print("Uploading Service Location For >> \(serviceLocation.customerName)")
         try await ServiceLocationManager.shared.uploadCustomerServiceLocations(companyId: companyId, customer: finalCustomer,serviceLocation:serviceLocation)
+        try await dataService.uploadCustomerContact(companyId: companyId, customerId: customerId, contact: serviceLocation.mainContact)
+
         print("Uploading Body Of Water For >> \(serviceLocation.customerName)")
+        try await dataService.uploadCustomerContact(companyId: companyId, customerId: customerId, contact: serviceLocation.mainContact)
 
         try await BodyOfWaterManager.shared.uploadServiceLocationBodyOfWater(
             companyId: companyId,
@@ -514,7 +539,8 @@ final class CustomerViewModel:ObservableObject{
                 shape: "",
                 length: [],
                 depth: [],
-                width: []
+                width: [],
+                lastFilled: Date()
             )
         )
         print(
@@ -547,7 +573,8 @@ final class CustomerViewModel:ObservableObject{
                 customerName: fullName,
                 customerId: customerId,
                 serviceLocationId: serviceLocationId,
-                bodyOfWaterId: bodyOfWaterId
+                bodyOfWaterId: bodyOfWaterId,
+                isActive: true
             )
         )
         // Add Basic Parts for Filter
@@ -566,7 +593,8 @@ final class CustomerViewModel:ObservableObject{
                 customerName: fullName,
                 customerId: customerId,
                 serviceLocationId: serviceLocationId,
-                bodyOfWaterId: bodyOfWaterId
+                bodyOfWaterId: bodyOfWaterId,
+                isActive: true
             )
         )
     }
@@ -588,11 +616,7 @@ final class CustomerViewModel:ObservableObject{
             if customer.active == true {
                 customerCount = customerCount + 1
             }
-            if customer.active == false && customer.fireDate != nil   {
-                if customer.fireDate! > startDate {
-                    customerFiredCount = customerFiredCount + 1
-                }
-            }
+      
             
             if customer.active == true && customer.hireDate > startDate  {
                     customerHireCount = customerHireCount + 1
@@ -642,9 +666,7 @@ final class CustomerViewModel:ObservableObject{
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     func addListenerForAllCustomers(companyId:String,filter:CustomerFilterOptions,sort:CustomerSortOptions){
         print("Adding Customer Listener")
-        dataService.addListenerForAllCustomers(companyId: companyId, sort: sort, filter: filter) { [weak self] customers in
-             self?.customers = customers
-        }
+       
     }
     func removeListener(){
         dataService.removeListenerForAllCustomers()

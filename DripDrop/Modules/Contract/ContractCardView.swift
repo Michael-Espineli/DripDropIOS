@@ -8,32 +8,30 @@
 import SwiftUI
 
 struct ContractCardView: View {
-    let contract:Contract
+    let contract:RecurringContract
     var body: some View {
         VStack{
             HStack{
-                Text("\(contract.customerName)")
+                Text("\(contract.internalCustomerName)")
                 Spacer()
-               
-            }
-            switch contract.status {
-            case .pending:
-                Pending
-            case .accepted:
-                Accepted
-            case .past:
-                Past
             }
             HStack{
-                Text("Start Date: ")
-                    .font(.footnote)
-                if let date = contract.startDate {
-                    Text("\(fullDate(date: date))")
-                        .font(.footnote)
+                switch contract.status {
+                    case .pending:
+                        Pending
+                    case .accepted:
+                        Accepted
+                    case .past:
+                        Past
+                    case .rejected:
+                        Rejected
+                    case .draft:
+                        Draft
                 }
+           
                 Text("Rate: ")
                     .font(.footnote)
-                Text("\(contract.rate, format: .currency(code: "USD").precision(.fractionLength(0)))")
+                Text("\(Double(contract.rate)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
                     .font(.footnote)
             }
         }
@@ -71,6 +69,26 @@ extension ContractCardView {
     var Past: some View {
         HStack{
             Text("Past")
+                .padding(5)
+                .background(Color.red)
+                .cornerRadius(5)
+                .foregroundColor(Color.black)
+                .font(.footnote)
+        }
+    }
+    var Rejected: some View {
+        HStack{
+            Text("Rejected")
+                .padding(5)
+                .background(Color.red)
+                .cornerRadius(5)
+                .foregroundColor(Color.black)
+                .font(.footnote)
+        }
+    }
+    var Draft: some View {
+        HStack{
+            Text("Draft")
                 .padding(5)
                 .background(Color.red)
                 .cornerRadius(5)

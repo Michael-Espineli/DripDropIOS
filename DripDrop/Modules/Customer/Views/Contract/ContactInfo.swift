@@ -10,10 +10,42 @@ import SwiftUI
 struct ContactInfo: View {
     let contact:Contact
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack{
+            HStack{
+                Text("Name:")
+                    .bold(true)
+                Text("\(contact.name)")
+                
+                Spacer()
+            }
+            HStack{
+                Text("Phone Number:")
+                    .bold(true)
+                Text("\(contact.phoneNumber)")
+                
+                Spacer()
+            }
+            HStack{
+                Text("Email:")
+                    .bold(true)
+                Text("\(contact.email)")
+                
+                Spacer()
+            }
+            HStack{
+                Text("Notes:")
+                    .bold(true)
+                if let notes = contact.notes {
+                    Text("\(notes)")
+                }
+                Spacer()
+            }
+        }
+        .modifier(ListButtonModifier())
+        .padding(8)
     }
 }
-
-#Preview {
-    ContactInfo()
-}
+//
+//#Preview {
+//    ContactInfo()
+//}

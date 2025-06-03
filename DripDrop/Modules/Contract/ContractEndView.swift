@@ -9,11 +9,11 @@ import SwiftUI
 
 struct ContractEndView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
-    @State private var contract : Contract
+    @State private var contract : RecurringContract
     @StateObject private var customerVM : CustomerViewModel
     @StateObject var contractVM : ContractViewModel
 
-    init(dataService:any  ProductionDataServiceProtocol,contract:Contract){
+    init(dataService:any  ProductionDataServiceProtocol,contract:RecurringContract){
         _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
         _contractVM = StateObject(wrappedValue: ContractViewModel(dataService: dataService))
         _contract = State(wrappedValue: contract)
@@ -105,7 +105,7 @@ struct ContractEndView: View {
 extension ContractEndView {
     var edit: some View {
         VStack{
-            Text("Contract Holder : \(contract.customerName)")
+            Text("Contract Holder : \(contract.internalCustomerName)")
             HStack{
                 Button(action: {
                     nextView = "Remove Contract"
@@ -333,7 +333,8 @@ extension ContractEndView {
                         }
                         
                         let fullName = selectedCustomer.firstName + " " + selectedCustomer.lastName
-                        try await contractVM.uploadContract(companyId: company.id, contract: Contract(id: UUID().uuidString, customerName: fullName, customerId: selectedCustomer.id, dateSent: Date(), dateToAccept: dateToAccept, status: .pending, locations: 1, rate: pushRate, rateType: rateType, laborRate: pushLaborRate, laborType: laborType, chemType: chemType, terms: terms, notes: notes))
+                        //DEVELOPER FIX
+//                        try await contractVM.uploadContract(companyId: company.id, contract: Contract(id: UUID().uuidString, customerName: fullName, customerId: selectedCustomer.id, dateSent: Date(), dateToAccept: dateToAccept, status: .pending, locations: 1, rate: pushRate, rateType: rateType, laborRate: pushLaborRate, laborType: laborType, chemType: chemType, terms: terms, notes: notes))
                     }
                 }
             }, label: {

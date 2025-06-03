@@ -42,6 +42,8 @@ struct AddBodyOfWaterView: View {
     @State var length2:String = ""
     @State var depth2:String = ""
     @State var width2:String = ""
+    @State var lastFilled:Date = Date()
+
     //Alerts
     @State var showAlert:Bool = false
     @State var alertMessage:String = ""
@@ -94,6 +96,8 @@ extension AddBodyOfWaterView {
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
                 }
+                DatePicker("Last Filled", selection: $lastFilled, in: ...Date(),displayedComponents: .date)
+
                 HStack{
                     Text("Shape")
                         .bold(true)
@@ -206,7 +210,7 @@ extension AddBodyOfWaterView {
            Button(action: {
                Task{
                    do {
-                       guard let company = masterDataManager.selectedCompany else {
+                       guard let company = masterDataManager.currentCompany else {
                            return
                        }
                        
@@ -221,7 +225,8 @@ extension AddBodyOfWaterView {
                                                                               shape: shape,
                                                                               length: [length1,length2],
                                                                               depth: [depth1,depth2],
-                                                                              width: [width1,width2])
+                                                                              width: [width1,width2], 
+                                                                              lastFilled: lastFilled)
                        alertMessage = "Successfully Updated"
                        print(alertMessage)
                        showAlert = true
@@ -238,6 +243,8 @@ extension AddBodyOfWaterView {
                }
            }, label: {
                Text("Submit")
+                   .modifier(SubmitButtonModifier())
+
            })
         }
     }

@@ -31,21 +31,14 @@ struct CustomerLocationView: View {
             if isLoading {
                 ProgressView()
             } else {
-                ScrollView(showsIndicators: false){
-                    Divider()
-                    Text("Service Location Detail")
-                        .font(.headline)
+                VStack{
                     ScrollView(.horizontal, showsIndicators: false){
                         HStack{
                             Button(action: {
                                 showAddSheet.toggle()
                             }, label: {
                                Image(systemName: "plus.square.on.square")
-                                    .font(.headline)
-                                    .foregroundColor(Color.basicFontText)
-                                    .padding(8)
-                                    .background(Color.poolBlue)
-                                    .cornerRadius(8)
+                                    .modifier(AddButtonModifier())
                             })
                             .confirmationDialog("Select Type", isPresented: self.$showNewLocationType, actions: {
                                 Button(action: {
@@ -76,22 +69,16 @@ struct CustomerLocationView: View {
                                         masterDataManager.selectedServiceLocation = location
                                     }, label: {
                                         Text(location.address.streetAddress)
-                                            .padding(5)
-                                            .background(selectedLocation == location ? Color.accentColor : Color.gray)
-                                            .foregroundColor(selectedLocation == location ? Color.white : Color.accentColor)
-                                            .cornerRadius(5)
+                                            .modifier(AddButtonModifier())
                                     })
                                     .padding(EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 5))
                                 }
-                          
                             }
                         }
                     }
-                    .padding(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     if selectedLocation == nil {
                         Text("Please select a location")
                     } else {
-                   
                             ServiceLocationDetailView(dataService: dataService, location: selectedLocation!)
                     }
                 }
@@ -100,10 +87,13 @@ struct CustomerLocationView: View {
         .task{
             do {
                 
-                try await locationVM.getAllCustomerServiceLocationsById(companyId:masterDataManager.selectedCompany!.id,customerId: customer.id)
+                try await locationVM.getAllCustomerServiceLocationsById(companyId:masterDataManager.currentCompany!.id,customerId: customer.id)
                 locations = locationVM.serviceLocations
                 if locations.count != 0 {
-                    selectedLocation = locations.first!
+                    selectedLocation = locations.first
+                    masterDataManager.selectedServiceLocation = selectedLocation
+                } else {
+                    selectedLocation = nil
                     masterDataManager.selectedServiceLocation = selectedLocation
                 }
                 print("Successfully Loaded All Customer Locations")
@@ -119,7 +109,7 @@ struct CustomerLocationView: View {
                     
                     isLoading = true
                     do {
-                        try await locationVM.getAllCustomerServiceLocationsById(companyId:masterDataManager.selectedCompany!.id,customerId: customer.id)
+                        try await locationVM.getAllCustomerServiceLocationsById(companyId:masterDataManager.currentCompany!.id,customerId: customer.id)
                         locations = locationVM.serviceLocations
                         if locations.count != 0 {
                             selectedLocation = locations.first!
@@ -127,6 +117,7 @@ struct CustomerLocationView: View {
 
                         } else {
                             selectedLocation = nil
+                            masterDataManager.selectedServiceLocation = selectedLocation
                         }
                         print("Successfully Loaded All Customer Locations")
                     } catch{

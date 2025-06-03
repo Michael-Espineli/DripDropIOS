@@ -10,12 +10,4 @@ import SwiftUI
 import FirebaseFirestore
 import MapKit
 
-@MainActor
-final class BuisnessListViewModel:ObservableObject{
-    let dataService:any ProductionDataServiceProtocol
-    init(dataService:any ProductionDataServiceProtocol){
-        self.dataService = dataService
-    }
-    //LOADING
-    @Published var buisnesses:[Company] = []
-}
+

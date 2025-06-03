@@ -26,23 +26,15 @@ struct CustomerPickerScreen: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                HStack{
-                    Spacer()
-                    Button(action: {
-                        dismiss()
-                    }, label: {
-                        Image(systemName: "xmark")
-                    })
-                    .padding(16)
-                }
                 customerList
                 searchBar
             }
+            .padding(16)
         }
         .task {
             do {
-                if let company = masterDataManager.selectedCompany {
-                    try await customerVM.filterAndSortSelected(companyId: company.id, filter: .active, sort: .firstNameHigh)
+                if let company = masterDataManager.currentCompany {
+                    try await customerVM.filterAndSortSelected(companyId: company.id, filter: .active, sort: .lastNameLow)
                     customers = customerVM.customers
                 }
             } catch {
@@ -54,8 +46,8 @@ struct CustomerPickerScreen: View {
             if term == "" {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
-                            try await customerVM.filterAndSortSelected(companyId: company.id, filter: .active, sort: .firstNameHigh)
+                        if let company = masterDataManager.currentCompany {
+                            try await customerVM.filterAndSortSelected(companyId: company.id, filter: .active, sort: .lastNameHigh)
                             customers = customerVM.customers
                         }
                     } catch {
@@ -66,7 +58,7 @@ struct CustomerPickerScreen: View {
             } else {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             try await customerVM.filterCustomerList(filterTerm: term, customers: customerVM.customers)
                             customers = customerVM.filteredCustomers
                             print("Received \(customers.count) Customers")
@@ -87,16 +79,8 @@ extension CustomerPickerScreen {
             label: {
                 Text("Search: ")
             })
-        .textFieldStyle(PlainTextFieldStyle())
-        .font(.headline)
+        .modifier(SearchTextFieldModifier())
         .padding(8)
-        .background(Color.white)
-        .clipShape(Capsule())
-        .foregroundColor(Color.basicFontText)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
-
-        
     }
     var customerList: some View {
         ScrollView{

@@ -23,15 +23,13 @@ struct Customer:Identifiable, Codable,Hashable{
     var phoneNumber : String?
     var phoneLabel : String?
     var active: Bool
-    var rate : Double? // Remove
     var company : String?
     var displayAsCompany : Bool
-    var hireDate : Date  // Remove
-    var fireDate : Date?  // Remove
-    var fireCategory : String?  // Remove
-    var fireReason : String?  // Remove
+    var hireDate : Date
     var billingNotes : String
     var tags : [String]?
+    var linkedCustomerIds : [String]?
+    var linkedInviteId : String
 
     init(
         id: String,
@@ -42,14 +40,15 @@ struct Customer:Identifiable, Codable,Hashable{
         phoneNumber : String? = nil,
         phoneLabel : String? = nil,
         active : Bool,
-        rate: Double? = nil,
         company: String? = nil,
         displayAsCompany : Bool,
         hireDate : Date,
-        fireDate : Date? = nil,
-        fireCategory : String? = nil,
         billingNotes : String,
-        tags : [String]? = nil
+        tags : [String]? = nil,
+        linkedCustomerIds : [String]? = nil,
+        linkedInviteId : String
+
+
     ){
         self.id = id
         self.firstName = firstName
@@ -59,16 +58,14 @@ struct Customer:Identifiable, Codable,Hashable{
         self.phoneNumber = phoneNumber
         self.phoneLabel = phoneLabel
         self.active = active
-        self.rate = rate
         self.company = company
         self.displayAsCompany = displayAsCompany
         self.hireDate = hireDate
-        self.fireDate = fireDate
-        self.fireCategory = fireCategory
         self.billingNotes = billingNotes
         self.tags = tags
+        self.linkedCustomerIds = linkedCustomerIds
+        self.linkedInviteId = linkedInviteId
 
-        
     }
         enum CodingKeys:String, CodingKey {
             case id = "id"
@@ -79,15 +76,13 @@ struct Customer:Identifiable, Codable,Hashable{
             case phoneNumber = "phoneNumber"
             case phoneLabel = "phoneLabel"
             case active = "active"
-            case rate = "rate"
             case company = "company"
             case displayAsCompany = "displayAsCompany"
             case hireDate = "hireDate"
-            case fireDate = "fireDate"
-            case fireCategory = "fireCategory"
             case billingNotes = "billingNotes"
             case tags = "tags"
-
+            case linkedCustomerIds = "linkedCustomerIds"
+            case linkedInviteId = "linkedInviteId"
         }
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -95,7 +90,6 @@ struct Customer:Identifiable, Codable,Hashable{
         hasher.combine(lastName)
         hasher.combine(email)
         hasher.combine(phoneNumber)
-        hasher.combine(rate)
 
     }
     
@@ -104,13 +98,69 @@ struct Customer:Identifiable, Codable,Hashable{
         lhs.firstName == rhs.firstName &&
         lhs.lastName == rhs.lastName &&
         lhs.email == rhs.email &&
-        lhs.phoneNumber == rhs.phoneNumber &&
-        lhs.rate == rhs.rate
+        lhs.phoneNumber == rhs.phoneNumber
     }
     
     
 }
+struct CustomerServiceLocationStartUpInfo:Identifiable, Codable,Hashable{
+    var id : String
+    var customerId :String
+    var locationId : String
+    var location : Address
+    var bodiesOfWater : [BodyOfWater]
+    var equipmentList : [Equipment]
+    var photos: [String]
+    var notes : String
 
+
+    init(
+        id: String,
+        customerId :String,
+        locationId : String,
+        location: Address,
+        bodiesOfWater : [BodyOfWater],
+        equipmentList : [Equipment],
+        photos : [String],
+        notes : String
+    ){
+        self.id = id
+        self.customerId = customerId
+        self.locationId = locationId
+        self.location = location
+        self.bodiesOfWater = bodiesOfWater
+        self.equipmentList = equipmentList
+        self.photos = photos
+        self.notes = notes
+        
+    }
+        enum CodingKeys:String, CodingKey {
+            case id = "id"
+            case customerId = "customerId"
+            case locationId = "locationId"
+            case location = "location"
+            case bodiesOfWater = "bodiesOfWater"
+            case equipmentList = "equipmentList"
+            case photos = "photos"
+            case notes = "notes"
+
+        }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(customerId)
+        hasher.combine(locationId)
+
+    }
+    
+    static func == (lhs: CustomerServiceLocationStartUpInfo, rhs: CustomerServiceLocationStartUpInfo) -> Bool {
+        return lhs.id == rhs.id &&
+        lhs.customerId == rhs.customerId &&
+        lhs.locationId == rhs.locationId
+    }
+    
+    
+}
+/*
 protocol customerManagerProtocol{
     func uploadCustomer(companyId:String,customer : Customer) async throws
     
@@ -165,27 +215,258 @@ final class MockCustomerManager:customerManagerProtocol, ObservableObject {
     let geoCoder = CLGeocoder()
     private let mockCustomerList:[Customer] = [
 
-        Customer(id: "1", firstName: "Aphrodite", lastName: "Love, Sex and Beauty", email: "HotSex@hotmail.com", billingAddress: Address(streetAddress: "Akti Sachtouri 10", city: "Rhodes", state: "Greece", zip: "851 31", latitude: 36.44591, longitude: 28.22736), phoneNumber: "Aphrodite", phoneLabel: "619-555-6969", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "1",
+            firstName: "Aphrodite",
+            lastName: "Love, Sex and Beauty",
+            email: "HotSex@hotmail.com",
+            billingAddress: Address(
+                streetAddress: "Akti Sachtouri 10",
+                city: "Rhodes",
+                state: "Greece",
+                zip: "851 31",
+                latitude: 36.44591,
+                longitude: 28.22736
+            ),
+            phoneNumber: "Aphrodite",
+            phoneLabel: "619-555-6969",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "2", firstName: "Athena", lastName: "Reason, Wisdom and War", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "2",
+            firstName: "Athena",
+            lastName: "Reason, Wisdom and War",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "3", firstName: "Artemis", lastName: "Hunt", email: "HotSex@hotmail.com", billingAddress: Address(streetAddress: "Akti Sachtouri 10", city: "Rhodes", state: "Greece", zip: "851 31", latitude: 36.44591, longitude: 28.22736), phoneNumber: "Aphrodite", phoneLabel: "619-555-6969", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "3",
+            firstName: "Artemis",
+            lastName: "Hunt",
+            email: "HotSex@hotmail.com",
+            billingAddress: Address(
+                streetAddress: "Akti Sachtouri 10",
+                city: "Rhodes",
+                state: "Greece",
+                zip: "851 31",
+                latitude: 36.44591,
+                longitude: 28.22736
+            ),
+            phoneNumber: "Aphrodite",
+            phoneLabel: "619-555-6969",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "4", firstName: "Aries", lastName: "Bloodlust and War", email: "HotSex@hotmail.com", billingAddress: Address(streetAddress: "Akti Sachtouri 10", city: "Rhodes", state: "Greece", zip: "851 31", latitude: 36.44591, longitude: 28.22736), phoneNumber: "Aphrodite", phoneLabel: "619-555-6969", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "4",
+            firstName: "Aries",
+            lastName: "Bloodlust and War",
+            email: "HotSex@hotmail.com",
+            billingAddress: Address(
+                streetAddress: "Akti Sachtouri 10",
+                city: "Rhodes",
+                state: "Greece",
+                zip: "851 31",
+                latitude: 36.44591,
+                longitude: 28.22736
+            ),
+            phoneNumber: "Aphrodite",
+            phoneLabel: "619-555-6969",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "5", firstName: "Apollo", lastName: "Son of Zeus", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "5",
+            firstName: "Apollo",
+            lastName: "Son of Zeus",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "6", firstName: "Demeter", lastName: "Agriculture", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "6",
+            firstName: "Demeter",
+            lastName: "Agriculture",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "7", firstName: "Dionysus", lastName: "Drunken Wine", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "7",
+            firstName: "Dionysus",
+            lastName: "Drunken Wine",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "8", firstName: "Hades", lastName: "Ruler of the Underworld", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "8",
+            firstName: "Hades",
+            lastName: "Ruler of the Underworld",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "9", firstName: "Hera", lastName: "Hearth", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
-
-        Customer(id: "10", firstName: "Poseidon", lastName: "Ocean, Horses and Earthquakes", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: ""),
+        Customer(
+            id: "9",
+            firstName: "Hera",
+            lastName: "Hearth",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
         
-        Customer(id: "11", firstName: "Zeus", lastName: "King of the Gods", email: "Genius@gmail.com", billingAddress: Address(streetAddress: "Temple of Athena Nike", city: "Dionysiou Areopagitou", state: "Athina 105 58", zip: "Greece", latitude: 37.9716, longitude: 23.7249), phoneNumber: "Athena", phoneLabel: "619-555-0180", active: true, rate: 0, company: "", displayAsCompany: false, hireDate: Date(), fireDate: nil, fireCategory: nil, billingNotes: "")
+        Customer(
+            id: "10",
+            firstName: "Poseidon",
+            lastName: "Ocean, Horses and Earthquakes",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        ),
+        
+        Customer(
+            id: "11",
+            firstName: "Zeus",
+            lastName: "King of the Gods",
+            email: "Genius@gmail.com",
+            billingAddress: Address(
+                streetAddress: "Temple of Athena Nike",
+                city: "Dionysiou Areopagitou",
+                state: "Athina 105 58",
+                zip: "Greece",
+                latitude: 37.9716,
+                longitude: 23.7249
+            ),
+            phoneNumber: "Athena",
+            phoneLabel: "619-555-0180",
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        )
     ]
     private let mockSummaryData:[CustomerMonthlySummary] = [
         CustomerMonthlySummary(id: "1", date: Date(), customerId: "1", customerDisplayName: "Aphrodite", serviceLocationId: "1", monthlyRate: 180, chemicalCost: 75, laborCost: 30, serviceStops: 4)
@@ -690,7 +971,20 @@ final class CustomerManager:customerManagerProtocol {
         DBAddress.longitude = pushCoordinates?.longitude ?? -117.8
         print("Received Coordinates from geoCoder : \(String(describing: pushCoordinates))")
         
-        let DBCustomer:Customer = Customer(id: identification,firstName: customer.firstName ,lastName:customer.lastName,email:customer.email, billingAddress:DBAddress , phoneNumber: customer.phone, active: true, rate: Double(customer.rate), company: "", displayAsCompany: false, hireDate: hireDate, billingNotes: "NA")
+        let DBCustomer:Customer = Customer(
+            id: identification,
+            firstName: customer.firstName ,
+            lastName:customer.lastName,
+            email:customer.email,
+            billingAddress:DBAddress ,
+            phoneNumber: customer.phone,
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: hireDate,
+            billingNotes: "NA",
+            linkedInviteId: UUID().uuidString
+        )
         
         print("Uploading Customer - \(customer.firstName) - \(customer.lastName)")
         try await CustomerManager.shared.uploadCustomer(companyId: companyId, customer: DBCustomer)
@@ -1276,4 +1570,5 @@ final class CustomerManager:customerManagerProtocol {
     }
     
 }
+ */
 

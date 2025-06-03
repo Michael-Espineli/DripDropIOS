@@ -14,8 +14,8 @@ struct ContractDetailView: View {
     @Environment(\.dismiss) private var dismiss
     
     @StateObject var contractVM : ContractViewModel
-    var contract:Contract
-    init(dataService: any ProductionDataServiceProtocol,contract:Contract) {
+    var contract:RecurringContract
+    init(dataService: any ProductionDataServiceProtocol,contract:RecurringContract) {
         _contractVM = StateObject(wrappedValue: ContractViewModel(dataService: dataService))
         self.contract = contract
     }
@@ -24,8 +24,7 @@ struct ContractDetailView: View {
     @State var errorMessage = ""
     @State var showAlert = false
     @State var showEditView = false
-    @State var status:LaborContractStatus = .pending
-    @State var statusList = ["Pending","Accepted"]
+    @State var status:RecurringContractStatus = .pending
     @State var showPastContract:Bool = false
     var body: some View {
         ZStack{
@@ -75,33 +74,43 @@ struct ContractDetailView: View {
 }
 
 extension ContractDetailView{
+    var toolbar:some View{
+        HStack{
+            if !UIDevice.isIPhone {
+                Button(action: {
+                    masterDataManager.selectedID = nil
+                    masterDataManager.selectedContract = nil
+                    dismiss()
+                }, label: {
+                    Image(systemName: "xmark")
+                        .modifier(DismissButtonModifier())
+                })
+                .padding(5)
+            }
+            Spacer()
+            Button(action: {
+                showEditView.toggle()
+            }, label: {
+                Text("Edit")
+                    .modifier(AddButtonModifier())
+            })
+            .padding(5)
+        }
+    }
+
     var expiredInfo: some View{
         VStack{
             VStack{
-                HStack{
-                    Text("\(contract.customerName)")
+                    Text("\(contract.internalCustomerName)")
                     Spacer()
                     
                     Text("Status: ")
-                        .font(.footnote)
                     Text("\(status.rawValue)")
-                }
-                HStack{
                     Text("Start Date: ")
                         .font(.footnote)
-                    if let startDate = contract.startDate {
-                        
-                        Text("\(fullDate(date: startDate))")
-                    }
                     
                     Text("Expiration Date: ")
                         .font(.footnote)
-                    if let endDate = contract.endDate {
-                        Text("\(fullDate(date: endDate))")
-                    }
-                }
-                
-                
             }
             VStack{
                 HStack{
@@ -140,14 +149,14 @@ extension ContractDetailView{
         VStack{
             VStack{
                 HStack{
-                    Text("\(contract.customerName)")
+                    Text("\(contract.internalCustomerName)")
                     Spacer()
                     
                     Text("Status: ")
                         .font(.footnote)
                     Picker("Status", selection: $status) {
-                        ForEach(statusList,id:\.self){
-                            Text($0).tag($0)
+                        ForEach(RecurringContractStatus.allCases,id:\.self){
+                            Text($0.rawValue).tag($0)
                         }
                     }
                     .sheet(isPresented: $showPastContract, content: {
@@ -158,87 +167,117 @@ extension ContractDetailView{
                 if status == .accepted {
                     HStack{
                         Text("Date Accepted: ")
-                            .font(.footnote)
-                        if let date = contract.dateAccepted{
-                            Text("\(fullDate(date: date))")
-                        }
-                        
+                            .font(.headline)
                     }
                 } else {
                     HStack{
                         Text("Date Sent: ")
-                            .font(.footnote)
+                            .font(.headline)
                         Text("\(fullDate(date: contract.dateSent))")
-                        
+                    }
+                    HStack{
                         Text("Expiration Date: ")
-                            .font(.footnote)
+                            .font(.headline)
                         Text("\(fullDate(date: contract.dateToAccept))")
                     }
                 }
                 
             }
             VStack{
-                HStack{
-                    Text("Rate Type: ")
-                        .font(.footnote)
-                    Text("\(contract.rateType)")
-                    Text("Rate: ")
-                        .font(.footnote)
-                    Text("\(contract.rate, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                    Spacer()
+                VStack(alignment: .leading){
+                    
+                    HStack{
+                        Text("Rate Type: ")
+                            .font(.headline)
+                        Text("\(contract.rateType.rawValue)")
+                        Text("Rate: ")
+                            .font(.headline)
+                        Text("\(Double(contract.rate)/100, format: .currency(code: "USD").precision(.fractionLength(0)))")
+                        Spacer()
+                    }
+                    
+                    HStack{
+                        Text("Chem Type: ")
+                            .font(.footnote)
+                        Text("\(contract.chemType.rawValue)")
+                        Spacer()
+                    }
+                    HStack{
+                        Text("Repair Type: ")
+                            .font(.footnote)
+                        Text("\(contract.chemType.rawValue)")
+                        Spacer()
+                    }
+                    HStack{
+                        Text("Cleaning Type: ")
+                            .font(.footnote)
+                        Text("\(contract.cleaningPlan.rawValue)")
+                        Spacer()
+                    }
+                    HStack{
+                        Text("Filter Type: ")
+                            .font(.footnote)
+                        Text("\(contract.filterServiceType.rawValue)")
+                        Spacer()
+                    }
+                    HStack{
+                        Text("Repair Type: ")
+                            .font(.footnote)
+                        Text("\(contract.repairType.rawValue)")
+                        Spacer()
+                    }
+                    if contract.repairType == .included {
+                        HStack{
+                            Text("Included Until : ")
+                                .font(.footnote)
+                            Text("\(Double(contract.repairAmountMax)/100, format: .currency(code: "USD").precision(.fractionLength(0)))")
+                            Spacer()
+                        }
+                    }
+                    HStack{
+                        Text("External Notes: ")
+                            .font(.footnote)
+                        Text("\(contract.externalNotes)")
+                        Spacer()
+                    }
                 }
-                HStack{
-                    Text("Labor Type: ")
-                        .font(.footnote)
-                    Text("\(contract.laborType)")
-                    Spacer()
-                }
-                HStack{
-                    Text("Chem Type: ")
-                        .font(.footnote)
-                    Text("\(contract.chemType)")
-                    Spacer()
+                Rectangle()
+                    .frame(height:1)
+                VStack(alignment: .leading){
+                        HStack{
+                            Text("Labor Type: ")
+                                .font(.footnote)
+                            Text("\(contract.laborType.rawValue)")
+                            Spacer()
+                        }
+                        Text("Labor: ")
+                            .font(.headline)
+                        Text("\(Double(contract.laborRate)/100, format: .currency(code: "USD").precision(.fractionLength(0)))")
+                        Spacer()
+                    
+                    HStack{
+                        Text("Internal Notes: ")
+                            .font(.footnote)
+                        Text("\(contract.internalNotes)")
+                        Spacer()
+                    }
                 }
                 
             }
             
         }
-        .padding(5)
+        .padding(8)
     }
-    var toolbar:some View{
-        HStack{
-            Button(action: {
-                masterDataManager.selectedID = nil
-                masterDataManager.selectedContract = nil
-                dismiss()
-            }, label: {
-                Text("Dismiss")
-                    .modifier(DismissButtonModifier())
-                
-            })
-            .padding(5)
-            Spacer()
-            Button(action: {
-                showEditView.toggle()
-            }, label: {
-                Text("Edit")
-                    .foregroundColor(Color.reverseFontText)
-                    .padding(5)
-                    .background(Color.accentColor)
-                    .cornerRadius(5)
-            })
-            .padding(5)
-            if status == .pending {
+    var footer:some View{
+        VStack(alignment:.center){
+            if status == .pending || status == .draft{
                 Button(action: {
                     errorMessage = "Confirm Delete"
                     showAlert = true
-                    //Add a check to see if they want to end or just delete it.
                 }, label: {
                     Text("Delete")
-                        .foregroundColor(Color.basicFontText)
-                        .padding(5)
-                        .background(Color.red)
-                        .cornerRadius(5)
+                        .modifier(DismissButtonModifier())
+
                 })
                 .padding(5)
             } else if status == .accepted {
@@ -254,6 +293,5 @@ extension ContractDetailView{
                 .padding(5)
             }
         }
-        
     }
 }

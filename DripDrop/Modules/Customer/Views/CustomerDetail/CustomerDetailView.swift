@@ -7,11 +7,11 @@
 
 enum customerDetailViewEnum: Int, CaseIterable, Identifiable {
     var id: Int { rawValue }
+    case profile
     case location
     case upcomingWork
-    case profile
-    case serviceHistory
     case billing
+    case serviceHistory
 }
 
 extension customerDetailViewEnum {
@@ -24,10 +24,11 @@ extension customerDetailViewEnum {
             return "Location"
         case .upcomingWork:
             return "Jobs"
-        case .billing:
-            return "Billing"
         case .serviceHistory:
             return "History"
+        case .billing:
+            return "Billing"
+        
         }
     }
     
@@ -76,27 +77,49 @@ struct CustomerDetailView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
-                LazyVStack(alignment: .center, pinnedViews: [.sectionHeaders], content: {
+                LazyVStack(alignment: .center,
+                           pinnedViews: [.sectionHeaders],
+                           content: {
                     Section(content: {
                         VStack{
                             switch viewType{
                             case .profile:
-                                CustomerProfileView(customer: customer)
+                                CustomerProfileView(
+                                    customer: customer
+                                )
                             case .location:
-                                CustomerLocationView(dataService: dataService, customer: customer)
+                                CustomerLocationView(
+                                    dataService: dataService,
+                                    customer: customer
+                                )
                             case .upcomingWork:
-                                CustomerUpcomingWork(dataService: dataService,customer: customer)
+                                CustomerUpcomingWork(
+                                    dataService: dataService,
+                                    customer: customer
+                                )
                             case .billing:
-                                CustomerBillingView(dataService: dataService, customer: customer)
+                                CustomerBillingView(
+                                    dataService: dataService,
+                                    customer: customer
+                                )
                             case .serviceHistory:
-                                CustomerServiceHistoryView(dataService: dataService,customer: customer)
+                                CustomerStopDataDetailView(
+                                    dataService: dataService,
+                                    customerId: customer.id
+                                )
+                                //Developer Figure out whats better
+//                                CustomerServiceHistoryView(
+//                                    dataService: dataService,
+//                                    customer: customer
+//                                )
                             }
                         }
-                    }, header: {
+                        .padding(.horizontal,8)
+                    },
+                    header: {
                         sectionTitles
-                            .padding(.leading,8)
+                            .padding(8)
                             .background(Color.listColor)
-
                     })
                 })
             }
@@ -128,49 +151,74 @@ struct CustomerDetailView: View {
 struct CustomerDetailView_Previews: PreviewProvider {
     static var previews: some View {
         @State var showSignInView: Bool = false
-        CustomerDetailView(customer: Customer(id: UUID().uuidString, firstName: "Ron", lastName: "Palace", email: "Email@gmail.com", billingAddress: Address(streetAddress: "6160 Broadmoor Dr ", city: "La Mesa", state: "Ca", zip: "91942", latitude: 32.790086, longitude: -116.991113), active: true, displayAsCompany: false, hireDate: Date(), billingNotes: ""))
+        CustomerDetailView(
+            customer: Customer(
+                id: UUID().uuidString,
+                firstName: "Ron",
+                lastName: "Palace",
+                email: "Email@gmail.com",
+                billingAddress: Address(
+                    streetAddress: "6160 Broadmoor Dr ",
+                    city: "La Mesa",
+                    state: "Ca",
+                    zip: "91942",
+                    latitude: 32.790086,
+                    longitude: -116.991113
+                ),
+                active: true,
+                displayAsCompany: false,
+                hireDate: Date(),
+                billingNotes: "",
+                linkedInviteId: UUID().uuidString
+            )
+        )
     }
 }
 extension CustomerDetailView {
     var sectionTitles:some View {
-        ScrollView(.vertical, showsIndicators: false){
-            HStack(spacing: 0){
-                Button(action: {
-                    viewType = .profile
-                }, label: {
-                    HStack{
-                        Text(customerDetailViewEnum.profile.title)
-                    }
-                    .frame(minWidth: 50,maxHeight: 30)
-                    .font(.footnote)
-                    .foregroundColor(Color.poolWhite)
-                    .padding(10)
-                    .background(viewType == .profile ? Color.poolBlue : Color.darkGray)
-                    .frame(minWidth: 50,maxHeight: 30)
-                    .clipShape(Capsule())
-                })
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack{
-                        ForEach(customerDetailViewEnum.allCases){ screen in
-                            if screen != .profile {
-                                Button(action: {
-                                    viewType = screen
-                                }, label: {
-                                    HStack{
-                                        Text(screen.title)
-                                    }
-                                    .frame(minWidth: 50,maxHeight: 30)
-                                    .font(.footnote)
-                                    .foregroundColor(Color.poolWhite)
-                                    .padding(10)
-                                    .background(viewType == screen ? Color.poolBlue : Color.darkGray)
-                                    .frame(minWidth: 50,maxHeight: 30)
-                                    .clipShape(Capsule())
-                                })
+        VStack{
+            ScrollView(.vertical, showsIndicators: false){
+                HStack(spacing: 0){
+                    Button(action: {
+                        viewType = .profile
+                    }, label: {
+                        if viewType == .profile {
+                            HStack{
+                                Text(customerDetailViewEnum.profile.title)
+                            }
+                            .modifier(BlueButtonModifier())
+                        } else {
+                            HStack{
+                                Text(customerDetailViewEnum.profile.title)
+                            }
+                            .modifier(ListButtonModifier())
+                        }
+                    })
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack{
+                            ForEach(customerDetailViewEnum.allCases){ screen in
+                                if screen != viewType {
+                                    Button(action: {
+                                        viewType = screen
+                                    }, label: {
+                                        if viewType == screen {
+                                            HStack{
+                                                Text(screen.title)
+                                            }
+                                            .modifier(BlueButtonModifier())
+                                        } else {
+                                            HStack{
+                                                Text(screen.title)
+                                            }
+                                            .modifier(ListButtonModifier())
+                                        }
+                                    })
+                                }
                             }
                         }
+                        .padding(EdgeInsets(top: 5, leading: 5, bottom: 5, trailing: 0))
                     }
-                    .padding(EdgeInsets(top: 5, leading: 5, bottom: 5, trailing: 0))
+                    .padding(.leading,8)
                     .overlay(
                         HStack{
                             LinearGradient(colors: [
@@ -185,8 +233,9 @@ extension CustomerDetailView {
                         }
                     )
                 }
-                .padding(.leading,8)
             }
+            Rectangle()
+                .frame(height: 1)
         }
     }
     var viewController: some View {

@@ -61,7 +61,7 @@ final class ChatViewModel:ObservableObject{
         self.listOfChats = try await dataService.getAllChatsByUser(userId: userId)
     }
     func getSpecificChat(companyId: String,contractId:String) async throws {
-        self.chat = try await dataService.getSpecificChat(userID: companyId, chatId: contractId)
+        self.chat = try await dataService.getSpecificChat(chatId: contractId)
     }
     func getChatBySenderAndReceiver(companyId:String,senderId:String,receiverId:String) async throws {
         self.chat = try await dataService.getChatBySenderAndReceiver(companyId: companyId, senderId: senderId, receiverId: receiverId)
@@ -114,12 +114,12 @@ final class ChatViewModel:ObservableObject{
         }
     }
     func removeListenerForChats(){
-        print("Removing ChatListener")
+        print("Removing Chat Listener")
 
         dataService.removeListenerForChats()
     }
     func removeListenerForMessages(){
-        print("Removing MessagesListener")
+        print("Removing Messages Listener")
 
         dataService.removeListenerForMessages()
     }

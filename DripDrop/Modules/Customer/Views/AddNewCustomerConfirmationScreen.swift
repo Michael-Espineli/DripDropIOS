@@ -22,7 +22,7 @@ struct AddNewCustomerConfirmationScreen: View {
 
     //received variables
     @State var contact:CNContact
-
+    @State var testAddress:Address = Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0)
     //Variables for use
     //string
     //Form Variables
@@ -59,7 +59,7 @@ struct AddNewCustomerConfirmationScreen: View {
     @State var serviceLocationMainContactGateCode:String = ""
     @State var serviceLocationMainContactNickName:String = ""
 
-    @State var estimatedTime:String = ""
+    @State var estimatedTime:String = "15"
     @State var dogName:String = ""
 
 
@@ -103,22 +103,33 @@ struct AddNewCustomerConfirmationScreen: View {
         customerName: "",
         preText: false
     )
+    @State var addFirstServiceLocation:Bool = false
 
 
-    
+    @FocusState private var focusedField: NewCustomerFormLabels?
+
     var body: some View {
         ZStack{
             ScrollView{
-                // here
+                Text("Confirm Information")
+                    .font(.title)
+                    .bold()
                 basicInfo
+                Rectangle()
+                    .frame(height: 1)
                 billingAddressView
+                Rectangle()
+                    .frame(height: 1)
                 serviceLocationView
+                Rectangle()
+                    .frame(height: 1)
                 buttonView
             }
             .padding(.init(top: 40, leading: 20, bottom: 0, trailing: 0))
         }
+        
 
-        .navigationTitle("Add New Customer")
+//        .navigationTitle("Create Customer")
         .alert(isPresented:$showAlert) {
             Alert(
                 title: Text("Alert"),
@@ -147,12 +158,413 @@ struct AddNewCustomerConfirmationScreen: View {
             serviceLocationMainContactPhoneNumber = phoneNumber
             serviceLocationMainContactEmail = email
             print(contact)
-            
         }
+        .onSubmit {
+               switch focusedField {
+               case .firstName:
+                   focusedField = .lastName
+               case .lastName:
+                   if displayAsCompany {
+                       focusedField = .companyName
+                   } else {
+                       focusedField = .phoneNumber
+                   }
+               case .companyName:
+                   focusedField = .phoneNumber
+               case .phoneNumber:
+                   focusedField = .email
+               case .email:
+                   focusedField = .billingAddressStreetAddress
+               case .billingAddressStreetAddress:
+                   focusedField = .billingAddressCity
+               case .billingAddressCity:
+                   focusedField = .billingAddressState
+               case .billingAddressState:
+                   focusedField = .billingAddressZip
+               case .billingAddressZip:
+                   if addFirstServiceLocation {
+                       focusedField = .serviceLocationMainContactNickName
+                   }
+               case .serviceLocationMainContactNickName:
+                   focusedField = .serviceLocationMainContactGateCode
+               case .serviceLocationMainContactGateCode:
+                   focusedField = .dogName
+               case .dogName:
+                   focusedField = .estimatedTime
+               case .estimatedTime:
+                   focusedField = .contactNotes
+               case .contactNotes:
+                   focusedField = .serviceLocationAddressStreetAddress
+                   
+               case .serviceLocationAddressStreetAddress:
+                   focusedField = .serviceLocationAddressCity
+               case .serviceLocationAddressCity:
+                   focusedField = .serviceLocationAddressState
+               case .serviceLocationAddressState:
+                   focusedField = .serviceLocationAddressZip
+               case .serviceLocationAddressZip:
+                   focusedField = .serviceLocationMainContactName
+               case .serviceLocationMainContactName:
+                   focusedField = .serviceLocationMainContactPhoneNumber
+               case .serviceLocationMainContactPhoneNumber:
+                   focusedField = .serviceLocationMainContactEmail
+               case .serviceLocationMainContactEmail:
+                   focusedField = .serviceLocationMainContactNotes
+               default:
+                   focusedField = .serviceLocationMainContactNotes
+               }
+           }
     }
 }
 
 extension AddNewCustomerConfirmationScreen {
+    var basicInfo: some View {
+        VStack{
+            HStack{
+                Text("First Name")
+                    .font(.headline)
+                TextField(
+                    "First Name",
+                    text: $firstName
+                )
+                .modifier(PlainTextFieldModifier())
+                .focused($focusedField, equals: .firstName)
+                     .submitLabel(.next)
+            }
+            HStack{
+                Text("Last Name")
+                    .font(.headline)
+                
+                TextField(
+                    "Last Name",
+                    text: $lastName
+                )
+                .modifier(PlainTextFieldModifier())
+                    .focused($focusedField, equals: .lastName)
+                         .submitLabel(.next)
+            }
+            HStack{
+                Text("Display as Company")
+                Spacer()
+                Button(action: {
+                    displayAsCompany.toggle()
+                }, label: {
+                    if displayAsCompany {
+                        HStack{
+                            Text("Company")
+                            Image(systemName: "building.2.fill")
+                        }
+                        .padding(4)
+                        .padding(.horizontal,2)
+                        .background(Color.green)
+                        .cornerRadius(8)
+                        .foregroundColor(Color.white)
+                        .padding(8)
+                    } else {
+                        HStack{
+                            Text("Induvidual")
+                            Image(systemName: "person.fill")
+                        }
+                        .padding(4)
+                        .padding(.horizontal,2)
+                        .background(Color.red)
+                        .foregroundColor(Color.white)
+                        .cornerRadius(8)
+                        .padding(8)
+                    }
+                })
+            }
+            if displayAsCompany {
+                HStack{
+                    Text("Company Name")
+                        .font(.headline)
+                    
+                    TextField(
+                        "Company Name",
+                        text: $companyName
+                    )
+                    .padding(3)
+                    .background(Color.gray.opacity(0.3))
+                    .cornerRadius(3)
+                    .focused($focusedField, equals: .companyName)
+                         .submitLabel(.next)
+                }
+            }
+            HStack{
+                Text("Phone Number")
+                    .font(.headline)
+                TextField(
+                    "Phone Number",
+                    text: $phoneNumber
+                )
+                .modifier(PlainTextFieldModifier())
+                .focused($focusedField, equals: .phoneNumber)
+                     .submitLabel(.next)
+                #if os(iOS)
+                .keyboardType(.namePhonePad)
+                #endif
+            }
+            
+            HStack{
+                Text("Email")
+                    .font(.headline)
+                TextField(
+                    "Email",
+                    text: $email
+                )
+                .modifier(PlainTextFieldModifier())
+                .keyboardType(.emailAddress)
+                .focused($focusedField, equals: .email)
+                     .submitLabel(.next)
+            }
+        }
+
+    }
+    
+    var billingAddressView: some View {
+        VStack{
+                //----------------------------------------
+                //Add Back in During Roll out of Phase 2
+                //----------------------------------------
+
+//            AddressSearchBar(dataService: dataService, address: $testAddress)
+            HStack{
+                Text("Billing Address")
+                    .font(.title)
+                Spacer()
+            }
+            HStack{
+                TextField(
+                    "Street Address",
+                    text: $billingAddressStreetAddress
+                )
+                .modifier(PlainTextFieldModifier())
+                .focused($focusedField, equals: .billingAddressStreetAddress)
+                     .submitLabel(.next)
+            }
+            HStack{
+                TextField(
+                    "City",
+                    text: $billingAddressCity
+                )
+                .modifier(PlainTextFieldModifier())
+                .focused($focusedField, equals: .billingAddressCity)
+                     .submitLabel(.next)
+                TextField(
+                    "State",
+                    text: $billingAddressState
+                )
+                .modifier(PlainTextFieldModifier())
+                .focused($focusedField, equals: .billingAddressState)
+                     .submitLabel(.next)
+                TextField(
+                    "Zip",
+                    text: $billingAddressZip
+                )
+                .modifier(PlainTextFieldModifier())
+                .focused($focusedField, equals: .billingAddressZip)
+                .keyboardType(.decimalPad)
+                .submitLabel(addFirstServiceLocation ? .next : .done)
+            }
+        }
+    }
+    
+    var serviceLocationView: some View {
+        VStack{
+            HStack{
+                Spacer()
+                Button(action: {
+                    addFirstServiceLocation.toggle()
+                }, label: {
+                    Text(addFirstServiceLocation ?  "Add Location Later" : "Add First Location")
+                })
+                .modifier(AddButtonModifier())
+            }
+            if addFirstServiceLocation {
+                VStack{
+                    Text("Service Location Info")
+                    VStack{
+                        HStack{
+                            Text("Nick Name")
+                                .font(.headline)
+                            TextField(
+                                "Nick Name",
+                                text: $serviceLocationMainContactNickName
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .serviceLocationMainContactNickName)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            Text("Gate Code")
+                                .font(.headline)
+                            TextField(
+                                "Gate Code",
+                                text: $serviceLocationMainContactGateCode
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .serviceLocationMainContactGateCode)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            Text("Dog Name")
+                                .font(.headline)
+                            TextField(
+                                "Dog Name",
+                                text: $dogName
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .dogName)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            Text("Estimated Time")
+                                .font(.headline)
+                            TextField(
+                                "Estimated Time",
+                                text: $estimatedTime
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .estimatedTime)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            Text("Notes")
+                                .font(.headline)
+                            TextField(
+                                "Notes",
+                                text: $contactNotes
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .contactNotes)
+                                 .submitLabel(.next)
+                        }
+                    }
+                    VStack{
+                        Text("Service Location")
+                            .font(.title)
+                        HStack{
+                            Spacer()
+                            
+                            Button(action: {
+                                serviceLocationAddressStreetAddress = billingAddressStreetAddress
+                                serviceLocationAddressCity = billingAddressCity
+                                serviceLocationAddressState = billingAddressState
+                                serviceLocationAddressZip = billingAddressZip
+                            }, label: {
+                                Text("Use Billing Address")
+                            })
+                            .modifier(AddButtonModifier())
+                        }
+                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
+                        HStack{
+                            TextField(
+                                "Street Address",
+                                text: $serviceLocationAddressStreetAddress
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .serviceLocationAddressStreetAddress)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            
+                            TextField(
+                                "City",
+                                text: $serviceLocationAddressCity
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .serviceLocationAddressCity)
+                                 .submitLabel(.next)
+                            TextField(
+                                "State",
+                                text: $serviceLocationAddressState
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .serviceLocationAddressState)
+                                 .submitLabel(.next)
+                            TextField(
+                                "Zip",
+                                text: $serviceLocationAddressZip
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .keyboardType(.decimalPad)
+                            .focused($focusedField, equals: .serviceLocationAddressZip)
+                                 .submitLabel(.next)
+                        }
+                    }
+                    VStack{
+                        Text("Service Location Contact")
+                            .font(.headline)
+                        HStack{
+                            Spacer()
+                            Button(action: {
+                                serviceLocationMainContactName = firstName + " " + lastName
+                                serviceLocationMainContactPhoneNumber = phoneNumber
+                                serviceLocationMainContactEmail = email
+                                
+                            }, label: {
+                                Text("Use Main Contact")
+                                
+                            })
+                            .modifier(AddButtonModifier())
+                        }
+                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
+                        HStack{
+                            Text("Name")
+                                .font(.headline)
+                            
+                            TextField(
+                                "Name",
+                                text: $serviceLocationMainContactName
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .serviceLocationMainContactName)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            Text("Phone Number")
+                                .font(.headline)
+                            
+                            TextField(
+                                "Phone Number",
+                                text: $serviceLocationMainContactPhoneNumber
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .keyboardType(.namePhonePad)
+                            .focused($focusedField, equals: .serviceLocationMainContactPhoneNumber)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            Text("Email")
+                                .font(.headline)
+                            
+                            TextField(
+                                "Email",
+                                text: $serviceLocationMainContactEmail
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .keyboardType(.emailAddress)
+                            .focused($focusedField, equals: .serviceLocationMainContactEmail)
+                                 .submitLabel(.next)
+                        }
+                        HStack{
+                            Text("notes")
+                                .font(.headline)
+                            
+                            TextField(
+                                "notes",
+                                text: $serviceLocationMainContactNotes
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            .focused($focusedField, equals: .serviceLocationMainContactNotes)
+                                 .submitLabel(.next)
+                            
+                        }
+                    }
+                }
+            }
+        }
+    }
     var buttonView: some View {
         Button(action: {
             Task{
@@ -236,11 +648,11 @@ extension AddNewCustomerConfirmationScreen {
                             ),
                             phoneNumber: pushPhoneNumber,
                             active: true,
-                            rate: pushRate,
                             company: pushCompany,
                             displayAsCompany: pushDisplayAsCompany,
                             hireDate:Date(),
-                            billingNotes: ""
+                            billingNotes: "",
+                            linkedInviteId: UUID().uuidString
                         ),
                         serviceLocation: ServiceLocation(
                             id: UUID().uuidString,
@@ -276,7 +688,7 @@ extension AddNewCustomerConfirmationScreen {
                             customerName: fullName,
                             preText: preText
                         ),
-                        companyId: masterDataManager.selectedCompany!.id
+                        companyId: masterDataManager.currentCompany!.id
                     )
                     showAlert = true
                     alertMessage = "Success"
@@ -293,393 +705,18 @@ extension AddNewCustomerConfirmationScreen {
                     
                     
                 } catch {
+                    print("Error uploading file: \(error)")
                     showAlert = true
-                    alertMessage = "upload Failed"
-                    print(alertMessage)
-                    return
+                    alertMessage = "Upload Failed"
                 }
             }
         },
-               label: {
+       label: {
             Text("Submit")
+                .modifier(SubmitButtonModifier())
         })
-
     }
-    var basicInfo: some View {
-        VStack{
-            #if os(macOS)
-            HStack{
-                Spacer()
-                Button(action: {
-                    dismiss()
-                    
-                }, label: {
-                    Image(systemName: "xmark")
-                        .modifier(DismissButtonTextModifier())
-                })
-                .modifier(DismissButtonModifier())
-                
-            }
-            #endif
-            Text("Customer Info")
-                .font(.title)
-            /*
-            Button(action: {
-                firstName = "Michael"
-                lastName = "Espineli"
-                companyName = "murdock"
-                rate = 170
-                email = "michaelespineli2000@gmail.com"
 
-                notes = "some notes"
-                contactNotes = "some contact notes"
-                phoneNumber = "6194906830"
-                //Billing Address
-
-                billingAddressStreetAddress = "6160 Broadmoor Dr"
-                billingAddressCity = "La Mesa"
-                billingAddressState = "Ca"
-                billingAddressZip = "91942"
-                
-                //Service Location
-
-                serviceLocationAddressStreetAddress = "6160 Broadmoor Dr"
-                serviceLocationAddressCity = "La Mesa"
-                serviceLocationAddressState = "Ca"
-                serviceLocationAddressZip = "91942"
-                
-                serviceLocationMainContactName = "Michael Espineli"
-                serviceLocationMainContactPhoneNumber = "6194906830"
-                serviceLocationMainContactEmail = "michaelespineli2000@gmail.com"
-                serviceLocationMainContactNotes = "Main Contact Notes"
-                serviceLocationMainContactGateCode = "69240"
-                serviceLocationMainContactNickName = "Nick Name"
-                estimatedTime = "15"
-                dogName = "Scout"
-
-            }, label: {
-                Text("Auto Fill")
-            })
-             */
-            HStack{
-                Text("First Name")
-                    .font(.headline)
-                TextField(
-                    "Jon",
-                    text: $firstName
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-                            }
-            HStack{
-                Text("Last Name")
-                    .font(.headline)
-                
-                TextField(
-                    "Doe",
-                    text: $lastName
-                )
-                .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-            }
-            Toggle(isOn: $displayAsCompany, label: {
-                Text("Display as Company")
-            })
-            if displayAsCompany {
-                HStack{
-                    Text("Company Name")
-                        .font(.headline)
-                    
-                    TextField(
-                        "Doe",
-                        text: $companyName
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
-            }
-     
-            HStack{
-                Text("Phone Number")
-                TextField(
-                    "phone Number",
-                    text: $phoneNumber
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-                #if os(iOS)
-                .keyboardType(.namePhonePad)
-                #endif
-
-            }
-            HStack{
-                Text("email")
-                TextField(
-                    "email@gamil.com",
-                    text: $email
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-#if os(iOS)
-                .keyboardType(.emailAddress)
-#endif
-            }
-        }
-
-    }
-    var billingAddressView: some View {
-        VStack{
-            Text("Billing Address")
-                .font(.title)
-            
-            HStack{
-                TextField(
-                    "streetAddress",
-                    text: $billingAddressStreetAddress
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-            }
-            HStack{
-              
-                TextField(
-                    "City",
-                    text: $billingAddressCity
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-            
-                TextField(
-                    "State",
-                    text: $billingAddressState
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-          
-                TextField(
-                    "Zip",
-                    text: $billingAddressZip
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-                
-            }
-        }
-
-    }
-    var serviceLocationView: some View {
-        VStack{
-            Text("Service Location Info")
-            VStack{
-                HStack{
-                    Text("Nick Name")
-                        .font(.headline)
-                    TextField(
-                        "Nick Name",
-                        text: $serviceLocationMainContactNickName
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                }
-                HStack{
-                    Text("Gate Code")
-                        .font(.headline)
-                    TextField(
-                        "Gate Code",
-                        text: $serviceLocationMainContactGateCode
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                }
-                Toggle(isOn: $preText, label: {
-                    Text("Requires Pre Text")
-                })
-                HStack{
-                    Text("Dog Name")
-                        .font(.headline)
-                    TextField(
-                        "Dog Name",
-                        text: $dogName
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                }
-                HStack{
-                    Text("Estimated Time")
-                        .font(.headline)
-                    TextField(
-                        "Estimated Time",
-                        text: $estimatedTime
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                }
-                HStack{
-                    Text("notes")
-                        .font(.headline)
-                    TextField(
-                        "Notes",
-                        text: $contactNotes
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                }
-            }
-            VStack{
-                    Text("Service Location")
-                        .font(.title)
-                    HStack{
-                        Spacer()
-
-                       Button(action: {
-                           serviceLocationAddressStreetAddress = billingAddressStreetAddress
-                           serviceLocationAddressCity = billingAddressCity
-                           serviceLocationAddressState = billingAddressState
-                           serviceLocationAddressZip = billingAddressZip
-                       }, label: {
-                           Text("Use Billing Address")
-                       })
-                    }
-                    .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-                
-                HStack{
-                    TextField(
-                        "streetAddress",
-                        text: $serviceLocationAddressStreetAddress
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
-                HStack{
-          
-                    TextField(
-                        "City",
-                        text: $serviceLocationAddressCity
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                
-                    TextField(
-                        "State",
-                        text: $serviceLocationAddressState
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                    TextField(
-                        "Zip",
-                        text: $serviceLocationAddressZip
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
-            }
-            VStack{
-                    Text("Service Location Contact")
-                        .font(.title)
-                    HStack{
-                        Spacer()
-                        Button(action: {
-                            serviceLocationMainContactName = firstName + " " + lastName
-                            serviceLocationMainContactPhoneNumber = phoneNumber
-                            serviceLocationMainContactEmail = email
-                            
-                        }, label: {
-                            Text("Use Main Contact")
-                            
-                        })
-                    }
-                    .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-
-                
-                HStack{
-                    Text("Name")
-                        .font(.headline)
-                    
-                    TextField(
-                        "name",
-                        text: $serviceLocationMainContactName
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                }
-                HStack{
-                    Text("Phone Number")
-                        .font(.headline)
-                    
-                    TextField(
-                        "Phone Number",
-                        text: $serviceLocationMainContactPhoneNumber
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    #if os(iOS)
-                    .keyboardType(.namePhonePad)
-#endif
-
-                }
-                HStack{
-                    Text("email")
-                        .font(.headline)
-                    
-                    TextField(
-                        "email",
-                        text: $serviceLocationMainContactEmail
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-#if os(iOS)
-
-                    .keyboardType(.emailAddress)
-                    #endif
-                }
-                HStack{
-                    Text("notes")
-                        .font(.headline)
-                    
-                    TextField(
-                        "notes",
-                        text: $serviceLocationMainContactNotes
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-            
-                }
-            }
-            
-        }
-
-    }
 }
 
 

@@ -13,7 +13,7 @@ struct ChatProfileIcon: View {
     var body: some View {
         ZStack{
             Circle()
-                .stroke(Color.poolBlue, lineWidth:4)
+                .stroke(Color.poolBlue, lineWidth:8)
             AsyncImage(url: image){ image in
                 image
                     .resizable()
@@ -27,7 +27,6 @@ struct ChatProfileIcon: View {
                     .foregroundColor(Color.white)
             }
             .clipShape(Circle())
-            .padding(4)
         }
         .frame(width: 75,height: 75)
         .overlay(

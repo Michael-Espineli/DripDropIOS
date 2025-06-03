@@ -35,13 +35,13 @@ struct CompanyAccess:Codable,Identifiable,Hashable{ // the Id of CompanyAccess W
         self.dateCreated = dateCreated
 
     }
-        enum CodingKeys:String, CodingKey {
-            case id = "id"
-            case userName = "userName"
-            case roleId = "roleId"
-            case roleName = "roleName"
-            case dateCreated = "dateCreated"
-        }
+    enum CodingKeys:String, CodingKey {
+        case id = "id"
+        case userName = "userName"
+        case roleId = "roleId"
+        case roleName = "roleName"
+        case dateCreated = "dateCreated"
+    }
 }
 
 final class CompanyAccessManager {

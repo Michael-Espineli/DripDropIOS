@@ -6,47 +6,81 @@
 //
 
 import SwiftUI
+@MainActor
+final class ContractListViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    @Published private(set) var listOfContrats:[RecurringContract] = []
+    @Published var displayContracts:[RecurringContract] = []
+    @Published var searchTerm : String = ""
+    @Published var totalContracts : Int = 0
+    @Published var totalYearlyContractAmount : Int = 0
+    @Published var totalMonthlyContractAmount : Int = 0
 
+    func onLoad(companyId:String) async throws {
+        self.listOfContrats = try await dataService.getAllContrats(companyId: companyId)
+        self.displayContracts = listOfContrats
+        for contract in listOfContrats {
+            self.totalMonthlyContractAmount = contract.rate + totalMonthlyContractAmount
+        }
+        self.totalYearlyContractAmount = totalMonthlyContractAmount*12
+    }
+    func filterContractList() {
+        if searchTerm != "" {
+            var contractList:[RecurringContract] = []
+            for contract in listOfContrats {
+                if contract.internalCustomerName.lowercased().contains(searchTerm.lowercased()) {
+                    contractList.append(contract)
+                }
+            }
+            self.displayContracts = contractList
+        }
+    }
+}
 struct ContractListView: View {
     
     @EnvironmentObject private var masterDataManager : MasterDataManager
-
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var contractVM : ContractViewModel
+    
+    @StateObject var VM : ContractListViewModel
+
     init(dataService:any  ProductionDataServiceProtocol) {
-        _contractVM = StateObject(wrappedValue: ContractViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: ContractListViewModel(dataService: dataService))
+
     }
-    @State var searchTerm : String = ""
+    @State var showInfo : Bool = false
     @State var showSearch : Bool = false
     @State var showFilters : Bool = false
     @State var showAddNewContract : Bool = false
     @State var priceFilter : String = ""
     @State var dateFilter : String = ""
     @State var status : String = "All"
-    @State var filteredList:[Contract] = []
+    @State var filteredList:[RecurringContract] = []
     var body: some View {
         ZStack{
-            if searchTerm == "" {
+            Color.listColor.ignoresSafeArea()
+            if VM.searchTerm == "" {
                 list
             } else {
                 filteredContractList
             }
             icons
         }
+        .navigationTitle("Recurring Contracts")
         .task {
             do {
                 if let company = masterDataManager.currentCompany {
-                    try await contractVM.getAllContracts(companyId: company.id)
+                    try await VM.onLoad(companyId: company.id)
                 }
             } catch {
                 print("Error")
             }
         }
-        .onChange(of: searchTerm, perform: { term in
-            if term != "" {
-                contractVM.filterContractList(list: contractVM.listOfContrats, filterTerm: term)
-                filteredList = contractVM.filteredContractList
-            }
+        .onChange(of: VM.searchTerm, perform: { term in
+            VM.filterContractList()
+            
         })
     }
 }
@@ -54,7 +88,7 @@ struct ContractListView: View {
 extension ContractListView{
 var list: some View {
     ScrollView{
-        ForEach(contractVM.listOfContrats){ contract in
+        ForEach(VM.listOfContrats){ contract in
             HStack{
                 if UIDevice.isIPhone {
                     NavigationLink(value: Route.contract(contract: contract,dataService: dataService), label: {
@@ -99,7 +133,49 @@ var list: some View {
             Spacer()
             HStack{
                 Spacer()
+                
                 VStack{
+                    Button(action: {
+                        showInfo.toggle()
+                    }, label: {
+                        ZStack{
+                            Circle()
+                                .fill(Color.orange)
+                                .frame(width: 50, height: 50)
+                                .overlay(
+                            Image(systemName: "info.circle")
+                                .resizable()
+                                .frame(width: 25, height: 25)
+                                .foregroundColor(Color.white)
+                            )
+                        }
+                    })
+                    .padding(10)
+                    .sheet(isPresented: $showInfo, content: {
+                        VStack{
+                            Text("Info")
+                                .font(.headline)
+                            HStack{
+                                Text("Total Contracts : ")
+                                Spacer()
+                                Text("\(VM.totalContracts)")
+                            }
+                            HStack{
+                                Text("Yearly Contract Billed : ")
+                                Spacer()
+                                Text("\(Double(VM.totalYearlyContractAmount)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                            }
+                            HStack{
+                                Text("Monthly Contract Billed : ")
+                                Spacer()
+                                Text("\(Double(VM.totalMonthlyContractAmount)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                            }
+                            Text("Info")
+                            Text("Info")
+
+                        }
+                        .padding(8)
+                    })
                     Button(action: {
                         showFilters.toggle()
                     }, label: {
@@ -118,7 +194,6 @@ var list: some View {
                     .padding(10)
                     .sheet(isPresented: $showFilters, content: {
                         VStack{
-                            HStack{
                                 
                                 Picker("Date Filter", selection: $status) {
                                     Text("Pending").tag("Pending")
@@ -134,10 +209,8 @@ var list: some View {
                                     Text("Oldest To Newest").tag("Oldest To Newest")
                                     Text("Newest To Oldest").tag("Newest To Oldest")
                                 }
-                            }
-                            Spacer()
                         }
-                        .padding()
+                        .padding(8)
                     })
                             Button(action: {
                                 showAddNewContract.toggle()
@@ -176,11 +249,10 @@ var list: some View {
                 HStack{
                     TextField(
                         "Search",
-                        text: $searchTerm
+                        text: $VM.searchTerm
                     )
-                    
                     Button(action: {
-                        searchTerm = ""
+                        VM.searchTerm = ""
                     }, label: {
                         Image(systemName: "xmark")
                     })
@@ -188,9 +260,6 @@ var list: some View {
                 .modifier(SearchTextFieldModifier())
                 .padding(8)
             }
-            
         }
-
     }
-
 }

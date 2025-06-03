@@ -1,24 +1,43 @@
-//
-//  CustomerProfileView.swift
-//  BuisnessSide
-//
-//  Created by Michael Espineli on 12/2/23.
-//
+    //
+    //  CustomerProfileView.swift
+    //  BuisnessSide
+    //
+    //  Created by Michael Espineli on 12/2/23.
+    //
 
 import SwiftUI
 import MapKit
+import UniformTypeIdentifiers
 
 struct CustomerProfileView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-
+    
     let customer:Customer
     @State var showEditView:Bool = false
+    @State var showInviteLinkedCustomer:Bool = false
+    @State var showAlert:Bool = false
+    @State var alertMessage:String = ""
+    
+    @State var selectedInviteTypes:[String] = []
+    
+    @State var showPhoneNumberPicker:Bool = false
+    @State var showNewChat:Bool = false
+
+    @State var phoneNumberPickerType:PhoneNumberPickerType? = nil
     var body: some View {
         ZStack{
             ScrollView(showsIndicators: false){
                 image
+                    .sheet(isPresented: $showNewChat, onDismiss: {
+                        phoneNumberPickerType = nil
+                    }, content: {
+                        AddNewChatView(dataService: dataService, receivedCustomer: customer)
+                    })
                 info
+                    .sheet(isPresented: $showEditView, content: {
+                        CustomerProfileEditView(dataService: dataService, customer: customer)
+                    })
             }
         }
         .toolbar{
@@ -30,7 +49,7 @@ struct CustomerProfileView: View {
                             Button(action: {
                                 showEditView.toggle()
                             }, label: {
-                               Text("Edit")
+                                Text("Edit")
                             })
                         }
                         .padding(5)
@@ -38,20 +57,34 @@ struct CustomerProfileView: View {
                 }
             }
         }
-        .fullScreenCover(isPresented: $showEditView, content: {
-            ZStack{
-                VStack{
-                    HStack{
-                        Spacer()
-                        Button(action: {
-                            showEditView = false
-                        }, label: {
-                            Image(systemName: "xmark")
-                        })
-                    }
-                    .padding(16)
-                    CustomerProfileEditView(dataService: dataService, customer: customer)
+        .alert(alertMessage, isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        }
 
+        .onChange(of: phoneNumberPickerType, perform: { type in
+            if let selectedType = type{
+                if let strNumber = customer.phoneNumber {
+                    
+                    
+                    print(selectedType)
+                    switch selectedType {
+                    case .call:
+                        let tel = "tel://"
+                        let formattedString = tel + strNumber
+                        guard let url = URL(string: formattedString) else { return }
+                        UIApplication.shared.open(url)
+                        print(selectedType)
+                    case .message:
+                        let tel = "sms://"
+                        let formattedString = tel + strNumber
+                        guard let url = URL(string: formattedString) else { return }
+                        UIApplication.shared.open(url)
+                        print(selectedType)
+                        print(selectedType)
+                    case .inApp:
+                        print("Need to set up internal App Communication")
+                        showNewChat.toggle()
+                    }
                 }
             }
         })
@@ -60,32 +93,111 @@ struct CustomerProfileView: View {
 extension CustomerProfileView {
     var info: some View {
         VStack{
-            VStack{
-                if customer.displayAsCompany {
-                    VStack{
-                        HStack{
-                            Text("Company: ")
-                                .bold(true)
-                            Spacer()
-                        }
-                        HStack{
-                            Text("\(customer.company ?? "")")
-                                .font(.headline)
-                            Spacer()
-                        }
+            VStack(spacing: 8){
+                if let linkedCustomerId = customer.linkedCustomerIds {
+                    HStack{
+                        Text("Linked Account")
+                            .modifier(AddButtonModifier())
+                        Spacer()
+                        
                     }
                 } else {
-                        HStack{
-                            Text("Customer: ")
-                                .bold(true)
-                            Spacer()
-                      
-                            Text("\(customer.firstName) \(customer.lastName)")
-                            if customer.firstName == "" {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(Color.yellow)
+                    HStack{
+                        Text("No Account Linked")
+                            .modifier(DismissButtonModifier())
+                        Spacer()
+                        Button(action: {
+                            showInviteLinkedCustomer.toggle()
+                        }, label: {
+                            Text("Invite")
+                                .modifier(AddButtonModifier())
+                            
+                        })
+                        .sheet(isPresented: $showInviteLinkedCustomer, onDismiss: {
+                            selectedInviteTypes = []
+                        }, content: {
+                            VStack(spacing:16){
+                                HStack{
+                                    Text("Invite Code: ")
+                                        .font(.headline)
+#if os(iOS)
+                                    Button(action: {
+                                        UIPasteboard.general.setValue("\(customer.linkedInviteId)",forPasteboardType: UTType.plainText.identifier)
+                                        alertMessage = "Invite Code Copied"
+                                        showAlert.toggle()
+                                    }, label: {
+                                        Image(systemName: "square.fill.on.square.fill")
+                                    })
+#endif
+                                }
+                                Text(customer.linkedInviteId)
+                                    .textSelection(.enabled)
+                                if let phone = customer.phoneNumber {
+                                    HStack{
+                                        Text("Phone: \(phone)")
+                                        Button(action: {
+                                            if selectedInviteTypes.contains("Phone") {
+                                                selectedInviteTypes.removeAll(where: {$0 == "Phone"})
+                                            } else {
+                                                selectedInviteTypes.append("Phone")
+                                            }
+                                        }, label: {
+                                            Image(systemName: selectedInviteTypes.contains("Phone") ? "checkmark.square.fill" : "square")
+                                                .font(.headline)
+                                        })
+                                        Spacer()
+                                    }
+                                }
+                                HStack{
+                                    Text("Email: \(customer.email)")
+                                    Button(action: {
+                                        if selectedInviteTypes.contains("Email") {
+                                            selectedInviteTypes.removeAll(where: {$0 == "Email"})
+                                        } else {
+                                            selectedInviteTypes.append("Email")
+                                        }
+                                    }, label: {
+                                        Image(systemName: selectedInviteTypes.contains("Email") ? "checkmark.square.fill" : "square")
+                                            .font(.headline)
+                                    })
+                                    Spacer()
+                                }
+                                Spacer()
+                                Button(action: {
+                                    alertMessage = "Invite Sent"
+                                    showAlert.toggle()
+                                    showInviteLinkedCustomer.toggle()
+                                }, label: {
+                                    Text("Send Invite")
+                                        .modifier(AddButtonModifier())
+                                })
+                                .padding(16)
                             }
+                            
+                        })
+                    }
+                }
+                Rectangle()
+                    .frame(height: 1)
+                if customer.displayAsCompany {
+                    HStack{
+                        Text("Company: ")
+                            .bold(true)
+                        Spacer()
+                        Text("\(customer.company ?? "")")
+                    }
+                } else {
+                    HStack{
+                        Text("Name: ")
+                            .bold(true)
+                        Spacer()
+                        
+                        Text("\(customer.firstName) \(customer.lastName)")
+                        if customer.firstName == "" {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(Color.yellow)
                         }
+                    }
                     
                 }
                 HStack{
@@ -96,6 +208,13 @@ extension CustomerProfileView {
                     if customer.email == "" {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(Color.yellow)
+                    } else {
+                        Button(action: {
+                            
+                        }, label: {
+                            Image(systemName: "mail")
+                                .modifier(BlueButtonModifier())
+                        })
                     }
                 }
                 HStack{
@@ -106,8 +225,39 @@ extension CustomerProfileView {
                     if customer.phoneNumber == "" {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(Color.yellow)
+                    } else {
+                        Button(action: {
+                            showPhoneNumberPicker.toggle()
+                        }, label: {
+                            Image(systemName: "message")
+                                .modifier(BlueButtonModifier())
+                        })
                     }
+                    
                 }
+                .confirmationDialog("Select Type", isPresented: self.$showPhoneNumberPicker, actions: {
+                    if let linkedCustomerId = customer.linkedCustomerIds {
+                        Button(action: {
+                            self.phoneNumberPickerType = .inApp
+                        }, label: {
+                            Text("In App")
+                        })
+                    }
+                    if let phoneNumber = customer.phoneNumber {
+                        if phoneNumber != "" {
+                            Button(action: {
+                                self.phoneNumberPickerType = .call
+                            }, label: {
+                                Text("Call: \(phoneNumber)")
+                            })
+                            Button(action: {
+                                self.phoneNumberPickerType = .message
+                            }, label: {
+                                Text("Message: \(phoneNumber)")
+                            })
+                        }
+                    }
+                })
                 HStack{
                     Text("Phone Label: ")
                         .bold(true)
@@ -124,70 +274,40 @@ extension CustomerProfileView {
                     Spacer()
                     Text("\(String(customer.active))")
                 }
-                HStack{
-                    Text("Rate: ")
-                        .bold(true)
-                    Spacer()
-                    Text("$\(String(customer.rate ?? 0))")
-                }
             }
-            HStack{
+            Rectangle()
+                .frame(height: 1)
+            VStack(alignment:.leading){
                 Text("Billing Address: ")
                     .bold(true)
-                Spacer()
-                VStack{
-                    HStack{
+                
+                Button(action: {
+                    let address = "\(customer.billingAddress.streetAddress) \(customer.billingAddress.city) \(customer.billingAddress.state) \(customer.billingAddress.zip)"
+                    
+                    let urlText = address.replacingOccurrences(of: " ", with: "?")
+                    
+                    let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
+                    
+                    if UIApplication.shared.canOpenURL(url!) {
+                        UIApplication.shared.open(url!, options: [:], completionHandler: nil)
+                    }
+                }, label: {
+                    VStack{
                         Text("\(customer.billingAddress.streetAddress)")
-                        if customer.billingAddress.streetAddress == "" {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(Color.yellow)
+                        HStack{
+                            Text("\(customer.billingAddress.state)")
+                            Text("\(customer.billingAddress.city)")
+                            Text("\(customer.billingAddress.zip)")
                         }
                     }
-                    HStack{
-                        Text("\(customer.billingAddress.city)")
-                        if customer.billingAddress.city == "" {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(Color.yellow)
-                        }
-                        Text("\(customer.billingAddress.state)")
-                        if customer.billingAddress.state == "" {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(Color.yellow)
-                        }
-                        Text("\(customer.billingAddress.zip)")
-                        if customer.billingAddress.zip == "" {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(Color.yellow)
-                        }
-
-                    }
-                }
+                    .frame(maxWidth: .infinity)
+                    .padding(10)
+                    .foregroundColor(Color.basicFontText)
+                })
             }
-            VStack{
-                HStack{
-                    Text("Fire Category: ")
-                        .bold(true)
-                    Spacer()
-                    Text("\(customer.fireCategory ?? "")")
-                    
-                }
-                HStack{
-                    Text("Fire Reason: ")
-                        .bold(true)
-                    Spacer()
-                    Text("\(customer.fireReason ?? "")")
-                    
-                }
-                HStack{
-                    Text("Billing Notes: ")
-                        .bold(true)
-                    Spacer()
-                    Text("\(customer.billingNotes)")
-                    
-                }
-            }
+            Rectangle()
+                .frame(height: 1)
         }
-        .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
     }
     var image: some View {
         ZStack{
@@ -208,18 +328,9 @@ extension CustomerProfileView {
                         .frame(maxWidth:90 ,maxHeight:90)
                         .cornerRadius(75)
                 }
-//                .frame(maxWidth: 150,maxHeight:150)
+                    //                .frame(maxWidth: 150,maxHeight:150)
                 .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
             }
         }
     }
 }
-//struct CustomerProfileView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        @State var showSignInView: Bool = false
-//
-//        CustomerProfileView(showSignInView: $showSignInView, user: DBUser(id: UUID().uuidString,firstName: "Michael",lastName: "Espineli"), company: Company(id:"1"), customer: Customer(id: UUID().uuidString, firstName: "Ron", lastName: "Palace", email: "Email@gmail.com", billingAddress: Address(streetAddress: "6160 Broadmoor Dr ", city: "La Mesa", state: "Ca", zip: "91942", latitude: 32.790086, longitude: -116.991113), active: true, displayAsCompany: false, hireDate: Date(), billingNotes: ""))
-//
-//    }
-//}
-

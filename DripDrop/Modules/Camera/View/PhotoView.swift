@@ -27,7 +27,9 @@ struct PhotoView: View {
                     .scaledToFit()
                     .accessibilityLabel(asset.accessibilityLabel)
             } else {
+                Text("\(asset.identifier)")
                 ProgressView()
+                    .foregroundColor(Color.black)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

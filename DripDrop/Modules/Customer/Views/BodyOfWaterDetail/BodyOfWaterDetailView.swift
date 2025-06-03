@@ -1,34 +1,82 @@
-//
-//  BodyOfWaterDetailView.swift
-//  BuisnessSide
-//
-//  Created by Michael Espineli on 12/2/23.
-//
+    //
+    //  BodyOfWaterDetailView.swift
+    //  BuisnessSide
+    //
+    //  Created by Michael Espineli on 12/2/23.
+    //
 
 
 import SwiftUI
 import MapKit
 
+@MainActor
+final class BodyOfWaterDetailViewModel:ObservableObject{
+    private var dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    
+    @Published private(set) var equipmentList: [Equipment] = []
+    @Published var loadedImages:[DripDropStoredImage] = []
+    
+    @Published var selectedDripDropPhotos:[DripDropImage] = []
+    @Published var selectedEquipment:Equipment? = nil
+    func onLoad(companyId:String,bodyOfWater:BodyOfWater) async throws {
+
+                self.equipmentList = try await dataService.getEquipmentByBodyOfWater(companyId: companyId, bodyOfWater: bodyOfWater)
+         
+    }
+    func getAllBodiesOfWaterByServiceLocation(companyId: String,bodyOfWater:BodyOfWater) async throws {
+        
+        self.equipmentList = try await dataService.getEquipmentByBodyOfWater(companyId: companyId, bodyOfWater: bodyOfWater)
+        
+    }
+    func updatePhotoUrl(companyId:String,bodyOfWaterId:String) {
+        Task{
+            do {
+                var uploadedImages : [DripDropStoredImage] = []
+                for photo in selectedDripDropPhotos {
+                    let (path,name) = try await dataService.uploadBodyOfWaterImage(companyId: companyId, bodyOfWaterId: bodyOfWaterId, image: photo)
+                    let storedImage = DripDropStoredImage(
+                        id: UUID().uuidString,
+                        description: name,
+                        imageURL: path
+                    )
+                    uploadedImages.append(storedImage)
+                    self.loadedImages.append(storedImage)
+                    
+                }
+                try await dataService.updateBodyOfWaterPhotoURLs(companyId: companyId, bodyOfWaterId: bodyOfWaterId, photoUrls: uploadedImages)
+                self.selectedDripDropPhotos = []
+            } catch {
+                print(error)
+            }
+        }
+    }
+}
 struct BodyOfWaterDetailView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService: ProductionDataService
-
-    //ViewModels
-    //received Variables
-  
+    
+        //ViewModels
+        //received Variables
+    
     init(dataService:any ProductionDataServiceProtocol,bodyOfWater:BodyOfWater){
         _equipmentVM = StateObject(wrappedValue: EquipmentViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: BodyOfWaterDetailViewModel(dataService: dataService))
+        
         _bodyOfWater = State(wrappedValue: bodyOfWater)
     }
     @StateObject var equipmentVM : EquipmentViewModel
+    @StateObject var VM : BodyOfWaterDetailViewModel
+    
     @State var bodyOfWater:BodyOfWater
-
-    //Variables for use
-    @State var equipmentList:[Equipment] = []
-    @State var selectedEquipment:Equipment? = nil
+    
+        //Variables for use
     @State var showEditSheet:Bool = false
     @State var showAddSheet:Bool = false
     @State var isLoading:Bool = false
+    
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -41,9 +89,10 @@ struct BodyOfWaterDetailView: View {
                     }
                 } else {
                     Divider()
-                        edit
-                    
                     info
+                    photos
+                    Rectangle()
+                        .frame(height: 4)
                     equipment
                 }
             }
@@ -51,12 +100,17 @@ struct BodyOfWaterDetailView: View {
         .task{
             isLoading = true
             do {
-                if let bodyOfWater = masterDataManager.selectedBodyOfWater {
-                    try await equipmentVM.getAllEquipmentFromBodyOfWater(companyId: masterDataManager.selectedCompany!.id, bodyOfWater: bodyOfWater)
-                    equipmentList = equipmentVM.listOfEquipment
-                    if equipmentList.count != 0 {
-                        selectedEquipment = equipmentList.first!
-                        masterDataManager.selectedEquipment = equipmentList.first!
+                if let bodyOfWater = masterDataManager.selectedBodyOfWater, let currentCompany = masterDataManager.currentCompany {
+                    VM.loadedImages = bodyOfWater.photoUrls ?? []
+                    try await VM.onLoad(companyId: currentCompany.id, bodyOfWater: bodyOfWater)
+                    
+                    if VM.equipmentList.count != 0 {
+                        VM.selectedEquipment = VM.equipmentList.first!
+                        masterDataManager.selectedEquipment = VM.equipmentList.first!
+                    } else {
+                        print("equipment set to nil")
+                        VM.selectedEquipment = nil
+                        masterDataManager.selectedEquipment = nil
                     }
                 }
             } catch{
@@ -64,14 +118,44 @@ struct BodyOfWaterDetailView: View {
             }
             isLoading = false
         }
-        .onChange(of: selectedEquipment, perform: { datum in
+        .onChange(of: masterDataManager.selectedBodyOfWater, perform: { BOW in
             Task{
                 isLoading = true
-               sleep(1)
+                do {
+                    if let bodyOfWater = BOW, let currentCompany = masterDataManager.currentCompany {
+                        VM.loadedImages = bodyOfWater.photoUrls ?? []
+                        try await VM.onLoad(companyId: currentCompany.id, bodyOfWater: bodyOfWater)
+                        
+                        if VM.equipmentList.count != 0 {
+                            VM.selectedEquipment = VM.equipmentList.first!
+                            masterDataManager.selectedEquipment = VM.equipmentList.first!
+                        } else {
+                            print("equipment set to nil")
+                            VM.selectedEquipment = nil
+                            masterDataManager.selectedEquipment = nil
+                        }
+                    }
+                } catch{
+                    print("Error")
+                }
                 isLoading = false
             }
         })
-
+        .onChange(of: VM.selectedEquipment, perform: { datum in
+            Task{
+                if let datum {
+                    isLoading = true
+                    
+                    sleep(1)
+                    isLoading = false
+                }
+            }
+        })
+        .onChange(of: VM.selectedDripDropPhotos, perform: { photo in
+            if let currentCompany = masterDataManager.currentCompany {
+                VM.updatePhotoUrl(companyId: currentCompany.id, bodyOfWaterId: bodyOfWater.id)
+            }
+        })
     }
 }
 extension BodyOfWaterDetailView {
@@ -82,42 +166,79 @@ extension BodyOfWaterDetailView {
                 showEditSheet = true
             }, label: {
                 Text("Edit")
-                    .padding(8)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.poolBlue)
-                    .cornerRadius(8)
+                    .modifier(AddButtonModifier())
             })
-            .sheet(isPresented: $showEditSheet, content: {
+            .sheet(isPresented: $showEditSheet,onDismiss: {
+                
+            }, content: {
                 if let BOW = masterDataManager.selectedBodyOfWater {
                     EditBodyOfWaterView(dataService:dataService, bodyOfWater: BOW)
                 }
             })
         }
-        .padding()
     }
     var info: some View {
         VStack{
+            
             if let bodyOfWater = masterDataManager.selectedBodyOfWater {
                 VStack{
                     HStack{
                         Text("Name: \(bodyOfWater.name)")
                         Spacer()
+                        edit
                     }
-                }
-                VStack{
+                    
                     HStack{
-                        Text("gallons: \(bodyOfWater.gallons)")
+                        Text("Gallons: \(bodyOfWater.gallons)")
                         Spacer()
                     }
-
-                }
-                VStack{
+                    
+                    
                     HStack{
-                        Text("material: \(bodyOfWater.material)")
+                        Text("Material: \(bodyOfWater.material)")
+                        Spacer()
+                    }
+                    HStack{
+                        Text("Shape:")
+                        if let shape = bodyOfWater.shape {
+                            Text("\(shape)")
+                        }
+                        Spacer()
+                    }
+                    HStack{
+                        Text("Dimensions: \(bodyOfWater.material)")
+                        Spacer()
+                    }
+                    HStack{
+                        Text("Notes:")
+                        if let notes = bodyOfWater.notes {
+                            Text("\(notes)")
+                        }
                         Spacer()
                     }
                 }
             }
+        }
+        .padding(8)
+        .background(Color.gray.opacity(0.5))
+        .cornerRadius(8)
+    }
+    
+    var photos: some View {
+        VStack{
+            PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
+            if !VM.selectedDripDropPhotos.isEmpty {
+                HStack{
+                    Text("Loading Images...")
+                    ProgressView()
+                }
+            }
+                if VM.loadedImages.isEmpty {
+                    Text("No Images")
+                } else {
+                    DripDropStoredImageRow(images: VM.loadedImages)
+                }
+            
         }
     }
     var equipment: some View {
@@ -131,82 +252,79 @@ extension BodyOfWaterDetailView {
                         showAddSheet = true
                     }, label: {
                         Image(systemName: "plus.square.on.square")
-                            .font(.headline)
-                            .padding(8)
-                            .foregroundColor(Color.basicFontText)
-                            .background(Color.poolBlue)
-                            .cornerRadius(8)
+                            .modifier(AddButtonModifier())
                     })
                     .sheet(isPresented: $showAddSheet, content: {
                         AddEquipmentView(dataService: dataService, bodyOfWater: bodyOfWater)
                     })
-                if equipmentList.count == 0 {
-                    Button(action: {
-                        showAddSheet = true
-                    }, label: {
-                        Text("Add First Body Of Water")
-                    })
-                } else {
-                    ForEach(equipmentList){ equipment in
+                    if VM.equipmentList.count == 0 {
                         Button(action: {
-                            Task{
-                                selectedEquipment = nil
-                                selectedEquipment = equipment
-                                masterDataManager.selectedEquipment = equipment
-                            }
+                            showAddSheet = true
                         }, label: {
-                            HStack{
-                                if equipment.status != .operational {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                }
-                                Text(equipment.category.rawValue)
-                                    .padding(5)
-                                    .background(selectedEquipment == equipment ? Color.accentColor : Color.gray)
-                                    .foregroundColor(selectedEquipment == equipment ? Color.white : Color.white)
-                                    .cornerRadius(5)
-                            }
+                            Text("Add First Equipment")
                         })
-                        .padding(EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 5))
+                    } else {
+                        ForEach(VM.equipmentList){ equipment in
+                            Button(action: {
+                                Task{
+                                    VM.selectedEquipment = nil
+                                    VM.selectedEquipment = equipment
+                                    masterDataManager.selectedEquipment = equipment
+                                }
+                            }, label: {
+                                HStack{
+                                    if equipment.status != .operational {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .foregroundColor(Color.poolRed)
+                                    }
+                                    if VM.selectedEquipment == equipment {
+                                        Text(equipment.category.rawValue)
+                                            .modifier(AddButtonModifier())
+                                    } else {
+                                        Text(equipment.category.rawValue)
+                                            .modifier(ListButtonModifier())
+                                    }
+                                }
+                            })
+                            .padding(EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 5))
+                        }
                     }
-  
+                    
                 }
-                
             }
-            }
-            .padding(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-            if selectedEquipment == nil {
-                Text("Please select an Equipment")
+            if VM.selectedEquipment == nil {
+                if VM.equipmentList.count == 0 {
+                    Text("No Equipment")
+                    Text("Please Set Up")
+                } else {
+                    Text("Please select an Equipment")
+                }
             } else {
-            
-                    EquipmentDetailView(dataService:dataService)
-                
+                if let equipment = VM.selectedEquipment {
+                    EquipmentDetailView(dataService:dataService,equipment: equipment)
+                } else {
+                    Text("Please select an Equipment")
+                }
             }
         }
     }
-    var image: some View {
-        ZStack{
-            VStack{
-                Rectangle()
-                    .fill(Color.accentColor)
-                    .frame(height: 150)
-            }
-            .padding(0)
-        }
-    }
+    
 }
 struct BodyOfWaterDetailView_Previews: PreviewProvider {
     static let dataService = ProductionDataService()
-
     static var previews: some View {
-        
-        BodyOfWaterDetailView(dataService: dataService, bodyOfWater: BodyOfWater(id: UUID().uuidString,
-                                                                                 name: "",
-                                                                                 gallons: "",
-                                                                                 material: "",
-                                                                                 customerId: "",
-                                                                                 serviceLocationId: ""))
-        
+        BodyOfWaterDetailView(
+            dataService: dataService,
+            bodyOfWater: BodyOfWater(
+                id: UUID().uuidString,
+                name: "",
+                gallons: "",
+                material: "",
+                customerId: "",
+                serviceLocationId: "",
+                lastFilled: Date()
+            )
+        )
     }
 }
 

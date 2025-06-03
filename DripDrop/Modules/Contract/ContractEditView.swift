@@ -13,9 +13,9 @@ struct ContractEditView: View {
     
     @StateObject private var customerVM : CustomerViewModel
     @StateObject var contractVM : ContractViewModel
-    @State var contract: Contract?
+    @State var contract: RecurringContract?
 
-    init(dataService:any ProductionDataServiceProtocol,contract:Contract?){
+    init(dataService:any ProductionDataServiceProtocol,contract:RecurringContract?){
         _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
         _contractVM = StateObject(wrappedValue: ContractViewModel(dataService: dataService))
         _contract = State(wrappedValue: contract)
@@ -48,19 +48,26 @@ struct ContractEditView: View {
     @State var startDate:Date = Date()
 
     @State var rate:String = ""
-    @State var rateType:String = "Per Month"
-    @State var rateTypes:[String] = ["Per Month","Per Stop","Per Week"]
+    @State var rateType:RecurringContractRateType = .perMonth
 
-    @State var laborType:String = "Per Stop"
-    @State var laborTypes:[String] = ["Per Stop","Per Week","Per Month"]
+    @State var laborType:RecurringContractLaborType = .perStop
 
-    @State var chemType:String = "With Chems"
-    @State var chemTypes:[String] = ["With Chems","With Out Chems","Specific Chems"]
+    @State var chemType:RecurringContractChemType = .withChems
+    @State var cleaningType:RecurringContractCleaningPlan = .basic
+
+    @State var repairType:BillingType = .included
+    @State var repairMax:String = ""
+
+    @State var filterType:BillingType = .included
+    @State var serviceFreqency:RecurringContractServiceFrequency = .perWeek
+    @State var serviceFreqencyAmount:String = "1"
 
     @State var terms:String = ""
-    @State var notes:String = ""
-    @State var status:LaborContractStatus = .pending
-    @State var statusList = ["Pending","Accepted"]
+    
+    @State var internalNotes:String = ""
+    @State var externalNotes:String = ""
+    
+    @State var status:RecurringContractStatus = .pending
     
     @State var errorMessage = ""
     @State var showAlert = false
@@ -90,7 +97,9 @@ struct ContractEditView: View {
                 laborType = contract.laborType
                 chemType = contract.chemType
                 terms = contract.terms
-                notes = contract.notes
+                internalNotes = contract.internalNotes
+                externalNotes = contract.externalNotes
+
                 status = contract.status
             }
         })
@@ -116,13 +125,48 @@ extension ContractEditView {
                     if let company = masterDataManager.currentCompany {
                         if let contract = contract {
                             
-                            try await contractVM.updateContractWithValidation(companyId: company.id, contract: contract, dateToAccept: dateToAccept, status: status, locations: 0, rate: 0, rateType: rateType, laborType: laborType, chemType: chemType, terms: terms, notes: notes, startDate: startDate, endDate: nil)
+                            try await contractVM.updateContractWithValidation(
+                                companyId: company.id,
+                                contract: contract,
+                                dateToAccept: dateToAccept,
+                                status: status,
+                                locations: 0,
+                                rate: rate,
+                                rateType: rateType,
+                                laborType: laborType,
+                                chemType: chemType,
+                                cleaningPlan: cleaningType,
+                                filterServiceType: filterType,
+                                repairType: repairType,
+                                repairMax: repairMax,
+                                serviceFrequency: serviceFreqency,
+                                serviceFrequencyAmount: serviceFreqencyAmount,
+//                                terms: terms,
+                                internalNotes: internalNotes,
+                                externalNotes: externalNotes
+                            )
+//                            (
+//                                companyId: company.id,
+//                                contract: contract,
+//                                dateToAccept: dateToAccept,
+//                                status: status,
+//                                locations: 0,
+//                                rate: 0,
+//                                rateType: rateType,
+//                                laborType: laborType,
+//                                chemType: chemType,
+//                                terms: terms,
+//                                notes: notes,
+//                                startDate: startDate,
+//                                endDate: nil
+//                            )
                             
                             dismiss()
                         }
                     }
                 }
-            }, label: {
+            },
+                   label: {
                 Text("Save")
                     .modifier(SubmitButtonModifier())
 
@@ -140,7 +184,7 @@ extension ContractEditView {
                             Spacer()
                         }
                         HStack{
-                            Text("\(contract?.customerName ?? "")")
+                            Text("\(contract?.internalCustomerName ?? "")")
                             Spacer()
                         }
                     }
@@ -150,8 +194,8 @@ extension ContractEditView {
                 Text("Status: ")
                     .font(.footnote)
                 Picker("Status", selection: $status) {
-                    ForEach(statusList,id:\.self){
-                        Text($0).tag($0)
+                    ForEach(RecurringContractStatus.allCases,id:\.self){
+                        Text($0.rawValue).tag($0)
                     }
                 }
                 HStack{
@@ -181,29 +225,73 @@ extension ContractEditView {
 
                     Picker("rateType", selection: $rateType) {
                         //                    Text("Pick Customer")
-                        ForEach(rateTypes,id:\.self){
-                            Text($0).tag($0)
+                        ForEach(RecurringContractRateType.allCases,id:\.self){
+                            Text($0.rawValue).tag($0)
                         }
                     }
                 }
                 HStack{
                     Text("Labor Type:")
 
-                    Picker("laborType", selection: $laborType) {
+                    Picker("Labor Type", selection: $laborType) {
                         //                    Text("Pick Customer")
-                        ForEach(laborTypes,id:\.self){
-                            Text($0).tag($0)
+                        ForEach(RecurringContractLaborType.allCases,id:\.self){
+                            Text($0.rawValue).tag($0)
                         }
                         
                     }
                 }
                 HStack{
+                    Text("Cleaning Type:")
+
+                    Picker("Cleaning Type", selection: $cleaningType) {
+                        //                    Text("Pick Customer")
+                        ForEach(RecurringContractCleaningPlan.allCases,id:\.self){
+                            Text($0.rawValue).tag($0)
+                        }
+                    }
+                }
+                HStack{
                     Text("Chem Type:")
 
-                    Picker("chemType", selection: $chemType) {
+                    Picker("Chem Type", selection: $chemType) {
                         //                    Text("Pick Customer")
-                        ForEach(chemTypes,id:\.self){
-                            Text($0).tag($0)
+                        ForEach(RecurringContractChemType.allCases,id:\.self){
+                            Text($0.rawValue).tag($0)
+                        }
+                        
+                    }
+                }
+                HStack{
+                    Text("Repair Type:")
+
+                    Picker("Repair Type", selection: $repairType) {
+                        //                    Text("Pick Customer")
+                        ForEach(RecurringContractChemType.allCases,id:\.self){
+                            Text($0.rawValue).tag($0)
+                        }
+                        
+                    }
+                }
+                if repairType == .included {
+                    HStack{
+                        Text("Included Up Until : ")
+                        TextField(
+                            "Max Amount",
+                            text: $repairMax
+                        )
+                        .padding(5)
+                        .background(Color.gray.opacity(0.3))
+                        .cornerRadius(5)
+                    }
+                }
+                HStack{
+                    Text("Filter Type:")
+
+                    Picker("Filter Type", selection: $filterType) {
+                        //                    Text("Pick Customer")
+                        ForEach(RecurringContractChemType.allCases,id:\.self){
+                            Text($0.rawValue).tag($0)
                         }
                         
                     }
@@ -216,9 +304,9 @@ extension ContractEditView {
             }
             VStack{
                 HStack{
-                    Text("terms")
+                    Text("Terms")
                     TextField(
-                        "terms",
+                        "Terms",
                         text: $terms
                     )
                     .padding(5)
@@ -226,10 +314,20 @@ extension ContractEditView {
                     .cornerRadius(5)
                 }
                 HStack{
-                    Text("notes")
+                    Text("Internal Notes : ")
                     TextField(
-                        "notes",
-                        text: $notes
+                        "Notes",
+                        text: $internalNotes
+                    )
+                    .padding(5)
+                    .background(Color.gray.opacity(0.3))
+                    .cornerRadius(5)
+                }
+                HStack{
+                    Text("External Notes : ")
+                    TextField(
+                        "Notes",
+                        text: $externalNotes
                     )
                     .padding(5)
                     .background(Color.gray.opacity(0.3))

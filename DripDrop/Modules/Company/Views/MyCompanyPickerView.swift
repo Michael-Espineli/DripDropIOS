@@ -6,34 +6,45 @@
 //
 
 import SwiftUI
-
+@MainActor
+final class MyCompanyPickerViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    @Published var search:String = ""
+    @Published var companies:[Company] = []
+    
+    func onLoad(userId:String) async throws {
+        let accessList = try await dataService.getAllUserAvailableCompanies(userId: userId)
+        print("Received List of \(accessList.count) Companies available to Access")
+        var listOfCompanies:[Company] = []
+        for access in accessList{
+            let company = try await dataService.getCompany(companyId: access.id)// access id is company id
+            listOfCompanies.append(company)
+        }
+        self.companies = listOfCompanies
+    }
+}
 struct MyCompanyPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
-
+    @StateObject var VM : MyCompanyPickerViewModel
+    init(dataService: any ProductionDataServiceProtocol,company:Binding<Company>) {
+        _VM = StateObject(wrappedValue: MyCompanyPickerViewModel(dataService: dataService))
+        self._company = company
+    }
     @Binding var company : Company
-
-    @State var search:String = ""
-    @State var companies:[Company] = []
     var body: some View {
         VStack{
-            HStack{
-                Spacer()
-                Button(action: {
-                    dismiss()
-                }, label: {
-                   Image(systemName: "xmark")
-                })
-            }
             companyList
-//            searchBar
+            searchBar
         }
         .padding()
         .task {
             if let user = masterDataManager.user {
                 do {
-                    try await companyVM.getCompaniesByUserAccessList(userId: user.id )
-                    companies = companyVM.listOfCompanies
+                    try await VM.onLoad(userId: user.id )
                 } catch {
                     print(error)
                 }
@@ -44,7 +55,7 @@ struct MyCompanyPickerView: View {
 extension MyCompanyPickerView {
     var searchBar: some View {
         TextField(
-            text: $search,
+            text: $VM.search,
             label: {
                 Text("Search: ")
             })
@@ -54,24 +65,13 @@ extension MyCompanyPickerView {
     }
     var companyList: some View {
         ScrollView{
-            Divider()
-
-            ForEach(companies){ datum in
-                    Button(action: {
-                        company = datum
-                        dismiss()
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            CompanyCardView(company: datum)
-                            Spacer()
-                        }
-                        .padding(8)
-                        .background(Color.accentColor.opacity(0.1))
-                        .foregroundColor(Color.black)
-                        .cornerRadius(5)
-                        .padding(2)
-                    })
+            ForEach(VM.companies){ datum in
+                Button(action: {
+                    company = datum
+                    dismiss()
+                }, label: {
+                    CompanyCardView(company: datum)
+                })
                 Divider()
             }
         }

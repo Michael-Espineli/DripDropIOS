@@ -8,7 +8,8 @@
 import SwiftUI
 struct CustomerCardViewSmall: View{
     @EnvironmentObject var naviagionManager : NavigationStateManager
-    
+    @EnvironmentObject var masterDataManager : MasterDataManager
+
 
     let customer:Customer
     func checkPercentageFilledOut(customer:Customer) ->(filledOut:Bool,percentage:Double){
@@ -74,38 +75,91 @@ struct CustomerCardViewSmall: View{
     }
     var body: some View{
         ZStack{
-            VStack{
-                HStack{
-                    VStack{
-                        Image(systemName: "person.crop.circle")
-                            .resizable()
-                            .frame(width: 50, height: 50)
-                    }
-                    VStack{
-                        if customer.displayAsCompany {
-                            HStack{
-                                Text(customer.company ?? "No Company Name" )
-                            }
-                        } else {
-                            HStack{
-                                Text(customer.firstName )
-                                Text(customer.lastName )
+            switch masterDataManager.mainScreenDisplayType {
+            case .compactList:
+                VStack{
+                    HStack{
+                        VStack{
+                            Image(systemName: "person.crop.circle")
+                                .resizable()
+                                .frame(width: 25, height: 25)
+                        }
+                        VStack{
+                            if customer.displayAsCompany {
+                                HStack{
+                                    Text(customer.company ?? "No Company Name" )
+                                }
+                            } else {
+                                HStack{
+                                    Text(customer.firstName )
+                                    Text(customer.lastName )
+                                }
                             }
                         }
-                        HStack{
-                            Text(customer.billingAddress.streetAddress)
-                                .font(.footnote)
-                        }
+                        Spacer()
                     }
-                    Spacer()
                 }
-                if !checkPercentageFilledOut(customer: customer).filledOut {
-                    ProgressView(value: checkPercentageFilledOut(customer: customer).percentage)
-                        .tint(Color.red)
-
+            case .preview:
+                VStack{
+                    HStack{
+                        VStack{
+                            Image(systemName: "person.crop.circle")
+                                .resizable()
+                                .frame(width: 30, height: 30)
+                        }
+                        VStack{
+                            if customer.displayAsCompany {
+                                HStack{
+                                    Text(customer.company ?? "No Company Name" )
+                                }
+                            } else {
+                                HStack{
+                                    Text(customer.firstName )
+                                    Text(customer.lastName )
+                                }
+                            }
+                        }
+                        Spacer()
+                    }
+                    if !checkPercentageFilledOut(customer: customer).filledOut {
+                        ProgressView(value: checkPercentageFilledOut(customer: customer).percentage)
+                            .tint(Color.red)
+                    }
+                }
+            case .fullPreview:
+                VStack{
+                    HStack{
+                        VStack{
+                            Image(systemName: "person.crop.circle")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                        }
+                        VStack{
+                            if customer.displayAsCompany {
+                                HStack{
+                                    Text(customer.company ?? "No Company Name" )
+                                }
+                            } else {
+                                HStack{
+                                    Text(customer.firstName )
+                                    Text(customer.lastName )
+                                }
+                            }
+                            HStack{
+                                Text(customer.billingAddress.streetAddress)
+                                    .font(.footnote)
+                            }
+                        }
+                        Spacer()
+                    }
+                    if !checkPercentageFilledOut(customer: customer).filledOut {
+                        ProgressView(value: checkPercentageFilledOut(customer: customer).percentage)
+                            .tint(Color.red)
+                    }
                 }
             }
-//            .background(Color.poolBlue)
+            
         }
+        .modifier(ListButtonModifier())
     }
 }

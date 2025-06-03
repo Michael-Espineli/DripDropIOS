@@ -13,16 +13,53 @@ final class CompanyRoutingViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
+    func onLoad(companyId:String,companies:[Company]){
+        Task{
+            do {
+                
+            } catch {
+                print(error)
+            }
+        }
+    }
 }
 struct CompanyRoutingView: View {
+    
     init(dataService: any ProductionDataServiceProtocol) {
-        
+        _VM = StateObject(wrappedValue: CompanyRoutingViewModel(dataService: dataService))
     }
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @EnvironmentObject var dataService: ProductionDataService
+    
+    @StateObject var VM : CompanyRoutingViewModel
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            VStack{
+                ScrollView{
+                    info
+                }
+
+
+            }
+            .padding(8)
+        }
     }
 }
 
-#Preview {
-    CompanyRoutingView()
+//#Preview {
+//    CompanyRoutingView()
+//}
+extension CompanyRoutingView {
+    var info: some View {
+        VStack{
+            if let currentCompany = masterDataManager.currentCompany {
+                WorkPreviewBasedOnCompany(dataService: dataService, company: currentCompany)
+            } else {
+                Text("No Company Selected")
+                    .modifier(MockButtonModifier())
+            }
+        }
+    }
 }
+

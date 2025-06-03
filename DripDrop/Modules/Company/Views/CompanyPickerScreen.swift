@@ -81,13 +81,8 @@ extension CompanyPickerScreen {
             label: {
                 Text("Search: ")
             })
-        .textFieldStyle(PlainTextFieldStyle())
-        .font(.headline)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 5)
-        .background(Color.white)
-        .clipShape(Capsule())
-        .foregroundColor(Color.basicFontText)
+        .modifier(SearchTextFieldModifier())
+        .padding(8)
         
     }
     var companyList: some View {
@@ -101,8 +96,7 @@ extension CompanyPickerScreen {
                     }, label: {
                         HStack{
                             Spacer()
-                            Text("\(datum.name ?? "")")
-                        
+                            CompanyCardView(company: datum)
                             Spacer()
                         }
                         .padding(8)

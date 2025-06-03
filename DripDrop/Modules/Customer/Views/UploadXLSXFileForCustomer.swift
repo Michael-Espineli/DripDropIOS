@@ -8,8 +8,10 @@
 import SwiftUI
 
 struct UploadXLSXFileForCustomer: View {
+    @Environment(\.dismiss) private var dismiss
+
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject private var customerFileVM = CustomerFileManager()
+    @StateObject private var customerFileVM = CustomerFileManager(dataService: ProductionDataService())
     @State var selectedDocumentUrl:URL
     
     @State var workSheetName:String = ""
@@ -22,6 +24,12 @@ struct UploadXLSXFileForCustomer: View {
     var body: some View {
         ZStack{
             VStack{
+                Button(action: {
+                    dismiss()
+                }, label: {
+                    Text("Go Back")
+                        .modifier(DismissButtonModifier())
+                })
                 Text("\(selectedDocumentUrl)")
                 Picker("", selection: $workSheetName) {
                     Text("Pick WorkSheet")
@@ -37,7 +45,7 @@ struct UploadXLSXFileForCustomer: View {
                 Button(action: {
                     Task{
                         
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             isLoading = true
                             do {
                                 try await customerFileVM.uploadXlsxFileTo(pathName: pathName, fileName: fileName, companyId: company.id, workSheetName: workSheetName)
@@ -79,7 +87,7 @@ struct UploadXLSXFileForCustomer: View {
                 let n = fullPath.replacingOccurrences(of: "." + fileExtension, with: "")
 
                 print(self.pathName)
-                try await customerFileVM.getWorkSheetsInXslxFile(pathName: pathName, fileName: fileName, companyId: masterDataManager.selectedCompany!.id)
+                try await customerFileVM.getWorkSheetsInXslxFile(pathName: pathName, fileName: fileName, companyId: masterDataManager.currentCompany!.id)
             } catch {
                 print("Erroor")
             }

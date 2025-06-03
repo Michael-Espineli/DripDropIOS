@@ -12,32 +12,57 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 struct Company:Identifiable, Codable,Equatable,Hashable{
     let id :String
-    let ownerId :String?
-    let name : String?
+    let ownerId : String
+    let ownerName : String
+    let name : String
     let photoUrl : String?
-    let dateCreated : Date?
+    let dateCreated : Date
+    let email : String
+    let phoneNumber : String
+    let verified : Bool
+    let serviceZipCodes:[String]
+    let services:[String]
+    
     init(
         id: String,
-        ownerId : String? = nil,
-        name : String? = nil,
+        ownerId : String,
+        ownerName : String,
+        name : String,
         photoUrl : String? = nil,
-        dateCreated : Date? = nil
-
+        dateCreated : Date,
+        email : String,
+        phoneNumber : String,
+        verified : Bool,
+        serviceZipCodes : [String],
+        services : [String]
 
     ){
         self.id = id
         self.ownerId = ownerId
+        self.ownerName = ownerName
         self.name = name
         self.photoUrl = photoUrl
         self.dateCreated = dateCreated
+        self.email = email
+        self.phoneNumber = phoneNumber
+        self.verified = verified
+        self.serviceZipCodes = serviceZipCodes
+        self.services = services
 
     }
         enum CodingKeys:String, CodingKey {
             case id = "id"
             case ownerId = "ownerId"
             case name = "name"
+            case ownerName = "ownerName"
             case photoUrl = "photoUrl"
             case dateCreated = "dateCreated"
+            case email = "email"
+            case phoneNumber = "phoneNumber"
+            case verified = "verified"
+            case serviceZipCodes = "serviceZipCodes"
+            case services = "services"
+
         }
     static func == (lhs: Company, rhs: Company) -> Bool {
         return lhs.id == rhs.id &&

@@ -69,19 +69,14 @@ struct CustomerProfileEditView: View {
     
     var body: some View {
         ZStack{
+            Color.listColor.ignoresSafeArea()
             ScrollView(showsIndicators: false){
                 HStack{
-                    Button(action: {
-                        showDeleteAlert.toggle()
-                    }, label: {
-                        Image(systemName: "trash")
-                            .foregroundColor(Color.red)
-                            .font(.title)
-                    })
+                    deleteButton
                     Spacer()
                     saveButton
                 }
-                .padding(EdgeInsets(top: 10, leading: 10, bottom: 5, trailing: 10))
+                .padding(EdgeInsets(top: 8, leading: 8, bottom: 5, trailing: 8))
                 info
             }
         }
@@ -97,7 +92,7 @@ struct CustomerProfileEditView: View {
                     
                     Task{
                         do {
-                                try await customerVM.deleteCustomer(companyId:masterDataManager.selectedCompany!.id,customer:customer)
+                                try await customerVM.deleteCustomer(companyId:masterDataManager.currentCompany!.id,customer:customer)
                                 alertMessage = "Successfully Deleted"
                             print(alertMessage)
                                 showAlert = true
@@ -119,9 +114,8 @@ struct CustomerProfileEditView: View {
                 Button(action: {
                     showDeleteAlert.toggle()
                 }, label: {
-                    Image(systemName: "trash")
-                        .foregroundColor(Color.red)
-                        .font(.title)
+                    Text("Delete")
+                        .modifier(DismissButtonModifier())
                 })
             }
             ToolbarItem() {
@@ -146,38 +140,88 @@ struct CustomerProfileEditView: View {
     }
 }
 extension CustomerProfileEditView {
+    var deleteButton: some View {
+        Button(action: {
+            showDeleteAlert.toggle()
+        }, label: {
+            Text("Delete")
+                .modifier(DismissButtonModifier())
+        })
+    }
     var saveButton: some View {
         Button(action: {
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany { 
+                    if let company = masterDataManager.currentCompany { 
                         //DEVELPER ADD THE REST OF THE UPDATABLE FIELDS FOR CUSTOMERS
                         //DEVLOPER FIX LATITUDE AND LONGITUDE CALCULATIONS ON ADDRESS UPDATES.
-                        try await customerVM.updateCustomerInfoWithValidation(currentCustomer: customer, companyId: company.id, firstName: firstName, lastName: lastName, email: email, phoneNumber: phoneNumber, company: companyName, displayAsCompany: displayAsCompany,billingAddress: Address(streetAddress: billingAddressStreetAddress, city: billingAddressCity, state: billingAddressState, zip: billingAddressZip, latitude: customer.billingAddress.latitude, longitude: customer.billingAddress.longitude))
-                        
+                        try await customerVM.updateCustomerInfoWithValidation(
+                            currentCustomer: customer,
+                            companyId: company.id,
+                            firstName: firstName,
+                            lastName: lastName,
+                            email: email,
+                            phoneNumber: phoneNumber,
+                            company: companyName,
+                            displayAsCompany: displayAsCompany,
+                            billingAddress: Address(
+                                streetAddress: billingAddressStreetAddress,
+                                city: billingAddressCity,
+                                state: billingAddressState,
+                                zip: billingAddressZip,
+                                latitude: customer.billingAddress.latitude,
+                                longitude: customer.billingAddress.longitude
+                            ),
+                            active: active
+                        )
                     }
                     masterDataManager.selectedID = ""
                     masterDataManager.selectedCustomer = nil
                     dismiss()
-
+                    
                 } catch {
                     print("Error")
                 }
             }
-        }, label: {
+        },
+               label: {
           Text("Save")
-                .padding(10)
-                .background(Color.primary)
-                .foregroundColor(Color.basicFontText)
-                .cornerRadius(10)
+                .modifier(SubmitButtonModifier())
         })
     }
     var info: some View {
         VStack{
-                
                 VStack{
                     Toggle("Display As Company", isOn: $displayAsCompany)
-                    
+                    HStack{
+                        Text("Display as Company")
+                        Spacer()
+                        Button(action: {
+                            displayAsCompany.toggle()
+                        }, label: {
+                            if displayAsCompany {
+                                HStack{
+                                    Text("Company")
+                                    Image(systemName: "building.2.fill")
+                                }
+                                .padding(8)
+                                .background(Color.green)
+                                .cornerRadius(8)
+                                .foregroundColor(Color.white)
+                                .padding(8)
+                            } else {
+                                HStack{
+                                    Text("Induvidual")
+                                    Image(systemName: "person.fill")
+                                }
+                                .padding(8)
+                                .background(Color.red)
+                                .foregroundColor(Color.white)
+                                .cornerRadius(8)
+                                .padding(8)
+                            }
+                        })
+                    }
                     if displayAsCompany {
                         HStack{
                             Text("Company Name")
@@ -186,9 +230,7 @@ extension CustomerProfileEditView {
                                 "Company Name",
                                 text: $companyName
                             )
-                            .padding(3)
-                            .background(Color.gray.opacity(0.3))
-                            .cornerRadius(3)
+                            .modifier(PlainTextFieldModifier())
                             
                         }
                     } else {
@@ -199,9 +241,7 @@ extension CustomerProfileEditView {
                                 "First Name",
                                 text: $firstName
                             )
-                            .padding(3)
-                            .background(Color.gray.opacity(0.3))
-                            .cornerRadius(3)
+                            .modifier(PlainTextFieldModifier())
                             
                         }
                         HStack{
@@ -211,9 +251,7 @@ extension CustomerProfileEditView {
                                 "Last Name",
                                 text: $lastName
                             )
-                            .padding(3)
-                            .background(Color.gray.opacity(0.3))
-                            .cornerRadius(3)
+                            .modifier(PlainTextFieldModifier())
                             
                         }
                     }
@@ -224,21 +262,7 @@ extension CustomerProfileEditView {
                             "Email",
                             text: $email
                         )
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
-                    }
-                    HStack{
-                        Text("Phone Number")
-                            .bold(true)
-                        TextField(
-                            "Phone Number",
-                            text: $phoneNumber
-                        )
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
+                        .modifier(PlainTextFieldModifier())
                         
                     }
                     HStack{
@@ -249,43 +273,47 @@ extension CustomerProfileEditView {
                         
                     }
                     HStack{
+                        Text("Phone Number")
+                            .bold(true)
+                        TextField(
+                            "Phone Number",
+                            text: $phoneNumber
+                        )
+                        .modifier(PlainTextFieldModifier())
+                        .keyboardType(.phonePad)
+                        
+                    }
+                    HStack{
                         Text("Billing Address: ")
                             .bold(true)
-                        VStack{
-                            HStack{
-                                TextField(
-                                    "Street Address",
-                                    text: $billingAddressStreetAddress
-                                )
-                                .padding(3)
-                                .background(Color.gray.opacity(0.3))
-                                .cornerRadius(3)
-                            }
-                            HStack{
-                                TextField(
-                                    "City",
-                                    text: $billingAddressCity
-                                )
-                                .padding(3)
-                                .background(Color.gray.opacity(0.3))
-                                .cornerRadius(3)
-                                TextField(
-                                    "State",
-                                    text: $billingAddressState
-                                )
-                                .padding(3)
-                                .background(Color.gray.opacity(0.3))
-                                .cornerRadius(3)
-                                TextField(
-                                    "Zip",
-                                    text: $billingAddressZip
-                                )
-                                .padding(3)
-                                .background(Color.gray.opacity(0.3))
-                                .cornerRadius(3)
-                            }
+                    }
+                    VStack{
+                        HStack{
+                            TextField(
+                                "Street Address",
+                                text: $billingAddressStreetAddress
+                            )
+                            .modifier(PlainTextFieldModifier())
+                        }
+                        HStack{
+                            TextField(
+                                "City",
+                                text: $billingAddressCity
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            TextField(
+                                "State",
+                                text: $billingAddressState
+                            )
+                            .modifier(PlainTextFieldModifier())
+                            TextField(
+                                "Zip",
+                                text: $billingAddressZip
+                            )
+                            .modifier(PlainTextFieldModifier())
                         }
                     }
+                    
                     HStack{
                         Text("Active: ")
                             .bold(true)
@@ -328,32 +356,7 @@ extension CustomerProfileEditView {
                     }
                 }
         }
-        .padding(EdgeInsets(top: 0, leading: 10, bottom: 5, trailing: 0))
-    }
-    var image: some View {
-        ZStack{
-            VStack{
-                    BackGroundMapView(coordinates: CLLocationCoordinate2D(latitude: customer.billingAddress.latitude, longitude: customer.billingAddress.longitude))
-                        .frame(height: 150)
-                
-            }
-            .padding(0)
-            VStack{
-                ZStack{
-                    Circle()
-                        .fill(Color.realYellow)
-                        .frame(maxWidth:100 ,maxHeight:100)
-                    
-                    Image(systemName:"person.circle")
-                        .resizable()
-                        .foregroundColor(Color.white)
-                        .frame(maxWidth:90 ,maxHeight:90)
-                        .cornerRadius(75)
-                }
-//                .frame(maxWidth: 150,maxHeight:150)
-                .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-            }
-        }
+        .padding(EdgeInsets(top: 0, leading: 10, bottom: 5, trailing: 10))
     }
 }
 //struct CustomerProfileEditView_Previews: PreviewProvider {

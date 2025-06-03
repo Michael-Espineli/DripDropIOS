@@ -26,12 +26,13 @@ struct ChatListView: View {
     
     @State var startDate:Date = Date()
     @State var endDate:Date = Date()
+    @State var selectedScreen:String = "All"
     
+    @State var screenOptions:[String] = ["All","Client","Professionals"]
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             list
-                .padding(.horizontal,16)
             icons
         }
         .task {
@@ -40,12 +41,11 @@ struct ChatListView: View {
             } else{
                 print("No User")
             }
-            
         }
         
         .onChange(of: masterDataManager.selectedID, perform: { id in
             if let selectedId = id {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     Task{
                         do {
                             try await chatVM.getSpecificChat(companyId: company.id, contractId: selectedId)
@@ -95,7 +95,7 @@ extension ChatListView {
                     })
                     .padding()
                     .sheet(isPresented: $showNewChatSheet, content: {
-                        AddNewChatView(dataService: dataService)
+                        AddNewChatView(dataService: dataService, receivedCustomer: nil)
                     })
                     
                 }
@@ -111,13 +111,20 @@ extension ChatListView {
                     text: $searchTerm,
                     axis: .vertical
                 )
-                .padding(8)
-                .background(Color.black)
-                .foregroundColor(Color.white)
-                .clipShape(Capsule())
-                .padding(.horizontal,16)
-                .padding(.vertical,8)
+                Button(action: {
+                    searchTerm = ""
+                }, label: {
+                    Image(systemName: "xmark")
+                })
             }
+            .modifier(SearchTextFieldModifier())
+            .padding(8)
+            Picker("Type", selection: $selectedScreen) {
+                ForEach(screenOptions, id:\.self){ datum in
+                    Text(datum).tag(datum)
+                }
+            }
+            .pickerStyle(.segmented)
             if chatVM.listOfChats.count == 0 {
                 Text("No Chats, Sorry you don't have friends")
             } else {

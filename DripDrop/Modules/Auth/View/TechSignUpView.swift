@@ -199,10 +199,8 @@ struct TechSignUpView: View {
                         
                     } label: {
                         Text("Submit")
-                            .foregroundColor(colorScheme == .dark ? Color.basicFontText:Color.white)
-                            .padding(5)
-                            .background(Color.accentColor)
-                            .cornerRadius(5)
+                            .modifier(SubmitButtonModifier())
+
                     }
                     .padding()
                     NavigationLink(destination: {

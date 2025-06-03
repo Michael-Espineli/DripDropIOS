@@ -35,8 +35,12 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     @Published private(set) var duration: Int? = nil
     @Published private(set) var estimateDuration: Int? = nil
     
-    @Published private(set) var startTime: Date? = nil
+    @Published var startTime: Date = Date()
+    @Published var endTime: Date = Date()
+
     @Published private(set) var startMilage: String? = nil
+    @Published var showVehicalPicker: Bool = false
+    @Published var selectedVehical: Vehical = Vehical(id: "", nickName: "", vehicalType: .truck, year: "", make: "", model: "", color: "", plate: "", datePurchased: Date(), miles: 1, status: .active)
     
     @Published private(set) var shoppingListCount: Int? = nil
 
@@ -45,24 +49,36 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         // - Check Active Route
         // - Update a working active Route
         // - At End of Function Update the received active Route
-        
+        print("Initial Load For Contractor Daily Dashboard \(date)")
         var serviceStopsList:[ServiceStop] = []
         
         var hasActiveRoute:Bool = false
-        
-        var workingActiveRoute:ActiveRoute = ActiveRoute(id: UUID().uuidString, name: "", date: Date(), serviceStopsIds: [], techId: "", techName: "", durationSeconds: 0, distanceMiles: 0, status: .inProgress, totalStops: 0, finishedStops: 0)
+        self.selectedVehical = Vehical(id: "", nickName: "", vehicalType: .truck, year: "", make: "", model: "", color: "", plate: "", datePurchased: Date(), miles: 1, status: .active)
+        var workingActiveRoute:ActiveRoute = ActiveRoute(
+            id: UUID().uuidString,
+            name: "",
+            date: Date(),
+            serviceStopsIds: [],
+            techId: "",
+            techName: "",
+            durationMin: 0,
+            distanceMiles: 0,
+            status: .inProgress,
+            totalStops: 0,
+            finishedStops: 0,
+            vehicalId: ""
+        )
         
         
         //     Get All The Necessary Info To Set Up Route Display
         
         let recurringRouteId = weekDay(date: date) + user.id
         
-        self.recurringRoute = try await RecurringRouteManager.shared.getSingleRoute(companyId: companyId, recurringRouteId: recurringRouteId)
+        self.recurringRoute = try await dataService.getSingleRouteFromTechIdAndDay(companyId: companyId, techId: user.id, day: weekDay(date: date))
         
         serviceStopsList = try await dataService.getAllServiceStopsByTechAndDate(companyId: companyId, date: date, tech: user)
+        
         if serviceStopsList.count != 0 {
-            
-            
             
             //     Parse Through Data to create what we need
             
@@ -111,11 +127,14 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 duration += stop.duration // In Seconds
                 
                 //Total
-                if stop.finished {
+                if stop.operationStatus == .finished {
                     finishedCount = finishedCount + 1
                 }
                 
             }
+            self.finishedStops = finishedCount
+            
+            self.totalStops = serviceStopsList.count
             //Order the Active Route and the Reucrring Route?
             
             //First Check if current active Route has an order already created.
@@ -198,8 +217,8 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             
             //Duration
             
-            workingActiveRoute.durationSeconds = timeBetweenAsSeconds(start: workingActiveRoute.startTime ?? Date(), end: workingActiveRoute.endTime ?? Date())
-            print("workingActiveRoute.durationSeconds \(workingActiveRoute.durationSeconds)")
+            workingActiveRoute.durationMin = timeBetweenAsSeconds(start: workingActiveRoute.startTime ?? Date(), end: workingActiveRoute.endTime ?? Date())
+            print("workingActiveRoute.durationSeconds \(workingActiveRoute.durationMin)")
             //Total
             self.estimateDuration = duration
             workingActiveRoute.totalStops = serviceStopsList.count
@@ -320,7 +339,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                         
                         print("Updating Active Route Status")
                         
-                        RouteManager.shared.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .finished)
+                        dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .finished)
                         
                     }
                     
@@ -336,7 +355,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                     
                 } else {
                     
-                    RouteManager.shared.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .inProgress)
+                    dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .inProgress)
                     
                     print("Active Route Not Finished")
                     
@@ -345,18 +364,18 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 
                 //Updating Active Route Total Stops
                 
-                RouteManager.shared.updateActiveRouteTotalStop(companyId: companyId, activeRouteId: workingActiveRoute.id, totalStops: workingActiveRoute.totalStops)
+                dataService.updateActiveRouteTotalStop(companyId: companyId, activeRouteId: workingActiveRoute.id, totalStops: workingActiveRoute.totalStops)
                 
                 // Updating Active Route Finished Stops
                 
-                RouteManager.shared.updateActiveRouteFinishedStop(companyId: companyId, activeRouteId: workingActiveRoute.id, finishedStops: workingActiveRoute.finishedStops)
+                dataService.updateActiveRouteFinishedStop(companyId: companyId, activeRouteId: workingActiveRoute.id, finishedStops: workingActiveRoute.finishedStops)
             } else {
                 //Generate Active Route
                 workingActiveRoute.serviceStopsIds = serviceStopIdList
                 do {
                     print("Before uploadRoute")
                     print(workingActiveRoute)
-                    try await RouteManager.shared.uploadRoute(
+                    try await dataService.uploadRoute(
                         companyId: companyId,
                         activeRoute: workingActiveRoute
                     )
@@ -394,60 +413,96 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             //Get Shopping List
             self.shoppingListCount = try await dataService.getAllShoppingListItemsByUserCount(companyId: companyId, userId: user.id)
         } else {
+            print("No Service Stops Found")
             self.serviceStopList = []
             self.serviceStopOrderList = []
             self.activeRoute = nil
         }
+        //Get Vehical
+        if let activeRoute {
+            if activeRoute.vehicalId != "" {
+                self.selectedVehical = try await dataService.getVehical(companyId: companyId, vehicalId: activeRoute.vehicalId)
+            }
+        }
+    }
+    func updateVehicalMilage(companyId:String,vehicalId:String,miles:Double) async throws {
+        try await dataService.updateVehicalMilage(companyId: companyId, vehicalId: vehicalId, miles: miles)
     }
     
-    
-    func updateActiveRoute(companyId:String,activeRoute:ActiveRoute,name: String, date: Date, serviceStopsIds: [String], startTime: Date, endTime: Date?, startMilage:String?,endMilage:String?,techId: String, techName: String, traineeId: String?, traineeName: String?, durationSeconds: Int, distanceMiles: Double, status: ActiveRouteStatus) {
+    func updateActiveRoute(
+        companyId:String,
+        activeRoute:ActiveRoute,
+        name: String,
+        date: Date,
+        serviceStopsIds: [String],
+        startTime: Date?,
+        endTime: Date?,
+        startMilage:String?,
+        endMilage:String?,
+        techId: String,
+        techName: String,
+        traineeId: String?,
+        traineeName: String?,
+        durationSeconds: Int,
+        distanceMiles: Double,
+        status: ActiveRouteStatus,
+        vehical: Vehical
+    ) {
+        print("startTime")
+        print(fullDateAndTime(date: startTime))
+        print("endTime")
+        print(fullDateAndTime(date: endTime))
+
         print("Updating Active Route")
         if activeRoute.name != name {
-            RouteManager.shared.updateActiveRouteName(companyId: companyId, activeRouteId: activeRoute.id, name: name)
+            dataService.updateActiveRouteName(companyId: companyId, activeRouteId: activeRoute.id, name: name)
         } else {
             print("Did not update name, it is the same")
         }
         if activeRoute.date != date {
-            RouteManager.shared.updateActiveRouteDate(companyId: companyId, activeRouteId: activeRoute.id, date: date)
+            dataService.updateActiveRouteDate(companyId: companyId, activeRouteId: activeRoute.id, date: date)
         } else {
             print("Did not update date, it is the same")
         }
-        if activeRoute.startTime != startTime {
-            print("Updaing Start Time")
-            RouteManager.shared.updateActiveRouteStartTime(companyId: companyId, activeRouteId: activeRoute.id, startTime: startTime)
-            
+        if startTime != activeRoute.startTime {
+            if let startTime {
+                print("Updaing Start Time")
+                dataService.updateActiveRouteStartTime(companyId: companyId, activeRouteId: activeRoute.id, startTime: startTime)
+            }
         } else {
             print("Did not update startTime, it is the same")
         }
-        if let milage = Int(startMilage ?? "0") {
-            
-            if activeRoute.startMilage != milage {
-                print("Updaing Start Milage")
-                
-                RouteManager.shared.updateActiveRouteStartMilage(companyId: companyId, activeRouteId: activeRoute.id, startMilage: milage)
-            } else {
-                print("Start Milage is Nil")
-            }
-        } else {
-            print("Did not update startMilage, it is the same")
-        }
         if activeRoute.endTime != endTime {
             if let time = endTime{
-                RouteManager.shared.updateActiveRouteEndTime(companyId: companyId, activeRouteId: activeRoute.id, endTime: time)
+                if let endTime {
+                    dataService.updateActiveRouteEndTime(companyId: companyId, activeRouteId: activeRoute.id, endTime: endTime)
+                }
             } else {
                 print("End Time is Nil")
             }
         } else {
             print("Did not update endTime, it is the same")
         }
+        if let milage = Int(startMilage ?? "0") {
+            
+            if activeRoute.startMilage != milage {
+                print("Updaing Start Milage")
+                
+                dataService.updateActiveRouteStartMilage(companyId: companyId, activeRouteId: activeRoute.id, startMilage: milage)
+            } else {
+                print("Start Milage is Nil")
+            }
+        } else {
+            print("Did not update startMilage, it is the same")
+        }
+        
         if let milage = Int(endMilage ?? "0") {
             print("Updating End Milage")
             
             if activeRoute.endMilage != milage {
                 print("End Milage is Different")
                 
-                RouteManager.shared.updateActiveRouteEndMilage(companyId: companyId, activeRouteId: activeRoute.id, endMilage: milage)
+                dataService.updateActiveRouteEndMilage(companyId: companyId, activeRouteId: activeRoute.id, endMilage: milage)
             }
             else {
                 print("End Mialge is Nil")
@@ -455,8 +510,27 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         } else {
             print("Did not update endMilage, it is the same")
         }
+        if let start = Double(startMilage ?? "0"), let end = Double(endMilage ?? "0") {
+            let distance = end - start
+            if distance != activeRoute.distanceMiles {
+                dataService.updateActiveRouteDistnace(companyId: companyId, activeRouteId: activeRoute.id, distance: distance)
+            }
+        }
+        
+        if let start = startTime, let end = endTime {
+            let duration = minBetween(start: start, end: end)
+            
+            if duration != activeRoute.durationMin {
+                dataService.updateActiveRouteDuration(companyId: companyId, activeRouteId: activeRoute.id, duration: duration)
+            }
+        }
         if activeRoute.status != status {
-            RouteManager.shared.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: status)
+            dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: status)
+        } else {
+            print("Did not update status, it is the same")
+        }
+        if vehical.id != activeRoute.vehicalId {
+            dataService.updateActiveRouteVehicalId(companyId: companyId, activeRouteId: activeRoute.id, vehicalId: vehical.id)
         }else {
             print("Did not update status, it is the same")
         }

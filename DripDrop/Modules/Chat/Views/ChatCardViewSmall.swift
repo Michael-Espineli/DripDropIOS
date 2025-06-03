@@ -32,7 +32,7 @@ struct ChatCardViewSmall: View {
                 if let person = chat.participants.first(where: {$0.userId != user.id }) {
                     ZStack{
                         Circle()
-                            .stroke(Color.poolBlue, lineWidth:4)
+                            .stroke(Color.lightBlue, lineWidth:4)
                         
                         AsyncImage(url: URL(string: person.userImage)!){ image in
                             image
@@ -45,13 +45,13 @@ struct ChatCardViewSmall: View {
                                 .foregroundColor(Color.white)
                         }
                         .clipShape(Circle())
-                        .padding(4)
                     }
                     .frame(width: 75,height: 75)
+                    .shadow(color: Color.white, radius: 2)
                 } else {
                     Circle()
                         .fill(Color.poolGreen)
-                        .frame(width: 50, height: 50)
+                        .frame(width: 75, height: 75)
                         .overlay(
                             Image(systemName: "person.fill")
                                 .font(.title)
@@ -65,7 +65,9 @@ struct ChatCardViewSmall: View {
                         ForEach(chat.participants){ participant in
                             if let user = masterDataManager.user {
                                 if user.id != participant.userId {
+                                    
                                     Text(participant.userName)
+                                    Image(systemName: "building.columns.fill")
                                 }
                             } else {
                                 Text("Invalid User")
@@ -88,7 +90,6 @@ struct ChatCardViewSmall: View {
                 }
             }
         }
-        .padding(.leading,8)
         .foregroundColor(Color.basicFontText)
         .fontDesign(.monospaced)
         .task {

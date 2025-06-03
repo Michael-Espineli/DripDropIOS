@@ -202,14 +202,14 @@ Text("Return to bottom")
                                             Spacer()
                                             Text("\(i.senderName)")
                                                 .font(.footnote)
-                                            Text("\(fullDateAndTime(date:i.dateSent))")
+                                            Text("\(shortDateAndTime(date:i.dateSent))")
                                                 .font(.footnote)
                                         }
                                     } else {
                                         HStack{
                                             Text("\(i.senderName)")
                                                 .font(.footnote)
-                                            Text("\(fullDateAndTime(date:i.dateSent))")
+                                            Text("\(shortDateAndTime(date:i.dateSent))")
                                                 .font(.footnote)
                                             Spacer()
                                         }
@@ -243,12 +243,13 @@ Text("Return to bottom")
                     axis: .vertical
                 )
                 .foregroundColor(Color.black)
+                .background(Color.white)
             if message != "" {
                 Button(action: {
                     Task {
                         do {
                             if let user = masterDataManager.user {
-                                    let fullName = (user.firstName ?? "") + " " + (user.lastName ?? "")
+                                let fullName = (user.firstName) + " " + (user.lastName)
                                     try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, message: message, chatId: chat.id)
                                     try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
                                     message = ""

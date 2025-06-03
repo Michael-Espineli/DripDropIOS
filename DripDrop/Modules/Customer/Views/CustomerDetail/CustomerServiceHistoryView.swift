@@ -31,7 +31,7 @@ struct CustomerServiceHistoryView: View {
         
     }
     
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     
     @State var edit:Bool = false
     @State var bodyOfWaterId:String = "1"
@@ -68,7 +68,7 @@ struct CustomerServiceHistoryView: View {
     )
     
     @State var bodyOfWaterList:[BodyOfWater] = []
-    @State var bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "")
+    @State var bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
     
     @State var viewList:[String] = ["Chem History","Service History","Equipment History"]
     @State var stringView:String = "Chem History"
@@ -100,7 +100,7 @@ struct CustomerServiceHistoryView: View {
         }
         .task {
             do {
-                if let company = masterDataManager.selectedCompany{
+                if let company = masterDataManager.currentCompany{
                     if let cus = masterDataManager.selectedCustomer {
                         customer = cus
                     } else {
@@ -137,7 +137,7 @@ struct CustomerServiceHistoryView: View {
         .onChange(of: masterDataManager.selectedCustomer, perform: { selectedCustomer in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany{
+                    if let company = masterDataManager.currentCompany{
                         if let cus = masterDataManager.selectedCustomer {
                             customer = cus
                         } else {
@@ -173,7 +173,7 @@ struct CustomerServiceHistoryView: View {
         .onChange(of: serviceLocation, perform: { location in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany{
+                    if let company = masterDataManager.currentCompany{
                
                             try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: location)
                             bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
@@ -193,7 +193,7 @@ struct CustomerServiceHistoryView: View {
         })
         .onChange(of: bodyOfWater, perform: { selectedBodyOfWater in
             Task{
-                if let company = masterDataManager.selectedCompany{
+                if let company = masterDataManager.currentCompany{
 
                 do {
     
@@ -254,21 +254,18 @@ extension CustomerServiceHistoryView{
                 ForEach(serviceStopVM.serviceStops) { datum in
                     HStack{
                         Text("\(fullDate(date:datum.serviceDate))")
-                        Text("\(datum.tech ?? "")")
+                        Text("\(datum.tech)")
                         Text("\(datum.type)")
-                        if datum.skipped {
+                        switch datum.operationStatus {
+                        case .finished:
+                            Text("\(datum.operationStatus.rawValue)")
+                                .foregroundColor(Color.green)
+                        case .notFinished:
+                            Text("\(datum.operationStatus.rawValue)")
+                                .foregroundColor(Color.red)
+                        case .skipped:
                             Text("Skipped)")
                                 .foregroundColor(Color.realYellow)
-
-                        } else {
-                            if datum.finished {
-                                Text("\(datum.finished ? "Finished" : "Not Finished")")
-                                    .foregroundColor(Color.green)
-
-                            } else {
-                                Text("\(datum.finished ? "Finished" : "Not Finished")")
-                                    .foregroundColor(Color.red)
-                            }
                         }
                         Button(action: {
                             

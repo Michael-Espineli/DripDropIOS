@@ -30,11 +30,8 @@ struct AddressNavigationCardView: View {
                     .padding(5)
                     .background(Color.gray)
                     .foregroundColor(Color.white)
-                    .cornerRadius(10)
+                    .cornerRadius(8)
                 })
-                
-                
-            
         }
     }
 

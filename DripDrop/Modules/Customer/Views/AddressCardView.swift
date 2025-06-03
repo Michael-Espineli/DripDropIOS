@@ -8,11 +8,38 @@
 import SwiftUI
 
 struct AddressCardView: View {
+    let address : Address
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
-    }
-}
+        ZStack{
+            Button(action: {
 
-#Preview {
-    AddressCardView()
+                let address = "\(address.streetAddress) \(address.city) \(address.state) \(address.zip)"
+                
+                let urlText = address.replacingOccurrences(of: " ", with: "?")
+                
+                let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
+                
+                if UIApplication.shared.canOpenURL(url!) {
+                    UIApplication.shared.open(url!, options: [:], completionHandler: nil)
+                }
+            }, label: {
+                HStack{
+                    Image(systemName: "house.fill")
+                    VStack{
+                        Text("\(address.streetAddress)")
+                        HStack{
+                            Text("\(address.state)")
+                            Text("\(address.city)")
+                            Text("\(address.zip)")
+                        }
+                    }
+                }
+                .padding(5)
+                .background(Color.gray)
+                .foregroundColor(Color.white)
+                .cornerRadius(8)
+            })
+        }
+    }
+
 }
