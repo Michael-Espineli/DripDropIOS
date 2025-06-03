@@ -1,0 +1,36 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeCore/StripeCore/Source/Telemetry/UserDefaults+PaymentsCore.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UserDefaults+PaymentsCore.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UserDefaults+PaymentsCore.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UserDefaults+PaymentsCore.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UserDefaults+PaymentsCore.d"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UserDefaults+PaymentsCore.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeCore/StripeCore/Source/UI/UIFont+Stripe.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIFont+Stripe.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIFont+Stripe.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIFont+Stripe.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIFont+Stripe.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIFont+Stripe.swiftconstvalues"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeCore/StripeCore/Source/Telemetry/STPTelemetryClient.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/STPTelemetryClient.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/STPTelemetryClient.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/STPTelemetryClient.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/STPTelemetryClient.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/STPTelemetryClient.d"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeCore/StripeCore/Source/Telemetry/FraudDetectionData.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/FraudDetectionData.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/FraudDetectionData.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/FraudDetectionData.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/FraudDetectionData.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/FraudDetectionData.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeCore/StripeCore/Source/UI/UIActivityIndicatorView+Stripe.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIActivityIndicatorView+Stripe.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIActivityIndicatorView+Stripe.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIActivityIndicatorView+Stripe.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIActivityIndicatorView+Stripe.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/UIActivityIndicatorView+Stripe.d"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeCore/StripeCore/Source/Localization/String+Localized.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/String+Localized.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/String+Localized.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/String+Localized.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/String+Localized.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeCore.build/Objects-normal/arm64/String+Localized.o"

@@ -1,0 +1,36 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/UI Components/PaymentMethodMessagingView.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView.d"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/UI Components/STPCardFormView+SwiftUI.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView+SwiftUI.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView+SwiftUI.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView+SwiftUI.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView+SwiftUI.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView+SwiftUI.d"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/UI Components/STPCardFormView.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardFormView.o"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/UI Components/STPAUBECSDebitFormView.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPAUBECSDebitFormView.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPAUBECSDebitFormView.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPAUBECSDebitFormView.d"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPAUBECSDebitFormView.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPAUBECSDebitFormView.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/UI Components/STPFloatingPlaceholderTextField.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPFloatingPlaceholderTextField.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPFloatingPlaceholderTextField.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPFloatingPlaceholderTextField.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPFloatingPlaceholderTextField.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPFloatingPlaceholderTextField.o"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/UI Components/PaymentMethodMessagingView+Configuration.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView+Configuration.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView+Configuration.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView+Configuration.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView+Configuration.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/PaymentMethodMessagingView+Configuration.swiftdeps"

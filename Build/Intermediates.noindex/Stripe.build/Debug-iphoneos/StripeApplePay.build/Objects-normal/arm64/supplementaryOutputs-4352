@@ -1,0 +1,18 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeApplePay/StripeApplePay/Source/Extensions/PKContact+Stripe.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/PKContact+Stripe.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/PKContact+Stripe.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/PKContact+Stripe.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/PKContact+Stripe.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/PKContact+Stripe.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeApplePay/StripeApplePay/Source/Blocks.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/Blocks.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/Blocks.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/Blocks.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/Blocks.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/Blocks.swiftconstvalues"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripeApplePay/StripeApplePay/Source/Extensions/BillingDetails+ApplePay.swift":
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/BillingDetails+ApplePay.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/BillingDetails+ApplePay.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/BillingDetails+ApplePay.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/BillingDetails+ApplePay.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripeApplePay.build/Objects-normal/arm64/BillingDetails+ApplePay.d"

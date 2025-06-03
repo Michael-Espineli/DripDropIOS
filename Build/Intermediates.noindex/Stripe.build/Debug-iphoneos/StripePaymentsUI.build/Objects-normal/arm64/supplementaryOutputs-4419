@@ -1,0 +1,36 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/Card/STPCardCVCInputTextFieldValidator.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldValidator.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldValidator.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldValidator.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldValidator.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldValidator.swiftconstvalues"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/Card/STPCardCVCInputTextFieldFormatter.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldFormatter.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldFormatter.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldFormatter.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldFormatter.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextFieldFormatter.o"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Elements/DropDownFieldElement+CardBrand.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DropDownFieldElement+CardBrand.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DropDownFieldElement+CardBrand.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DropDownFieldElement+CardBrand.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DropDownFieldElement+CardBrand.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DropDownFieldElement+CardBrand.o"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/Card/STPCardCVCInputTextField.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextField.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextField.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextField.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextField.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCardCVCInputTextField.d"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/DynamicImageView+Unknown.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DynamicImageView+Unknown.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DynamicImageView+Unknown.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DynamicImageView+Unknown.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DynamicImageView+Unknown.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/DynamicImageView+Unknown.swiftconstvalues"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/CardBrandView.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/CardBrandView.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/CardBrandView.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/CardBrandView.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/CardBrandView.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/CardBrandView.o"

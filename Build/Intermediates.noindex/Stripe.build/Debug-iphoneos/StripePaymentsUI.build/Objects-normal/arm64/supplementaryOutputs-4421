@@ -1,0 +1,36 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/STPGenericInputPickerField.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputPickerField.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputPickerField.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputPickerField.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputPickerField.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputPickerField.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/STPGenericInputTextField.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputTextField.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputTextField.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputTextField.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputTextField.swiftdeps"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPGenericInputTextField.d"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/STPCountryPickerInputField.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCountryPickerInputField.d"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCountryPickerInputField.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCountryPickerInputField.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCountryPickerInputField.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPCountryPickerInputField.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/Card/STPPostalCodeInputTextFieldValidator.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldValidator.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldValidator.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldValidator.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldValidator.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldValidator.swiftconstvalues"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/Card/STPPostalCodeInputTextField.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextField.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextField.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextField.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextField.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextField.o"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/StripePaymentsUI/StripePaymentsUI/Source/Internal/UI/Views/Inputs/Card/STPPostalCodeInputTextFieldFormatter.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldFormatter.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldFormatter.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldFormatter.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldFormatter.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/StripePaymentsUI.build/Objects-normal/arm64/STPPostalCodeInputTextFieldFormatter.o"

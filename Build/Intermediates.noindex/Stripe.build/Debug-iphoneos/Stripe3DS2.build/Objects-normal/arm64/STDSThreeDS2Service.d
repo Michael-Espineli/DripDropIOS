@@ -1,0 +1,37 @@
+dependencies: \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSThreeDS2Service.m \
+  /Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphoneos/Stripe3DS2.build/DerivedSources/resource_bundle_accessor.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/Foundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/module.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSThreeDS2Service.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSAlreadyInitializedException.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSException.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSConfigParameters.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSDebuggerChecker.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSDeviceInformationManager.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSDirectoryServerCertificate.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSDirectoryServer.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/UIKit.framework/Modules/module.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSException+Internal.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSInvalidInputException.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSLocalizedString.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSBundleLocator.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSJailbreakChecker.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSIntegrityChecker.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSNotInitializedException.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSOSVersionChecker.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSSecTypeUtilities.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSSimulatorChecker.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSThreeDSProtocolVersion.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSTransaction+Private.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSTransaction.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSThreeDSProtocolVersion+Private.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSUICustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSCustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSButtonCustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSNavigationBarCustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSLabelCustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSTextFieldCustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSFooterCustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSSelectionCustomization.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSWarning.h

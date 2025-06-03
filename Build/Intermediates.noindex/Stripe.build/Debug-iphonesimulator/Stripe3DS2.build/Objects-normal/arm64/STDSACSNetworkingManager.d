@@ -1,0 +1,21 @@
+dependencies: \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSACSNetworkingManager.m \
+  /Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Stripe.build/Debug-iphonesimulator/Stripe3DS2.build/DerivedSources/resource_bundle_accessor.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/Foundation.framework/Modules/module.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSACSNetworkingManager.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSChallengeRequestParameters.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSJSONEncodable.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSChallengeResponseObject.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSChallengeResponse.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSChallengeResponseSelectionInfo.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSChallengeResponseMessageExtension.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSChallengeResponseImage.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSJSONDecodable.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSJSONEncoder.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSJSONWebEncryption.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSDirectoryServer.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/UIKit.framework/Modules/module.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSStripe3DS2Error.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/STDSErrorMessage+Internal.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/include/STDSErrorMessage.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/stripe-ios-spm/Stripe3DS2/Stripe3DS2/NSError+Stripe3DS2.h
