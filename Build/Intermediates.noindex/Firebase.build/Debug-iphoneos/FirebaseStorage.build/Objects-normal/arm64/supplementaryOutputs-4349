@@ -1,0 +1,18 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseStorage/Sources/Internal/StorageListTask.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageListTask.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageListTask.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageListTask.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageListTask.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageListTask.d"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseStorage/Sources/Internal/StoragePath.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StoragePath.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StoragePath.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StoragePath.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StoragePath.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StoragePath.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseStorage/Sources/Internal/StorageGetMetadataTask.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetMetadataTask.d"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetMetadataTask.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetMetadataTask.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetMetadataTask.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetMetadataTask.swiftconstvalues"

@@ -1,0 +1,18 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/Firestore/Swift/Source/AsyncAwait/CollectionReference+AsyncAwait.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/CollectionReference+AsyncAwait.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/CollectionReference+AsyncAwait.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/CollectionReference+AsyncAwait.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/CollectionReference+AsyncAwait.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/CollectionReference+AsyncAwait.dia"
+"/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/DerivedSources/resource_bundle_accessor.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/resource_bundle_accessor.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/resource_bundle_accessor.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/resource_bundle_accessor.d"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/resource_bundle_accessor.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/resource_bundle_accessor.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/Firestore/Swift/Source/AsyncAwait/Firestore+AsyncAwait.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/Firestore+AsyncAwait.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/Firestore+AsyncAwait.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/Firestore+AsyncAwait.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/Firestore+AsyncAwait.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/Firestore+AsyncAwait.dia"

@@ -1,0 +1,18 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/Firestore/Swift/Source/Codable/DocumentID.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentID.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentID.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentID.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentID.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentID.o"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/Firestore/Swift/Source/Codable/DocumentReference+ReadDecodable.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+ReadDecodable.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+ReadDecodable.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+ReadDecodable.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+ReadDecodable.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+ReadDecodable.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/Firestore/Swift/Source/Codable/DocumentReference+Codable.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+Codable.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+Codable.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+Codable.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+Codable.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestore.build/Objects-normal/arm64/DocumentReference+Codable.dia"

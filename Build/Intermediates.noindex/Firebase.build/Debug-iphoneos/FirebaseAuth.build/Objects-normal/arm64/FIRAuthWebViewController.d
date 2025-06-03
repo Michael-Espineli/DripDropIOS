@@ -1,0 +1,9 @@
+dependencies: \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Utilities/FIRAuthWebViewController.m \
+  /Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseAuth.build/DerivedSources/resource_bundle_accessor.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/Foundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include/TargetConditionals.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Utilities/FIRAuthWebView.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/UIKit.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Cryptexes/OS/System/Library/Frameworks/WebKit.framework/Modules/module.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Utilities/FIRAuthWebViewController.h

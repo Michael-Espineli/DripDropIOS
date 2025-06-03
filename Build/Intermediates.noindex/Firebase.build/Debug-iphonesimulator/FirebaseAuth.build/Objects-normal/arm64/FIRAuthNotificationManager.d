@@ -1,0 +1,31 @@
+dependencies: \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/SystemService/FIRAuthNotificationManager.m \
+  /Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseAuth.build/DerivedSources/resource_bundle_accessor.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/Foundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/usr/include/TargetConditionals.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/usr/include/os_availability.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FirebaseCoreInternal.h \
+  /Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/GeneratedModuleMaps-iphonesimulator/FirebaseCore.modulemap \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRAppInternal.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRComponent.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRComponentContainer.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRComponentType.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRDependency.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRHeartbeatLogger.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRLibrary.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIRLogger.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Extension/FIROptionsInternal.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Auth/FIRAuthGlobalWorkQueue.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Auth/FIRAuth_Internal.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Interop/FIRAuthInterop.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Backend/FIRAuthBackend.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Backend/FIRAuthRPCRequest.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Backend/FIRAuthRPCResponse.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Public/FirebaseAuth/FIRAuth.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Public/FirebaseAuth/FIRAuthAPNSTokenType.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Public/FirebaseAuth/FIRAuthErrors.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/SystemService/FIRAuthAppCredential.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/SystemService/FIRAuthAppCredentialManager.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Storage/FIRAuthKeychainServices.h \
+  /Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/SystemService/FIRAuthNotificationManager.h \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/UIKit.framework/Modules/module.modulemap

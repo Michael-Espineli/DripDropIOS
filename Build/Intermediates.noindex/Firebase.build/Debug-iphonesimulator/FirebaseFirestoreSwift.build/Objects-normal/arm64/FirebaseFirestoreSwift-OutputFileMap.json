@@ -1,0 +1,18 @@
+{
+  "" : {
+    "diagnostics" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift-master.dia",
+    "emit-module-dependencies" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift-master-emit-module.dia",
+    "swift-dependencies" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift-master.swiftdeps"
+  },
+  "/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseFirestoreSwift/Sources/FirebaseFirestoreSwift.swift" : {
+    "const-values" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift.swiftconstvalues",
+    "dependencies" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift.d",
+    "diagnostics" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift.dia",
+    "index-unit-output-path" : "/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift.o",
+    "llvm-bc" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift.bc",
+    "object" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift.o",
+    "swift-dependencies" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift.swiftdeps",
+    "swiftmodule" : "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphonesimulator/FirebaseFirestoreSwift.build/Objects-normal/arm64/FirebaseFirestoreSwift~partial.swiftmodule"
+  }
+}

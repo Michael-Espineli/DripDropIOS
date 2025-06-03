@@ -1,0 +1,4 @@
+module FirebaseFirestoreTarget {
+umbrella "/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/SwiftPM-PlatformExclude/FirebaseFirestoreWrap/include"
+export *
+}

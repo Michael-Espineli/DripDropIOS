@@ -1,0 +1,18 @@
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseStorage/Sources/Internal/StorageGetDownloadURLTask.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetDownloadURLTask.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetDownloadURLTask.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetDownloadURLTask.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetDownloadURLTask.d"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageGetDownloadURLTask.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseStorage/Sources/Internal/StorageDeleteTask.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageDeleteTask.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageDeleteTask.swiftdeps"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageDeleteTask.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageDeleteTask.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/StorageDeleteTask.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseStorage/Sources/AsyncAwait.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/AsyncAwait.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/AsyncAwait.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/AsyncAwait.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/AsyncAwait.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/Firebase.build/Debug-iphoneos/FirebaseStorage.build/Objects-normal/arm64/AsyncAwait.o"
