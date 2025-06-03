@@ -22,15 +22,8 @@ struct SheetTester: View {
                     .padding(5)
             })
         }
-            .fullScreenCover(isPresented: $showSheet, content: {
-                VStack{
-                    Button(action: {
-                        showSheet.toggle()
-                    }, label: {
-                        Image(systemName: "xmark")
-                    })
-                    Text("I am a sheet")
-                }
+            .sheet(isPresented: $showSheet, content: {
+                Text("I am a sheet")
             })
     }
 }

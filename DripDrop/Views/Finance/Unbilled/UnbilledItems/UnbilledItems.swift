@@ -8,13 +8,8 @@
 import SwiftUI
 
 struct UnbilledItems: View{
-    @StateObject private var viewModel = PurchasesViewModel()
-
     @Binding var showSignInView:Bool
     @State var user:DBUser
-    @State private var selected = Set<PurchasedItem.ID>()
-    @State private var isPresented = false
-
     var body: some View{
         ZStack{
             VStack{

@@ -20,8 +20,10 @@ struct ReceiptDatabaseListView: View{
     @EnvironmentObject var masterDataManager : MasterDataManager
 
     @EnvironmentObject var dataService: ProductionDataService
-
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
+    init(dataService: any ProductionDataServiceProtocol){
+        _viewModel = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+    }
+    @StateObject private var viewModel : ReceiptDatabaseViewModel
 
     @State private var selected = Set<DataBaseItem.ID>()
     @State var dataBaseItemList:[DataBaseItem] = []
@@ -61,7 +63,7 @@ struct ReceiptDatabaseListView: View{
             }
         }
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await viewModel.getAllDataBaseItemsByName(companyId: company.id)
                     dataBaseItemList = viewModel.dataBaseItems
@@ -79,9 +81,13 @@ extension ReceiptDatabaseListView {
                 LazyVStack{
 
                 ForEach(dataBaseItemList) { item in
+                    HStack{
                         NavigationLink(value: Route.dataBaseItem(dataBaseItem: item,dataService:dataService), label: {
                             DataBaseItemCardView(dataBaseItem: item)
                         })
+                    }
+                    .padding(.horizontal,8)
+                    .padding(.vertical,3)
                     Divider()
                     if item == dataBaseItemList.last{
                             HStack{
@@ -94,7 +100,7 @@ extension ReceiptDatabaseListView {
                                 print("Loading New Prodcuts")
                                 Task{
                                     loadingNewProducts = true
-                                    if let company = masterDataManager.selectedCompany {
+                                    if let company = masterDataManager.currentCompany {
                                         do {
                                             try await viewModel.getAllDataBaseItemsByName(companyId: company.id)
                                             if searchTerm == "" {
@@ -117,23 +123,20 @@ extension ReceiptDatabaseListView {
         }
     }
     var macDatabaseItems: some View {
-        List(selection:$masterDataManager.selectedID){
+        ScrollView{
+            LazyVStack{
                 ForEach(dataBaseItemList) { item in
-                    if UIDevice.isIPhone {
-                        NavigationLink(value: Route.dataBaseItem(dataBaseItem: item,dataService:dataService), label: {
-                            DataBaseItemCardView(dataBaseItem: item)
-                        })
-                    } else {
+                    HStack{
                         Button(action: {
                             masterDataManager.selectedDataBaseItem = item
                         }, label: {
                             DataBaseItemCardView(dataBaseItem: item)
                         })
                     }
-//                        NavigationLink(value: Route.dataBaseItem(dataBaseItem: item), label: {
-//                            DataBaseItemCardView(showSignInView: $showSignInView, user: user, dataBaseItem: item)
-//                        })
-
+                        .padding(.horizontal,8)
+                        .padding(.vertical,3)
+                        Divider()
+                    
                     if item == viewModel.dataBaseItems.last{
                         HStack{
                             ProgressView()
@@ -141,7 +144,7 @@ extension ReceiptDatabaseListView {
                         .onAppear{
                             print("Loading New Prodcuts")
                             Task{
-                                if let company = masterDataManager.selectedCompany {
+                                if let company = masterDataManager.currentCompany {
                                     do {
                                         try await viewModel.getAllDataBaseItemsByName(companyId: company.id)
                                         dataBaseItemList = viewModel.dataBaseItems
@@ -153,8 +156,8 @@ extension ReceiptDatabaseListView {
                         }
                     }
                 }
+            }
         }
-        .padding()
     }
     var icons: some View {
         VStack{
@@ -219,7 +222,7 @@ extension ReceiptDatabaseListView {
                         switch item {
                         case .manual:
                             NavigationView{
-                                AddNewDatabaseItem()
+                                AddNewDatabaseItem(dataService: dataService)
                             }
                         case .upload:
                             NavigationView{
@@ -230,7 +233,7 @@ extension ReceiptDatabaseListView {
                     }
                     .sheet(isPresented: $showFileComfirmation, content: {
                         if let doc = selectedDocumentUrl {
-                            UploadXLSXFileForDataBaseItem(selectedDocumentUrl: doc)
+                            UploadXLSXFileForDataBaseItem(dataService: dataService, selectedDocumentUrl: doc)
                         } else {
                             DocumentPicker(filePath: self.$selectedDocumentUrl)
 
@@ -258,11 +261,14 @@ extension ReceiptDatabaseListView {
                         "Search",
                         text: $searchTerm
                     )
-                    .padding()
-                    .background(Color.gray)
-                    .foregroundColor(Color.black)
-                    .cornerRadius(10)
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
             }
         }
     }

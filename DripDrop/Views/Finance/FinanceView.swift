@@ -55,7 +55,7 @@ struct FinanceView: View {
         .task {
             isLoading = true
             try? await profileVM.loadCurrentUser()
-            let user:DBUser = profileVM.user ?? DBUser(id: "1",exp: 0)
+            let user:DBUser = profileVM.user ?? DBUser(id: "", email: "", firstName: "", lastName: "", exp: 0,recentlySelectedCompany: "")
             let id = user.id
             if id != "" && id != "1"{
                 print("Current User Loaded :\(id)")
@@ -68,7 +68,7 @@ struct FinanceView: View {
 struct FinanceView_Previews: PreviewProvider {
     static var previews: some View {
         @State var showSignInView: Bool = false
-        FinanceView(showSignInView:$showSignInView, user: DBUser(id: "",exp: 0))
+        FinanceView(showSignInView:$showSignInView, user: DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
         
     }
 }

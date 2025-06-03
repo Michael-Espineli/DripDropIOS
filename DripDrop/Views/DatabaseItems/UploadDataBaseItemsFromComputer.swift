@@ -8,15 +8,15 @@
 import SwiftUI
 
 struct UploadDataBaseItemsFromComputer: View {
-    @StateObject private var dataBaseVM = ReceiptDatabaseViewModel()
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @StateObject private var dataBaseVM : ReceiptDatabaseViewModel
     @StateObject private var storeVM = StoreViewModel()
-    @StateObject private var customerFileVM = CustomerFileManager()
+    @StateObject private var customerFileVM : CustomerFileManager
+    init(dataService: any ProductionDataServiceProtocol){
+        _dataBaseVM = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+        _customerFileVM = StateObject(wrappedValue: CustomerFileManager(dataService: dataService))
 
-    @Binding var showSignInView:Bool
-    @State var user:DBUser
-    @State var company:Company
-
-    
+    }
     @State var pathName = ""
     @State var fileName = ""
     @State var isLoading: Bool = false
@@ -52,9 +52,13 @@ struct UploadDataBaseItemsFromComputer: View {
                       isLoading = true
                       switch fileType{
                       case "CSV":
-                          try? await dataBaseVM.uploadCsvFileTo(pathName: pathName, fileName: fileName, companyId: company.id)
+                          if let currentCompany = masterDataManager.currentCompany {
+                              try? await dataBaseVM.uploadCsvFileTo(pathName: pathName, fileName: fileName, companyId: currentCompany.id)
+                          }
                       case "XLSX":
-                          try? await dataBaseVM.uploadXlsxFileTo(pathName: pathName, fileName: fileName, companyId: company.id, workSheetName: workSheetName, vender: vender)
+                          if let currentCompany = masterDataManager.currentCompany {
+                              try? await dataBaseVM.uploadXlsxFileTo(pathName: pathName, fileName: fileName, companyId: currentCompany.id, workSheetName: workSheetName, vender: vender)
+                          }
                       default:
                           isLoading = false
                           return
@@ -79,7 +83,9 @@ struct UploadDataBaseItemsFromComputer: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .task{
-        try? await storeVM.getAllStores(companyId: company.id)
+        if let currentCompany = masterDataManager.currentCompany {
+            try? await storeVM.getAllStores(companyId: currentCompany.id)
+        }
     }
   }
 }

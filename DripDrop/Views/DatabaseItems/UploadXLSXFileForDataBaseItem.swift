@@ -9,9 +9,15 @@ import SwiftUI
 
 struct UploadXLSXFileForDataBaseItem: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject private var dataBaseVM = ReceiptDatabaseViewModel()
+    init(dataService: any ProductionDataServiceProtocol,selectedDocumentUrl:URL){
+        _dataBaseVM = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+        _selectedDocumentUrl = State(wrappedValue: selectedDocumentUrl)
+        _customerFileVM = StateObject(wrappedValue: CustomerFileManager(dataService: dataService))
+
+    }
+    @StateObject private var dataBaseVM : ReceiptDatabaseViewModel
     @StateObject private var storeVM = StoreViewModel()
-    @StateObject private var customerFileVM = CustomerFileManager()
+    @StateObject private var customerFileVM : CustomerFileManager
     @State var selectedDocumentUrl:URL
     
     @State var workSheetName:String = ""
@@ -47,7 +53,7 @@ struct UploadXLSXFileForDataBaseItem: View {
                             print("Vender is False")
                             return
                         }
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             isLoading = true
                             do {
                                 try await dataBaseVM.uploadXlsxFileTo(pathName: pathName, fileName: fileName, companyId: company.id, workSheetName: workSheetName, vender: vender)
@@ -81,7 +87,7 @@ struct UploadXLSXFileForDataBaseItem: View {
         .task {
             isLoading = true
             do{
-                try? await storeVM.getAllStores(companyId: masterDataManager.selectedCompany!.id)
+                try? await storeVM.getAllStores(companyId: masterDataManager.currentCompany!.id)
                 self.fileName = selectedDocumentUrl.lastPathComponent
                 self.fileExtension = selectedDocumentUrl.pathExtension
                 let fullPath = selectedDocumentUrl.relativePath
@@ -90,7 +96,7 @@ struct UploadXLSXFileForDataBaseItem: View {
                 let n = fullPath.replacingOccurrences(of: "." + fileExtension, with: "")
 
                 print(self.pathName)
-                try await customerFileVM.getWorkSheetsInXslxFile(pathName: pathName, fileName: fileName, companyId: masterDataManager.selectedCompany!.id)
+                try await customerFileVM.getWorkSheetsInXslxFile(pathName: pathName, fileName: fileName, companyId: masterDataManager.currentCompany!.id)
             } catch {
                 print("Erroor")
             }

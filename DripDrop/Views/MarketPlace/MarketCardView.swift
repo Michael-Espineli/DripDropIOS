@@ -171,6 +171,37 @@ struct MarketCardView: View {
 
 struct MarketCardView_Previews: PreviewProvider {
     static var previews: some View {
-        MarketCardView(job: Job(id: "", type: "", dateCreated: Date(), description: "", operationStatus: .estimatePending, billingStatus: .draft, customerId: "", customerName: "Bob Holiday", serviceLocationId: "", serviceStopIds: [], adminId: "", adminName: "", jobTemplateId: "", installationParts: [], pvcParts: [], electricalParts: [], chemicals: [], miscParts: [], rate: 160, laborCost: 40))
+        MarketCardView(
+            job: Job(
+                id: "",
+                internalId: "J",
+                type: "",
+                dateCreated: Date(),
+                description: "",
+                operationStatus: .estimatePending,
+                billingStatus: .draft,
+                customerId: "",
+                customerName: "Bob Holiday",
+                serviceLocationId: "",
+                serviceStopIds: [],
+                laborContractIds: [],
+                adminId: "",
+                adminName: "",
+                rate: 160,
+                laborCost: 40,
+                otherCompany: false,
+                receivedLaborContractId: "",
+                receiverId: "",
+                senderId : "",
+                dateEstimateAccepted: nil,
+                estimateAcceptedById: nil,
+                estimateAcceptType: nil,
+                estimateAcceptedNotes: nil,
+                invoiceDate: nil,
+                invoiceRef: nil,
+                invoiceType: nil,
+                invoiceNotes: nil
+            )
+        )
     }
 }

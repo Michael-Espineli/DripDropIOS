@@ -5,6 +5,12 @@
 //  Created by Michael Espineli on 4/14/24.
 //
 
+struct TimeSheet: Identifiable{
+    let id:String
+    var name:WorkTimeType
+    var clockIn:Date
+    var clockOut:Date?
+}
 import SwiftUI
 
 struct TimeSheetCardView: View {
@@ -37,7 +43,7 @@ struct TimeSheetCardView: View {
                     Text("\(displayNumberAsMinAndHourAndSecond(seconds:timeBetweenAsSeconds(start: sheet.clockIn, end: clockOut)))")
                 } else {
                     Spacer()
-                    Text("\(displayNumberAsMinAndHourAndSecond(seconds: duration))")
+                    Text("\(displayNumberAsMinAndHourAndSecond(seconds: 0))")
                 }
             }
             .padding(.horizontal,16)

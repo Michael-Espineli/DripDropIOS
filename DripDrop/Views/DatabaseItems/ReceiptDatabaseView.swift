@@ -9,18 +9,16 @@ import SwiftUI
 
 @MainActor
 struct ReceiptDatabaseView: View{
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService : ProductionDataService
+    @StateObject private var viewModel : ReceiptDatabaseViewModel
 
+    init(dataService: any ProductionDataServiceProtocol){
+        _viewModel = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+    }
     var body: some View{
-        ZStack{
-            VStack{
-                ReceiptDatabaseListView()
-            }
-        }
-//        .task{
-//            try? await viewModel.getAllDataBaseItems()
-//        }
+        ReceiptDatabaseListView(dataService: dataService)
+
         .toolbar{
             ToolbarItem(){
 
@@ -28,7 +26,8 @@ struct ReceiptDatabaseView: View{
                     AddDataBaseFromComputer()
                 } label: {
                     HStack{
-                        Text("from Computer")
+                        Text("Uplpad")
+                        Image(systemName: "square.and.arrow.up")
                     }
                 }
             }

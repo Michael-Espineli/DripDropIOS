@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct InventoryView: View {
+    @EnvironmentObject var dataService: ProductionDataService
     @Binding var showSignInView: Bool
     @State var user:DBUser
     @State var company:Company
@@ -31,11 +32,11 @@ struct InventoryView: View {
                             .tabItem {
                                 Label("Receipts", systemImage: "person.crop.circle")
                             }
-                        ReceiptDatabaseView()
+                        ReceiptDatabaseView(dataService: dataService)
                         .tabItem {
                             Label("Data Base", systemImage: "doc.on.doc.fill")
                         }
-                        PurchasesView()
+                        PurchasesView(dataService: dataService)
                             .tabItem {
                                 Label("Purchases", systemImage: "person.crop.circle")
                             }
@@ -57,7 +58,7 @@ struct InventoryView: View {
         .task {
             isLoading = true
             try? await profileVM.loadCurrentUser()
-            let user:DBUser = profileVM.user ?? DBUser(id: "1",exp: 0)
+            let user:DBUser = profileVM.user ?? DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0, recentlySelectedCompany: "")
             let id = user.id
             if id != "" && id != "1"{
                 print("Current User Loaded :\(id)")

@@ -46,7 +46,7 @@ struct OperationsView: View {
 struct OperationsView_Previews: PreviewProvider {
     static var previews: some View {
         @State var showSignInView: Bool = false
-        OperationsView(showSignInView:$showSignInView, user: DBUser(id: "", exp: 0), company: Company(id: ""))
+        OperationsView(showSignInView:$showSignInView, user: DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0, recentlySelectedCompany: ""), company:MockDataService.mockCompany)
         
     }
 }

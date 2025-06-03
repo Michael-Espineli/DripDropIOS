@@ -8,13 +8,13 @@
 import SwiftUI
 
 struct ReceiptDatabaseTableView: View{
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
+    @StateObject private var viewModel : ReceiptDatabaseViewModel
     @EnvironmentObject var masterDataManager : MasterDataManager
+    @EnvironmentObject var dataService : ProductionDataService
 
-    @Binding var showSignInView:Bool
-    @State var user:DBUser
-    @State var company:Company
-
+    init(dataService: any ProductionDataServiceProtocol){
+        _viewModel = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
+    }
     @State private var selected = Set<DataBaseItem.ID>()
     @State var dataBaseItemList:[DataBaseItem] = []
     @State var showItemView:Bool = false
@@ -44,15 +44,28 @@ struct ReceiptDatabaseTableView: View{
                         "Item Name, Sku, Description",
                         text: $searchTerm
                     )
-                    .cornerRadius(5)
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
                 HStack{
                     Spacer()
                     Button(action: {
-                                    Task{
-                                        try? await viewModel.getAllDataBaseItemsByName(companyId: company.id)
-                                        dataBaseItemList = viewModel.dataBaseItems
-                                    }
+                        Task{
+                            if let currentCompany = masterDataManager.currentCompany {
+                                do {
+                                    try await viewModel.getAllDataBaseItemsByName(companyId: currentCompany.id)
+                                    dataBaseItemList = viewModel.dataBaseItems
+
+                                } catch {
+                                    print(error)
+                                }
+                            }
+                        }
                     }, label: {
                         Text("Load next Page")
 
@@ -98,7 +111,7 @@ struct ReceiptDatabaseTableView: View{
                         Text($0.description )
                     }
                     
-                }rows: {
+                } rows: {
                     ForEach(dataBaseItemList) { dbItem in
                         TableRow(dbItem)
                             .contextMenu {
@@ -130,10 +143,17 @@ struct ReceiptDatabaseTableView: View{
                 HStack{
                     Spacer()
                     Button(action: {
-                                    Task{
-                                        try? await viewModel.getAllDataBaseItemsByName(companyId: company.id)
-                                        dataBaseItemList = viewModel.dataBaseItems
-                                    }
+                        Task{
+                            if let currentCompany = masterDataManager.currentCompany {
+                                do {
+                                    try await viewModel.getAllDataBaseItemsByName(companyId: currentCompany.id)
+                                    dataBaseItemList = viewModel.dataBaseItems
+
+                                } catch {
+                                    print(error)
+                                }
+                            }
+                        }
                     }, label: {
                         Text("Load next Page")
 
@@ -170,16 +190,21 @@ struct ReceiptDatabaseTableView: View{
         }
         .toolbar{
             NavigationLink(destination: {
-                UploadDataBaseItemsFromComputer(showSignInView: $showSignInView, user: user, company: company)
+                UploadDataBaseItemsFromComputer(dataService: dataService)
             }, label: {
                 Text("Upload From Computer")
             })
         }
         .task{
-            
-            try? await viewModel.getAllDataBaseItemsByName(companyId: company.id)
-            dataBaseItemList = viewModel.dataBaseItems
-            
+            if let currentCompany = masterDataManager.currentCompany {
+                do {
+                    try await viewModel.getAllDataBaseItemsByName(companyId: currentCompany.id)
+                    dataBaseItemList = viewModel.dataBaseItems
+
+                } catch {
+                    print(error)
+                }
+            }
         }
     }
     
