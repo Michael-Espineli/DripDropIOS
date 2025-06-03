@@ -29,7 +29,7 @@ struct EditRateSheet: View {
 
 struct EditRateSheet_Previews: PreviewProvider {
     static var previews: some View {
-        EditRateSheet(template: JobTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), rate: "", color: ""), rateSheet: RateSheet(id: "", templateId: "", rate: 0, dateImplemented: Date(), status: .active))
+        EditRateSheet(template: JobTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), rate: "", color: ""), rateSheet: RateSheet(id: "", templateName: "", templateId: "", rate: 0, dateImplemented: Date(), status: .active, laborType: .hour))
     }
 }
 
@@ -62,7 +62,7 @@ extension EditRateSheet {
     var button: some View {
         Button(action: {
             Task{
-                if let company = masterDataManager.selectedCompany, let companyUser = masterDataManager.companyUser{
+                if let company = masterDataManager.currentCompany, let companyUser = masterDataManager.companyUser{
                     do {
                         guard let rate = Double(rate) else {
                             print("failed to change rate into Double")
@@ -70,11 +70,13 @@ extension EditRateSheet {
                         }
                         try await companyUserVM.addCompanyUserRateSheet(companyId: company.id,
                                                                         companyUserId: companyUser.id,
-                                                                        rateSheet: RateSheet(id: UUID().uuidString,
+                                                                        rateSheet: RateSheet(id: UUID().uuidString, 
+                                                                                             templateName: template.name,
                                                                                              templateId: template.id,
                                                                                              rate: rate,
                                                                                              dateImplemented: startDate,
-                                                                                             status: .offered))
+                                                                                             status: .offered,
+                                                                                             laborType: .hour))
                     } catch {
                         print(error)
                     }

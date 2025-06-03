@@ -34,11 +34,12 @@ struct RepairRequestListView: View {
 
     var body: some View {
         ZStack{
+            Color.listColor.ignoresSafeArea()
         list
             icons
         }
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     techIds = []
 
@@ -75,11 +76,9 @@ extension RepairRequestListView{
                     showAddNewRequest.toggle()
                 }, label: {
                     Text("Add First Request")
+                        .modifier(AddButtonModifier())
+
                 })
-                .foregroundColor(Color.basicFontText)
-                .padding(5)
-                .background(Color.accentColor)
-                .cornerRadius(5)
             } else {
                 List(selection:$masterDataManager.selectedID){
                 ForEach(repairRequestVM.listOfContrats){ repair in
@@ -127,7 +126,7 @@ var icons: some View{
                 .padding(10)
                 .sheet(isPresented: $showFilters, onDismiss: {
              
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         repairRequestVM.removeListenerForRepairRequest()
                         repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
                     }
@@ -246,24 +245,8 @@ var icons: some View{
                    
                 })
                 .padding(10)
-                .fullScreenCover(isPresented: $showAddNewRequest, content: {
-                    ZStack{
-                        Color.listColor.ignoresSafeArea()
-                        VStack{
-                            HStack{
-                                Button(action: {
-                                    showAddNewRequest = false
-                                }, label: {
-                                    Image(systemName: "xmark")
-                                })
-                            }
-                            .padding(16)
-                         
-                        }
-                        AddNewRepairRequest(dataService: dataService)
-                        .padding(16)
-                    }
-
+                .sheet(isPresented: $showAddNewRequest, content: {
+                        AddNewRepairRequest(dataService: dataService,isPresented: $showAddNewRequest)
                 })
                 Button(action: {
                     showSearch.toggle()
@@ -287,11 +270,14 @@ var icons: some View{
                     "Search",
                     text: $searchTerm
                 )
-                .padding()
-                .background(Color.gray)
-                .foregroundColor(Color.white)
-                .cornerRadius(10)
+                Button(action: {
+                    searchTerm = ""
+                }, label: {
+                    Image(systemName: "xmark")
+                })
             }
+            .modifier(SearchTextFieldModifier())
+            .padding(8)
         }
         
     }

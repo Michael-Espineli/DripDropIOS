@@ -44,7 +44,39 @@ class Map3ViewController: UIViewController {
     
     var routeData : Route?
     var serviceStopList : [ServiceStop] = []
-    var selectedStop : ServiceStop = ServiceStop(id: "", typeId: "", customerName: "", customerId: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), dateCreated: Date(), serviceDate: Date(), duration: 0, recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: false, includeDosages: false)
+    var selectedStop : ServiceStop = ServiceStop(
+        id: "",
+        internalId: "",
+        companyId: "",
+        companyName: "",
+        customerId: "",
+        customerName: "",
+        address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+        dateCreated: Date(),
+        serviceDate: Date(),
+        startTime: Date(),
+        endTime: Date(),
+        duration: 0,
+        estimatedDuration: 0,
+        tech: "",
+        techId: "",
+        recurringServiceStopId: "",
+        description: "",
+        serviceLocationId: "",
+        typeId: "",
+        type: "",
+        typeImage: "",
+        jobId: "",
+        jobName: "",
+        operationStatus: .notFinished,
+        billingStatus: .notInvoiced,
+        includeReadings: true,
+        includeDosages: true,
+        otherCompany: false,
+        laborContractId: "",
+        contractedCompanyId: "",
+        isInvoiced: false
+    )
     var routeOverlay : MKOverlay?
     var routeOverlay2 : MKOverlay?
     var zoomRange : MKMapView.CameraZoomRange?
@@ -174,12 +206,7 @@ class Map3ViewController: UIViewController {
     }
     func serviceStops(){
         
-        serviceStopList = [
-            ServiceStop(id: UUID().uuidString, typeId: "Estimate", customerName: "Kellie Lewis", customerId: "", address: Address(streetAddress: "3300 W Camelback Rd", city: "Phoeniz", state: "Az", zip: "85017", latitude: 32.783209, longitude: -116.998694), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "list.bullet.clipboard", jobId: "", finished: true, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-            ServiceStop(id: UUID().uuidString, typeId: "Weekly Cleaning", customerName: "Diane Greenwood", customerId: "", address: Address(streetAddress: "300 Soden Dr", city: "Oregon", state: "WI", zip: "53575", latitude: 32.777344, longitude: -116.990439), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "bubbles.and.sparkles.fill", jobId: "", finished: false, skipped: true, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-            ServiceStop(id: UUID().uuidString, typeId: "Weekly Cleaning", customerName: "Nathan Corrnet", customerId: "", address: Address(streetAddress: "2101 Epcot Resorts Blvd", city: "Orlando", state: "FL", zip: "32830", latitude: 32.774677, longitude: -116.983265), dateCreated: Date(), serviceDate: Date(), duration: 120, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "bubbles.and.sparkles.fill", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-            ServiceStop(id: UUID().uuidString, typeId: "Repair", customerName: "Laurie Boggiers", customerId: "", address: Address(streetAddress: "6160 Broadmoor Dr", city: "La Mesa", state: "Ca", zip: "91942", latitude:  32.790065, longitude: -116.992345), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "wrench.adjustable.fill", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-        ]
+        serviceStopList = []
     }
     
     func addPins(){
@@ -187,13 +214,7 @@ class Map3ViewController: UIViewController {
             for pin in serviceStopList {
                 
                 let defaultPin = MKPointAnnotation()
-                switch pin.finished {
-                case true:
-                    defaultPin.title = "Finished"
-                case false:
-                    defaultPin.title = "Not Finished"
-
-                }
+                defaultPin.title = pin.operationStatus.rawValue
                 defaultPin.coordinate = CLLocationCoordinate2D(
                     latitude: (pin.address.latitude),
                     longitude: (pin.address.longitude)

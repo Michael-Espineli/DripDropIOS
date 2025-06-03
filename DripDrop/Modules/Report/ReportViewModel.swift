@@ -14,6 +14,7 @@ struct purchaseItemReportLineItem:Codable,Identifiable,Hashable {
     var price: Double
     var dataBaseItemId:String
     var dataBaseItemName:String
+    var dataBaseItemCategory:DataBaseItemCategory
 }
 struct WasteReportItem:Identifiable,Codable,Hashable {
     let id:String
@@ -50,16 +51,19 @@ final class ReportViewModel:ObservableObject{
     @Published var userReportSummaryDictionary:[CompanyUser:[DosageTemplate:Double]] = [:]
     
     //PNL Report Variables
-    @Published var pnlSummaryReport:[Customer:[Contract:Double]] = [:] //Create PNL Struct
+    @Published var pnlSummaryReport:[Customer:[RecurringContract:Double]] = [:] //Create PNL Struct
     
     //Purchase Report Variables
+    
         //Summary
-    @Published var purchaseSummaryReport:[CompanyUser:Double] = [:]
-    @Published var companyPurchaseSummary:Double? = nil
+        @Published var purchaseSummaryReport:[CompanyUser:Double] = [:]
+        @Published var purchaseSummaryCategoryReport:[CompanyUser:[DataBaseItemCategory:Double]] = [:]
+        @Published var companyPurchaseSummary:Double? = nil
+    @Published var purchaseCompanySummaryCategoryReport:[DataBaseItemCategory:Double] = [:]
 
         //Detail
-    @Published var purchaseDetailReport:[CompanyUser:[purchaseItemReportLineItem:Double]] = [:]
-    @Published var companyPurchaseDetail:[purchaseItemReportLineItem:Double] = [:]
+        @Published var purchaseDetailReport:[CompanyUser:[purchaseItemReportLineItem:Double]] = [:]
+        @Published var companyPurchaseDetail:[purchaseItemReportLineItem:Double] = [:]
 
     func getChemicalReport(
         companyId:String,
@@ -104,7 +108,7 @@ final class ReportViewModel:ObservableObject{
                             print("Throw Error For CustomerId == Nil")
                         } else {
                             
-                            customer = try await CustomerManager.shared.getCustomerById(companyId: companyId, customerId: stop.customerId)
+                            customer = try await dataService.getCustomerById(companyId: companyId, customerId: stop.customerId)
                             if let customer = customer {
                                 customerDict[customer] = [stop]
                             } else {
@@ -238,7 +242,7 @@ final class ReportViewModel:ObservableObject{
                             print("Throw Error")
                         } else {
                             if stop.customerId != "" {
-                                customer = try await CustomerManager.shared.getCustomerById(companyId: companyId, customerId: stop.customerId)
+                                customer = try await dataService.getCustomerById(companyId: companyId, customerId: stop.customerId)
                                 if let customerKey = customer {
                                     for template in dosageTemplateList {
                                         //No need to check if dosage template is there if customer is not
@@ -657,7 +661,7 @@ final class ReportViewModel:ObservableObject{
         print("Add Something to do With Something")
         let start = startDate.startOfDay()
         let end = endDate.endOfDay()
-        var pnlSummaryReport:[Customer:[Contract:Double]] = [:] //Create PNL Struct
+        var pnlSummaryReport:[Customer:[RecurringContract:Double]] = [:] //Create PNL Struct
         
         let stopDataList = try await StopDataManager.shared.getStopDataByDateRange(companyId: companyId, startDate: start, endDate: end)
         print("Stops \(stopDataList.count)")
@@ -665,7 +669,7 @@ final class ReportViewModel:ObservableObject{
         let dosageTemplateList = try await SettingsManager.shared.getAllDosageTemplates(companyId: companyId)
         self.listOfDosageTemplates = dosageTemplateList
         self.listOfReadingTemplates = readingTemplateList
-        let contracts = try await ContractManager.shared.getAllContrats(companyId: companyId)
+        let contracts = try await dataService.getAllContrats(companyId: companyId)
         print("PNL Report")
         
         switch type {
@@ -690,17 +694,17 @@ final class ReportViewModel:ObservableObject{
             case .user:
                 print("User")
                 for contract in contracts {
-                    var workingContractLossDict:[Contract:Double] = [:]
-                    let customer = try await CustomerManager.shared.getCustomerById(companyId: companyId, customerId: contract.customerId)
-                    var totalChemCost:Double = 0
-                    var totalCost:Double = 0
-                    var totalLaborCost:Double = 0
+                    var workingContractLossDict:[RecurringContract:Double] = [:]
+                    let customer = try await dataService.getCustomerById(companyId: companyId, customerId: contract.internalCustomerId)
+                    var totalChemCost:Int = 0
+                    var totalCost:Int = 0
+                    var totalLaborCost:Int = 0
                     
                     for stop in stopDataList {
                         if stop.customerId == customer.id {
                             for dosage in stop.dosages {
                                 if let chemRate = Double(listOfDosageTemplates.first(where: {$0.id == dosage.templateId})?.rate ?? "1"), let amount = Double(dosage.amount ?? "1") {
-                                    totalChemCost = totalChemCost + (amount * chemRate)
+                                    totalChemCost = totalChemCost + Int((amount * chemRate))
                                 } else {
                                     print(" \(dosage.name)- \(Double(listOfDosageTemplates.first(where: {$0.id == dosage.templateId})?.rate ?? "1"))- \(Double(dosage.amount ?? "1"))")
                                 }
@@ -710,9 +714,9 @@ final class ReportViewModel:ObservableObject{
                     }
                     
                     let profit = contract.rate - totalChemCost - totalLaborCost
-                    workingContractLossDict[contract] = profit
+                    workingContractLossDict[contract] = Double(profit)
                     pnlSummaryReport[customer] = workingContractLossDict
-                    print("Customer \(contract.customerName)")
+                    print("Customer \(contract.internalCustomerName)")
                     print(" - Chem Cost: \(totalCost)")
                     print(" - Labor Cost: \(totalLaborCost)")
                     
@@ -723,8 +727,6 @@ final class ReportViewModel:ObservableObject{
             case .customer:
                 print("Customer")
             }
-        default:
-            print("Incorrect Chemical Report Type")
         }
         self.pnlSummaryReport = pnlSummaryReport
     }
@@ -735,7 +737,8 @@ final class ReportViewModel:ObservableObject{
     //Purchasse
     func getPurchaseReport(companyId:String,type:oneReportType,orderString:induvidualReportDisplay,startDate:Date,endDate:Date) async throws {
         print("")
-        var purchaseSummaryReport:[CompanyUser:[purchaseItemReportLineItem:Double]] = [:]
+        
+        var purchaseSummaryReportSpecific:[CompanyUser:[purchaseItemReportLineItem:Double]] = [:]
         switch type {
         case .summary:
             print("Summary")
@@ -744,31 +747,61 @@ final class ReportViewModel:ObservableObject{
                 print("Company")
                 
                 var companyPurchaseSummary:Double = 0
+
+                var purchaseCompanySummaryCategoryReport:[DataBaseItemCategory:Double] = [:]
+
                 let purchaseList = try await dataService.getAllpurchasedItemsByDate(companyId: companyId, startDate: startDate, endDate: endDate)
                 for purchase in purchaseList {
                     companyPurchaseSummary += purchase.totalAfterTax
+                    let DBItem = try await dataService.getDataBaseItem(companyId: companyId, dataBaseItemId: purchase.itemId)
+                    if Array(purchaseCompanySummaryCategoryReport.keys).contains(where: {$0 == DBItem.category}) {
+                        let amount:Double = purchaseCompanySummaryCategoryReport[DBItem.category] ?? 0
+                        purchaseCompanySummaryCategoryReport[DBItem.category] = purchase.totalAfterTax + amount
+                    } else {
+                        purchaseCompanySummaryCategoryReport[DBItem.category] = purchase.totalAfterTax
+                    }
                 }
                 self.companyPurchaseSummary = companyPurchaseSummary
+                self.purchaseCompanySummaryCategoryReport = purchaseCompanySummaryCategoryReport
             case .customer:
                 print("Customer")
 
             case .user:
                 print("User")
                 var purchaseSummaryReport:[CompanyUser:Double] = [:]
+                //here
+                var purchaseSummaryCategoryReport:[CompanyUser:[DataBaseItemCategory:Double]] = [:]
+
                 let companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
                 for companyUser in companyUsers {
                     print("Getting Summary for \(companyUser.userName)")
                     var purchseAmount:Double = 0
+                    var categoryCount:[DataBaseItemCategory:Double] = [:]
+                    
                     let purchaseList = try await dataService.getAllpurchasedItemsByTechAndDate(companyId: companyId, techId: companyUser.userId, startDate: startDate, endDate: endDate)
                     
                     print("Got \(purchaseList.count) Purchases")
                     
                     for purchase in purchaseList {
                         purchseAmount += purchase.totalAfterTax
+                        let DBItem = try await dataService.getDataBaseItem(companyId: companyId, dataBaseItemId: purchase.itemId)
+                        if Array(categoryCount.keys).contains(where: {$0 == DBItem.category}) {
+                            let amount:Double = categoryCount[DBItem.category] ?? 0
+                            categoryCount[DBItem.category] = purchase.totalAfterTax + amount
+                        } else {
+                            categoryCount[DBItem.category] = purchase.totalAfterTax
+                        }
+                        
                     }
                     purchaseSummaryReport[companyUser] = purchseAmount
+                    purchaseSummaryCategoryReport[companyUser] = categoryCount
+                    
+                    print(purchseAmount)
+                    print(categoryCount)
                 }
                 self.purchaseSummaryReport = purchaseSummaryReport
+                self.purchaseSummaryCategoryReport = purchaseSummaryCategoryReport
+
             }
 
 
@@ -790,7 +823,9 @@ final class ReportViewModel:ObservableObject{
                         
                     } else {
                         print("\(purchase.name) \(purchase.quantity)")
-                        companyPurchaseDetail[purchaseItemReportLineItem(id: UUID().uuidString, price: purchase.price, dataBaseItemId: purchase.name, dataBaseItemName: purchase.name)] = purchase.quantity
+                        let DBItem = try await dataService.getDataBaseItem(companyId: companyId, dataBaseItemId: purchase.itemId)
+
+                        companyPurchaseDetail[purchaseItemReportLineItem(id: UUID().uuidString, price: purchase.price, dataBaseItemId: purchase.itemId, dataBaseItemName: purchase.name, dataBaseItemCategory: DBItem.category)] = purchase.quantity
                     }
                 }
                 self.companyPurchaseDetail = companyPurchaseDetail
@@ -819,13 +854,14 @@ final class ReportViewModel:ObservableObject{
                             
                         } else {
                             print("\(purchase.name) \(purchase.quantity)")
-                            purchaseCount[purchaseItemReportLineItem(id: UUID().uuidString, price: purchase.price, dataBaseItemId: purchase.name, dataBaseItemName: purchase.name)] = purchase.quantity
+                            let DBItem = try await dataService.getDataBaseItem(companyId: companyId, dataBaseItemId: purchase.itemId)
+                            purchaseCount[purchaseItemReportLineItem(id: UUID().uuidString, price: purchase.price, dataBaseItemId: purchase.itemId, dataBaseItemName: purchase.name, dataBaseItemCategory: DBItem.category)] = purchase.quantity
                             
                         }
                     }
-                    purchaseSummaryReport[companyUser] = purchaseCount
+                    purchaseSummaryReportSpecific[companyUser] = purchaseCount
                 }
-                self.purchaseDetailReport = purchaseSummaryReport
+                self.purchaseDetailReport = purchaseSummaryReportSpecific
             }
         }
         print("")

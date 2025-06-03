@@ -8,9 +8,14 @@
 import SwiftUI
 
 struct PurchaseItemFromIdCardView: View {
+    init(dataService:any ProductionDataServiceProtocol,id:String){
+        _purchaseVM = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
+        _id = State(wrappedValue: id)
+    }
+    @StateObject var purchaseVM : PurchasesViewModel
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject var purchaseVM = PurchasesViewModel()
-    let id:String
+
+    @State var id:String
     var body: some View {
         VStack{
             if let item = purchaseVM.purchasedItem {
@@ -26,7 +31,7 @@ struct PurchaseItemFromIdCardView: View {
             }
         }
             .task{
-                if let selectedCompany = masterDataManager.selectedCompany {
+                if let selectedCompany = masterDataManager.currentCompany {
                     do {
                         try await purchaseVM.getPurchaseById(companyId: selectedCompany.id, purchaseId: id)
                     } catch {
@@ -42,5 +47,5 @@ struct PurchaseItemFromIdCardView: View {
 }
 
 #Preview {
-    PurchaseItemFromIdCardView(id:"1")
+    PurchaseItemFromIdCardView(dataService: MockDataService(), id:"1")
 }

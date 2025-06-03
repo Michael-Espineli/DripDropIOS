@@ -38,27 +38,32 @@ final class UserRouteOverViewModel:ObservableObject{
             
             var hasActiveRoute:Bool = false
             
-            var workingActiveRoute:ActiveRoute = ActiveRoute(id: UUID().uuidString, name: "", date: Date(), serviceStopsIds: [], techId: "", techName: "", durationSeconds: 0, distanceMiles: 0, status: .inProgress, totalStops: 0, finishedStops: 0)
-            print("1")
-
+            var workingActiveRoute:ActiveRoute = ActiveRoute(
+                id: UUID().uuidString,
+                name: "",
+                date: Date(),
+                serviceStopsIds: [],
+                techId: tech.userId,
+                techName: tech.userName,
+                durationMin: 0,
+                distanceMiles: 0,
+                status: .inProgress,
+                totalStops: 0,
+                finishedStops: 0,
+                vehicalId: ""
+            )
             
             //     Get All The Necessary Info To Set Up Route Display
             
             let recurringRouteId = weekDay(date: date) + tech.userId
             
-            print("2")
-
-            self.recurringRoute = try? await RecurringRouteManager.shared.getSingleRoute(companyId: companyId, recurringRouteId: recurringRouteId)
-            
-            print("3")
-
-            serviceStopsList = try await dataService.getAllServiceStopsByTechAndDate(companyId: companyId, date: date, tech: DBUser(id: tech.userId, exp: 0))
+            self.recurringRoute = try? await dataService.getSingleRoute(companyId: companyId, recurringRouteId: recurringRouteId)
+            //DEVELOPER CHANGE TO COMPANY USER
+            serviceStopsList = try await dataService.getAllServiceStopsByTechAndDate(companyId: companyId, date: date, tech: tech)
             if !serviceStopsList.isEmpty{
                 if recurringRoute == nil {
                     print("No Need to Order based on Recurring Route")
                 }
-                
-                
                 //     Parse Through Data to create what we need
                 
                 print("Recurring Route Exists")
@@ -71,7 +76,7 @@ final class UserRouteOverViewModel:ObservableObject{
                 
                 // If service stops exist and no route exists Create an active Route // Checks if one already exists
                 
-                let listOfActiveRoutes = try? await dataService.getAllActiveRoutesBasedOnDate(companyId: companyId, date: date, tech: DBUser(id: tech.userId, exp: 0))
+                let listOfActiveRoutes = try? await dataService.getAllActiveRoutesBasedOnDate(companyId: companyId, date: date, tech: tech)
                 print("4")
                 if let activeRouteList = listOfActiveRoutes {
                     if activeRouteList.count == 0 {
@@ -124,7 +129,7 @@ final class UserRouteOverViewModel:ObservableObject{
                     duration += stop.duration // In Seconds
                     
                     //Total
-                    if stop.finished {
+                    if stop.operationStatus == .finished {
                         finishedCount = finishedCount + 1
                     }
                     
@@ -136,8 +141,8 @@ final class UserRouteOverViewModel:ObservableObject{
 
                 //Duration
                 
-                workingActiveRoute.durationSeconds = timeBetweenAsSeconds(start: workingActiveRoute.startTime ?? Date(), end: workingActiveRoute.endTime ?? Date())
-                print("workingActiveRoute.durationSeconds \(workingActiveRoute.durationSeconds)")
+                workingActiveRoute.durationMin = timeBetweenAsSeconds(start: workingActiveRoute.startTime ?? Date(), end: workingActiveRoute.endTime ?? Date())
+                print("workingActiveRoute.durationSeconds \(workingActiveRoute.durationMin)")
                 //Total
                 workingActiveRoute.totalStops = serviceStopsList.count
                 workingActiveRoute.finishedStops = finishedCount
@@ -226,7 +231,7 @@ final class UserRouteOverViewModel:ObservableObject{
                                 
                                 print("Updating Active Route Status")
                                 
-                                RouteManager.shared.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .finished)
+                                dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .finished)
                                 
                             }
                             
@@ -242,7 +247,7 @@ final class UserRouteOverViewModel:ObservableObject{
                             
                         } else {
                             
-                            RouteManager.shared.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .inProgress)
+                            dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .inProgress)
                             
                             print("Active Route Not Finished")
                             
@@ -251,11 +256,11 @@ final class UserRouteOverViewModel:ObservableObject{
                         
                         //Updating Active Route Total Stops
                         
-                        RouteManager.shared.updateActiveRouteTotalStop(companyId: companyId, activeRouteId: workingActiveRoute.id, totalStops: workingActiveRoute.totalStops)
+                        dataService.updateActiveRouteTotalStop(companyId: companyId, activeRouteId: workingActiveRoute.id, totalStops: workingActiveRoute.totalStops)
                         
                         // Updating Active Route Finished Stops
                         
-                        RouteManager.shared.updateActiveRouteFinishedStop(companyId: companyId, activeRouteId: workingActiveRoute.id, finishedStops: workingActiveRoute.finishedStops)
+                        dataService.updateActiveRouteFinishedStop(companyId: companyId, activeRouteId: workingActiveRoute.id, finishedStops: workingActiveRoute.finishedStops)
                     }
                 } else {
                     print("Does Not Have Active Route")

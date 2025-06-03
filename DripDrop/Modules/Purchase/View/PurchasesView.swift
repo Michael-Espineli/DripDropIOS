@@ -8,23 +8,28 @@
 import SwiftUI
 
 struct PurchasesView: View{
-    @StateObject private var viewModel = PurchasesViewModel()
+    init(dataService:any ProductionDataServiceProtocol){
+        _purchaseVM = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
 
+    }
+    @EnvironmentObject var dataService: ProductionDataService
+    @StateObject var purchaseVM : PurchasesViewModel
     @State private var selected = Set<PurchasedItem.ID>()
     @State private var isPresented = false
 
     var body: some View{
         ZStack{
-                PurchaseListView()
+            Color.listColor.ignoresSafeArea()
+            PurchaseListView(dataService: dataService)
         }
-        .toolbar{
-            NavigationLink{
-                AddNewReceipt()
-            } label: {
-                Image(systemName: "plus")
-                    .font(.headline)
-            }
-        }
+//        .toolbar{
+//            NavigationLink{
+//                AddNewReceipt(dataService: dataService)
+//            } label: {
+//                Image(systemName: "plus")
+//                    .font(.headline)
+//            }
+//        }
         .navigationTitle("Purchased Items")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)

@@ -24,12 +24,12 @@ struct EquipmentList: View {
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
-//            list
+            list
             icons
             
         }
             .task {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     do {
                         try await equipmentVM.getAllEquipmentBy25(companyId: company.id)
                     } catch {
@@ -52,16 +52,18 @@ extension EquipmentList {
                 ForEach(equipmentVM.listOfEquipment) { equipment in
                     if UIDevice.isIPhone {
                         NavigationLink(value: Route.equipmentDetailView(
-                            dataService: dataService
+                            equipment: equipment, dataService: dataService
                         ),label: {
                             EquipmentCardView(equipment: equipment)
+                                .modifier(ListButtonModifier())
                         })
                     } else {
                         Button(action: {
                             masterDataManager.selectedEquipment = equipment
-                            navigationManager.routes.append(Route.equipmentDetailView(dataService:dataService))
                         }, label: {
                             EquipmentCardView(equipment: equipment)
+                                .modifier(ListButtonModifier())
+                                .padding(.horizontal,8)
                         })
                     }
                     Divider()
@@ -69,7 +71,7 @@ extension EquipmentList {
                 ProgressView()
                     .onAppear(perform: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     print("Get Next 25")
                                     try await equipmentVM.getAllEquipmentBy25(companyId: company.id)

@@ -14,9 +14,13 @@ struct UserPurchasedItems: View{
 
     @EnvironmentObject var dataService : ProductionDataService
 
-    @StateObject private var purchaseVM = PurchasesViewModel()
+    init(dataService:any ProductionDataServiceProtocol){
+        _purchaseVM = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
+
+    }
+    @StateObject var purchaseVM : PurchasesViewModel
     @StateObject private var receiptViewModel = ReceiptViewModel()
-    @StateObject private var settingsViewModel = SettingsViewModel()
+    @StateObject private var settingsViewModel = SettingsViewModel(dataService: ProductionDataService())
     @StateObject private var techVM = TechViewModel()
 
 
@@ -46,7 +50,8 @@ struct UserPurchasedItems: View{
     @State var searchTerm:String = ""
     @State var showCustomerAssignment = false
     @State var selectedPurchase:PurchasedItem = PurchasedItem(id: "", receiptId: "", invoiceNum: "", venderId: "", venderName: "", techId: "", techName: "", itemId: "", name: "", price: 0, quantityString: "", date: Date(), billable: false, invoiced: false, customerId: "", customerName: "", sku: "", notes: "", jobId: "")
-    @State var customerEntity:Customer = Customer(id: "", firstName: "", lastName: "", email: "", billingAddress: Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0), active: true, displayAsCompany: false, hireDate: Date(), billingNotes: "")
+    @State var customerEntity:Customer = Customer(id: "", firstName: "", lastName: "", email: "", billingAddress: Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0), active: true, displayAsCompany: false, hireDate: Date(), billingNotes: "",
+                                                  linkedInviteId: UUID().uuidString)
     
     var body: some View{
         ZStack{
@@ -55,7 +60,7 @@ struct UserPurchasedItems: View{
         }
         //Initial Loading of the purchase Items
         .task{
-            if let company = masterDataManager.selectedCompany,let tech = masterDataManager.user {
+            if let company = masterDataManager.currentCompany,let tech = masterDataManager.user {
                 do {
                     try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: [tech.id])
                     purchasedItems = purchaseVM.purchasedItems
@@ -73,7 +78,7 @@ struct UserPurchasedItems: View{
             Task{
                 print("Change in purchaseSortOption")
 
-                if let company = masterDataManager.selectedCompany,let tech = masterDataManager.user {
+                if let company = masterDataManager.currentCompany,let tech = masterDataManager.user {
                     do {
                         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: sort, startDate: startViewingDate, endDate: endViewingDate, techIds: [tech.id])
                         purchasedItems = purchaseVM.purchasedItems
@@ -91,7 +96,7 @@ struct UserPurchasedItems: View{
             Task {
                 print("Change in purchaseFilterOption")
 
-                if let company = masterDataManager.selectedCompany,let tech = masterDataManager.user {
+                if let company = masterDataManager.currentCompany,let tech = masterDataManager.user {
                     do {
                         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: filter, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: [tech.id])
                         purchasedItems = purchaseVM.purchasedItems
@@ -108,7 +113,7 @@ struct UserPurchasedItems: View{
             Task {
                 print("Change in start date")
 
-                if let company = masterDataManager.selectedCompany,let tech = masterDataManager.user {
+                if let company = masterDataManager.currentCompany,let tech = masterDataManager.user {
                     do {
                         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: date, endDate: endViewingDate, techIds: [tech.id])
                         purchasedItems = purchaseVM.purchasedItems
@@ -125,7 +130,7 @@ struct UserPurchasedItems: View{
         .onChange(of: endViewingDate) { date in
             Task {
                 print("Change in End date")
-                if let company = masterDataManager.selectedCompany,let tech = masterDataManager.user {
+                if let company = masterDataManager.currentCompany,let tech = masterDataManager.user {
                     do {
                         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: date, techIds: [tech.id])
                         purchasedItems = purchaseVM.purchasedItems
@@ -181,7 +186,7 @@ extension UserPurchasedItems {
                     })
                     .sheet(isPresented: $showCustomerAssignment, onDismiss: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 if customerEntity.id != "" {
                                     do {
                                         
@@ -202,7 +207,7 @@ extension UserPurchasedItems {
             }
    
             .refreshable {
-                if let company = masterDataManager.selectedCompany,let user = masterDataManager.user {
+                if let company = masterDataManager.currentCompany,let user = masterDataManager.user {
                     do {
                         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: [user.id])
                         purchasedItems = purchaseVM.purchasedItems
@@ -246,8 +251,8 @@ extension UserPurchasedItems {
                                 Button(action: {
                                     showFilerOptions = false
                                 }, label: {
-                                    Text("Dismiss")
-                                        .foregroundColor(Color.red)
+                                    Image(systemName: "xmark")
+                                        .modifier(DismissButtonModifier())
                                 })
                             }
                             HStack{
@@ -291,7 +296,7 @@ extension UserPurchasedItems {
                         .presentationDetents([.medium])
                     })
                     NavigationLink{
-                        AddNewReceipt()
+                        AddNewReceipt(dataService: dataService)
                         
                     } label: {
                         Image(systemName: "plus.circle.fill")
@@ -329,11 +334,14 @@ extension UserPurchasedItems {
                         "CustomerName",
                         text: $searchTerm
                     )
-                    .padding()
-                    .background(Color.basicFontText.opacity(0.5))
-                    .cornerRadius(10)
-                    
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
             }
         }
         

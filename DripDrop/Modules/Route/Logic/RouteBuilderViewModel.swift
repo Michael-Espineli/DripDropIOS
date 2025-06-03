@@ -100,14 +100,9 @@ final class RouteBuilderViewModel:ObservableObject{
 
             var listOfRSS :[RecurringServiceStop] = []
             for order in recurringRoute.order {
-                    let serviceLocation =  try await dataService.getServiceLocationsCustomerAndLocationId(
-                        companyId: companyId,
-                        customerId: order.customerId,
-                        locationId: order.locationId
-                    )
-                let RSS = try await RecurringServiceStopManager.shared.getSingleRecurringServiceStop(companyId: companyId, recurringServiceStopId: order.id)
+                let serviceLocation =  try await dataService.getServiceLocationById(companyId: companyId, locationId: order.locationId)
+                let RSS = try await dataService.getSingleRecurringServiceStop(companyId: companyId, recurringServiceStopId: order.id)
                 listOfRSS.append(RSS)
-
             }
             self.listOfRSS = listOfRSS
         } else {
@@ -116,19 +111,20 @@ final class RouteBuilderViewModel:ObservableObject{
             self.recurringRoute = nil
         }
     }
-    func createAndUploadRecurringRouteWithVerification(companyId: String,
-                                       tech:CompanyUser,
-                                       recurringStopsList:[RecurringServiceStop],
-                                       job:JobTemplate,
-                                       noEndDate:Bool,
-                                       description:String,
-                                       day:String,
-                                       standardFrequencyType:String,
-                                       customFrequencyType:String,
-                                       customFrequencyNumber:Int,
-                                       startDate:Date,
-                                       endDate:Date,
-                                                       currentRecurringRoute:RecurringRoute?) async throws {
+    func createAndUploadRecurringRouteWithVerification(
+        companyId: String,
+        tech:CompanyUser,
+        recurringStopsList:[RecurringServiceStop],
+        job:JobTemplate,
+        noEndDate:Bool,
+        description:String,
+        day:String,
+        standardFrequencyType:LaborContractFrequency,
+        customFrequencyType:Int,
+        startDate:Date,
+        endDate:Date,
+        currentRecurringRoute:RecurringRoute?
+    ) async throws {
         print("")
 
         if let recurringRoute = currentRecurringRoute {
@@ -160,38 +156,34 @@ final class RouteBuilderViewModel:ObservableObject{
             var count:Int = 1
             for RSS in recurringStopsList {
                 print(" - Creating Recurring Service Stop Id >>  \(RSS.id) - \(RSS.customerName) - \(RSS.frequency)")
-                let locationId = RSS.locationId
-                let rssId = try await RecurringRouteManager.shared.addNewRecurringServiceStop(
+                let locationId = RSS.serviceLocationId
+                let rssId = try await dataService.addNewRecurringServiceStop(
                     companyId: companyId,
                     recurringServiceStop: RecurringServiceStop(
                         id: UUID().uuidString,
+                        internalId: RSS.internalId,
                         type: job.name,
                         typeId: job.id,
                         typeImage: job.typeImage ?? "bubbles.and.sparkles.fill",
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
-                        frequency: standardFrequencyType,
                         address: RSS.address,
-                        dateCreated: Date(),
                         tech: techFullName,
-                        endDate:endDate,
-                        startDate:startDate,
                         techId:tech.userId,
+                        dateCreated: Date(),
+                        startDate:startDate,
+                        endDate:endDate,
                         noEndDate: noEndDate,
-                        customMeasuresOfTime: customFrequencyType,
-                        customEvery: String(
-                            customFrequencyNumber
-                        ),
-                        daysOfWeek: [day],
+                        frequency: standardFrequencyType,
+                        daysOfWeek: day,
                         description: description,
                         lastCreated: Date(),
-                        serviceLocationId: RSS.locationId!
-                    ),
-                    customFrequencyType: customFrequencyType,
-                    CustomFrequency: String(
-                        customFrequencyNumber
-                    ),
-                    daysOfWeek: [day]
+                        serviceLocationId: RSS.serviceLocationId,
+                        estimatedTime: "",
+                        otherCompany: false,
+                        laborContractId: "",
+                        contractedCompanyId: ""
+                    )
                 )
                 if rssId == nil {
                     print("Rss Id failure")
@@ -201,13 +193,13 @@ final class RouteBuilderViewModel:ObservableObject{
 
                 let order = count
                 count = count + 1
-                let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.locationId!)
+                let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
                 binder.append(page)
             }
             let recurringRouteId = day + tech.userId
             print("Uploading Recurring Route Id >> \(recurringRouteId)")
             let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: tech.userId, day: day, order: binder, description: "")
-            try await RecurringRouteManager.shared.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)
+            try await dataService.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)
 
 
         }
@@ -217,36 +209,42 @@ final class RouteBuilderViewModel:ObservableObject{
                                        tech:CompanyUser,
                                        noEndDate:Bool,
                                        day:String,
-                                       standardFrequencyType:String,
-                                       customFrequencyType:String,
-                                       customFrequencyNumber:Int,
+                                       frequency:LaborContractFrequency,
+                                       perTimes:Int,
                                        transitionDate:Date,
                                        newEndDate:Date,
                                         description:String,
                                         jobTemplate:JobTemplate,
                                         recurringStopList:[RecurringServiceStop],
                                         currentRecurringRoute:RecurringRoute) async throws {
+        
         //DEVELOPER I COULD TRY AND UPDATE RATHER THAN DELETE AND CREATE NEW
         //Maybe I needed to use a different recurring route id because I cant have more than one exisiting at the same time
         print("End Recurring Route")
-        try await RecurringRouteManager.shared.endRecurringRoute(companyId: companyId, recurringRouteId: currentRecurringRoute.id, endDate: transitionDate)
+        try await dataService.endRecurringRoute(companyId: companyId, recurringRouteId: currentRecurringRoute.id, endDate: transitionDate)
         print("Make Sure to End All Recurring Service Stops After End Date")
+        
         //End Each Recurring Service Stop
         for recurringStopOrder in currentRecurringRoute.order {
-            let RSS = try await RecurringServiceStopManager.shared.getSingleRecurringServiceStop(companyId: companyId, recurringServiceStopId: recurringStopOrder.recurringServiceStopId)
-            try await RecurringServiceStopManager.shared.endRecurringServiceStop(companyId: companyId, recurringServiceStopId: recurringStopOrder.recurringServiceStopId, endDate: transitionDate)
+            let RSS = try await dataService.getSingleRecurringServiceStop(companyId: companyId, recurringServiceStopId: recurringStopOrder.recurringServiceStopId)
+            try await dataService.endRecurringServiceStop(companyId: companyId, recurringServiceStopId: recurringStopOrder.recurringServiceStopId, endDate: transitionDate)
+            
             //Get Each Service Stop that has this Recurring Service Stop Id after Transition Date.
             //DEVELOPER Make sure to add starting new Recurring route after new transition
-            let serviceStopList = try await ServiceStopManager.shared.getAllServiceStopsByRecurringServiceStopIdAfterDate(companyId: companyId, recurringServiceStopId: recurringStopOrder.recurringServiceStopId, date: transitionDate)
+            let serviceStopList = try await dataService.getAllServiceStopsByRecurringServiceStopIdAfterDate(companyId: companyId, recurringServiceStopId: recurringStopOrder.recurringServiceStopId, date: transitionDate)
             
             // Delete Each Service Stop under Recurring Service Stop
             for stop in serviceStopList {
-                try await ServiceStopManager.shared.deleteServiceStop(companyId: companyId, serviceStopId: stop.id)
+                try await dataService.deleteServiceStopById(companyId: companyId, serviceStopId: stop.id)
             }
-            try await RecurringServiceStopManager.shared.endRecurringServiceStop(companyId: companyId, recurringServiceStopId: RSS.id, endDate: transitionDate)
+            try await dataService.endRecurringServiceStop(companyId: companyId, recurringServiceStopId: RSS.id, endDate: transitionDate)
         }
+        
         //Create New Recurring Route
-        try await createAndUploadRecurringRoute(companyId: companyId, tech: tech, recurringStopsList: recurringStopList, job: jobTemplate, noEndDate: noEndDate, description: description, day: day, standardFrequencyType: standardFrequencyType, customFrequencyType: customFrequencyType, customFrequencyNumber: customFrequencyNumber, startDate: transitionDate, endDate: newEndDate, currentRecurringRoute: nil)
+        //Maybe I change up this so it just updates instead of Deletes and redos.
+        print("Developer Error")
+        
+            //try await modifyRecurringRouteHelperFunction(companyId: companyId, tech: tech, recurringStopsList: recurringStopList, job: jobTemplate, noEndDate: noEndDate, description: description, day: day, standardFrequencyType: standardFrequencyType, customFrequencyType: customFrequencyType, customFrequencyNumber: customFrequencyNumber, startDate: transitionDate, endDate: newEndDate, currentRecurringRoute: nil)
     }
     func checkRecurringServiceStopListAndOrderListAreSame(recurringServiceStops:[RecurringServiceStop],order:[recurringRouteOrder])-> Bool {
         for RSS in recurringServiceStops {
@@ -263,85 +261,85 @@ final class RouteBuilderViewModel:ObservableObject{
         }
         return true
     }
-    func createAndUploadRecurringRoute(companyId: String,
-                                       tech:CompanyUser,
-                                       recurringStopsList:[RecurringServiceStop],
-                                       job:JobTemplate,
-                                       noEndDate:Bool,
-                                       description:String,
-                                       day:String,
-                                       standardFrequencyType:String,
-                                       customFrequencyType:String,
-                                       customFrequencyNumber:Int,
-                                       startDate:Date,
-                                       endDate:Date,
-                                       currentRecurringRoute:RecurringRoute?) async throws {
-        if let recurringRoute = currentRecurringRoute {
-            //Update the Curring Recurring route
-            print("Current Equals Reucurring")
-            ///Check if each reecurring service stop is in the recurring route.
-            ///Check if Frequency has changed.
-            ///Check if Duration has Changed.
-            ///Make updates
-        } else {
-            //Create a new recurring Route
-            let techFullName = (tech.userName)
-            
-            print("Making Route with \(recurringStopsList.count) stops for \(techFullName) - \(day)")
-            var binder:[recurringRouteOrder] = []
-            var count:Int = 1
-            for RSS in recurringStopsList {
-                print("Creating RSS for \(RSS.customerName) - \(RSS.id) - \(RSS.frequency)")
-                let locationId = RSS.locationId
-                let rssId = try await RecurringRouteManager.shared.addNewRecurringServiceStop(
-                    companyId: companyId,
-                    recurringServiceStop: RecurringServiceStop(
-                        id: UUID().uuidString,
-                        type: job.name,
-                        typeId: job.id,
-                        typeImage: job.typeImage ?? "bubbles.and.sparkles.fill",
-                        customerName: RSS.customerName,
-                        customerId: RSS.customerId,
-                        frequency: standardFrequencyType,
-                        address: RSS.address,
-                        dateCreated: Date(),
-                        tech: techFullName,
-                        endDate:endDate,
-                        startDate:startDate,
-                        techId:tech.userId,
-                        noEndDate: noEndDate,
-                        customMeasuresOfTime: customFrequencyType,
-                        customEvery: String(
-                            customFrequencyNumber
-                        ),
-                        daysOfWeek: [day],
-                        description: description,
-                        lastCreated: Date(),
-                        serviceLocationId: RSS.serviceLocationId
-                    ),
-                    customFrequencyType: customFrequencyType,
-                    CustomFrequency: String(
-                        customFrequencyNumber
-                    ),
-                    daysOfWeek: [day]
-                )
-                if rssId == nil {
-                    print("Rss Id failure")
-                    return
-                    
-                }
- 
-                let order = count
-                count = count + 1
-                let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
-                binder.append(page)
-            }
-            let recurringRouteId = day + tech.userId
-            print("Uploading Recurring Route Id >> \(recurringRouteId)")
-            let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: tech.userId, day: day, order: binder, description: "")
-            try await RecurringRouteManager.shared.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)
-
-     
-        }
-    }
+//    func modifyRecurringRouteHelperFunction(companyId: String,
+//                                       tech:CompanyUser,
+//                                       recurringStopsList:[RecurringServiceStop],
+//                                       job:JobTemplate,
+//                                       noEndDate:Bool,
+//                                       description:String,
+//                                       day:String,
+//                                       standardFrequencyType:String,
+//                                       customFrequencyType:String,
+//                                       customFrequencyNumber:Int,
+//                                       startDate:Date,
+//                                       endDate:Date,
+//                                       currentRecurringRoute:RecurringRoute?) async throws {
+//        if let recurringRoute = currentRecurringRoute {
+//            //Update the Curring Recurring route
+//            print("Current Equals Reucurring")
+//            ///Check if each reecurring service stop is in the recurring route.
+//            ///Check if Frequency has changed.
+//            ///Check if Duration has Changed.
+//            ///Make updates
+//        } else {
+//            //Create a new recurring Route
+//            let techFullName = (tech.userName)
+//            
+//            print("Making Route with \(recurringStopsList.count) stops for \(techFullName) - \(day)")
+//            var binder:[recurringRouteOrder] = []
+//            var count:Int = 1
+//            for RSS in recurringStopsList {
+//                print("Creating RSS for \(RSS.customerName) - \(RSS.id) - \(RSS.frequency)")
+//                let locationId = RSS.serviceLocationId
+//                let rssId = try await RecurringRouteManager.shared.addNewRecurringServiceStop(
+//                    companyId: companyId,
+//                    recurringServiceStop: RecurringServiceStop(
+//                        id: UUID().uuidString,
+//                        type: job.name,
+//                        typeId: job.id,
+//                        typeImage: job.typeImage ?? "bubbles.and.sparkles.fill",
+//                        customerName: RSS.customerName,
+//                        customerId: RSS.customerId,
+//                        frequency: standardFrequencyType,
+//                        address: RSS.address,
+//                        dateCreated: Date(),
+//                        tech: techFullName,
+//                        endDate:endDate,
+//                        startDate:startDate,
+//                        techId:tech.userId,
+//                        noEndDate: noEndDate,
+//                        customMeasuresOfTime: customFrequencyType,
+//                        customEvery: String(
+//                            customFrequencyNumber
+//                        ),
+//                        daysOfWeek: [day],
+//                        description: description,
+//                        lastCreated: Date(),
+//                        serviceLocationId: RSS.serviceLocationId
+//                    ),
+//                    customFrequencyType: customFrequencyType,
+//                    CustomFrequency: String(
+//                        customFrequencyNumber
+//                    ),
+//                    daysOfWeek: [day]
+//                )
+//                if rssId == nil {
+//                    print("Rss Id failure")
+//                    return
+//                    
+//                }
+// 
+//                let order = count
+//                count = count + 1
+//                let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
+//                binder.append(page)
+//            }
+//            let recurringRouteId = day + tech.userId
+//            print("Uploading Recurring Route Id >> \(recurringRouteId)")
+//            let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: tech.userId, day: day, order: binder, description: "")
+//            try await RecurringRouteManager.shared.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)
+//
+//     
+//        }
+//    }
 }

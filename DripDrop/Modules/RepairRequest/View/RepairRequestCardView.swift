@@ -8,12 +8,22 @@
 import SwiftUI
 
 struct RepairRequestCardView: View {
+    @EnvironmentObject var masterDataManager : MasterDataManager
+
     let repairRequest:RepairRequest
     var body: some View {
         HStack{
             VStack(alignment: .leading){
-                status
-                info
+                switch masterDataManager.mainScreenDisplayType {
+                case .compactList:
+                    compact
+                case .preview:
+                    info
+                case .fullPreview:
+                    status
+                    info
+                }
+             
             }
             .frame(maxWidth: .infinity)
         }
@@ -22,12 +32,26 @@ struct RepairRequestCardView: View {
     }
 }
 extension RepairRequestCardView {
-
+    var compact: some View {
+        HStack{
+            Text("\(repairRequest.id)")
+            Text("\(repairRequest.customerName)")
+                .lineLimit(2, reservesSpace: true)
+            Text("\(repairRequest.status.rawValue)")
+                .padding(5)
+                .background(getColor(status:repairRequest.status))
+                .foregroundColor(getForgroundColor(status: repairRequest.status))
+                .cornerRadius(5)
+                .lineLimit(2, reservesSpace: true)
+            Spacer()
+        }
+    }
     var status: some View {
         HStack{
             Text("\(repairRequest.id)")
             Spacer()
             Text("\(repairRequest.status.rawValue)")
+                .lineLimit(2, reservesSpace: true)
                 .padding(5)
                 .background(getColor(status:repairRequest.status))
                 .foregroundColor(getForgroundColor(status: repairRequest.status))
@@ -36,7 +60,9 @@ extension RepairRequestCardView {
     }
     var info: some View {
         VStack{
-            Text("Customer : \(repairRequest.customerName)")
+            Text("\(repairRequest.customerName)")
+                .lineLimit(2, reservesSpace: true)
+
             HStack{
                 Text("Tech: \(repairRequest.requesterName)")
                 Text("Date: \(fullDate(date:repairRequest.date))")
@@ -52,8 +78,6 @@ extension RepairRequestCardView {
             color = Color.poolRed
         case .inprogress:
             color = Color.yellow
-        default:
-            color = Color.gray
         }
         return color
     }
@@ -65,8 +89,6 @@ extension RepairRequestCardView {
         case .unresolved:
             color = Color.white
         case .inprogress:
-            color = Color.black
-        default:
             color = Color.black
         }
         return color

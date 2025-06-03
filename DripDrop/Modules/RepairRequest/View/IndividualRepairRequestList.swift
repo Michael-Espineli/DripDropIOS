@@ -37,7 +37,7 @@ struct IndividualRepairRequestList: View {
             icons
         }
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     techIds = []
                     try await companyUserVM.getAllCompanyUsersByStatus(companyId: company.id, status: "Active")
@@ -135,7 +135,7 @@ extension IndividualRepairRequestList{
                     })
                     .padding(10)
                     .sheet(isPresented: $showFilters, onDismiss: {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             repairRequestVM.removeListenerForRepairRequest()
                             repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
                         }
@@ -245,7 +245,7 @@ extension IndividualRepairRequestList{
                     })
                     .padding(10)
                     .sheet(isPresented: $showAddNewRequest, content: {
-                        AddNewRepairRequest(dataService: dataService)
+                        AddNewRepairRequest(dataService: dataService,isPresented: $showAddNewRequest)
                     })
                     Button(action: {
                         showSearch.toggle()
@@ -269,11 +269,14 @@ extension IndividualRepairRequestList{
                         "Search",
                         text: $searchTerm
                     )
-                    .padding()
-                    .background(Color.gray)
-                    .foregroundColor(Color.white)
-                    .cornerRadius(10)
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
             }
             
         }

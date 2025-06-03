@@ -8,11 +8,35 @@
 import SwiftUI
 
 struct CompanyRoleLoadingView: View {
+    @EnvironmentObject var dataService : ProductionDataService
+
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @StateObject var permissionVM = PermissionViewModel()
+    @StateObject var roleVM = RoleViewModel()
+    let roleId:String
+    @State var role:Role? = nil
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack{
+            if let role = roleVM.role,let selectedCompany = masterDataManager.currentCompany{
+                CompanyRoleEditView(dataService: dataService, role:role)
+            }
+        }
+        .task {
+            if let selectedCompany = masterDataManager.currentCompany {
+                if roleId != "" {
+                    do {
+                        try await roleVM.getSpecificRole(companyId: selectedCompany.id, roleId: roleId)
+                        
+                    } catch {
+                        print("Error")
+                        print(error)
+                    }
+                }
+            }
+        }
     }
 }
 
 #Preview {
-    CompanyRoleLoadingView()
+    CompanyRoleLoadingView(roleId: "")
 }

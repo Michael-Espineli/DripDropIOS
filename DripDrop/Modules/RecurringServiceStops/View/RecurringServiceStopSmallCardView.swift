@@ -14,7 +14,9 @@ struct RecurringServiceStopSmallCardView: View {
             Text("\(recurringServiceStop.id)")
             VStack{
                 HStack{
+                    Spacer()
                     Text("\(recurringServiceStop.tech)")
+                    Spacer()
                 }
                 HStack{
                     Text("\(shortDate(date:recurringServiceStop.startDate))")
@@ -25,15 +27,15 @@ struct RecurringServiceStopSmallCardView: View {
                     }
                 }
                 HStack{
-                    ForEach(recurringServiceStop.daysOfWeek, id:\.self ){ day in
-                        Text(day)
-                            .font(.footnote)
-                    }
+                    Text(recurringServiceStop.daysOfWeek)     
+                        .font(.footnote)
+
+                    
                     Spacer()
                 }
             }
         }
-        .frame(maxWidth: .infinity)
+        .modifier(ListButtonModifier())
     }
 }
 

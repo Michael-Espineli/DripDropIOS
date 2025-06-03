@@ -15,7 +15,7 @@ struct ServiceStopListView: View{
     //View Models
     @StateObject private var serviceStopVM : ServiceStopsViewModel
     @StateObject private var customerVM: CustomerViewModel
-    @StateObject private var settingsVM = SettingsViewModel()
+    @StateObject private var settingsVM = SettingsViewModel(dataService: ProductionDataService())
 
     init(dataService:any ProductionDataServiceProtocol){
         _serviceStopVM = StateObject(wrappedValue: ServiceStopsViewModel(dataService: dataService))
@@ -52,7 +52,7 @@ struct ServiceStopListView: View{
         .task {
             //Add Subscriber
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     try await settingsVM.getWorkOrderTemplates(companyId: company.id)
                     try await serviceStopVM.getServiceStopsBetweenDatesAndByType(companyId: company.id, startDate: startDate, endDate: endDate, workOrderType: workOrderType)
                     serviceStops = serviceStopVM.serviceStops
@@ -96,6 +96,7 @@ extension ServiceStopListView {
             VStack{
                 Spacer()
                 HStack{
+                    Spacer()
                     VStack{
                         Button(action: {
                             showFilters.toggle()
@@ -118,7 +119,7 @@ extension ServiceStopListView {
                         .sheet(isPresented: $showFilters, onDismiss: {
                             Task{
                                 do {
-                                    if let company = masterDataManager.selectedCompany {
+                                    if let company = masterDataManager.currentCompany {
                                         try await serviceStopVM.getServiceStopsBetweenDatesAndByType(companyId: company.id, startDate: startDate, endDate: endDate, workOrderType: workOrderType)
                                         serviceStops = serviceStopVM.serviceStops
                                     }
@@ -186,7 +187,6 @@ extension ServiceStopListView {
                         .padding()
                         
                     }
-                    Spacer()
                 }
                 if showSearch {
                     HStack{
@@ -194,53 +194,47 @@ extension ServiceStopListView {
                             "Search",
                             text: $searchTerm
                         )
-                        .padding()
-                        .background(Color.basicFontText)
-                        .foregroundColor(Color.white)
-                        .cornerRadius(10)
+                        Button(action: {
+                            searchTerm = ""
+                        }, label: {
+                            Image(systemName: "xmark")
+                        })
                     }
+                    .modifier(SearchTextFieldModifier())
+                    .padding(8)
                 }
             }
         }
     }
+    
     var list: some View{
-        VStack{
+        ScrollView{
             if serviceStops.count == 0 {
                     Button(action: {
                         showAddNew.toggle()
                     }, label: {
-                        
                         Text("Add First Service Stop")
-                            .padding(UIDevice.isIPhone ? 0 : 10)
-                            .background(UIDevice.isIPhone ? Color.clear: Color.blue)
-                            .foregroundColor(UIDevice.isIPhone ? Color.blue : Color.white)
-                            .cornerRadius(UIDevice.isIPhone ? 0 : 10)
+                            .modifier(AddButtonModifier())
                     })
-                    
-                    
             } else {
-                
-            
-                List(selection:$masterDataManager.selectedID){
-                    
+                if UIDevice.isIPhone {
                     ForEach(serviceStops){ serviceStop in
                         NavigationLink(value: Route.serviceStop(serviceStop: serviceStop,dataService: dataService), label: {
-                            if UIDevice.isIPhone {
                                 ServiceStopCardViewSmall(serviceStop: serviceStop)
-                            } else {
-                                ServiceStopCardViewLarge(serviceStop: serviceStop)
-                            }
+                            
                         })
-                        //                            NavigationLink(destination: {
-                        //                                ServiceStopDetailView(showSignInView: $showSignInView, company: company, user: user, serviceStop: serviceStop)
-                        //
-                        //                            }, label: {
-                        //                                ServiceStopCardViewSmall(serviceStop: serviceStop)
-                        //                            })
+                    }
+                } else {
+                    ForEach(serviceStops){ serviceStop in
+                        Button(action: {
+                            masterDataManager.selectedID = serviceStop.id
+                            masterDataManager.selectedServiceStops = serviceStop
+                        }, label: {
+                            ServiceStopCardViewLarge(serviceStop: serviceStop)
+
+                        })
                     }
                 }
-                
-                .disabled(showSearch)
             }
         }
     }

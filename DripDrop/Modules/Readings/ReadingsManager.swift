@@ -10,10 +10,11 @@ import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
 import Darwin
+
 struct Reading:Identifiable, Codable,Hashable{
     
     let id :String
-    let templateId :String
+    let templateId :String //Universal Template Id
     let dosageType :String
 //    let itemId :String
     let name: String?
@@ -35,8 +36,23 @@ struct ReadingsTemplate:Identifiable, Codable,Hashable{
     let order : Int
     let highWarning : Double?
     let lowWarning : Double?
-
 }
+
+struct SavedReadingsTemplate:Identifiable, Codable,Hashable{ // Same as ReadingTemplate, but it universallized the Readings Themplates
+    
+    let id :String
+    let readingsTemplateId: String
+    let name: String
+    let amount : [String]
+    let UOM : String
+    let chemType: String
+    let linkedDosage:String
+    let editable:Bool
+    let order : Int
+    let highWarning : Double?
+    let lowWarning : Double?
+}
+/*
 final class ReadingsManager {
     
     static let shared = ReadingsManager()
@@ -312,7 +328,7 @@ final class ReadingsManager {
                                     dataPointsByDay.append(day)
                                 }
                             }
-                            let serviceStop = try! await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
+                            let serviceStop = try! await dataService.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
                             
                             totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
                             dataPointsByDay = []
@@ -405,7 +421,7 @@ final class ReadingsManager {
                                 dataPointsByDay.append(day)
                             }
                         }
-                        let serviceStop = try? await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
+                        let serviceStop = try? await dataService.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
                         
                         totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop?.techId! ?? "1",tech:serviceStop?.tech! ?? "1", laborCost: Double(serviceStop?.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
                         
@@ -493,7 +509,7 @@ final class ReadingsManager {
     
                         var serviceStop = ServiceStop(id: id, typeId: weeklyCleaningTemplate?.id ?? "1", finished: true, customerName: customerFullName, customerId: customer.id, address: customer.billingAddress, dateCreated: date, serviceDate: date, duration: 15, rate: 15, tech: user.displayName, techId: user.id, invoiced: false, description: "NA", serviceLocationId: location.id, type: weeklyCleaningTemplate?.type ?? "Weekly Cleaning")//It might get fuckie without a real serviceLocationId
     
-                        try await ServiceStopManager.shared.uploadServiceStop(serviceStop: serviceStop)
+                        try await dataService.uploadServiceStop(serviceStop: serviceStop)
     
                         print("Created servcice stop on \(fullDate(date: date))")
     
@@ -558,7 +574,7 @@ final class ReadingsManager {
                                         dataPointsByDay.append(day)
                                     }
                                 }
-                                let serviceStop = try! await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: user.companyId)
+                                let serviceStop = try! await dataService.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: user.companyId)
     
                                 totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
                                 dataPointsByDay = []
@@ -656,7 +672,7 @@ final class ReadingsManager {
                                               ,includeReadings: true,includeDosages: true)
                 
                 
-                try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: serviceStop)
+                try await dataService.uploadServiceStop(companyId: companyId, serviceStop: serviceStop)
                 
                 print("Created servcice stop on \(fullDate(date: date))")
                 
@@ -739,7 +755,7 @@ final class ReadingsManager {
                                 dataPointsByDay.append(day)
                             }
                         }
-                        let serviceStop = try! await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
+                        let serviceStop = try! await dataService.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
                         
                         totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
                         dataPointsByDay = []
@@ -835,7 +851,7 @@ final class ReadingsManager {
                                           invoiced: true,checkList: []
                                           ,includeReadings: true,includeDosages: true)
             
-            try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: serviceStop)
+            try await dataService.uploadServiceStop(companyId: companyId, serviceStop: serviceStop)
             
             print("Created servcice stop on \(fullDate(date: date))")
             
@@ -928,7 +944,7 @@ final class ReadingsManager {
                             dataPointsByDay.append(day)
                         }
                     }
-                    let serviceStop = try! await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
+                    let serviceStop = try! await dataService.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
                     
                     totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
                     dataPointsByDay = []
@@ -969,3 +985,4 @@ final class ReadingsManager {
     }
     */
 }
+*/

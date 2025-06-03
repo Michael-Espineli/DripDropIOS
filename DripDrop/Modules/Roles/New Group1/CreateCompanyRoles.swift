@@ -59,7 +59,7 @@ struct CreateCompanyRoles: View {
                 }
                 Button(action: {
                     Task{
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             do {
                                 try await roleVM.createRole(companyId:company.id,
                                                             role:Role(id: UUID().uuidString,
@@ -75,6 +75,8 @@ struct CreateCompanyRoles: View {
                     }
                 }, label: {
                     Text("Save")
+                        .modifier(SubmitButtonModifier())
+
                 })
             }
         }

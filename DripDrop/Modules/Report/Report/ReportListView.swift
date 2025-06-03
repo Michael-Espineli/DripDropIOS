@@ -35,12 +35,14 @@ extension ReportListView {
                         NavigationLink(value: Route.reports(dataService:dataService), label: {
                             ReportCardView(report: report)
                         })
+                        .padding(8)
                     } else {
                         Button(action: {
                             masterDataManager.selectedReport = report
                         }, label: {
                             ReportCardView(report: report)
                         })
+                        .padding(8)
                     }
                 }
             }

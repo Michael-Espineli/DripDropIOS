@@ -24,7 +24,7 @@ extension FileManager {
         do {
             try contents.write(to: url, atomically: true, encoding: .utf8)
         } catch {
-            throw MyImageError.saveError
+            throw DripDropImageError.saveError
         }
     }
     
@@ -33,7 +33,7 @@ extension FileManager {
         do {
             return try Data(contentsOf: url)
         } catch {
-            throw MyImageError.readError
+            throw DripDropImageError.readError
         }
     }
     
@@ -43,10 +43,10 @@ extension FileManager {
             do {
                 try data.write(to: imageURL)
             } catch {
-                throw MyImageError.saveImageError
+                throw DripDropImageError.saveImageError
             }
         } else {
-            throw MyImageError.saveImageError
+            throw DripDropImageError.saveImageError
         }
     }
     
@@ -57,10 +57,10 @@ extension FileManager {
             if let image = UIImage(data: imageData) {
                 return image
             } else {
-                throw MyImageError.readImageError
+                throw DripDropImageError.readImageError
             }
         } catch {
-            throw MyImageError.readImageError
+            throw DripDropImageError.readImageError
         }
     }
 }

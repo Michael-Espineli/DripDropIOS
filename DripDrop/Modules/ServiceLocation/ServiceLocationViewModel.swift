@@ -66,9 +66,9 @@ final class ServiceLocationViewModel:ObservableObject{
         bodyOfWaterList:[BodyOfWater],
         preText:Bool
     ) async throws{
-        if bodyOfWaterList.count == 0 {
-            throw ServiceLocationError.bodyOfWaterListEmpty
-        }
+//        if bodyOfWaterList.count == 0 {
+//            throw ServiceLocationError.bodyOfWaterListEmpty
+//        }
         if customer.id == "" {
             throw ServiceLocationError.invalidCustomerId
         }
@@ -131,7 +131,8 @@ final class ServiceLocationViewModel:ObservableObject{
                     customerName: fullName,
                     customerId: customer.id,
                     serviceLocationId: serviceLocationId,
-                    bodyOfWaterId: BOW.id
+                    bodyOfWaterId: BOW.id,
+                    isActive: true
                 )
             )
             try await EquipmentManager.shared.addNewEquipmentWithParts(
@@ -160,7 +161,8 @@ final class ServiceLocationViewModel:ObservableObject{
                     customerName: fullName,
                     customerId: customer.id,
                     serviceLocationId: serviceLocationId,
-                    bodyOfWaterId: BOW.id
+                    bodyOfWaterId: BOW.id,
+                    isActive: true
                 )
             )
             
@@ -195,6 +197,8 @@ final class ServiceLocationViewModel:ObservableObject{
             customer: customer,
             serviceLocation:serviceLocation
         )
+        try await dataService.uploadCustomerContact(companyId: companyId, customerId: customer.id, contact: serviceLocation.mainContact)
+
     }
     //----------------------------------------------------
     //                    READ
@@ -239,14 +243,7 @@ final class ServiceLocationViewModel:ObservableObject{
         customerId:String,
         locationId:String
     ) async throws {
-        
-        self.serviceLocation = try await dataService.getServiceLocationsCustomerAndLocationId(
-            companyId: companyId,
-            customerId: customerId,
-            locationId: locationId
-        )
-        
-        //        self.serviceLocation = try await CustomerManager.shared.getServiceLocationsCustomerAndLocationId(customerId: customerId,locationId: locationId)
+        self.serviceLocation = try await dataService.getServiceLocationById(companyId: companyId, locationId: locationId)
     }
     func getTotalMonthlyRateFromServiceStops(
         companyId: String,
@@ -277,13 +274,34 @@ final class ServiceLocationViewModel:ObservableObject{
         serviceLocation:ServiceLocation,
         originalServiceLocation:ServiceLocation
     ) async throws {
+        // Get Service Stop by Service Location Id
+        let serviceStops = try await dataService.getServiceStopByServiceLocationId(companyId: companyId, serviceLocationId: originalServiceLocation.id)
+        print("Received \(serviceStops.count) Service Stops")
+
+        // Get Recurring Service Stops By Service Location Id
+        let recurringServiceStops = try await dataService.getRecurringServiceStopByServiceLocationId(companyId: companyId, serviceLocationId: originalServiceLocation.id)
+        print("Received \(recurringServiceStops.count) Recurring Service Stops")
+
+        
         if serviceLocation.address != originalServiceLocation.address {
+            // Update Service Location
             try await dataService.updateServiceLocationAddress(
                 companyId: companyId,
                 currentCustomerId: customerId,
                 serviceLocationId: originalServiceLocation.id,
                 address: serviceLocation.address
             )
+            // Update Recurring Service Stops
+            for recurringServiceStop in recurringServiceStops {
+                try await dataService.updateRecurringServiceStopAddress(companyId: companyId, recurringServiceStopId: recurringServiceStop.id, address: serviceLocation.address)
+            }
+            print("Updated \(recurringServiceStops.count) Recurring Service Stops")
+            // Update Service Stops
+            for serviceStop in serviceStops {
+                try await dataService.updateServiceStopAddress(companyId: companyId, serviceStopId: serviceStop.id, address: serviceLocation.address)
+            }
+            print("Updated \(serviceStops.count) Service Stops")
+
         }
         if serviceLocation.nickName != originalServiceLocation.nickName {
             try await dataService.updateServiceLocationNickName(
@@ -291,6 +309,7 @@ final class ServiceLocationViewModel:ObservableObject{
                 serviceLocationId: originalServiceLocation.id,
                 nickName: serviceLocation.nickName
             )
+            
         }
         
         if serviceLocation.gateCode != originalServiceLocation.gateCode {
@@ -343,7 +362,7 @@ final class ServiceLocationViewModel:ObservableObject{
         searchTerm:String,
         serviceLocation:[ServiceLocation]
     ) async throws{
-        self.serviceLocationsFiltered = try await dataService.searchForCustomersLocations(
+        self.serviceLocationsFiltered = dataService.searchForCustomersLocations(
             searchTerm:searchTerm,
             serviceLocation: serviceLocation
         )
@@ -353,15 +372,9 @@ final class ServiceLocationViewModel:ObservableObject{
         recurringServiceStops:[RecurringServiceStop]
     ) async throws {
         var listOfServiceLocations:[ServiceLocation] = []
-        
         for stop in recurringServiceStops {
-            
             listOfServiceLocations.append(
-                try await dataService.getServiceLocationsCustomerAndLocationId(
-                    companyId: companyId,
-                    customerId: stop.customerId,
-                    locationId: stop.locationId ?? ""
-                )
+                try await dataService.getServiceLocationById(companyId: companyId, locationId: stop.serviceLocationId)
             )
         }
         self.serviceLocationsFiltered = listOfServiceLocations

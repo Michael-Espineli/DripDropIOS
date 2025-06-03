@@ -28,15 +28,13 @@ struct RepairRequestDetailView: View {
         _serviceLocationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: dataService))
 
     }
-    @State var showAddPhoto:Bool = false
     @State var showJobConfirmation:Bool = false
     
-    @State var pickerType:photoPickerType? = nil
-    @State var selectedNewPicker:photoPickerType? = nil
-    @State var selectedImage:UIImage? = nil
-    @State var photoUrls:[String] = []
-    @State var fullSizedPhoto:String? = nil
-    
+    @State var photoUrls:[DripDropStoredImage] = []
+    @State var newPhotoUrls:[DripDropStoredImage] = []
+
+    @State var selectedImage:DripDropStoredImage? = nil
+
     @State var status:RepairRequestStatus = .unresolved
     @State var showCustomer:Bool = false
     
@@ -45,10 +43,39 @@ struct RepairRequestDetailView: View {
     @State var showDeleteConfirmation:Bool = false
     
     @State var showAddJobToRepairRequest:Bool = false
-    
+
     @State var jobId:String = ""
     @State var returnJobId:String = ""
-    @State var job:Job = Job(id: "", type: "", dateCreated: Date(), description: "", operationStatus: .estimatePending, billingStatus: .draft, customerId: "", customerName: "", serviceLocationId: "", serviceStopIds: [], adminId: "", adminName: "", jobTemplateId: "", installationParts: [], pvcParts: [], electricalParts: [], chemicals: [], miscParts: [], rate: 0, laborCost: 0)
+    @State var job:Job = Job(
+        id: "",
+        internalId: "",                          
+        type: "",
+        dateCreated: Date(),
+        description: "",
+        operationStatus: .estimatePending,
+        billingStatus: .draft,
+        customerId: "",
+        customerName: "",
+        serviceLocationId: "",
+        serviceStopIds: [],
+        laborContractIds: [],
+        adminId: "",
+        adminName: "",
+        rate: 0,
+        laborCost: 0,
+        otherCompany: true,
+        receivedLaborContractId: "",
+        receiverId: "",
+        senderId : "",
+        dateEstimateAccepted: nil,
+        estimateAcceptedById: nil,
+        estimateAcceptType: nil,
+        estimateAcceptedNotes: nil,
+        invoiceDate: nil,
+        invoiceRef: nil,
+        invoiceType: nil,
+        invoiceNotes: nil
+    )
 
     @State var jobIdList:[String] = []
     var body: some View {
@@ -59,15 +86,22 @@ struct RepairRequestDetailView: View {
                     Section(content: {
                         VStack{
                             jobList
-                            photoList
+                            Rectangle()
+                                .frame(height: 2)
+                            Text("Current Phtos")
+                            DripDropStoredImageRow(images:photoUrls)
+                            Rectangle()
+                                .frame(height: 2)
+                            Text("NEw Photos")
+                            PhotoStoredContent(selectedStoredImages: $newPhotoUrls)
                         }
-                        .padding(.leading,20)
                         .background(Color.listColor.ignoresSafeArea())
                     }, header: {
-                        info
+                        ZStack{
+                            info
+                        }
                     })
                 })
-                .padding(.top,20)
             }
         }
         .toolbar{
@@ -80,9 +114,10 @@ struct RepairRequestDetailView: View {
             })
         }
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 status = repairRequest.status
                 photoUrls = repairRequest.photoUrls
+                
                 jobIdList = repairRequest.jobIds
                 do {
                     try await customerVM.getCustomer(companyId: company.id, customerId: repairRequest.customerId)
@@ -99,13 +134,13 @@ struct RepairRequestDetailView: View {
                 primaryButton: .destructive(Text("Delete")) {
                     Task{
                         print("Deleting...")
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             do {
                                 for job in repairRequest.jobIds {
                                     try await jobVM.getSingleWorkOrder(companyId: company.id, WorkOrderId: job)
                                     if let job = jobVM.workOrder {
                                         for stop in job.serviceStopIds {
-                                            try await ServiceStopManager.shared.deleteServiceStop(companyId: company.id, serviceStopId: stop)
+                                            try await dataService.deleteServiceStopById(companyId: company.id, serviceStopId: stop)
                                         }
                                     }
                                     try await jobVM.deleteJob(companyId: company.id, jobId: job)
@@ -131,27 +166,14 @@ struct RepairRequestDetailView: View {
             }
         })
 
-        .onChange(of: repairRequestVM.imageUrlString, perform: { imageUrl in
-            Task{
-                if let url = imageUrl {
-                    photoUrls.append(url)
-                    alertMessage = "SuccesssFully Uploaded, Add Another"
-                    showAlert = true
-                    showAddPhoto = false
-                }else {
-                    print("Invalid URL")
-                    
-                }
-            }
-        })
         .onChange(of: selectedImage, perform: { image in
             Task{
                 do {
                     if let image = image {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             alertMessage = "Attempting To Load"
                             showAlert = true
-                            try await repairRequestVM.saveRepairRequestImage(companyId: company.id,requestId: repairRequest.id, photo: image)
+//                            try await repairRequestVM.saveRepairRequestImage(companyId: company.id,requestId: repairRequest.id, photo: image)
                             alertMessage = "SuccesssFully Uploaded, Add Another"
                             showAlert = true
                         } else {
@@ -172,7 +194,7 @@ struct RepairRequestDetailView: View {
             }
         })
         .onChange(of: status, perform: { stat in
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 
                     print("Change of Status")
                     Task{
@@ -187,90 +209,7 @@ struct RepairRequestDetailView: View {
     }
 }
 extension RepairRequestDetailView {
-    var photoListView: some View {
-        VStack{
-            Text("Photos")
-                .font(.title)
-            VStack{
-                ForEach(photoUrls,id:\.self){ photo in
-                    VStack{
-                        if let url = URL(string: photo){
-                            AsyncImage(url: url){ image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .foregroundColor(Color.gray)
-                            } placeholder: {
-                                Image(systemName:"photo.circle")
-                                    .resizable()
-                                    .scaledToFill()
-                                    .foregroundColor(Color.gray)
-                                    .frame(maxWidth:100 ,maxHeight:100)
-                                    .cornerRadius(100)
-                            }
-                        } else {
-                            Image(systemName:"photo.circle")
-                                .resizable()
-                                .scaledToFill()
-                                .foregroundColor(Color.gray)
-                                .frame(maxWidth:100 ,maxHeight:100)
-                                .cornerRadius(100)
-                        }
-                    }
-                    .padding(5)
-                }
-            }
-            
-        }
-    }
     
-    var imageSelector: some View {
-        HStack{
-            
-            Text("Add Photo")
-            
-            Button(action: {
-                print("Add Photo Picker Logic")
-                showAddPhoto.toggle()
-                
-            }, label: {
-                Image(systemName: "photo.fill.on.rectangle.fill")
-            })
-            .padding(10)
-            .confirmationDialog("Select Type", isPresented: self.$showAddPhoto, actions: {
-                Button(action: {
-                    self.pickerType = .album
-                    self.selectedNewPicker = .album
-                }, label: {
-                    Text("Album")
-                })
-                Button(action: {
-                    self.pickerType = .camera
-                    self.selectedNewPicker = .camera
-                    
-                }, label: {
-                    Text("Camera")
-                })
-                
-            })
-            .sheet(item: self.$pickerType,onDismiss: {
-                
-            }){ item in
-                switch item {
-                case .album:
-                    NavigationView{
-                        ImagePicker(image: self.$selectedImage)
-                    }
-                case .camera:
-                    NavigationView{
-                        Text("Add Camera Logic")
-                    }
-                    
-                }
-                
-            }}
-        
-    }
     
     var jobIdListView: some View {
         VStack{
@@ -279,7 +218,7 @@ extension RepairRequestDetailView {
                     .sheet(isPresented: $showAddJobToRepairRequest, onDismiss: {
                         print("Add to repairRequest Logic")
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     try await repairRequestVM.updateRepairRequestJobList(companyId: company.id, repairReuqestId: repairRequest.id, jobId: jobId)
                                 } catch {
@@ -318,7 +257,7 @@ extension RepairRequestDetailView {
                 })
                 .sheet(isPresented: $showCustomer, onDismiss: {
                     Task{
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                                 if jobId != "" {
                                     try await repairRequestVM.updateRepairRequestStatus(companyId:company.id, repairReuqestId: repairRequest.id, status:.inprogress)
                                     try await repairRequestVM.updateRepairRequestJobList(companyId: company.id, repairReuqestId: repairRequest.id, jobId: jobId)
@@ -344,7 +283,7 @@ extension RepairRequestDetailView {
                     //            NavigationLink(value: Route.job(job: Job), label: {
                     //                Text
                     //            })
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             
                             if UIDevice.isIPhone {
                                 JobNavigationLink(dataService: dataService, companyId: company.id, jobId: id)
@@ -353,7 +292,7 @@ extension RepairRequestDetailView {
                                 Button(action: {
                                     Task{
                                         try await jobVM.getSingleWorkOrder(companyId:company.id,WorkOrderId:id)
-                                        masterDataManager.selectedWorkOrder = jobVM.workOrder
+                                        masterDataManager.selectedJob = jobVM.workOrder
                                         masterDataManager.selectedCategory = .jobs
                                         masterDataManager.selectedID = id
                                     }
@@ -371,17 +310,11 @@ extension RepairRequestDetailView {
             
         }
     }
-    var photoList: some View {
-        VStack{
-            imageSelector
-            photoListView
-        }
-    }
+ 
     var info: some View {
         ZStack{
-            Color.listColor.ignoresSafeArea()
-            ScrollView{
-                HStack{
+            Color.darkGray.ignoresSafeArea()
+            VStack(alignment: .leading){
                     Text("Customer : \(repairRequest.customerName)")
                     HStack{
                         Picker("Status", selection: $status) {
@@ -390,12 +323,11 @@ extension RepairRequestDetailView {
                             }
                         }
                     }
-                }
-                VStack{
+                
                     Text("Tech: \(repairRequest.requesterName)")
                     Text("Date: \(fullDate(date:repairRequest.date))")
                     Text("Description : \(repairRequest.description)")
-                }
+                
                 
             }
         }

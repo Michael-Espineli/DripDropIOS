@@ -29,15 +29,13 @@ struct RouteManagmentView: View {
                             Text("Loading")
                         }
                     } else {
-                        Group{
                             dayThenTech
-                        }
-                       
                     }
                 }
                 .padding(EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 10))
             }
         }
+        .navigationTitle("Internal Routes")
         .toolbar{
             ToolbarItem{
                 Button(action: {
@@ -49,7 +47,7 @@ struct RouteManagmentView: View {
         }
         .refreshable {
             Task{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     do {
                         try await VM.firstLoad(companyId: company.id)
                     } catch {
@@ -59,7 +57,7 @@ struct RouteManagmentView: View {
             }
                 }
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await VM.firstLoad(companyId: company.id)
                 } catch {
@@ -69,7 +67,7 @@ struct RouteManagmentView: View {
         }
         .onChange(of: masterDataManager.reloadBuilderView, perform: { reload in
             Task{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     do {
                         try await VM.firstLoad(companyId: company.id)
                         masterDataManager.reloadBuilderView = false
@@ -85,7 +83,6 @@ struct RouteManagmentView: View {
 struct RouteManagmentView_Previews: PreviewProvider {
     static let dataService = MockDataService()
     static var previews: some View {
-        
         @State var showSignInView: Bool = false
         RouteManagmentView(dataService:dataService)
         

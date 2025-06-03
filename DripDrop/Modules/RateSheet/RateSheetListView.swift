@@ -8,13 +8,43 @@
 import SwiftUI
 
 struct RateSheetListView: View {
+    @EnvironmentObject var masterDataManager : MasterDataManager
+
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
+
+    @State var rateSheets:[RateSheet]
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            ScrollView{
+                list
+            }
+        }
+        .task {
+            if let company = masterDataManager.currentCompany {
+                do {
+                    try await settingsVM.getWorkOrderTemplates(companyId: company.id)
+
+                } catch {
+                    print(error)
+                }
+            }
+        }
     }
+
 }
 
 struct RateSheetListView_Previews: PreviewProvider {
     static var previews: some View {
-        RateSheetListView()
+        RateSheetListView(rateSheets: [])
+    }
+}
+extension RateSheetListView {
+    var list: some View {
+        VStack{
+            ForEach(settingsVM.jobTemplates){ tempalte in
+                RateSheetCardView(rateSheets: rateSheets, jobTemplate: tempalte)
+            }
+        }
     }
 }

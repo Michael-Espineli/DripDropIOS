@@ -15,40 +15,40 @@ struct UserRoleView: View {
     var body: some View {
         VStack{
             ScrollView{
-                if let role = masterDataManager.role {
-                    if role.permissionIdList.contains("1") {
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                showSheet.toggle()
-                            }, label: {
-                                Text("Create New Role")
-                                    .padding(5)
-                                    .background(Color.teal)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(5)
-                            })
-                        }
-                        .padding(10)
-                    }
-                }
                 ForEach(roleVM.roleList){ role in
                     HStack{
-                        
-                        Text(role.name)
-                        Text("\(String(role.permissionIdList.count))")
-                        Spacer()
-                        NavigationLink(destination: {
-                            CompanyRoleDetailView(role: role)
-                        }, label: {
-                               Text("Detail")
-                        })
-                        .padding(5)
-                        .foregroundColor(Color.reverseFontText)
-                        .background(Color.accentColor)
-                        .cornerRadius(5)
+                        if UIDevice.isIPhone {
+                            HStack{
+                                NavigationLink(destination: {
+                                    CompanyRoleDetailView(role: role)
+                                }, label: {
+                                    Text(role.name)
+                                    Text("\(String(role.permissionIdList.count))")
+                                    Spacer()
+                                    Text("Detail")
+                                })
+                            }
+                            .padding(8)
+                            .modifier(ListButtonModifier())
+
+                        } else {
+                            HStack{
+                            Button(action: {
+                                masterDataManager.selectedRole = role
+                            }, label: {
+                                Text(role.name)
+                                Text("\(String(role.permissionIdList.count))")
+                                Spacer()
+                                Text("Detail")
+                            })
+                            }
+                            .padding(8)
+                            .modifier(ListButtonModifier())
+                        }
                     }
-                    .padding(5)
+                    .padding(.horizontal,8)
+                    .padding(.vertical,3)
+                    Divider()
                 }
             }
         }
@@ -56,13 +56,27 @@ struct UserRoleView: View {
             CreateCompanyRoles()
         })
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await roleVM.getAllCompanyRoles(companyId: company.id)
                 } catch {
                     print(error)
                 }
             }
+        }
+        .toolbar{
+            ToolbarItem(content: {
+                if let role = masterDataManager.role {
+                    if role.permissionIdList.contains("1") {
+                            Button(action: {
+                                showSheet.toggle()
+                            }, label: {
+                                Text("Create")
+                            })
+                        
+                    }
+                }
+            })
         }
     }
 }

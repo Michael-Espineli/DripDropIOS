@@ -62,6 +62,6 @@ struct ProfileCardViewLarge_Previews: PreviewProvider {
     static var previews: some View {
         @State var showSignInView: Bool = false
 
-        ProfileCardViewLarge(showSignInView: $showSignInView, user: DBUser(id: "",firstName: "Michael",lastName: "Espineli", exp: 0))
+        ProfileCardViewLarge(showSignInView: $showSignInView, user: DBUser(id: "", email: "",firstName: "Michael",lastName: "Espineli", exp: 0,recentlySelectedCompany: ""))
     }
 }

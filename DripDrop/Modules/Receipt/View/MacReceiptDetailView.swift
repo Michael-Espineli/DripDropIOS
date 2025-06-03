@@ -9,8 +9,6 @@ import ContactsUI
 
 struct MacReceiptDetailView: View {
     @State var receipt: Receipt
-    @Binding var showSignInView:Bool
-    @State var user:DBUser
     @State var showDocumentpicker:Bool = false
 //    @State private var pickerType:FilePickerType? = nil
 //    @State private var selectedPickerType:FilePickerType? = nil

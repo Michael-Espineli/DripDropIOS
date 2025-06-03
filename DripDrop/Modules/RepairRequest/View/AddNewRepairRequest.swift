@@ -4,8 +4,9 @@
 //
 //  Created by Michael Espineli on 1/8/24.
 //
-
+import PhotosUI
 import SwiftUI
+import Darwin
 enum photoPickerType:Identifiable{
     case album, camera
     var id:Int {
@@ -14,32 +15,43 @@ enum photoPickerType:Identifiable{
 }
 struct AddNewRepairRequest: View {
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var model = CameraDataModel()
 
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
+    @Binding var isPresented:Bool
 
     @StateObject var repairRequestVM : RepairRequestViewModel
     @StateObject var customerVM : CustomerViewModel
     @StateObject var serviceLocationVM : ServiceLocationViewModel
     @StateObject var bodyOfWaterVM : BodyOfWaterViewModel
     @StateObject var equipmentVM : EquipmentViewModel
-    @StateObject var settingsVM = SettingsViewModel()
-    init(dataService:any ProductionDataServiceProtocol){
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
+    init(dataService:any ProductionDataServiceProtocol,isPresented:Binding<Bool>){
         _repairRequestVM = StateObject(wrappedValue: RepairRequestViewModel(dataService: dataService))
 
         _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
         _serviceLocationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: dataService))
         _bodyOfWaterVM = StateObject(wrappedValue: BodyOfWaterViewModel(dataService: dataService))
         _equipmentVM = StateObject(wrappedValue: EquipmentViewModel(dataService: dataService))
-
+        _isPresented = isPresented
     }
+    
     @State var description:String = ""
     @State var showCustomerSelector:Bool = false
-    
+    @State var showLocationSelector:Bool = false
+    @State var showBodyOfWaterSelector:Bool = false
+
     @State var showAddPhoto:Bool = false
     @State var pickerType:photoPickerType? = nil
     @State var selectedNewPicker:photoPickerType? = nil
     @State var selectedImage:UIImage? = nil
+    @State var showAvatarPicker:Bool = false
+    @State var showAlert:Bool = false
+    @State var alertMessage:String = ""
+    @State private var avatarItem: PhotosPickerItem?
+    @State private var avatarImage: Image?
+    
     @State var photoUrls:[String] = []
     @State var customer:Customer = Customer(
         id: "",
@@ -57,7 +69,8 @@ struct AddNewRepairRequest: View {
         active: true,
         displayAsCompany: true,
         hireDate: Date(),
-        billingNotes: ""
+        billingNotes: "",
+        linkedInviteId: UUID().uuidString
     )
     
     @State var serviceLocations:[ServiceLocation] = []
@@ -97,7 +110,8 @@ struct AddNewRepairRequest: View {
         gallons: "",
         material: "",
         customerId: "",
-        serviceLocationId: ""
+        serviceLocationId: "",
+        lastFilled: Date()
     )
     
     @State var equipmentList:[Equipment] = []
@@ -115,58 +129,70 @@ struct AddNewRepairRequest: View {
 
         customerId: "",
         serviceLocationId: "",
-        bodyOfWaterId: ""
+        bodyOfWaterId: "",
+        isActive: true
     )
 
     @State var repairRequestId:String = "1"
-    
+    @State var selectedPhotos:[PhotoAsset] = []
+    @State var loadImages:Bool = true
+    @State var screenLoading:Bool = false
+    @State var selectedDripDropPhotos:[DripDropImage] = []
+
     var body: some View {
-        VStack{
+        ZStack{
+            Color.listColor.ignoresSafeArea()
             ScrollView{
+                HStack{
+                    Spacer()
+                    Button(action: {
+                        isPresented = false
+                    }, label: {
+                        Image(systemName: "xmark")
+                            .modifier(DismissButtonModifier())
+                    })
+                }
+                .padding(8)
                 info
                 submitButton
             }
+            if screenLoading {
+                ProgressView()
+            }
         }
-
+        .fontDesign(.monospaced)
         .navigationTitle("Add Repair Request")
         .toolbar{
             ToolbarItem{
                 submitButton
             }
         }
+        .alert(alertMessage, isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        }
         .task {
+                await model.camera.start()
+                await model.loadSelectedPhotos()
+                await model.loadThumbnail()
+            
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     try await customerVM.filterAndSortSelected(companyId: company.id, filter: .active, sort: .firstNameHigh)
                     
                     repairRequestId =  "RR" + String(try await settingsVM.getRepairRequestCount(companyId: company.id))
+                    if let selectedCustomer = masterDataManager.selectedCustomer {
+                        customer = selectedCustomer
+                    }
                 }
             } catch {
                 
             }
         }
-        .onChange(of: selectedImage, perform: { image in
-            Task{
-                do {
-                    if image != nil {
-                        if let company = masterDataManager.selectedCompany {
-                            
-                            try await repairRequestVM.saveRepairRequestImage(companyId: company.id,requestId: repairRequestId, photo: image!)
-                            if let url = repairRequestVM.imageUrlString {
-                                photoUrls.append(url)
-                            }
-                        }
-                    }
-                    
-                } catch {
-                    print("Error")
-                }
-            }
-        })
+
         .onChange(of: customer, perform: { cus in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if cus.id != "" {
                             try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: customer.id)
                             serviceLocations = serviceLocationVM.serviceLocations
@@ -186,7 +212,7 @@ struct AddNewRepairRequest: View {
         .onChange(of: serviceLocation, perform: { loc in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if loc.id != "" {
                             try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
                             bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
@@ -194,7 +220,7 @@ struct AddNewRepairRequest: View {
                             if bodyOfWaterList.count != 0 {
                                 bodyOfWater = bodyOfWaterList.first!
                             } else {
-                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "")
+                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled:Date())
                             }
                         }
                     }
@@ -208,7 +234,7 @@ struct AddNewRepairRequest: View {
             BOW in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if BOW.id != "" {
                             try await equipmentVM.getAllEquipmentFromBodyOfWater(companyId: company.id, bodyOfWater: BOW)
                             equipmentList = equipmentVM.listOfEquipment
@@ -229,7 +255,7 @@ struct AddNewRepairRequest: View {
                                     customerName:"",
                                     customerId: "",
                                     serviceLocationId: "",
-                                    bodyOfWaterId: ""
+                                    bodyOfWaterId: "", isActive:true
                                 )
                             }
                         }
@@ -239,95 +265,22 @@ struct AddNewRepairRequest: View {
                 }
             }
         })
+   
     }
 }
 
 
 extension AddNewRepairRequest{
-    var imageSelector: some View {
-        HStack{
-            
-            Text("Add Photo")
-            
-            Button(action: {
-                print("Add Photo Picker Logic")
-                showAddPhoto.toggle()
-                
-            }, label: {
-                Image(systemName: "photo.fill.on.rectangle.fill")
-            })
-            .padding(10)
-            .confirmationDialog("Select Type", isPresented: self.$showAddPhoto, actions: {
-                Button(action: {
-                    self.pickerType = .album
-                    self.selectedNewPicker = .album
-                }, label: {
-                    Text("From Album")
-                })
-                Button(action: {
-                    self.pickerType = .camera
-                    self.selectedNewPicker = .camera
-                    
-                }, label: {
-                    Text("Camera")
-                })
-                
-            })
-            .sheet(item: self.$pickerType,onDismiss: {
-                
-            }){ item in
-                switch item {
-                case .album:
-                    NavigationView{
-                        ImagePicker(image: self.$selectedImage)
-                    }
-                case .camera:
-                    NavigationView{
-                        Text("Add Camera Logic")
-                    }
-                    
-                }
-                
-            }}
-
-    }
-    var photoListView: some View {
-        HStack{
-            ScrollView(.horizontal, showsIndicators: false){
-                ForEach(photoUrls,id:\.self){ photo in
-                    if let url = URL(string: photo){
-                        AsyncImage(url: url){ image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .foregroundColor(Color.white)
-                                .frame(maxWidth:100 ,maxHeight:100)
-                                .cornerRadius(100)
-                        } placeholder: {
-                            Image(systemName:"photo.circle")
-                                .resizable()
-                                .scaledToFill()
-                                .foregroundColor(Color.white)
-                                .frame(maxWidth:100 ,maxHeight:100)
-                                .cornerRadius(100)
-                        }
-                    } else {
-                        Image(systemName:"photo.circle")
-                            .resizable()
-                            .scaledToFill()
-                            .foregroundColor(Color.white)
-                            .frame(maxWidth:100 ,maxHeight:100)
-                            .cornerRadius(100)
-                    }
-                    
-                }
-            }
-        }
-    }
     var info: some View {
         VStack{
-            Text(fullDate(date: Date()))
+            Text("Add New Repair Request")
+                .font(.headline)
             customerView
+            Rectangle()
+                .frame(height: 1)
+            PhotoContentView(selectedImages: $selectedDripDropPhotos)
+            Rectangle()
+                .frame(height: 1)
             VStack{
                 Text("Description")
                 TextField(
@@ -335,6 +288,7 @@ extension AddNewRepairRequest{
                     text: $description,
                     axis: .vertical
                 )
+                .submitLabel(.done)
                 .padding(5)
                 .background(Color.gray.opacity(0.5))
                 .foregroundColor(Color.black)
@@ -342,95 +296,154 @@ extension AddNewRepairRequest{
                 .padding(5)
             }
             
-            imageSelector
+            
         }
     }
     var submitButton: some View {
         Button(action: {
             Task{
+                screenLoading = true
                 do{
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         let customerFullName = (customer.firstName ) + " " + (customer.lastName )
                         if let user = masterDataManager.user {
                             let userFullName = (user.firstName ?? "") + " " + (user.lastName ?? "")
                             
-                            try await repairRequestVM.uploadRepairRequestWithValidation(companyId: company.id, repairRequestId:repairRequestId,customerId: customer.id, customerName: customerFullName, requesterId: user.id, requesterName: userFullName, date: Date(), status: .unresolved,description: description,jobIds: [],photoUrls: photoUrls)
-                            print("Successfully")
-                            dismiss()
+                            try await repairRequestVM.uploadRepairRequestWithValidation(
+                                companyId: company.id,
+                                repairRequestId:repairRequestId,
+                                customerId: customer.id,
+                                customerName: customerFullName,
+                                requesterId: user.id,
+                                requesterName: userFullName,
+                                date: Date(),
+                                status: .unresolved,
+                                description: description,
+                                jobIds: [],
+                                images: selectedDripDropPhotos,
+                                serviceLocationId: serviceLocation.id,
+                                bodyOfWaterId: bodyOfWater.id,
+                                equipmentId: equipment.id
+                            )
+                            alertMessage = "Successfully"
+                            print(alertMessage)
+                            showAlert = true
+                            isPresented = false
+                            
                         }
                     }
-                
+                    
                 } catch RepairRequestError.invalidCustomer {
-                    print("Add Request Error Invalid Customer")
+                    alertMessage = "Add Request Error Invalid Customer"
+                    print(alertMessage)
+                    showAlert = true
+                    
                 } catch RepairRequestError.invalidUser {
-                    print("Add Request Error Invalid User")
+                    alertMessage = "Add Request Error Invalid User"
+                    
+                    print(alertMessage)
+                    showAlert = true
                 } catch RepairRequestError.invalidStatus {
-                    print("Add Request Error Invalid Status")
+                    alertMessage = "Add Request Error Invalid Status"
+                    
+                    print(alertMessage)
+                    showAlert = true
+                    
                 } catch RepairRequestError.noDescription {
-                    print("Add Request Error No Description")
+                    alertMessage = "Add Request Error No Description"
+                    
+                    print(alertMessage)
+                    showAlert = true
+                    
+                } catch RepairRequestError.imagesNotLoaded {
+                    alertMessage = "Add Request Error images Not Loaded"
+                    
+                    print(alertMessage)
+                    showAlert = true
+                    
                 } catch {
-                    print("Add Request Error Other")
-
+                    alertMessage = "Add Request Error Other"
+                    
+                    print(alertMessage)
+                    showAlert = true
+                    
                 }
+                screenLoading = false
             }
-        }, label: {
+        },
+               label: {
             Text("Submit")
-                .foregroundColor(Color.basicFontText)
-                .padding(5)
-                .background(Color.accentColor)
-                .cornerRadius(5)
-                .padding(5)
+                .frame(maxWidth: .infinity)
+                .modifier(SubmitButtonModifier())
+                .clipShape(Capsule())
         })
+        .padding(.horizontal,16)
     }
     var customerView: some View {
         VStack(alignment: .leading){
             HStack{
-                Text("Customer")
+                Text("Customer: ")
                     .bold(true)
                 Spacer()
                 Button(action: {
                     showCustomerSelector.toggle()
                 }, label: {
-                    if customer.id == "" {
-                        Text("Select Customer")
-                    } else {
-                        Text("\(customer.firstName) \(customer.lastName)")
+                    Group{
+                        if customer.id == "" {
+                            Text("Select Customer")
+                        } else {
+                            Text("\(customer.firstName) \(customer.lastName)")
+                        }
                     }
+                    .modifier(EditButtonModifier())
                 })
-                .padding(5)
-                .background(Color.poolBlue)
-                .foregroundColor(Color.basicFontText)
-                .cornerRadius(5)
-                .padding(5)
                 .sheet(isPresented: $showCustomerSelector, content: {
-                    CustomerPickerScreen(dataService: dataService, customer: $customer)
+                    CustomerAndLocationPicker(dataService: dataService, customer: $customer, location: $serviceLocation)
                 })
             }
             HStack{
-                Text("Service Location")
+                Text("Service Location: ")
                     .bold(true)
                 Spacer()
-                Picker("Location", selection: $serviceLocation) {
-                    Text("Pick Location").tag(ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: ""))
-                    ForEach(serviceLocations){ template in
-                        Text(template.address.streetAddress).tag(template)
+                Button(action: {
+                    showLocationSelector.toggle()
+                }, label: {
+                    Group{
+                        if customer.id == "" {
+                            Text("Select location")
+                        } else {
+                            Text("\(serviceLocation.nickName) \(serviceLocation.address.streetAddress)")
+                        }
                     }
-                }
+                    .modifier(EditButtonModifier())
+                })
+                .sheet(isPresented: $showLocationSelector, content: {
+                    
+                    ServiceLocationPicker(dataService: dataService, customerId:customer.id, location: $serviceLocation)
+                })
             }
             HStack{
-                Text("Body Of Water")
+                Text("Body Of Water:")
                     .bold(true)
                 Spacer()
-                Picker("BOW", selection: $bodyOfWater) {
-                    Text("Pick Body Of Water").tag(BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: ""))
-                    ForEach(bodyOfWaterList){ BOW in
-                        Text(BOW.name).tag(BOW)
+                Button(action: {
+                    showBodyOfWaterSelector.toggle()
+                }, label: {
+                    Group{
+                        if bodyOfWater.id == "" {
+                            Text("Select Body Of Water")
+                        } else {
+                            Text("\(bodyOfWater.name)")
+                        }
                     }
-                }
-                .lineLimit(1)
+                    .modifier(EditButtonModifier())
+                })
+                .sheet(isPresented: $showBodyOfWaterSelector, content: {
+                    BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocation.id, bodyOfWater: $bodyOfWater)
+                })
             }
             HStack{
-                Text("Equipment")
+                Text("Equipment:")
                     .bold(true)
                 Spacer()
                 Picker("Equipment", selection: $equipment) {
@@ -450,7 +463,8 @@ extension AddNewRepairRequest{
                             customerName: "",
                             customerId: "",
                             serviceLocationId: "",
-                            bodyOfWaterId: ""
+                            bodyOfWaterId: "",
+                            isActive:true
                         )
                     )
                     ForEach(equipmentList){ equipment in

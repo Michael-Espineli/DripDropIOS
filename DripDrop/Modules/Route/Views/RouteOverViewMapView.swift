@@ -20,7 +20,7 @@ struct RouteOverViewMapView: View {
             
             MapMarker(coordinate: .init(latitude: item.address.latitude,
                                         longitude: item.address.longitude),
-                      tint: item.finished ? Color.red : Color.poolGreen)
+                      tint: item.operationStatus == .finished ? Color.red : Color.poolGreen)
         }
         
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -6,86 +6,140 @@
 //
 
 import SwiftUI
+@MainActor
+final class NewDataBaseItemFromReceiptViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    @Published private(set) var stores:[Vender] = []
 
+    @Published var name:String = ""
+    @Published var rate:String = ""
+    @Published var store:Vender = Vender(id: "",address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0))
 
-import SwiftUI
+    @Published var storeId:String = ""
+    @Published var storeName:String = ""
+
+    @Published var category:DataBaseItemCategory = .misc
+    @Published var subCategory:DataBaseItemSubCategory = .misc
+    @Published var UOM:UnitOfMeasurment = .unit
+    @Published var sellPrice:String = ""
+
+    @Published var description:String = ""
+    @Published var color:String = ""
+    @Published var size:String = ""
+
+    @Published var dateUpdated:Date = Date()
+    @Published var billable:Bool = true
+
+    @Published var sku:String = ""
+    func onLoad(companyId:String) async throws {
+        self.stores = try await dataService.getAllStores(companyId: companyId)
+    }
+    func addDataBaseItem(companyId:String) async throws{
+        guard let rateDouble = Double(rate) else {
+            throw FireBasePublish.unableToPublish
+        }
+        let dataBaseItem = DataBaseItem(
+            id: "comp_sett_db_" + UUID().uuidString,
+            name: name,
+            rate: rateDouble,
+            storeName: storeName,
+            venderId: storeId,
+            category: category,
+            subCategory: subCategory,
+            description: description,
+            dateUpdated: dateUpdated,
+            sku: sku,
+            billable: billable,
+            color: color,
+            size: size,
+            UOM: UOM
+        )
+        try await DatabaseManager.shared.uploadDataBaseItem(companyId: companyId, dataBaseItem: dataBaseItem)
+        //Clear
+    }
+}
+
 
 struct newDataBaseItemFromReceiptView: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
-    @StateObject private var storeViewModel = StoreViewModel()
+    @StateObject var VM : NewDataBaseItemFromReceiptViewModel
 
-    let id:String?
+    init(dataService: any ProductionDataServiceProtocol,newItemView:Binding<Bool>,id:String){
+        _VM = StateObject(wrappedValue: NewDataBaseItemFromReceiptViewModel(dataService: dataService))
+        self._newItemView = newItemView
+        _id = State(wrappedValue: id)
+    }
+    @State var id:String
     @Binding var newItemView:Bool
+    @FocusState private var focusedField: NewDataBaseFormLabels?
 
-    @State var store:Vender = Vender(id: "",address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0))
-    @State var name:String = ""
-    @State var rate:String = ""
-    @State var sellPrice:String = ""
-    @State var storeId:String = ""
-    @State var storeName:String = ""
-    @State var category:DataBaseItemCategory = .misc
-    @State var subCategory:DataBaseItemSubCategory = .misc
-    @State var description:String = ""
-    @State var dateUpdated:Date = Date()
-    @State var billable:Bool = true
-    @State var sku:String = ""
-    @State var size:String = ""
-    @State var UOM:UnitOfMeasurment = .unit
-    @State var color:String = ""
-
-    
-    
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
                 VStack{
                     HStack{
-                        Text("name")
-                        TextField(
-                            "012345",
-                            text: $name
-                        )
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
+                        Spacer()
+                        Button(action: {
+                            newItemView = false
+                        }, label: {
+                            Image(systemName: "xmark")
+                                .modifier(DismissButtonModifier())
+                        })
                     }
-                    
+                    HStack{
+                        Text("Name")
+                        TextField(
+                            "Name...",
+                            text: $VM.name
+                        )
+                        .modifier(TextFieldModifier())
+                        .focused($focusedField, equals: .name)
+                             .submitLabel(.next)
+                    }
+                    HStack{
+                        Text("Sku")
+                        TextField(
+                            "Sku...",
+                            text: $VM.sku
+                        )
+                        .modifier(TextFieldModifier())
+                        .focused($focusedField, equals: .sku)
+                             .submitLabel(.next)
+                    }
                     HStack{
                         Text("Rate")
                         TextField(
                             "Rate...",
-                            text: $rate
+                            text: $VM.rate
                         )
                         .keyboardType(.decimalPad)
-
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
+                        .modifier(TextFieldModifier())
+                        .focused($focusedField, equals: .rate)
+                             .submitLabel(.next)
                     }
                     HStack{
                         Text("Sell Price")
                         TextField(
                             "Sell Price...",
-                            text: $sellPrice
+                            text: $VM.sellPrice
                         )
                         .keyboardType(.decimalPad)
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
+                        .modifier(TextFieldModifier())
+                        .focused($focusedField, equals: .sellPrice)
+                             .submitLabel(.next)
                     }
                     HStack{
                         Text("Store")
                         
-                        Picker("", selection: $store) {
+                        Picker("", selection: $VM.store) {
                             Text("Pick store")
-                            ForEach(storeViewModel.stores) {
+                            ForEach(VM.stores) {
                                 
                                 Text($0.name ?? "no Name").tag($0)
                                 
@@ -95,7 +149,7 @@ struct newDataBaseItemFromReceiptView: View {
                 }
                 //DEVELOPER MAKE THESE CATEGORIES CHANGEABLE
                 VStack{
-                    Picker("", selection: $category) {
+                    Picker("", selection: $VM.category) {
                         Text("Pick tech").tag("Tech")
                         ForEach(DataBaseItemCategory.allCases,id:\.self) { UOM in
                             Text(UOM.rawValue).tag(UOM)
@@ -103,7 +157,7 @@ struct newDataBaseItemFromReceiptView: View {
                     }
                     HStack{
 
-                        Picker("", selection: $subCategory) {
+                        Picker("", selection: $VM.subCategory) {
                             Text("Pick tech").tag("Tech")
                             ForEach(DataBaseItemSubCategory.allCases,id:\.self) { UOM in
                                 Text(UOM.rawValue).tag(UOM)
@@ -112,7 +166,7 @@ struct newDataBaseItemFromReceiptView: View {
                     }
                     HStack{
                         Text("UOM: ")
-                        Picker("", selection: $UOM) {
+                        Picker("", selection: $VM.UOM) {
                             Text("Pick tech").tag("Tech")
                             ForEach(UnitOfMeasurment.allCases,id:\.self) { UOM in
                                 Text(UOM.rawValue).tag(UOM)
@@ -120,145 +174,111 @@ struct newDataBaseItemFromReceiptView: View {
                         }
                     }
                     HStack{
-                        Text("size")
+                        Text("Size")
                         TextField(
-                            "size",
-                            text: $size
+                            "Size...",
+                            text: $VM.size
                         )
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
+                        .modifier(TextFieldModifier())
+                        .focused($focusedField, equals: .size)
+                             .submitLabel(.next)
                     }
                     HStack{
-                        Text("color")
+                        Text("Color")
                         TextField(
-                            "color",
-                            text: $color
+                            "Color...",
+                            text: $VM.color
                         )
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
+                        .modifier(TextFieldModifier())
+                        .focused($focusedField, equals: .color)
+                             .submitLabel(.next)
                     }
+  
                     HStack{
-                        Text("sku")
+                        Text("Description")
                         TextField(
-                            "sku",
-                            text: $sku
+                            "Description",
+                            text: $VM.description
                         )
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
+                        .modifier(TextFieldModifier())
+                        .focused($focusedField, equals: .description)
+                        .submitLabel(.done)
                     }
-                    HStack{
-                        Text("description")
-                        TextField(
-                            "description",
-                            text: $description
-                        )
-                        .padding(3)
-                        .background(Color.gray.opacity(0.3))
-                        .cornerRadius(3)
-                        
-                    }
-                    Toggle("Billable", isOn: $billable)
+                    Toggle("Billable", isOn: $VM.billable)
                 }
                 Button(action: {
                     Task{
-
-                    let pushName = name
-                    let pushRate = rate
-                    let pushStoreId = store.id
-                    let pushStoreName = store.name
-                    
-                    let pushCategory = category
-                    let pushDescription = description
-                    let pushDateUpdated = dateUpdated
-                    let pushSku = sku
-                    let pushBillable = billable
-                    let pushSellPrice = Double(sellPrice)
-                    let pushUOM = UOM
-                    let pushSize = size
-                    let pushSubCategory = subCategory
-                    let pushColor = color
-                    
-                    
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             do {
                                 let id = UUID().uuidString
-                                try await viewModel.addDataBaseItem(
-                                    companyId: company.id,
-                                    dataBaseItem:DataBaseItem(
-                                        id: id,
-                                        name: pushName,
-                                        rate: Double(
-                                            pushRate
-                                        ) ?? 0.00,
-                                        storeName: pushStoreName ?? "Unknown",
-                                        venderId: pushStoreId,
-                                        category: pushCategory,
-                                        subCategory: pushSubCategory,
-                                        description: pushDescription,
-                                        dateUpdated: pushDateUpdated,
-                                        sku: pushSku,
-                                        billable: pushBillable,
-                                        color: pushColor,
-                                        size: pushSize,
-                                        UOM: pushUOM,
-                                        sellPrice: pushSellPrice
-                                    )
+                                try await VM.addDataBaseItem(
+                                    companyId: company.id
                                 )
-                                print("Successfully Added New Item Id >> \(id)")
                                 newItemView = false
                             } catch {
                                 print(error)
                             }
                         }
-                        name = ""
-                        rate = ""
-                        storeId = ""
-                        category = .misc
-                        subCategory = .misc
-                        UOM = .unit
-                        description = ""
-                        dateUpdated = Date()
-                        sku = ""
                     }
-                    
-                    
-                    
                 },
                        label: {
                     Text("Submit")
-                        .padding(.vertical,3)
-                        .padding(.horizontal,8)
-                        .background(Color.poolBlue)
-                        .foregroundColor(Color.basicFontText)
-                        .cornerRadius(8)
+                        .modifier(SubmitButtonModifier())
                 })
                 
             }
-            .padding(.init(top: 40, leading: 20, bottom: 0, trailing: 20))
+            .padding(.init(top: 16, leading: 16, bottom: 0, trailing: 16))
+            .onSubmit {
+                switch focusedField {
+                case .name:
+                    focusedField = .sku
+                case .sku:
+                    focusedField = .rate
+                    
+                case .rate:
+                    focusedField = .sellPrice
+                    
+                case .sellPrice:
+                    focusedField = .size
+                    
+                case .size:
+                    focusedField = .color
+                    
+                case .color:
+                    focusedField = .description
+                    
+                case .description:
+                    Task{
+                        if let company = masterDataManager.currentCompany {
+                            do {
+                                let id = UUID().uuidString
+                                try await VM.addDataBaseItem(
+                                    companyId: company.id
+                                )
+                                newItemView = false
+                            } catch {
+                                print(error)
+                            }
+                        }
+                    }
+                default:
+                    focusedField = .description
+                }
+            }
         }
         .onAppear(perform: {
-            sku = id ?? ""
+            VM.sku = id
         })
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
-                    try await storeViewModel.getAllStores(companyId: company.id)
-                    if storeViewModel.stores.count != 0 {
-                        store = storeViewModel.stores.first!
-                    }
+                    try await VM.onLoad(companyId: company.id)
                 } catch {
                     print(error)
                 }
             }
         }
-        .navigationTitle("Add Item To DataBase")
+        .navigationTitle("Add Item To Data Base")
     }
-    
 }
 

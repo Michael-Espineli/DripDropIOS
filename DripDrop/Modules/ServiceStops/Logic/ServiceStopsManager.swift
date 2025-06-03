@@ -8,127 +8,157 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
-struct ServiceStopTaskTemplate:Identifiable, Codable,Equatable, Hashable{
-    var id:String
-    var description:String
-}
 
-struct ServiceStopTask:Identifiable, Codable,Equatable, Hashable{
-    var id:String
-    var description:String
-    var date:Date
-    var finished:Bool
-}
 
 struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
-    var id :String
-    var typeId: String
-    var customerName : String
-    var customerId : String
-    var address: Address
-    var dateCreated : Date?
-    var serviceDate : Date?
-    var duration: Int
-    var rate : Int?
-    var tech: String?
-    var techId: String?
-    var recurringServiceStopId: String
-    var description: String
-    var serviceLocationId:String
-    var type: String
-    var typeImage: String
-    var jobId: String
-    var jobName: String?
-    var finished : Bool
-    var skipped: Bool
-    var invoiced: Bool
-    var checkList:[ServiceStopTask]
-    var includeReadings: Bool
-    var includeDosages: Bool
+    var id : String = "comp_ss_" + UUID().uuidString
+    var internalId : String
+    var companyId : String
+    var companyName : String
+    var customerId : String //Seen
+    var customerName : String //Seen
+    var address: Address //Seenv
     
+    var dateCreated : Date //Seen
+    var serviceDate : Date //Seen
+    var startTime : Date? //Seen
+    var endTime : Date? //Seen
+    var duration : Int //Minutes
+    var estimatedDuration : Int //Minutes
+    
+    var tech : String
+    var techId : String
+    
+    var recurringServiceStopId : String //Seen
+    var description : String //Seen
+    var serviceLocationId : String //Seen
+    
+    var typeId : String
+    var type : String //Recurring Service Stop, Job, Start Up?
+    var typeImage : String //
+    
+    var jobId : String //Seen
+    var jobName : String? //Seen
+    
+    var operationStatus : ServiceStopOperationStatus
+    var billingStatus : ServiceStopBillingStatus
+    
+    var includeReadings : Bool //Seen
+    var includeDosages : Bool //Seen
+    let otherCompany : Bool
+    let laborContractId : String //Actually Optional
+    let contractedCompanyId : String //Actually Optional
+
+    var photoUrls:[DripDropStoredImage]?
+    
+    let mainCompanyId : String? //Actually Optional
+    let isInvoiced : Bool
     init(
         id: String,
-        typeId :String,
-        customerName :String,
-        customerId :String,
-        address: Address,
-        dateCreated :Date,
-        serviceDate :Date,
-        duration :Int,
-        rate :Int? = nil,
-        tech :String? = nil,
-        techId :String? = nil,
-        recurringServiceStopId :String,
-        description :String,
-        serviceLocationId :String,
-        type :String,
-        typeImage:String,
-        jobId :String,
-        jobName :String? = nil,
-        finished :Bool,
-        skipped :Bool,
-        invoiced :Bool,
-        checkList :[ServiceStopTask],
+        internalId: String,
+        companyId : String,
+        companyName : String,
+        customerId : String,
+        customerName : String,
+        address : Address,
+        dateCreated : Date,
+        serviceDate : Date,
+        startTime : Date? = nil,
+        endTime : Date? = nil,
+        duration :  Int,
+        estimatedDuration :  Int,
+        tech : String,
+        techId : String,
+        recurringServiceStopId : String,
+        description : String,
+        serviceLocationId : String,
+        typeId : String,
+        type : String,
+        typeImage : String,
+        jobId : String,
+        jobName : String? = nil,
+        operationStatus :ServiceStopOperationStatus,
+        billingStatus: ServiceStopBillingStatus,
         includeReadings :Bool,
-        includeDosages :Bool
+        includeDosages :Bool,
+        otherCompany :Bool,
+        laborContractId :String,
+        contractedCompanyId :String,
+        photoUrls : [DripDropStoredImage]? = nil,
+        mainCompanyId :String? = nil,
+        isInvoiced :Bool
 
     ){
         
         self.id = id
-        self.typeId = typeId
-        self.customerName = customerName
+        self.internalId = internalId
+        self.companyId = companyId
+        self.companyName = companyName
         self.customerId = customerId
+        self.customerName = customerName
         self.address = address
         self.dateCreated = dateCreated
         self.serviceDate = serviceDate
+        self.startTime = startTime
+        self.endTime = endTime
         self.duration = duration
-        self.rate = rate
+        self.estimatedDuration = estimatedDuration
         self.tech = tech
         self.techId = techId
         self.recurringServiceStopId = recurringServiceStopId
         self.description = description
         self.serviceLocationId = serviceLocationId
+        self.typeId = typeId
         self.type = type
         self.typeImage = typeImage
         self.jobId = jobId
         self.jobName = jobName
-
-        self.finished = finished
-        self.skipped = skipped
-        self.invoiced = invoiced
-        self.checkList = checkList
+        self.operationStatus = operationStatus
+        self.billingStatus = billingStatus
         self.includeReadings = includeReadings
         self.includeDosages = includeDosages
-
+        self.otherCompany = otherCompany
+        self.laborContractId = laborContractId
+        self.contractedCompanyId = contractedCompanyId
+        self.photoUrls = photoUrls
+        self.mainCompanyId = mainCompanyId
+        self.isInvoiced = isInvoiced
     }
     
         enum CodingKeys:String, CodingKey {
             case id = "id"
-            case typeId = "typeId"
-            case customerName = "customerName"
+            case internalId = "internalId"
+            case companyId = "companyId"
+            case companyName = "companyName"
             case customerId = "customerId"
+            case customerName = "customerName"
             case address = "address"
             case dateCreated = "dateCreated"
             case serviceDate = "serviceDate"
+            case startTime = "startTime"
+            case endTime = "endTime"
             case duration = "duration"
-            case rate = "rate"
+            case estimatedDuration = "estimatedDuration"
             case tech = "tech"
             case techId = "techId"
             case recurringServiceStopId = "recurringServiceStopId"
             case description = "description"
             case serviceLocationId = "serviceLocationId"
+            case typeId = "typeId"
             case type = "type"
             case typeImage = "typeImage"
             case jobId = "jobId"
             case jobName = "jobName"
-
-            case finished = "finished"
-            case skipped = "skipped"
-            case invoiced = "invoiced"
-            case checkList = "checkList"
+            case operationStatus = "operationStatus"
+            case billingStatus = "billingStatus"
             case includeReadings = "includeReadings"
             case includeDosages = "includeDosages"
-
+            case otherCompany = "otherCompany"
+            case laborContractId = "laborContractId"
+            case contractedCompanyId = "contractedCompanyId"
+            case photoUrls = "photoUrls"
+            case mainCompanyId = "mainCompanyId"
+            case isInvoiced = "isInvoiced"
         }
     static func == (lhs: ServiceStop, rhs: ServiceStop) -> Bool {
         return lhs.id == rhs.id &&
@@ -137,11 +167,20 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         lhs.techId == rhs.techId &&
         lhs.serviceLocationId == rhs.serviceLocationId &&
         lhs.serviceDate == rhs.serviceDate
-
-
     }
 
 }
+
+struct ServiceStopTaskTemplate:Identifiable, Codable,Equatable, Hashable{
+    var id:String
+    var description:String
+}
+
+//Keep This One
+
+
+
+
 enum serviceStopScreen: String,Identifiable,Hashable,CaseIterable{
      case info
     case waterDetails
@@ -150,6 +189,7 @@ enum serviceStopScreen: String,Identifiable,Hashable,CaseIterable{
     case photoSelection
     case recap
     case locationStartUp
+    case checkList
 
     var id: String {
         return self.rawValue
@@ -175,9 +215,12 @@ enum serviceStopScreen: String,Identifiable,Hashable,CaseIterable{
 
         case .locationStartUp:
             return "Start Up"
+        case .checkList:
+            return "Check List"
         }
     }
 }
+/*
 protocol ServiceStopManagerProtocol {
 
     func uploadServiceStop(companyId:String,serviceStop : ServiceStop) async throws
@@ -249,13 +292,7 @@ protocol ServiceStopManagerProtocol {
 
 }
 final class MockServiceStopManager:ServiceStopManagerProtocol {
-    let mockServiceStops:[ServiceStop] = [
-        ///Make for Each Customer on 7 days prior and 7 days in the future.
-        ServiceStop(id: UUID().uuidString, typeId: "Estimate", customerName: "Kellie Lewis", customerId: "", address: Address(streetAddress: "3300 W Camelback Rd", city: "Phoeniz", state: "Az", zip: "85017", latitude: 33.30389, longitude: -112.07432), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "list.bullet.clipboard", jobId: "", finished: true, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-        ServiceStop(id: UUID().uuidString, typeId: "Weekly Cleaning", customerName: "Diane Greenwood", customerId: "", address: Address(streetAddress: "300 Soden Dr", city: "Oregon", state: "WI", zip: "53575", latitude: 42.929076, longitude: -89.381327), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "bubbles.and.sparkles.fill", jobId: "", finished: false, skipped: true, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-        ServiceStop(id: UUID().uuidString, typeId: "Weekly Cleaning", customerName: "Nathan Corrnet", customerId: "", address: Address(streetAddress: "2101 Epcot Resorts Blvd", city: "Orlando", state: "FL", zip: "32830", latitude: 28.374580, longitude: -81.559631), dateCreated: Date(), serviceDate: Date(), duration: 120, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "bubbles.and.sparkles.fill", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-        ServiceStop(id: UUID().uuidString, typeId: "Repair", customerName: "Laurie Boggiers", customerId: "", address: Address(streetAddress: "6160 Broadmoor Dr", city: "La Mesa", state: "Ca", zip: "91942", latitude:  32.790065, longitude: -116.992345), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "wrench.adjustable.fill", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-    ]
+    let mockServiceStops:[ServiceStop] = []
     private var serviceStopListener: ListenerRegistration? = nil
 
     func uploadServiceStop(companyId: String, serviceStop: ServiceStop) async throws {
@@ -402,6 +439,7 @@ final class MockServiceStopManager:ServiceStopManagerProtocol {
     
     
 }
+
 final class ServiceStopManager:ServiceStopManagerProtocol {
     
     static let shared = ServiceStopManager()
@@ -409,11 +447,11 @@ final class ServiceStopManager:ServiceStopManagerProtocol {
     private let db = Firestore.firestore()
     
     
-    //    private let serviceStopCollection = Firestore.firestore().collection("companies/\(loadCurrentUser().companyId)/serviceStops")
+    //DEVELOPER THESE ARE DUPLICATES
     private func serviceStopCollection(companyId:String) -> CollectionReference{
         Firestore.firestore().collection("companies/\(companyId)/serviceStops")
     }
-    
+ 
     private func serviceStopDocument(serviceStopId:String,companyId:String)-> DocumentReference{
         
         serviceStopCollection(companyId: companyId).document(serviceStopId)
@@ -424,6 +462,7 @@ final class ServiceStopManager:ServiceStopManagerProtocol {
     
     func uploadServiceStop(companyId:String,serviceStop : ServiceStop) async throws {
         try serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).setData(from:serviceStop, merge: false)
+  
     }
     //----------------------------------------------------
     //                    Update
@@ -950,5 +989,5 @@ final class ServiceStopManager:ServiceStopManagerProtocol {
         
     }
 }
-
+*/
 

@@ -18,12 +18,12 @@ struct ServiceStopCardViewSmall: View{
                 VStack(spacing: 0){
                     HStack{
                         Circle()
-                            .fill(serviceStop.finished ? Color.poolGreen : Color.yellow)
+                            .fill(serviceStop.operationStatus == .finished ? Color.poolGreen : Color.yellow)
                             .frame(width: 50,height:50)
                             .overlay{
                                 Image(systemName: serviceStop.typeImage)
                                     .resizable()
-                                    .frame(width: 40, height: 40)
+                                    .frame(width: 30, height: 30)
                             }
                         Spacer()
                         VStack{
@@ -35,14 +35,11 @@ struct ServiceStopCardViewSmall: View{
                                     .font(.footnote)
                                 
                             }
-                            
-                            Text("$ " + String(serviceStop.rate ?? 0))
-                                .font(.footnote)
                         }
                     }
                     HStack{
                         Spacer()
-                        Text("Tech: \(serviceStop.tech ?? "0")")
+                        Text("Tech: \(serviceStop.tech)")
                             .font(.footnote)
                     }
                 }

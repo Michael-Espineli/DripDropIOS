@@ -16,6 +16,6 @@ struct RateSheetDetailView: View {
 
 struct RateSheetDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        RateSheetDetailView(rateSheet: RateSheet(id: "", templateId: "", rate: 0, dateImplemented: Date(), status: .active))
+        RateSheetDetailView(rateSheet: RateSheet(id: "", templateName: "", templateId: "", rate: 0, dateImplemented: Date(), status: .active, laborType: .hour))
     }
 }

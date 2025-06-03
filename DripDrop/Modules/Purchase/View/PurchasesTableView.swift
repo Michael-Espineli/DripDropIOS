@@ -4,11 +4,15 @@
 //
 //  Created by Michael Espineli on 8/2/23.
 //
-
+/*
 import SwiftUI
 
 struct purchasesTableView: View{
-    @StateObject private var purchaseVM = PurchasesViewModel()
+    init(dataService:any ProductionDataServiceProtocol){
+        _purchaseVM = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
+
+    }
+    @StateObject var purchaseVM : PurchasesViewModel
     @StateObject private var receiptViewModel = ReceiptViewModel()
     @StateObject private var settingsViewModel = SettingsViewModel()
     @EnvironmentObject var masterDataManager : MasterDataManager
@@ -136,13 +140,6 @@ struct purchasesTableView: View{
 
                 }
                 HStack{
-                    Text("Search")
-                    TextField(
-                        "Search Term",
-                        text: $searchTerm
-                    )
-                    .cornerRadius(5)
-
                     Button(action: {
                         if searchTerm == "" {
                             purchasedItems = purchaseVM.purchasedItems
@@ -153,7 +150,18 @@ struct purchasesTableView: View{
                     }, label: {
                         Image(systemName: "magnifyingglass")
                     })
+                    TextField(
+                        "Search Term",
+                        text: $searchTerm
+                    )
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
                 Table(of:PurchasedItem.self ,selection:$selection, sortOrder: $sortOrder){
                     TableColumn("Date"){
                         Text(dayMonth(date:$0.date))
@@ -385,3 +393,4 @@ struct purchasesTableView: View{
     }
     
 }
+*/

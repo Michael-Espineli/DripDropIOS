@@ -5,7 +5,7 @@
 //  Created by Michael Espineli on 1/21/24.
 //
 
-
+//#if os(ios)
 import SwiftUI
 import UIKit
 import MapKit
@@ -41,11 +41,41 @@ struct RouteOverViewAllMapView: UIViewControllerRepresentable {
 
 class AllMapViewController: UIViewController {
     // 1
-  
-    
     var routeData : Route?
     var serviceStopDict : [String:[ServiceStop]] = [:]
-    var selectedStop : ServiceStop = ServiceStop(id: "", typeId: "", customerName: "", customerId: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), dateCreated: Date(), serviceDate: Date(), duration: 0, recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: false, includeDosages: false)
+    var selectedStop : ServiceStop = ServiceStop(
+        id: "", 
+        internalId: "",
+        companyId: "",
+        companyName: "",
+        customerId: "",
+        customerName: "",
+        address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+        dateCreated: Date(),
+        serviceDate: Date(),
+        startTime: Date(),
+        endTime: Date(),
+        duration: 0,
+        estimatedDuration: 0,
+        tech: "",
+        techId: "",
+        recurringServiceStopId: "",
+        description: "",
+        serviceLocationId: "",
+        typeId: "",
+        type: "",
+        typeImage: "",
+        jobId: "",
+        jobName: "",
+        operationStatus: .notFinished,
+        billingStatus: .notInvoiced,
+        includeReadings: true,
+        includeDosages: true,
+        otherCompany: false,
+        laborContractId: "",
+        contractedCompanyId: "",
+        isInvoiced: false
+    )
     var routeOverlay : MKOverlay?
     var routeOverlay2 : MKOverlay?
     var zoomRange : MKMapView.CameraZoomRange?
@@ -184,13 +214,7 @@ class AllMapViewController: UIViewController {
                 for pin in dict.value {
                     
                     let defaultPin = MKPointAnnotation()
-                    switch pin.finished {
-                    case true:
-                        defaultPin.title = "Finished"
-                    case false:
-                        defaultPin.title = "Not Finished"
-                        
-                    }
+                    defaultPin.title = pin.operationStatus.rawValue
                     defaultPin.coordinate = CLLocationCoordinate2D(
                         latitude: (pin.address.latitude),
                         longitude: (pin.address.longitude)
@@ -265,3 +289,4 @@ extension AllMapViewController : MKMapViewDelegate {
         return renderer
     }
 }
+//#endif

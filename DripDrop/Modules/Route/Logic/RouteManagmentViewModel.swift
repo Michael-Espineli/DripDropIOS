@@ -65,20 +65,71 @@ final class RouteManagmentViewModel:ObservableObject{
         try await dataService.deleteRecurringRoute(companyId: companyId, recurringRouteId: recurringRoute.id)
         //Delete Reuccing Route
     }
-    func getRouteForRecurringStopDay(companyId:String,day:String,techId:String) async throws {
-        print(" - - Attemping to Get Recurring Route For Day \(day) and \(techId) ID: \(day)\(techId)")
-        let rss = try await dataService.getRecurringRouteByDayAndTech(companyId: companyId, day: day, techId: techId)
-        if rss.count != 0 {
-            print("Received \(rss.first!.tech) \(rss.first!.day)")
-            print("Count Is not Zero")
-            self.recurringRoute = rss.first!
+    func getRouteForRecurringStopDay(companyId:String,day:String,techId:String,techName:String) async throws {
+//        print("     Attempting to Get Recurring Route For Day \(day) and \(techId)")
+        let recurringRoutes = try await dataService.getRecurringRouteByDayAndTech(companyId: companyId, day: day, techId: techId)
+        
+        if recurringRoutes.count != 0 {
+            print("       Received \(recurringRoutes.first!.tech) \(recurringRoutes.first!.day)")
+            print("       Count Is not Zero")
+            self.recurringRoute = recurringRoutes.first!
         }
         
-        var recurringServiceStopsList:[RecurringServiceStop] = []
-            let stops = try await dataService.getRecurringServiceStopsByDayAndTech(companyId: companyId,techId: techId, day: day)
-            for stop in stops {
-                recurringServiceStopsList.append(stop)
+        //Check If there are any Reccuring Service Stops For this Day and Technician
+        let recurringServiceStopList = try await dataService.getRecurringServiceStopsByDayAndTech(companyId: companyId, techId: techId, day: day)
+        self.recurringServiceStops = recurringServiceStopList
+        if let recurringRoute = self.recurringRoute {
+            
+            if recurringServiceStopList.count == recurringRoute.order.count {
+                //The Recurring Route Exists and the amount of Recurring Service stops equals the amount of Recurring Route Order
+                self.recurringServiceStops = recurringServiceStopList
+                
+            } else {
+                
+                // Adds Recurring Service Stops to The Route, that arent already attached.
+                for recurringServiceStop in recurringServiceStopList {
+                    //Checks to see which of the recurring Service Stops are not already accounted for in the Recurring Route Order
+                    if !recurringRoute.order.contains(where: {$0.recurringServiceStopId == recurringServiceStop.id}){
+                        let newRecurringRouteOrder:recurringRouteOrder = recurringRouteOrder(
+                            id: UUID().uuidString,
+                            order: recurringRoute.order.count + 1,
+                            recurringServiceStopId: recurringServiceStop.id,
+                            customerId: recurringServiceStop.customerId,
+                            customerName: recurringServiceStop.customerName,
+                            locationId: recurringServiceStop.serviceLocationId
+                        )
+                        self.recurringRoute?.order.append(newRecurringRouteOrder)
+                        //Developer Add This To the Recurring Route Order
+                    }
+                }
             }
-        self.recurringServiceStops = recurringServiceStopsList
+        } else {
+            //There is not Recurring Route on this day.
+            
+            //Check if there is any Recurring Service Stops
+            if recurringServiceStopList.count != 0 {
+                var recurringRouteOrderList:[recurringRouteOrder] = []
+                for recurringServiceStop in recurringServiceStopList {
+                    let newRecurringRouteOrder:recurringRouteOrder = recurringRouteOrder(
+                        id: UUID().uuidString,
+                        order: recurringRouteOrderList.count + 1,
+                        recurringServiceStopId: recurringServiceStop.id,
+                        customerId: recurringServiceStop.customerId,
+                        customerName: recurringServiceStop.customerName,
+                        locationId: recurringServiceStop.serviceLocationId
+                    )
+                    recurringRouteOrderList.append(newRecurringRouteOrder)
+                }
+                self.recurringRoute = RecurringRoute(
+                    id: UUID().uuidString,
+                    tech: techName,
+                    techId: techId,
+                    day: day,
+                    order: recurringRouteOrderList,
+                    description: ""
+                )
+                //DEVELOPER ADD THIS TO BACK END
+            }
+        }
     }
 }

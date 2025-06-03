@@ -67,7 +67,7 @@ struct PurchasesCardView: View{
                     }
                 }
             }
-//            .background(item.invoiced ? Color.green.opacity(0.5) : Color.red.opacity(0.5))
+            .modifier(ListButtonModifier())
         }
     }
 }

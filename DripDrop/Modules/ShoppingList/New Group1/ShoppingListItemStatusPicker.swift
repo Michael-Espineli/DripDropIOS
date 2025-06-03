@@ -8,11 +8,39 @@
 import SwiftUI
 
 struct ShoppingListItemStatusPicker: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @EnvironmentObject var dataService : ProductionDataService
+    
+    init(dataService:any ProductionDataServiceProtocol,status:Binding<ShoppingListStatus>){
+        self._status = status
+    }
+    @Binding var status : ShoppingListStatus
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            VStack{
+                ForEach(ShoppingListStatus.allCases){ datum in
+                    Button(action: {
+                        status = datum
+                        dismiss()
+                    }, label: {
+                        HStack{
+                            Spacer()
+                                Text("\(datum.rawValue)")
+                            Spacer()
+                        }
+                        .padding(.horizontal,8)
+                        .foregroundColor(Color.basicFontText)
+                    })
+                    Divider()
+                }
+            }
+        }
     }
 }
 
-#Preview {
-    ShoppingListItemStatusPicker()
-}
+//#Preview {
+//    ShoppingListItemStatusPicker()
+//}

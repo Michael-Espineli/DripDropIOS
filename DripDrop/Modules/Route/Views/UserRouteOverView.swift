@@ -23,29 +23,33 @@ struct UserRouteOverView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                
-                timeChanger
-  
+                dateSelector
+                Divider()
+                Text("Internal Routes")
+                Rectangle()
+                    .frame(height: 1)
                     ScrollView(showsIndicators: false){
                         ForEach(VM.activeRoutes){ activeRoute in
                             //                UserRouteCardView(tech: tech, activeRoute: ActiveRoute(id: "", name: "", date: Date(), serviceStopsIds: [], startTime: Date(), techId: "", durationSeconds: 420, distanceMiles: 69))
                             //                    .padding()
                             UserRouteCardView2(activeRoute: activeRoute)
-                                .padding(.horizontal,16)
+                                .padding(.horizontal,8)
                         }
                     }
+                Text("External Routes")
+                Rectangle()
+                    .frame(height: 1)
+                Text("create way to keep up to date on routes that are contracted out.")
                 if isLoading {
                     ProgressView()
                     Spacer()
                 }
             }
         }
-
         .toolbar{
-                    NavigationLink(value: Route.routes(dataService:dataService), label: {
-                    Text("Build")
-                })
-
+                NavigationLink(value: Route.routes(dataService:dataService), label: {
+                Text("Build")
+            })
         }
         .toolbar{
             if VM.activeRoutes.count != 0 {
@@ -77,7 +81,7 @@ struct UserRouteOverView: View {
             }
         }
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 isLoading = true
                 do {
                     try await VM.initalLoad(companyId: company.id,  date: selectedDate)
@@ -90,7 +94,7 @@ struct UserRouteOverView: View {
         }
         .onChange(of: selectedDate, perform: { date in
             Task{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     isLoading = true
                     do {
                         try await VM.initalLoad(companyId: company.id,  date: selectedDate)
@@ -106,7 +110,7 @@ struct UserRouteOverView: View {
 }
 
 extension UserRouteOverView {
-    var timeChanger: some View {
+    var dateSelector: some View {
         HStack{
             Button(action: {
                 let calendar = Calendar.current

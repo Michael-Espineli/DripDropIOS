@@ -52,12 +52,19 @@ enum PurchaseSortOptions:String, CaseIterable{
 }
 @MainActor
 final class PurchasesViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                             Variables
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     @Published private(set) var purchasedItems: [PurchasedItem] = []
     @Published private(set) var purchasedItem2: [PurchasedItem] = []
     @Published private(set) var dataBaseItemList: [DataBaseItem] = []
+    
+    @Published private(set) var techList: [CompanyUser] = []
+
     @Published private(set) var techNames: [String] = []
     @Published private(set) var purchaseCount : Int? = nil
     @Published private(set) var purchasedItemsSummary: [String:Double] = [:]
@@ -104,74 +111,71 @@ final class PurchasesViewModel:ObservableObject{
 
         switch filter {
         case .all:
-            self.purchasedItems = try await PurchasedItemsManager.shared.getAllpurchasedItemsByPrice(companyId: companyId, descending: true,techIds: techIds)
-
+            self.purchasedItems = try await dataService.getAllpurchasedItemsByPrice(companyId: companyId, start: startDate, end: endDate,  descending: true,techIds: techIds)
             switch sort {
             case .priceLow:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByDateSortByPrice(companyId: companyId, start: startDate, end: endDate, priceHigh: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByDateSortByPrice(companyId: companyId, start: startDate, end: endDate, priceHigh: false,techIds: techIds)
             case .priceHigh:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByDateSortByPrice(companyId: companyId, start: startDate, end: endDate, priceHigh: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByDateSortByPrice(companyId: companyId, start: startDate, end: endDate, priceHigh: true,techIds: techIds)
             case .purchaseDateFirst:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByDateSortByDate(companyId: companyId, start: startDate, end: endDate, dateHigh: true,techIds: techIds)
+                self.purchasedItems = try await dataService.getAllpurchasedItemsByPrice(companyId: companyId, start: startDate, end: endDate,  descending: true,techIds: techIds)
             case .purchaseDateLast:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByDateSortByDate(companyId: companyId, start: startDate, end: endDate, dateHigh: false,techIds: techIds)
+                self.purchasedItems = try await dataService.getAllpurchasedItemsByPrice(companyId: companyId, start: startDate, end: endDate,  descending: false,techIds: techIds)
             }
         case .billable:
             switch sort {
             case .priceHigh:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByPrice(companyId: companyId, billable: true, price: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: true, price: false,techIds: techIds)
             case .priceLow:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByPrice(companyId: companyId, billable: true, price: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: true, price: true,techIds: techIds)
             case .purchaseDateFirst:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByDate(companyId: companyId, billable: true, date: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByDate(companyId: companyId, start: startDate, end: endDate, billable: true, date: true,techIds: techIds)
             case .purchaseDateLast:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByDate(companyId: companyId, billable: true, date: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByDate(companyId: companyId, start: startDate, end: endDate, billable: true, date: false,techIds: techIds)
 
             }
         case .nonBillable:
             switch sort {
             case .priceHigh:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByPrice(companyId: companyId, billable: false, price: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: false, price: false,techIds: techIds)
             case .priceLow:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByPrice(companyId: companyId, billable: false, price: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: false, price: true,techIds: techIds)
             case .purchaseDateFirst:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByDate(companyId: companyId, billable: false, date: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByDate(companyId: companyId, start: startDate, end: endDate, billable: false, date: true,techIds: techIds)
             case .purchaseDateLast:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndSortByDate(companyId: companyId, billable: false, date: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndSortByDate(companyId: companyId, start: startDate, end: endDate, billable: false, date: false,techIds: techIds)
             }
         case .billableAndNotInvoiced:
             switch sort {
                 
             case .priceHigh:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, billable: true, invoiced: false, price: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: true, invoiced: false, price: false,techIds: techIds)
             case .priceLow:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, billable: true, invoiced: false, price: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: true, invoiced: false, price: true,techIds: techIds)
             case .purchaseDateFirst:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, billable: true, invoiced: false, date: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, start: startDate, end: endDate,  billable: true, invoiced: false, date: true,techIds: techIds)
             case .purchaseDateLast:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, billable: true, invoiced: false, date: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, start: startDate, end: endDate,  billable: true, invoiced: false, date: false,techIds: techIds)
 
             }
         case .billableAndInvoiced:
             switch sort {
             case .priceHigh:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, billable: true, invoiced: true, price: false,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: true, invoiced: true, price: false,techIds: techIds)
             case .priceLow:
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, billable: true, invoiced: true, price: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByPrice(companyId: companyId, start: startDate, end: endDate, billable: true, invoiced: true, price: true,techIds: techIds)
             case .purchaseDateFirst:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, billable: true, invoiced: true, date: true,techIds: techIds)
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, start: startDate, end: endDate,  billable: true, invoiced: true, date: true,techIds: techIds)
             case .purchaseDateLast:
 
-                self.purchasedItems = try await PurchasedItemsManager.shared.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, billable: true, invoiced: true, date: false,techIds: techIds)
-
-
+                self.purchasedItems = try await dataService.GetPurchasesByBillableAndInvoicedAndSortByDate(companyId: companyId, start: startDate, end: endDate,  billable: true, invoiced: true, date: false,techIds: techIds)
             }
         }
  
@@ -186,6 +190,11 @@ final class PurchasesViewModel:ObservableObject{
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                             Get Recordings
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    func getTechs(companyId:String) async throws {
+        self.techList = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
+    }
+    
     func getPurchasesCountForTechId(companyId:String,userId:String) async throws {
         self.purchaseCount = try await PurchasedItemsManager.shared.getPurchasesCountForTechId(companyId: companyId, userId: userId)
     }

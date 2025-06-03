@@ -12,7 +12,7 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 import SwiftUI
 import CoreLocation
-import MapKit
+import MapKit	
 import Darwin
 struct recurringRouteOrder:Identifiable,Equatable, Codable,Hashable{
     var id:String
@@ -27,6 +27,7 @@ struct ServiceStopOrder:Identifiable,Equatable, Codable,Hashable{
     var order:Int
     var serviceStopId:String
 }
+/*
 final class RecurringRouteManager {
     
     static let shared = RecurringRouteManager()
@@ -55,79 +56,10 @@ final class RecurringRouteManager {
         print("Upload Route >> \(recurringRoute.id)")
         try recurringRouteCollection(companyId: companyId).document(recurringRoute.id).setData(from:recurringRoute, merge: false)
     }
-    
-    func modifyRecurringServiceStopToNew(
-        companyId:String,
-        recurringServiceStop:RecurringServiceStop,
-        customFrequencyType:String,
-        CustomFrequency:String,
-        daysOfWeek:[String],
-        oldRss:RecurringServiceStop,
-        old:[ServiceStop]
-    ) async throws ->(String?){
-        //Developer Create Functions that will Update Service Stops based on NEw RSS Rather than Create New ones
+    */
 
-        let calendar = Calendar.current
-        guard let startDate:Date = recurringServiceStop.startDate else {
-            return nil
-        }
-        guard let endDate:Date = recurringServiceStop.endDate else {
-            return nil
-        }
-        let noEndDate:Bool = recurringServiceStop.noEndDate
-        //initial Creating of the Route
-        let recurringServiceStopCount = try await SettingsManager.shared.getRecurringServiceStopCount(companyId: companyId)
-        sleep(1)
-        let recurringServiceStopId = "R" + String(recurringServiceStopCount)
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-
-        var pushRecurring = recurringServiceStop
-        pushRecurring.id = recurringServiceStopId
-        switch recurringServiceStop.frequency{
-        case "Daily":
-            print("Making Stops Daily")
-         //   try await helpCreateDailyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-            //Daily
-        case "WeekDay":
-            //skipped weekends
-            print("Making Stops on Week days")
-//            try await helpCreateWeekDayRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-
-        case "Weekly":
-            //weekly
-            print("Making Stops Weekly")
-            try await helpModifyWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate,RSS: oldRss,serviceStopsList: old)
-
-        case "Bi-Weekly":
-            //weekly
-            print("Making Stops Bi Weekly")
-//            try await helpCreateBiWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-
-            
-        case "Monthly":
-            //Monthly
-            print("Making Stops Monthly")
-//            try await helpCreateMonthlyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-
-            
-        case "Custom":
-            print("Making Custom Stops")
-
-//            helpCreateCustomRecurringRoute()
-
-        default:
-            print("Error in add New Recurring Service Stop - Recurring Route Manager")
-        }
-        print("Finished Creating Recurring Route and Returning recurringServiceStopId >>\(recurringServiceStopId)")
-        return recurringServiceStopId
-    }
+ 
+/*
     func addNewRecurringServiceStop(companyId:String,recurringServiceStop:RecurringServiceStop,
                                     customFrequencyType:String,
                                     CustomFrequency:String,
@@ -1106,3 +1038,4 @@ var pushRecurring = recurringServiceStop
     //----------------------------------------------------
     
 }
+*/

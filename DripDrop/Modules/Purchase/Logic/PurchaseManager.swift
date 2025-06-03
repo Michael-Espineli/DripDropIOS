@@ -234,13 +234,20 @@ final class PurchasedItemsManager {
         let endDate = Date()
         let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate)!
 
-        return try await PurchaseItemCollection(companyId: companyId)
-            .whereField("date", isGreaterThan: startDate)
-            .whereField("date", isLessThan: endDate)
-            .order(by: "date", descending: descending)
-            .whereField("techId", in: techIds)
-            .getDocuments(as:PurchasedItem.self)
-        
+        if techIds.isEmpty {
+            return try await PurchaseItemCollection(companyId: companyId)
+                .whereField("date", isGreaterThan: startDate)
+                .whereField("date", isLessThan: endDate)
+                .order(by: "date", descending: descending)
+                .getDocuments(as:PurchasedItem.self)
+        } else {
+            return try await PurchaseItemCollection(companyId: companyId)
+                .whereField("date", isGreaterThan: startDate)
+                .whereField("date", isLessThan: endDate)
+                .order(by: "date", descending: descending)
+                .whereField("techId", in: techIds)
+                .getDocuments(as:PurchasedItem.self)
+        }
     }
     func getAllpurchasedItemsByTech(companyId: String,techId: String) async throws -> [PurchasedItem]{
         

@@ -10,32 +10,66 @@
 
 
 import SwiftUI
+@MainActor
+final class EditLineItemFromReceiptViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    @Published private(set) var stores:[Vender] = []
 
+    @Published var name:String = ""
+    @Published var rate:String = ""
+    @Published var store:Vender = Vender(id: "",address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0))
+
+    @Published var storeId:String = ""
+    @Published var storeName:String = ""
+
+    @Published var category:DataBaseItemCategory = .misc
+    @Published var subCategory:DataBaseItemSubCategory = .misc
+    @Published var UOM:UnitOfMeasurment = .unit
+    @Published var description:String = ""
+    @Published var dateUpdated:Date = Date()
+    @Published var billable:Bool = true
+    @Published var sku:String = ""
+    @Published var color:String = ""
+    @Published var size:String = ""
+    
+    func onLoad(companyId:String) async throws {
+        self.stores = try await dataService.getAllStores(companyId: companyId)
+    }
+    func updateDataBaseItem(companyId:String) async throws{
+        guard let rateDouble = Double(rate) else {
+            throw FireBasePublish.unableToPublish
+        }
+        let dataBaseItem = DataBaseItem(
+            id: "comp_sett_db_" + UUID().uuidString,
+            name: name,
+            rate: rateDouble,
+            storeName: storeName,
+            venderId: storeId,
+            category: category,
+            subCategory: subCategory,
+            description: description,
+            dateUpdated: dateUpdated,
+            sku: sku,
+            billable: billable,
+            color: color,
+            size: size,
+            UOM: UOM
+        )
+        //DEVELOPER Update DataBase Item
+        //Clear
+    }
+}
 struct EditLineItemFromReceiptView: View {
-    @StateObject private var viewModel = ReceiptDatabaseViewModel()
-    @StateObject private var storeViewModel = StoreViewModel()
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @StateObject private var VM : EditLineItemFromReceiptViewModel
 
-    @Binding var showSignInView:Bool
-    @State var user:DBUser
-    @State var company:Company
-
- 
-    @State var name:String = ""
-    @State var rate:String = ""
-    @State var store:Vender = Vender(id: "",address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0))
-
-    @State var storeId:String = ""
-    @State var storeName:String = ""
-
-    @State var category:DataBaseItemCategory = .misc
-    @State var subCategory:DataBaseItemSubCategory = .misc
-    @State var UOM:UnitOfMeasurment = .unit
-
-    @State var description:String = ""
-    @State var dateUpdated:Date = Date()
-    @State var billable:Bool = true
-
-    @State var sku:String = ""
+    init(dataService: any ProductionDataServiceProtocol,newItemView:Binding<Bool>){
+        _VM = StateObject(wrappedValue: EditLineItemFromReceiptViewModel(dataService: dataService))
+        self._newItemView = newItemView
+    }
     @Binding var newItemView:Bool
     
     var body: some View {
@@ -53,34 +87,34 @@ struct EditLineItemFromReceiptView: View {
                     Text("name")
                     TextField(
                         "012345",
-                        text: $name
+                        text: $VM.name
                     ).padding()
 
                     Text("sku")
                     TextField(
                         "sku",
-                        text: $sku
+                        text: $VM.sku
                     ).padding()
                 }
                 HStack{
                     Text("rate")
                     TextField(
                         "rate",
-                        text: $rate
+                        text: $VM.rate
                     ).padding()
-                    Toggle("Billable", isOn: $billable)
+                    Toggle("Billable", isOn: $VM.billable)
 
                 }
-                Picker("", selection: $category) {
-                    Text("Pick tech").tag("Tech")
+                Picker("", selection: $VM.category) {
+                    Text("Pick Category").tag("Tech")
                     ForEach(DataBaseItemCategory.allCases,id:\.self) { UOM in
                         Text(UOM.rawValue).tag(UOM)
                     }
                 }
                 HStack{
 
-                    Picker("", selection: $subCategory) {
-                        Text("Pick tech").tag("Tech")
+                    Picker("", selection: $VM.subCategory) {
+                        Text("Pick Sub-Category").tag("Sub")
                         ForEach(DataBaseItemSubCategory.allCases,id:\.self) { UOM in
                             Text(UOM.rawValue).tag(UOM)
                         }
@@ -88,19 +122,19 @@ struct EditLineItemFromReceiptView: View {
                 }
                 HStack{
                     Text("UOM: ")
-                    Picker("", selection: $UOM) {
-                        Text("Pick tech").tag("Tech")
+                    Picker("", selection: $VM.UOM) {
+                        Text("Pick UOM").tag("Tech")
                         ForEach(UnitOfMeasurment.allCases,id:\.self) { UOM in
                             Text(UOM.rawValue).tag(UOM)
                         }
                     }
                 }
                 HStack{
-                    Text("Store")
+                    Text("Store: ")
                     
-                    Picker("", selection: $store) {
+                    Picker("", selection: $VM.store) {
                         Text("Pick store")
-                        ForEach(storeViewModel.stores) {
+                        ForEach(VM.stores) {
                             
                             Text($0.name ?? "no Name").tag($0)
                             
@@ -108,72 +142,56 @@ struct EditLineItemFromReceiptView: View {
                     }
                 }
                 HStack{
-                    Text("description")
+                    Text("Size: ")
                     TextField(
-                        "description",
-                        text: $description
+                        "Size...",
+                        text: $VM.size
+                    ).padding()
+                }
+                HStack{
+                    Text("Color: ")
+                    TextField(
+                        "Color...",
+                        text: $VM.color
+                    ).padding()
+                }
+                HStack{
+                    Text("Description: ")
+                    TextField(
+                        "Description...",
+                        text: $VM.description
                     ).padding()
                 }
  
                 
                 Button(action: {
-                    
-                    let pushName = name
-                    let pushRate = rate
-                    let pushStoreId = store.id
-                    let pushStoreName = store.name
-                    
-                    let pushCategory = category
-                    let pushDescription = description
-                    let pushDateUpdated = dateUpdated
-                    let pushSku = sku
-                    let pushBillable = billable
-                    
-                    
                     Task{
-                        //DEVELOPER
-                        try? await viewModel.addDataBaseItem(
-                            companyId: company.id,
-                            dataBaseItem: DataBaseItem(
-                                id: UUID().uuidString,
-                                name: pushName,
-                                rate: Double(
-                                    pushRate
-                                ) ?? 0.00,
-                                storeName: pushStoreName ?? "Unknown",
-                                venderId: pushStoreId,
-                                category: pushCategory,
-                                subCategory: subCategory,
-                                description: pushDescription,
-                                dateUpdated: pushDateUpdated,
-                                sku: pushSku,
-                                billable: pushBillable,
-                                color: "",
-                                size: "",
-                                UOM: UOM
-                            )
-                        )
-                        newItemView = false
+                        if let currentCompany = masterDataManager.currentCompany {
+                            do {
+                                try await VM.updateDataBaseItem(companyId: currentCompany.id)
+                            } catch {
+                                print(error)
+                            }
+                        }
                     }
-                    
-                    name = ""
-                    rate = ""
-                    storeId = ""
-                    category = .misc
-                    description = ""
-                    dateUpdated = Date()
-                    sku = ""
-                    
                 },
                        label: {
                     Text("Submit")
+                        .modifier(SubmitButtonModifier())
+
                 })
                 
             }
         }
         .padding(.init(top: 40, leading: 20, bottom: 0, trailing: 0))
         .task{
-            try? await storeViewModel.getAllStores(companyId:company.id)
+            if let currentCompany = masterDataManager.currentCompany {
+                do {
+                    try await VM.onLoad(companyId: currentCompany.id)
+                } catch {
+                    print(error)
+                }
+            }
         }
         .navigationTitle("Add Item To DataBase")
     }

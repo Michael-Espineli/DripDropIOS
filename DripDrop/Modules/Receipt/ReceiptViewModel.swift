@@ -42,7 +42,7 @@ final class ReceiptViewModel:ObservableObject{
                      print("Unable to read the file")
         }
     }
-    func addNewReceipt(companyId:String,receipt:Receipt,date:Date,lineItems:[LineItem]) async throws{
+    func addNewReceipt(companyId:String,receipt:Receipt,date:Date,lineItems:[LineItem],documentUrls:[String]) async throws{
         print(receipt)
         //Adds all the line items inside of the receipt which are of type purchased item. to their own dayabase
         var totalCost:Double = 0
@@ -103,9 +103,67 @@ final class ReceiptViewModel:ObservableObject{
             )
             try await DatabaseManager.shared.updateDataBaseItemtimesPurchased(companyId: companyId, dataBaseItem: newItem)
             try await PurchasedItemsManager.shared.uploadPurchaseItem(companyId: companyId, purchaseItem: pushItem)
-
         }
         totalCostAfterTax = totalCost * 1.085
+//            guard let data = try? Data(contentsOf: documentUrl, options: .alwaysMapped) else {
+//                print("Error Getting File")
+//                return
+//            }
+        var pdfUrlList:[String] = []
+        for documentUrl in documentUrls {
+                if documentUrl.contains(".pdf"){
+                    //FOR PDF
+                    //FOR ALL OTHER IMAGES
+                    if let url = URL(string: documentUrl) {
+                        guard url.startAccessingSecurityScopedResource() else { // Notice this line right here
+                            return
+                        }
+                    
+                        let data  = try Data(contentsOf:url)
+                        print("Converted Photo Picker Item to Data")
+                        let (path,name) = try await ReceiptFileManager.shared.savePdf(companyId: companyId, receipt: receipt, data: data)
+                        print("SUCCESS 2")
+                        print("Path \(path)")
+                        print("Name \(name)")
+                        let url  = try await ReceiptFileManager.shared.getUrlForReceipt(path: path)
+                        pdfUrlList.append(url.absoluteString)
+                    }
+                } else if documentUrl.contains(".jpeg"){
+                    //FOR JPEG
+                    //FOR ALL OTHER IMAGES
+                    if let url = URL(string: documentUrl) {
+                        guard url.startAccessingSecurityScopedResource() else { // Notice this line right here
+                            return
+                        }
+                    
+                        let data  = try Data(contentsOf:url)
+                        print("Converted Photo Picker Item to Data")
+                        let (path,name) = try await ReceiptFileManager.shared.saveImage(companyId: companyId, receipt: receipt, data: data)
+                        print("SUCCESS 2")
+                        print("Path \(path)")
+                        print("Name \(name)")
+                        let url  = try await ReceiptFileManager.shared.getUrlForReceipt(path: path)
+                        pdfUrlList.append(url.absoluteString)
+                    }
+                } else {
+                    //FOR ALL OTHER IMAGES
+                    if let url = URL(string: documentUrl) {
+                        guard url.startAccessingSecurityScopedResource() else { // Notice this line right here
+                            return
+                        }
+                    
+                        let data  = try Data(contentsOf:url)
+                        print("Converted Photo Picker Item to Data")
+                        let (path,name) = try await ReceiptFileManager.shared.saveImage(companyId: companyId, receipt: receipt, data: data)
+                        print("SUCCESS 2")
+                        print("Path \(path)")
+                        print("Name \(name)")
+                        let url  = try await ReceiptFileManager.shared.getUrlForReceipt(path: path)
+                        pdfUrlList.append(url.absoluteString)
+                    }
+                }
+        }
+
         try await ReceiptManager.shared.uploadReceipt(companyId: companyId,receiptItem: Receipt(id: receipt.id,
                                                                                      invoiceNum: receipt.invoiceNum,
                                                                                      date: receipt.date,
@@ -116,7 +174,8 @@ final class ReceiptViewModel:ObservableObject{
                                                                                      purchasedItemIds: listOfPurchasedItems,
                                                                                      numberOfItems: totalNumberOfItems,
                                                                                      cost: totalCost,
-                                                                                     costAfterTax: totalCostAfterTax)
+                                                                                     costAfterTax: totalCostAfterTax,
+                                                                                    pdfUrlList: pdfUrlList)
         )
         print("Uploaded Receipt as line Items")
     }

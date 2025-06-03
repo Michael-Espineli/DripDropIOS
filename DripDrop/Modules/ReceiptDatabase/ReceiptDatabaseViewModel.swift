@@ -8,8 +8,13 @@
 import Foundation
 import CoreXLSX
 import FirebaseFirestore
+
 @MainActor
 final class ReceiptDatabaseViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                             Variables
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -76,14 +81,14 @@ final class ReceiptDatabaseViewModel:ObservableObject{
         do {
             let text2 = try String(contentsOf: fileURL, encoding: .utf8)
             print("Successfully Read")
-            let customerList = try await CustomerManager.shared.convertCustomerCSVToStruct(contents: text2)
+            let customerList = try await dataService.convertCustomerCSVToStruct(contents: text2)
             print("Successfully Converted")
             self.totalCount = customerList.count
             //This will Fail if there are any double spaced columns
             for customer in customerList {
                 let fullName = customer.firstName + " " + customer.lastName
 
-                try await CustomerManager.shared.uploadCSVCustomerToFireStore(companyId: companyId, customer: customer)
+                try await dataService.uploadCSVCustomerToFireStore(companyId: companyId, customer: customer)
                 //remove before Production
                 customerCount = customerCount + 1
                 self.loadingText = fullName

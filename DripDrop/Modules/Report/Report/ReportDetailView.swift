@@ -14,7 +14,6 @@ enum induvidualReportDisplay:String, CaseIterable {
     case customer = "Customer"
     case company = "Company"
     case user = "User"
-    
 }
 struct ReportDetailView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
@@ -65,6 +64,10 @@ struct ReportDetailView: View {
                                     pnlReport
                                 case .job:
                                     jobReport
+                                case .vehical:
+                                    Text("Vehicals")
+                                case .tax:
+                                    Text("Tax")
                                 }
                             }
                         }
@@ -86,6 +89,8 @@ struct ReportDetailView: View {
                 masterDataManager.selectedReport = .purchases
             }
         })
+        .navigationTitle(masterDataManager.selectedReport?.title ?? "Report")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar{
             ToolbarItem{
                 Button(action: {
@@ -93,7 +98,7 @@ struct ReportDetailView: View {
                         
                         isLoading = true
                         
-                        if let report = masterDataManager.selectedReport, let company = masterDataManager.selectedCompany {
+                        if let report = masterDataManager.selectedReport, let company = masterDataManager.currentCompany {
                             switch  report {
                             case .chemicals:
                                 do {
@@ -130,6 +135,10 @@ struct ReportDetailView: View {
                                 }
                             case .job:
                                 print("Generate job Report")
+                            case .vehical:
+                                print("Generate vehical Report")
+                            case .tax:
+                                print("Generate tax Report")
                             }
                         }
                         isLoading = false
@@ -797,47 +806,46 @@ extension ReportDetailView {
                                 Text("Total: \(value, format: .currency(code: "USD").precision(.fractionLength(2)))")
                             }
                         }
-                        
+                        Rectangle()
+                            .frame(height: 4)
+                        ForEach(Array(reportVM.purchaseCompanySummaryCategoryReport.keys),id:\.self) { category in
+                            HStack{
+                                Text(category.rawValue)
+                                    .font(.headline)
+                                Spacer()
+                                Text("\(reportVM.purchaseCompanySummaryCategoryReport[category] ?? 0, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                            }
+                            Rectangle()
+                                .frame(height: 1)
+                        }
                     case .customer:
                         Text("Customer Summary")
                     case .user:
                         ForEach(Array(reportVM.purchaseSummaryReport.keys)){ reportUser in
                             Rectangle()
                                 .frame(height: 4)
+                                .padding(.top,8)
                             HStack{
                                 Text("\(reportUser.userName)")
                                     .font(.headline)
                                 Spacer()
                                 if let value = reportVM.purchaseSummaryReport[reportUser]{
-                                    Text("Total: \(value, format: .currency(code: "USD").precision(.fractionLength(0)))")
+                                    Text("Total: \(value, format: .currency(code: "USD").precision(.fractionLength(2)))")
                                 }
                             }
                             Rectangle()
                                 .frame(height: 1)
-                            VStack{
-                                HStack{
-                                    Text("Chemicals")
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("\(69, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                    
-                                }
-                                HStack{
-                                    Text("Parts")
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("\(69, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                    
-                                }
-                                HStack{
-                                    Text("Equipment")
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("\(69, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                    
+                            if let array = reportVM.purchaseSummaryCategoryReport[reportUser] {
+                                ForEach(Array(array.keys),id:\.self){ category in
+                                    HStack{
+                                        Text(category.rawValue)
+                                            .font(.headline)
+                                        Spacer()
+                                        Text("\(array[category] ?? 0, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                    }
+                                    Divider()
                                 }
                             }
-                            .padding(.leading,16)
                         }
                     }
                 }
@@ -887,58 +895,56 @@ extension ReportDetailView {
     var pnlReportDetail: some View {
         VStack{
             if let report = masterDataManager.selectedReport{
-                
                 ScrollView{
                     VStack{
                         HStack{
                             Text("\(report.title)")
                         }
                         Divider()
-                        Group{
-                            if reportType == .detail{
-                                switch pnlType {
-                                case .customer:
-                                    Text("Customer")
-                                case .user:
-                                    Text("User")
-                                case .company:
-                                    Text("Company")
-                                    
-                                }
-                            } else {
-                                switch order {
-                                case .customer:
-                                    Group{
-                                        Text(String(reportVM.pnlSummaryReport.count))
-                                        if reportVM.pnlSummaryReport.count == 0 {
-                                            Text("NO Results")
-                                        } else {
-                                            VStack{
-                                                ForEach(Array(reportVM.pnlSummaryReport.keys)){ key in
-                                                    
-                                                    Text("Customer: \(key.firstName) \(key.lastName)")
-                                                        .font(.title)
-                                                    if let contracts = reportVM.pnlSummaryReport[key] {
-                                                        ForEach(Array(contracts.keys)){ data in
-                                                            HStack{
-                                                                Text("\(data.customerName) - ")
-                                                                Text("\((contracts[data] ?? 0), format: .currency(code: "USD").precision(.fractionLength(0)))")
-                                                                    .foregroundColor((contracts[data] ?? 0) > 0 ? Color.green : Color.red)
-                                                                Spacer()
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                case .user:
-                                    Text("User")
-                                case .company:
-                                    Text("Company")
-                                }
-                            }
-                        }
+//                        Group{
+//                            if reportType == .detail{
+//                                switch pnlType {
+//                                    case .customer:
+//                                        Text("Customer")
+//                                    case .user:
+//                                        Text("User")
+//                                    case .company:
+//                                        Text("Company")
+//                                }
+//                            } else {
+//                                switch order {
+//                                case .customer:
+//                                    Group{
+//                                        Text(String(reportVM.pnlSummaryReport.count))
+//                                        if reportVM.pnlSummaryReport.count == 0 {
+//                                            Text("NO Results")
+//                                        } else {
+//                                            VStack{
+//                                                ForEach(Array(reportVM.pnlSummaryReport.keys)){ key in
+//                                                    
+//                                                    Text("Customer: \(key.firstName) \(key.lastName)")
+//                                                        .font(.title)
+//                                                    if let contracts = reportVM.pnlSummaryReport[key] {
+//                                                        ForEach(Array(contracts.keys)){ data in
+//                                                            HStack{
+//                                                                Text("\(data.customerName) - ")
+//                                                                Text("\((contracts[data] ?? 0), format: .currency(code: "USD").precision(.fractionLength(0)))")
+//                                                                    .foregroundColor((contracts[data] ?? 0) > 0 ? Color.green : Color.red)
+//                                                                Spacer()
+//                                                            }
+//                                                        }
+//                                                    }
+//                                                }
+//                                            }
+//                                        }
+//                                    }
+//                                case .user:
+//                                    Text("User")
+//                                case .company:
+//                                    Text("Company")
+//                                }
+//                            }
+//                        }
                     }
                 }
             } else {

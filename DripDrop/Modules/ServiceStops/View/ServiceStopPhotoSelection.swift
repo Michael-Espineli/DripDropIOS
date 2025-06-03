@@ -84,7 +84,7 @@ extension ServiceStopPhotoSelection {
                                     .foregroundColor(Color.blue)
                             }
                         })
-                        .fullScreenCover(isPresented: $showCamera) {
+                        .sheet(isPresented: $showCamera) {
                                       accessCameraView(selectedImage: self.$selectedImage)
                                   }
                     }

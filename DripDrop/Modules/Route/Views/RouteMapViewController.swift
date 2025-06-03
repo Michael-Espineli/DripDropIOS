@@ -51,10 +51,7 @@ struct RouteMapViewController: View {
                                         }
                                     }, label: {
                                         Text("Back")
-                                            .padding(5)
-                                            .foregroundColor(Color.basicFontText)
-                                            .background(Color.accentColor)
-                                            .cornerRadius(5)
+                                            .modifier(AddButtonModifier())
                                     })
 //                                    .disabled(serviceStops.first == selectedServiceStop)
                                     Spacer()
@@ -80,10 +77,8 @@ struct RouteMapViewController: View {
                                         }
                                     }, label: {
                                         Text("Next")
-                                            .padding(5)
-                                            .foregroundColor(Color.basicFontText)
-                                            .background(Color.accentColor)
-                                            .cornerRadius(5)
+                                            .modifier(AddButtonModifier())
+
                                     })
 //                                    .disabled(serviceStops.last == selectedServiceStop)
                                 }
@@ -95,17 +90,18 @@ struct RouteMapViewController: View {
                                     Text("Status: ")
                                     let status = "Traveling"//statusList.randomElement() ?? ""
                                     Text("\(status)")
-                                        .padding(5)
+                                        .padding(4)
+                                        .padding(.horizontal,4)
                                         .background(getColor(status: status))
-                                        .cornerRadius(5)
+                                        .cornerRadius(4)
                                     Text("Duration: \(displayNumberAsMinAndHourAndSecond(seconds:69420))")
                                     Spacer()
                                 }
                             }
-                            .padding(10)
+                            .padding(8)
                             .background(Color.gray)
-                            .cornerRadius(10)
-                            .padding(10)
+                            .cornerRadius(8)
+                            .padding(8)
                         }
                     }
                 }

@@ -23,10 +23,11 @@ final class ShoppingListViewModel:ObservableObject{
 
     //Arrays
     @Published private(set) var allShoppingItems:[ShoppingListItem] = []
-    
     @Published private(set) var personalShoppingItems:[ShoppingListItem] = []
     @Published private(set) var customerShoppingItems:[ShoppingListItem] = []
     @Published private(set) var jobShoppingItems:[Job:[ShoppingListItem]] = [:]
+    
+    @Published private(set) var companyUsers:[CompanyUser] = []
 
     //Create
     func addNewShoppingListItemWithValidation(companyId:String,datePurchased:Date?,category:ShoppingListCategory,subCategory:ShoppingListSubCategory,purchaserId:String,itemId:String?,quantiy:String?,description:String,jobId:String?,customerId:String?,customerName:String?,purchaserName:String?,name:String) async throws{
@@ -43,6 +44,22 @@ final class ShoppingListViewModel:ObservableObject{
     func getAllShoppingListItemsByCompany(companyId:String) async throws {
         self.allShoppingItems = try await dataService.getAllShoppingListItemsByCompany(companyId: companyId)
 
+    }
+    func getAllShoppingListItemsByCompanyForJobs(companyId:String) async throws {
+        print("")
+        print("ShoppingListViewModel getAllShoppingListItemsByCompanyForJobs")
+        let jobList = try await dataService.getAllWorkOrdersFinished(companyId: companyId, finished: false)
+        print("Got \(jobList.count) Jobs")
+        var jobShoppingListDict : [Job:[ShoppingListItem]] = [:]
+        for job in jobList {
+            let shoppingListItems = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: job.id, category: "Job")
+            if !shoppingListItems.isEmpty {
+                jobShoppingListDict[job] = shoppingListItems
+            }
+            print("For \(job.id) Got \(shoppingListItems.count) Items")
+            self.jobShoppingItems = jobShoppingListDict
+        }
+        self.jobShoppingItems = jobShoppingListDict
     }
     func getAllShoppingListItemsByUser(companyId:String,userId:String) async throws {
         self.allShoppingItems = try await dataService.getAllShoppingListItemsByUser(companyId: companyId, userId: userId)
@@ -63,16 +80,22 @@ final class ShoppingListViewModel:ObservableObject{
         let jobList = try await dataService.getAllJobsByUser(companyId: companyId, userId: userId)
         var jobShoppingListDict : [Job:[ShoppingListItem]] = [:]
         for job in jobList {
-            let shoppingListItems = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: userId, category: "Job")
+            let shoppingListItems = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: job.id, category: "Job")
             if !shoppingListItems.isEmpty {
                 jobShoppingListDict[job] = shoppingListItems
             }
         }
         self.jobShoppingItems = jobShoppingListDict
     }
+    func getCompanyUsers(companyId:String) async throws {
+        self.companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: CompanyUserStatus.active.rawValue)
+    }
     //Update
     func updateShoppingListItem(companyId:String) async throws {
         
+    }
+    func updateShoppingListDescription(companyId:String,shoppingListItemId:String,newDescription:String) async throws {
+        try await dataService.updateShoppingListDescription(companyId: companyId, shoppingListItemId: shoppingListItemId, newDescription: newDescription)
     }
     //Delete
     func deleteShoppingListItem(companyId:String,shoppingListItemId:String) async throws {

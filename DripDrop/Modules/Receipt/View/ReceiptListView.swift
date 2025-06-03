@@ -12,10 +12,11 @@ struct ReceiptListView: View{
     //VMS
     @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject private var receiptVM = ReceiptViewModel()
-    @StateObject private var settingsViewModel = SettingsViewModel()
+    @StateObject private var settingsViewModel = SettingsViewModel(dataService: ProductionDataService())
+    @EnvironmentObject var dataService:ProductionDataService
     //Variables Received
     @State var showSignInView:Bool = false
-    @State var user:DBUser = DBUser(id: "",exp: 0)
+    @State var user:DBUser = DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
     //Variables
     @State private var showEditView : Bool = false
     @State private var showDetailsView : Bool = false
@@ -41,22 +42,22 @@ struct ReceiptListView: View{
     @State var receiptList:[Receipt] = []
     var body: some View{
         ZStack{
+            Color.listColor.ignoresSafeArea()
             VStack{
                 ScrollView(showsIndicators: false){
                     ForEach(receiptList) { item in
-                        NavigationLink(destination: {
-                            ZStack{
-                                
-#if os(iOS)
-                                ReceiptDetailView(receipt: item, showSignInView: $showSignInView, user: user, company: masterDataManager.selectedCompany!)
-#endif
-#if os(macOS)
-                                MacReceiptDetailView(receipt: item, showSignInView: $showSignInView, user: user)
-#endif
-                            }
-                        }, label: {
-                            ReceiptCardViewSmall(receipt: item)
-                        })
+                        if UIDevice.isIPhone {
+                            NavigationLink(value: Route.receipt(receipt: item, dataService: dataService), label: {
+                                ReceiptCardViewSmall(receipt: item)
+                            })
+                        } else {
+                            Button(action: {
+                                masterDataManager.selectedReceipt = item
+                            }, label: {
+                                ReceiptCardViewSmall(receipt: item)
+                            })
+                        }
+                        Divider()
                     }
                 }
                 .textSelection(.enabled)
@@ -65,19 +66,20 @@ struct ReceiptListView: View{
             VStack{
                 Spacer()
                 HStack{
+                    Spacer()
                     VStack{
-                        Button(action: {
-                            showAddNew.toggle()
-                        }, label: {
-                            Image(systemName: "plus.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(Color.green)
-                        })
-                        .sheet(isPresented: $showAddNew, content: {
-                            AddNewReceipt()
-                        })
-                        .padding()
+                        if UIDevice.isIPhone {
+                            Button(action: {
+                                showAddNew.toggle()
+                            }, label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .resizable()
+                                    .frame(width: 50, height: 50)
+                                    .foregroundColor(Color.green)
+                            })
+                            .padding(8)
+
+                        }
                         Button(action: {
                             showSearch.toggle()
                         }, label: {
@@ -87,24 +89,31 @@ struct ReceiptListView: View{
                                 .foregroundColor(Color.blue)
                             
                         })
-                        .padding()
+                        .padding(8)
                         
                     }
-                    Spacer()
+                    .sheet(isPresented: $showAddNew, content: {
+                        AddNewReceipt(dataService: dataService)
+                    })
                 }
                 if showSearch {
                     HStack{
                         TextField(
-                            "CustomerName",
+                            "Customer Name",
                             text: $searchTerm
                         )
-                        .padding()
-                        .background(Color.basicFontText.opacity(0.5))
-                        .cornerRadius(10)
+                        Button(action: {
+                            searchTerm = ""
+                        }, label: {
+                            Image(systemName: "xmark")
+                        })
                     }
+                    .modifier(SearchTextFieldModifier())
+                    .padding(8)
                 }
             }
         }
+        .navigationTitle("Receipts")
         .onChange(of: searchTerm){ term in
             if searchTerm == "" {
                 receiptList = receiptVM.receiptItems
@@ -114,8 +123,23 @@ struct ReceiptListView: View{
             }
         }
         .task{
-            try? await receiptVM.getAllReceipts(companyId: masterDataManager.selectedCompany!.id)
-            receiptList = receiptVM.receiptItems
+            if let company = masterDataManager.currentCompany {
+                do {
+                    try await receiptVM.getAllReceipts(companyId: company.id)
+                    receiptList = receiptVM.receiptItems
+                } catch {
+                    print(error)
+                }
+            }
+        }
+        .toolbar{
+            ToolbarItem(content: {
+                Button(action: {
+                    showAddNew.toggle()
+                }, label: {
+                    Text("Add")
+                })
+            })
         }
     }
     

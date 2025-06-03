@@ -14,14 +14,8 @@ import SwiftUI
 import CoreLocation
 import MapKit
 import Darwin
-enum ActiveRouteStatus:String,Codable,CaseIterable {
-    case inProgress = "In Progress"
-    case didNotStart = "Did Not Start"
-    case traveling = "Traveling"
-    case onBreak = "Break"
-    case finished = "Finished"
 
-}
+/*
 struct ActiveRoute:Identifiable, Codable,Equatable{
     
     let id :String
@@ -126,7 +120,8 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
         lhs.techId == rhs.techId
     }
 }
-
+*/
+/*
 final class ActiveRouteManager {
 
     static let shared = ActiveRouteManager()
@@ -135,17 +130,7 @@ final class ActiveRouteManager {
     //----------------------------------------------------
     //                    COLLECTIONS
     //----------------------------------------------------
-    private func routeCollection(companyId:String) -> CollectionReference{
-        Firestore.firestore().collection("companies/\(companyId)/activeRoutes")
-    }
 
-
-    //----------------------------------------------------
-    //                    DOCUMENTS
-    //----------------------------------------------------
-    private func routeDoc(companyId:String,activeRouteId:String)-> DocumentReference{
-        routeCollection(companyId: companyId).document(activeRouteId)
-    }
     //----------------------------------------------------
     //------------------  CRUD  --------------------------
     //----------------------------------------------------
@@ -160,11 +145,7 @@ final class ActiveRouteManager {
     //----------------------------------------------------
     //                    READ
     //----------------------------------------------------
-    func getSingleRoute(companyId: String,activeRouteId:String) async throws -> ActiveRoute {
-
-        return try await routeDoc(companyId: companyId, activeRouteId: activeRouteId)
-            .getDocument(as: ActiveRoute.self)
-    }
+  
     func getAllActiveRoutes(companyId: String,param:String) async throws -> [ActiveRoute] {
 
         return try await  routeCollection(companyId: companyId)
@@ -228,16 +209,16 @@ final class ActiveRouteManager {
     }
     func updateActiveRouteStartTime(companyId:String,activeRouteId:String,startTime:Date){
         let ref = routeDoc(companyId: companyId, activeRouteId: activeRouteId)
-             ref.updateData([
-                "startTime": startTime
-                
-                ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
+         ref.updateData([
+            "startTime": startTime
+            ]) { err in
+            if let err = err {
+                print("Error updating document: \(err)")
+            } else {
+                print("Document successfully updated")
             }
+        }
+        print("Updated Start Time \(activeRouteId) - \(fullDateAndTime(date: startTime))")
     }
     func updateActiveRouteEndTime(companyId:String,activeRouteId:String,endTime:Date){
         let ref = routeDoc(companyId: companyId, activeRouteId: activeRouteId)
@@ -356,3 +337,4 @@ final class ActiveRouteManager {
     //----------------------------------------------------
 
 }
+*/

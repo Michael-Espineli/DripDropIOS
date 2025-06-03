@@ -8,11 +8,22 @@
 import SwiftUI
 
 struct ExternalRouteCardView: View {
+    let externalRoute : ExternalRoute
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack{
+            HStack{
+                Text(" \(externalRoute.techName)")
+                Spacer()
+                Text("\(externalRoute.day)")
+            }
+            Text("\(externalRoute.companyName)")
+        }
+        .modifier(ListButtonModifier())
+        .fontDesign(.monospaced)
+        .foregroundColor(Color.poolWhite)
     }
 }
 
-#Preview {
-    ExternalRouteCardView()
-}
+//#Preview {
+//    ExternalRouteCardView()
+//}

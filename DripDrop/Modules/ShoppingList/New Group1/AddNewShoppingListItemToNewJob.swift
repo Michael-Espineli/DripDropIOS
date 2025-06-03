@@ -7,56 +7,15 @@
 
 
  import SwiftUI
-@MainActor
-final class AddNewShoppingListItemToJobViewModel:ObservableObject{
-    private var dataService:any ProductionDataServiceProtocol
-    init(dataService:any ProductionDataServiceProtocol){
-        self.dataService = dataService
-    }
-    
-    @Published  var job: Job? = nil
-    @Published private(set) var dataBaseItems: [DataBaseItem] = []
-    @Published private(set) var dataBaseItemsFiltered: [DataBaseItem] = []
 
-    func onLoad(companyId:String,jobId:String) async throws {
-        self.job = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
-        self.dataBaseItems = try await DatabaseManager.shared.getAllDataBaseItems(companyId: companyId)
-    }
-    func addNewShoppingListItemWithValidation(companyId:String,datePurchased:Date?,category:ShoppingListCategory,subCategory:ShoppingListSubCategory,purchaserId:String,itemId:String?,quantiy:String?,description:String,jobId:String?,customerId:String?,customerName:String?,purchaserName:String?,name:String) async throws{
+struct AddNewShoppingListItemToNewJob: View {
 
-        let id = UUID().uuidString
-        //, Purchased, Installed
-        let shoppingListItem = ShoppingListItem(id: id, category: category, subCategory: subCategory, status: .needToPurchase, purchaserId: purchaserId, purchaserName: purchaserName ?? "", genericItemId: "", name: name, description: description, datePurchased: datePurchased, quantiy: quantiy, jobId: jobId,customerId: customerId ?? "",customerName: customerName ?? "")
-        try await dataService.addNewShoppingListItem(companyId: companyId, shoppingListItem: shoppingListItem)
-    }
-    func filterDataBaseList(filterTerm:String,items:[DataBaseItem]) {
-        //very facncy Search Bar
-        
-        var dataBaseItemsFiltered:[DataBaseItem] = []
-        for item in items {
-            let rateString = String(item.rate)
-
-            if item.sku.lowercased().contains(
-                filterTerm.lowercased()
-            ) || item.name.lowercased().contains(
-                filterTerm.lowercased()
-            ) || rateString.lowercased().contains(
-                filterTerm.lowercased()
-            ) || item.description.lowercased().contains(
-                filterTerm.lowercased()
-            ) {
-                dataBaseItemsFiltered.append(item)
-            }
-        }
-
-        self.dataBaseItemsFiltered = dataBaseItemsFiltered
-    }
-}
- struct AddNewShoppingListItemToJob: View {
-
-     init(dataService:any ProductionDataServiceProtocol,job:Job){
+    init(dataService:any ProductionDataServiceProtocol,jobId:String,customerId:String,customerName:String, shoppingList:Binding<[ShoppingListItem]>){
          _VM = StateObject(wrappedValue: AddNewShoppingListItemToJobViewModel(dataService: dataService))
-         _job = State(wrappedValue: job)
+         _jobId = State(wrappedValue: jobId)
+        _customerId = State(wrappedValue: customerId)
+        _customerName = State(wrappedValue: customerName)
+        self._shoppingList = shoppingList
      }
      @Environment(\.dismiss) private var dismiss
      @EnvironmentObject var masterDataManager : MasterDataManager
@@ -64,8 +23,12 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
      
      @StateObject var VM : AddNewShoppingListItemToJobViewModel
 
-     @State var job:Job
-
+     @State var jobId: String
+     @Binding var shoppingList: [ShoppingListItem]
+    
+     @State var customerId:String
+     @State var customerName:String
+    
      @State var description:String = ""
      @State var type:ShoppingListCategory = .job
      @State var itemType:ShoppingListSubCategory = .dataBase
@@ -122,7 +85,7 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
          .task {
              if let company = masterDataManager.currentCompany {
                  do {
-                     try await VM.onLoad(companyId: company.id, jobId: job.id)
+                     try await VM.onLoad(companyId: company.id, jobId: jobId)
                  } catch {
                      print("Error - [AddNewShoppingListItemToJob]")
                      print(error)
@@ -149,13 +112,13 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
      }
  }
 
- extension AddNewShoppingListItemToJob{
+ extension AddNewShoppingListItemToNewJob{
      var form: some View {
          VStack{
              HStack{
                  Text(fullDate(date: Date()))
                  Spacer()
-                 Text(job.internalId)
+//                 Text(job.internalId)
              }
              CreateShoppingListItemView(
                  itemType: $itemType,
@@ -174,7 +137,7 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
                      
                      do {
                          let purchaserName = (user.firstName) + " " + (user.lastName)
-                         try await VM.addNewShoppingListItemWithValidation(companyId: company.id,
+                         let item = try await VM.addNewShoppingListItemToList(companyId: company.id,
                                                                                    datePurchased: Date(),
                                                                                    category: type,
                                                                                    subCategory: itemType,
@@ -182,11 +145,12 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
                                                                                    itemId: dataBaseItem.id,
                                                                                    quantiy: quantity,
                                                                                    description: description,
-                                                                                   jobId: job.id,
-                                                                                   customerId: job.customerId,
-                                                                                   customerName: job.customerName,
+                                                                                   jobId: jobId,
+                                                                                   customerId: customerId,
+                                                                                   customerName: customerName,
                                                                                    purchaserName: purchaserName,
                                                                                    name: name)
+                         shoppingList.append(item)
                          print("Sucessfully Added")
                          dismiss()
                          

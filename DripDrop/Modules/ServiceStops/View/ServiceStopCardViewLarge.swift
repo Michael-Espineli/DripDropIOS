@@ -27,10 +27,6 @@ struct ServiceStopCardViewLarge: View{
                                     .font(.footnote)
                                 
                             }
-                            
-                            Text("$ " + String(serviceStop.rate ?? 0))
-                                .font(.footnote)
-                            
                         }
                             Spacer()
                             Image(systemName: "chevron.compact.right")

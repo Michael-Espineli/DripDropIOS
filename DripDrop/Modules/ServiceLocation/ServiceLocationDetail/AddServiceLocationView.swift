@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct AddServiceLocationView: View {
+    @Environment(\.dismiss) private var dismiss
+
     @EnvironmentObject private var masterDataManager : MasterDataManager
     @State var customer:Customer
     @StateObject var serviceLocationVM : ServiceLocationViewModel
@@ -61,6 +63,8 @@ struct AddServiceLocationView: View {
     @State var length2:String = ""
     @State var depth2:String = ""
     @State var width2:String = ""
+    @State var lastFilled:Date = Date()
+
     //Alerts
     
     @State var preText:Bool = false
@@ -261,8 +265,8 @@ extension AddServiceLocationView {
                     .cornerRadius(3)
                 }
             }
-            yardInfo
             
+//            yardInfo
             
         }
     }
@@ -316,6 +320,8 @@ extension AddServiceLocationView {
                                         Text("Pebble").tag("Pebble")
                                     }
                                 }
+                                DatePicker("Last Filled", selection: $lastFilled, in: ...Date(),displayedComponents: .date)
+
                                 HStack{
                                     Text("Shape")
                                     Spacer()
@@ -425,7 +431,7 @@ extension AddServiceLocationView {
                                 Button(action: {
                                     var id = UUID().uuidString
                                     //Add Some Valid Dation
-                                    let bodyOfWater = BodyOfWater(id: id, name: name, gallons: gallons, material: material, customerId: customer.id, serviceLocationId: serviceLocationId, notes: notes, shape: shape, length: [length1,length2], depth: [depth1,depth2], width: [width1,width2])
+                                    let bodyOfWater = BodyOfWater(id: id, name: name, gallons: gallons, material: material, customerId: customer.id, serviceLocationId: serviceLocationId, notes: notes, shape: shape, length: [length1,length2], depth: [depth1,depth2], width: [width1,width2], lastFilled: lastFilled)
                                     bodyOfWaterList.append(bodyOfWater)
                                     id = UUID().uuidString
                                     
@@ -487,7 +493,7 @@ extension AddServiceLocationView {
             Button(action: {
                 Task{
                     do {
-                        guard let company = masterDataManager.selectedCompany else {
+                        guard let company = masterDataManager.currentCompany else {
                             return
                         }
                         try await serviceLocationVM.addNewCustomerServiceLocationWithValidation(
@@ -523,6 +529,7 @@ extension AddServiceLocationView {
                         alertMessage = "Successfully Updated"
                         print(alertMessage)
                         showAlert = true
+                        dismiss()
                     } catch ServiceLocationError.invalidCustomerId{
                         alertMessage = "Invalid Customer Selected"
                         print(alertMessage)
@@ -575,7 +582,11 @@ extension AddServiceLocationView {
                         alertMessage = "Invalid Time"
                         print(alertMessage)
                         showAlert = true
-                    }catch {
+                    } catch ServiceLocationError.bodyOfWaterListEmpty {
+                        alertMessage = "Empty Body Of Water List"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch {
                         alertMessage = "Invalid Something"
                         print(alertMessage)
                         showAlert = true
@@ -587,10 +598,8 @@ extension AddServiceLocationView {
                     Text("Submit")
                 }
                 .frame(maxWidth: .infinity)
-                    .padding(8)
-                    .background(Color.poolBlue)
-                    .foregroundColor(Color.white)
-                    .cornerRadius(8)
+                .modifier(SubmitButtonModifier())
+
             })
         }
     }

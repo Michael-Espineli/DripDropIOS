@@ -61,7 +61,7 @@ extension AddNewRateSheet {
     var button: some View {
         Button(action: {
             Task{
-                if let company = masterDataManager.selectedCompany, let companyUser = masterDataManager.companyUser{
+                if let company = masterDataManager.currentCompany, let companyUser = masterDataManager.companyUser{
                     do {
                         guard let rate = Double(rate) else {
                             print("failed to change rate into Double")
@@ -69,11 +69,13 @@ extension AddNewRateSheet {
                         }
                         try await companyUserVM.addCompanyUserRateSheet(companyId: company.id,
                                                                         companyUserId: companyUser.id,
-                                                                        rateSheet: RateSheet(id: UUID().uuidString,
+                                                                        rateSheet: RateSheet(id: UUID().uuidString, 
+                                                                                             templateName: template.name,
                                                                                              templateId: template.id,
                                                                                              rate: rate,
                                                                                              dateImplemented: startDate,
-                                                                                             status: .offered))
+                                                                                             status: .offered,
+                                                                                             laborType: .job))
                     } catch {
                         print(error)
                     }

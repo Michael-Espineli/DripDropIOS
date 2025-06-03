@@ -36,7 +36,7 @@ init(dataService:any ProductionDataServiceProtocol,activeRoute:[ActiveRoute]){
                 } else {
                     Picker("Type", selection: $selected) {
                         Text("List").tag("List")
-                        
+                        Text("Map").tag("Map")
                     }
                     .pickerStyle(.segmented)
                     if isLoading {
@@ -57,7 +57,7 @@ init(dataService:any ProductionDataServiceProtocol,activeRoute:[ActiveRoute]){
         }
         .navigationTitle("Over View")
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 isLoading = true
                 do{
                     try await serviceStopVM.getServiceStopByListFromActiveRoutes(companyId: company.id, activeRoutes: activeRoutes)
@@ -73,7 +73,7 @@ init(dataService:any ProductionDataServiceProtocol,activeRoute:[ActiveRoute]){
         }
         .onChange(of:masterDataManager.selectedActiveRoute, perform: { route in
             Task{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     
                     isLoading = true
                     do{

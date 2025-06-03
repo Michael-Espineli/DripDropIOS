@@ -115,13 +115,13 @@ final class PermissionViewModel:ObservableObject{
         ),
         PermissionModel(
             id: "6",
-            name: "VIEW INVENTORY",
+            name: "VIEW Settings",
             description: "",
             category: "Inventory"
         ),
         PermissionModel(
             id: "7",
-            name: "VIEW ADMIN PANEL",
+            name: "VIEW MANAGEMENT",
             description: "",
             category: "Administration"
         ),

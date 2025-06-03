@@ -562,11 +562,11 @@ struct AddNewServiceStop: View {
                                     ),
                                     phoneNumber: pushPhoneNumber,
                                     active: true,
-                                    rate: pushRate,
                                     company: pushCompany,
                                     displayAsCompany: pushDisplayAsCompany,
                                     hireDate:Date(),
-                                    billingNotes: ""
+                                    billingNotes: "",
+                                    linkedInviteId: UUID().uuidString
                                 ),
                                 serviceLocation: ServiceLocation(
                                     id: UUID().uuidString,
@@ -602,7 +602,7 @@ struct AddNewServiceStop: View {
                                     customerName: fullName,
                                     preText:preText
                                 ),
-                                companyId: masterDataManager.selectedCompany!.id
+                                companyId: masterDataManager.currentCompany!.id
                             )
                             showAlert = true
                             alertMessage = "Success"
@@ -631,6 +631,8 @@ struct AddNewServiceStop: View {
                 },
                        label: {
                     Text("Submit")
+                        .modifier(SubmitButtonModifier())
+
                 })
                 
             }

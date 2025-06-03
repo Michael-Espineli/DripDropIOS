@@ -17,6 +17,22 @@ struct PdfDetailView: View {
             .scaledToFill()
     }
 }
+struct PDFSnapshotView: View {
+    var pdfUrl:URL
+    var body: some View {
+        // some content here
+        PDFKitSnapShotView(url: pdfUrl)
+            .scaledToFill()
+    }
+}
+struct PDFDisplayPopUp: View {
+    var pdfUrl:URL
+    var body: some View {
+        // some content here
+        PDFKitView(url: pdfUrl)
+            .scaledToFill()
+    }
+}
 
 // Add this:
 struct PDFKitView: UIViewRepresentable {
@@ -31,6 +47,22 @@ struct PDFKitView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: PDFView, context: UIViewRepresentableContext<PDFKitView>) {
+        // TODO
+    }
+}
+struct PDFKitSnapShotView: UIViewRepresentable {
+    let url: URL // new variable to get the URL of the document
+
+    func makeUIView(context: UIViewRepresentableContext<PDFKitSnapShotView>) -> PDFView {
+        // Creating a new PDFVIew and adding a document to it
+        let pdfView = PDFView()
+        pdfView.document = PDFDocument(url: self.url)//DEVELOPER THIS SHOULD NOT BE CALLED ON the MAIN THREAD
+        pdfView.autoScales = true
+        return pdfView
+        
+    }
+    
+    func updateUIView(_ uiView: PDFView, context: UIViewRepresentableContext<PDFKitSnapShotView>) {
         // TODO
     }
 }

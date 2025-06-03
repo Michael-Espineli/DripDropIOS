@@ -8,7 +8,7 @@
 
 import UIKit
 
-struct DripDropImage: Identifiable, Codable {
+struct DripDropImage: Identifiable, Codable,Equatable {
     var id = UUID()
     var name: String
     
@@ -19,4 +19,13 @@ struct DripDropImage: Identifiable, Codable {
             return UIImage(systemName: "photo.fill")!
         }
     }
+    //Var Date Taken?
+    //var CCLocationCordinates?
+}
+struct DripDropStoredImage: Identifiable, Codable,Equatable, Hashable {
+    var id = UUID().uuidString
+    var description: String
+    var imageURL: String
+    //Var Date Taken?
+    //var CCLocationCordinates?
 }

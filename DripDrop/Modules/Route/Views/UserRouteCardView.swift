@@ -140,69 +140,19 @@ struct UserRouteCardView2: View {
     @State private var duration = 0
 
     var body: some View {
-        VStack{
-            HStack{
-                Text("\(activeRoute.techName)")
-                    .font(.headline)
-                Spacer()
-  
-                Text("\(weekDay(date:activeRoute.date))")
-            }
-            HStack{
-                Spacer()
-                Text("\(Measurement(value: activeRoute.distanceMiles, unit: UnitLength.kilometers).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale)))")
-                Spacer()
-            }
-            ProgressView("\(String(activeRoute.finishedStops)) / \(String(activeRoute.totalStops))", value: Double(activeRoute.finishedStops), total: Double(activeRoute.totalStops))
-            .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-            HStack{
-                
-                Text("Start: \(ThePoolApp.time(date: activeRoute.startTime))")
-                Spacer()
-                if let ending = activeRoute.endTime {
-                    Text("End: \(ThePoolApp.time(date:ending))")
-                } else {
-                    Text("Duration: \(displayNumberAsMinAndHourAndSecond(seconds:duration))")
-                }
-            }
-            HStack{
-                Text("Status: ")
-                let status = "Break"//statusList.randomElement() ?? ""
-                Text("\(activeRoute.status.rawValue )")
-                    .padding(5)
-                    .background(getColor(status: status))
-                    .cornerRadius(5)
-                Spacer()
-            }
-            HStack{
-                Spacer()
-                if UIDevice.isIPhone {
-
-                        NavigationLink(value: Route.routeOverview(route: activeRoute,dataService: dataService), label: {
-
-                        Text("See Detail")
-                            .foregroundColor(Color.basicFontText)
-                            .padding(5)
-                            .background(Color.accentColor)
-                            .cornerRadius(5)
-                    })
-           
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedActiveRoute = activeRoute
-                    }, label: {
-                        Text("See Detail")
-                            .foregroundColor(Color.basicFontText)
-                            .padding(5)
-                            .background(Color.accentColor)
-                            .cornerRadius(5)
-                    })
-                }
+        ZStack{
+            if UIDevice.isIPhone {
+                    NavigationLink(value: Route.routeOverview(route: activeRoute,dataService: dataService), label: {
+                        info
+                })
+            } else {
+                Button(action: {
+                    masterDataManager.selectedActiveRoute = activeRoute
+                }, label: {
+                    info
+                })
             }
         }
-        .padding(10)
-        .background(Color.gray)
-        .cornerRadius(10)
         .onReceive(timer) { time in
             if activeRoute.startTime != nil {
                 if duration > -1 {
@@ -236,6 +186,57 @@ struct UserRouteCardView2: View {
                     .cornerRadius(10)
             }
         }
+    }
+}
+extension UserRouteCardView2 {
+    var info: some View {
+        VStack{
+            HStack{
+                Text("\(activeRoute.techName)")
+                    .font(.headline)
+                Spacer()
+  
+                Text("\(weekDay(date:activeRoute.date))")
+            }
+            
+            ProgressView("\(String(activeRoute.finishedStops)) / \(String(activeRoute.totalStops))", value: Double(activeRoute.finishedStops), total: Double(activeRoute.totalStops))
+            .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
+            HStack{
+                
+//                Text("Start: \(DripDropApp.time(date: activeRoute.startTime))")
+                Text("Time")
+
+                Spacer()
+                if let ending = activeRoute.endTime {
+//                    Text("End: \(DripDropApp.time(date:ending))")
+                    Text("Time")
+
+                } else {
+                    Text("Duration: \(displayNumberAsMinAndHourAndSecond(seconds:duration))")
+                }
+            }
+            HStack{
+                Text("Distance")
+                Spacer()
+                Text("\(Measurement(value: activeRoute.distanceMiles, unit: UnitLength.miles).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale)))")
+                Spacer()
+            }
+            HStack{
+                Text("Status: ")
+                let status = "Break"//statusList.randomElement() ?? ""
+                Text("\(activeRoute.status.rawValue )")
+                    .padding(.horizontal,8)
+                    .padding(.vertical,4)
+                    .background(getColor(status: status))
+                    .cornerRadius(4)
+                    .foregroundColor(Color.white)
+                    .fontDesign(.monospaced)
+                Spacer()
+            }
+        }
+        .padding(8)
+        .background(Color.gray.opacity(0.75))
+        .cornerRadius(8)
     }
 }
 

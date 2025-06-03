@@ -26,7 +26,6 @@ struct Role:Identifiable,Codable,Equatable,Hashable{
         listOfUserIdsToManage: [String],
         color: String,
         description: String
-
     ){
         self.id = id
         self.name = name
@@ -35,6 +34,7 @@ struct Role:Identifiable,Codable,Equatable,Hashable{
         self.color = color
         self.description = description
     }
+    
     enum CodingKeys:String, CodingKey {
         case id = "id"
         case name = "name"
@@ -42,7 +42,6 @@ struct Role:Identifiable,Codable,Equatable,Hashable{
         case listOfUserIdsToManage = "listOfUserIdsToManage"
         case color = "color"
         case description = "description"
-
     }
 }
 

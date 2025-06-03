@@ -11,8 +11,7 @@ struct ExternalRouteStopCardView: View {
     let externalRouteStop : ExternalRouteStop
     var body: some View {
         VStack{
-            Text("\(externalRoute.recurringServicestopId) - \(externalRoute.techName) - \(externalRoute.day)")
-            Text("\(externalRoute.companyName)")
+            Text("\(externalRouteStop.recurringServicestopId) - \(externalRouteStop.day)")
         }
         .fontDesign(.monospaced)
         .foregroundColor(Color.poolWhite)

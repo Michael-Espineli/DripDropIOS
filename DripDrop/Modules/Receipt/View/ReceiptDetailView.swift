@@ -17,11 +17,10 @@ enum FilePickerType:Identifiable{
     }
 }
 struct ReceiptDetailView: View {
+    @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject var receiptFileVM =  ReceiptFileViewModel()
     @State var receipt: Receipt
-    @Binding var showSignInView:Bool
-    @State var user:DBUser
-    @State var company:Company
+    @State var activeReceipt: Receipt? = nil
 
     @State var showDocumentpicker:Bool = false
     @State private var pickerType:FilePickerType? = nil
@@ -32,13 +31,43 @@ struct ReceiptDetailView: View {
     @State var selectedContact:CNContact? = nil
 
     var body: some View {
-        
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            VStack{
+                if UIDevice.isIPhone {
+                    ScrollView{
+                        LazyVStack(alignment: .center, pinnedViews: [.sectionHeaders], content: {
+                            Section(content: {
+                                
+                                listOfItems
+                                    .padding(.leading,20)
+                                
+                            }, header: {
+                                receiptInfo
+                            })
+                        })
+                        .padding(.top,20)
+                        .clipped()
+                    }
+                } else {
+                    HStack{
+                        receiptInfo
+                            .padding(5)
+                        Divider()
+                        //                search
+                        listOfItems
+                            .border(.gray, width: 2)
+                            .padding(5)
+                    }
+                    Spacer()
+                }
+            }
+            .padding(5)
+        }
         ZStack{
             VStack{
-                Text(receipt.storeName ?? "")
-                Text(receipt.tech ?? "")
-                Text(fullDate(date:receipt.date))
-                images
+
+                
                 VStack{
                     VStack{
                         if (self.selectedPickerType == .photo && self.selectedImage != nil) {
@@ -52,52 +81,32 @@ struct ReceiptDetailView: View {
                         }
                         
                     }
-                    //DEVELOPER EXAMPLE OF A PICKER CONTACT FILE AND PHOTO
-                    Button(action: {
-                        showDocumentpicker.toggle()
-                    }, label: {
-                        Text("Select File")
-                            .padding(5)
-                            .background(Color.gray)
-                            .cornerRadius(10)
-                    })
-                    .confirmationDialog("Select Type", isPresented: self.$showDocumentpicker, actions: {
-                        Button(action: {
-                            self.pickerType = .photo
-                            self.selectedPickerType = .photo
-                            
-                        }, label: {
-                            Text("Photo")
-                        })
-                        Button(action: {
-                            self.pickerType = .file
-                            self.selectedPickerType = .file
-                            
-                        }, label: {
-                            Text("File")
-                        })
-                        //DO NOT DELETE IT IS EXAMPLE FOR CONTACT SELECTOR, I WILL PUT THIS IN THE CUSTOMER PAGE SOON
-                        
-                        //                    Button(action: {
-                        //                        self.pickerType = .contact
-                        //                        self.selectedPickerType = .contact
-                        //
-                        //                    }, label: {
-                        //                        Text("Contact")
-                        //                    })
-                    })
+
                 }
                 Spacer()
             }
         }
+        .task{
+            activeReceipt = receipt
+        }
+        .onChange(of: masterDataManager.selectedReceipt, perform: { receipt in
+            if let receipt {
+                activeReceipt = receipt
+            }
+        })
         .onChange(of: selectedImage, perform: { image in
-            if image != nil {
-                receiptFileVM.saveReceiptPhoto(companyId: company.id, receipt: receipt, receiptPhoto: image!)
+            if let company = masterDataManager.currentCompany {
+                
+                if image != nil {
+                    receiptFileVM.saveReceiptPhoto(companyId: company.id, receipt: receipt, receiptPhoto: image!)
+                }
             }
         })
         .onChange(of: selectedDocumentUrl, perform: { url in
-            if url != nil {
-                receiptFileVM.saveReceiptFile(companyId: company.id, receipt: receipt, documentUrl: url!)
+            if let company = masterDataManager.currentCompany {
+                if url != nil {
+                    receiptFileVM.saveReceiptFile(companyId: company.id, receipt: receipt, documentUrl: url!)
+                }
             }
         })
         .sheet(item: self.$pickerType,onDismiss: {print("dismiss")}){ item in
@@ -116,74 +125,106 @@ struct ReceiptDetailView: View {
                 }
             }
         }
+        .toolbar{
+            ToolbarItem(content: {
+                Button(action: {
+                    
+                }, label: {
+                    Text("Edit")
+                    .modifier(EditButtonModifier())
+                })
+            })
+        }
     }
 }
 
 
 extension ReceiptDetailView {
+    var receiptInfo: some View {
+        VStack(alignment: .leading){
+            if let activeReceipt {
+                Text("Purchase Date: \(fullDate(date:activeReceipt.date))")
+
+                Text("Refrence: \(activeReceipt.invoiceNum)")
+                Text("Vender: \(activeReceipt.storeName ?? "")")
+                Text("Tech: \(activeReceipt.tech ?? "")")
+
+                Text("\(activeReceipt.id)")
+                Text("Number Of Items: \(String(activeReceipt.numberOfItems))")
+                Text("Cost $\(String(format:"%2.f",activeReceipt.cost))")
+                Text("Cost After Tax $\(String(format:"%2.f",activeReceipt.costAfterTax))")
+            }
+            images
+        }
+    }
+    var listOfItems : some View{
+        VStack{
+            if let activeReceipt {
+                Text("List Of Items")
+                    ScrollView(.horizontal, content: {
+                        ForEach(activeReceipt.purchasedItemIds ?? [],id:\.self){ id in
+                            Text("\(id)")
+                        }
+                    })
+                
+            }
+        }
+    }
     var images: some View {
         ScrollView(.horizontal){
             HStack{
-                ForEach(receipt.pdfUrlList ?? [],id: \.self){ receiptUrl in
-                    let last4 = receiptUrl.suffix(4)
-                    if receiptUrl.contains(".pdf"){
-                        NavigationLink(destination: {
-                            if let url = URL(string: receiptUrl){
-                                
-                                PdfDetailView(pdfUrl: url)
+                //DEVELOPER EXAMPLE OF A PICKER CONTACT FILE AND PHOTO
+                Button(action: {
+                    showDocumentpicker.toggle()
+                }, label: {
+                    Image(systemName: "plus.app")
+                        .font(.title)
+                        .modifier(AddButtonModifier())
+                })
+                .confirmationDialog("Select Type", isPresented: self.$showDocumentpicker, actions: {
+                    Button(action: {
+                        self.pickerType = .photo
+                        self.selectedPickerType = .photo
+                        
+                    }, label: {
+                        Text("Photo")
+                    })
+                    Button(action: {
+                        self.pickerType = .file
+                        self.selectedPickerType = .file
+                        
+                    }, label: {
+                        Text("File")
+                    })
+                    //DO NOT DELETE IT IS EXAMPLE FOR CONTACT SELECTOR, I WILL PUT THIS IN THE CUSTOMER PAGE SOON
+                    
+                    //                    Button(action: {
+                    //                        self.pickerType = .contact
+                    //                        self.selectedPickerType = .contact
+                    //
+                    //                    }, label: {
+                    //                        Text("Contact")
+                    //                    })
+                })
+                HStack{
+                    ForEach(receipt.pdfUrlList ?? [],id: \.self){ receiptUrl in
+                        VStack{
+                            ImageDisplayPopUp(urlString: receiptUrl)
+                            HStack{
+                                Spacer()
+                                Button(action: {
+                                    print("Add Remove PDF URL Logic")
+                                }, label: {
+                                    Image(systemName: "trash.fill")
+                                        .modifier(DismissButtonModifier())
+                                })
                             }
-                        }, label: {
-                            ZStack{
-                                Image(systemName: "doc")
-                                    .resizable()
-                                    .scaledToFit()
-                            }
-                            .frame(maxWidth: 150,maxHeight:150)
-                            .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 10))
-                        })
-                        .padding()
-                    } else if receiptUrl.contains(".jpeg"){
-                        NavigationLink(destination: {
-                            if let url = URL(string: receiptUrl){
-                                
-                                ImageDisplay(url: url)
-                            }
-                        }, label: {
-                            ZStack{
-                                if let url = URL(string: receiptUrl){
-                                    
-                                    ImageDisplay(url: url)
-                                }
-                            }
-                            .frame(maxWidth: 150,maxHeight:150)
-                            .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 10))
-                        })
-                        .padding()
-
-                    } else {
-                        NavigationLink(destination: {
-                            if let url = URL(string: receiptUrl){
-                                
-                                ImageDisplay(url: url)
-                            }
-                        }, label: {
-                            ZStack{
-                                if let url = URL(string: receiptUrl){
-                                    
-                                    ImageDisplay(url: url)
-                                }
-                            }
-                            .frame(maxWidth: 150,maxHeight:150)
-                            .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 10))
-                        })
-                        .padding()
-
+                        }
+                        .frame(maxWidth: 150)
                     }
                 }
             }
         }
-
     }
-
 }
 #endif

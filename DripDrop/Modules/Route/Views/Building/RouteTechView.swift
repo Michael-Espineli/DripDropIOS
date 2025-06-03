@@ -1,9 +1,9 @@
-//
-//  RecurringStopDayView.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 12/8/23.
-//
+    //
+    //  RecurringStopDayView.swift
+    //  ThePoolApp
+    //
+    //  Created by Michael Espineli on 12/8/23.
+    //
 
 
 import SwiftUI
@@ -12,20 +12,20 @@ struct RouteTechView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var navigationManager : NavigationStateManager
     @EnvironmentObject var masterDataManager : MasterDataManager
-
+    
     @EnvironmentObject var dataService : ProductionDataService
     @StateObject var VM : RouteManagmentViewModel
-
+    @StateObject var routeVM : RecurringRouteViewModel
+    @StateObject var recurringStopVM : RecurringStopViewModel
+    
     init( dataService:any ProductionDataServiceProtocol,day:String,tech:CompanyUser){
         _VM = StateObject(wrappedValue: RouteManagmentViewModel(dataService: dataService))
+        _recurringStopVM = StateObject(wrappedValue: RecurringStopViewModel(dataService: dataService))
+        _routeVM = StateObject(wrappedValue: RecurringRouteViewModel(dataService: dataService))
         _day = State(wrappedValue: day)
         _tech = State(wrappedValue: tech)
-
     }
     
-    @StateObject var recurringStopVM = RecurringStopViewModel()
-    @StateObject var routeVM = RecurringRouteViewModel()
-
     @State var tech:CompanyUser
     @State var day:String
     @State var rss:RecurringRoute = RecurringRoute(id: "", tech: "", techId: "", day: "", order: [], description: "")
@@ -39,7 +39,7 @@ struct RouteTechView: View {
     var body: some View {
         ZStack{
             ScrollView{
-
+                
                 VStack(spacing:0){
                     if VM.recurringRoute != nil {
                         info
@@ -53,14 +53,14 @@ struct RouteTechView: View {
             }
         }
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
-                    print("Getting \(tech.userName)")
-                    try await VM.getRouteForRecurringStopDay(companyId: company.id, day: day, techId: tech.userId)
+//                    print("Getting \(tech.userName)")
+                    try await VM.getRouteForRecurringStopDay(companyId: company.id, day: day, techId: tech.userId, techName: tech.userName)
                 } catch {
                     print("Error on page RecurringStopDayView")
                 }
-                //            print("Received \(recurringStopVM.recurringServiceStops.count) RSS on \(day) for \(tech.firstName) \(tech.lastName)")
+                    //            print("Received \(recurringStopVM.recurringServiceStops.count) RSS on \(day) for \(tech.firstName) \(tech.lastName)")
             }
         }
         .alert(alertMessage, isPresented: $showAlert) {
@@ -74,7 +74,7 @@ struct RouteTechView: View {
                     print("Deleteing Recurring Stop \(rss.id)")
                     
                     Task{
-                        if let company = masterDataManager.selectedCompany, let recurringRoute = VM.recurringRoute {
+                        if let company = masterDataManager.currentCompany, let recurringRoute = VM.recurringRoute {
                             do {
                                 try await VM.deleteRecurringRoute(companyId: company.id, recurringRoute: recurringRoute)
                                 alertMessage = "Successfully Deleted"
@@ -104,7 +104,7 @@ struct RecurringStopDayView_Previews: PreviewProvider {
     static let dataService = MockDataService()
     static var previews: some View {
         @State var showSignInView: Bool = false
-        RouteTechView(dataService:dataService,day: "Sunday", tech: CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active))
+        RouteTechView(dataService:dataService,day: "Sunday", tech: CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor))
         
     }
 }
@@ -118,55 +118,55 @@ extension RouteTechView {
                     showRouteModifier.toggle()
                 }, label: {
                     Image(systemName: "line.3.horizontal")
+                        .padding(4)
                 })
-                            .confirmationDialog("Select Type", isPresented: self.$showRouteModifier, actions: {
-                                Button(action: {
-                                    if UIDevice.isIPhone {
-                                        showReassignRoute = true
-                                    } else {
-                                        masterDataManager.newRoute = false
-                                        masterDataManager.modifyRoute = false
-                                        masterDataManager.reassignRoute = true
-                                        masterDataManager.routeBuilderTech = tech
-                                        masterDataManager.routeBuilderDay = day
-                                        masterDataManager.recurringRoute = routeVM.recurringRoute
-                                    }
-                                    
-                                }, label: {
-                                    Text("Reassign")
-                                })
-                                Button(action: {
-                                    if UIDevice.isIPhone {
-                                        showNewRoute = true
-                                    } else {
-                                        masterDataManager.newRoute = false
-                                        masterDataManager.reassignRoute = false
-                                        masterDataManager.modifyRoute = true
-                                        masterDataManager.routeBuilderTech = tech
-                                        masterDataManager.routeBuilderDay = day
-                                        masterDataManager.recurringRoute = routeVM.recurringRoute
-
-                                    }
-                                }, label: {
-                                    Text("Edit")
-                                })
-                                Button(action: {
-                                    showDelete.toggle()
-                                }, label: {
-                                    Text("Delete")
-                                })
-                            })
-                    .sheet(isPresented: $showNewRoute, onDismiss: {
-                        print("done")
-                    }, content: {
-                        ZStack{
-                            Color.listColor.ignoresSafeArea()
-                                ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: VM.recurringRoute!)//Developer fix and remove explicit unwrap
-
-                            }
-
+                .confirmationDialog("Select Type", isPresented: self.$showRouteModifier, actions: {
+                    Button(action: {
+                        if UIDevice.isIPhone {
+                            showReassignRoute = true
+                        } else {
+                            masterDataManager.selectedRouteBuilderTech = tech
+                            masterDataManager.selectedRouteBuilderDay = day
+                            masterDataManager.selectedRecurringRoute = VM.recurringRoute
+                            
+                            masterDataManager.newRoute = false
+                            masterDataManager.modifyRoute = false
+                            masterDataManager.reassignRoute = true
+                        }
+                        
+                    }, label: {
+                        Text("Reassign")
                     })
-
+                    Button(action: {
+                        if UIDevice.isIPhone {
+                            showNewRoute = true
+                        } else {
+                            
+                            masterDataManager.selectedRouteBuilderTech = tech
+                            masterDataManager.selectedRouteBuilderDay = day
+                            masterDataManager.selectedRecurringRoute = VM.recurringRoute
+                            masterDataManager.newRoute = false
+                            masterDataManager.reassignRoute = false
+                            masterDataManager.modifyRoute = true
+                            
+                        }
+                    }, label: {
+                        Text("Edit")
+                    })
+                    Button(action: {
+                        showDelete.toggle()
+                    }, label: {
+                        Text("Delete")
+                    })
+                })
+                .sheet(isPresented: $showNewRoute, onDismiss: {
+                    print("done")
+                }, content: {
+                    ZStack{
+                        Color.listColor.ignoresSafeArea()
+                        ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: VM.recurringRoute!) //Developer fix and remove explicit unwrap
+                    }
+                })
                 Button(action: {
                     showStops.toggle()
                 }, label: {
@@ -190,10 +190,9 @@ extension RouteTechView {
                                 })
                             }
                             ReassignRouteView(dataService: dataService, tech: tech, day: day, recurringRoute: VM.recurringRoute!)//Developer fix and remove explicit unwrap
-
                         }
                     }
-
+                    
                 })
             }
             .padding(10)
@@ -202,20 +201,38 @@ extension RouteTechView {
     var stops: some View {
         VStack(spacing:0){
             ForEach(VM.recurringRoute?.order ?? []){ num in
-                RecurringRouteStopView(order: num, day: day, tech: tech)
+                RecurringRouteStopView(
+                    dataService: dataService,
+                    order: num,
+                    day: day,
+                    tech: tech
+                )
             }
         }
     }
 }
 struct RecurringRouteStopView: View {
+    @EnvironmentObject var dataService : ProductionDataService
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject var recurringStopVM = RecurringStopViewModel()
-    let order:recurringRouteOrder
-    let day:String
-    let tech:CompanyUser
+    @StateObject var recurringStopVM : RecurringStopViewModel
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        order:recurringRouteOrder,
+        day:String,
+        tech:CompanyUser
+    ){
+        _recurringStopVM = StateObject(wrappedValue: RecurringStopViewModel(dataService: dataService))
+        _order = State(wrappedValue: order)
+        _day = State(wrappedValue: day)
+        _tech = State(wrappedValue: tech)
+        
+    }
+    @State var order:recurringRouteOrder
+    @State var day:String
+    @State var tech:CompanyUser
     @State var showRecurringStopModifier:Bool = false
     @State var editRecurringServiceStop : Bool = false
-
+    
     @State var showNewRoute : Bool = false
     var body: some View {
         HStack{
@@ -229,24 +246,21 @@ struct RecurringRouteStopView: View {
                         .foregroundColor(Color.white)
                         .cornerRadius(5)
                     if let reucrringServiceStop = recurringStopVM.recurringServiceStop {
-                        if let frequency = reucrringServiceStop.frequency {
-                            switch frequency {
-                            case "Daily":
-                                Text("- Daily")
-                            case "WeekDay":
-                                Text("- Week Day")
-                            case "Weekly":
-                                Text("- Weekly")
-                            case "Monthly":
-                                Text("- Monthly")
-                            case "Annually":
-                                Text("- Annually")
-                            case "Custom":
-                                Text("- \(reucrringServiceStop.customEvery) \(reucrringServiceStop.customMeasuresOfTime)")
-                            default:
-                                Text("Frequency")
-                            }
+                        switch reucrringServiceStop.frequency {
+                        case .daily:
+                            Text("- Daily")
+                        case .weekDay:
+                            Text("- Week Day")
+                        case .weekly:
+                            Text("- Weekly")
+                        case .monthly:
+                            Text("- Monthly")
+                        case .yearly:
+                            Text("- Annually")
+                        default:
+                            Text("Frequency")
                         }
+                        
                     }
                 }
                 HStack{
@@ -271,6 +285,8 @@ struct RecurringRouteStopView: View {
                                     .font(.footnote)
                             }
                         }
+                        Spacer()
+                        RecurringServiceStopCompanyNameCardView(dataService: dataService, recurringServiceStopId: reucrringServiceStop.id)
                     }
                 }
             }
@@ -279,26 +295,26 @@ struct RecurringRouteStopView: View {
                 showRecurringStopModifier.toggle()
             }, label: {
                 Image(systemName: "pencil")
-
+                
             })
             .confirmationDialog("Select Type", isPresented: self.$showRecurringStopModifier, actions: {
-             
+                
                 Button(action: {
                     print("Edit Specific recurring Stop")
-                        if UIDevice.isIPhone {
-                            editRecurringServiceStop = true
-                            print("Edit Recurring Service Stop")
-                        } else {
-                            masterDataManager.routeBuilderTech = tech
-                            masterDataManager.routeBuilderDay = day
-                        }
-                 
+                    if UIDevice.isIPhone {
+                        editRecurringServiceStop = true
+                        print("Edit Recurring Service Stop")
+                    } else {
+                        masterDataManager.selectedRouteBuilderTech = tech
+                        masterDataManager.selectedRouteBuilderDay = day
+                    }
+                    
                 }, label: {
                     Text("Edit")
                 })
-           
+                
                 Button(action: {
-               print("Delete Recurring Service Stop")
+                    print("Delete Recurring Service Stop")
                 }, label: {
                     Text("Delete")
                 })
@@ -312,7 +328,7 @@ struct RecurringRouteStopView: View {
         .padding(5)
         .task {
             do {
-                try await recurringStopVM.getReucrringServiceStopById(companyId: masterDataManager.selectedCompany!.id, recurringServiceStopId: order.recurringServiceStopId)
+                try await recurringStopVM.getReucrringServiceStopById(companyId: masterDataManager.currentCompany!.id, recurringServiceStopId: order.recurringServiceStopId)
             } catch {
                 
             }

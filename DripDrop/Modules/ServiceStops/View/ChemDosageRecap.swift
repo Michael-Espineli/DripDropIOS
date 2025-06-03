@@ -16,9 +16,9 @@ struct ChemDosageRecap: View {
     
     @EnvironmentObject var VM : ServiceStopDetailViewModel
 
-    @State var templates: [DosageTemplate]
+    @State var templates: [SavedDosageTemplate]
     @State var BOW: BodyOfWater
-    init(dataService:any ProductionDataServiceProtocol,templates:[DosageTemplate],BOW:BodyOfWater) {
+    init(dataService:any ProductionDataServiceProtocol,templates:[SavedDosageTemplate],BOW:BodyOfWater) {
         _serviceStopVM = StateObject(wrappedValue: ServiceStopsViewModel(dataService: dataService))
         _stopDataVM = StateObject(wrappedValue: StopDataViewModel(dataService: dataService))
         _templates = State(wrappedValue: templates)
@@ -30,7 +30,7 @@ struct ChemDosageRecap: View {
         VStack{
                 ForEach(templates) { template in
                     HStack{
-                        if let stopData = VM.currentStopData[BOW], let reading = stopData.dosages.first(where: {$0.templateId == template.id}) {
+                        if let stopData = VM.currentStopData[BOW], let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId}) {
                             Text("\(reading.amount ?? "-")")
                             
                         } else {
@@ -58,7 +58,7 @@ struct ChemDosageRecap_Previews: PreviewProvider {
     static let dataService = ProductionDataService()
 
     static var previews: some View {
-        ChemDosageRecap(dataService: dataService,  templates: [], BOW: BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: ""))
+        ChemDosageRecap(dataService: dataService,  templates: [], BOW: BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date()))
     }
 }
 

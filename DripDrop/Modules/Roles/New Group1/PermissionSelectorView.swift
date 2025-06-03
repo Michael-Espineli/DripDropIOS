@@ -45,7 +45,6 @@ struct PermissionSelectorView: View {
                 } else {
                     listOfPermissions.removeAll(where: {$0 == permission.id})
                     print("Removed Permission: \(permission.id)")
-
                 }
                 print(listOfPermissions)
             } else {

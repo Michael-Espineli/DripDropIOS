@@ -63,7 +63,7 @@ init(dataService:any ProductionDataServiceProtocol,activeRoute:ActiveRoute){
         .task{
             isLoading = true
             do{
-                try await serviceStopVM.getServiceStopByList(companyId: masterDataManager.selectedCompany!.id, serviceStopIds: activeRoute.serviceStopsIds)
+                try await serviceStopVM.getServiceStopByList(companyId: masterDataManager.currentCompany!.id, serviceStopIds: activeRoute.serviceStopsIds)
                 serviceStops = serviceStopVM.serviceStops
                 masterDataManager.selectedServiceStopList = serviceStopVM.serviceStops
 
@@ -75,7 +75,7 @@ init(dataService:any ProductionDataServiceProtocol,activeRoute:ActiveRoute){
         }
         .onChange(of:masterDataManager.selectedActiveRoute, perform: { route in
             Task{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     isLoading = true
                     do{
                         guard let activeRoute = route else { return }

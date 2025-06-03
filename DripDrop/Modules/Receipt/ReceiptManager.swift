@@ -104,24 +104,17 @@ final class ReceiptManager {
     }
     
     func getAllReceipts(companyId: String) async throws -> [Receipt] {
+        let startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
 
-        let snapshot = try await ReceiptItemCollection(companyId: companyId).getDocuments()
-        
-        var receiptItems: [Receipt] = []
-        
-        for document in snapshot.documents{
-            let receiptItem = try document.data(as: Receipt.self)
-            receiptItems.append(receiptItem)
-        }
-        return receiptItems
+        return try await ReceiptItemCollection(companyId: companyId)
+            .whereField("date", isGreaterThan: startDate)
+            .whereField("date", isLessThan: Date())
+            .order(by: "date",descending: true)
+            .getDocuments(as:Receipt.self)
     }
     func getAllpurchasedItemsByPrice(companyId:String,descending: Bool) async throws -> [Receipt]{
-
         return try await ReceiptItemCollection(companyId: companyId)
 //            .order(by: "price", descending: descending)
             .getDocuments(as:Receipt.self)
-
     }
-
-
 }

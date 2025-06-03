@@ -4,23 +4,7 @@
 //
 //  Created by Michael Espineli on 1/18/24.
 //
-enum ShoppingListCategory:String,Codable,CaseIterable {
-    case personal = "Personal"
-    case customer = "Customer"
-    case job = "Job"
 
-}
-enum ShoppingListSubCategory:String,Codable,CaseIterable {
-    case dataBase = "Data Base"
-    case chemical = "Chemical"
-    case part = "Part"
-    case custom = "Custom"
-}
-enum ShoppingListStatus:String,Codable,CaseIterable {
-    case needToPurchase = "Need to Purchase"
-    case purchased = "Purchased"
-    case installed = "Installed"
-}
 import Foundation
 import Firebase
 import FirebaseFirestore
@@ -51,10 +35,12 @@ struct ShoppingListItem:Identifiable, Codable,Hashable{
     //Customer
     var customerId:String?
     var customerName:String?
-    
     //Personal
     var userId:String?
     var userName:String?
+    
+    //DataBaseItem
+    var dbItemId: String?
 }
 
 protocol ShoppingListManagerProtocol {

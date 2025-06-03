@@ -13,24 +13,8 @@ import FirebaseFirestoreSwift
 import SwiftUI
 import CoreLocation
 import MapKit
-import Darwin
-struct RepairRequest:Identifiable, Codable,Equatable{
-    var id:String
-    var customerId:String
-    var customerName:String
-    var requesterId:String
-    var requesterName:String
-    var date:Date
-    var status:RepairRequestStatus
-    var description:String
-    var jobIds:[String]
-    var photoUrls:[String]
-}
-enum RepairRequestStatus:String,Codable, CaseIterable{
-    case resolved = "Resolved"
-    case unresolved = "Unresolved"
-    case inprogress = "In Progress"
-}
+import FirebaseStorage
+
 
 protocol RepairRequestManagerProtocol {
 

@@ -8,11 +8,13 @@
 import SwiftUI
 
 struct CompanyRoleDetailView: View {
+    @EnvironmentObject var dataService : ProductionDataService
+
     @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject var permissionVM = PermissionViewModel()
     @StateObject var roleVM = RoleViewModel()
     
-    var role:Role
+    @State var role:Role
     @State var selectedPermissionList:[String] = []
     @State var name:String = ""
     @State var description:String = ""
@@ -24,29 +26,37 @@ struct CompanyRoleDetailView: View {
                     if currentUserRole.permissionIdList.contains("2") {
                         HStack{
                             Spacer()
-                            Button(action: {
-                                showSheet.toggle()
-                            }, label: {
-                                Text("Edit")
-                            })
-                            .padding()
-                            .sheet(isPresented: $showSheet, content: {
-                                if let company = masterDataManager.selectedCompany {
-                                    CompanyRoleEditView(role: role, companyId: company.id)
-                                }
-                            })
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.editRole(dataService: dataService, role: currentUserRole), label: {
+                                    Text("Edit")
+                                })
+                            } else {
+                                Button(action: {
+                                    showSheet.toggle()
+                                }, label: {
+                                })
+                                .padding()
+                                .sheet(isPresented: $showSheet, content: {
+                                    if let company = masterDataManager.currentCompany {
+                                        CompanyRoleEditView(dataService: dataService, role: role)
+                                    }
+                                })
+                            }
                         }
                     }
                 }
                 if let currentUserRole = masterDataManager.role {
 
-                    Text("Name: \(currentUserRole.name)")
+                    Text("\(currentUserRole.name)")
+                        .font(.headline)
                     Text("Description: \(currentUserRole.description)")
                     VStack{
                         Text("Permissions")
                             .font(.title)
                         ForEach(permissionVM.standrdPermissions){ permission in
                             PermissionDisplayView(permission: permission, listOfPermissions: $selectedPermissionList)
+                            Rectangle()
+                                .frame(height: 1)
                         }
                     }
                 }

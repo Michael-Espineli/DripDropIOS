@@ -21,6 +21,8 @@ struct JobTemplate:Identifiable, Codable,Hashable{
     var dateCreated : Date?
     var rate : String?
     var color: String?
+    var locked: Bool?
+
 }
 struct ServiceStopTemplate:Identifiable, Codable,Hashable{
     
@@ -95,8 +97,8 @@ final class SettingsManager {
     func uploadGenericItem(companyId:String,workOrderTemplate : GenericItem) async throws {
         try GenericItemDocument(genericItemId: workOrderTemplate.id, companyId: companyId).setData(from:workOrderTemplate, merge: false)
     }
-    func getGenericItem(companyId:String,workOrderId:String) async throws -> JobTemplate{
-        return try await GenericItemDocument(genericItemId: workOrderId,companyId: companyId).getDocument(as: JobTemplate.self)
+    func getGenericItem(companyId:String,genericItemId:String) async throws -> GenericItem{
+        return try await GenericItemDocument(genericItemId: genericItemId,companyId: companyId).getDocument(as: GenericItem.self)
 
    
 
@@ -316,7 +318,7 @@ final class SettingsManager {
         }
     }
     func upLoadIntialWorkOrdersAndReadingsAndDosages(companyId:String) async throws->[TrainingTemplate]{
-        let weeklyCleaningId = UUID().uuidString
+        let weeklyCleaningId = "1"
         let saltCellId = UUID().uuidString
         let filterCleaningId = UUID().uuidString
         let esitmateId = UUID().uuidString
@@ -324,23 +326,25 @@ final class SettingsManager {
         let DrainandfillID = UUID().uuidString
         let isntallId = UUID().uuidString
         let repairID = UUID().uuidString
-        
+
         let serviceStopEstiamteId = UUID().uuidString
         let serviceStopFollowUpId = UUID().uuidString
         let serviceStopLaborId = UUID().uuidString
 
+        let startUpEstimateId = "2"
+
         let InitialTemplates:[JobTemplate] = [
   
-            JobTemplate(id: weeklyCleaningId, name: "Weekly Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "red"),
+            JobTemplate(id: weeklyCleaningId, name: "Weekly Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "red",locked: true),
             JobTemplate(id: filterCleaningId, name: "Filter Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "120", color: "orange"),
             JobTemplate(id: saltCellId, name: "Salt Cell Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "85", color: "yellow"),
             JobTemplate(id: esitmateId, name: "Weekly Cleaning Estimate", type: "Estimate", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "green"),
             JobTemplate(id: serviceCallId, name: "Service Call", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "blue"),
             JobTemplate(id: DrainandfillID, name: "Drain and Fill", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
-            JobTemplate(id: isntallId, name: "Installation", type: "Installation", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
+            JobTemplate(id: isntallId, name: "Installation", type: "Installation", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "pink"),
             
-            JobTemplate(id: repairID, name: "Repair", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple")
-
+            JobTemplate(id: repairID, name: "Repair", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "white"),
+            JobTemplate(id: startUpEstimateId, name: "Start Up Estimate", type: "Estimate", typeImage: "list.clipboard", dateCreated: Date(), rate: "0", color: "black",locked: true)
         ]
         let InitialServiceStopTemplates:[ServiceStopTemplate] = [
   

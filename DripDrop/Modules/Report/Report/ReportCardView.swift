@@ -15,10 +15,7 @@ struct ReportCardView: View {
             Spacer()
             Text("\(report.title)")
         }
-        .foregroundColor(Color.basicFontText)
-        .padding(5)
-        .background(Color.gray)
-        .cornerRadius(5)
-        .padding(5)
+        .padding(8)
+        .modifier(ListButtonModifier())
     }
 }

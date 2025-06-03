@@ -12,18 +12,20 @@ struct NewReucrringStopView: View {
 
     @StateObject private var customerVM : CustomerViewModel
     @StateObject var locationVM : ServiceLocationViewModel
+    @StateObject var recurringStopVM : RecurringStopViewModel
+    @StateObject var settingsVM : SettingsViewModel
 
 
     init(dataService:any ProductionDataServiceProtocol,tech:DBUser,day:String){
         _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
         _locationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: dataService))
+        _recurringStopVM = StateObject(wrappedValue: RecurringStopViewModel(dataService: dataService))
+        _settingsVM = StateObject(wrappedValue: SettingsViewModel(dataService: dataService))
 
         self.tech = tech
         self.day = day
     }
     @StateObject var techVM = TechViewModel()
-    @StateObject var settingsVM = SettingsViewModel()
-    @StateObject var recurringStopVM = RecurringStopViewModel()
 
     @State var tech:DBUser? = nil
     @State var day:String? = nil
@@ -35,20 +37,25 @@ struct NewReucrringStopView: View {
                                                  dateCreated: Date(),
                                                  rate: "",
                                                  color: "")
-    @State var customer:Customer = Customer(id: "",
-                                            firstName: "Ron",
-                                            lastName: "Palace",
-                                            email: "",
-                                            billingAddress: Address(streetAddress: "",
-                                                                    city: "",
-                                                                    state: "",
-                                                                    zip: "0",
-                                                                    latitude: 0,
-                                                                    longitude: 0),
-                                            active: false,
-                                            displayAsCompany: false,
-                                            hireDate: Date(),
-                                            billingNotes: "")
+    @State var customer:Customer = Customer(
+        id: "",
+        firstName: "Ron",
+        lastName: "Palace",
+        email: "",
+        billingAddress: Address(
+            streetAddress: "",
+            city: "",
+            state: "",
+            zip: "0",
+            latitude: 0,
+            longitude: 0
+        ),
+        active: false,
+        displayAsCompany: false,
+        hireDate: Date(),
+        billingNotes: "",
+        linkedInviteId: UUID().uuidString
+    )
     @State var customerSearch:String = ""
     @State var listOfCustomers:[Customer] = []
     
@@ -70,16 +77,18 @@ struct NewReucrringStopView: View {
                                                                   customerName: "",
                                                           preText: false)
     
-    @State var techEntity:DBUser = DBUser(id: "",firstName: "Michael",lastName: "Espineli", exp: 0)
+    @State var techEntity:DBUser = DBUser(id: "", email: "",firstName: "Michael",lastName: "Espineli", exp: 0,recentlySelectedCompany: "")
     @State var startDate:Date = Date()
     @State var endDate:Date = Date()
     
     @State var noEndDate:Bool = true
     @State var standardFrequencyType:String = "Weekly"
     @State var standardFrequencyNumber:Int = 0
-    
+    @State var frequency:LaborContractFrequency = .daily
+
     @State var customFrequency:String = "Daily"
     @State var customEvery:Int = 1
+
     @State var showCustomSheet:Bool = false
     
     @State var days:[String] = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
@@ -105,7 +114,7 @@ struct NewReucrringStopView: View {
             CustomRecurringStopSettingsView(customEvery: $customEvery, customFrequency: $customFrequency,selectedDays: $selectedDays)
         })
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 try? await customerVM.getAllCustomers(companyId: company.id)
                 listOfCustomers = customerVM.customers
                 if customerVM.customers.count != 0 {
@@ -129,7 +138,7 @@ struct NewReucrringStopView: View {
         })
         .onChange(of: customer, perform: { changedCustomer in
             Task{
-                if let company = masterDataManager.selectedCompany{
+                if let company = masterDataManager.currentCompany{
                     try? await locationVM.getAllCustomerServiceLocationsById(companyId:company.id, customerId: changedCustomer.id)
                     if locationVM.serviceLocations.count != 0 {
                         location = locationVM.serviceLocations.first!
@@ -201,7 +210,7 @@ extension NewReucrringStopView {
                     if selectedDays.isEmpty {
                         pushSelectedDays = ["Friday"]
                     }
-                    guard let company = masterDataManager.selectedCompany else {
+                    guard let company = masterDataManager.currentCompany else {
                         return 
                     }
                     let pushEndDate = noEndDate
@@ -210,41 +219,47 @@ extension NewReucrringStopView {
                     let pushCustomEvery = customEvery
                     let pushDescription = description
                     let pushEstimatedTime = estimatedTime
-
-                    try? await recurringStopVM
-                        .addNewRecurringServiceStop(companyId: company.id,
-                                                    recurringServiceStop: RecurringServiceStop(id: UUID().uuidString,
-                                                                                               type: jobName,
-                                                                                               typeId: jobId ,
-                                                                                               typeImage: jobImage ?? "",
-                                                                                               customerName: customerName,
-                                                                                               customerId: customerId,
-                                                                                               locationId: locationId,
-                                                                                               address: address,
-                                                                                               dateCreated: Date(),
-                                                                                               tech: techFullName,
-                                                                                               startDate: Date(),
-                                                                                               techId: techId,
-                                                                                               noEndDate: pushEndDate,
-                                                                                               customMeasuresOfTime: pushCustomFrequency,
-                                                                                               customEvery: String(pushCustomEvery),
-                                                                                               daysOfWeek: pushSelectedDays,
-                                                                                               description: pushDescription,
-                                                                                               lastCreated: Date(),
-                                                                                               serviceLocationId:locationId,
-                                                                                               estimatedTime: pushEstimatedTime),
-                                                    standardFrequencyNumber: pushStandardFrequencyNumber,
-                                                    customFrequencyType: pushCustomFrequency,
-                                                    CustomFrequency: customFrequency,
-                                                    daysOfWeek: pushSelectedDays)
+                    //DEVELOPER
+//                    try? await recurringStopVM
+//                        .addNewRecurringServiceStop(
+//                            companyId: company.id,
+//                            recurringServiceStop: RecurringServiceStop(
+//                                id: UUID().uuidString,
+//                                type: jobName,
+//                                typeId: jobId ,
+//                                typeImage: jobImage ?? "",
+//                                customerName: customerName,
+//                                customerId: customerId,
+//                                address: address,
+//                                tech: techFullName,
+//                                techId: techId,
+//                                dateCreated: Date(),
+//                                startDate: Date(),
+//                                endDate: nil,
+//                                noEndDate: pushEndDate,
+//                                frequency: frequency,
+//                                timesPerFrequency: customEvery,
+//                                daysOfWeek: pushSelectedDays,
+//                                description: pushDescription,
+//                                lastCreated: Date(),
+//                                serviceLocationId:locationId,
+//                                estimatedTime: pushEstimatedTime,
+//                                otherCompany: false,
+//                                receivedLaborContractId: "",
+//                                contractedCompanyId: ""
+//                            ),
+//                            standardFrequencyNumber: pushStandardFrequencyNumber,
+//                            customFrequencyType: pushCustomFrequency,
+//                            CustomFrequency: customFrequency,
+//                            daysOfWeek: pushSelectedDays
+//                        )
                     
                 }
-            }, label: {
+            },
+                   label: {
                 Text("Submit")
-                    .padding(5)
-                    .background(Color.blue)
-                    .cornerRadius(5)
-                    .foregroundColor(Color.white)
+                    .modifier(SubmitButtonModifier())
+
             })
         }
     }
@@ -303,22 +318,25 @@ extension NewReucrringStopView {
                     Text("End Date")
                 }
             }
-            Picker("Repeat", selection: $standardFrequencyNumber) {
-                Text("Every Day").tag(0)
-                Text("Every Week").tag(1)
-                Text("Every Month").tag(2)
-                Text("Every Year").tag(3)
-                Text("Every Week Day").tag(4)
-                Text("Custom").tag(5)
-                
+            Picker("Repeat", selection: $frequency) {
+                Text("Every Day").tag(LaborContractFrequency.daily)
+                Text("Every Week").tag(LaborContractFrequency.weekly)
+                Text("Every Month").tag(LaborContractFrequency.monthly)
+                Text("Every Year").tag(LaborContractFrequency.yearly)
+                Text("Every Week Day").tag(LaborContractFrequency.weekDay)
             }
-            if standardFrequencyNumber == 5{
-                HStack{
-                    Text("Every \(String(customEvery)) \(customFrequency)")
+            HStack{
+                Text("customEvery \(customEvery)")
+                VStack{
                     Button(action: {
-                        showCustomSheet.toggle()
+                        customEvery += 1
                     }, label: {
-                        Image(systemName: "square.and.pencil")
+                        Text("+ 1")
+                    })
+                    Button(action: {
+                        customEvery += -1
+                    }, label: {
+                        Text("- 1")
                     })
                 }
             }

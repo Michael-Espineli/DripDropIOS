@@ -13,7 +13,6 @@ struct ReceiptCardViewSmall: View {
         ZStack{
             HStack{
                 VStack{
-
                         Text("Invoice:\(receipt.invoiceNum ?? "invoice")")
                     Text("\(receipt.storeName ?? "storeName")")
                     Text("\(shortDate(date:receipt.date ?? Date()))")
@@ -21,16 +20,14 @@ struct ReceiptCardViewSmall: View {
                 Spacer()
                 VStack{
                     Text("\(receipt.tech ?? "")")
-                    Text("Items: \(String(receipt.numberOfItems))")
+                    Text("CItems $\(String(format:"%2.f",receipt.numberOfItems))")
                         .font(.footnote)
-                    Text("Cost After Tax: \(String(receipt.costAfterTax))")
+                    Text("Cost After Tax: $\(String(format:"%2.f",receipt.costAfterTax))")
                         .font(.footnote)
                 }
                 Image(systemName: "chevron.compact.right")
             }
-             .padding(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
-            .background(Color.gray.opacity(0.5))
-            .cornerRadius(10)
+            .modifier(ListButtonModifier())
         }
     }
 }

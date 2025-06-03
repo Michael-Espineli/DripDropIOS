@@ -16,15 +16,16 @@ struct PermissionDisplayView: View {
     var body: some View {
         VStack{
             HStack{
+                Text(permission.id)
                 Text(permission.name)
                 Spacer()
                 Image(systemName: selected ? "checkmark.square":"square")
                     .padding(5)
                     .background(selected ? Color.green : Color.clear)
-                    .foregroundColor(selected ? Color.white : Color.black)
+                    .foregroundColor(Color.white)
                     .cornerRadius(5)
             }
-            .padding()
+            .padding(8)
             if permission.id == "2" {
                 Text("List of Users To Manage?")
             }

@@ -63,10 +63,7 @@ struct RouteMapAllViewController: View {
                                         }
                                     }, label: {
                                         Text("Previous Route")
-                                            .padding(5)
-                                            .foregroundColor(Color.basicFontText)
-                                            .background(Color.accentColor)
-                                            .cornerRadius(5)
+                                            .modifier(AddButtonModifier())
                                     })
                                     Spacer()
                                     if let selectedRoute = selectedRoute {
@@ -105,10 +102,7 @@ struct RouteMapAllViewController: View {
                                         }
                                     }, label: {
                                         Text("Next Route")
-                                            .padding(5)
-                                            .foregroundColor(Color.basicFontText)
-                                            .background(Color.accentColor)
-                                            .cornerRadius(5)
+                                            .modifier(AddButtonModifier())
                                     })
                                 }
                                 HStack{
@@ -136,10 +130,8 @@ struct RouteMapAllViewController: View {
                                         }
                                     }, label: {
                                         Text("Previous Stop")
-                                            .padding(5)
-                                            .foregroundColor(Color.basicFontText)
-                                            .background(Color.accentColor)
-                                            .cornerRadius(5)
+                                            .modifier(AddButtonModifier())
+
                                     })
 //                                    .disabled(serviceStops.first == selectedServiceStop)
                                     Spacer()
@@ -178,17 +170,14 @@ struct RouteMapAllViewController: View {
                                             }
                                         }, label: {
                                             Text("Next Stop")
-                                                .padding(5)
-                                                .foregroundColor(Color.basicFontText)
-                                                .background(Color.accentColor)
-                                                .cornerRadius(5)
+                                                .modifier(AddButtonModifier())
                                         })
                                     }
 //                                    .disabled(serviceStops.last == selectedServiceStop)
                                 }
                                 HStack{
                                     Text("Client: \(selectedServiceStop?.customerName ?? "")")
-                                    Text("Duration: 0:42")
+                                    Text("Duration: \(displayMinAsMinAndHour(min: (selectedServiceStop?.duration) ?? 0))")
                                 }
                                 HStack{
                                     Text("Status: ")
@@ -197,7 +186,7 @@ struct RouteMapAllViewController: View {
                                         .padding(5)
                                         .background(getColor(status: status))
                                         .cornerRadius(5)
-                                    Text("Duration: \(displayNumberAsMinAndHourAndSecond(seconds:69420))")
+                                    Text("Duration: \(displayNumberAsMinAndHourAndSecond(seconds:420))")
                                     Spacer()
                                 }
                             }

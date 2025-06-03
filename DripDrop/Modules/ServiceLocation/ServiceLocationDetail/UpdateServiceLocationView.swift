@@ -1,26 +1,15 @@
-//
-//  EditServiceLocationView.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 5/10/24.
-//
+    //
+    //  EditServiceLocationView.swift
+    //  ThePoolApp
+    //
+    //  Created by Michael Espineli on 5/10/24.
+    //
 
 import SwiftUI
-enum ServiceLocationLabel {
-    case nickName
-    case serviceLocationAddressStreetAddress
-    case serviceLocationAddressCity
-    case serviceLocationAddressState
-    case serviceLocationAddressZip
-    case serviceLocationLongitude
-    case serviceLocationLatitude
 
-    case estimatedTime
-    case gateCode
-}
 struct EditServiceLocationView: View {
     @Environment(\.dismiss) private var dismiss
-
+    
     @EnvironmentObject private var masterDataManager : MasterDataManager
     @State var serviceLocation:ServiceLocation
     @StateObject var serviceLocationVM : ServiceLocationViewModel
@@ -29,43 +18,43 @@ struct EditServiceLocationView: View {
         _serviceLocationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: dataService ))
         _serviceLocation = State(wrappedValue: serviceLocation)
     }
-//Service Location
+        //Service Location
     @State var serviceLocationId: String = UUID().uuidString
     
     @State var nickName:String = ""
-
+    
     @State var serviceLocationAddressStreetAddress:String = ""
     @State var serviceLocationAddressCity:String = ""
     @State var serviceLocationAddressState:String = ""
     @State var serviceLocationAddressZip:String = ""
     @State var serviceLocationLatitude:String = ""
     @State var serviceLocationLongitude:String = ""
-
+    
     @State var serviceLocationMainContactName:String = ""
     @State var serviceLocationMainContactPhoneNumber:String = ""
     @State var serviceLocationMainContactEmail:String = ""
     @State var serviceLocationMainContactNotes:String = ""
     
     @State var gateCode:String = ""
-
-
+    
+    
     @State var estimatedTime:String = "15"
     @State var dogNames:[String] = []
     @State var dogName:String = ""
-
-
+    
+    
     @State var generalNotes:String = ""
     @State var trees:[String] = []
     @State var tree:String = ""
-
+    
     @State var bushes:[String] = []
     @State var bush:String = ""
-
+    
     @State var others:[String] = []
     @State var other:String = ""
     @State var requiresPreText:Bool = false
-
-    //Alerts
+    
+        //Alerts
     @State var showAlert:Bool = false
     @State var alertMessage:String = ""
     @State var showBodyOfWaterSheet:Bool = false
@@ -74,11 +63,11 @@ struct EditServiceLocationView: View {
     @State var showBushSheet:Bool = false
     @State var showOtherSheet:Bool = false
     @State var preText:Bool = false
-
-    //Keyboard Info
+    
+        //Keyboard Info
     @FocusState private var focusedField: ServiceLocationLabel?
     @State var showChangeContact:Bool = false
-
+    
     var body: some View {
         VStack{
             ScrollView{
@@ -88,60 +77,60 @@ struct EditServiceLocationView: View {
             .padding()
         }
         .onSubmit {
-               switch focusedField {
-               case .nickName:
-                   focusedField = .serviceLocationAddressStreetAddress
-               case .serviceLocationAddressStreetAddress:
-                   focusedField = .serviceLocationAddressCity
-
-               case .serviceLocationAddressCity:
-                   focusedField = .serviceLocationAddressState
-               case .serviceLocationAddressState:
-                   focusedField = .serviceLocationAddressZip
-               case .serviceLocationAddressZip:
-                   focusedField = .serviceLocationLatitude
-               case .serviceLocationLatitude:
-                   focusedField = .serviceLocationLongitude
-               case .serviceLocationLongitude:
-                   focusedField = .estimatedTime
-               case .estimatedTime:
-                   focusedField = .gateCode
-               case .gateCode:
-                   print("default")
-               default:
-                   print("default")
-               }
-           }
+            switch focusedField {
+            case .nickName:
+                focusedField = .serviceLocationAddressStreetAddress
+            case .serviceLocationAddressStreetAddress:
+                focusedField = .serviceLocationAddressCity
+                
+            case .serviceLocationAddressCity:
+                focusedField = .serviceLocationAddressState
+            case .serviceLocationAddressState:
+                focusedField = .serviceLocationAddressZip
+            case .serviceLocationAddressZip:
+                focusedField = .serviceLocationLatitude
+            case .serviceLocationLatitude:
+                focusedField = .serviceLocationLongitude
+            case .serviceLocationLongitude:
+                focusedField = .estimatedTime
+            case .estimatedTime:
+                focusedField = .gateCode
+            case .gateCode:
+                print("default")
+            default:
+                print("default")
+            }
+        }
         .alert(alertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         }
         .task{
-             
+            
             serviceLocationAddressStreetAddress = serviceLocation.address.streetAddress
             serviceLocationAddressCity = serviceLocation.address.city
             serviceLocationAddressState = serviceLocation.address.state
             serviceLocationAddressZip = serviceLocation.address.zip
             serviceLocationLatitude = String(serviceLocation.address.latitude)
             serviceLocationLongitude = String(serviceLocation.address.longitude)
-
+            
             serviceLocationMainContactName = serviceLocation.mainContact.name
             serviceLocationMainContactPhoneNumber = serviceLocation.mainContact.phoneNumber
             serviceLocationMainContactEmail = serviceLocation.mainContact.email
             serviceLocationMainContactNotes = serviceLocation.mainContact.notes ?? ""
-                
+            
             estimatedTime = String(serviceLocation.estimatedTime ?? 15)
             dogNames = serviceLocation.dogName ?? []
             gateCode = serviceLocation.gateCode
-
+            
             nickName = serviceLocation.nickName
             generalNotes = serviceLocation.notes ?? ""
-
+            
         }
         .onChange(of: serviceLocationVM.coordinates, perform: { coor in
             if let coordinates = coor {
                 serviceLocationLatitude = String(coordinates.latitude)
                 serviceLocationLongitude = String(coordinates.longitude)
-
+                
             }
         })
     }
@@ -159,7 +148,7 @@ extension EditServiceLocationView {
                         text: $nickName
                     )
                     .focused($focusedField, equals: .nickName)
-                         .submitLabel(.next)
+                    .submitLabel(.next)
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
@@ -184,7 +173,7 @@ extension EditServiceLocationView {
                         text: $serviceLocationAddressCity
                     )
                     .focused($focusedField, equals: .serviceLocationAddressCity)
-                         .submitLabel(.next)
+                    .submitLabel(.next)
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
@@ -194,7 +183,7 @@ extension EditServiceLocationView {
                         text: $serviceLocationAddressState
                     )
                     .focused($focusedField, equals: .serviceLocationAddressState)
-                         .submitLabel(.next)
+                    .submitLabel(.next)
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
@@ -203,7 +192,7 @@ extension EditServiceLocationView {
                         text: $serviceLocationAddressZip
                     )
                     .focused($focusedField, equals: .serviceLocationAddressZip)
-                         .submitLabel(.next)
+                    .submitLabel(.next)
                     .keyboardType(.decimalPad)
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
@@ -223,14 +212,9 @@ extension EditServiceLocationView {
                         }
                     },
                            label: {
-                    Text("Re Calcualte")
+                        Text("Recalculate")
                     })
-                    .padding(8)
-                    .background(Color.poolBlue)
-                    .foregroundColor(Color.basicFontText)
-                    .cornerRadius(8)
-                    .padding(.vertical,8)
-                    .padding(.horizontal,16)
+                    .modifier(SubmitButtonModifier())
                 }
                 HStack{
                     Text("Latidude")
@@ -275,7 +259,7 @@ extension EditServiceLocationView {
                         Image(systemName: "gobackward")
                     })
                     .confirmationDialog("Select Type", isPresented: self.$showChangeContact, actions: {
-            
+                        
                         Button(action: {
                         }, label: {
                             Text("Add New")
@@ -291,9 +275,9 @@ extension EditServiceLocationView {
                 HStack{
                     Text("Yard Info")
                         .font(.headline)
-
+                    
                     Spacer()
-     
+                    
                 }
                 HStack{
                     Text("Estimated Time")
@@ -303,7 +287,7 @@ extension EditServiceLocationView {
                         text: $estimatedTime
                     )
                     .focused($focusedField, equals: .estimatedTime)
-                         .submitLabel(.next)
+                    .submitLabel(.next)
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
@@ -316,7 +300,7 @@ extension EditServiceLocationView {
                         text: $gateCode
                     )
                     .focused($focusedField, equals: .gateCode)
-                         .submitLabel(.next)
+                    .submitLabel(.next)
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
@@ -416,145 +400,147 @@ extension EditServiceLocationView {
                     })
                 }
             }
-
+            
         }
     }
     var submitButton: some View {
         VStack{
-           Button(action: {
-               Task{
-                   do {
-                       guard let company = masterDataManager.selectedCompany else {
-                           return
-                       }
-                       guard let latitude = Double(serviceLocationLatitude) else {
-               
-                           throw ServiceLocationError.invalidLatitude
-
-                       }
-                       guard let longitude = Double(serviceLocationLongitude) else {
-                
-                           throw ServiceLocationError.invalidLongitude
-
-                       }
-                       guard let time = Int(estimatedTime) else {
-           
-                           throw ServiceLocationError.invalidTime
-                       }
-                       try await serviceLocationVM.updateCustomerServiceLocation(
-                        companyId: company.id,
-                        customerId: serviceLocation.customerId,
-                        serviceLocation: ServiceLocation(
-                            id: serviceLocation.id,
-                            nickName: nickName,
-                            address: Address(
-                                streetAddress: serviceLocationAddressStreetAddress,
-                                city: serviceLocationAddressCity,
-                                state: serviceLocationAddressState,
-                                zip: serviceLocationAddressZip,
-                                latitude: latitude,
-                                longitude: longitude
-                            ),
-                            gateCode: gateCode,
-                            dogName: dogNames,
-                            estimatedTime: time,
-                            mainContact: Contact(
-                                id: serviceLocation.mainContact.id,
-                                name: serviceLocationMainContactName,
-                                phoneNumber: serviceLocationMainContactPhoneNumber,
-                                email: serviceLocationMainContactEmail,
-                                notes: serviceLocationMainContactNotes
-                            ),
-                            notes: serviceLocation.notes,
-                            bodiesOfWaterId: serviceLocation.bodiesOfWaterId,
-                            rateType: serviceLocation.rateType,
-                            laborType: serviceLocation.laborCost,
-                            chemicalCost: serviceLocation.chemicalCost,
-                            laborCost: serviceLocation.laborCost,
-                            rate: serviceLocation.rate,
+            Button(action: {
+                Task{
+                    do {
+                        guard let company = masterDataManager.currentCompany else {
+                            return
+                        }
+                        guard let latitude = Double(serviceLocationLatitude) else {
+                            
+                            throw ServiceLocationError.invalidLatitude
+                            
+                        }
+                        guard let longitude = Double(serviceLocationLongitude) else {
+                            
+                            throw ServiceLocationError.invalidLongitude
+                            
+                        }
+                        guard let time = Int(estimatedTime) else {
+                            
+                            throw ServiceLocationError.invalidTime
+                        }
+                        try await serviceLocationVM.updateCustomerServiceLocation(
+                            companyId: company.id,
                             customerId: serviceLocation.customerId,
-                            customerName: serviceLocation.customerName,
-                            backYardTree: serviceLocation.backYardTree,
-                            backYardBushes: serviceLocation.backYardBushes,
-                            backYardOther: serviceLocation.backYardOther,
-                            preText: preText
-                        ),
-                        originalServiceLocation: serviceLocation
-                       )
-                       alertMessage = "Successfully Updated"
-                       print(alertMessage)
-                       showAlert = true
-                       dismiss()
-                   } catch ServiceLocationError.invalidCustomerId{
-                       alertMessage = "Invalid Customer Selected"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidCustomerName{
-                       alertMessage = "Invalid Customer Selected"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidNickName{
-                       alertMessage = "Please Add Nick Name"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidStreetAddress{
-                       alertMessage = "Invalid Street Address"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidCity{
-                       alertMessage = "Invalid City"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidState{
-                       alertMessage = "Invalid State"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidZip{
-                       alertMessage = "Invalid Zip"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidLatitude {
-                       alertMessage = "Latitude is not a Number"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidLongitude {
-                       alertMessage = "Latitude is not a Number"
-                       print(alertMessage)
-                       showAlert = true
-                   }catch ServiceLocationError.invalidContactName{
-                       alertMessage = "Invalid Contact Name"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidContactPhoneNumber{
-                       alertMessage = "Invalid Phone Number"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidContactEmail{
-                       alertMessage = "Invalid Contact Email "
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidContactNotes{
-                       alertMessage = "Invalid Contact NToes"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidGateCode{
-                       alertMessage = "Invalid Gate Code"
-                       print(alertMessage)
-                       showAlert = true
-                   } catch ServiceLocationError.invalidTime{
-                       alertMessage = "Invalid Time"
-                       print(alertMessage)
-                       showAlert = true
-                   }catch {
-                       alertMessage = "Invalid Something"
-                       print(alertMessage)
-                       showAlert = true
-                   }
-               }
-           },
-                  label: {
-               Text("Submit")
-           })
+                            serviceLocation: ServiceLocation(
+                                id: serviceLocation.id,
+                                nickName: nickName,
+                                address: Address(
+                                    streetAddress: serviceLocationAddressStreetAddress,
+                                    city: serviceLocationAddressCity,
+                                    state: serviceLocationAddressState,
+                                    zip: serviceLocationAddressZip,
+                                    latitude: latitude,
+                                    longitude: longitude
+                                ),
+                                gateCode: gateCode,
+                                dogName: dogNames,
+                                estimatedTime: time,
+                                mainContact: Contact(
+                                    id: serviceLocation.mainContact.id,
+                                    name: serviceLocationMainContactName,
+                                    phoneNumber: serviceLocationMainContactPhoneNumber,
+                                    email: serviceLocationMainContactEmail,
+                                    notes: serviceLocationMainContactNotes
+                                ),
+                                notes: serviceLocation.notes,
+                                bodiesOfWaterId: serviceLocation.bodiesOfWaterId,
+                                rateType: serviceLocation.rateType,
+                                laborType: serviceLocation.laborCost,
+                                chemicalCost: serviceLocation.chemicalCost,
+                                laborCost: serviceLocation.laborCost,
+                                rate: serviceLocation.rate,
+                                customerId: serviceLocation.customerId,
+                                customerName: serviceLocation.customerName,
+                                backYardTree: serviceLocation.backYardTree,
+                                backYardBushes: serviceLocation.backYardBushes,
+                                backYardOther: serviceLocation.backYardOther,
+                                preText: preText
+                            ),
+                            originalServiceLocation: serviceLocation
+                        )
+                        alertMessage = "Successfully Updated"
+                        print(alertMessage)
+                        showAlert = true
+                        dismiss()
+                    } catch ServiceLocationError.invalidCustomerId{
+                        alertMessage = "Invalid Customer Selected"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidCustomerName{
+                        alertMessage = "Invalid Customer Selected"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidNickName{
+                        alertMessage = "Please Add Nick Name"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidStreetAddress{
+                        alertMessage = "Invalid Street Address"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidCity{
+                        alertMessage = "Invalid City"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidState{
+                        alertMessage = "Invalid State"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidZip{
+                        alertMessage = "Invalid Zip"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidLatitude {
+                        alertMessage = "Latitude is not a Number"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidLongitude {
+                        alertMessage = "Latitude is not a Number"
+                        print(alertMessage)
+                        showAlert = true
+                    }catch ServiceLocationError.invalidContactName{
+                        alertMessage = "Invalid Contact Name"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidContactPhoneNumber{
+                        alertMessage = "Invalid Phone Number"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidContactEmail{
+                        alertMessage = "Invalid Contact Email "
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidContactNotes{
+                        alertMessage = "Invalid Contact NToes"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidGateCode{
+                        alertMessage = "Invalid Gate Code"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch ServiceLocationError.invalidTime{
+                        alertMessage = "Invalid Time"
+                        print(alertMessage)
+                        showAlert = true
+                    } catch {
+                        alertMessage = "Error"
+                        print(alertMessage)
+                        showAlert = true
+                    }
+                }
+            },
+                   label: {
+                Text("Submit")
+                    .modifier(SubmitButtonModifier())
+                
+            })
         }
     }
 }

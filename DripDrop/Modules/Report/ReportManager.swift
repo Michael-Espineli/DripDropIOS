@@ -16,6 +16,8 @@ enum ReportType: Int, CaseIterable, Identifiable {
     case purchases
     case pnl
     case job
+    case vehical
+    case tax
 }
 
 extension ReportType {
@@ -38,6 +40,12 @@ extension ReportType {
 
         case .pnl:
             return "P.N.L."
+            
+        case .vehical:
+            return "Vehical"
+            
+        case .tax:
+            return "Tax"
 
         }
     }
@@ -58,6 +66,10 @@ extension ReportType {
         case .job:
             return "doc"
         case .pnl:
+            return "dollarsign"
+        case .vehical:
+            return "dollarsign"
+        case .tax:
             return "dollarsign"
 
         }

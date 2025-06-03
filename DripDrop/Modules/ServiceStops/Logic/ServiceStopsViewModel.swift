@@ -105,6 +105,7 @@ final class ServiceStopsViewModel:ObservableObject{
                            linkedItem: nil,
                            bodyOfWaterId: "bodyOfWater"),
                  ],
+                 observation: [],
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
@@ -145,6 +146,7 @@ final class ServiceStopsViewModel:ObservableObject{
                            linkedItem: nil,
                            bodyOfWaterId: "bodyOfWater"),
                  ],
+                 observation: [],
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
@@ -186,6 +188,7 @@ final class ServiceStopsViewModel:ObservableObject{
                            linkedItem: nil,
                            bodyOfWaterId: "bodyOfWater"),
                  ],
+                 observation: [],
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
@@ -227,6 +230,7 @@ final class ServiceStopsViewModel:ObservableObject{
                            linkedItem: nil,
                            bodyOfWaterId: "bodyOfWater")
                  ],
+                 observation: [],
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
@@ -234,12 +238,151 @@ final class ServiceStopsViewModel:ObservableObject{
         
     ]
 
-    @Published private(set) var mockServiceStopData:[ServiceStop] =  [
-        ServiceStop(id: UUID().uuidString, typeId: "Estimate", customerName: "Kellie Lewis", customerId: "", address: Address(streetAddress: "3300 W Camelback Rd", city: "Phoeniz", state: "Az", zip: "85017", latitude: 33.30389, longitude: -112.07432), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "list.bullet.clipboard", jobId: "", finished: true, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-        ServiceStop(id: UUID().uuidString, typeId: "Weekly Cleaning", customerName: "Diane Greenwood", customerId: "", address: Address(streetAddress: "300 Soden Dr", city: "Oregon", state: "WI", zip: "53575", latitude: 42.929076, longitude: -89.381327), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "bubbles.and.sparkles.fill", jobId: "", finished: false, skipped: true, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-        ServiceStop(id: UUID().uuidString, typeId: "Weekly Cleaning", customerName: "Nathan Corrnet", customerId: "", address: Address(streetAddress: "2101 Epcot Resorts Blvd", city: "Orlando", state: "FL", zip: "32830", latitude: 28.374580, longitude: -81.559631), dateCreated: Date(), serviceDate: Date(), duration: 120, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "bubbles.and.sparkles.fill", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
-        ServiceStop(id: UUID().uuidString, typeId: "Repair", customerName: "Laurie Boggiers", customerId: "", address: Address(streetAddress: "6160 Broadmoor Dr", city: "La Mesa", state: "Ca", zip: "91942", latitude:  32.790065, longitude: -116.992345), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "wrench.adjustable.fill", jobId: "", finished: false, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),
+    @Published private(set) var mockServiceStopData:[ServiceStop] = []
+    
+    /*[
+        ServiceStop(
+            id: UUID().uuidString,
+            typeId: "Estimate",
+            companyId: "",
+            companyName: "",
+            customerName: "Kellie Lewis",
+            customerId: "",
+            address: Address(
+                streetAddress: "3300 W Camelback Rd",
+                city: "Phoeniz",
+                state: "Az",
+                zip: "85017",
+                latitude: 33.30389,
+                longitude: -112.07432
+            ),
+            dateCreated: Date(),
+            serviceDate: Date(),
+            duration: 60,
+            rate: 0,
+            tech: "Keler Smith",
+            techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1",
+            recurringServiceStopId: "",
+            description: "",
+            serviceLocationId: "",
+            type: "",
+            typeImage: "list.bullet.clipboard",
+            jobId: "",
+            finished: true,
+            skipped: false,
+            invoiced: false,
+            checkList: [],
+            includeReadings: true,
+            includeDosages: true,
+            otherCompany: false
+        ),
+        ServiceStop(
+            id: UUID().uuidString,
+            typeId: "Weekly Cleaning",
+            companyId: "",
+            companyName: "",
+            customerName: "Diane Greenwood",
+            customerId: "",
+            address: Address(
+                streetAddress: "300 Soden Dr",
+                city: "Oregon",
+                state: "WI",
+                zip: "53575",
+                latitude: 42.929076,
+                longitude: -89.381327
+            ),
+            dateCreated: Date(),
+            serviceDate: Date(),
+            duration: 60,
+            rate: 0,
+            tech: "Keler Smith",
+            techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1",
+            recurringServiceStopId: "",
+            description: "",
+            serviceLocationId: "",
+            type: "",
+            typeImage: "bubbles.and.sparkles.fill",
+            jobId: "",
+            finished: false,
+            skipped: true,
+            invoiced: false,
+            checkList: [],
+            includeReadings: true,
+            includeDosages: true,
+            otherCompany: false
+        ),
+        ServiceStop(
+            id: UUID().uuidString,
+            typeId: "Weekly Cleaning",
+            companyId: "",
+            companyName: "", //Developer420
+            customerName: "Nathan Corrnet",
+            customerId: "",
+            address: Address(
+                streetAddress: "2101 Epcot Resorts Blvd",
+                city: "Orlando",
+                state: "FL",
+                zip: "32830",
+                latitude: 28.374580,
+                longitude: -81.559631
+            ),
+            dateCreated: Date(),
+            serviceDate: Date(),
+            duration: 120,
+            rate: 0,
+            tech: "Keler Smith",
+            techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1",
+            recurringServiceStopId: "",
+            description: "",
+            serviceLocationId: "",
+            type: "",
+            typeImage: "bubbles.and.sparkles.fill",
+            jobId: "",
+            finished: false,
+            skipped: false,
+            invoiced: false,
+            checkList: [],
+            includeReadings: true,
+            includeDosages: true,
+            otherCompany: false
+        ),
+        ServiceStop(
+            id: UUID().uuidString,
+            typeId: "Repair",
+            companyId: "",
+            companyName: "", //Developer420
+            customerName: "Laurie Boggiers",
+            customerId: "",
+            address: Address(
+                streetAddress: "6160 Broadmoor Dr",
+                city: "La Mesa",
+                state: "Ca",
+                zip: "91942",
+                latitude:  32.790065,
+                longitude: -116.992345
+            ),
+            dateCreated: Date(),
+            serviceDate: Date(),
+            duration: 60,
+            rate: 0,
+            tech: "Keler Smith",
+            techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1",
+            recurringServiceStopId: "",
+            description: "",
+            serviceLocationId: "",
+            type: "",
+            typeImage: "wrench.adjustable.fill",
+            jobId: "",
+            finished: false,
+            skipped: false,
+            invoiced: false,
+            checkList: [],
+            includeReadings: true,
+            includeDosages: true,
+            otherCompany: false
+        ),
     ]
+     */
 
     //    chemicals
     //    repairs
@@ -262,233 +405,233 @@ final class ServiceStopsViewModel:ObservableObject{
     //                            CREATE
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
-    func createNewServiceStops(companyId:String) async throws {
-        let recurringsSSList = try await RecurringServiceStopManager.shared.getReucrringServiceStopsWithOutEndDate(companyId: companyId)
-        for rss in recurringsSSList {
-            if rss.noEndDate == true {
-                let listOfStops = try await dataService.getServiceStopsByRecurringsServiceStopNotFinished(companyId: companyId, recurringsServicestop: rss)
-                if listOfStops.count < 10 {
-                    var newestDate:Date = Date()
-                    //this should get the furthest out startDate
-                    for ss in listOfStops{
-                        let serviceDate = ss.serviceDate!
-                        if serviceDate > newestDate {
-                            newestDate = serviceDate
-                        }
-                        
-                    }
-                    let calendar = Calendar.current
-                    var functionalStartDate = newestDate
-                    var functionalEndDate = Date()
-                    var skipWeekEnds:Bool = false
-                    var custom:Bool = false
-                    var month:Bool = false
-                    var counter:Int = 1
-                    var monthCounter:Int = 1
-                    var numFrequency:Int = 0
-                    var recurringServiceStops:[ServiceStop] =  []
-                    
-                    switch rss.frequency{
-                        //Daily
-                    case "Daily":
-                        numFrequency = 1
-                        
-                        //Weekly
-                    case "WeekDays":
-                        numFrequency = 7
-                        
-                        //monthly
-                    case "Weekly":
-                        month = true
-                    case "Bi-Weekly":
-                        numFrequency = 30
-                        
-                    case "Monthly":
-                        numFrequency = 1
-                        skipWeekEnds = true
-                    case "Custom":
-                        custom = true
-                        switch rss.customMeasuresOfTime{
-                        case "Day":
-                            print("Day")
-                        case "Week":
-                            print("Day")
-                        case "Month":
-                            print("Day")
-                        case "Year":
-                            print("Year")
-                        default:
-                            print("Year")
-                            
-                        }
-                    default:
-                        return
-                        
-                    }
-                    if rss.noEndDate {
-                        functionalStartDate = rss.startDate ?? Date()
-                        functionalEndDate = calendar.date(byAdding: .day, value: 14, to: functionalStartDate)!
-                        
-                    } else {
-                        functionalStartDate = rss.startDate ?? Date()
-                        functionalEndDate = rss.endDate ?? Date()
-                    }
-                    let daysBetween = daysBetween(start: functionalStartDate, end:functionalEndDate )
-                    print("Num Frequency")
-                    print(numFrequency)
-                    print("Days Between")
-                    
-                    print(daysBetween)
-                    let startDate = rss.startDate ?? Date()
-                    if custom {
-                        print("Creating Custom Recurring service Stop")
-                        
-                    } else {
-                        
-                        print("Creating standard Recurring service stop")
-                        
-                        while counter < daysBetween {
-                            
-                            
-                            
-                            var pushDate = Date()
-                            if month {
-                                pushDate = Calendar.current.date(byAdding: .month, value: monthCounter, to: startDate)!
-                                
-                            } else {
-                                pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-                            }
-                            
-                            if skipWeekEnds {
-                                print(weekDay(date: pushDate))
-                                if weekDay(date: pushDate) == "Saturday" || weekDay(date: pushDate) == "Sunday" {
-                                    print(weekDay(date: pushDate))
-                                    print("Skipped")
-                                }else {
-                                    let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                                 typeId: rss.typeId,
-                                                                                 customerName: rss.customerName,
-                                                                                 customerId: rss.customerId,
-                                                                                 address: rss.address,
-                                                                                 dateCreated: Date(),
-                                                                                 serviceDate:pushDate,
-                                                                                 duration: 0,
-                                                                                 rate:0,
-                                                                                 tech: rss.tech,
-                                                                                 techId: rss.techId,
-                                                                                 recurringServiceStopId: rss.id,
-                                                                                 description: rss.description,
-                                                                                 serviceLocationId: rss.locationId ?? "1",
-                                                                                 type: rss.type,
-                                                                                 typeImage: rss.typeImage,
-                                                                                 jobId:"",
-                                                                                 finished: false,
-                                                                                 skipped: false,
-                                                                                 invoiced:false,
-                                                                                 checkList: []
-                                                                                 ,includeReadings: true,includeDosages: true)
-                                    
-                                    recurringServiceStops.append(singleRecurringServiceStop)
-                                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
-                                    let serviceStopId = "S" + String(serviceStopCount)
-                                    
-                                    try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId,
-                                                                                          serviceStop: ServiceStop(id:serviceStopId,
-                                                                                                                               typeId: rss.typeId,
-                                                                                                                               customerName: rss.customerName,
-                                                                                                                               customerId: rss.customerId,
-                                                                                                                               address: rss.address,
-                                                                                                                               dateCreated: Date(),
-                                                                                                                               serviceDate: pushDate,
-                                                                                                                               duration: 0,
-                                                                                                                               rate:0,
-                                                                                                                               tech: rss.tech,
-                                                                                                                               techId: rss.techId,
-                                                                                                                               recurringServiceStopId: rss.id,
-                                                                                                                               description: rss.description,
-                                                                                                                               serviceLocationId: rss.locationId ?? "1",
-                                                                                                                               type: rss.type,
-                                                                                                                               typeImage: rss.typeImage,
-                                                                                                                   jobId:"",
-                                                                                                                               finished: false,
-                                                                                                                               skipped: false,
-                                                                                                                               invoiced:false,checkList: []
-                                                                                                                               ,includeReadings: true,includeDosages: true))
-                                }
-                                
-                            } else {
-                                let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
-                                                                             typeId: rss.typeId,
-                                                                             customerName: rss.customerName,
-                                                                             customerId: rss.customerId,
-                                                                             address: rss.address,
-                                                                             dateCreated: Date(),
-                                                                             serviceDate:pushDate,
-                                                                             duration: 0,
-                                                                             rate:0,
-                                                                             tech: rss.tech,
-                                                                             techId: rss.techId,
-                                                                             recurringServiceStopId: rss.id,
-                                                                             description: rss.description,
-                                                                             serviceLocationId: rss.locationId ?? "1",
-                                                                             type: rss.type,
-                                                                             typeImage: rss.typeImage,
-                                                                             jobId:"",
-                                                                             finished: false,
-                                                                             skipped: false,
-                                                                             invoiced:false,checkList: []
-                                                                             ,includeReadings: true,includeDosages: true)
-                                
-                                recurringServiceStops.append(singleRecurringServiceStop)
-                                let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
-                                let serviceStopId = "S" + String(serviceStopCount)
-                                
-                                try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId,
-                                                                                      serviceStop: ServiceStop(id:serviceStopId,
-                                                                                                               typeId: rss.typeId,
-                                                                                                               customerName: rss.customerName,
-                                                                                                               customerId: rss.customerId,
-                                                                                                               address: rss.address,
-                                                                                                               dateCreated: Date(),
-                                                                                                               serviceDate: pushDate,
-                                                                                                               duration: 0,
-                                                                                                               rate:0,
-                                                                                                               tech: rss.tech,
-                                                                                                               techId: rss.techId,
-                                                                                                               recurringServiceStopId: rss.id,
-                                                                                                               description: rss.description,
-                                                                                                               serviceLocationId: rss.locationId ?? "1",
-                                                                                                               type: rss.type,
-                                                                                                               typeImage: rss.typeImage,
-                                                                                                               jobId:"",
-                                                                                                               finished: false,
-                                                                                                               skipped: false,
-                                                                                                               invoiced:false,checkList: []
-                                                                                                               ,includeReadings: true,includeDosages: true))
-                            }
-                            if month {
-                                monthCounter = monthCounter + 1
-                                counter = counter + 30
-                            }
-                            counter = counter + numFrequency
-                        }
-                    }
-                    print(recurringServiceStops)
-                    
-                }
-                
-            }
-        }
-        
-    }
+//    func createNewServiceStops(companyId:String) async throws {
+//        let recurringsSSList = try await RecurringdataService.getReucrringServiceStopsWithOutEndDate(companyId: companyId)
+//        for rss in recurringsSSList {
+//            if rss.noEndDate == true {
+//                let listOfStops = try await dataService.getServiceStopsByRecurringsServiceStopNotFinished(companyId: companyId, recurringsServicestop: rss)
+//                if listOfStops.count < 10 {
+//                    var newestDate:Date = Date()
+//                    //this should get the furthest out startDate
+//                    for ss in listOfStops{
+//                        let serviceDate = ss.serviceDate!
+//                        if serviceDate > newestDate {
+//                            newestDate = serviceDate
+//                        }
+//                        
+//                    }
+//                    let calendar = Calendar.current
+//                    var functionalStartDate = newestDate
+//                    var functionalEndDate = Date()
+//                    var skipWeekEnds:Bool = false
+//                    var custom:Bool = false
+//                    var month:Bool = false
+//                    var counter:Int = 1
+//                    var monthCounter:Int = 1
+//                    var numFrequency:Int = 0
+//                    var recurringServiceStops:[ServiceStop] =  []
+//                    
+//                    switch rss.frequency{
+//                        //Daily
+//                    case "Daily":
+//                        numFrequency = 1
+//                        
+//                        //Weekly
+//                    case "WeekDays":
+//                        numFrequency = 7
+//                        
+//                        //monthly
+//                    case "Weekly":
+//                        month = true
+//                    case "Bi-Weekly":
+//                        numFrequency = 30
+//                        
+//                    case "Monthly":
+//                        numFrequency = 1
+//                        skipWeekEnds = true
+//                    case "Custom":
+//                        custom = true
+//                        switch rss.customMeasuresOfTime{
+//                        case "Day":
+//                            print("Day")
+//                        case "Week":
+//                            print("Day")
+//                        case "Month":
+//                            print("Day")
+//                        case "Year":
+//                            print("Year")
+//                        default:
+//                            print("Year")
+//                            
+//                        }
+//                    default:
+//                        return
+//                        
+//                    }
+//                    if rss.noEndDate {
+//                        functionalStartDate = rss.startDate ?? Date()
+//                        functionalEndDate = calendar.date(byAdding: .day, value: 14, to: functionalStartDate)!
+//                        
+//                    } else {
+//                        functionalStartDate = rss.startDate ?? Date()
+//                        functionalEndDate = rss.endDate ?? Date()
+//                    }
+//                    let daysBetween = daysBetween(start: functionalStartDate, end:functionalEndDate )
+//                    print("Num Frequency")
+//                    print(numFrequency)
+//                    print("Days Between")
+//                    
+//                    print(daysBetween)
+//                    let startDate = rss.startDate ?? Date()
+//                    if custom {
+//                        print("Creating Custom Recurring service Stop")
+//                        
+//                    } else {
+//                        
+//                        print("Creating standard Recurring service stop")
+//                        
+//                        while counter < daysBetween {
+//                            
+//                            
+//                            
+//                            var pushDate = Date()
+//                            if month {
+//                                pushDate = Calendar.current.date(byAdding: .month, value: monthCounter, to: startDate)!
+//                                
+//                            } else {
+//                                pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
+//                            }
+//                            
+//                            if skipWeekEnds {
+//                                print(weekDay(date: pushDate))
+//                                if weekDay(date: pushDate) == "Saturday" || weekDay(date: pushDate) == "Sunday" {
+//                                    print(weekDay(date: pushDate))
+//                                    print("Skipped")
+//                                }else {
+//                                    let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
+//                                                                                 typeId: rss.typeId,
+//                                                                                 customerName: rss.customerName,
+//                                                                                 customerId: rss.customerId,
+//                                                                                 address: rss.address,
+//                                                                                 dateCreated: Date(),
+//                                                                                 serviceDate:pushDate,
+//                                                                                 duration: 0,
+//                                                                                 rate:0,
+//                                                                                 tech: rss.tech,
+//                                                                                 techId: rss.techId,
+//                                                                                 recurringServiceStopId: rss.id,
+//                                                                                 description: rss.description,
+//                                                                                 serviceLocationId: rss.locationId ?? "1",
+//                                                                                 type: rss.type,
+//                                                                                 typeImage: rss.typeImage,
+//                                                                                 jobId:"",
+//                                                                                 finished: false,
+//                                                                                 skipped: false,
+//                                                                                 invoiced:false,
+//                                                                                 checkList: []
+//                                                                                 ,includeReadings: true,includeDosages: true)
+//                                    
+//                                    recurringServiceStops.append(singleRecurringServiceStop)
+//                                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
+//                                    let serviceStopId = "S" + String(serviceStopCount)
+//                                    
+//                                    try await dataService.uploadServiceStop(companyId: companyId,
+//                                                                                          serviceStop: ServiceStop(id:serviceStopId,
+//                                                                                                                               typeId: rss.typeId,
+//                                                                                                                               customerName: rss.customerName,
+//                                                                                                                               customerId: rss.customerId,
+//                                                                                                                               address: rss.address,
+//                                                                                                                               dateCreated: Date(),
+//                                                                                                                               serviceDate: pushDate,
+//                                                                                                                               duration: 0,
+//                                                                                                                               rate:0,
+//                                                                                                                               tech: rss.tech,
+//                                                                                                                               techId: rss.techId,
+//                                                                                                                               recurringServiceStopId: rss.id,
+//                                                                                                                               description: rss.description,
+//                                                                                                                               serviceLocationId: rss.locationId ?? "1",
+//                                                                                                                               type: rss.type,
+//                                                                                                                               typeImage: rss.typeImage,
+//                                                                                                                   jobId:"",
+//                                                                                                                               finished: false,
+//                                                                                                                               skipped: false,
+//                                                                                                                               invoiced:false,checkList: []
+//                                                                                                                               ,includeReadings: true,includeDosages: true))
+//                                }
+//                                
+//                            } else {
+//                                let singleRecurringServiceStop = ServiceStop(id: UUID().uuidString,
+//                                                                             typeId: rss.typeId,
+//                                                                             customerName: rss.customerName,
+//                                                                             customerId: rss.customerId,
+//                                                                             address: rss.address,
+//                                                                             dateCreated: Date(),
+//                                                                             serviceDate:pushDate,
+//                                                                             duration: 0,
+//                                                                             rate:0,
+//                                                                             tech: rss.tech,
+//                                                                             techId: rss.techId,
+//                                                                             recurringServiceStopId: rss.id,
+//                                                                             description: rss.description,
+//                                                                             serviceLocationId: rss.locationId ?? "1",
+//                                                                             type: rss.type,
+//                                                                             typeImage: rss.typeImage,
+//                                                                             jobId:"",
+//                                                                             finished: false,
+//                                                                             skipped: false,
+//                                                                             invoiced:false,checkList: []
+//                                                                             ,includeReadings: true,includeDosages: true)
+//                                
+//                                recurringServiceStops.append(singleRecurringServiceStop)
+//                                let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
+//                                let serviceStopId = "S" + String(serviceStopCount)
+//                                
+//                                try await dataService.uploadServiceStop(companyId: companyId,
+//                                                                                      serviceStop: ServiceStop(id:serviceStopId,
+//                                                                                                               typeId: rss.typeId,
+//                                                                                                               customerName: rss.customerName,
+//                                                                                                               customerId: rss.customerId,
+//                                                                                                               address: rss.address,
+//                                                                                                               dateCreated: Date(),
+//                                                                                                               serviceDate: pushDate,
+//                                                                                                               duration: 0,
+//                                                                                                               rate:0,
+//                                                                                                               tech: rss.tech,
+//                                                                                                               techId: rss.techId,
+//                                                                                                               recurringServiceStopId: rss.id,
+//                                                                                                               description: rss.description,
+//                                                                                                               serviceLocationId: rss.locationId ?? "1",
+//                                                                                                               type: rss.type,
+//                                                                                                               typeImage: rss.typeImage,
+//                                                                                                               jobId:"",
+//                                                                                                               finished: false,
+//                                                                                                               skipped: false,
+//                                                                                                               invoiced:false,checkList: []
+//                                                                                                               ,includeReadings: true,includeDosages: true))
+//                            }
+//                            if month {
+//                                monthCounter = monthCounter + 1
+//                                counter = counter + 30
+//                            }
+//                            counter = counter + numFrequency
+//                        }
+//                    }
+//                    print(recurringServiceStops)
+//                    
+//                }
+//                
+//            }
+//        }
+//        
+//    }
     func uploadServiceStop(companyId:String,serviceStop:ServiceStop) async throws {
-        try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: serviceStop)
+        try await dataService.uploadServiceStop(companyId: companyId, serviceStop: serviceStop)
     }
     func uploadGenericServicestops(user:DBUser,companyId:String) async throws {
         for stop in mockServiceStopData{
             var pushStop = stop
             pushStop.techId = user.id
-            try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: pushStop)
+            try await dataService.uploadServiceStop(companyId: companyId, serviceStop: pushStop)
         }
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -506,28 +649,28 @@ final class ServiceStopsViewModel:ObservableObject{
         self.serviceStops = try await dataService.getAllServiceStopsSortedByTime(companyId: companyId, descending: true, count: 25)
     }
     func getServiceStopsBetweenDates(companyId:String,startDate:Date,endDate:Date) async throws{
-        self.serviceStops = try await ServiceStopManager.shared.getAllServiceStopsBetweenDate(companyId: companyId, startDate: startDate, endDate: endDate)
+        self.serviceStops = try await dataService.getAllServiceStopsBetweenDate(companyId: companyId, startDate: startDate, endDate: endDate)
     }
     func getServiceStopsBetweenDatesForUser(companyId:String,startDate:Date,endDate:Date,userId:String) async throws{
-        self.serviceStops = try await ServiceStopManager.shared.getAllServiceStopsBetweenDateByUserId(companyId: companyId, startDate: startDate, endDate: endDate, userId: userId)
+        self.serviceStops = try await dataService.getAllServiceStopsBetweenDateByUserId(companyId: companyId, startDate: startDate, endDate: endDate, userId: userId)
     }
     func getServiceStopsByRecurringsServiceStop(companyId:String,recurringsServicestop:RecurringServiceStop) async throws{
-        self.serviceStops = try await ServiceStopManager.shared.getServiceStopsByRecurringsServiceStop(companyId: companyId, recurringsServicestop: recurringsServicestop)
+        self.serviceStops = try await dataService.getServiceStopsByRecurringsServiceStop(companyId: companyId, recurringsServicestop: recurringsServicestop)
     }
     func getServiceStopsBetweenDatesAndByType(companyId:String,startDate:Date,endDate:Date,workOrderType:String) async throws{
         self.serviceStops = try await dataService.getServiceStopsBetweenDatesAndByType(companyId: companyId, startDate: startDate, endDate: endDate,workOrderType: workOrderType)
     }
     func getServiceStopsBetweenDatesAndByCustomer(companyId:String,startDate:Date,endDate:Date,customer:Customer) async throws{
-        self.serviceStops = try await ServiceStopManager.shared.getServiceStopsBetweenDatesAndByCustomer(companyId: companyId, startDate: startDate, endDate: endDate,customer: customer)
+        self.serviceStops = try await dataService.getServiceStopsBetweenDatesAndByCustomer(companyId: companyId, startDate: startDate, endDate: endDate,customer: customer)
     }
     func getUnfinishedServiceStopsByCustomer(companyId:String,customer:Customer) async throws{
-        self.serviceStops = try await ServiceStopManager.shared.getUnfinishedServiceStopsByCustomer(companyId: companyId,customer: customer)
+        self.serviceStops = try await dataService.getUnfinishedServiceStopsByCustomer(companyId: companyId,customer: customer)
     }
     func getUnfinished4ServiceStopsByCustomer(companyId:String,customer:Customer) async throws{
-        self.serviceStops = try await ServiceStopManager.shared.getUnfinished4ServiceStopsByCustomer(companyId: companyId,customer: customer)
+        self.serviceStops = try await dataService.getUnfinished4ServiceStopsByCustomer(companyId: companyId,customer: customer)
     }
     func getServiceStopById(companyId:String,serviceStopId:String) async throws {
-        self.serviceStop = try await ServiceStopManager.shared.getServiceStopById(serviceStopId:serviceStopId, companyId: companyId)
+        self.serviceStop = try await dataService.getServiceStopById(serviceStopId:serviceStopId, companyId: companyId)
     }
     func getServiceStopByListFromActiveRoutes(companyId:String,activeRoutes:[ActiveRoute]) async throws {
         var serviceStopDict:[String:[ServiceStop]] = [:]
@@ -535,7 +678,7 @@ final class ServiceStopsViewModel:ObservableObject{
         for route in activeRoutes {
             var listOfStops:[ServiceStop] = []
             for id in route.serviceStopsIds{
-                let stop = try await ServiceStopManager.shared.getServiceStopById(serviceStopId:id, companyId: companyId)
+                let stop = try await dataService.getServiceStopById(serviceStopId:id, companyId: companyId)
                 listOfStops.append(stop)
             }
             serviceStopDict[route.techName] = listOfStops
@@ -548,7 +691,7 @@ final class ServiceStopsViewModel:ObservableObject{
         print("Gettings List For \(serviceStopIds)")
         for id in serviceStopIds{
             print(id)
-            let stop = try await ServiceStopManager.shared.getServiceStopById(serviceStopId:id, companyId: companyId)
+            let stop = try await dataService.getServiceStopById(serviceStopId:id, companyId: companyId)
             listOfStops.append(stop)
             print(" - Success")
         }
@@ -556,7 +699,7 @@ final class ServiceStopsViewModel:ObservableObject{
     }
     func getServiceStopSnapShot(companyId:String) async throws {
         var typesAndAmount: [String:Int] = [:]
-        let stops = try await ServiceStopManager.shared.getAllServiceStopsBetweenDate(companyId: companyId, startDate: Date().startOfDay(), endDate: Date().endOfDay())
+        let stops = try await dataService.getAllServiceStopsBetweenDate(companyId: companyId, startDate: Date().startOfDay(), endDate: Date().endOfDay())
         self.serviceStops = Array(stops.prefix(10))
         for stop in stops {
             
@@ -577,22 +720,23 @@ final class ServiceStopsViewModel:ObservableObject{
         self.typesAndAmount = typesAndAmount
     }
     func getserviceStopsByJobId(companyId: String,jobId:String) async throws {
-        self.serviceStops = try await ServiceStopManager.shared.getServiceStopByJobId(companyId: companyId, jobId: jobId)
+        self.serviceStops = try await dataService.getServiceStopByJobId(companyId: companyId, jobId: jobId)
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                            UPDATE
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,updatedServiceStop:ServiceStop) async throws {
         
-        try ServiceStopManager.shared.updateServiceStop(companyId: companyId, user: user, originalServiceStop: originalServiceStop, newServiceStop: updatedServiceStop)
+        try await dataService.updateServiceStop(companyId: companyId, user: user, originalServiceStop: originalServiceStop, newServiceStop: updatedServiceStop)
     }
-    func updateServiceStopFinished(companyId:String,stop:ServiceStop,finished:Bool) async throws {
+    
+    func updateServiceStopOperationStatus(companyId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
         
-        try await dataService.updateServiceStopFinish(companyId: companyId, serviceStop: stop, finished: finished)
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: stop, operationStatus: operationStatus)
     }
-    func updateServiceStopSkipped(companyId:String,stop:ServiceStop,skipped:Bool) throws {
+    func updateServiceStopBillingStatus(companyId:String,stop:ServiceStop,billingStatus:ServiceStopBillingStatus) async throws {
         
-        try ServiceStopManager.shared.updateServiceStopSkipped(companyId: companyId, serviceStop: stop, skipped: skipped)
+        try await dataService.updateServicestopBillingStatus(companyId: companyId, serviceStop: stop, billingStatus: billingStatus)
     }
     func updateServiceStopWithValidation(){
         
@@ -620,7 +764,7 @@ final class ServiceStopsViewModel:ObservableObject{
     //        var routes:[Route] = []
     //        print("Attempting to retreive Service Stops for \(fullDate(date: date))")
     //        for tech in listOfTechs {
-    //            let stops = try await ServiceStopManager.shared.getAllServiceStopsByDateAndTech(date: date,companyId: companyId, companyUser: tech)
+    //            let stops = try await dataService.getAllServiceStopsByDateAndTech(date: date,companyId: companyId, companyUser: tech)
     //            routes.append(Route(id: UUID().uuidString, name: tech.displayName ?? "", day: "Day", serviceStops: stops, startTime: Date(), endTime: Date(), tech: tech, durationSeconds: 0, distanceMiles: 0.0))
     //        }
     //        self.routes = routes
@@ -634,7 +778,7 @@ final class ServiceStopsViewModel:ObservableObject{
     //        var techs:[CompanyUser] = []
     //        print("Attempting to retreive Service Stops for \(fullDate(date: date))")
     //
-    //        let stops = try await ServiceStopManager.shared.getAllServiceStopsByDate(date: date,companyId: companyId)
+    //        let stops = try await dataService.getAllServiceStopsByDate(date: date,companyId: companyId)
     ////        print("Stops")
     ////        print(stops)
     ////        self.serviceStopList = stops
@@ -672,13 +816,13 @@ final class ServiceStopsViewModel:ObservableObject{
         
         switch option{
         case .priceHigh:
-            self.serviceStops = try await ServiceStopManager.shared.getAllServiceStopsSortedByPrice(companyId: companyId, descending: true)
+            self.serviceStops = try await dataService.getAllServiceStopsSortedByPrice(companyId: companyId, descending: true)
             break
         case .priceLow:
-            self.serviceStops = try await ServiceStopManager.shared.getAllServiceStopsSortedByPrice(companyId: companyId, descending: false)
+            self.serviceStops = try await dataService.getAllServiceStopsSortedByPrice(companyId: companyId, descending: false)
             break
         case .noFilter:
-            self.serviceStops = try await ServiceStopManager.shared.getAllServiceStops(companyId: companyId)
+            self.serviceStops = try await dataService.getAllServiceStops(companyId: companyId)
             break
         }
         self.selectedFilter = option
@@ -686,7 +830,7 @@ final class ServiceStopsViewModel:ObservableObject{
     
     func DateSelected(date: Date,companyId:String) async throws{
         
-        self.serviceStops = try await ServiceStopManager.shared.getAllServiceStopsByDate(companyId: companyId, date: date)
+        self.serviceStops = try await dataService.getAllServiceStopsByDate(companyId: companyId, date: date)
         
     }
     //takes all the service stops and finds all unique techs in all of the service stops. only use on daily.
@@ -696,11 +840,11 @@ final class ServiceStopsViewModel:ObservableObject{
     //    }
     func TechAndDate(companyId:String,date: Date,techId:String) async throws{
         var finishedServiceStops:[ServiceStop] = []
-        let serviceStopList = try await ServiceStopManager.shared.getAllServiceStopsByDayAndTech(companyId: companyId, date: date,techId:techId)
+        let serviceStopList = try await dataService.getAllServiceStopsByDayAndTech(companyId: companyId, date: date,techId:techId)
         self.serviceStops = serviceStopList
         
         for serviceStop in serviceStopList {
-            if serviceStop.finished {
+            if serviceStop.operationStatus == .finished {
                 finishedServiceStops.append(serviceStop)
             }
         }
@@ -709,13 +853,14 @@ final class ServiceStopsViewModel:ObservableObject{
     func getUnfinishedStopsTechAndDate(companyId:String,date: Date,techId:String) async throws {
         //        let user = try await DBUserManager.shared.loadCurrentUser()
         
-        self.unfinishedServiceStopCount = try await ServiceStopManager.shared.getAllUnfinishedServiceStopsByDayAndTech(companyId: companyId, date: date,techId:techId).count
+        self.unfinishedServiceStopCount = try await dataService.getAllUnfinishedServiceStopsByDayAndTech(companyId: companyId, date: date,techId:techId).count
         //        self.unfinishedServiceStopCount = 5
     }
     func getUnfinishedStopsTechAndDateFromList(serviceStopList: [ServiceStop]) {
         var serviceStopCount:Int = 0
         for stop in serviceStopList {
-            if stop.finished{
+            
+            if stop.operationStatus == .finished {
                 serviceStopCount = serviceStopCount + 1
             }
         }
@@ -725,45 +870,48 @@ final class ServiceStopsViewModel:ObservableObject{
         
         Task{
             //            let user = try await DBUserManager.shared.loadCurrentUser()
-            let (newServiceStops,lastDocument) = try await ServiceStopManager.shared.getServiceStopBySomething(companyId: companyId, count: 5, lastDocument: lastDocument)
+            let (newServiceStops,lastDocument) = try await dataService.getServiceStopBySomething(companyId: companyId, count: 5, lastDocument: lastDocument)
             self.serviceStops.append(contentsOf: newServiceStops)
         }
     }
     func addNewserviceStop(companyId:String,serviceStop:ServiceStop,workOrderTempalte:JobTemplate,tech:DBUser) async throws{
         print("Attempting to add Service Stop: \(serviceStop)")
-        //get tech name from tech Id
-        
-        //get customer address from customer
-        //        let customerAddress = try await CustomerManager.shared.getCustomerById(customerId: serviceStop.customerId ?? "No Customer Id")
-        //        let history = "** " + (tech.firstName  ?? "no name") + " created on  " + fullDate(date: Date()) + " ** "
-        print("Delete 4 ")
         
         let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
         print(serviceStopCount)
-        try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId,
-                                                              serviceStop: ServiceStop(id:"S" + String(serviceStopCount),
-                                                                                       typeId: workOrderTempalte.type ?? "",
-                                                                                       customerName: serviceStop.customerName,
-                                                                                       customerId: serviceStop.customerId,
-                                                                                       address: serviceStop.address,
-                                                                                       dateCreated: Date(),
-                                                                                       serviceDate: serviceStop.serviceDate ?? Date(),//DEVELOPER TAKE A LOOK
-                                                                                       duration: serviceStop.duration,
-                                                                                       rate: serviceStop.rate,
-                                                                                       tech: serviceStop.tech,
-                                                                                       techId: serviceStop.techId,
-                                                                                       recurringServiceStopId: "",
-                                                                                       description: serviceStop.description,
-                                                                                       serviceLocationId: serviceStop.serviceLocationId,
-                                                                                       type: serviceStop.type,
-                                                                                       typeImage: serviceStop.typeImage,
-                                                                                       jobId: "",
-                                                                                       finished: false,
-                                                                                       skipped: false,
-                                                                                       invoiced:false,checkList: []
-                                                                                       ,includeReadings: true,includeDosages: true))
-        
-        
+        try await dataService.uploadServiceStop(
+            companyId: companyId,
+            serviceStop: ServiceStop(
+                id: "comp_ss_" + UUID().uuidString,
+                internalId: "S" + String(serviceStopCount),
+                companyId: "",
+                companyName: "",
+                customerId: serviceStop.customerId,
+                customerName: serviceStop.customerName,
+                address: serviceStop.address,
+                dateCreated: serviceStop.dateCreated,
+                serviceDate: serviceStop.serviceDate,
+                duration: serviceStop.duration,
+                estimatedDuration: serviceStop.estimatedDuration,
+                tech: serviceStop.tech,
+                techId: serviceStop.techId,
+                recurringServiceStopId: serviceStop.recurringServiceStopId,
+                description: serviceStop.description,
+                serviceLocationId: serviceStop.serviceLocationId,
+                typeId: serviceStop.typeId,
+                type: serviceStop.type,
+                typeImage: serviceStop.typeImage,
+                jobId: serviceStop.jobId,
+                operationStatus: serviceStop.operationStatus,
+                billingStatus: serviceStop.billingStatus,
+                includeReadings: serviceStop.includeReadings,
+                includeDosages: serviceStop.includeDosages,
+                otherCompany: serviceStop.otherCompany,
+                laborContractId: serviceStop.laborContractId,
+                contractedCompanyId: serviceStop.contractedCompanyId,
+                isInvoiced: serviceStop.isInvoiced
+            )
+        )
     }
     func addNewServiceStopWithValidation(
         companyId:String,
@@ -774,64 +922,63 @@ final class ServiceStopsViewModel:ObservableObject{
         dateCreated: Date,
         serviceDate: Date,
         duration: String,
-        rate: String?,
-        tech: String?,
-        techId: String?,
+        tech: String,
+        techId: String,
         recurringServiceStopId: String,
         description: String,
         serviceLocationId: String,
         type: String,
         typeImage: String,
         jobId: String,
-        finished: Bool,
-        skipped: Bool,
-        invoiced: Bool,
-        checkList: [String],
+        operationStatus: ServiceStopOperationStatus,
+        billingStatus: ServiceStopBillingStatus,
         includeReadings: Bool,
         includeDosages: Bool
     ) async throws -> String{
-        guard let duration = Int(duration) else {
+        guard let duration = Double(duration) else {
             print("Can not Convert duration to Int")
             throw FireBasePublish.unableToPublish
         }
-        var pushrate = 0
-        if rate != nil {
-            guard let rateString = rate else {
-                print("String")
-                throw FireBasePublish.unableToPublish
-            }
-            guard let rate = Double(rateString) else {
-                throw FireBasePublish.unableToPublish
-            }
-            pushrate = Int(rate*100)
-        }
+        
         let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
         print("Service Order Count >> \(serviceStopCount)")
         let serviceStopId = "S" + String(serviceStopCount)
-        try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId,
-                                                              serviceStop: ServiceStop(id: serviceStopId,
-                                                                                       typeId: typeId,
-                                                                                       customerName: customerName,
-                                                                                       customerId: customerId,
-                                                                                       address: address,
-                                                                                       dateCreated: Date(),
-                                                                                       serviceDate: serviceDate,//DEVELOPER TAKE A LOOK
-                                                                                       duration: duration,
-                                                                                       rate: pushrate,
-                                                                                       tech: tech,
-                                                                                       techId: techId,
-                                                                                       recurringServiceStopId: recurringServiceStopId,
-                                                                                       description: description,
-                                                                                       serviceLocationId: serviceLocationId,
-                                                                                       type: type,
-                                                                                       typeImage: typeImage,
-                                                                                       jobId: jobId,
-                                                                                       finished: finished,
-                                                                                       skipped: skipped,
-                                                                                       invoiced:invoiced,
-                                                                                       checkList: [], //DEVELOPER FIX
-                                                                                       includeReadings: includeReadings,
-                                                                                       includeDosages: includeDosages))
+        try await dataService.uploadServiceStop(
+            companyId: companyId,
+            serviceStop: ServiceStop(
+                id: "comp_ss_" + UUID().uuidString,
+                internalId: serviceStopId,
+                companyId: companyId,
+                companyName: customerName,
+                customerId: customerId,
+                customerName: "",
+                address: address,
+                dateCreated: Date(),
+                serviceDate: serviceDate,
+                startTime: nil,
+                endTime: nil,
+                duration: 0,
+                estimatedDuration: 0, // DEVELOPER Calculate Estimated Duration
+                tech: tech,
+                techId: techId,
+                recurringServiceStopId: recurringServiceStopId,
+                description: description,
+                serviceLocationId: serviceLocationId,
+                typeId: typeId,
+                type: type,
+                typeImage: typeImage,
+                jobId: jobId,
+                jobName: "",
+                operationStatus: operationStatus,
+                billingStatus: billingStatus,
+                includeReadings: true,
+                includeDosages: true,
+                otherCompany: false,
+                laborContractId: "",
+                contractedCompanyId: "",
+                isInvoiced: false
+            )
+        )
         
         return serviceStopId
     }
@@ -893,30 +1040,33 @@ final class ServiceStopsViewModel:ObservableObject{
         
     }
     func addServiceStopToCustomerHistory(companyId: String,serviceStop:ServiceStop,stopData:StopData) async throws{
-        try await ReadingsManager.shared.uploadReadingToCustomerHistory(companyId:companyId,serviceStop: serviceStop, stopData: stopData)
+        try await dataService.uploadReadingToCustomerHistory(companyId:companyId,serviceStop: serviceStop, stopData: stopData)
         
     }
     func addServiceStopToServiceStop(companyId:String,serviceStop:ServiceStop,stopData:StopData) async throws{
-        try await ReadingsManager.shared.uploadReadingToServiceStop(companyId: companyId,serviceStop: serviceStop, stopData: stopData)
+        try await dataService.uploadReadingToServiceStop(companyId: companyId,serviceStop: serviceStop, stopData: stopData)
         
     }
-    func finishServiceStop(companyId:String,serviceStop:ServiceStop,finish:Bool) throws{
-        try ServiceStopManager.shared.finishServicestop(companyId: companyId, serviceStop: serviceStop, finish: finish)
+    func finishServiceStop(companyId:String,serviceStop:ServiceStop) async throws{
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: serviceStop, operationStatus: .finished)
         
     }
-    func skipServiceStop(companyId:String,serviceStop:ServiceStop,skip:Bool) throws{
-        try ServiceStopManager.shared.skipServicestop(companyId:companyId,serviceStop: serviceStop, skip: skip)
-        
+    func skipServiceStop(companyId:String,serviceStop:ServiceStop) async throws{
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: serviceStop, operationStatus: .skipped)
+
+    }
+    func unfinishServiceSerop(companyId:String,serviceStop:ServiceStop) async throws{
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: serviceStop, operationStatus: .notFinished)
     }
     func getAllHistoryByCustomer(companyId:String,customer: Customer)async throws{
         print("Trying to get all History By Customer")
-        let customerStopData = try await ReadingsManager.shared.readAllHistory(companyId: companyId, customer: customer)
+        let customerStopData = try await dataService.readAllHistory(companyId: companyId, customer: customer)
         print(customerStopData)
         self.readingHistory = customerStopData
         
     }
     func getHistoryByCustomerByDateRange(companyId:String,customer: Customer,startDate:Date,endDate:Date)async throws{
-        self.readingHistory = try await ReadingsManager.shared.getHistoryByCustomerByDateRange(companyId: companyId, customer: customer,startDate: startDate,endDate:endDate)
+        self.readingHistory = try await dataService.getHistoryByCustomerByDateRange(companyId: companyId, customer: customer,startDate: startDate,endDate:endDate)
         
     }
     func showServiceHistory(stopHistory : [StopData],readingsTemplates : [ReadingsTemplate],dosageTemplates : [DosageTemplate]){
@@ -1011,10 +1161,10 @@ final class ServiceStopsViewModel:ObservableObject{
                         dataPointsByDay.append(day)
                     }
                 }
-                let serviceStop = try! await ServiceStopManager.shared.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
+                let serviceStop = try! await dataService.getServiceStopById(serviceStopId: uniqueDay.serviceStopId, companyId: companyId)
                 
-                totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
-                dataPointsByDay = []
+//                totalData.append(PNLDataPointArray(id: UUID().uuidString, date: uniqueDay.date,techId:serviceStop.techId!,tech:serviceStop.tech!, laborCost: Double(serviceStop.rate ?? Int(0.00)), PNLDataPoint: dataPointsByDay))
+//                dataPointsByDay = []
             }
         }
         self.PNLData = totalData
@@ -1038,84 +1188,44 @@ final class ServiceStopsViewModel:ObservableObject{
     }
     
     func getFourMostRecentHistoryByCustomer(companyId:String,customer: Customer)async throws{
-        self.readingHistory = try await ReadingsManager.shared.readFourMostRecentStops(companyId: companyId, customer: customer)
+        self.readingHistory = try await dataService.readFourMostRecentStops(companyId: companyId, customer: customer)
         
     }
     func getFourMostRecentHistoryByCustomerId(companyId:String,customerId: String)async throws{
-        self.readingHistory = try await ReadingsManager.shared.readFourMostRecentStopsById(companyId: companyId, customerId: customerId)
+        self.readingHistory = try await dataService.readFourMostRecentStopsById(companyId: companyId, customerId: customerId)
         
     }
     func getFourMostRecentHistoryByCustomerIdServiceLocationAndBodyOfwater(companyId:String,customerId: String,serviceLocationId:String,bodyOfwaterId:String)async throws{
         print("Getting 4 most Recent History")
-        self.readingHistory = try await ReadingsManager.shared.readFourMostRecentStopsByCustomerIdServiceLocationIdAndBodyOfWaterId(companyId: companyId, customerId: customerId, serviceLocationId: serviceLocationId, bodyOfWaterId: bodyOfwaterId)
+        self.readingHistory = try await dataService.readFourMostRecentStopsByCustomerIdServiceLocationIdAndBodyOfWaterId(companyId: companyId, customerId: customerId, serviceLocationId: serviceLocationId, bodyOfWaterId: bodyOfwaterId)
         
     }
     
     func getChangeHistoryByServiceStop(companyId:String,serviceStop:ServiceStop)async throws{
         
-        self.changeHistory = try await ServiceStopManager.shared.getHistoryServiceStopsBy(companyId: companyId, serviceStop: serviceStop)
+        self.changeHistory = try await dataService.getHistoryServiceStopsBy(companyId: companyId, serviceStop: serviceStop)
         
     }
     func getBillableServiceStopsByDate(companyId:String,startDate:Date,endDate:Date)async throws{
         
-        self.serviceStops = try await ServiceStopManager.shared.getBillableServiceStopsByDate(startDate: startDate,endDate: endDate, companyId: companyId)
+        self.serviceStops = try await dataService.getBillableServiceStopsByDate(startDate: startDate,endDate: endDate, companyId: companyId)
         
     }
-    func changeBillingStatusOfServiceStop(companyId:String,serviceStop:ServiceStop,billingStatus:Bool) throws{
+    func changeBillingStatusOfServiceStop(companyId:String,serviceStop:ServiceStop,billingStatus:ServiceStopBillingStatus) async throws{
         
-        try ServiceStopManager.shared.updateBillingStatusOfServiceStop(companyId: companyId, serviceStop: serviceStop,billingStatus:billingStatus)
-        
-    }
-    func addServiceStopHistory(companyId:String,date:Date,customer:Customer,readingList:[Reading],dosageList:[Dosage],serviceStop:ServiceStop,bodyOfWaterId:String,userId:String) async throws{
-        let dataBaseServiceStopCount = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
-        let id = "S" + String(dataBaseServiceStopCount)
-        let fullName =  customer.firstName + " " + customer.lastName
-        let pushServiceStop = ServiceStop(id: id,
-                                          typeId: serviceStop.typeId,
-                                          customerName: fullName,
-                                          customerId: customer.id,
-                                          address: serviceStop.address,
-                                          dateCreated: Date(),
-                                          serviceDate: date,
-                                          duration: serviceStop.duration,
-                                          rate: serviceStop.rate,
-                                          tech: serviceStop.tech,
-                                          techId: serviceStop.techId,
-                                          recurringServiceStopId: serviceStop.recurringServiceStopId,
-                                          description: serviceStop.description,
-                                          serviceLocationId: serviceStop.serviceLocationId,
-                                          type: serviceStop.type,
-                                          typeImage: serviceStop.typeImage,
-
-                                          jobId: serviceStop.jobId,
-                                          finished: false,
-                                          skipped: false,
-                                          invoiced: false,checkList: []
-                                          ,includeReadings: true,includeDosages: true)
-        
-        
-        try await ServiceStopManager.shared.uploadServiceStop(companyId: companyId, serviceStop: pushServiceStop)
-        
-        print("Created servcice stop on \(fullDate(date: date))")
-        
-        let stopData = StopData(id: UUID().uuidString, date: date, serviceStopId: id, readings: readingList, dosages: dosageList, bodyOfWaterId: bodyOfWaterId,
-                                customerId: customer.id,
-                                serviceLocationId: serviceStop.serviceLocationId,
-                                userId: userId)
-        
-        try await ReadingsManager.shared.addStopHistory(serviceStop: pushServiceStop, stopData: stopData, companyId: companyId)
+        try await dataService.updateServicestopBillingStatus(companyId: companyId, serviceStop: serviceStop, billingStatus: billingStatus)
         
     }
     // Listeners
     func addListenerForAllServiceStops(companyId:String){
         
         print(companyId)
-        ServiceStopManager.shared.addListenerForAllServiceStops(companyId: companyId) { [weak self] serviceStops in
+        dataService.addListenerForAllServiceStops(companyId: companyId) { [weak self] serviceStops in
             self?.serviceStops = serviceStops
         }
     }
     func removeListenerForAllServiceStops(){
-        ServiceStopManager.shared.removeListenerForAllServiceStops()
+        dataService.removeListenerForAllServiceStops()
         print("Listener Cancelled")
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

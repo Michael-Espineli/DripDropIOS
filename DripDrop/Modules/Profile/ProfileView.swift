@@ -32,58 +32,79 @@ struct ProfileView: View {
     @State var level:Int = 0
     @State var percentage:Double = 0
     @State var expToNext:Double = 0
+    @State var showUserSettings:Bool  = false
+    @State var showEditUser:Bool = false
 
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
-                
                 LazyVStack(alignment: .center, pinnedViews: [.sectionHeaders], content: {
                     Section(content: {
                         ZStack{
-
                             VStack(spacing: 10){
                                 Divider()
-                                companies
-                                Divider()
-                                ScrollView(.horizontal,showsIndicators: false){
-                                    HStack{
-                                        rateSheet
-                                        recentActivity
-                                        sendInvoice
-                                    }
-                                }
-                                chartStuff
+                                recentActivity
+                                    //----------------------------------------
+                                    //Add Back in During Roll out of Phase 2
+                                    //----------------------------------------
+//                                rateSheet
+//                                sendInvoice
+//                                chartStuff
                                 Spacer()
                             }
                             .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
                         }
-                        .background(Color.listColor)
                         .foregroundColor(Color.white)
-                        .cornerRadius(25)
                     }, header: {
+                        toolBar
                         profile
-                            .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
+                            .padding(8)
                             .background(Color.poolBlue)
                     })
-                    
                 })
-
             }
-            
+            Text("")
+                .sheet(isPresented: $showEditUser, content: {
+                    if let user = masterDataManager.user {
+                        
+                        EditProfileView(tech: user)
+                    }
+                })
         }
         .navigationTitle("\(masterDataManager.user?.firstName ?? "") \(masterDataManager.user?.lastName ?? "")")
 //        .navigationBarBackground()
         .toolbar{
             ToolbarItem{
                 if let user = masterDataManager.user {
-                    NavigationLink(value: Route.userSettings(dataService: dataService), label: {
-                        Image(systemName: "gear")
-                    })
-                    NavigationLink(value: Route.editUser(user: user,dataService: dataService), label: {
-                        Image(systemName: "square.and.pencil")
-                        
-                    })
+                    if UIDevice.isIPhone {
+                        NavigationLink(value: Route.userSettings(dataService: dataService), label: {
+                            Image(systemName: "gear")
+                        })
+                    } else {
+                        Button(action: {
+                            showUserSettings.toggle()
+                        }, label: {
+                            Image(systemName: "gear")
+                        })
+                    }
+                }
+            }
+            ToolbarItem{
+                if let user = masterDataManager.user {
+                    if UIDevice.isIPhone {
+                        NavigationLink(value: Route.editUser(user: user,dataService: dataService), label: {
+                            Image(systemName: "square.and.pencil")
+                            
+                        })
+                    } else {
+                        Button(action: {
+                            showEditUser.toggle()
+                        }, label: {
+                            Image(systemName: "square.and.pencil")
+                        })
+                    }
+                   
                 }
             }
         }
@@ -131,57 +152,17 @@ struct ProfileView_Previews: PreviewProvider {
     }
 }
 extension ProfileView {
-    var bio: some View {
-        ZStack{
+    var toolBar: some View {
+        HStack{
+            Spacer()
             if let user = masterDataManager.user {
-                
-                VStack{
-                    HStack{
-                        Text("Email: ")
-                        Spacer()
-                        Text("\(user.email ?? "")")
-                    }
-                    HStack{
-                        Text("Date Created: ")
-                        Spacer()
-                        Text("\(fullDate(date:user.dateCreated))")
-                        
-                    }
-                    HStack{
-                        Text("Bio: ")
-                        Spacer()
-                        Text("\(user.bio ?? "")")
-                    }
-                }
+                NavigationLink(value: Route.editUser(user: user,dataService: dataService), label: {
+                    Image(systemName: "square.and.pencil")
+                })
             }
         }
     }
-    var companies: some View {
-        VStack{
-            Text("Company Access")
-                .font(.headline)
-            ScrollView(.horizontal,showsIndicators: false){
-                HStack{
-                 
-                    ForEach(userAccessVM.allAvailableAccess){ access in
-                        Button(action: {
-                            Task{
-                                print("Get Company From User Access")
-                            }
-                        }, label: {
-                            VStack{
-                                Text("\(access.companyName)")
-                                Text("\(access.roleName)")
-                                Text("Account Type: SubContractor")
-                            }
-                        })
-                     
-                    }
-                }
-            }
-        }
-        .foregroundColor(Color.basicFontText)
-    }
+
     var rateSheet: some View {
         VStack{
             if let user = masterDataManager.user {
@@ -194,10 +175,7 @@ extension ProfileView {
                             Text("Rate Sheet")
                             Image(systemName: "chevron.right")
                         }
-                        .foregroundColor(Color.reverseFontText)
-                        .padding(5)
-                        .background(Color.accentColor)
-                        .cornerRadius(5)
+                        .modifier(BlueButtonModifier())
                     })
                 }
             }
@@ -209,17 +187,13 @@ extension ProfileView {
             HStack{
                 Spacer()
                 Button(action: {
-                    
                     navigationManager.routes.append(Route.recentActivity(dataService: dataService))
                 }, label: {
                     HStack{
                         Text("Recent Activity")
                         Image(systemName: "chevron.right")
                     }
-                    .foregroundColor(Color.reverseFontText)
-                    .padding(5)
-                    .background(Color.accentColor)
-                    .cornerRadius(5)
+                    .modifier(BlueButtonModifier())
                 })
             }
         }
@@ -229,16 +203,12 @@ extension ProfileView {
             
             HStack{
                 Spacer()
-                    NavigationLink(value: Route.recentActivity(dataService: dataService), label: {
-
+                    NavigationLink(value: Route.workLogList(dataService: dataService), label: {
                     HStack{
                         Text("Recent Activity")
                         Image(systemName: "chevron.right")
                     }
-                    .foregroundColor(Color.reverseFontText)
-                    .padding(5)
-                    .background(Color.accentColor)
-                    .cornerRadius(5)
+                    .modifier(BlueButtonModifier())
                 })
             }
         }
@@ -258,10 +228,7 @@ extension ProfileView {
                         Text("Send Invoice")
                         Image(systemName: "chevron.right")
                     }
-                    .foregroundColor(Color.reverseFontText)
-                    .padding(5)
-                    .background(Color.accentColor)
-                    .cornerRadius(5)
+                    .modifier(BlueButtonModifier())
                 })
             }
         }
@@ -269,7 +236,7 @@ extension ProfileView {
     var image: some View {
         ZStack{
             Circle()
-                .fill(Color.gray)
+                .fill(Color.black)
                 .frame(maxWidth:100 ,maxHeight:100)
             if let urlString = profileVM.imageUrlString,let url = URL(string: urlString){
                 AsyncImage(url: url){ image in
@@ -320,11 +287,6 @@ extension ProfileView {
                         
                         VStack{
                             VStack{
-//                                    HStack{
-//                                        Text((user.firstName ?? "...Loading") + " " + (user.lastName ?? "...Loading"))
-//                                            .bold(true)
-//                                        Spacer()
-//                                    }
                                 HStack{
                                     Spacer()
                                     ZStack{
@@ -357,6 +319,46 @@ extension ProfileView {
                 }
                 .foregroundColor(Color.white)
 
+            }
+        }
+    }
+    var bio: some View {
+        ZStack{
+            if let user = masterDataManager.user {
+                
+                VStack{
+                    HStack{
+                        Text("Email: ")
+                            .bold()
+                        Spacer()
+                        Text("\(user.email)")
+                    }
+                    HStack{
+                        Text("Phone Number: ")
+                            .bold()
+                        Spacer()
+                        if let phoneNumber = user.phoneNumber {
+                            Text("\(phoneNumber)")
+                        }else{
+                            Text("Not Set")
+                        }
+                    }
+                    HStack{
+                        Text("Date Created: ")
+                            .bold()
+                        Spacer()
+                        Text("\(fullDate(date:user.dateCreated))")
+                        
+                    }
+                    HStack{
+                        Text("Bio: ")
+                            .bold()
+                        Spacer()
+                    }
+                    
+                    Text("\(user.bio ?? "")")
+                        .modifier(PlainTextFieldModifier())
+                }
             }
         }
     }

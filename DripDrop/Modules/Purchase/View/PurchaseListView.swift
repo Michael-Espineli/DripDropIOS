@@ -9,15 +9,19 @@ import SwiftUI
 
 struct PurchaseListView: View{
     //VMs
+    init(dataService:any ProductionDataServiceProtocol){
+        _purchaseVM = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
+        
+    }
+    @StateObject var purchaseVM : PurchasesViewModel
     @EnvironmentObject var navigationManager: NavigationStateManager
     @EnvironmentObject var masterDataManager : MasterDataManager
-
-    @EnvironmentObject var dataService: ProductionDataService
-    @StateObject private var purchaseVM = PurchasesViewModel()
+    
+    @EnvironmentObject var dataService : ProductionDataService
     @StateObject private var receiptViewModel = ReceiptViewModel()
-    @StateObject private var settingsViewModel = SettingsViewModel()
+    @StateObject private var settingsViewModel = SettingsViewModel(dataService: ProductionDataService())
     @StateObject private var techVM = TechViewModel()
-
+    
     @State private var showEditView : Bool = false
     @State private var showDetailsView : Bool = false
     
@@ -44,108 +48,112 @@ struct PurchaseListView: View{
     @State var showAddNew = false
     @State var showSearch = false
     @State var searchTerm:String = ""
+    @State var showAddNewPurchase = false
     
     var body: some View{
         ZStack{
+            Color.listColor.ignoresSafeArea()
             list
             icons
         }
         //Initial Loading of the purchase Items
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
-                    try await techVM.getAllCompanyTechs(companyId: company.id)
-                    for tech in techVM.techList {
-                        techIds.append(tech.id)
+                    try await purchaseVM.getTechs(companyId: company.id)
+                    print("Received \(purchaseVM.techList.count) techs \(purchaseVM.techList)")
+                    for tech in purchaseVM.techList {
+                        techIds.append(tech.userId)
                     }
                     try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
                     purchasedItems = purchaseVM.purchasedItems
-
                 } catch {
                     print(error)
                     
                 }
             }
-            
         }
-        //Loading new Purchase Items with Change in sorting Options
-
-        .onChange(of: purchaseSortOption, perform: { sort in
-            Task{
-                if let company = masterDataManager.selectedCompany {
-                    do {
-                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: sort, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
-                        purchasedItems = purchaseVM.purchasedItems
-
-                    } catch {
-                        print(error)
-                    }
-                    
-                }
-            }
-        })
-        //Loading new Purchase Items with Change in Filter Options
-
-        .onChange(of: purchaseFilterOption, perform: { filter in
-            Task {
-                if let company = masterDataManager.selectedCompany {
-                    do {
-                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: filter, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
-                        purchasedItems = purchaseVM.purchasedItems
-
-                    } catch {
-                        print(error)
-                        
-                    }
-                }
-            }
-        })
-        //Loading new Purchase Items with Change in Start Date
-        .onChange(of: startViewingDate) { date in
-            Task {
-                if let company = masterDataManager.selectedCompany {
-                    do {
-                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: date, endDate: endViewingDate, techIds: techIds)
-                        purchasedItems = purchaseVM.purchasedItems
-
-                    } catch {
-                        print(error)
-                        
-                    }
-                }
-            }
-        }
-        //Loading new Purchase Items with Change in End Date
-
-        .onChange(of: endViewingDate) { date in
-            Task {
-                if let company = masterDataManager.selectedCompany {
-                    do {
-                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: date, techIds: techIds)
-                        purchasedItems = purchaseVM.purchasedItems
-
-                    } catch {
-                        print(error)
-                        
-                    }
-                }
-            }
-        }
-        //Loading New Purchase Items with Change in Tech
-        .onChange(of: techIds, perform: { techs in
-            Task {
-                if let company = masterDataManager.selectedCompany {
-                    do {
-                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techs)
-                        purchasedItems = purchaseVM.purchasedItems
-
-                    } catch {
-                        print(error)
-                        
-                    }
-                }
-            }
-        })
+        /*
+         //Loading new Purchase Items with Change in sorting Options
+         
+         .onChange(of: purchaseSortOption, perform: { sort in
+         Task{
+         if let company = masterDataManager.currentCompany {
+         do {
+         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: sort, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
+         purchasedItems = purchaseVM.purchasedItems
+         
+         } catch {
+         print(error)
+         }
+         
+         }
+         }
+         })
+         
+         //Loading new Purchase Items with Change in Filter Options
+         
+         .onChange(of: purchaseFilterOption, perform: { filter in
+         Task {
+         if let company = masterDataManager.currentCompany {
+         do {
+         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: filter, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
+         purchasedItems = purchaseVM.purchasedItems
+         
+         } catch {
+         print(error)
+         
+         }
+         }
+         }
+         })
+         //Loading new Purchase Items with Change in Start Date
+         .onChange(of: startViewingDate) { date in
+         Task {
+         if let company = masterDataManager.currentCompany {
+         do {
+         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: date, endDate: endViewingDate, techIds: techIds)
+         purchasedItems = purchaseVM.purchasedItems
+         
+         } catch {
+         print(error)
+         
+         }
+         }
+         }
+         }
+         //Loading new Purchase Items with Change in End Date
+         
+         .onChange(of: endViewingDate) { date in
+         Task {
+         if let company = masterDataManager.currentCompany {
+         do {
+         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: date, techIds: techIds)
+         purchasedItems = purchaseVM.purchasedItems
+         
+         } catch {
+         print(error)
+         
+         }
+         }
+         }
+         }
+         //Loading New Purchase Items with Change in Tech
+         .onChange(of: techIds, perform: { techs in
+         Task {
+         if let company = masterDataManager.currentCompany {
+         do {
+         try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techs)
+         purchasedItems = purchaseVM.purchasedItems
+         
+         } catch {
+         print(error)
+         
+         }
+         }
+         }
+         })
+         */
         //Searches through the purchase item list
         .onChange(of: searchTerm){ term in
             if searchTerm == "" {
@@ -155,66 +163,104 @@ struct PurchaseListView: View{
                 purchasedItems = purchaseVM.filteredPurchasedItems
             }
         }
-
         
-        .onChange(of: selection) { selected in
-            print("selected Purchase")
-            let purchasesObject = purchasedItems.filter{ $0.id == selected }.first
-            masterDataManager.selectedPurchases = purchasesObject
-            
-        }
-        .onChange(of: selected) { selected in
-            print(selected)
-            if selected != nil {
-                showEditView = true
-            }
-        }
+        //
+        //        .onChange(of: selection) { selected in
+        //            print("selected Purchase")
+        //            let purchasesObject = purchasedItems.filter{ $0.id == selected }.first
+        //            masterDataManager.selectedPurchases = purchasesObject
+        //
+        //        }
+        //        .onChange(of: selected) { selected in
+        //            print(selected)
+        //            if selected != nil {
+        //                showEditView = true
+        //            }
+        //        }
         .onChange(of: purchasedItems){ purchasedItemsList in
             purchaseVM.summaryOfPurchasedItems(purchasedItems: purchasedItemsList)
         }
-
+        .toolbar{
+            ToolbarItem(content: {
+                Button(action: {
+                    Task{
+                        if let company = masterDataManager.currentCompany {
+                            do {
+                                try await techVM.getAllCompanyTechs(companyId: company.id)
+                                for tech in techVM.techList {
+                                    techIds.append(tech.id)
+                                }
+                                try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
+                                purchasedItems = purchaseVM.purchasedItems
+                                
+                            } catch {
+                                print(error)
+                                
+                            }
+                        }
+                        
+                    }
+                }, label: {
+                    Text("Reload")
+                })
+            })
+        }
     }
-    
 }
+
 extension PurchaseListView {
     var list: some View{
         VStack{
-        
-            List(selection:$masterDataManager.selectedID){
-                ForEach(purchasedItems) { item in
-                    if UIDevice.isIPhone {
-                        NavigationLink(value: Route.purchase(purchasedItem: item,dataService: dataService), label: {
-                            PurchasesCardView(item: item)
-                        })
-                    } else {
-                        Button(action: {
-                            masterDataManager.selectedPurchases = item
+            if showSearch && !UIDevice.isIPhone{
+                HStack{
+                    TextField(
+                        "Search...",
+                        text: $searchTerm
+                    )
+                    .modifier(TextFieldModifier())
+                    .modifier(OutLineButtonModifier())
+                    
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
+                }
+                .modifier(ListButtonModifier())
+                .padding(8)
+            }
+            ForEach(purchasedItems) { item in
+                if UIDevice.isIPhone {
+                    NavigationLink(value: Route.purchase(purchasedItem: item,dataService: dataService), label: {
+                        PurchasesCardView(item: item)
+                    })
+                } else {
+                    Button(action: {
+                        masterDataManager.selectedPurchases = item
                         
-                               }, label: {
-                            PurchasesCardView(item: item)
-                        })
-                    }
+                    }, label: {
+                        PurchasesCardView(item: item)
+                    })
                 }
             }
-            .textSelection(.enabled)
-                     .refreshable {
-                         if let company = masterDataManager.selectedCompany {
-                             do {
-                                 try await techVM.getAllCompanyTechs(companyId: company.id)
-                                 for tech in techVM.techList {
-                                     techIds.append(tech.id)
-                                 }
-                                 try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
-                                 purchasedItems = purchaseVM.purchasedItems
-
-                             } catch {
-                                 print(error)
-                                 
-                             }
-                         }
-                     }
+//            .refreshable {
+//                if let company = masterDataManager.currentCompany {
+//                    do {
+//                        try await techVM.getAllCompanyTechs(companyId: company.id)
+//                        for tech in techVM.techList {
+//                            techIds.append(tech.id)
+//                        }
+//                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
+//                        purchasedItems = purchaseVM.purchasedItems
+//                        
+//                    } catch {
+//                        print(error)
+//                        
+//                    }
+//                }
+//            }
         }
-
+        
     }
     var icons: some View{
         VStack{
@@ -222,10 +268,78 @@ extension PurchaseListView {
             HStack{
                 Spacer()
                 VStack(alignment: .trailing,spacing: 20){
+                    if UIDevice.isIPhone {
+                        NavigationLink{
+                            AddNewReceipt(dataService: dataService)
+                            
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .foregroundColor(Color.green)
+                                .background(
+                                    Circle()
+                                        .frame(width: 50, height: 50)
+                                        .foregroundColor(Color.white)
+                                )
+                        }
+                        .padding(.trailing,30)
+                        .sheet(isPresented: $showAddNewPurchase,onDismiss: {
+                            Task{
+                                if let company = masterDataManager.currentCompany {
+                                    do {
+                                        try await techVM.getAllCompanyTechs(companyId: company.id)
+                                        for tech in techVM.techList {
+                                            techIds.append(tech.id)
+                                        }
+                                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
+                                        purchasedItems = purchaseVM.purchasedItems
+                                        
+                                    } catch {
+                                        print(error)
+                                        
+                                    }
+                                }
+                            }
+                        }, content: {
+                            AddNewReceipt(dataService: dataService)
+                        })
+                    } else {
+                        Button(action: {
+                            showAddNewPurchase.toggle()
+                        }, label: {
+                            
+                            Image(systemName: "plus.circle.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .foregroundColor(Color.green)
+                                .background(
+                                    Circle()
+                                        .frame(width: 50, height: 50)
+                                        .foregroundColor(Color.white)
+                                )
+                        })
+                        .padding(.trailing,30)
+                        .sheet(isPresented: $showAddNewPurchase, onDismiss: {
+                            Task{
+                                if let company = masterDataManager.currentCompany {
+                                    do {
+                                        try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
+                                        purchasedItems = purchaseVM.purchasedItems
+                                        
+                                    } catch {
+                                        print(error)
+                                    }
+                                    
+                                }
+                            }
+                        }, content: {
+                            AddNewReceipt(dataService: dataService)
+                        })
+                    }
                     Button(action: {
                         showFilerOptions.toggle()
                     }, label: {
-                        
                         Image(systemName: "line.3.horizontal.decrease.circle.fill")
                             .resizable()
                             .frame(width: 50, height: 50)
@@ -234,11 +348,23 @@ extension PurchaseListView {
                                 Circle()
                                     .frame(width: 50, height: 50)
                                     .foregroundColor(Color.white)
-                                )
+                            )
                     })
                     .padding(.trailing,30)
-
-                    .sheet(isPresented: $showFilerOptions, content: {
+                    .sheet(isPresented: $showFilerOptions,onDismiss: {
+                        Task{
+                            if let company = masterDataManager.currentCompany {
+                                do {
+                                    try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
+                                    purchasedItems = purchaseVM.purchasedItems
+                                    
+                                } catch {
+                                    print(error)
+                                }
+                                
+                            }
+                        }
+                    }, content: {
                         ZStack{
                             Color.listColor.ignoresSafeArea()
                             VStack{
@@ -250,8 +376,8 @@ extension PurchaseListView {
                                     Button(action: {
                                         showFilerOptions = false
                                     }, label: {
-                                        Text("Dismiss")
-                                            .foregroundColor(Color.red)
+                                        Image(systemName: "xmark")
+                                            .modifier(DismissButtonModifier())
                                     })
                                 }
                                 HStack{
@@ -265,8 +391,8 @@ extension PurchaseListView {
                                     DatePicker(selection: $endViewingDate, displayedComponents: .date) {
                                     }
                                 }
-                                   
-                                    
+                                
+                                
                                 HStack{
                                     Text("Sort: ")
                                     Picker("Sort: ", selection: $purchaseSortOption) {
@@ -290,26 +416,26 @@ extension PurchaseListView {
                                     Menu("Techs") {
                                         Button(action: {
                                             print("All Selected")
-                                            for tech in techVM.techList {
-                                                techIds.append(tech.id)
+                                            for tech in purchaseVM.techList {
+                                                techIds.append(tech.userId)
                                             }
-
+                                            
                                         }, label: {
-                                            Text("All \(techIds.count == techVM.techList.count ? "✓" : "")")
+                                            Text("All \(techIds.count == purchaseVM.techList.count ? "✓" : "")")
                                         })
                                         
-                                        ForEach(techVM.techList) { tech in
+                                        ForEach(purchaseVM.techList) { tech in
                                             Button(action: {
-                                                if techIds.contains(tech.id) {
-                                                    techIds.removeAll(where: {$0 == tech.id})
-                                                    print("Removed \((tech.firstName ?? "") + " " + (tech.lastName ?? ""))")
+                                                if techIds.contains(tech.userId) {
+                                                    techIds.removeAll(where: {$0 == tech.userId})
+                                                    print("Removed \((tech.userName ?? ""))")
                                                 } else {
-                                                    print("Added \((tech.firstName ?? "") + " " + (tech.lastName ?? ""))")
-
-                                                    techIds.append(tech.id)
+                                                    print("Added \((tech.userName ?? ""))")
+                                                    
+                                                    techIds.append(tech.userId)
                                                 }
                                             }, label: {
-                                                Text("\(tech.firstName ?? "") \(tech.lastName ?? "") \(techIds.contains(tech.id) ? "✓" : "")")
+                                                Text("\(tech.userName ?? "") \(techIds.contains(tech.userId) ? "✓" : "")")
                                             })
                                         }
                                         Button(action: {
@@ -327,22 +453,7 @@ extension PurchaseListView {
                         
                     })
                     
-                     NavigationLink{
-                        AddNewReceipt()
-
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .resizable()
-                            .frame(width: 50, height: 50)
-                            .foregroundColor(Color.green)
-                            .background(
-                                Circle()
-                                    .frame(width: 50, height: 50)
-                                    .foregroundColor(Color.white)
-                                )
-                    }
-                    .padding(.trailing,75)
-
+                    
                     Button(action: {
                         showSearch.toggle()
                     }, label: {
@@ -354,34 +465,34 @@ extension PurchaseListView {
                                 Circle()
                                     .frame(width: 50, height: 50)
                                     .foregroundColor(Color.white)
-                                )
+                            )
                     })
-                    .padding(.trailing,100)
-
+                    .padding(.trailing,30)
                 }
                 .padding(.trailing,20)
-
-//                .background(Color.pink)
+                .padding(.bottom,20)
+                
+                //                .background(Color.pink)
             }
-            if showSearch {
-                    HStack{
-                     
-                        TextField(
-                            "Search...",
-                            text: $searchTerm
-                        )
-                        .padding()
-                        .background(Color.gray)
-                        Button(action: {
-                            searchTerm = ""
-                        }, label: {
-                            Image(systemName: "xmark")
-                        })
-                    }
-                    .cornerRadius(10)
+            if showSearch && UIDevice.isIPhone{
+                HStack{
+                    
+                    TextField(
+                        "Search...",
+                        text: $searchTerm
+                    )
+                    
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
+                }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
                 
             }
         }
-
+        
     }
 }

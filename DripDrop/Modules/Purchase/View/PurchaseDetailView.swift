@@ -18,16 +18,18 @@ struct PurchaseDetailView: View {
     @StateObject private var customerVM : CustomerViewModel
     @StateObject private var jobVM : JobViewModel
     @State private var purchase : PurchasedItem
+    @State private var useablePurchaseItem : PurchasedItem? = nil
 
     
     init(purchase:PurchasedItem,dataService:any ProductionDataServiceProtocol){
         _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
         _jobVM = StateObject(wrappedValue: JobViewModel(dataService: dataService))
         _purchase = State(wrappedValue: purchase)
-        
+        _vm = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
+
     }
     @StateObject private var storeVM = StoreViewModel()
-    @StateObject private var vm = PurchasesViewModel()
+    @StateObject private var vm : PurchasesViewModel
     
     
     
@@ -49,27 +51,38 @@ struct PurchaseDetailView: View {
     @State var selectedCustomerPicker:Bool = false
     @State var selectedJobPicker:Bool = false
 
-    @State var customerEntity:Customer = Customer(id: "", firstName: "", lastName: "", email: "", billingAddress: Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0), active: true, displayAsCompany: false, hireDate: Date(), billingNotes: "")
-    @State var jobEntity:Job = Job(id: "",
-                                         type: "",
-                                         dateCreated: Date(),
-                                         description: "",
-                                   operationStatus: .estimatePending,
-                                   billingStatus: .draft,
-                                         customerId: "",
-                                         customerName: "",
-                                         serviceLocationId: "",
-                                         serviceStopIds: [],
-                                         adminId: "",
-                                         adminName: "",
-                                         jobTemplateId: "",
-                                         installationParts: [],
-                                         pvcParts: [],
-                                         electricalParts: [],
-                                         chemicals: [],
-                                         miscParts: [],
-                                         rate: 0,
-                                         laborCost: 0)
+    @State var customerEntity:Customer = Customer(id: "", firstName: "", lastName: "", email: "", billingAddress: Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0), active: true, displayAsCompany: false, hireDate: Date(), billingNotes: "",
+                                                  linkedInviteId: UUID().uuidString)
+    @State var jobEntity:Job = Job(
+        id: "",
+        internalId: "",
+        type: "",
+        dateCreated: Date(),
+        description: "",
+        operationStatus: .estimatePending,
+        billingStatus: .draft,
+        customerId: "",
+        customerName: "",
+        serviceLocationId: "",
+        serviceStopIds: [],
+        laborContractIds: [],
+        adminId: "",
+        adminName: "",
+        rate: 0,
+        laborCost: 0,
+        otherCompany: false,
+        receivedLaborContractId: "",
+        receiverId: "",
+        senderId : "",
+        dateEstimateAccepted: nil,
+        estimateAcceptedById: nil,
+        estimateAcceptType: nil,
+        estimateAcceptedNotes: nil,
+        invoiceDate: nil,
+        invoiceRef: nil,
+        invoiceType: nil,
+        invoiceNotes: nil
+    )
     
     let columns = [
         GridItem(.flexible()),
@@ -98,12 +111,13 @@ struct PurchaseDetailView: View {
             }
         }
         .task{
+            useablePurchaseItem = purchase
             notes = purchase.notes
             displayCustomerName = purchase.customerName
             displayJobName = purchase.jobId
             invoiced = purchase.invoiced
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
           
                     try await storeVM.getSingleStore(companyId: company.id, storeId: purchase.venderId)
                 } else {
@@ -117,9 +131,9 @@ struct PurchaseDetailView: View {
         
         .onChange(of: notes){ note in
             Task{
-                if let company = masterDataManager.selectedCompany{
+                if let company = masterDataManager.currentCompany, let useablePurchaseItem {
                     do {
-                        try await vm.updateNotes(currentItem: purchase, notes: note, companyId: company.id)
+                        try await vm.updateNotes(currentItem: useablePurchaseItem, notes: note, companyId: company.id)
                     } catch {
                         print(error)
                     }
@@ -133,15 +147,16 @@ struct PurchaseDetailView: View {
                 displayCustomerName = item.customerName
                 invoiced = item.invoiced
                 customerSearchTerm = ""
+                useablePurchaseItem = item
             }
         }
         .onChange(of: jobEntity, perform: { job in
             Task{
-                if let company = masterDataManager.selectedCompany{
+                if let company = masterDataManager.currentCompany, let useablePurchaseItem{
                     do {
                         if job.id == "" {return}
-                        try await vm.updateReceiptWorkOrder(currentItem: purchase, workOrderID:job.id , companyId: company.id)
-                        try await jobVM.addPurchaseItemsToWorkOrder(workOrder: job, companyId: company.id, ids: [purchase.id])
+                        try await vm.updateReceiptWorkOrder(currentItem: useablePurchaseItem, workOrderID:job.id , companyId: company.id)
+                        try await jobVM.addPurchaseItemsToWorkOrder(workOrder: job, companyId: company.id, ids: [useablePurchaseItem.id])
                     } catch {
                         print("")
                         print("Error Purchase Detail View")
@@ -154,8 +169,8 @@ struct PurchaseDetailView: View {
         .onChange(of: customerEntity){ customer in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
-                        try await vm.updateReceiptCustomer(currentItem: purchase, newCustomer: customer, companyId: company.id)
+                    if let company = masterDataManager.currentCompany , let useablePurchaseItem{
+                        try await vm.updateReceiptCustomer(currentItem: useablePurchaseItem, newCustomer: customer, companyId: company.id)
                         displayCustomerName = customer.firstName  + " " + customer.lastName
 
                     } else {
@@ -213,8 +228,10 @@ extension PurchaseDetailView{
                         Divider()
                         HStack{
                             Text("Store : ")
-                            Text(purchase.venderName)
-                                .textSelection(.enabled)
+                            if let useablePurchaseItem {
+                                Text(useablePurchaseItem.venderName)
+                                    .textSelection(.enabled)
+                            }
                             Button(action: {
                                 showStoreInfo = true
                             }, label: {
@@ -251,27 +268,30 @@ extension PurchaseDetailView{
                                 
                             })
                         }
-                        HStack{
-                            Text("Name :")
-                            Text(purchase.name)
-                                .textSelection(.enabled)
-                        }
-                        
-                        HStack{
-                            Text("Sku :")
-                            Text(purchase.sku)
-                                .textSelection(.enabled)
-                        }
-                        HStack{
-                            Text("Invoice Num : ")
-                            Text(purchase.invoiceNum)
-                                .textSelection(.enabled)
-                        }
-                        
-                        HStack{
-                            Text("Tech Name :")
-                            Text(purchase.techName)
-                                .textSelection(.enabled)
+                        if let useablePurchaseItem {
+                            
+                            HStack{
+                                Text("Name :")
+                                Text(useablePurchaseItem.name)
+                                    .textSelection(.enabled)
+                            }
+                            
+                            HStack{
+                                Text("Sku :")
+                                Text(useablePurchaseItem.sku)
+                                    .textSelection(.enabled)
+                            }
+                            HStack{
+                                Text("Invoice Num : ")
+                                Text(useablePurchaseItem.invoiceNum)
+                                    .textSelection(.enabled)
+                            }
+                            
+                            HStack{
+                                Text("Tech Name :")
+                                Text(useablePurchaseItem.techName)
+                                    .textSelection(.enabled)
+                            }
                         }
                     }
                     VStack(alignment: .leading){
@@ -294,15 +314,18 @@ extension PurchaseDetailView{
         ZStack{
                 VStack{
                     HStack{
-                        VStack(alignment: .leading){
-                            Text("Price : \(purchase.price, format: .currency(code: "USD"))")
+                        if let useablePurchaseItem {
                             
-                            Text("Quantity : \(purchase.quantityString)")
-                            Text("Price After Tax : \(purchase.totalAfterTax, format: .currency(code: "USD"))")
-                            
-                            Text(fullDate(date:purchase.date))
-                            Text("Billable : \(purchase.billable ? "Yes" : "No")")
-                            
+                            VStack(alignment: .leading){
+                                Text("Price : \(useablePurchaseItem.price, format: .currency(code: "USD"))")
+                                
+                                Text("Quantity : \(useablePurchaseItem.quantityString)")
+                                Text("Price After Tax : \(useablePurchaseItem.totalAfterTax, format: .currency(code: "USD"))")
+                                
+                                Text(fullDate(date:useablePurchaseItem.date))
+                                Text("Billable : \(useablePurchaseItem.billable ? "Yes" : "No")")
+                                
+                            }
                         }
                         Spacer()
                     }
@@ -311,15 +334,15 @@ extension PurchaseDetailView{
                         Button(action: {
                             if invoiced {
                                 Task{
-                                    try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: false, companyId: masterDataManager.selectedCompany!.id)
-                                    try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.selectedCompany!.id)
+                                    try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: false, companyId: masterDataManager.currentCompany!.id)
+                                    try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.currentCompany!.id)
                                     //                                    self.purchasedItem  = vm.purchasedItem!
                                     invoiced = false
                                 }
                             } else {
                                 Task{
-                                    try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: true, companyId: masterDataManager.selectedCompany!.id)
-                                    try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.selectedCompany!.id)
+                                    try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: true, companyId: masterDataManager.currentCompany!.id)
+                                    try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.currentCompany!.id)
                                     //                                    self.purchasedItem  = vm.purchasedItem!
                                     invoiced = true
                                 }
@@ -384,7 +407,6 @@ extension PurchaseDetailView{
                             .cornerRadius(5)
                     })
                     Spacer()
-
                 } else {
                     Text(displayJobName)
                     Spacer()
