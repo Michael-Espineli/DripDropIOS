@@ -1,0 +1,48 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Auth/View/SignUpTypePicker.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New Company",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 26
+        }
+      },
+      {
+        "comment": "",
+        "key": "Induvidual",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "New Company",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Induvidual",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Redeem Invite Code",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 123
+        }
+      }
+    ]
+  },
+  "version": 1
+}

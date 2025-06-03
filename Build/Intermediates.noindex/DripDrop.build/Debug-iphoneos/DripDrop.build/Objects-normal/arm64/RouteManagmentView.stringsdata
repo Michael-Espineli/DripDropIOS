@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Route/Views/Building/RouteManagmentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Internal Routes",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 29
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,224 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/ServiceStops/View/ServiceStopUtilityView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "No Body Of Water",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "no bodies of water",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 146
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 156
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Data Yet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 189
+        }
+      },
+      {
+        "comment": "",
+        "key": "See Details",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Data Yet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tasks",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 247
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tasks",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 285
+        }
+      },
+      {
+        "comment": "",
+        "key": "Observations",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "",
+        "key": "Observations",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "Observations",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 394
+        }
+      },
+      {
+        "comment": "",
+        "key": "Readings",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 403
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 432
+        }
+      },
+      {
+        "comment": "",
+        "key": "Readings",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 441
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 468
+        }
+      },
+      {
+        "comment": "",
+        "key": "Readings",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 477
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 530
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dosages",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 539
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 561
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dosages",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 569
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 591
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dosages",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 599
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 654
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 682
+        }
+      }
+    ]
+  },
+  "version": 1
+}

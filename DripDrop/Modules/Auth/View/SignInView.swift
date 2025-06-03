@@ -8,19 +8,21 @@
 import SwiftUI
 
 struct SignInView: View {
-    @Environment(\.colorScheme) var colorScheme
-    @EnvironmentObject var masterDataManager : MasterDataManager
-
-    @StateObject private var VM : AuthenticationViewModel
     init(dataService:any ProductionDataServiceProtocol) {
         _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
     }
+    @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @StateObject private var VM : AuthenticationViewModel
+
+    @FocusState private var focusedField: SignInFormLabels?
     @State var email:String = ""
     @State var password:String = ""
     @State var showForgotPasswordSheet:Bool = false
     @State var showForgotUserNameSheet:Bool = false
     @State var showAlertMessage:String = ""
     @State var showAlert:Bool = false
+    
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -49,7 +51,8 @@ struct SignInView: View {
                                 .padding(.horizontal, 20)
                                 .background(Color.poolWhite)
                                 .clipShape(Capsule())
-        
+                                .focused($focusedField, equals: .userName)
+                                     .submitLabel(.next)
                         }
                         .foregroundColor(Color.white)
                         //                    .cornerRadius(5)
@@ -70,6 +73,8 @@ struct SignInView: View {
                                 .padding(.horizontal, 20)
                                 .background(Color.poolWhite)
                                 .clipShape(Capsule())
+                                .focused($focusedField, equals: .password)
+                                .submitLabel(.go)
                         }
                         .foregroundColor(Color.white)
                     }
@@ -149,8 +154,42 @@ struct SignInView: View {
                 Spacer()
                 Text("© Espineli L.L.C.")
                     .font(.footnote)
+                    .padding(8)
             }
             .padding(.horizontal, 16)
+            .onSubmit {
+                   switch focusedField {
+      
+                   case .userName:
+                       focusedField = .password
+                   case .password:
+                       Task{
+                           do{
+                               print("Attempting Sign in")
+                               
+                               try await VM.signInWithEmail(email: email, password: password)
+                               print("Signed in Successfully")
+                               let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
+                               let user = try await DBUserManager.shared.getCurrentUser(userId: authDataResult.uid)
+
+                               masterDataManager.user = user
+                               masterDataManager.showSignInView = false
+                               
+                           } catch {
+                               password = ""
+                               try VM.signOut()
+                               showAlertMessage = "Failed to login"
+                               showAlert = true
+                               print("Error >> \(error)")
+                           }
+                       }
+                   case .email, .companyName:
+                       focusedField = .password
+                   case .none:
+                       focusedField = .password
+                   }
+               }
+
         }
         .alert(showAlertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }

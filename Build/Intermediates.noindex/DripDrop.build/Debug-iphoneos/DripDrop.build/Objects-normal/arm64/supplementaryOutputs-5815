@@ -1,0 +1,42 @@
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Banking/BankDetailView.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BankDetailView.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BankDetailView.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BankDetailView.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BankDetailView.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BankDetailView.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Operations/TimeSheetCardView.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetCardView.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetCardView.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetCardView.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetCardView.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetCardView.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Operations/TimeSheetDetail.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetDetail.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetDetail.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetDetail.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetDetail.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/TimeSheetDetail.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Stripe/ManageCreditCards.swift":
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManageCreditCards.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManageCreditCards.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManageCreditCards.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManageCreditCards.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManageCreditCards.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/New Group/View/ManagementTableRowView.swift":
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManagementTableRowView.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManagementTableRowView.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManagementTableRowView.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManagementTableRowView.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ManagementTableRowView.o"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Purchase/View/PurchaseItemFromIdCardView.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/PurchaseItemFromIdCardView.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/PurchaseItemFromIdCardView.swiftdeps"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/PurchaseItemFromIdCardView.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/PurchaseItemFromIdCardView.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/PurchaseItemFromIdCardView.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Buisness/View/BusinessDetailView.swift":
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BusinessDetailView.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BusinessDetailView.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BusinessDetailView.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BusinessDetailView.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/BusinessDetailView.d"

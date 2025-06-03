@@ -1,0 +1,144 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/CreateNewLaborContractView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 223
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Tasks List",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Days To Accept: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 239
+        }
+      },
+      {
+        "comment": "",
+        "key": "Days To Accept",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 240
+        }
+      },
+      {
+        "comment": "",
+        "key": "Days To Accept",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 250
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offer New Contract",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 332
+        }
+      },
+      {
+        "comment": "",
+        "key": "Terms:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 345
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Terms Template",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "Term",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 368
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Terms",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "See Terms",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 393
+        }
+      },
+      {
+        "comment": "",
+        "key": "Associated Buisness",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 414
+        }
+      }
+    ]
+  },
+  "version": 1
+}

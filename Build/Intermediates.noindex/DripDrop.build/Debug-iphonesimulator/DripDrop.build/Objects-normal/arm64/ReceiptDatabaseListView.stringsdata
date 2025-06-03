@@ -1,0 +1,48 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/DatabaseItems/ReceiptDatabaseListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Select Type",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter Information",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "Manual",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upload",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 261
+        }
+      }
+    ]
+  },
+  "version": 1
+}

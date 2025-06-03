@@ -7,15 +7,17 @@
 
 import SwiftUI
 
-struct BuisnessCardView: View {
-    let buisness:Company
+struct BusinessCardView: View {
+    let business:AssociatedBusiness
     var body: some View {
         HStack{
-            Text("\(buisness.name ?? "")")
+            Text("\(business.companyName)")
         }
+        .frame(maxWidth: .infinity)
+        .modifier(ListButtonModifier())
     }
 }
 
 #Preview {
-    BuisnessCardView(buisness: Company(id: ""))
+    BusinessCardView(business: AssociatedBusiness(companyId: "", companyName: ""))
 }

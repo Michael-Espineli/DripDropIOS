@@ -1,0 +1,576 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/ServiceLocation/ServiceLocationDetail/AddServiceLocationView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 93
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location Info",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Customer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "City...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "State...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contact Info",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 178
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Customer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 219
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 222
+        }
+      },
+      {
+        "comment": "",
+        "key": "Esitmated Time:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 232
+        }
+      },
+      {
+        "comment": "",
+        "key": "Minutes",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "",
+        "key": "Requires Pretext",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 243
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 246
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add First Body Of Water",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Another",
+        "location": {
+          "startingColumn": 79,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Filled",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 291
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 295
+        }
+      },
+      {
+        "comment": "",
+        "key": "gallons",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "",
+        "key": "gallons",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 306
+        }
+      },
+      {
+        "comment": "",
+        "key": "Material",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "",
+        "key": "Material",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 317
+        }
+      },
+      {
+        "comment": "",
+        "key": "Plaster",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vinyl",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 319
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pebble",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shape",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shape",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Square",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 329
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rectangle",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 330
+        }
+      },
+      {
+        "comment": "",
+        "key": "Circle",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 331
+        }
+      },
+      {
+        "comment": "",
+        "key": "Roman",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 332
+        }
+      },
+      {
+        "comment": "",
+        "key": "Measurments",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 340
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 1",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 350
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 1",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 2",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 2",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 364
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 1",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 372
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 1",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 375
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 2",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 383
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 2",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 1",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 394
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 1",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 397
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 2",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 405
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 2",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 408
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 419
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 422
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Body Of Water",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 462
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Of Water - %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 472
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "Yard Info",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 609
+        }
+      },
+      {
+        "comment": "",
+        "key": "tree Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 616
+        }
+      },
+      {
+        "comment": "",
+        "key": "tree Name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 619
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Tree",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 629
+        }
+      },
+      {
+        "comment": "",
+        "key": "bush Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 646
+        }
+      },
+      {
+        "comment": "",
+        "key": "bush Name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 649
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Bush",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 659
+        }
+      },
+      {
+        "comment": "",
+        "key": "other Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 676
+        }
+      },
+      {
+        "comment": "",
+        "key": "other Name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 679
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Other",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 689
+        }
+      }
+    ]
+  },
+  "version": 1
+}

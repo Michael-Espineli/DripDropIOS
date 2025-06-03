@@ -1,0 +1,296 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/CustomerEdit/CustomerProfileEditView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alert",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm you want to delete Customer",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 188
+        }
+      },
+      {
+        "comment": "",
+        "key": "Display As Company",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "",
+        "key": "Display as Company",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 197
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "Induvidual",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 214
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 227
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 230
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 238
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 251
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Label: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 269
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 276
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing Address: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 287
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 293
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "Active: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Since: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 325
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Category: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Category",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Reason: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 345
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Reason",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 349
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,120 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/RepairRequest/View/RepairRequestListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add First Request",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "All %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "Techs: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 186
+        }
+      },
+      {
+        "comment": "",
+        "key": "Techs",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "All %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 196
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 216
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 270
+        }
+      }
+    ]
+  },
+  "version": 1
+}

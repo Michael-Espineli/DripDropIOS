@@ -1,0 +1,18 @@
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Resources/DataService/Protocol/Jobs/JobTasks+ProductionDataService+Extension.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobTasks+ProductionDataService+Extension.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobTasks+ProductionDataService+Extension.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobTasks+ProductionDataService+Extension.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobTasks+ProductionDataService+Extension.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobTasks+ProductionDataService+Extension.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/DatabaseItems/UploadDataBaseItemsFromComputer.swift":
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/UploadDataBaseItemsFromComputer.dia"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/UploadDataBaseItemsFromComputer.swiftdeps"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/UploadDataBaseItemsFromComputer.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/UploadDataBaseItemsFromComputer.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/UploadDataBaseItemsFromComputer.d"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Route/Views/Building/ReassignRouteView.swift":
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ReassignRouteView.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ReassignRouteView.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ReassignRouteView.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ReassignRouteView.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/ReassignRouteView.o"

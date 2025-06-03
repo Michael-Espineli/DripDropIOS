@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AccountsPayableList: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
+    @EnvironmentObject var dataService: ProductionDataService
 
     @StateObject var VM : AccountingViewModel
 
@@ -20,8 +21,9 @@ struct AccountsPayableList: View {
             Color.listColor.ignoresSafeArea()
             list
         }
+        .navigationTitle("Accounts Payable List")
         .task{
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await VM.getAccountsPaymentInvoices(companyId: company.id)
                 } catch {
@@ -39,7 +41,7 @@ struct AccountsPayableList: View {
 extension AccountsPayableList {
     var list: some View {
         ScrollView{
-            ForEach(VM.accountsReceivableInvoices){ invoice in
+            ForEach(VM.accountsPayableInvoices){ invoice in
                 Button(action: {
                     
                 }, label: {

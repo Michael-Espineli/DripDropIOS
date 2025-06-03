@@ -1,0 +1,920 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/AddNewJobFromRepairRequest.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "ID : %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 212
+        }
+      },
+      {
+        "comment": "",
+        "key": "Simplify",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expand",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "Review",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 415
+        }
+      },
+      {
+        "comment": "",
+        "key": "Address : %@ %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 435
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Of Water : %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 436
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment : %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 437
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin : %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 418
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer : %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 427
+        }
+      },
+      {
+        "comment": "",
+        "key": "Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 442
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 445
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 451
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 457
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 463
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 469
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 447
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 453
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 459
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 471
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost: $%@.00",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 477
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate: $%@.00",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 478
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Cost: %lf",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "Schedule First Service Stop",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 491
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Schedule First Service Stop",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 612
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 493
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Type",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 498
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Stop Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 500
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Type",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 501
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 509
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 512
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 513
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 514
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 519
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 521
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Tech",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 522
+        }
+      },
+      {
+        "comment": "",
+        "key": "Duration",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 537
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 547
+        }
+      },
+      {
+        "comment": "",
+        "key": "Include Readings",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 531
+        }
+      },
+      {
+        "comment": "",
+        "key": "Include Dosages",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 534
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Service stop",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 596
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 603
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ - %@ - ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 616
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 617
+        }
+      },
+      {
+        "comment": "",
+        "key": "Parts: ",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 629
+        }
+      },
+      {
+        "comment": "",
+        "key": "Installation Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 632
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 637
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 648
+        }
+      },
+      {
+        "comment": "",
+        "key": "PVC Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 653
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 658
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 668
+        }
+      },
+      {
+        "comment": "",
+        "key": "Electrical Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 673
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 678
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 688
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chemicals",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 693
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 698
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 708
+        }
+      },
+      {
+        "comment": "",
+        "key": "Misc",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 713
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 718
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 728
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 736
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description...",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 844
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 752
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 755
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Tech",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 756
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 765
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Customer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 772
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 774
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 788
+        }
+      },
+      {
+        "comment": "",
+        "key": "Location",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 791
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Location",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 792
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Date :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 799
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Type :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 805
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 808
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Type",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 809
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Type :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 816
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Stop Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 819
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Type",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 820
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 827
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 833
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 870
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Customer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 877
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 879
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 893
+        }
+      },
+      {
+        "comment": "",
+        "key": "Location",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 895
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Location",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 896
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Of Water",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 903
+        }
+      },
+      {
+        "comment": "",
+        "key": "BOW",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 905
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Location",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 906
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipmnet",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 913
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 915
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Equipment",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 916
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 944
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 961
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 963
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Admin",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 964
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Type",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 972
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 974
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Type",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 975
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operation",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 982
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operation",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 984
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 991
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 993
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1000
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1003
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1011
+        }
+      },
+      {
+        "comment": "",
+        "key": "laborCost",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1014
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1022
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1025
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1037
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1230
+        }
+      }
+    ]
+  },
+  "version": 1
+}

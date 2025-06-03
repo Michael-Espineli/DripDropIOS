@@ -1,0 +1,184 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Dashboard/View/WorkPreviewBasedOnCompany.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Role Permissions: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 58
+        }
+      },
+      {
+        "comment": "",
+        "key": "Login",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Shift",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Shift",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Shift",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Shift",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Shift",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Shift",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 195
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Work Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 152
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Work Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Work Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Work Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 176
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Work Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Work Today",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 227
+        }
+      },
+      {
+        "comment": "",
+        "key": "- %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "",
+        "key": " (%@)",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 235
+        }
+      },
+      {
+        "comment": "",
+        "key": " (%@)",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 254
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 243
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 245
+        }
+      },
+      {
+        "comment": "",
+        "key": "- %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 249
+        }
+      }
+    ]
+  },
+  "version": 1
+}

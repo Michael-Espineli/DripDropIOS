@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Resources/DataService/Protocol/Equipment/AddressSearchBar.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Search Address",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@ %@ ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 153
+        }
+      }
+    ]
+  },
+  "version": 1
+}

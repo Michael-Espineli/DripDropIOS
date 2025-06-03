@@ -1,0 +1,192 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Auth/View/SignUpView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Welcome",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 246
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name :",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 66
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name :",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name :",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 75
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email :",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Password",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "",
+        "key": "Password :",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm Password",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm Password :",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 117
+        }
+      },
+      {
+        "comment": "",
+        "key": "Must Contain Special Chatecters",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Must Be Longer than 8 Charecters",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "Passwords Must Match",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contains Special Charecters",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "",
+        "key": "Length 8 +",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Passwords Match",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 153
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 222
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alert",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 250
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 251
+        }
+      }
+    ]
+  },
+  "version": 1
+}

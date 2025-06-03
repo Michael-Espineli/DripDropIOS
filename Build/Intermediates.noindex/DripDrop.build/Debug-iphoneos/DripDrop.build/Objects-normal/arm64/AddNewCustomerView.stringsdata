@@ -1,0 +1,448 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/AddNewCustomerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add Customer",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alert",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 555
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 556
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 557
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 565
+        }
+      },
+      {
+        "comment": "",
+        "key": "Leave Without Saving",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 566
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 567
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 583
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 586
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 594
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "Display as Company",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 607
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 614
+        }
+      },
+      {
+        "comment": "",
+        "key": "Induvidual",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 625
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 639
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 643
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 655
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 658
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 669
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 672
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing Address",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 691
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 697
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 706
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 713
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 720
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Location Later",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 738
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add First Location",
+        "location": {
+          "startingColumn": 76,
+          "startingLine": 738
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location Info",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 744
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 747
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 750
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 758
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 761
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dog Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 769
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dog Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 772
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 780
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 783
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 791
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 794
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 803
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Billing Address",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 814
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 821
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 831
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 838
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 845
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location Contact",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 855
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Main Contact",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 864
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 871
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 875
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 883
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 887
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 896
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 900
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 909
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 913
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1112
+        }
+      }
+    ]
+  },
+  "version": 1
+}

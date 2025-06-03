@@ -1,0 +1,40 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/LaborContract/LaborContracts/OfferNewRate.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Current Rate: %@",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 36
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offer New Rate",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offer New Rate",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 62
+        }
+      }
+    ]
+  },
+  "version": 1
+}

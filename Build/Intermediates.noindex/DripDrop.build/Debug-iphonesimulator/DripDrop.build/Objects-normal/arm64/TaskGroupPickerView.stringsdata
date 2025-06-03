@@ -1,0 +1,32 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/New Group1/View/TaskGroupPickerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Task Group Picker",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Group",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 115
+        }
+      }
+    ]
+  },
+  "version": 1
+}

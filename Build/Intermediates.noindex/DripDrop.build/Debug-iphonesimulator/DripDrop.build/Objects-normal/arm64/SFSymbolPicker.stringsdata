@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Resources/SFSymbolPicker.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Count %lld - %lld",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 42
+        }
+      }
+    ]
+  },
+  "version": 1
+}

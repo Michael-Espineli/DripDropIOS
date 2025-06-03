@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Dashboard/View/CompanyRoutingView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "No Company Selected",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 59
+        }
+      }
+    ]
+  },
+  "version": 1
+}

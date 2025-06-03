@@ -1,0 +1,152 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/BillingJobList.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Billing Job List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add First Job",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 247
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status  - %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "",
+        "key": "All %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 278
+        }
+      },
+      {
+        "comment": "",
+        "key": "Techs: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "",
+        "key": "Techs %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "All %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 295
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 309
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 368
+        }
+      }
+    ]
+  },
+  "version": 1
+}

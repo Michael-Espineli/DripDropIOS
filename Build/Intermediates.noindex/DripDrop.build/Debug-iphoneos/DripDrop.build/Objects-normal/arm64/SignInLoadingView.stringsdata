@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Auth/SignInLoadingView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "SignInLoadingView",
+        "location": {
+          "startingColumn": 14,
+          "startingLine": 12
+        }
+      }
+    ]
+  },
+  "version": 1
+}

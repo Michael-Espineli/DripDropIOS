@@ -1,0 +1,48 @@
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Stripe/AddStripeCustomer.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AddStripeCustomer.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AddStripeCustomer.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AddStripeCustomer.swiftdeps"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AddStripeCustomer.d"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AddStripeCustomer.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Photos/DripDropStoredImageRow.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/DripDropStoredImageRow.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/DripDropStoredImageRow.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/DripDropStoredImageRow.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/DripDropStoredImageRow.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/DripDropStoredImageRow.swiftconstvalues"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/CustomerDetail/CustomerLocationSetUpSchedule.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CustomerLocationSetUpSchedule.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CustomerLocationSetUpSchedule.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CustomerLocationSetUpSchedule.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CustomerLocationSetUpSchedule.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CustomerLocationSetUpSchedule.o"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Operations/WorkLogSnapShot.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WorkLogSnapShot.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WorkLogSnapShot.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WorkLogSnapShot.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WorkLogSnapShot.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WorkLogSnapShot.d"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Auth/AccountSetUpView.swift":
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountSetUpView.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountSetUpView.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountSetUpView.swiftdeps"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountSetUpView.d"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountSetUpView.o"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/New Group5/Views/CreateBulkInvoice.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateBulkInvoice.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateBulkInvoice.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateBulkInvoice.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateBulkInvoice.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateBulkInvoice.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Company/CreateNewCompany.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateNewCompany.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateNewCompany.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateNewCompany.d"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateNewCompany.swiftconstvalues"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/CreateNewCompany.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Components/InvoicePaidIcon.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/InvoicePaidIcon.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/InvoicePaidIcon.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/InvoicePaidIcon.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/InvoicePaidIcon.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/InvoicePaidIcon.o"

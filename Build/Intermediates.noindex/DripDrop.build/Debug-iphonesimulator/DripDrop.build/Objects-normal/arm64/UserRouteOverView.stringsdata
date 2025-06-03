@@ -1,0 +1,80 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Route/Views/UserRouteOverView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Internal Routes",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "",
+        "key": "External Routes",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "",
+        "key": "create way to keep up to date on routes that are contracted out.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Build",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Detail",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "See All",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "Detail",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "See All",
+        "location": {
+          "startingColumn": 61,
+          "startingLine": 74
+        }
+      },
+      {
+        "comment": "",
+        "key": "Selected Date",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 126
+        }
+      }
+    ]
+  },
+  "version": 1
+}

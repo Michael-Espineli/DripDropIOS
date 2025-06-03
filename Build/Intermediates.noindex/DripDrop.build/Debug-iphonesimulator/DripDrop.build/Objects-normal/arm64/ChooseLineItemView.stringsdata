@@ -1,0 +1,136 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Purchase/View/ChooseLineItemView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Please Enter Number",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "",
+        "key": "search",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity : ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 203
+        }
+      },
+      {
+        "comment": "",
+        "key": "quantity",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "",
+        "key": "5",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 245
+        }
+      },
+      {
+        "comment": "",
+        "key": "10",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 281
+        }
+      },
+      {
+        "comment": "",
+        "key": "5",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 301
+        }
+      },
+      {
+        "comment": "",
+        "key": "10",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit And Add Another",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 418
+        }
+      },
+      {
+        "comment": "",
+        "key": "Common Items",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create New Item",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 482
+        }
+      },
+      {
+        "comment": "",
+        "key": "All Items",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 523
+        }
+      }
+    ]
+  },
+  "version": 1
+}

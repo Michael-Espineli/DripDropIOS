@@ -1,0 +1,56 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/DatabaseItems/ReceiptDataBaseItemPicker.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Please Enter Number",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "",
+        "key": "Common Items",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create New Item",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 230
+        }
+      },
+      {
+        "comment": "",
+        "key": "All Items",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 267
+        }
+      }
+    ]
+  },
+  "version": 1
+}

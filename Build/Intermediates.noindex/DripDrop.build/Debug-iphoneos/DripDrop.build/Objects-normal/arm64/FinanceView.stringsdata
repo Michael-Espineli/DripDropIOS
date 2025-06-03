@@ -1,0 +1,72 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Finance/FinanceView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Setting up pool stick",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 22
+        }
+      },
+      {
+        "comment": "",
+        "key": "FianceOption4",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "FianceOption5",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unbilled Jobs",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 30
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unbilled Items",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "P.N.L.",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 38
+        }
+      },
+      {
+        "comment": "",
+        "key": "FianceOption4",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "FianceOption5",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 46
+        }
+      }
+    ]
+  },
+  "version": 1
+}

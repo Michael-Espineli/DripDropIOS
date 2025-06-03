@@ -1,0 +1,280 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/ServiceLocation/ServiceLocationDetail/UpdateServiceLocationView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recalculate",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "Latidude",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "Latitude...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 223
+        }
+      },
+      {
+        "comment": "",
+        "key": "Longitude",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "",
+        "key": "Longitude...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "Requires Pre Text",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contact Info",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 253
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Type",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 265
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select From List",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 269
+        }
+      },
+      {
+        "comment": "",
+        "key": "Yard Info",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 276
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 283
+        }
+      },
+      {
+        "comment": "",
+        "key": "estimated Time",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 299
+        }
+      },
+      {
+        "comment": "",
+        "key": "Requires Pre Text",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 309
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tree",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 313
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tree",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 316
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Tree",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bush",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bush",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 346
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Bush",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "",
+        "key": "Other",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 373
+        }
+      },
+      {
+        "comment": "",
+        "key": "Other",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 376
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Other",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 540
+        }
+      }
+    ]
+  },
+  "version": 1
+}

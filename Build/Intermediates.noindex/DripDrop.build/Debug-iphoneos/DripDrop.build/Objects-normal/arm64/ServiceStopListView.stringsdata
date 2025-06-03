@@ -1,0 +1,96 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/ServiceStops/View/ServiceStopListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Alert",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 134
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "Work Order Type: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 146
+        }
+      },
+      {
+        "comment": "",
+        "key": "All",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 149
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add First Service Stop",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 216
+        }
+      }
+    ]
+  },
+  "version": 1
+}

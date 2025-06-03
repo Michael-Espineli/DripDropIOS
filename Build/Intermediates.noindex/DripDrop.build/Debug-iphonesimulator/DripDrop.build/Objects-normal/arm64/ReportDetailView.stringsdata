@@ -1,0 +1,800 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Report/Report/ReportDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Vehicals",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tax",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "Export",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "",
+        "key": "Order By",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "User",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 253
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invalid Order Selected",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer: %@ %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 240
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Results",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "User: %@",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ - ",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ ",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 273
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 275
+        }
+      },
+      {
+        "comment": "",
+        "key": "NO Results",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer: %@ %@",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ - %@",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 308
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Results",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 319
+        }
+      },
+      {
+        "comment": "",
+        "key": "User: %@",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 325
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ - ",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 334
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ ",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 336
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 338
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 376
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type: ",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 389
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 394
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 484
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invalid Query",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 486
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 583
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invalid Order Selected",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 585
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Results",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 412
+        }
+      },
+      {
+        "comment": "",
+        "key": "User: %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 418
+        }
+      },
+      {
+        "comment": "",
+        "key": "Used",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 428
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchased",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 432
+        }
+      },
+      {
+        "comment": "",
+        "key": "%",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 436
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 445
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %@",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 447
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 454
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 455
+        }
+      },
+      {
+        "comment": "",
+        "key": "3",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 461
+        }
+      },
+      {
+        "comment": "",
+        "key": "75%",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading... ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 494
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 496
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Results",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 501
+        }
+      },
+      {
+        "comment": "",
+        "key": "User: %@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 507
+        }
+      },
+      {
+        "comment": "",
+        "key": "Used",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 517
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchased",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 521
+        }
+      },
+      {
+        "comment": "",
+        "key": "%",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 525
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 534
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %@",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 536
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 542
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 543
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 549
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 78,
+          "startingLine": 550
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@%%",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 557
+        }
+      },
+      {
+        "comment": "",
+        "key": "NA",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 562
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 604
+        }
+      },
+      {
+        "comment": "",
+        "key": "Order By",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 610
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 618
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 623
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 637
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 657
+        }
+      },
+      {
+        "comment": "",
+        "key": "Order By",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 663
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 670
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 676
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 692
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 712
+        }
+      },
+      {
+        "comment": "",
+        "key": "Order By",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 720
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 728
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 734
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 767
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Summary",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 802
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Summary",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 822
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 745
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 755
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 758
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 773
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 777
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 785
+        }
+      },
+      {
+        "comment": "",
+        "key": " X ",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 789
+        }
+      },
+      {
+        "comment": "",
+        "key": "$ %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 790
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 806
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 816
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 829
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 833
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 844
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 866
+        }
+      },
+      {
+        "comment": "",
+        "key": "Order By",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 872
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 881
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 887
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 901
+        }
+      },
+      {
+        "comment": "",
+        "key": "00-00-0000",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 957
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 959
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 962
+        }
+      }
+    ]
+  },
+  "version": 1
+}

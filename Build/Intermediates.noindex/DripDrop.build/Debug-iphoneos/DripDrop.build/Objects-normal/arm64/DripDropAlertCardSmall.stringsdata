@@ -1,0 +1,32 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Alerts/View/DripDropAlertCardSmall.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Task Groups",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 189
+        }
+      }
+    ]
+  },
+  "version": 1
+}

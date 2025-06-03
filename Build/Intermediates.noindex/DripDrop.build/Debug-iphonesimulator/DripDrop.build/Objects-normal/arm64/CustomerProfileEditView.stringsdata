@@ -1,0 +1,256 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/CustomerEdit/CustomerProfileEditView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alert",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm you want to delete Customer",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 190
+        }
+      },
+      {
+        "comment": "",
+        "key": "Display As Company",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 197
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 214
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 217
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 226
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 229
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 239
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 242
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 251
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 254
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Label: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 266
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing Address: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "",
+        "key": "Street Address",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 275
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 291
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 298
+        }
+      },
+      {
+        "comment": "",
+        "key": "Active: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 308
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Since: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Category: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Category",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Reason: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fire Reason",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 339
+        }
+      }
+    ]
+  },
+  "version": 1
+}

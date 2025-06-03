@@ -1,0 +1,152 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/RepairRequest/View/AddNewRepairRequest.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add Repair Request",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Repair Request",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 276
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 285
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 287
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 375
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 385
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Customer",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 393
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 405
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select location",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 413
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 415
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Of Water:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 426
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Body Of Water",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 434
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 436
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 446
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 449
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Equipment",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 451
+        }
+      }
+    ]
+  },
+  "version": 1
+}

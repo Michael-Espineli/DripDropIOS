@@ -1,0 +1,42 @@
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Equipment/New Group1/EquipmentList.swift":
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/EquipmentList.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/EquipmentList.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/EquipmentList.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/EquipmentList.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/EquipmentList.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/New Group5/Views/Invoices.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/Invoices.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/Invoices.swiftconstvalues"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/Invoices.o"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/Invoices.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/Invoices.d"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/AccountsReceivable/New Group/AccountsReceivableDetail.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsReceivableDetail.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsReceivableDetail.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsReceivableDetail.dia"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsReceivableDetail.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsReceivableDetail.swiftdeps"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/LaborContract/LaborContracts/RecurringLaborContractListView.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/RecurringLaborContractListView.o"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/RecurringLaborContractListView.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/RecurringLaborContractListView.dia"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/RecurringLaborContractListView.swiftconstvalues"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/RecurringLaborContractListView.d"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/JobNavigationLink.swift":
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobNavigationLink.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobNavigationLink.swiftdeps"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobNavigationLink.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobNavigationLink.o"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/JobNavigationLink.swiftconstvalues"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Operations/Weather/WeatherSnapShotLong.swift":
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WeatherSnapShotLong.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WeatherSnapShotLong.d"
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WeatherSnapShotLong.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WeatherSnapShotLong.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/WeatherSnapShotLong.dia"
+"/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/AccountsPayable/View/AccountsPayableList.swift":
+  swift-dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsPayableList.swiftdeps"
+  const-values: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsPayableList.swiftconstvalues"
+  diagnostics: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsPayableList.dia"
+  object: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsPayableList.o"
+  dependencies: "/Users/michaelespineli/Desktop/DripDrop/Build/Intermediates.noindex/DripDrop.build/Debug-iphoneos/DripDrop.build/Objects-normal/arm64/AccountsPayableList.d"

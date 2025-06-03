@@ -1,0 +1,392 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Navigation/View/Managment.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Count",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "Management",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 124
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vender",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 162
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 170
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Venders: %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pay Roll // Developer",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 260
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Invoices :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 294
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 298
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Late :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 308
+        }
+      },
+      {
+        "comment": "",
+        "key": "Techs",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 362
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 374
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Users:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 394
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 396
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %lld",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 404
+        }
+      },
+      {
+        "comment": "",
+        "key": "Live Route Managment",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 451
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 463
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 475
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 496
+        }
+      },
+      {
+        "comment": "",
+        "key": "Internal And External Routes",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 511
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 520
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 532
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 555
+        }
+      },
+      {
+        "comment": "",
+        "key": "Internal Routes",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 569
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 578
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 590
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 613
+        }
+      },
+      {
+        "comment": "",
+        "key": "External Routes",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 628
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 637
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 649
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 670
+        }
+      },
+      {
+        "comment": "",
+        "key": "Route Sandbox",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 685
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fleet",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 699
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 708
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 720
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vehicals: %lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 741
+        }
+      },
+      {
+        "comment": "",
+        "key": "Businesses",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 784
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 794
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 806
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Contracts: 1",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 826
+        }
+      },
+      {
+        "comment": "",
+        "key": "Buissness: 3",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 827
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unbilled Work: $ 10,350.69",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 828
+        }
+      }
+    ]
+  },
+  "version": 1
+}

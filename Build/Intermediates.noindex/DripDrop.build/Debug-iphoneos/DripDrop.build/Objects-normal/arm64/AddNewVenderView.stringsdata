@@ -1,0 +1,104 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Venders/New Group1/AddNewVenderView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add New Store",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 31
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 40
+        }
+      },
+      {
+        "comment": "",
+        "key": "phone Number",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "email",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "email@gamil.com",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "streetAddress",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 73
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 129
+        }
+      }
+    ]
+  },
+  "version": 1
+}

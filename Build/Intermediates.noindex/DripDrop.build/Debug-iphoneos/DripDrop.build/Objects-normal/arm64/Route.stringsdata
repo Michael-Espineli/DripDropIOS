@@ -1,0 +1,72 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Navigation/Logic/Route.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Pending Job List",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 592
+        }
+      },
+      {
+        "comment": "",
+        "key": "Map",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "dailyDisplay",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 600
+        }
+      },
+      {
+        "comment": "",
+        "key": "Calendar",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 602
+        }
+      },
+      {
+        "comment": "",
+        "key": "PNL",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 606
+        }
+      },
+      {
+        "comment": "",
+        "key": "User",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 650
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cart",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 666
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Repair Request?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 707
+        }
+      }
+    ]
+  },
+  "version": 1
+}

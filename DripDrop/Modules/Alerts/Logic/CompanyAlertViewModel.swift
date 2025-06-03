@@ -37,7 +37,7 @@ final class CompanyAlertViewModel:ObservableObject{
     @Published private(set) var customer:Customer? = nil
     @Published private(set) var company:Company? = nil
 
-    @Published private(set) var contract:Contract? = nil
+    @Published private(set) var contract:RecurringContract? = nil
     @Published private(set) var chat:Chat? = nil
     @Published private(set) var companyUser:CompanyUser? = nil
 
@@ -50,7 +50,7 @@ final class CompanyAlertViewModel:ObservableObject{
     @Published private(set) var job:Job? = nil
     @Published private(set) var jobTemplate:JobTemplate? = nil
     
-    @Published private(set) var laborContract:RepeatingLaborContract? = nil
+    @Published private(set) var laborContract:ReccuringLaborContract? = nil
 
     @Published private(set) var purchase:PurchasedItem? = nil
 
@@ -82,7 +82,7 @@ final class CompanyAlertViewModel:ObservableObject{
             if UIDevice.isIPhone {
                 if alert.route.hasItem() {
                     switch alert.route {
-                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .activeRouteOverView:
+                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .activeRouteOverView, .managementTables:
                         print("No Item To Get")
                         
                     case .editUser:
@@ -111,16 +111,12 @@ final class CompanyAlertViewModel:ObservableObject{
                     case .allTechRouteOverview:
                         print("Developer Needs more Help")
                         self.route = Route.allTechRouteOverview(route: [], dataService: dataService)
-                        
                     case .routeOverview:
                         let item = try await dataService.getActiveRoute(companyId: companyId, activeRouteId: alert.itemId)
                         self.route = Route.routeOverview(route: item, dataService: dataService)
-   
                     case .dailyDisplayStop:
                         let item = try await dataService.getServiceStopById(serviceStopId: alert.itemId, companyId: companyId)
                         self.route = Route.dailyDisplayStop(dataService: dataService, serviceStop: item)
-                        
-                        
                     case .jobTemplate:
                         let item = try await dataService.getJobTemplate(companyId: companyId, templateId: alert.itemId)
                         self.route = Route.jobTemplate(jobTemplate: item, dataService: dataService)
@@ -207,7 +203,7 @@ final class CompanyAlertViewModel:ObservableObject{
                         
                     case .laborContractDetailView:
                         let item = try await dataService.getLaborContract(companyId: companyId, laborContractId: alert.itemId)
-                        self.route = Route.laborContractDetailView(contract: item, dataService: dataService)
+                        self.route = Route.recurringLaborContractDetailView(contract: item, dataService: dataService)
                
                     case .banks:
                         print("No Item To Get")
@@ -220,10 +216,19 @@ final class CompanyAlertViewModel:ObservableObject{
                     case .transactionDetailView:
                         print("Developer Build out")
 
+                    case .emailConfiguration:
+                        print("Developer Please Build out")
+                    case .employeeMainDailyDisplayView:
+                        print("Developer Please Build out")
+
                     }
                 }
             } else {
                 switch alert.category {
+                case .sentLaborContracts:
+                    print("Developer")
+                case .managementTables:
+                    print("Management Tables")
                 case .profile:
                     print("reports Not Built Out Yet")
                 case .dashBoard:
@@ -266,7 +271,7 @@ final class CompanyAlertViewModel:ObservableObject{
                     print("alerts Not Built Out Yet")
                 case .externalRoutesOverview:
                     print("No Item to get")
-                case .laborContracts:
+                case .receivedLaborContracts:
                     self.laborContract = try await dataService.getLaborContract(companyId: companyId, laborContractId: alert.itemId)
                 case .accountsPayable:
                     self.stripeInvoice = try await dataService.getAccountsPayableInvoice(companyId: companyId, invoiceId: alert.itemId)
@@ -313,6 +318,8 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .companyUser:
                     self.companyUser = try await dataService.getCompanyUserById(companyId: companyId, companyUserId: alert.itemId)
                     
+                case .taskGroups:
+                    print("DEVELOPER FIX")
                 }
             }
         } else {
@@ -432,11 +439,12 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .createCustomer:
                     self.route = Route.createCustomer(dataService: dataService)
                 case .equipmentDetailView:
-                    self.route = Route.equipmentDetailView(dataService: dataService)
+                    print("Fix")
+//                    self.route = Route.equipmentDetailView(equipment: Equipment, dataService: dataService)
                 case .laborContracts:
                     self.route = Route.laborContracts(dataService: dataService)
                     //All the Below are detil with Higher
-                case .shoppingListDetail,.purchase,.job,.chat,.repairRequest,.customer,.serviceStop,.business,.vender,.dataBaseItem,.contract,.genericItem,.readingTemplate,.dosageTemplate,.receipt,.companyProfile,.vehicalDetailView,.accountsPayableDetail,.accountsReceivableDetail,.laborContractDetailView, .companyUserDetailView, .jobTemplate, .routeOverview, .allTechRouteOverview, .dailyDisplayStop, .bankDetailView, .transactionDetailView:
+                case .shoppingListDetail,.purchase,.job,.chat,.repairRequest,.customer,.serviceStop,.business,.vender,.dataBaseItem,.contract,.genericItem,.readingTemplate,.dosageTemplate,.receipt,.companyProfile,.vehicalDetailView,.accountsPayableDetail,.accountsReceivableDetail,.laborContractDetailView, .companyUserDetailView, .jobTemplate, .routeOverview, .allTechRouteOverview, .dailyDisplayStop, .bankDetailView, .transactionDetailView, .managementTables:
                     print("Detalt With Higher Above")
                 case .companyAlerts:
                     self.route = Route.companyAlerts(dataService: dataService)
@@ -450,6 +458,11 @@ final class CompanyAlertViewModel:ObservableObject{
                     print("Developer please build out")
                 case .activeRouteOverView:
                     print("Please build out")
+                case .emailConfiguration:
+                    print("Developer Please Build out")
+                    
+                case .employeeMainDailyDisplayView:
+                    print("Developer Please Build out")
                 }
             
         }
@@ -468,7 +481,7 @@ final class CompanyAlertViewModel:ObservableObject{
             if UIDevice.isIPhone {
                 if recentActivity.route.hasItem() {
                     switch recentActivity.route {
-                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .banks, .transactions, .activeRouteOverView:
+                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .banks, .transactions, .activeRouteOverView, .managementTables:
                         print("No Item To Get")
                         
                     case .editUser:
@@ -593,17 +606,25 @@ final class CompanyAlertViewModel:ObservableObject{
                         
                     case .laborContractDetailView:
                         let item = try await dataService.getLaborContract(companyId: companyId, laborContractId: recentActivity.itemId)
-                        self.route = Route.laborContractDetailView(contract: item, dataService: dataService)
+                        self.route = Route.recurringLaborContractDetailView(contract: item, dataService: dataService)
                
                         
                     case .bankDetailView:
                         print("Developer Please Build out")
                     case .transactionDetailView:
                         print("Developer Please Build out")
+                    case .emailConfiguration:
+                        print("Developer Please Build out")
+                    case .employeeMainDailyDisplayView:
+                        print("Developer Please Build out")
                     }
                 }
             } else {
                 switch recentActivity.category {
+                case .sentLaborContracts:
+                    print(".managementTables")
+                case .managementTables:
+                    print(".managementTables")
                 case .profile:
                     print("reports Not Built Out Yet")
                 case .dashBoard:
@@ -646,7 +667,7 @@ final class CompanyAlertViewModel:ObservableObject{
                     print("alerts Not Built Out Yet")
                 case .externalRoutesOverview:
                     print("Not Needed")
-                case .laborContracts:
+                case .receivedLaborContracts:
                     self.laborContract = try await dataService.getLaborContract(companyId: companyId, laborContractId: recentActivity.itemId)
                 case .accountsPayable:
                     self.stripeInvoice = try await dataService.getAccountsPayableInvoice(companyId: companyId, invoiceId: recentActivity.itemId)
@@ -692,6 +713,8 @@ final class CompanyAlertViewModel:ObservableObject{
                     self.associatedBusiness = try await dataService.getAssociatedBusiness(companyId: companyId, businessId: recentActivity.itemId)
                 case .companyUser:
                     self.companyUser = try await dataService.getCompanyUserById(companyId: companyId, companyUserId: recentActivity.itemId)
+                case .taskGroups:
+                    print("DEVELOPER FIX")
                 }
             }
         } else {
@@ -811,13 +834,14 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .createCustomer:
                     self.route = Route.createCustomer(dataService: dataService)
                 case .equipmentDetailView:
-                    self.route = Route.equipmentDetailView(dataService: dataService)
+                    print("Fix")
+//                    self.route = Route.equipmentDetailView(dataService: dataService)
                 case .laborContracts:
                     self.route = Route.laborContracts(dataService: dataService)
                 case .companyAlerts:
                     self.route = Route.companyAlerts(dataService: dataService)
                     //All the Below are detil with Higher
-                case .shoppingListDetail,.purchase,.job,.chat,.repairRequest,.customer,.serviceStop,.business,.vender,.dataBaseItem,.contract,.genericItem,.readingTemplate,.dosageTemplate,.receipt,.companyProfile,.vehicalDetailView,.accountsPayableDetail,.accountsReceivableDetail,.laborContractDetailView, .companyUserDetailView, .jobTemplate, .routeOverview, .allTechRouteOverview, .dailyDisplayStop, .bankDetailView, .transactionDetailView:
+                case .shoppingListDetail,.purchase,.job,.chat,.repairRequest,.customer,.serviceStop,.business,.vender,.dataBaseItem,.contract,.genericItem,.readingTemplate,.dosageTemplate,.receipt,.companyProfile,.vehicalDetailView,.accountsPayableDetail,.accountsReceivableDetail,.laborContractDetailView, .companyUserDetailView, .jobTemplate, .routeOverview, .allTechRouteOverview, .dailyDisplayStop, .bankDetailView, .transactionDetailView, .managementTables:
                     print("Detalt With Higher Above")
   
                 case .externalRouteOverView:
@@ -828,6 +852,10 @@ final class CompanyAlertViewModel:ObservableObject{
                     print("Please build out")
                 case .activeRouteOverView:
                     print("Please build out")
+                case .emailConfiguration:
+                    print("Developer Please Build out")
+                case .employeeMainDailyDisplayView:
+                    print("Developer Please Build out")
                 }
             
         }

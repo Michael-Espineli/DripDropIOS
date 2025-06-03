@@ -1,0 +1,104 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/User/View/InviteNewTechView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Role",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Worker Type",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 76
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 55
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invite Code:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 82
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invite",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 133
+        }
+      }
+    ]
+  },
+  "version": 1
+}

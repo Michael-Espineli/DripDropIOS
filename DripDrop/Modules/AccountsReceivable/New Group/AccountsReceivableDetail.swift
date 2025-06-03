@@ -15,9 +15,11 @@ struct AccountsReceivableDetail: View {
             Color.listColor.ignoresSafeArea()
             ScrollView{
                 header
-                Divider()
                 details
-                    .padding(.horizontal,20)
+                    .padding(8)
+                Text("d")
+                    .foregroundColor(.clear)
+                    .padding(8)
             }
             VStack{
                 Spacer()
@@ -25,51 +27,173 @@ struct AccountsReceivableDetail: View {
             }
         }
     }
+    func sendReminder() async throws {
+        print("Developer Please Send Reminder, Either Call Function ")
+      }
 }
 
 #Preview {
-    AccountsPayableDetail( invoice: StripeInvoice(id: "", internalIdenifier: "",  senderId: "", senderName: "", receiverId: "", receiverName: "", dateSent: Date(), total: 0, terms: .net15, paymentStatus: .paid, paymentType: .cash,paymentRefrence: "534726", lineItems: []))
+    AccountsPayableDetail(
+        invoice: StripeInvoice(
+            id: "",
+            internalIdenifier: "",
+            senderId: "",
+            senderName: "",
+            receiverId: "",
+            receiverName: "",
+            dateSent: Date(),
+            total: 0,
+            terms: .net15,
+            paymentStatus: .paid,
+            paymentType: .cash,
+            paymentRefrence: "534726",
+            paymentDate: nil,
+            lineItems: []
+        )
+    )
 }
 extension AccountsReceivableDetail {
     var header: some View {
         VStack{
-                Text("\(invoice.receiverId)")
+            HStack{
+                Text("To:")
+                    .bold()
                 Text("\(invoice.receiverName)")
-                Text("\(invoice.senderId)")
-                Text("\(invoice.senderName)")
-                Text("\(String(invoice.total))")
-            
+                Spacer()
+            }
+            HStack{
+                Text("Rate:")
+                    .bold()
+                Text("\(Double(invoice.total)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                Spacer()
+            }
+            HStack{
+                Text("Sent:")
+                    .bold()
+                Text(shortDate(date: invoice.dateSent))
+                Spacer()
+            }
+            HStack{
+                if invoice.paymentStatus == .unpaid {
+                    
+                    Text("Due:")
+                        .bold()
+                    switch invoice.terms {
+                    case .net15:
+                        Text("\(shortDate(date: Calendar.current.date(byAdding: .day, value: +15, to: invoice.dateSent)!))")
+                    case .net30:
+                        Text("\(shortDate(date: Calendar.current.date(byAdding: .day, value: +30, to: invoice.dateSent)!))")
+                    case .net45:
+                        Text("\(shortDate(date: Calendar.current.date(byAdding: .day, value: +45, to: invoice.dateSent)!))")
+                    case .net60:
+                        Text("\(shortDate(date: Calendar.current.date(byAdding: .day, value: +60, to: invoice.dateSent)!))")
+                    }
+                    Spacer()
+                    switch invoice.terms {
+                    case .net15:
+                        if Calendar.current.date(byAdding: .day, value: +15, to: invoice.dateSent)! > Date() {
+                            HStack{
+                                Text("Due")
+                                
+                                Text("(\(String(daysBetween(start: Date(), end: Calendar.current.date(byAdding: .day, value: +15, to: invoice.dateSent)!))) Days )")
+                            }
+                            .modifier(YellowButtonModifier())
+                        }  else {
+                            Text("Over Due")
+                                .modifier(DismissButtonModifier())
+                            Text("(\(String(daysBetween(start: Calendar.current.date(byAdding: .day, value: +15, to: invoice.dateSent)!, end: Date()))))")
+                                .font(.footnote)
+                        }
+                    case .net30:
+                        if Calendar.current.date(byAdding: .day, value: +30, to: invoice.dateSent)! > Date() {
+                            HStack{
+                                Text("Due")
+                                Text("(\(String(daysBetween(start: Date(), end: Calendar.current.date(byAdding: .day, value: +30, to: invoice.dateSent)!))) Days )")
+                            }
+                            .modifier(YellowButtonModifier())
+                        }  else {
+                            Text("Over Due")
+                                .modifier(DismissButtonModifier())
+                            Text("(\(String(daysBetween(start: Calendar.current.date(byAdding: .day, value: +30, to: invoice.dateSent)!, end: Date()))))")
+                                .font(.footnote)
+                        }
+                    case .net45:
+                        if Calendar.current.date(byAdding: .day, value: +45, to: invoice.dateSent)! > Date() {
+                            HStack{
+                                Text("Due")
+                                Text("(\(String(daysBetween(start: Date(), end: Calendar.current.date(byAdding: .day, value: +45, to: invoice.dateSent)!))) Days )")
+                            }
+                            .modifier(YellowButtonModifier())
+                        }  else {
+                            Text("Over Due")
+                                .modifier(DismissButtonModifier())
+                            Text("(\(String(daysBetween(start: Calendar.current.date(byAdding: .day, value: +45, to: invoice.dateSent)!, end: Date()))))")
+                                .font(.footnote)
+                        }
+                    case .net60:
+                        if Calendar.current.date(byAdding: .day, value: +60, to: invoice.dateSent)! > Date() {
+                            HStack{
+                                Text("Due")
+                                Text("(\(String(daysBetween(start: Date(), end: Calendar.current.date(byAdding: .day, value: +60, to: invoice.dateSent)!))) Days )")
+                            }
+                            .modifier(YellowButtonModifier())
+                        }  else {
+                            Text("Over Due")
+                                .modifier(DismissButtonModifier())
+                            Text("(\(String(daysBetween(start: Calendar.current.date(byAdding: .day, value: +60, to: invoice.dateSent)!, end: Date()))))")
+                                .font(.footnote)
+                        }
+                    }
+                } else {
+                    if let paymentType = invoice.paymentType {
+                        Text("Payment Info: \(invoice.paymentStatus.rawValue) on \(shortDate(date: invoice.paymentDate)) with \(paymentType.rawValue)")
+                    }
+                }
+            }
         }
-        .padding(.horizontal,20)
+        .padding(8)
+        .padding(.horizontal,8)
         .frame(maxWidth: .infinity)
-        .background(Color.poolBlue)
+        .background(Color.poolBlue.opacity(0.75))
     }
     var details: some View {
         VStack{
-                ForEach(invoice.lineItems) { item in
+            Text("Line Items")
+                .font(.headline)
+            Rectangle()
+                .frame(height: 1)
+            ForEach(invoice.lineItems) { item in
+                VStack(alignment:.leading){
                     HStack{
+                        Text("\(item.description)")
                         Spacer()
-                        Text("\(item.description) - \(String(item.total)) x \(String(item.induvidualCost/100))")
                     }
+                    .lineLimit(1)
+                    Text("\(String(item.total/item.induvidualCost)) x \(Double(item.induvidualCost)/100, format: .currency(code: "USD").precision(.fractionLength(2))) = \(Double(item.total)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+
                 }
+                Divider()
+            }
             
         }
     }
     var payButton: some View {
         Button(action: {
-            masterDataManager.paymentSheetType = .invoice
-            masterDataManager.showPaymentSheet = true
+            Task{
+                do {
+                    try await sendReminder()
+                } catch {
+                    print(error)
+                }
+            }
         }, label:   {
             HStack{
-                Text("Pay")
+                Text("Send Reminder")
             }
             .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.poolBlue)
-            .foregroundColor(Color.basicFontText)
-            .clipShape(Capsule())
+            .modifier(AddButtonModifier())
         })
-        .padding(.horizontal,20)
+        .padding(.horizontal,16)
     }
 }
 

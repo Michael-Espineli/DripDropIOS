@@ -12,291 +12,244 @@ struct RedeemInviteCode: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
 
-    @StateObject var inviteVM = InviteViewModel()
-    @StateObject var VM : AuthenticationViewModel
+    @StateObject var VM : RedeemInviteCodeViewModel
     
     init(dataService:any ProductionDataServiceProtocol) {
-        _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: RedeemInviteCodeViewModel(dataService: dataService))
     }
-    
-    @State var inviteCode:String = ""
-    @State var errorCode:String = ""
-    
-    @State var showAlert:Bool = false
-    @State var isLoading:Bool = false
-
-    @State var email:String = ""
-    @State var password:String = ""
-    @State var confirmPassword:String = ""
-
-    @State var firstName:String = ""
-    @State var lastName:String = ""
-    @State var company:String = ""
-    @State var companyId:String = ""
-
-    @State var position:String = ""
-    
-    @State var invite:Invite? = nil
     var body: some View {
         VStack{
             ScrollView{
-            if invite == nil {
-                VStack{
-                    Text("Invite Code")
-                        .font(.headline)
-
-                    HStack{
-                        Button(action: {
-                            inviteCode = ""
-                        }, label: {
-                            Image(systemName: "xmark.app")
-                                .font(.title)
-                        })
-                        TextField(
-                            "Invite Code",
-                            text: $inviteCode
-                        )
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .font(.headline)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 5)
-                        .background(Color.white)
-                        .clipShape(Capsule())
-                        .foregroundColor(Color.basicFontText)
-                        PasteButton(payloadType: String.self) { strings in
-                            guard let first = strings.first else { return }
-                            inviteCode = first
-                        }
-                        #if os(iOS)
-                        .buttonBorderShape(.capsule)
-                        #endif
-                    }
-                    HStack{
-                        Spacer()
-                        Button(action: {
-                            Task{
-                                try? await inviteVM.getSelectedInvite(inviteId: inviteCode)
-                                invite = inviteVM.invite
-                                if invite == nil {
-                                    errorCode = "Invalid Invite Code"
-                                    inviteCode = ""
-                                    showAlert = true
-                                    return
-                                } else {
-                                    firstName = invite!.firstName
-                                    lastName = invite!.lastName
-                                    company = invite!.companyName
-                                    companyId = invite!.companyId
-                                    email = invite!.email
+                if let invite = VM.invite {
+                    if invite.currentUser {
+                        VStack{
+                            Text("Hi, \(invite.firstName)")
+                                .font(.headline)
+                            Text("Welcome to \(invite.companyName)")
+                                .font(.headline)
+                            Rectangle()
+                                .frame(height: 1)
+                            Text("Role: \(invite.roleName)")
+                            Text("Worker Type: \(invite.workerType.rawValue)")
+                            Button{
+                                    Task{
+                                        do{
+                                            try await VM.joinCompanyWithInviteCode(invite:invite)
+                                        } catch {
+                                            print(error)
+                                        }
+                                    }
+                            } label: {
+                                Text("Accept")
+                                    .modifier(SubmitButtonModifier())
+                            }
+                            .padding()
+                            if !masterDataManager.showSignInView {
+                                NavigationLink(destination: {
+                                    SignInView(dataService: dataService)
                                     
-                                }
+                                }, label: {
+                                    Text("Already have an acount? Sign In Here.")
+                                })
+                                .padding()
                             }
-                        }, label: {
-                            Text("Submit")
-                                .padding(5)
-                                .foregroundColor(colorScheme == .dark ? Color.basicFontText:Color.white)
-                                .background(Color.accentColor)
-                                .cornerRadius(5)
-                        })
-                        .disabled(inviteCode == "")
-                        .padding(20)
-                        Spacer()
-                    }
-                }
-                .padding(10)
-                .background(Color.gray.opacity(0.65))
-                .cornerRadius(10)
-                .padding(5)
-            } else {
-                VStack{
-                    Text("Hi, \(invite!.firstName)")
-                        .font(.headline)
-                    Text("Welcome to \(company)")
-                        .font(.headline)
-                    VStack{
-                        VStack{
-                            HStack{
-                                Text("First Name :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            TextField(
-                                "First Name",
-                                text: $firstName
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                        VStack{
-                            HStack{
-                                Text("Last Name :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            TextField(
-                                "Last Name",
-                                text: $lastName
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                        VStack{
-                            HStack{
-                                Text("Email :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            TextField(
-                                "Email",
-                                text: $email
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                        
-                        VStack{
-                            HStack{
-                                Text("Password :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            SecureField(
-                                "Password",
-                                text: $password
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                    }
-                    if password == confirmPassword {
-                        Text("")
-                    } else {
-                        Text("PassWords Must Match")
-                            .foregroundColor(Color.red)
-                    }
-                    VStack{
-                        HStack{
-                            Text("Confirm Password :")
-                                .font(.footnote)
                             Spacer()
                         }
-                        SecureField(
-                            "Confirm Password",
-                            text: $confirmPassword
-                        )
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .font(.headline)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 5)
-                        .background(Color.white)
-                        .clipShape(Capsule())
-                        .foregroundColor(Color.basicFontText)
-                    }
-                    .padding(10)
-                    
-                    Button{
-                        if password == confirmPassword {
-                            Task{
-                                do{
-                                    isLoading = true
-                                    if email == "" {
-                                        errorCode = "Email Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
+                        .padding(10)
+                        .background(Color.gray.opacity(0.65))
+                        .cornerRadius(10)
+                        .padding(5)
+                    } else {
+                        VStack{
+                            Text("Hi, \(invite.firstName)")
+                                .font(.headline)
+                            Text("Welcome to \(invite.companyName)")
+                                .font(.headline)
+                            VStack{
+                                VStack{
+                                    HStack{
+                                        Text("First Name :")
+                                            .font(.footnote)
+                                        Spacer()
                                     }
-                                    if password == "" {
-                                        errorCode = "Password Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    if firstName == "" {
-                                        errorCode = "First Name Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    if lastName == "" {
-                                        errorCode = "Last Name Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    if company == "" {
-                                        errorCode = "Company Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    try await VM.signUpWithEmailFromInviteCode(email: email, password: password,firstName:firstName,lastName:lastName,company:company,position:invite!.roleName,invite: invite!)
-                                    showAlert = false
-                                    masterDataManager.showSignInView = false
-                                } catch {
-                                    print(error)
+                                    TextField(
+                                        "First Name",
+                                        text: $VM.firstName
+                                    )
+                                    .modifier(TextFieldModifier())
                                 }
+                                .padding(10)
+                                VStack{
+                                    HStack{
+                                        Text("Last Name :")
+                                            .font(.footnote)
+                                        Spacer()
+                                    }
+                                    TextField(
+                                        "Last Name",
+                                        text: $VM.lastName
+                                    )
+                                    .modifier(TextFieldModifier())
+                                }
+                                .padding(10)
+                                VStack{
+                                    HStack{
+                                        Text("Email :")
+                                            .font(.footnote)
+                                        Spacer()
+                                    }
+                                    TextField(
+                                        "Email",
+                                        text: $VM.email
+                                    )
+                                    .modifier(TextFieldModifier())
+                                }
+                                .padding(10)
+                                VStack{
+                                    HStack{
+                                        Text("Password :")
+                                            .font(.footnote)
+                                        Spacer()
+                                    }
+                                    SecureField(
+                                        "Password",
+                                        text: $VM.password
+                                    )
+                                    .modifier(TextFieldModifier())
+                                }
+                                .padding(10)
                             }
-                        } else {
-                            errorCode = "Passwords Do Not Match"
-                            print(errorCode)
-                            showAlert = true
+                            
+                            VStack{
+                                HStack{
+                                    Text("Confirm Password :")
+                                        .font(.footnote)
+                                    Spacer()
+                                }
+                                SecureField(
+                                    "Confirm Password",
+                                    text: $VM.confirmPassword
+                                )
+                                .modifier(TextFieldModifier())
+                            }
+                            .padding(10)
+                            if VM.password == VM.confirmPassword {
+                                Text("")
+                            } else {
+                                Text("Passwords Must Match")
+                                    .foregroundColor(Color.red)
+                            }
+                            Button{
+                                if VM.password == VM.confirmPassword {
+                                    Task{
+                                        do{
+                                          
+                                            try await VM.signUpWithEmailFromInviteCode(invite: invite)
+                                            VM.showAlert = false
+                                            masterDataManager.showSignInView = false
+                                        } catch {
+                                            print(error)
+                                        }
+                                    }
+                                } else {
+                                    VM.errorCode = "Passwords Do Not Match"
+                                    print(VM.errorCode)
+                                    VM.showAlert = true
+                                }
+                                
+                            } label: {
+                                Text("Submit")
+                                    .modifier(SubmitButtonModifier())
+                            }
+                            .padding()
+                            NavigationLink(destination: {
+                                SignInView(dataService: dataService)
+                                
+                            }, label: {
+                                Text("Already have an acount? Sign In Here.")
+                            })
+                            .padding()
+                            Spacer()
                         }
-                        
-                    } label: {
-                        Text("Submit")
-                            .foregroundColor(colorScheme == .dark ? Color.basicFontText:Color.white)
-                            .padding(5)
-                            .background(Color.accentColor)
-                            .cornerRadius(5)
+                        .padding(10)
+                        .background(Color.gray.opacity(0.65))
+                        .cornerRadius(10)
+                        .padding(5)
                     }
-                    .padding()
-                    NavigationLink(destination: {
-                        SignInView(dataService: dataService)
-                        
-                    }, label: {
-                        Text("Already have an acount? Sign In Here.")
-                    })
-                    .padding()
-                    Spacer()
+                } else {
+                    VStack{
+                        Text("Invite Code")
+                            .font(.headline)
+
+                        HStack{
+                            Button(action: {
+                                VM.inviteCode = ""
+                            }, label: {
+                                Image(systemName: "xmark.app")
+                                    .font(.title)
+                            })
+                            TextField(
+                                "Invite Code",
+                                text: $VM.inviteCode
+                            )
+                            .modifier(TextFieldModifier())
+                            PasteButton(payloadType: String.self) { strings in
+                                guard let first = strings.first else { return }
+                                VM.inviteCode = first
+                            }
+                            #if os(iOS)
+                            .buttonBorderShape(.capsule)
+                            #endif
+                        }
+                        HStack{
+                            Spacer()
+                            Button(action: {
+                                Task{
+                                    do {
+                                        try await VM.getSelectedInvite(inviteId: VM.inviteCode)
+                                        if let invite = VM.invite {
+                                            VM.firstName = invite.firstName
+                                            VM.lastName = invite.lastName
+                                            VM.company = invite.companyName
+                                            VM.companyId = invite.companyId
+                                            VM.email = invite.email
+                                            
+                                        } else {
+                                            VM.errorCode = "Invalid Invite Code"
+                                            VM.inviteCode = ""
+                                            VM.showAlert = true
+                                            return
+                                        }
+                                    } catch {
+                                        print(error)
+                                    }
+                                }
+                            }, label: {
+                                Text("Search")
+                                    .modifier(SubmitButtonModifier())
+                            })
+                            .disabled(VM.inviteCode == "")
+                            .padding(20)
+                            Spacer()
+                        }
+                    }
+                    .padding(8)
+                    .background(Color.gray.opacity(0.65))
+                    .cornerRadius(8)
+                    .padding(5)
+                    .padding(.horizontal,8)
                 }
-                .padding(10)
-                .background(Color.gray.opacity(0.65))
-                .cornerRadius(10)
-                .padding(5)
-            }
         }
     }
-        .alert(errorCode, isPresented: $showAlert) {
+        .fontDesign(.monospaced)
+
+        .alert(VM.errorCode, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
+        .onAppear(perform: {
+            if !masterDataManager.showSignInView {
+                VM.loggedin = true
+            }
+        })
     }
 }

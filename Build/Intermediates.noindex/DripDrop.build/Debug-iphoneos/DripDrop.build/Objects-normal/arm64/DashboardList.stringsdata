@@ -1,0 +1,96 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Dashboard/View/DashboardList.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Repair Requests",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 156
+        }
+      },
+      {
+        "comment": "",
+        "key": "To Do List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 188
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shopping List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchased Items",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending Jobs",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dashboard",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 369
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 405
+        }
+      }
+    ]
+  },
+  "version": 1
+}

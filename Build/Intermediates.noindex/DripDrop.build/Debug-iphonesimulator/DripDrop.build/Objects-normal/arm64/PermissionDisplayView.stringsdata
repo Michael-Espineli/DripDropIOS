@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Roles/New Group1/PermissionDisplayView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "List of Users To Manage?",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 30
+        }
+      }
+    ]
+  },
+  "version": 1
+}

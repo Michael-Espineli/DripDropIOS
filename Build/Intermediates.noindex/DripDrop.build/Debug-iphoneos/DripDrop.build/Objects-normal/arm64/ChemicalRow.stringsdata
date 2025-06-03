@@ -1,0 +1,64 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Report/Report/ChemicalRow.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "00-00-0000",
+        "location": {
+          "startingColumn": 14,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "S0000000",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 23
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 61
+        }
+      }
+    ]
+  },
+  "version": 1
+}

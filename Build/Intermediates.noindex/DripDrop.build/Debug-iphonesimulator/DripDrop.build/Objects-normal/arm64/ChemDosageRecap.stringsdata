@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/ServiceStops/View/ChemDosageRecap.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": " - ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 37
+        }
+      }
+    ]
+  },
+  "version": 1
+}

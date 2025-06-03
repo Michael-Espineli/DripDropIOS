@@ -1,0 +1,88 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/Contract/AddNewContact.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Name:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 33
+        }
+      },
+      {
+        "comment": "",
+        "key": "name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 68
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 79
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 16,
+          "startingLine": 179
+        }
+      }
+    ]
+  },
+  "version": 1
+}

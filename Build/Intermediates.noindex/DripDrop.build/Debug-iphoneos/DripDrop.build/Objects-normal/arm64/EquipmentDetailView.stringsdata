@@ -1,0 +1,344 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Equipment/New Group1/EquipmentDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Photos",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Images",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 226
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading Images...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 239
+        }
+      },
+      {
+        "comment": "",
+        "key": "Part List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 257
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Part",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Part View",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 267
+        }
+      },
+      {
+        "comment": "",
+        "key": "Part: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 273
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Replaced: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 274
+        }
+      },
+      {
+        "comment": "",
+        "key": "Detail",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 278
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "Make: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 307
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 313
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Installed: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 319
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Service Date: ",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 339
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Frequency: ",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 345
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Service Date: ",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 349
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 365
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 367
+        }
+      },
+      {
+        "comment": "",
+        "key": "Category: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 375
+        }
+      },
+      {
+        "comment": "",
+        "key": "Make: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 385
+        }
+      },
+      {
+        "comment": "",
+        "key": "Model: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 389
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 391
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Installed: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 397
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 399
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 404
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Service Date: ",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 415
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 417
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Frequency: ",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 421
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 423
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Service Date: ",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 427
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 429
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 443
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 445
+        }
+      }
+    ]
+  },
+  "version": 1
+}

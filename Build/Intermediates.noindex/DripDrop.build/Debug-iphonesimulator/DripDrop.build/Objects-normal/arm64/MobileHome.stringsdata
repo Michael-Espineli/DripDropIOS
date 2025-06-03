@@ -1,0 +1,168 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Navigation/View/MobileHome.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Profile",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Messages",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dashboard",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 57
+        }
+      },
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dashboard",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dashboard",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 240
+        }
+      },
+      {
+        "comment": "",
+        "key": "Route",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "",
+        "key": "Route",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operations",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operations",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sales",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 293
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sales",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finace",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finace",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "",
+        "key": "Manegment",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 331
+        }
+      },
+      {
+        "comment": "",
+        "key": "Manegment",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 338
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Settings",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Settings",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 358
+        }
+      },
+      {
+        "comment": "",
+        "key": "All",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 427
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,32 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Chat/Views/ChatListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "No Chats, Sorry you don't have friends",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search Term",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 110
+        }
+      }
+    ]
+  },
+  "version": 1
+}

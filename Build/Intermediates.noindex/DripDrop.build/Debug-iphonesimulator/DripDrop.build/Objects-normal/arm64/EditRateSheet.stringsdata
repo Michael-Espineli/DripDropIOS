@@ -1,0 +1,40 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/RateSheet/EditRateSheet.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 39
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 46
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offered Start Date:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 55
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offer",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 87
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,96 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Dashboard/View/MobileDashboard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Repair Requests",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "To Do List",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shopping List",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 264
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchased Items",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 299
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending Jobs",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 359
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dashboard",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 400
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 434
+        }
+      }
+    ]
+  },
+  "version": 1
+}

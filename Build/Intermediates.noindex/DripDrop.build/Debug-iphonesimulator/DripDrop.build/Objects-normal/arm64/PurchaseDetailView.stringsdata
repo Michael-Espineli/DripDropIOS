@@ -1,0 +1,160 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Purchase/View/PurchaseDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Store : ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 230
+        }
+      },
+      {
+        "comment": "",
+        "key": "Store Info",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "",
+        "key": "Store Name : ",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 254
+        }
+      },
+      {
+        "comment": "",
+        "key": " ",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 260
+        }
+      },
+      {
+        "comment": "",
+        "key": " ",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name :",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 274
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sku :",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 280
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoice Num : ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 285
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech Name :",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 291
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 299
+        }
+      },
+      {
+        "comment": "",
+        "key": "Price : %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity : %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 322
+        }
+      },
+      {
+        "comment": "",
+        "key": "Price After Tax : %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billable : %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoiced : ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Name : ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 397
+        }
+      },
+      {
+        "comment": "",
+        "key": "Selected Job",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 403
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Name : ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 434
+        }
+      },
+      {
+        "comment": "",
+        "key": "Selected Customer",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 440
+        }
+      }
+    ]
+  },
+  "version": 1
+}

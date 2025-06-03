@@ -26,6 +26,7 @@ final class BodyOfWaterViewModel:ObservableObject{
 
     //ARRAYS
     @Published private(set) var bodiesOfWater: [BodyOfWater] = []
+    @Published private(set) var filteredBodiesOfWater: [BodyOfWater] = []
 
     //----------------------------------------------------
     //------------------  CRUD  --------------------------
@@ -41,18 +42,31 @@ final class BodyOfWaterViewModel:ObservableObject{
     func createBodiesOfWaterForServiceLocation(serviceLocation:ServiceLocation,bodyOfWater:BodyOfWater,companyId: String) async throws {
         try await dataService.uploadBodyOfWaterByServiceLocation(companyId: companyId, bodyOfWater: bodyOfWater)
     }
-    func addBOWToLocationWithValidation(serviceLocation:ServiceLocation,companyId: String,name: String, gallons: String, material: String, customerId: String, serviceLocationId: String, notes: String?, shape: String?, length: [String]?, depth: [String]?, width: [String]?) async throws {
+    func addBOWToLocationWithValidation(serviceLocation:ServiceLocation,companyId: String,name: String, gallons: String, material: String, customerId: String, serviceLocationId: String, notes: String?, shape: String?, length: [String]?, depth: [String]?, width: [String]?,lastFilled:Date) async throws {
         //AddValidation
         if customerId == "" {
             throw BodyOfWaterError.invalidCustomerId
         }
         let id = UUID().uuidString
         
-        let bodyOfWater = BodyOfWater(id:id , name: name, gallons: gallons, material: material, customerId: customerId, serviceLocationId: serviceLocationId, notes: notes, shape: shape, length: length, depth: depth, width: width)
+        let bodyOfWater = BodyOfWater(
+            id:id ,
+            name: name,
+            gallons: gallons,
+            material: material,
+            customerId: customerId,
+            serviceLocationId: serviceLocationId,
+            notes: notes,
+            shape: shape,
+            length: length,
+            depth: depth,
+            width: width,
+            lastFilled: lastFilled
+        )
         //DEVELOPER ADD UPdated serviceLocation Id list view
         try await dataService.uploadBodyOfWaterByServiceLocation(companyId: companyId, bodyOfWater: bodyOfWater)
     }
-    func editBOWToLocationWithValidation(companyId: String,bodyOfWater:BodyOfWater,bodyOfWaterId:String,name: String, gallons: String, material: String, notes: String?, shape: String?, length: [String]?, depth: [String]?, width: [String]?) async throws {
+    func editBOWToLocationWithValidation(companyId: String,bodyOfWater:BodyOfWater,bodyOfWaterId:String,name: String, gallons: String, material: String, notes: String?, shape: String?, length: [String]?, depth: [String]?, width: [String]?,lastFilled:Date) async throws {
         
         let id = UUID().uuidString
         if bodyOfWater.name == name  {
@@ -123,6 +137,13 @@ final class BodyOfWaterViewModel:ObservableObject{
         } else {
             print("Width is Nil")
         }
+        
+        if bodyOfWater.lastFilled == lastFilled  {
+            print("Did not Update Body Of Water Last Filled, it was the same")
+        } else {
+            print("Updating Body Of Water Width :\(bodyOfWaterId) ")
+            try  await dataService.updateBodyOfWaterLastFilledDate(companyId: companyId, bodyOfWaterId: bodyOfWater.id, lastFilled: lastFilled)
+        }
     }
     //----------------------------------------------------
     //                    READ
@@ -166,6 +187,8 @@ final class BodyOfWaterViewModel:ObservableObject{
     //----------------------------------------------------
     //                    FUNCTIONS
     //----------------------------------------------------
-    
+    func filterBodiesOfWater(bodiesOfWaterList:[BodyOfWater],term:String){
+        self.filteredBodiesOfWater = bodiesOfWaterList
+    }
 }
 

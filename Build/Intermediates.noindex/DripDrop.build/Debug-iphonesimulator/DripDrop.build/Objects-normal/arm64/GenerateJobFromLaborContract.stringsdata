@@ -1,0 +1,40 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/LaborContract/Logic/GenerateJobFromLaborContract.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Admin Picker",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Admin",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "Create Job",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 61
+        }
+      }
+    ]
+  },
+  "version": 1
+}

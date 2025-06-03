@@ -1,0 +1,1008 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Navigation/View/Finance.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Count",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 120
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finance",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finished Jobs",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 186
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 207
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recently Finished: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoices",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 253
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 275
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 301
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billable Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 307
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 311
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billed:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 316
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchases",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 367
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 377
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 389
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 411
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 415
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billable Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 421
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 425
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billed:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 430
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 434
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 481
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 491
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 503
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 525
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 529
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billable Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 535
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 539
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billed:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 544
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 548
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pay Roll // Developer",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 587
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 610
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Invoices :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 632
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 636
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Late :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 642
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 646
+        }
+      },
+      {
+        "comment": "",
+        "key": "Accounts Payable",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 691
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 703
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 715
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Invoices :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 737
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 741
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Late :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 747
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 751
+        }
+      },
+      {
+        "comment": "",
+        "key": "Accounts Receivable",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 796
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 806
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 818
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Receivable Invoices :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 841
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 845
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vender",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 890
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 898
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 910
+        }
+      },
+      {
+        "comment": "",
+        "key": "Venders: %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 932
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 977
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 988
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1001
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1022
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1024
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1029
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1031
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: $ 10,350.69",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1036
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1038
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recurring Contracts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1084
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1097
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1110
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1131
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1133
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1138
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1140
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: $ 10,350.69",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1145
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1147
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Labor Contract",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1193
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1205
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1218
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1239
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1241
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1246
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1253
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1255
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Past Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1260
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1262
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sum Total: $ 10,350.69",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1267
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1269
+        }
+      },
+      {
+        "comment": "",
+        "key": "Received Labor Contract",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1315
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1328
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1341
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1362
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1364
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1369
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1371
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1376
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1378
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Past Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1383
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1385
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Recurring Labor Contract",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1431
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1443
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1456
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1477
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1479
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1484
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1486
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1491
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1493
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Past Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1498
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1500
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sum Total: $ 10,350.69",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1505
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1507
+        }
+      },
+      {
+        "comment": "",
+        "key": "Received Recurring Labor Contract",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1553
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1566
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1579
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1600
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1602
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1607
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1609
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1614
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1616
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Past Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1621
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1623
+        }
+      }
+    ]
+  },
+  "version": 1
+}

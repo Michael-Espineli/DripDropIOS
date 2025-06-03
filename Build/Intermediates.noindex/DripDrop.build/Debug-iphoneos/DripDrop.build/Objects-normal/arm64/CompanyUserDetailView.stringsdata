@@ -1,0 +1,464 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/User/View/CompanyUserDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "",
+        "key": "Can See Private Job Board // Make Into A permission",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 264
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 266
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "",
+        "key": "+(619)490-6830",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "",
+        "key": "Personal Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bio: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 274
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Info",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 290
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Created: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "Position:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 295
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "Role Details",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "See Permissions",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "",
+        "key": "Worker Type:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 329
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 330
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "If sub Contractor then show linkedCompany",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 336
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 346
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 349
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 352
+        }
+      },
+      {
+        "comment": "",
+        "key": "Over View",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 376
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 394
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 384
+        }
+      },
+      {
+        "comment": "",
+        "key": "AddNewLaborContract",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 390
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 401
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recent Activity",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 421
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Stops - 34",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 441
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Stops",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 428
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 435
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter Cleans - 34",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 460
+        }
+      },
+      {
+        "comment": "",
+        "key": "Jobs",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 447
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 454
+        }
+      },
+      {
+        "comment": "",
+        "key": "Items - 34",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 479
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total - 3465",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recently Purchased",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 466
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 473
+        }
+      },
+      {
+        "comment": "",
+        "key": "Money",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 490
+        }
+      },
+      {
+        "comment": "",
+        "key": "Work Done and Not Billed",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 497
+        }
+      },
+      {
+        "comment": "",
+        "key": " $304.76",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 499
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 504
+        }
+      },
+      {
+        "comment": "",
+        "key": "Money Due",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 512
+        }
+      },
+      {
+        "comment": "",
+        "key": "$1642.76",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 514
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 519
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recently Paid",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 527
+        }
+      },
+      {
+        "comment": "",
+        "key": "$3,278.76",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 529
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 534
+        }
+      },
+      {
+        "comment": "",
+        "key": "Year To Date",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 542
+        }
+      },
+      {
+        "comment": "",
+        "key": "$48,642.76",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 544
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 549
+        }
+      },
+      {
+        "comment": "",
+        "key": "Performace History",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 562
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 570
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 581
+        }
+      }
+    ]
+  },
+  "version": 1
+}

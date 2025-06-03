@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/AccountsPayable/View/AccountsPayableList.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Accounts Payable List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 24
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -13,4 +13,8 @@ final class PersonalAlertViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
+    @Published private(set) var alerts : [DripDropAlert] = []
+    func onLoad(_ userId:String) async throws {
+        self.alerts = try await dataService.getPersonalAlerts(userId: userId)
+    }
 }

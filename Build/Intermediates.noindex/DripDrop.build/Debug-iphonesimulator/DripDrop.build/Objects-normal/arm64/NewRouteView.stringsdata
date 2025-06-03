@@ -1,0 +1,184 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Route/Views/Building/NewRouteView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New Route",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading ...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "",
+        "key": "Update",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add First Customer",
+        "location": {
+          "startingColumn": 60,
+          "startingLine": 152
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Another",
+        "location": {
+          "startingColumn": 81,
+          "startingLine": 152
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customers - %lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 181
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 182
+        }
+      },
+      {
+        "comment": "",
+        "key": "Never Ends",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 215
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 211
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 226
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 227
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 229
+        }
+      },
+      {
+        "comment": "",
+        "key": "Day",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 235
+        }
+      },
+      {
+        "comment": "",
+        "key": "Day",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 238
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frequency",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 244
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/MarketPlace/MarketPlace.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Market Place",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 471
+        }
+      }
+    ]
+  },
+  "version": 1
+}

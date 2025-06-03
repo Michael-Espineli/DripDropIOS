@@ -1,0 +1,256 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/CustomerListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Customers",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 146
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Customer",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 263
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 384
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 451
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 506
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 563
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 580
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Customer",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 658
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 712
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 767
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 826
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 877
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Name",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 928
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 946
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Type",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 1028
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sort: ",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 991
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter:",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 996
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tags:",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 1001
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filters",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 988
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tag",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 1002
+        }
+      },
+      {
+        "comment": "",
+        "key": "New",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1033
+        }
+      },
+      {
+        "comment": "",
+        "key": "From Contacts",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1040
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upload",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1047
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 1119
+        }
+      }
+    ]
+  },
+  "version": 1
+}

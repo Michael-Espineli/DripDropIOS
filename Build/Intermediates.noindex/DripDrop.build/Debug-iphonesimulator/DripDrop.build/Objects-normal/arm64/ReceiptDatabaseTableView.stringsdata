@@ -1,0 +1,168 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/DatabaseItems/ReceiptDatabaseTableView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Item Name, Sku, Description",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "Load next Page",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 78
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sku",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cost",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sell Rate",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Updated",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "Store Name",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "category",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billable",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 107
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "NA",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 89
+        }
+      },
+      {
+        "comment": "",
+        "key": "NA",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "",
+        "key": "Yes",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "No",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "See Details",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 131
+        }
+      },
+      {
+        "comment": "",
+        "key": "Load next Page",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 158
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upload From Computer",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 195
+        }
+      }
+    ]
+  },
+  "version": 1
+}

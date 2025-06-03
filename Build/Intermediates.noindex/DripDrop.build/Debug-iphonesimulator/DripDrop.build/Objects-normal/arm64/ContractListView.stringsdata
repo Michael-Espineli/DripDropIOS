@@ -1,0 +1,176 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Contract/ContractListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Recurring Contracts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 156
+        }
+      },
+      {
+        "comment": "",
+        "key": "Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 174
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Contracts : ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "",
+        "key": "Yearly Contract Billed : ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 166
+        }
+      },
+      {
+        "comment": "",
+        "key": "Monthly Contract Billed : ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Filter",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Price Filter",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Filter",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "Low to High",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "High to Low",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "Oldest To Newest",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 209
+        }
+      },
+      {
+        "comment": "",
+        "key": "Newest To Oldest",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 251
+        }
+      }
+    ]
+  },
+  "version": 1
+}

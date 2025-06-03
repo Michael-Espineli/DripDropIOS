@@ -6,3 +6,14 @@
 //
 
 import Foundation
+import SwiftUI
+import ImageCaptureCore
+
+@MainActor
+final class CameraViewModel: ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+   
+}

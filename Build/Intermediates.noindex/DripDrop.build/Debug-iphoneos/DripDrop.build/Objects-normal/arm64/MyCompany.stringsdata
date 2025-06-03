@@ -1,0 +1,1312 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Company/Views/MyCompany.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Over View",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 94
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Jobs: 8",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company To Do List",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "To Do List:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Over View",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Jobs: 8",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Alerts ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Alerts",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operations",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 249
+        }
+      },
+      {
+        "comment": "",
+        "key": "Jobs",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 269
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open: 8",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 280
+        }
+      },
+      {
+        "comment": "",
+        "key": "In Progress/Scheduled: 3",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recently Finished: 3",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operations",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finance",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 361
+        }
+      },
+      {
+        "comment": "",
+        "key": "Management",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 399
+        }
+      },
+      {
+        "comment": "",
+        "key": "Management Tables",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 437
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 448
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 461
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customers",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 476
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 487
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 499
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 522
+        }
+      },
+      {
+        "comment": "",
+        "key": "Residential: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 530
+        }
+      },
+      {
+        "comment": "",
+        "key": "Comercial: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 539
+        }
+      },
+      {
+        "comment": "",
+        "key": "Businesses",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 588
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 610
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Contracts: 1",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 630
+        }
+      },
+      {
+        "comment": "",
+        "key": "Buissness: 3",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 631
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unbilled Work: $ 10,350.69",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 632
+        }
+      },
+      {
+        "comment": "",
+        "key": "Jobs",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 676
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 686
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 698
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 719
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recently Finished: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 720
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shopping List",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 766
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 776
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 788
+        }
+      },
+      {
+        "comment": "",
+        "key": "Need to Purchase: 4",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 809
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchased: 2",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 810
+        }
+      },
+      {
+        "comment": "",
+        "key": "Installed: 0",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 811
+        }
+      },
+      {
+        "comment": "",
+        "key": "Repair Requests",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 854
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 864
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 876
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open: 8",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 896
+        }
+      },
+      {
+        "comment": "",
+        "key": "In Progress/Scheduled: 3",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 897
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recently Finished: 3",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 898
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Stops",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 945
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 955
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 967
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@:  %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 991
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchases",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1037
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1047
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1059
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1081
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1085
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billable Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1091
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1095
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billed:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1100
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1104
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1151
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1161
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1173
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1195
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1199
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billable Items:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1205
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1209
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billed:  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1214
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1218
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pay Roll // Developer",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1257
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1268
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1280
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Invoices :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1302
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1306
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Late :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1312
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1316
+        }
+      },
+      {
+        "comment": "",
+        "key": "Accounts Payable",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1361
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1373
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1385
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Invoices :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1407
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1411
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Outstanding Late :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1417
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1421
+        }
+      },
+      {
+        "comment": "",
+        "key": "Accounts Receivable",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1466
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1476
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1488
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Receivable Invoices :  %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1511
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1515
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vender",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1560
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1568
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1580
+        }
+      },
+      {
+        "comment": "",
+        "key": "Venders: %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1602
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1647
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1655
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1667
+        }
+      },
+      {
+        "comment": "",
+        "key": "Needs Service: 15",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1688
+        }
+      },
+      {
+        "comment": "",
+        "key": "Needs Repair: 2",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1692
+        }
+      },
+      {
+        "comment": "",
+        "key": "Techs",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1740
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1749
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1761
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Users:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1781
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1783
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %lld",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 1791
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fleet",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1837
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1846
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1858
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vehicals: %lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1879
+        }
+      },
+      {
+        "comment": "",
+        "key": "Route Sandbox",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1923
+        }
+      },
+      {
+        "comment": "",
+        "key": "Route Managment",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1935
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1945
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1957
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1978
+        }
+      },
+      {
+        "comment": "",
+        "key": "Work Logs",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1992
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2001
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2013
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2036
+        }
+      },
+      {
+        "comment": "",
+        "key": "Internal Routes",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2050
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2059
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2071
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2094
+        }
+      },
+      {
+        "comment": "",
+        "key": "External Routes",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2109
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2118
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2130
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contract",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2167
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2181
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2194
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2215
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2217
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2222
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2224
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: $ 10,350.69",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2229
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2231
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Labor Contract",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2277
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2289
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2302
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2323
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2325
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2330
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2332
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2337
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2339
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Past Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2344
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2346
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sum Total: $ 10,350.69",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2351
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2353
+        }
+      },
+      {
+        "comment": "",
+        "key": "Received Labor Contract",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2399
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2413
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2426
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2447
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2449
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Open Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2454
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2456
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Pending Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2461
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2463
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sent Past Contracts:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 2468
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2470
+        }
+      }
+    ]
+  },
+  "version": 1
+}

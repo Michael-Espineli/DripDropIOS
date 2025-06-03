@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Resources/Loading/WaterLevelLoadingView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "WaterLevelLoadingView",
+        "location": {
+          "startingColumn": 14,
+          "startingLine": 12
+        }
+      }
+    ]
+  },
+  "version": 1
+}

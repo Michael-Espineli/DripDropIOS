@@ -1,0 +1,56 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/StopData/View/StopDataReadingInputView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Input",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 50
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 59
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 63
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 89
+        }
+      }
+    ]
+  },
+  "version": 1
+}

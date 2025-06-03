@@ -1,0 +1,320 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Contract/AddNewContractView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 32
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading ...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 160
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Draft",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "Selected Customer:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 193
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Facing",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 217
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate Type",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate Type",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 222
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate:",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 243
+        }
+      },
+      {
+        "comment": "",
+        "key": "$",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 245
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 247
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cleaning Type:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 269
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cleaning Type",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chem Type:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chem Type",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 281
+        }
+      },
+      {
+        "comment": "",
+        "key": "Repair Type:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 290
+        }
+      },
+      {
+        "comment": "",
+        "key": "Repair Type",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 292
+        }
+      },
+      {
+        "comment": "",
+        "key": "Included Up Until : ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "$",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "Max Amount",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 306
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter Type:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 316
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter Type",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 318
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date To Accept: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Days To Accept: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 332
+        }
+      },
+      {
+        "comment": "",
+        "key": "Days To Accept",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "External Notes: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 342
+        }
+      },
+      {
+        "comment": "",
+        "key": "External Notes",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 344
+        }
+      },
+      {
+        "comment": "",
+        "key": "Internal",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 357
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Rate",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 396
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Type",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 376
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Type",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 362
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Rate: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "$",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 384
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Rate",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "",
+        "key": "Internal Notes: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 406
+        }
+      },
+      {
+        "comment": "",
+        "key": "Internal Notes",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 408
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/DatabaseItems/ReceiptDatabaseView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Database Items",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "Uplpad",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 29
+        }
+      }
+    ]
+  },
+  "version": 1
+}

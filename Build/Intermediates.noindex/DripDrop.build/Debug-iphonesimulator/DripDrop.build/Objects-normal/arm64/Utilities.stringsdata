@@ -1,0 +1,40 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Resources/Utilities.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1329
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offset: %lf",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 1382
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1361
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1372
+        }
+      }
+    ]
+  },
+  "version": 1
+}

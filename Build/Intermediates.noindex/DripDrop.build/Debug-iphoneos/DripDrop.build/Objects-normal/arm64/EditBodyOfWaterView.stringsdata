@@ -1,0 +1,208 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/CustomerEdit/EditBodyOfWaterView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 138
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 190
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gallons",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "gallons",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shape",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 209
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shape",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 211
+        }
+      },
+      {
+        "comment": "",
+        "key": "Material",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "material",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 1",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 231
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 1",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 2",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 242
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 2",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 245
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 1",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 253
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 1",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 2",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 264
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 2",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 267
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 1",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 275
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 1",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 278
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 2",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 2",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 289
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 339
+        }
+      }
+    ]
+  },
+  "version": 1
+}

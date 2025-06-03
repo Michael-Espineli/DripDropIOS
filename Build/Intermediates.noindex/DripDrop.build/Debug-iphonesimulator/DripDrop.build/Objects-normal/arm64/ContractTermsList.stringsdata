@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/LaborContract/Terms/ContractTermsList.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Terms",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 16
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 21
+        }
+      }
+    ]
+  },
+  "version": 1
+}

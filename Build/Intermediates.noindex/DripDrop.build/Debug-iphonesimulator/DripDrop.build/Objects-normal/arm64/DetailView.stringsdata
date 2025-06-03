@@ -1,0 +1,384 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Navigation/View/DetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Select a Category",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 368
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a Task Group",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a Customer",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a ServiceStop",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select an Item",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select A Generic Item",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "",
+        "key": "Build a new Route 3",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "Build a New Route 2",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 154
+        }
+      },
+      {
+        "comment": "",
+        "key": "ModifyRecurringRoute",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 142
+        }
+      },
+      {
+        "comment": "",
+        "key": "ReassignRouteView",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "Build a New Route 1",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Selected A Receipt To View",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select a Store",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a Purchase",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Service Stop",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 194
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a Calendar",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 197
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a Contract",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 208
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select PNL",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select a Job",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 225
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Route",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Chat",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 239
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select Repair Request To View",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 245
+        }
+      },
+      {
+        "comment": "",
+        "key": "Market Place",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Posting",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 250
+        }
+      },
+      {
+        "comment": "",
+        "key": "Feed",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select A Role To View",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select A User To View",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select A Company User To View",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 278
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select A Vehical",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 284
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Reading Or Dosage",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 292
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select An Invoice",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 308
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select An Invoice",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 314
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select An Equipment",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select An Job Template",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please selected a Contract",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 334
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Selected a Shopping List Item",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 342
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Selected a Buisness",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 348
+        }
+      },
+      {
+        "comment": "",
+        "key": "Actually I do not Know if there is anything I want to Be Here",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 351
+        }
+      },
+      {
+        "comment": "",
+        "key": "DEVELOPER DEAL WITH something",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "Please Select a Labor Contract",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 359
+        }
+      },
+      {
+        "comment": "",
+        "key": "DEVELOPER Need to Build Out",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 362
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 119
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 205
+        }
+      }
+    ]
+  },
+  "version": 1
+}

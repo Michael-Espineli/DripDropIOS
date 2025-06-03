@@ -1,0 +1,48 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/CustomerDetail/CustomerLocationView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Please select a location",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Type",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 43
+        }
+      },
+      {
+        "comment": "",
+        "key": "Schedule Estimate",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Manually",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add First Location",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 62
+        }
+      }
+    ]
+  },
+  "version": 1
+}

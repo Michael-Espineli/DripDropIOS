@@ -1,0 +1,312 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/LaborContract/LaborContracts/ReceivedLaborContractDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 61
+        }
+      },
+      {
+        "comment": "",
+        "key": "From:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 103
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 105
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "To:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 119
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 124
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Sent:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 134
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 141
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 144
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 167
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 169
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 167
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recurring Work 1",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "Accounts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add List Of Clients They are contracted to complete",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 190
+        }
+      },
+      {
+        "comment": "",
+        "key": "Details",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 193
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ - %@ - %lld %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 212
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld: %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 202
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close Details",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 225
+        }
+      },
+      {
+        "comment": "",
+        "key": "See Details",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 251
+        }
+      },
+      {
+        "comment": "",
+        "key": "Terms",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 265
+        }
+      },
+      {
+        "comment": "",
+        "key": "See More",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "",
+        "key": "Developer: Why are you looking at someone elses Labor Contract",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 375
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete Contract",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "Revise Contract",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 312
+        }
+      },
+      {
+        "comment": "",
+        "key": "Accept",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 340
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reject",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "Revise Contract",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 369
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate Route From Contract",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send Bulk Invoice",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 393
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Selected Company",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 402
+        }
+      }
+    ]
+  },
+  "version": 1
+}

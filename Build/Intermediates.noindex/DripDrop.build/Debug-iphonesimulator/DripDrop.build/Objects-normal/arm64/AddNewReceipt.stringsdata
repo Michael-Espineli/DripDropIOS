@@ -1,0 +1,216 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Receipt/View/AddNewReceipt.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New Receipt",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 451
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 384
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipt",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 385
+        }
+      },
+      {
+        "comment": "",
+        "key": "List Of Items",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 449
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 524
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchase Date: ",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 531
+        }
+      },
+      {
+        "comment": "",
+        "key": "Refrence: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 534
+        }
+      },
+      {
+        "comment": "",
+        "key": "Refrence",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 536
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vender: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 546
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 548
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick store",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 549
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 557
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 559
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Tech",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 560
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Type",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 577
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add File",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 572
+        }
+      },
+      {
+        "comment": "",
+        "key": "Photo",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 583
+        }
+      },
+      {
+        "comment": "",
+        "key": "File",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 590
+        }
+      },
+      {
+        "comment": "",
+        "key": "Document Picker",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 607
+        }
+      },
+      {
+        "comment": "",
+        "key": "SubTotal: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 635
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tax: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 636
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 637
+        }
+      },
+      {
+        "comment": "",
+        "key": "Items",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 646
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add First Item To Receipt",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 664
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Another",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 686
+        }
+      }
+    ]
+  },
+  "version": 1
+}

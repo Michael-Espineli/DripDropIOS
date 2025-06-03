@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Route/NewViews/TechnicianRouteSameCompanyCard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Contracted with",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracted by",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 44
+        }
+      }
+    ]
+  },
+  "version": 1
+}

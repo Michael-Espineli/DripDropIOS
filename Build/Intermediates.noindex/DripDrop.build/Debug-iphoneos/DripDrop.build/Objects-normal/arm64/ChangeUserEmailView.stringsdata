@@ -1,0 +1,48 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Settings/New Group1/ChangeUserEmailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Passwords Do Not Match",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 29
+        }
+      },
+      {
+        "comment": "",
+        "key": "Email",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm Email",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 33
+        }
+      },
+      {
+        "comment": "",
+        "key": "Change Email ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 22
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 45
+        }
+      }
+    ]
+  },
+  "version": 1
+}

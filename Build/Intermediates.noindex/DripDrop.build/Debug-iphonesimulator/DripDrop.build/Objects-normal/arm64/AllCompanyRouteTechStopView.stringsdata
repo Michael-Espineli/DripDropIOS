@@ -1,0 +1,128 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Route/NewViews/AllCompanyRouteTechStopView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "- Daily",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "- Week Day",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 131
+        }
+      },
+      {
+        "comment": "",
+        "key": "- Weekly",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "",
+        "key": "- Monthly",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "- Annually",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frequency",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 139
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 143
+        }
+      },
+      {
+        "comment": "",
+        "key": " - ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 146
+        }
+      },
+      {
+        "comment": "",
+        "key": "No End Date",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "No End Date",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracted with",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracted by",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 188
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expand",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 209
+        }
+      }
+    ]
+  },
+  "version": 1
+}

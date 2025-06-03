@@ -1,0 +1,472 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/New Group/New Group/ManagementTablesView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 379
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 388
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 391
+        }
+      },
+      {
+        "comment": "",
+        "key": "Address",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 394
+        }
+      },
+      {
+        "comment": "",
+        "key": "Under Contract",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 397
+        }
+      },
+      {
+        "comment": "",
+        "key": "Monthly",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 406
+        }
+      },
+      {
+        "comment": "",
+        "key": "Routing",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 409
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 418
+        }
+      },
+      {
+        "comment": "",
+        "key": "Days",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 421
+        }
+      },
+      {
+        "comment": "",
+        "key": "Outstanding Balance",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 432
+        }
+      },
+      {
+        "comment": "",
+        "key": "Active",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 380
+        }
+      },
+      {
+        "comment": "",
+        "key": "Inactive",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 380
+        }
+      },
+      {
+        "comment": "",
+        "key": "Yes",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 398
+        }
+      },
+      {
+        "comment": "",
+        "key": "No",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 398
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 407
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set Up",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 410
+        }
+      },
+      {
+        "comment": "",
+        "key": "No",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 410
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 433
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Profile",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 443
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send Contract",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 448
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set Up Routing",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 453
+        }
+      },
+      {
+        "comment": "",
+        "key": "Collapse",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 469
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expand",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 469
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 476
+        }
+      },
+      {
+        "comment": "",
+        "key": "Active : ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 482
+        }
+      },
+      {
+        "comment": "",
+        "key": "Under Contract : ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 489
+        }
+      },
+      {
+        "comment": "",
+        "key": "Has Routing : ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 496
+        }
+      },
+      {
+        "comment": "",
+        "key": "Has Balance: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 503
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Active",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 484
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Under Contract",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 491
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Has Routing",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 498
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Owes Money",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 505
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sort",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 514
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Name :",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 524
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search Term",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 531
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customers : ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 544
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 546
+        }
+      },
+      {
+        "comment": "",
+        "key": "Routed : ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 547
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 549
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 576
+        }
+      },
+      {
+        "comment": "",
+        "key": "See Details",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 583
+        }
+      },
+      {
+        "comment": "",
+        "key": "Active",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 588
+        }
+      },
+      {
+        "comment": "",
+        "key": "Inactive",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 588
+        }
+      },
+      {
+        "comment": "",
+        "key": "Change",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 608
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 639
+        }
+      },
+      {
+        "comment": "",
+        "key": "Under Contract",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 632
+        }
+      },
+      {
+        "comment": "",
+        "key": "Not Under Contract",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 632
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contract Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 622
+        }
+      },
+      {
+        "comment": "",
+        "key": "Routing Set Up",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 670
+        }
+      },
+      {
+        "comment": "",
+        "key": "Routing Not Set Up",
+        "location": {
+          "startingColumn": 73,
+          "startingLine": 670
+        }
+      },
+      {
+        "comment": "",
+        "key": "Routing Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 646
+        }
+      },
+      {
+        "comment": "",
+        "key": "Set Up Route",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 652
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 665
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 695
+        }
+      },
+      {
+        "comment": "",
+        "key": "Has Outstanding Balance",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 689
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Outstanding Balance",
+        "location": {
+          "startingColumn": 79,
+          "startingLine": 689
+        }
+      },
+      {
+        "comment": "",
+        "key": "Financial Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 684
+        }
+      }
+    ]
+  },
+  "version": 1
+}

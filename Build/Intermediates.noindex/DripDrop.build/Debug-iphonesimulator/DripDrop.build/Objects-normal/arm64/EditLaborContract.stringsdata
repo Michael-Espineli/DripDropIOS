@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/LaborContract/LaborContracts/EditLaborContract.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Edit Labor Contract",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 39
+        }
+      }
+    ]
+  },
+  "version": 1
+}

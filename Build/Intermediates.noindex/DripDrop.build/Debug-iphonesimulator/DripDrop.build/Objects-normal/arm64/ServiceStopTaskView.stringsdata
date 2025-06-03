@@ -1,0 +1,56 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/ServiceStops/View/ServiceStopTaskView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Task List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finish",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 114
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unfinish",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark Done",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 161
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 185
+        }
+      }
+    ]
+  },
+  "version": 1
+}

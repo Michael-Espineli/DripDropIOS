@@ -1,0 +1,432 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Dashboard/View/All.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 110
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Companies",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 159
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preview For Work",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preview For Work",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "Details",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 185
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 202
+        }
+      },
+      {
+        "comment": "",
+        "key": "Miles:",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 216
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %lld",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time:",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 226
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 229
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Details",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 252
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "",
+        "key": "Miles:",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 282
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 285
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %lld",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 289
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time:",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 295
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 298
+        }
+      },
+      {
+        "comment": "",
+        "key": " - %@",
+        "location": {
+          "startingColumn": 54,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "Preview For Work",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 325
+        }
+      },
+      {
+        "comment": "",
+        "key": "Details",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 334
+        }
+      },
+      {
+        "comment": "",
+        "key": "Miles: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 352
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 354
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lorem lipsum",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alerts",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 372
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 380
+        }
+      },
+      {
+        "comment": "",
+        "key": "Messages",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 402
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unread: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 406
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 412
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alerts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 469
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 476
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 534
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 595
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 651
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 711
+        }
+      },
+      {
+        "comment": "",
+        "key": "50",
+        "location": {
+          "startingColumn": 86,
+          "startingLine": 765
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unread: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 822
+        }
+      },
+      {
+        "comment": "",
+        "key": "Messages",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 805
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 812
+        }
+      },
+      {
+        "comment": "",
+        "key": "Out Standing Invocies",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 925
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 932
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shifts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 953
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 961
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracts",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 973
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 980
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Boards",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1042
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1049
+        }
+      },
+      {
+        "comment": "",
+        "key": "To Do List",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1070
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1079
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoicing",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1099
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1107
+        }
+      }
+    ]
+  },
+  "version": 1
+}

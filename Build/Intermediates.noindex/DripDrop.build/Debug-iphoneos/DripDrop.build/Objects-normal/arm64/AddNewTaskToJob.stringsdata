@@ -1,0 +1,232 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/AddNewTaskToJob.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 91
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracted Rate",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 97
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contracted Rate",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "Task Type: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 116
+        }
+      },
+      {
+        "comment": "",
+        "key": "Task Type",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 118
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Extra Details Needed",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 128
+        }
+      },
+      {
+        "comment": "",
+        "key": "Inspection",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 173
+        }
+      },
+      {
+        "comment": "",
+        "key": "Install",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 256
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Equipment",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Body Of Water",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Body Of Water",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 164
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Body Of Water",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Item",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 192
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 206
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 209
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Equipment",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Equipment",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 234
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Body Of Water",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 247
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Item",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 261
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 274
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quantity",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Equipment",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 288
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Body Of Water",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 302
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Task",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 330
+        }
+      }
+    ]
+  },
+  "version": 1
+}

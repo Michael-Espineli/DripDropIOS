@@ -1,0 +1,888 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/AddNewJobView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "ID : %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 520
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 458
+        }
+      },
+      {
+        "comment": "",
+        "key": "Simple",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 459
+        }
+      },
+      {
+        "comment": "",
+        "key": "Complex",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 460
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 522
+        }
+      },
+      {
+        "comment": "",
+        "key": "Simplify",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 532
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expand",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 532
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 628
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Admin",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 635
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 637
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 646
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Customer",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 653
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 655
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 664
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Location",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 671
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 673
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 751
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operation: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 708
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 714
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 720
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 723
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 730
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 733
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 740
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 746
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 763
+        }
+      },
+      {
+        "comment": "",
+        "key": "Task List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 775
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Task",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 788
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Customer Info",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 803
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 816
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 823
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shopping List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 838
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Shopping List Item",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 847
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Customer Info",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 861
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 879
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 887
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Stops",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 901
+        }
+      },
+      {
+        "comment": "",
+        "key": "List Of Service Stops",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 904
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Contracts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 956
+        }
+      },
+      {
+        "comment": "",
+        "key": "List Of Labor Contracts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 959
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech: %@",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 914
+        }
+      },
+      {
+        "comment": "",
+        "key": "Schedule Service Stop",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 929
+        }
+      },
+      {
+        "comment": "",
+        "key": "ScheduleServiceStopView",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 944
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Customer Info",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 951
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offer New Labor Contract",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 966
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add After Creating Job",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 970
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 983
+        }
+      },
+      {
+        "comment": "",
+        "key": "Parts: ",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 996
+        }
+      },
+      {
+        "comment": "",
+        "key": "Installation Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 999
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1004
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1015
+        }
+      },
+      {
+        "comment": "",
+        "key": "PVC Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1020
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1025
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1035
+        }
+      },
+      {
+        "comment": "",
+        "key": "Electrical Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1040
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1045
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1055
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chemicals",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1060
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1065
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1075
+        }
+      },
+      {
+        "comment": "",
+        "key": "Misc",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1080
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1085
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1095
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1103
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1120
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Customer",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1127
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1143
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Location",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1150
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1152
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Of Water",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1166
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Body Of Water",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1173
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1175
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1193
+        }
+      },
+      {
+        "comment": "",
+        "key": "Review",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1212
+        }
+      },
+      {
+        "comment": "",
+        "key": "Address : %@ %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1232
+        }
+      },
+      {
+        "comment": "",
+        "key": "Body Of Water : %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1233
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment : %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1234
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin : %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1215
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer : %@ %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1224
+        }
+      },
+      {
+        "comment": "",
+        "key": "Parts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1239
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1242
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1248
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1254
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1260
+        }
+      },
+      {
+        "comment": "",
+        "key": " Installation Parts: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1266
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1244
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1250
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1256
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1262
+        }
+      },
+      {
+        "comment": "",
+        "key": " -%@ %@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1268
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1275
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%@.00",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1277
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1281
+        }
+      },
+      {
+        "comment": "",
+        "key": "$%@.00",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1283
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Cost: ",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1287
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1289
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1312
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tech",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 1331
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Tech",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1332
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1350
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Customer",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1358
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1360
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Date :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1382
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1388
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 1393
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1400
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1466
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save And Send",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1507
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,408 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Customer/Views/AddNewCustomerConfirmationScreen.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add New Customer",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 121
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alert",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 124
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 125
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 304
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer Info",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "First Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 367
+        }
+      },
+      {
+        "comment": "",
+        "key": "Jon",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 370
+        }
+      },
+      {
+        "comment": "",
+        "key": "Last Name",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 378
+        }
+      },
+      {
+        "comment": "",
+        "key": "Doe",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "Display as Company",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 391
+        }
+      },
+      {
+        "comment": "",
+        "key": "Company Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "",
+        "key": "Doe",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 399
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 409
+        }
+      },
+      {
+        "comment": "",
+        "key": "phone Number",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 411
+        }
+      },
+      {
+        "comment": "",
+        "key": "email",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 423
+        }
+      },
+      {
+        "comment": "",
+        "key": "email@gamil.com",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 425
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing Address",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 440
+        }
+      },
+      {
+        "comment": "",
+        "key": "streetAddress",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 445
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 455
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 463
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 471
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location Info",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 484
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 487
+        }
+      },
+      {
+        "comment": "",
+        "key": "Nick Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 490
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 499
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gate Code",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 502
+        }
+      },
+      {
+        "comment": "",
+        "key": "Requires Pre Text",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 511
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dog Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 514
+        }
+      },
+      {
+        "comment": "",
+        "key": "Dog Name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 517
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 526
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 529
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 538
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notes",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 541
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 551
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Billing Address",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 562
+        }
+      },
+      {
+        "comment": "",
+        "key": "streetAddress",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 569
+        }
+      },
+      {
+        "comment": "",
+        "key": "City",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 579
+        }
+      },
+      {
+        "comment": "",
+        "key": "State",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 587
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zip",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 595
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Location Contact",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 605
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Main Contact",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 615
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 623
+        }
+      },
+      {
+        "comment": "",
+        "key": "name",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 627
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 636
+        }
+      },
+      {
+        "comment": "",
+        "key": "Phone Number",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 640
+        }
+      },
+      {
+        "comment": "",
+        "key": "email",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 652
+        }
+      },
+      {
+        "comment": "",
+        "key": "email",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 656
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 668
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 672
+        }
+      }
+    ]
+  },
+  "version": 1
+}

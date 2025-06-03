@@ -1,0 +1,96 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/WorkLogs/View/WorkLogIn.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Start : %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 326
+        }
+      },
+      {
+        "comment": "",
+        "key": "(%@)",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 330
+        }
+      },
+      {
+        "comment": "",
+        "key": "End : %@ (%@)",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Go On Break",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 344
+        }
+      },
+      {
+        "comment": "",
+        "key": "Go On Lunch",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clock Out",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 368
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back To Work",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 382
+        }
+      },
+      {
+        "comment": "",
+        "key": "Total : (%@)",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 389
+        }
+      },
+      {
+        "comment": "",
+        "key": "Collapse",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 395
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expand",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 398
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clock in",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 416
+        }
+      }
+    ]
+  },
+  "version": 1
+}

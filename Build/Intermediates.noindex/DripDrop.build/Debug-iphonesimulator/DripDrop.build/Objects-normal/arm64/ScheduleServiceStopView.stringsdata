@@ -1,0 +1,208 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/ScheduleServiceStopView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 483
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Tasks List",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 623
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Date",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 543
+        }
+      },
+      {
+        "comment": "",
+        "key": "Employee : ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 523
+        }
+      },
+      {
+        "comment": "",
+        "key": "Employee",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 525
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select User",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 526
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 537
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 546
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 549
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 560
+        }
+      },
+      {
+        "comment": "",
+        "key": "Route Snap Shot For User and Day",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 619
+        }
+      },
+      {
+        "comment": "",
+        "key": "Collapse",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 572
+        }
+      },
+      {
+        "comment": "",
+        "key": "Expand",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 576
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Route Snap Shot",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 582
+        }
+      },
+      {
+        "comment": "",
+        "key": "If Clocked in: 5 Hours",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 592
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stops: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 587
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@/%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 590
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 595
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 598
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Time: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 602
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ hrs",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 605
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Milage: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 609
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ mi",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 612
+        }
+      },
+      {
+        "comment": "",
+        "key": "Schedule New Service Stop",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 695
+        }
+      }
+    ]
+  },
+  "version": 1
+}

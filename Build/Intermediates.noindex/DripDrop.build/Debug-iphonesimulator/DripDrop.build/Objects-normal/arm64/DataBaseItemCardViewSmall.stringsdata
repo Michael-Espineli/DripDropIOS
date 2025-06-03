@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/DatabaseItems/DataBaseItemCardViewSmall.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Last Updated : %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 34
+        }
+      },
+      {
+        "comment": "",
+        "key": "Store : %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 37
+        }
+      }
+    ]
+  },
+  "version": 1
+}

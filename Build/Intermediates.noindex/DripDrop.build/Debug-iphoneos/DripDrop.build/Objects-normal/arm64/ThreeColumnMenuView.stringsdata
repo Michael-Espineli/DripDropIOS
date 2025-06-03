@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Navigation/View/ThreeColumnMenuView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Menu",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 34
+        }
+      }
+    ]
+  },
+  "version": 1
+}

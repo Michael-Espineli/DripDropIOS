@@ -1,0 +1,48 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/Estimates/ServiceLocationStartUpViewInField.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "Bodies Of Water",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "Equipment Start Up",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 317
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 389
+        }
+      }
+    ]
+  },
+  "version": 1
+}

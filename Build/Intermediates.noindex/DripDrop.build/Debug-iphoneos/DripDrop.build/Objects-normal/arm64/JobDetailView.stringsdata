@@ -1,0 +1,848 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/JobDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Job Id: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 274
+        }
+      },
+      {
+        "comment": "",
+        "key": "Editing",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 236
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 251
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "OK",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "",
+        "key": "Alert",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 354
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 355
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "",
+        "key": "s",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 738
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 520
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Contract Details",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 462
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Created: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 471
+        }
+      },
+      {
+        "comment": "",
+        "key": "Customer: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 477
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 483
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operation: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 495
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 501
+        }
+      },
+      {
+        "comment": "",
+        "key": "Address: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 507
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 511
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 515
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimate Break down",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 531
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hide Estiamte",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 540
+        }
+      },
+      {
+        "comment": "",
+        "key": "Show Estiamte",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 543
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ideal Rate",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 555
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 557
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost: ",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 581
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 583
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@. %@ ",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 572
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 574
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ x %@ = %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 589
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Material Cost: ",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 614
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 616
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@. %@",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 605
+        }
+      },
+      {
+        "comment": "",
+        "key": "1",
+        "location": {
+          "startingColumn": 66,
+          "startingLine": 607
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ideal Profit: ",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 623
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 626
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cost Review",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 638
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 643
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 645
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost: ",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 651
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 653
+        }
+      },
+      {
+        "comment": "",
+        "key": "Estimated Material Cost: ",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 658
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 660
+        }
+      },
+      {
+        "comment": "",
+        "key": "Profit: ",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 666
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 668
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finished",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 772
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finish",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 775
+        }
+      },
+      {
+        "comment": "",
+        "key": "More",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 794
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send Estimate",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 820
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark Estimate As Accepted",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 827
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoiced",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 862
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark As Invoiced",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 867
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 880
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoiced",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 895
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoice",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 902
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finished",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 940
+        }
+      },
+      {
+        "comment": "",
+        "key": "Finish",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 946
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 1028
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 960
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 962
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Admin",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 963
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Type",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 970
+        }
+      },
+      {
+        "comment": "",
+        "key": "Job Type",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 972
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Type",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 973
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operation: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 980
+        }
+      },
+      {
+        "comment": "",
+        "key": "Operation",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 982
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 989
+        }
+      },
+      {
+        "comment": "",
+        "key": "Billing",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 991
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 999
+        }
+      },
+      {
+        "comment": "",
+        "key": "Rate",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 1002
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Cost",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1011
+        }
+      },
+      {
+        "comment": "",
+        "key": "laborCost",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 1014
+        }
+      },
+      {
+        "comment": "",
+        "key": "Description",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1023
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save Changes",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1072
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1090
+        }
+      },
+      {
+        "comment": "",
+        "key": "Task List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1105
+        }
+      },
+      {
+        "comment": "",
+        "key": "New Task",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1119
+        }
+      },
+      {
+        "comment": "",
+        "key": "Task Group",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1146
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1171
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1179
+        }
+      },
+      {
+        "comment": "",
+        "key": "Task List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1194
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Task",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1202
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1259
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1266
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shopping List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1280
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add New Shopping List Item",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1290
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1310
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1317
+        }
+      },
+      {
+        "comment": "",
+        "key": "Service Stops",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1331
+        }
+      },
+      {
+        "comment": "",
+        "key": "Labor Contracts",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1397
+        }
+      },
+      {
+        "comment": "",
+        "key": "Schedule Service Stop",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1364
+        }
+      },
+      {
+        "comment": "",
+        "key": "Offer New Labor Contract",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1422
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1494
+        }
+      },
+      {
+        "comment": "",
+        "key": "Review",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1501
+        }
+      },
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1522
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date Accepted :",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1534
+        }
+      },
+      {
+        "comment": "",
+        "key": "Who Accepted: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1540
+        }
+      },
+      {
+        "comment": "",
+        "key": "Who Accepted",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1543
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark As Accepted",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1573
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoice Ref: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1583
+        }
+      },
+      {
+        "comment": "",
+        "key": "Refrence Number...",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1586
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoice Notes: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1592
+        }
+      },
+      {
+        "comment": "",
+        "key": "notes...",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 1595
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mark As Accepted",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1622
+        }
+      }
+    ]
+  },
+  "version": 1
+}

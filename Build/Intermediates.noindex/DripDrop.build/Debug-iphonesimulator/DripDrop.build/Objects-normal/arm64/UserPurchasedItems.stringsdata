@@ -1,0 +1,72 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Purchase/View/UserPurchasedItems.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Filters",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Date: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 259
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Date: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 264
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sort : ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sort: ",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 273
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter : ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 282
+        }
+      },
+      {
+        "comment": "",
+        "key": "Filter:",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 283
+        }
+      },
+      {
+        "comment": "",
+        "key": "CustomerName",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 334
+        }
+      }
+    ]
+  },
+  "version": 1
+}

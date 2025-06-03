@@ -34,14 +34,11 @@ struct AccountsPayableDetail: View {
                     ) {
                         HStack{
                             Text("Pay")
-                            Text("$ \(String(format: "%.2f", Double(invoice.total)/100))")
+                            Text("\(Double(invoice.total)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
                         }
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.poolBlue)
-                        .foregroundColor(Color.basicFontText)
-                        .clipShape(Capsule())
-                        .padding(.horizontal,20)
+                        .modifier(AddButtonModifier())
+                        .padding(.horizontal,16)
                     }
                 } else {
                     HStack{
@@ -77,8 +74,24 @@ struct AccountsPayableDetail: View {
 }
 
 #Preview {
-    AccountsPayableDetail( invoice: StripeInvoice(id: "", internalIdenifier: "",  senderId: "", senderName: "", receiverId: "", receiverName: "", dateSent: Date(), total: 0, terms: .net15, paymentStatus: .paid,     paymentType: .cash,
-                                                  paymentRefrence: "534726", lineItems: []))
+    AccountsPayableDetail(
+        invoice: StripeInvoice(
+            id: "",
+            internalIdenifier: "",
+            senderId: "",
+            senderName: "",
+            receiverId: "",
+            receiverName: "",
+            dateSent: Date(),
+            total: 0,
+            terms: .net15,
+            paymentStatus: .paid,
+            paymentType: .cash,
+            paymentRefrence: "534726",
+            paymentDate: nil,
+            lineItems: []
+        )
+    )
 }
 
 extension AccountsPayableDetail {

@@ -1,0 +1,104 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Route/Views/RouteMapAllViewController.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "No Service Stop",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 33
+        }
+      },
+      {
+        "comment": "",
+        "key": "Selected Route: %@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Previous Route",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Route",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 140
+        }
+      },
+      {
+        "comment": "",
+        "key": "Previous Stop",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 132
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Stop",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "Client: %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 179
+        }
+      },
+      {
+        "comment": "",
+        "key": "Duration: %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status: ",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 183
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 185
+        }
+      },
+      {
+        "comment": "",
+        "key": "Duration: %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 189
+        }
+      }
+    ]
+  },
+  "version": 1
+}

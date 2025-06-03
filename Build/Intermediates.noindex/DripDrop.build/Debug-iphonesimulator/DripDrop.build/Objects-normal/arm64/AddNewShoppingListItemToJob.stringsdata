@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/ShoppingList/New Group1/AddNewShoppingListItemToJob.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Add Item To Job",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "Submit",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 268
+        }
+      }
+    ]
+  },
+  "version": 1
+}

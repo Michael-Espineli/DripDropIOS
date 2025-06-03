@@ -1,0 +1,64 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Inventory/InventoryView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Setting up pool stick",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 25
+        }
+      },
+      {
+        "comment": "",
+        "key": "Inventory5",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Receipts",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 33
+        }
+      },
+      {
+        "comment": "",
+        "key": "Data Base",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 37
+        }
+      },
+      {
+        "comment": "",
+        "key": "Purchases",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "Venders",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Inventory5",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 49
+        }
+      }
+    ]
+  },
+  "version": 1
+}

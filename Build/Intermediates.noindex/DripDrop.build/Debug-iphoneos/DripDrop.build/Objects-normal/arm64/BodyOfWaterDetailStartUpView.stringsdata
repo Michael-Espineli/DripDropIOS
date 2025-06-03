@@ -1,0 +1,200 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Jobs/View/Estimates/BodyOfWaterDetailStartUpView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Delete",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 49
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 77,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Name",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 52
+        }
+      },
+      {
+        "comment": "",
+        "key": "Material",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 60
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pool Material",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 62
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shape",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 70
+        }
+      },
+      {
+        "comment": "",
+        "key": "Shape",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gallons: ",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gallons",
+        "location": {
+          "startingColumn": 83,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Gallons",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Dimensions",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 93
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 1",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 101
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 1",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 104
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 2",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "",
+        "key": "length 2",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 1",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 123
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 1",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 126
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 2",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 134
+        }
+      },
+      {
+        "comment": "",
+        "key": "depth 2",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 137
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 1",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 1",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 2",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 156
+        }
+      },
+      {
+        "comment": "",
+        "key": "width 2",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 159
+        }
+      }
+    ]
+  },
+  "version": 1
+}

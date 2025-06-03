@@ -1,0 +1,24 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Venders/New Group1/StoreListView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Store List",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 111
+        }
+      },
+      {
+        "comment": "",
+        "key": "CustomerName",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 74
+        }
+      }
+    ]
+  },
+  "version": 1
+}

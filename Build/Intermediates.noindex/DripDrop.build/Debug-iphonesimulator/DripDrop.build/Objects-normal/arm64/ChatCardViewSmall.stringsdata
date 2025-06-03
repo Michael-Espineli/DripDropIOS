@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Chat/Views/ChatCardViewSmall.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Invalid User",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 73
+        }
+      }
+    ]
+  },
+  "version": 1
+}

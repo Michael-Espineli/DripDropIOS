@@ -1,0 +1,296 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/Dashboard/View/EmployeeDailyDashboard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "No Route",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 154
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 213
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 218
+        }
+      },
+      {
+        "comment": "",
+        "key": "Today",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 228
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unable to Update Route Today",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ / %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 260
+        }
+      },
+      {
+        "comment": "",
+        "key": "Duration: %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 267
+        }
+      },
+      {
+        "comment": "",
+        "key": "Time",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 264
+        }
+      },
+      {
+        "comment": "",
+        "key": "Milage:",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 273
+        }
+      },
+      {
+        "comment": "",
+        "key": "End: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add Distance",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 294
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status: ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 300
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start !",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 308
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 312
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reorder",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 346
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "",
+        "key": "Save",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 363
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 372
+        }
+      },
+      {
+        "comment": "",
+        "key": "Confirm",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 383
+        }
+      },
+      {
+        "comment": "",
+        "key": "Move",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 414
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pick Vehical",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 444
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %@ %@ %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 447
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recent Milage:",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 461
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Milage: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 468
+        }
+      },
+      {
+        "comment": "",
+        "key": "Milage",
+        "location": {
+          "startingColumn": 72,
+          "startingLine": 471
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 484
+        }
+      },
+      {
+        "comment": "",
+        "key": "Milage: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 472
+        }
+      },
+      {
+        "comment": "",
+        "key": "Use Milage",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 480
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Milage: ",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 489
+        }
+      },
+      {
+        "comment": "",
+        "key": "Milage",
+        "location": {
+          "startingColumn": 70,
+          "startingLine": 492
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 499
+        }
+      },
+      {
+        "comment": "",
+        "key": "Milage: ",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 493
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Route",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 550
+        }
+      },
+      {
+        "comment": "",
+        "key": "End Route",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 601
+        }
+      }
+    ]
+  },
+  "version": 1
+}

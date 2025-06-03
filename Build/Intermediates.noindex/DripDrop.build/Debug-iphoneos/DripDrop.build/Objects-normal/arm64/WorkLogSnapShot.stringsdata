@@ -1,0 +1,16 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Views/Operations/WorkLogSnapShot.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Clock In",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 17
+        }
+      }
+    ]
+  },
+  "version": 1
+}

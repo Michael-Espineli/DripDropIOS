@@ -1,0 +1,96 @@
+{
+  "source": "/Users/michaelespineli/Desktop/DripDrop/DripDrop/Modules/New Group5/Views/CreateLaborContractInvoice.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "To: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoiced",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "Not Invoiced",
+        "location": {
+          "startingColumn": 62,
+          "startingLine": 157
+        }
+      },
+      {
+        "comment": "",
+        "key": "Invoice Summary",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "Task Break Down",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 168
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@: %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 171
+        }
+      },
+      {
+        "comment": "",
+        "key": "See Invoice %@",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send Invoice",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 199
+        }
+      },
+      {
+        "comment": "",
+        "key": "Type",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 205
+        }
+      },
+      {
+        "comment": "",
+        "key": "Send Invoice",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 222
+        }
+      }
+    ]
+  },
+  "version": 1
+}
