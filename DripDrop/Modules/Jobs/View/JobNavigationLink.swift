@@ -6,16 +6,54 @@
 //
 
 import SwiftUI
+@MainActor
+final class JobNavigationLinkViewModel:ObservableObject{
+    
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    @Published private(set) var workOrder : Job? = nil
+    @Published private(set) var otherCompany : Company? = nil
 
+    func onLoad(companyId:String,jobId:String) async throws {
+        self.workOrder = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
+//        if let serviceStop {
+//            print(serviceStop)
+//            if serviceStop.otherCompany  {
+//                if let otherCompanyId = serviceStop.mainCompanyId {
+//                    self.otherCompany = try await dataService.getCompany(companyId: otherCompanyId)
+//                    customer = try await dataService.getCustomerById(companyId: otherCompanyId, customerId: serviceStop.customerId)
+//                }
+//            } else {
+//                if let currentCompany = masterDataManager.currentCompany {
+//                    customer = try await dataService.getCustomerById(companyId: currentCompany.id, customerId: serviceStop.customerId)
+//                }
+//            }
+//        } else if let job {
+//            print(job)
+//            if job.otherCompany  {
+//                if let otherCompanyId = job.senderId {
+//                    otherCompany = try await dataService.getCompany(companyId: otherCompanyId)
+//                    customer = try await dataService.getCustomerById(companyId: otherCompanyId, customerId: job.customerId)
+//                }
+//            } else {
+//                if let currentCompany = masterDataManager.currentCompany {
+//                    customer = try await dataService.getCustomerById(companyId: currentCompany.id, customerId: job.customerId)
+//                }
+//            }
+//        }
+    }
+}
 struct JobNavigationLink: View {
     @EnvironmentObject var dataService : ProductionDataService
     init(dataService: any ProductionDataServiceProtocol, companyId:String,jobId:String) {
-        _VM = StateObject(wrappedValue: JobViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: JobNavigationLinkViewModel(dataService: dataService))
         _companyId = State(wrappedValue: companyId)
         _jobId = State(wrappedValue: jobId)
         
     }
-    @StateObject var VM : JobViewModel
+    @StateObject var VM : JobNavigationLinkViewModel
     @State var companyId:String
     @State var jobId:String
     var body: some View {
@@ -38,12 +76,13 @@ struct JobNavigationLink: View {
         
         .task {
             do {
-                try await VM.getSingleWorkOrder(companyId: companyId, WorkOrderId: jobId)
+                try await VM.onLoad(companyId: companyId, jobId: jobId)
             } catch {
                 print(error)
             }
         }
     }
+
 }
 
 #Preview {

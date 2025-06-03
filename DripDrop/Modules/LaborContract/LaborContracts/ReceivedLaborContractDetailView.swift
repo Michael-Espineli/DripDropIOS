@@ -10,19 +10,19 @@ import SwiftUI
 
 struct ReceivedLaborContractDetailView: View {
     //Init
-    init(dataService:any ProductionDataServiceProtocol,laborContract:RepeatingLaborContract){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+    init(dataService:any ProductionDataServiceProtocol,laborContract:ReccuringLaborContract){
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
         _laborContract = State(wrappedValue: laborContract)
     }
     
     //Objects
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
 
     //Form
-    @State var laborContract:RepeatingLaborContract
-    @State var selectedLaborContract:RepeatingLaborContract? = nil
+    @State var laborContract:ReccuringLaborContract
+    @State var selectedLaborContract:ReccuringLaborContract? = nil
 
     @State var showEditLaborContract:Bool = false
     @State var generateLaborContract:Bool = false
@@ -43,17 +43,17 @@ struct ReceivedLaborContractDetailView: View {
                 footer
             }
             Text("")
-                .fullScreenCover(isPresented: $generateLaborContract, onDismiss: {
+                .sheet(isPresented: $generateLaborContract, onDismiss: {
                     print("on Dismiss")
 
                 }, content: {
-                    GenerateRouteFromLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $generateLaborContract,isFullScreenCover: true)
+                    GenerateRouteFromLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $generateLaborContract,isFullScreenCover: false)
                 })
             Text("")
-                .fullScreenCover(isPresented: $showEditLaborContract, onDismiss: {
+                .sheet(isPresented: $showEditLaborContract, onDismiss: {
                     print("on Dismiss")
                 }, content: {
-                    EditLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $showEditLaborContract,isFullScreenCover: true)
+                    EditRecurringLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $showEditLaborContract,isFullScreenCover: false)
                 })
         }
         .fontDesign(.monospaced)
@@ -62,16 +62,17 @@ struct ReceivedLaborContractDetailView: View {
         }
         .task{
             notes = laborContract.notes
+            VM.receiverAcceptance = laborContract.receiverAcceptance
             if let currentCompany = masterDataManager.currentCompany {
                 do {
-                    try await VM.onLoadDetailView(companyId: currentCompany.id, laborContractId: laborContract.id)
+                    try await VM.onLoadDetailView(companyId: currentCompany.id, laborContract: laborContract)
                 } catch {
                     print("Error")
                     print(error)
                 }
             }
         }
-        .onChange(of: masterDataManager.selectedLaborContract, perform: { datum in
+        .onChange(of: masterDataManager.selectedRecurringLaborContract, perform: { datum in
             Task{
                 if let datum {
                     print("Change In Labor Contract")
@@ -79,7 +80,7 @@ struct ReceivedLaborContractDetailView: View {
                     notes = laborContract.notes
                     if let currentCompany = masterDataManager.currentCompany {
                         do {
-                            try await VM.onLoadDetailView(companyId: currentCompany.id, laborContractId: laborContract.id)
+                            try await VM.onLoadDetailView(companyId: currentCompany.id, laborContract: laborContract)
                         } catch {
                             print("Error")
 
@@ -117,8 +118,8 @@ extension ReceivedLaborContractDetailView{
                     HStack{
                         Text("To:")
                             .fontWeight(.bold)
-                        Text("\(laborContract.receiverName)")
                         Spacer()
+                        Text("\(laborContract.receiverName)")
                         if laborContract.receiverAcceptance {
                             Text("\(LaborContractStatus.accepted.rawValue)")
                                 .padding(8)
@@ -132,17 +133,21 @@ extension ReceivedLaborContractDetailView{
             HStack{
                 Text("Date Sent:")
                     .fontWeight(.bold)
-                Text("\(fullDate(date:laborContract.dateSent))")
                 Spacer()
+                Text("\(fullDate(date:laborContract.dateSent))")
             }
             VStack{
                 HStack{
-                    Text("Start Date: \(fullDate(date: laborContract.startDate))")
+                    Text("Start Date:")
+                        .bold()
                     Spacer()
+                    Text("\(fullDate(date: laborContract.startDate))")
                 }
                 HStack{
-                Text("End Date : \(fullDate(date: laborContract.endDate))")
+                    Text("End Date:")
+                        .bold()
                     Spacer()
+                    Text("\(fullDate(date: laborContract.endDate))")
                 }
             }
             Divider()
@@ -176,12 +181,11 @@ extension ReceivedLaborContractDetailView{
     var recurringWorkView: some View {
         VStack{
             VStack{
-                Text("Recurring Work")
+                Text("Recurring Work 1")
                     .fontWeight(.bold)
                 HStack{
                     Text("Accounts")
                     Spacer()
-//                    Text("\(laborContract.recurringWork.count)")
                     NavigationLink(destination: {
                         Text("Add List Of Clients They are contracted to complete")
                     }, label: {
@@ -195,8 +199,7 @@ extension ReceivedLaborContractDetailView{
                     let index = VM.laborContractRecurringWorkList.firstIndex(of: datum)
                     VStack{
                         HStack{
-                            Text("\((index ?? 0) + 1): ")
-                            Text("\(datum.customerName) - \(datum.jobTemplateName) - \(datum.frequency.rawValue) - \(datum.rate, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                            Text("\((index ?? 0) + 1): \(datum.customerName)")
                             Spacer()
                             if datum.routeSetUp {
                                 Image(systemName: "checkmark.circle")
@@ -206,31 +209,70 @@ extension ReceivedLaborContractDetailView{
                                     .modifier(DismissButtonModifier())
                             }
                         }
+                        Text("\(datum.jobTemplateName) - \(datum.rate/100, format: .currency(code: "USD").precision(.fractionLength(2))) - \(datum.timesPerFrequency) \(datum.frequency.rawValue)")
+                            .font(.footnote)
                         HStack{
-                            ForEach(datum.recurringServiceStopIdList,id:\.self){ id in
-                                Text(id)
-                                    .modifier(ListButtonModifier())
-                            }
+                            Rectangle()
+                                .frame(height: 1)
                             Spacer()
                         }
-                        .font(.footnote)
+                        if VM.selectedRecurringWorkId == datum.id {
+                            VStack{
+                                HStack{
+                                    Button(action: {
+                                        VM.selectedRecurringWorkId = ""
+                                    }, label: {
+                                        Text("Close Details")
+                                            .foregroundColor(Color.poolRed)
+                                    })
+                                    Spacer()
+                                }
+                                Rectangle()
+                                    .frame(height: 1)
+                                    .padding(.horizontal,17)
+                                ForEach(datum.recurringServiceStopIdList,id:\.self){ id in
+                                    HStack{
+                                        Text(id.internalId)
+                                            .modifier(ListButtonModifier())
+                                        //Developer Update IdInfo
+                                        RecurringWorkRecurringServicestopCardView(dataService: dataService, recurringServiceStopId: id.internalId, laborContract: laborContract)
+                                        Spacer()
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(.leading,16)
+                        } else {
+                            HStack{
+                                Button(action: {
+                                    VM.selectedRecurringWorkId = datum.id
+                                }, label: {
+                                    
+                                    Text("See Details")
+                                        .foregroundColor(Color.poolRed)
+                                })
+                                Spacer()
+                            }
+                            .padding(.leading,16)
+                        }
                     }
                 }
             }
         }
     }
     var termsView: some View {
-        VStack{
+        HStack{
             Text("Terms")
                 .fontWeight(.bold)
-            ForEach(laborContract.terms,id:\.self){ datum in
-                let index = laborContract.terms.firstIndex(of: datum)
+            Spacer()
+            NavigationLink(value: Route.contractTermsList(dataService: dataService, termsList: laborContract.terms), label: {
                 HStack{
-                    Text("\((index ?? 0) + 1):")
-                    Text(datum.description)
-                    Spacer()
+                    Text("See More")
+                    Image(systemName: "chevron.right")
                 }
-            }
+                .modifier(RedLinkModifier())
+                .lineLimit(1)
+            })
         }
     }
 
@@ -240,7 +282,7 @@ extension ReceivedLaborContractDetailView{
                 if !laborContract.receiverAcceptance || !laborContract.senderAcceptance {
                     if company.id != laborContract.receiverId && company.id == laborContract.senderId{
                         HStack{
-                            if !laborContract.receiverAcceptance {
+                            if !VM.receiverAcceptance {
                                 Button(action: {
                                     Task{
                                         do {
@@ -278,10 +320,17 @@ extension ReceivedLaborContractDetailView{
                             Button(action: {
                                 Task{
                                     do {
+                                        //Accept Contract
                                         try await VM.markLaborContractAsAcceptedByReceiver(companyId: company.id, laborContract: laborContract)
+                                        
                                         alertMessage = "Accepted Succsefully"
-                                        showAlert  = true
-                                        print(showAlert)
+                                        // Reload Page
+                                        if let currentCompany = masterDataManager.currentCompany {
+                                            try await VM.onLoadDetailView(companyId: currentCompany.id, laborContract: laborContract)
+                                        }
+
+//                                        showAlert  = true
+                                        print(alertMessage)
                                     } catch {
                                         print("error")
                                         print(error)
@@ -339,12 +388,12 @@ extension ReceivedLaborContractDetailView{
                             })
                         }
                         Spacer()
-                        Button(action: {
-                            self.showEditLaborContract.toggle()
-                        }, label: {
-                            Text("Offer Updated Contract")
-                                .modifier(AddButtonModifier())
-                        })
+                        if let associatedBusiness = VM.associatedBusiness {
+                            NavigationLink(value: Route.createBulkInvoice(dataService: dataService, associatedBusiness: associatedBusiness), label: {
+                                Text("Send Bulk Invoice")
+                                    .modifier(AddButtonModifier())
+                            })
+                        }
                     }
                 }
                 
@@ -359,4 +408,5 @@ extension ReceivedLaborContractDetailView{
         .padding(.horizontal,8)
         .background(Color.darkGray)
     }
+    
 }

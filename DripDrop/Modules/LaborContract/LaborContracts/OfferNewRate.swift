@@ -8,17 +8,17 @@
 import SwiftUI
 
 struct OfferNewRate: View {
-    init(dataService:any ProductionDataServiceProtocol,isPresented:Binding<Bool>,laborContract:RepeatingLaborContract,recurringWork:LaborContractRecurringWork){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+    init(dataService:any ProductionDataServiceProtocol,isPresented:Binding<Bool>,laborContract:ReccuringLaborContract,recurringWork:LaborContractRecurringWork){
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
         
         self._isPresented = isPresented
         _laborContract = State(wrappedValue: laborContract)
         _recurringWork = State(wrappedValue: recurringWork)
     }
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
     
     @Binding var isPresented : Bool
-    @State var laborContract : RepeatingLaborContract
+    @State var laborContract : ReccuringLaborContract
     @State var recurringWork : LaborContractRecurringWork
     var body: some View {
         VStack{
@@ -27,7 +27,7 @@ struct OfferNewRate: View {
                 Button(action: {
                     isPresented = false
                 }, label: {
-                    Text("Dismiss")
+                    Image(systemName: "xmark")
                         .modifier(DismissButtonModifier())
                 })
             }

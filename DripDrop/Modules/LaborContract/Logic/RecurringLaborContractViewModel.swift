@@ -21,6 +21,9 @@ final class RecurringLaborContractViewModel:ObservableObject{
     @Published var showEditLaborContract:Bool = false
     
     @Published var showGenerateLaborContract:Bool = false
+    
+    @Published var receiverAcceptance:Bool = false
+    @Published var contractStatus:LaborContractStatus = .pending
 
     //Form Variables
     @Published var notes:String = ""
@@ -72,9 +75,11 @@ final class RecurringLaborContractViewModel:ObservableObject{
         timesPerFrequency: 0,
         timesPerFrequencySetUp: 0,
         routeSetUp: false,
-        recurringServiceStopIdList: []
+        recurringServiceStopIdList: [],
+        isActive: true,
+        lastBilled: Date()
     )
-
+    @Published private(set) var associatedBusiness: AssociatedBusiness? = nil
     
     @Published private(set) var submitButtonDisabled:Bool = false
 
@@ -87,13 +92,17 @@ final class RecurringLaborContractViewModel:ObservableObject{
     @Published private(set) var laborContractList:[ReccuringLaborContract] = []
 
     @Published private(set) var laborContractRecurringWorkList:[LaborContractRecurringWork] = []
+    @Published var selectedRecurringWorkOptional:LaborContractRecurringWork? = nil
 
     
     //View Side Variables
     @Published var generateRouteFromLaborContract:Bool = false
 
-    func onLoadDetailView(companyId:String,laborContractId:String) async throws {
-        self.laborContractRecurringWorkList = try await dataService.getLaborContractRecurringWorkList(companyId: companyId, laborContractId: laborContractId)
+    func onLoadDetailView(companyId:String,laborContract:ReccuringLaborContract) async throws {
+        self.laborContractRecurringWorkList = try await dataService.getLaborContractRecurringWorkList(companyId: companyId, laborContractId: laborContract.id)
+        if companyId == laborContract.receiverId {
+            self.associatedBusiness = try await dataService.getAssociatedBusinessByCompanyId(companyId: companyId, businessCompanyId: laborContract.senderId)
+        }
     }
     func onLoadGenerateRouteFromLaborContract(companyId:String,laborContractId:String) async throws {
         self.laborContractRecurringWorkList = try await dataService.getLaborContractRecurringWorkList(companyId: companyId, laborContractId: laborContractId)
@@ -139,7 +148,7 @@ final class RecurringLaborContractViewModel:ObservableObject{
     //Update
     func markLaborContractAsAcceptedByReceiver(companyId:String,laborContract:ReccuringLaborContract) async throws {
         //Labor Contracts Are stored in two places so we need to update the information twice.
-        
+        self.receiverAcceptance = true
         //Mark Receiving Company Contract
         print("Accepted Labor Contract on Receiver Side")
         try await dataService.updateLaborContractAsAcceptedByReceiver(companyId: companyId, contractId: laborContract.id, accepted: true)
@@ -240,8 +249,8 @@ final class RecurringLaborContractViewModel:ObservableObject{
     }
     //Delete
     func deleteLaborContract(companyId:String,laborContract:ReccuringLaborContract) async throws {
-        try await dataService.deleteLaborContract(companyId: laborContract.senderId, contractId: laborContract.id)
-        try await dataService.deleteLaborContract(companyId: laborContract.receiverId, contractId: laborContract.id)
+        try await dataService.deleteRecurringLaborContract(companyId: laborContract.senderId, contractId: laborContract.id)
+        try await dataService.deleteRecurringLaborContract(companyId: laborContract.receiverId, contractId: laborContract.id)
         if companyId == laborContract.senderId {
             try await dataService.addDripDropAlert(
                 companyId: laborContract.receiverId,
@@ -284,7 +293,7 @@ final class RecurringLaborContractViewModel:ObservableObject{
         switch status {
         case .accepted:
             return Color.poolGreen
-        case .past, .rejected:
+        case .finished, .rejected:
             return Color.poolRed
         case .pending:
             return Color.poolYellow
@@ -294,7 +303,7 @@ final class RecurringLaborContractViewModel:ObservableObject{
         switch status {
         case .accepted:
             return Color.poolWhite
-        case .past, .rejected:
+        case .finished, .rejected:
             return Color.poolWhite
         case .pending:
             return Color.poolBlack

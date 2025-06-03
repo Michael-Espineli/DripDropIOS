@@ -46,18 +46,18 @@ struct RecurringLaborContractCardView: View {
                     .foregroundColor(Color.red)
                     .padding(3)
                 })
-                .fullScreenCover(isPresented: $showSheet, content: {
+                .sheet(isPresented: $showSheet, content: {
                     VStack{
                         HStack{
                             Spacer()
                             Button(action: {
                                 showSheet.toggle()
                             }, label: {
-                                Text("Dismiss")
+                                Image(systemName: "xmark")
                                     .modifier(DismissButtonModifier())
                             })
                         }
-                        LaborContractDetailView(dataService: dataService, laborContract: laborContract)
+                        RecurringLaborContractDetailView(dataService: dataService, laborContract: laborContract)
                         Spacer()
                     }
                 })

@@ -23,33 +23,31 @@ struct SideBarView: View {
         self._selectedCategory = selectedCategory
     }
     
-    @State private var showSettings = false
+    @State private var showSettings:Bool = false
     @State var layoutExperience: LayoutExperienceSetting? = .threeColumn
     @State var unreadMessageCount:Int = 0
     @State var viewType:String = "Company"
     @State var viewPicker:[String] = ["Company","Personal"]
     var body: some View {
         ZStack{
-                mac
-        }
-        .navigationTitle("Menu")
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackground()
+            Color.listColor.ignoresSafeArea()
+            mac2
+            Text("")
                 .sheet(isPresented: $showSettings, content: {
                     SettingsView(dataService:dataService)
                 })
-                .toolbar{
-                    Button(action: {
-                        showSettings.toggle()
-                    }, label: {
-                        Image(systemName: "gear")
-                    })
-                }
+        }
+        .navigationTitle(masterDataManager.currentCompany?.name ?? "Menu")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackground()
         .task{
             if let user = masterDataManager.user {
                 chatVM.addListenForUnReadChats(userId: user.id)
             }
         }
+        .onChange(of: masterDataManager.selectedCategory, perform: { cat in
+            print("Sid Bar Selected Category \(cat)")
+        })
         .onChange(of: chatVM.listOfChats, perform: { num in
             print("Number of unread Chats \(num.count)")
                 unreadMessageCount = num.count
@@ -58,52 +56,19 @@ struct SideBarView: View {
         .onDisappear(perform:{
             chatVM.removeListenerForChats()
         })
-//        #if os(iOS)
-//        .navigationBarTitleDisplayMode(.inline)
-//        #endif
+        .toolbar{
+            Button(action: {
+                showSettings.toggle()
+            }, label: {
+                Image(systemName: "gear")
+            })
+        }
     }
 }
 
 extension SideBarView {
-    var mac: some View {
-        List(selection: $selectedCategory) {
-            Section{
-                NavigationLink(value: MacCategories.profile, label: {
-                    HStack{
-                        ZStack{
-                            Circle()
-                                .fill(Color.gray)
-                                .frame(maxWidth:150 ,maxHeight:100)
-                                .overlay(
-                                    ZStack{
-                                        if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
-                                            AsyncImage(url: url){ image in
-                                                image
-                                                    .resizable()
-                                                    .scaledToFill()
-                                                    .foregroundColor(Color.white)
-                                                    .frame(maxWidth:90 ,maxHeight:90)
-                                                    .cornerRadius(90)
-                                            } placeholder: {
-                                                Image(systemName:"person.circle")
-                                                    .resizable()
-                                                    .scaledToFill()
-                                                    .foregroundColor(Color.white)
-                                                    .frame(maxWidth:90 ,maxHeight:90)
-                                                    .cornerRadius(90)
-                                            }
-                                        }
-                                    }
-                                )
-                            
-                        }
-                        if let user = masterDataManager.user {
-                            Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
-                        }
-                    }
-                })
-                .padding(EdgeInsets(top: 20, leading: 0, bottom: 0, trailing: 0))
-            }
+    var mac2: some View {
+        VStack{
             Picker("View Type", selection: $viewType) {
                 ForEach(viewPicker,id: \.self){ stat in
                     Text(stat).tag(stat)
@@ -112,14 +77,493 @@ extension SideBarView {
             .pickerStyle(.segmented)
             switch viewType {
             case "Company":
-                company
+                companyLink
+                MyCompany(dataService: dataService)
             case "Personal":
-                personal
+                profileLink
+                All(dataService: dataService)
             default:
-                company
+                MyCompany(dataService: dataService)
             }
         }
         .listStyle(.plain)
+    }
+    var companyLink: some View {
+        VStack{
+            if UIDevice.isIPhone {
+                NavigationLink(value: MacCategories.companyProfile, label: {
+                    switch masterDataManager.mainScreenDisplayType {
+                    case .compactList:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:35 ,maxHeight:35)
+                                    .overlay(
+                                        ZStack{
+                                            if let company = masterDataManager.currentCompany,let urlString = company.photoUrl ,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+
+                            if let company = masterDataManager.currentCompany {
+                                Text("\(company.name)")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .preview:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:55 ,maxHeight:55)
+                                    .overlay(
+                                        ZStack{
+                                            if let company = masterDataManager.currentCompany,let urlString = company.photoUrl ,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+                            if let company = masterDataManager.currentCompany {
+                                Text("\(company.name)")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .fullPreview:
+                        
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:150 ,maxHeight:100)
+                                    .overlay(
+                                        ZStack{
+                                            if let company = masterDataManager.currentCompany,let urlString = company.photoUrl ,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+                            if let company = masterDataManager.currentCompany {
+                                Text("\(company.name)")
+                                    .foregroundColor(Color.basicFontText)
+                                    .font(.title)
+                            }
+                        }
+                    }
+                })
+                .padding(EdgeInsets(top: 16, leading: 16, bottom: 0, trailing: 16))
+            } else {
+                Button(action: {
+                    masterDataManager.selectedCategory = .companyProfile
+                    masterDataManager.selectedCompany1 = masterDataManager.currentCompany
+                }, label: {
+                    switch masterDataManager.mainScreenDisplayType {
+                    case .compactList:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:35 ,maxHeight:35)
+                                    .overlay(
+                                        ZStack{
+                                            if let company = masterDataManager.currentCompany,let urlString = company.photoUrl ,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+                            if let company = masterDataManager.currentCompany {
+                                Text("\(company.name)")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .preview:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:55 ,maxHeight:55)
+                                    .overlay(
+                                        ZStack{
+                                            if let company = masterDataManager.currentCompany,let urlString = company.photoUrl ,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+                            if let company = masterDataManager.currentCompany {
+                                Text("\(company.name)")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .fullPreview:
+                        
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:150 ,maxHeight:100)
+                                    .overlay(
+                                        ZStack{
+                                            if let company = masterDataManager.currentCompany,let urlString = company.photoUrl ,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+                            if let company = masterDataManager.currentCompany {
+                                Text("\(company.name)")
+                                    .foregroundColor(Color.basicFontText)
+                                    .font(.title)
+                            }
+                        }
+                    }
+
+                })
+                .padding(EdgeInsets(top: 16, leading: 16, bottom: 0, trailing: 16))
+            }
+
+        }
+    }
+    var profileLink: some View {
+        VStack{
+            if UIDevice.isIPhone {
+                NavigationLink(value: MacCategories.profile, label: {
+                    switch masterDataManager.mainScreenDisplayType {
+                    case .compactList:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:35 ,maxHeight:35)
+                                    .overlay(
+                                        ZStack{
+                                            if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+
+                            if let user = masterDataManager.user {
+                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .preview:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:55 ,maxHeight:55)
+                                    .overlay(
+                                        ZStack{
+                                            if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+
+                            if let user = masterDataManager.user {
+                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .fullPreview:
+                        
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:150 ,maxHeight:100)
+                                    .overlay(
+                                        ZStack{
+                                            if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+
+                            if let user = masterDataManager.user {
+                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                    .foregroundColor(Color.basicFontText)
+                                    .font(.title)
+                            }
+                        }
+                    }
+                })
+                .padding(EdgeInsets(top: 16, leading: 16, bottom: 0, trailing: 16))
+            } else {
+                Button(action: {
+                    masterDataManager.selectedCategory = .profile
+                }, label: {
+                    switch masterDataManager.mainScreenDisplayType {
+                    case .compactList:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:35 ,maxHeight:35)
+                                    .overlay(
+                                        ZStack{
+                                            if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:30 ,maxHeight:30)
+                                                        .cornerRadius(30)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+                            if let user = masterDataManager.user {
+                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .preview:
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:55 ,maxHeight:55)
+                                    .overlay(
+                                        ZStack{
+                                            if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:50 ,maxHeight:50)
+                                                        .cornerRadius(50)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+
+                            if let user = masterDataManager.user {
+                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                    .foregroundColor(Color.basicFontText)
+                            }
+                        }
+                    case .fullPreview:
+                        
+                        HStack{
+                            ZStack{
+                                Circle()
+                                    .fill(Color.gray)
+                                    .frame(maxWidth:150 ,maxHeight:100)
+                                    .overlay(
+                                        ZStack{
+                                            if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
+                                                AsyncImage(url: url){ image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                } placeholder: {
+                                                    Image(systemName:"person.circle")
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .foregroundColor(Color.white)
+                                                        .frame(maxWidth:90 ,maxHeight:90)
+                                                        .cornerRadius(90)
+                                                }
+                                            }
+                                        }
+                                    )
+                                
+                            }
+                            Spacer()
+
+                            if let user = masterDataManager.user {
+                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                    .foregroundColor(Color.basicFontText)
+                                    .font(.title)
+                            }
+                        }
+                    }
+
+                })
+                .padding(EdgeInsets(top: 16, leading: 16, bottom: 0, trailing: 16))
+            }
+
+        }
     }
     var personal: some View {
         Group{
@@ -173,201 +617,5 @@ extension SideBarView {
         })
         }
     }
-    var company: some View {
-            Group{
-                if role.permissionIdList.contains("11") {
-                    Section(content: {
-                        
-                        NavigationLink(value: MacCategories.dashBoard, label: {
-                            HStack{
-                                Image(systemName: MacCategories.dashBoard.imageName())
-                                Text(MacCategories.dashBoard.title())
-                            }
-                        })
-//                        NavigationLink(value: MacCategories.dailyDisplay, label: {
-//                            HStack{
-//                                Image(systemName: MacCategories.dailyDisplay.imageName())
-//                                Text(MacCategories.dailyDisplay.title())
-//                            }
-//                        })
-                        NavigationLink(value: MacCategories.customers, label: {
-                            HStack{
-                                Image(systemName: MacCategories.customers.imageName())
-                                Text(MacCategories.customers.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.serviceStops, label: {
-                            HStack{
-                                Image(systemName: MacCategories.serviceStops.imageName())
-                                Text(MacCategories.serviceStops.title())
-                            }
-                        })
-                       
-                    }, header: {
-                        Text("Operations")
-                            .font(.headline)
-
-                    })
-                }
-                    //Permission 7
-                    Section(content: {
-                        if role.permissionIdList.contains("12") {
-                            
-                                NavigationLink(value: MacCategories.routeBuilder, label: {
-                                    HStack{
-                                        Image(systemName: MacCategories.routeBuilder.imageName())
-                                        Text(MacCategories.routeBuilder.title())
-                                    }
-                                })
-                                NavigationLink(value: MacCategories.management, label: {
-                                    HStack{
-                                        Image(systemName: MacCategories.management.imageName())
-                                        Text(MacCategories.management.title())
-                                    }
-                                })
-                   
-                        }
-                        if role.permissionIdList.contains("7") {
-                            NavigationLink(value: MacCategories.fleet, label: {
-                                HStack{
-                                    Image(systemName: MacCategories.fleet.imageName())
-                                    Text(MacCategories.fleet.title())
-                                }
-                            })
-                        NavigationLink(value: MacCategories.jobs, label: {
-                            HStack{
-                                Image(systemName: MacCategories.jobs.imageName())
-                                Text(MacCategories.jobs.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.repairRequest, label: {
-                            HStack{
-                                Image(systemName: MacCategories.repairRequest.imageName())
-                                Text(MacCategories.repairRequest.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.contract, label: {
-                            HStack{
-                                Image(systemName: MacCategories.contract.imageName())
-                                Text(MacCategories.contract.title())
-                            }
-                        })
-                    }
-                        
-                    }, header: {
-                        Text("Managment")
-                            .font(.headline)
-
-                    })
-                
-                if role.permissionIdList.contains("6") {
-                    
-                    Section(content: {
-                        NavigationLink(value: MacCategories.purchases, label: {
-                            HStack{
-                                Image(systemName: MacCategories.purchases.imageName())
-                                Text(MacCategories.purchases.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.receipts, label: {
-                            HStack{
-                                Image(systemName: MacCategories.receipts.imageName())
-                                Text(MacCategories.receipts.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.databaseItems, label: {
-                            HStack{
-                                Image(systemName: MacCategories.databaseItems.imageName())
-                                Text(MacCategories.databaseItems.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.genericItems, label: {
-                            HStack{
-                                Image(systemName: MacCategories.genericItems.imageName())
-                                Text(MacCategories.genericItems .title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.vender, label: {
-                            HStack{
-                                Image(systemName: MacCategories.vender.imageName())
-                                Text(MacCategories.vender.title())
-                            }
-                        })
-                    }, header: {
-                        Text("Inventory")
-                            .font(.headline)
-
-                    })
-                }
-                if role.permissionIdList.contains("7") {
-                
-                    Section(content: {
-                        NavigationLink(value: MacCategories.readingsAndDosages, label: {
-                            HStack{
-                                Image(systemName: MacCategories.readingsAndDosages.imageName())
-                                Text(MacCategories.readingsAndDosages.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.reports, label: {
-                            HStack{
-                                Image(systemName: MacCategories.reports.imageName())
-                                Text(MacCategories.reports.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.contract, label: {
-                            HStack{
-                                Image(systemName: MacCategories.contract.imageName())
-                                Text(MacCategories.contract.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.maps, label: {
-                            HStack{
-                                Image(systemName: MacCategories.maps.imageName())
-                                Text(MacCategories.maps.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.calendar, label: {
-                            HStack{
-                                Image(systemName: MacCategories.calendar.imageName())
-                                Text(MacCategories.calendar.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.userRoles, label: {
-                            HStack{
-                                Image(systemName: MacCategories.userRoles.imageName())
-                                Text(MacCategories.userRoles.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.users, label: {
-                            HStack{
-                                Image(systemName: MacCategories.users.imageName())
-                                Text(MacCategories.users.title())
-                            }
-                        })
-                        NavigationLink(value: MacCategories.companyProfile, label: {
-                            HStack{
-                                Image(systemName: MacCategories.companyProfile.imageName())
-                                Text(MacCategories.companyProfile.title())
-                            }
-                        })
-                    }, header: {
-                        Text("Administraion")
-                            .font(.headline)
-
-                    })
-                }
-//                    ForEach(MacCategories.allCases) { category in
-//                        NavigationLink(value: category, label: {
-//                            HStack{
-//                                Image(systemName: category.imageName())
-//                                Text(category.title())
-//                            }
-//                        })
-//                    }
-                    
-                
-        }
-    }
-
 }
 

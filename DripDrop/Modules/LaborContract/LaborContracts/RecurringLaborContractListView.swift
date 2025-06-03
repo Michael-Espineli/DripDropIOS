@@ -62,7 +62,7 @@ struct RecurringLaborContractListView: View {
                     filters
                 })
             Text("")
-                .fullScreenCover(isPresented: $VM.showAddNewLaborContract, onDismiss: {
+                .sheet(isPresented: $VM.showAddNewLaborContract, onDismiss: {
                     Task{
                         if let selectedCompany = masterDataManager.currentCompany {
                             do {
@@ -74,10 +74,10 @@ struct RecurringLaborContractListView: View {
                         }
                     }
                 }, content: {
-                    AddNewLaborContract(dataService: dataService,isPresented: $VM.showAddNewLaborContract,isFullScreen: true)
+                    AddNewLaborContract(dataService: dataService,isPresented: $VM.showAddNewLaborContract,isFullScreen: false)
                 })
         }
-        .navigationTitle(VM.laborContractList.isEmpty ? "Recurring Labor Contracts" : "Recurring Labor Contracts - \(VM.recurringLaborContractList.count)")
+        .navigationTitle("Recurring Labor Contracts")
         .task {
             if let selectedCompany = masterDataManager.currentCompany {
                 do {
@@ -100,12 +100,12 @@ extension RecurringLaborContractListView {
                 ForEach(VM.recurringLaborContractList) { contract in
                     Divider()
                     if UIDevice.isIPhone {
-                        NavigationLink(value: Route.laborContractDetailView(contract: contract, dataService: dataService), label: {
+                        NavigationLink(value: Route.recurringLaborContractDetailView(contract: contract, dataService: dataService), label: {
                             LaborContractCardSmall(dataService: dataService, laborContract: contract)
                         })
                     } else {
                         Button(action: {
-                            masterDataManager.selectedLaborContract = contract
+                            masterDataManager.selectedRecurringLaborContract = contract
                         }, label: {
                             LaborContractCardSmall(dataService: dataService, laborContract: contract)
                         })
@@ -167,49 +167,39 @@ extension RecurringLaborContractListView {
                     Button(action: {
                         VM.showFilters.toggle()
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.orange)
-                                .frame(width: 50, height: 50)
-                                .overlay(
-                                    Image(systemName: "slider.horizontal.3")
-                                        .resizable()
-                                        .frame(width: 25, height: 25)
-                                        .foregroundColor(Color.white)
-                                )
-                        }
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.headline)
+                            .foregroundColor(Color.white)
+                            .padding(8)
+                            .background(Color.orange)
+                            .cornerRadius(5)
                     })
+                    .padding(8)
                     Button(action: {
                         VM.showAddNewLaborContract.toggle()
 
                     }, label: {
-                        ZStack{
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 50, height: 50)
-                                Image(systemName: "plus.circle.fill")
-                                    .resizable()
-                                    .frame(width: 50, height: 50)
-                                    .foregroundColor(Color.green)
-                        }
+                        Image(systemName: "plus")
+                            .font(.headline)
+                            .foregroundColor(Color.white)
+                            .padding(8)
+                            .background(Color.poolGreen)
+                            .cornerRadius(5)
                     })
-                    .padding(10)
+                    .padding(8)
                     Button(action: {
                         Task{
                             VM.showSearch = true
                         }
                     }, label: {
-                        ZStack{
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 50, height: 50)
-                                Image(systemName: "magnifyingglass.circle.fill")
-                                    .resizable()
-                                    .frame(width: 50, height: 50)
-                                    .foregroundColor(Color.blue)
-                        }
+                        Image(systemName: "magnifyingglass")
+                            .font(.headline)
+                            .foregroundColor(Color.white)
+                            .padding(8)
+                            .background(Color.poolBlue)
+                            .cornerRadius(5)
                     })
-                    .padding(10)
+                    .padding(8)
                 }
             }
         }

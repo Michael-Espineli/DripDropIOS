@@ -11,7 +11,7 @@ struct RootView: View {
     @EnvironmentObject var navigationManager: NavigationStateManager
     @EnvironmentObject var masterDataManager: MasterDataManager
 
-    @State var layoutExperience: LayoutExperienceSetting?
+    @State var layoutExperience: LayoutExperienceSetting = .threeColumn
     @StateObject var userVM = TechViewModel()
     @EnvironmentObject var dataService : ProductionDataService
     
@@ -30,65 +30,63 @@ struct RootView: View {
                     }
                 } else {
                     Group {
-                        if UIDevice.isIPad{
-//                            if let user = VM.user {
-//                                ThreeColumnMenuView(
-//                                    columnVisibility: $columVisibility,
-//                                    showCart: $showCart,
-//                                    showSettings: $showSettings,
-//                                    showCompany:$showCompany,
-//                                    layoutExperience:$layoutExperience,
-//                                    showSignInView: $showSignInView,
-//                                    user: user
-//                                )
-//                            }
-                        } else if UIDevice.isIPhone {
-                            //I decided to take out the landingView
+                        if UIDevice.isIPhone{
                             MobileHome(dataService: dataService)
-//                            LandingView(dataService: dataService)
                         } else {
-//                            if let user = VM.user {
-//
-//                                ThreeColumnMenuView(
-//                                    columnVisibility: $columVisibility,
-//                                    showCart: $showCart,
-//                                    showSettings: $showSettings,
-//                                    showCompany:$showCompany,
-//                                    layoutExperience:$layoutExperience,
-//                                    showSignInView: $showSignInView,
-//                                    user: user
-//                                    )
-//
-//                            }
+                            ThreeColumnMenuView(dataService:dataService,layoutExperience:$layoutExperience)
                         }
                     }
-//                    LandingView(dataService: dataService)
                 }
             }
         }
         .task{
             do {
-                print("Root View")
+                print("Root View - Initial Load")
                 try await VM.onInitialLoad()
                 masterDataManager.user = VM.user
-                masterDataManager.selectedCompany = VM.company
+                masterDataManager.currentCompany = VM.company
                 masterDataManager.companyUser = VM.companyUser
                 VM.isLoading = false
                 masterDataManager.showSignInView = false
             } catch {
+                print("Error Root View")
+                print(error)
                 VM.isLoading = false
                 masterDataManager.showSignInView = true
             }
         }
-        .onChange(of: VM.showSignIn, perform: { signIn in
-            print(signIn)
-            if signIn {
-                masterDataManager.showSignInView = true
-            } else {
-                masterDataManager.showSignInView = false
-                
+        .onChange(of: masterDataManager.showSignInView, perform: { showSignIn in
+            Task{
+                print(showSignIn)
+                if !showSignIn {
+                    do {
+                        print("Root View - Change of showSign In View")
+                        try await VM.onInitialLoad()
+                        masterDataManager.user = VM.user
+                        masterDataManager.currentCompany = VM.company
+                        masterDataManager.companyUser = VM.companyUser
+                        VM.isLoading = false
+                        masterDataManager.showSignInView = false
+                    } catch {
+                        print("Error Root View")
+                        print(error)
+                        VM.isLoading = false
+                        masterDataManager.showSignInView = true
+                    }
+                    
+                }
             }
         })
+//        .onChange(of: VM.showSignIn, perform: { signIn in
+//            Task{
+//                print(signIn)
+//                if signIn {
+//                    masterDataManager.showSignInView = true
+//                } else {
+//                    masterDataManager.showSignInView = false
+//                }
+//            }
+//        })
     }
 }
 

@@ -22,10 +22,12 @@ final class LaborContractListViewModel:ObservableObject{
 
     @Published var statusList:[LaborContractStatus] = [.accepted]
 
-    @Published private(set) var laborContractList:[RepeatingLaborContract] = []
+    @Published private(set) var recurringLaborContractList:[ReccuringLaborContract] = []
 
     //Get
     func getLaborContracts(companyId:String) async throws {
-        self.laborContractList = try await dataService.getLaborContracts(companyId: companyId)
+        let sent = try await dataService.getSentLaborContracts(companyId: companyId)
+        let received = try await dataService.getReceivedLaborContracts(companyId: companyId)
+        self.recurringLaborContractList = sent + received
     }
 }

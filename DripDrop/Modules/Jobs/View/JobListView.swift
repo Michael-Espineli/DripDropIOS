@@ -11,34 +11,25 @@
 import SwiftUI
 import Contacts
 
-struct JobListView: View{
-//    @EnvironmentObject var navigationManager: NavigationStateManager
-    @EnvironmentObject var masterDataManager : MasterDataManager
-
-    @EnvironmentObject var dataService : ProductionDataService
-
-    @StateObject private var jobVM : JobViewModel
-    @StateObject var companyUserVM = CompanyUserViewModel()
-
+struct JobListView: View{    
+    
     init(dataService:any ProductionDataServiceProtocol){
         _jobVM = StateObject(wrappedValue: JobViewModel(dataService: dataService))
     }
-
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @EnvironmentObject var dataService : ProductionDataService
+    
+    @StateObject private var jobVM : JobViewModel
+    @StateObject var companyUserVM = CompanyUserViewModel()
 
     @State var selectedDocumentUrl:URL? = nil
-
-//    @State private var selected = Set<Customer.ID>()
-//    @State private var selection: Customer.ID? = nil
-//    @State private var selectedCustomer: Customer? = nil
-    
-    
     @State private var jobs:[Job] = []
-//    @State private var sortOrder = [KeyPathComparator(\Customer.lastName, order: .forward)]
+    //    @State private var sortOrder = [KeyPathComparator(\Customer.lastName, order: .forward)]
     
     @State private var isPresented: Bool = false
     @State private var editing: Bool = false
     @State private var isLoading: Bool = false
-    @State var searchTerm:String = ""
+
     @State private var nav: Bool = false
     @State var showActive:Bool = true
     
@@ -51,7 +42,7 @@ struct JobListView: View{
     @State private var pickerType:NewCustomerPickerType? = nil
     @State private var selectedPickerType:NewCustomerPickerType? = nil
     @State var showConfirmationSheet:Bool = false
-
+    
     @State var selectedContact:CNContact? = nil
     @State var showFilters:Bool = false
     @State var showCustomerUploadScreen:Bool = false
@@ -59,52 +50,49 @@ struct JobListView: View{
     
     @State var startDate:Date = Date()
     @State var endDate:Date = Date()
-
-    @State var selectedStatus:[JobOperationStatus] = [.scheduled,.unscheduled,.estimatePending,.inProgress]
+    
+    @State var selectedStatus:[JobOperationStatus] = [.scheduled, .unscheduled, .estimatePending, .inProgress]
     @State var techIds:[String] = []
     var body: some View{
-            ZStack{
-                Color.listColor.ignoresSafeArea()
-                   list
-                icons
-            }
-            .navigationTitle("Job - \(jobs.count)")
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            list
+            icons
+        }
+        .navigationTitle("Job List")
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 
                 do {
                     techIds = []
-                    
                     try await companyUserVM.getAllCompanyUsersByStatus(companyId: company.id, status: "Active")
                     for companyUser in companyUserVM.companyUsers {
                         techIds.append(companyUser.userId)
                     }
+                    startDate = Calendar.current.date(byAdding: .day, value: -300, to: Date())!
+                    jobVM.addListenerForAllJobsOperations(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
                     
                 } catch {
-                    print("Error Getting Users By status")
+                    print("Error - [JobListView]")
+                    print(error)
                 }
-            
-                do {
-                    startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
-                    try await jobVM.addListenerForAllJobsOperations(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
-                    
-                } catch {
-                    alertMessage = "Unable to get Jobs"
-                    showAlert = true
-                }
+                
             }
         }
-        .onChange(of: jobVM.workOrders, perform: { list in
-            print("Change in WorkOrders")
-            jobs = list
+        .onDisappear(perform: {
+            jobVM.removeListenerForJob()
         })
+//        .onChange(of: jobVM.workOrders, perform: { list in
+//            print("Change in WorkOrders")
+//            jobs = list
+//        })
         .onChange(of: masterDataManager.selectedID, perform: { id in
             if let selectedId = id {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             try await jobVM.getSingleWorkOrder(companyId: company.id, WorkOrderId: selectedId)
-                            masterDataManager.selectedWorkOrder = jobVM.workOrder
+                            masterDataManager.selectedJob = jobVM.workOrder
                             print("Successfully Get Customer")
                         }
                     } catch {
@@ -123,12 +111,13 @@ struct JobListView: View{
                 secondaryButton: .cancel()
             )
         }
-
+        
         .onChange(of: selectedDocumentUrl, perform: { doc in
             showCustomerUploadScreen = true
         })
-        .onChange(of: searchTerm){ term in
-       print(" Add Search Function")
+        .onChange(of: jobVM.searchTerm){ term in
+            print("Searching")
+            jobVM.filterWorkOrderList()
         }
     }
     
@@ -137,42 +126,76 @@ struct JobListView: View{
 extension JobListView {
     var list: some View {
         VStack{
-            if jobs.count == 0 {
+            if jobVM.workOrders.count == 0 {
                 if let role = masterDataManager.role {
                     if role.permissionIdList.contains("3") {
                         Button(action: {
                             showAddNew.toggle()
                         }, label: {
-                            Text("Add New Job")
-                                .padding(10)
-                                .background(Color.blue)
-                                .foregroundColor(Color.white)
-                                .cornerRadius(10)
+                            Text("Add First Job")
+                                .modifier(AddButtonModifier())
+                            
                         })
-                        .sheet(isPresented: $showAddNew, content: {
+                        .sheet(isPresented: $showAddNew,onDismiss: {
+                            Task{
+                                if let company = masterDataManager.currentCompany {
+                                    
+                                    do {
+                                        techIds = []
+                                        
+                                        try await companyUserVM.getAllCompanyUsersByStatus(companyId: company.id, status: "Active")
+                                        for companyUser in companyUserVM.companyUsers {
+                                            techIds.append(companyUser.userId)
+                                        }
+                                        
+                                        startDate = Calendar.current.date(byAdding: .day, value: -300, to: Date())!
+                                        jobVM.addListenerForAllJobsOperations(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
+                                        
+                                    } catch {
+                                        print("Error Getting Users By status")
+                                    }
+                                    
+                                }
+                            }
+                        }, content: {
                             VStack{
-                   
                                 AddNewJobView(dataService: dataService)
                             }
                         })
                     }}
             } else {
-                List(selection:$masterDataManager.selectedID){
-
-                ForEach(jobs){ job in
-                    NavigationLink(value: Route.job(job: job,dataService:dataService), label: {
-                        JobCardView(job: job)
-                    })
-                    /*
-                    NavigationLink(destination: {
-                        CustomerDetailView(customer: customer)
-                    }, label: {
-                        CustomerCardViewSmall(customer: customer)
-                    })
-                     */
+                ScrollView{
+                    if jobVM.searchTerm == "" {
+                        ForEach(jobVM.workOrders){ job in
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.job(job: job,dataService:dataService), label: {
+                                    JobCardView(job: job)
+                                })
+                            } else {
+                                Button(action: {
+                                    masterDataManager.selectedJob = job
+                                }, label: {
+                                    JobCardView(job: job)
+                                })
+                            }
+                        }
+                    } else {
+                        ForEach(jobVM.filteredWorkOrders){ job in
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.job(job: job,dataService:dataService), label: {
+                                    JobCardView(job: job)
+                                })
+                            } else {
+                                Button(action: {
+                                    masterDataManager.selectedJob = job
+                                }, label: {
+                                    JobCardView(job: job)
+                                })
+                            }
+                        }
+                    }
                 }
             }
-        }
         }
     }
     var icons: some View {
@@ -181,7 +204,7 @@ extension JobListView {
             HStack{
                 Spacer()
                 VStack{
-                    Button(action: {
+                    Button(action: {			
                         showFilters.toggle()
                     }, label: {
                         ZStack{
@@ -189,21 +212,21 @@ extension JobListView {
                                 .fill(Color.orange)
                                 .frame(width: 50, height: 50)
                                 .overlay(
-                            Image(systemName: "slider.horizontal.3")
-                                .resizable()
-                                .frame(width: 25, height: 25)
-                                .foregroundColor(Color.white)
-                            )
+                                    Image(systemName: "slider.horizontal.3")
+                                        .resizable()
+                                        .frame(width: 25, height: 25)
+                                        .foregroundColor(Color.white)
+                                )
                         }
                     })
                     .padding(10)
                     .sheet(isPresented: $showFilters,onDismiss: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     jobVM.removeListenerForJob()
                                     jobVM.addListenerForAllJobsOperations(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
-
+                                    
                                 } catch {
                                     print(error)
                                 }
@@ -232,7 +255,7 @@ extension JobListView {
                                         for status in JobOperationStatus.allCases {
                                             selectedStatus.append(status)
                                         }
-
+                                        
                                     }, label: {
                                         Text("All \(selectedStatus == JobOperationStatus.allCases ? "✓" : "")")
                                     })
@@ -244,7 +267,7 @@ extension JobListView {
                                                 print("Removed \(status.rawValue)")
                                             } else {
                                                 print("Added \(status.rawValue)")
-
+                                                
                                                 selectedStatus.append(status)
                                             }
                                         }, label: {
@@ -257,7 +280,7 @@ extension JobListView {
                                         Text("Clear \(selectedStatus == [] ? "✓" : "")")
                                     })
                                 }
-                                Spacer()
+                                .modifier(ListButtonModifier())
                             }
                             HStack{
                                 Text("Techs: ")
@@ -269,7 +292,7 @@ extension JobListView {
                                         for tech in companyUserVM.companyUsers {
                                             techIds.append(tech.userId)
                                         }
-
+                                        
                                     }, label: {
                                         Text("All \(techIds.count == companyUserVM.companyUsers.count ? "✓" : "")")
                                     })
@@ -281,7 +304,7 @@ extension JobListView {
                                                 print("Removed \(tech.userName)")
                                             } else {
                                                 print("Added \(tech.userName)")
-
+                                                
                                                 techIds.append(tech.userId)
                                             }
                                         }, label: {
@@ -296,9 +319,10 @@ extension JobListView {
                                 }
                             }
                             Spacer()
-
+                            
                         }
-                 
+                        .padding(8)
+                        
                     })
                     if let role = masterDataManager.role {
                         if role.permissionIdList.contains("3") {
@@ -318,7 +342,7 @@ extension JobListView {
                             .padding(10)
                             .sheet(isPresented: $showCustomerPicker, content: {
                                 VStack{
-                        
+                                    
                                     AddNewJobView(dataService: dataService)
                                 }
                             })
@@ -344,13 +368,16 @@ extension JobListView {
                 HStack{
                     TextField(
                         "Search",
-                        text: $searchTerm
+                        text: $jobVM.searchTerm
                     )
-                    .padding()
-                    .background(Color.gray)
-                    .foregroundColor(Color.white)
-                    .cornerRadius(10)
+                    Button(action: {
+                        jobVM.searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
             }
             
         }

@@ -9,8 +9,12 @@ import SwiftUI
 
 struct EditLaborContract: View {
     //Init
-    init(dataService:any ProductionDataServiceProtocol,laborContract:ReccuringLaborContract,isPresented:Binding<Bool>,isFullScreenCover:Bool){
-        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
+    init(
+        dataService:any ProductionDataServiceProtocol,
+        laborContract:LaborContract,
+        isPresented:Binding<Bool>,
+        isFullScreenCover:Bool
+    ){
         _laborContract = State(wrappedValue: laborContract)
         self._isPresented = isPresented
         _isFullScreenCover = State(wrappedValue: isFullScreenCover)
@@ -18,11 +22,10 @@ struct EditLaborContract: View {
     
     //Objects
     @EnvironmentObject var masterDataManager: MasterDataManager
-    @StateObject var VM : RecurringLaborContractViewModel
     @Binding var isPresented:Bool
     @State var isFullScreenCover:Bool
     //Form
-    @State var laborContract:ReccuringLaborContract
+    @State var laborContract:LaborContract
     var body: some View {
         VStack{
             if isFullScreenCover {
@@ -33,7 +36,7 @@ struct EditLaborContract: View {
                         .modifier(DismissButtonModifier())
                 })
             }
-            Text("Edit Recurring Labor Contract")
+            Text("Edit Labor Contract")
         }
     }
 }

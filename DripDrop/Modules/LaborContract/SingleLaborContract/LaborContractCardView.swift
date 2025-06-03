@@ -13,56 +13,93 @@ struct LaborContractCardView: View {
 
     @State var laborContract:LaborContract
     @State var showSheet:Bool = false
+    func getBackGroundColor(status:LaborContractStatus) -> Color {
+        switch status {
+        case .accepted:
+            return Color.poolYellow
+        case .finished:
+            return Color.poolGreen
+        case .rejected:
+            return Color.poolRed
+        case .pending:
+            return Color.orange
+        }
+    }
+    func getForeGroundColor(status:LaborContractStatus) -> Color {
+        switch status {
+        case .accepted:
+            return Color.poolBlack
+        case .finished:
+            return Color.poolWhite
+        case .rejected:
+            return Color.poolWhite
+        case .pending:
+            return Color.poolBlack
+        }
+    }
     var body: some View {
-        VStack{
-            if let company = masterDataManager.currentCompany {
-                if company.id != laborContract.senderId {
-                    HStack{
-                        Text("From:")
-                            .fontWeight(.bold)
-                        Text("\(laborContract.senderName)")
-                        Spacer()
-                    }
-                }
-                if company.id != laborContract.receiverId {
-                    HStack{
-                        Text("To:")
-                            .fontWeight(.bold)
-                        Text("\(laborContract.receiverName)")
-                        Spacer()
-                    }
-                }
-            }
-//            Text("Recurring Work - \(laborContract.recurringWork.count)")
-            HStack{
-                Spacer()
-                Button(action: {
-                    showSheet.toggle()
-                }, label: {
-                    HStack{
-                        Text("See More")
-                        Image(systemName: "arrow.right")
-                    }
-                    .foregroundColor(Color.red)
-                    .padding(3)
-                })
-                .fullScreenCover(isPresented: $showSheet, content: {
-                    VStack{
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                showSheet.toggle()
-                            }, label: {
-                                Text("Dismiss")
-                                    .modifier(DismissButtonModifier())
-                            })
+        ZStack{
+            VStack{
+                HStack{
+                    if let company = masterDataManager.currentCompany {
+                        
+                        if company.id != laborContract.senderId {
+                            HStack{
+                                Text("From:")
+                                    .fontWeight(.bold)
+                                Text("\(laborContract.senderName)")
+                                Spacer()
+                            }
                         }
-                        LaborContractDetailView(dataService: dataService, laborContract: laborContract)
+                        if company.id != laborContract.receiverId {
+                            HStack{
+                                Text("To:")
+                                    .fontWeight(.bold)
+                                Text("\(laborContract.receiverName)")
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+                HStack{
+                    Text(laborContract.customerName)
+                    Spacer()
+                }
+                if laborContract.status == .pending {
+                    //Maybe show this all the time
+                    HStack{
+                        Text("Sent:")
+                            .fontWeight(.bold)
+                        Text("\(shortDate(date: laborContract.dateSent))")
                         Spacer()
                     }
-                })
+                    HStack{
+                        Text("Last Day to Accept: ")
+                            .fontWeight(.bold)
+                        Text("\(shortDate(date: laborContract.lastDateToAccept))")
+                        Spacer()
+                    }
+                }
+                HStack{
+                    Text("\(laborContract.status.rawValue)")
+                        .padding(.horizontal,6)
+                        .padding(.vertical,4)
+                        .background(getBackGroundColor(status: laborContract.status))
+                        .cornerRadius(4)
+                        .foregroundColor(getForeGroundColor(status: laborContract.status))
+                    Spacer()
+                    Text(laborContract.isInvoiced ? "Invoiced": "Not Invoiced")
+                        .padding(.horizontal,6)
+                        .padding(.vertical,4)
+                        .background(laborContract.isInvoiced ? Color.poolGreen : Color.poolRed)
+                        .cornerRadius(4)
+                        .foregroundColor(Color.poolWhite)
+
+                }
+                .font(.footnote)
             }
         }
+        .modifier(ListButtonModifier())
     }
 }
 

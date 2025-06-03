@@ -10,10 +10,25 @@ import SwiftUI
 struct TaskGroupCardView: View {
     @State var taskGroup : JobTaskGroup
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack{
+            HStack{
+                Spacer()
+                Text("\(taskGroup.name)")
+                    .font(.headline)
+                Spacer()
+            }
+            HStack{
+                Text("\(String(taskGroup.numberOfTasks))")
+                    .font(.footnote)
+                Text("\(taskGroup.description)")
+                    .font(.footnote)
+            }
+        }
+        .modifier(ListButtonModifier())
+        .padding(8)
     }
 }
 
-#Preview {
-    TaskGroupCardView()
-}
+//#Preview {
+//    TaskGroupCardView()
+//}

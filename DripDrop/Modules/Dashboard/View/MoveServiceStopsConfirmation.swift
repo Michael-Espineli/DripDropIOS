@@ -22,13 +22,13 @@ struct MoveServiceStopsConfirmation: View {
         _serviceStopVM = StateObject(wrappedValue: ServiceStopsViewModel(dataService: dataService))
         _selectedServiceStopList = State(wrappedValue: selectedServiceStopList)
     }
-    @State var tech:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active)
+    @State var tech:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor)
     @State var date:Date = Date()
     @State var moveType: MoveServiceStopType = .oneTime
     var body: some View {
        info
             .task{
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     do {
                         try await companyUserVM.getAllCompanyUsersByStatus(companyId: company.id, status: "Active")
                         
@@ -79,7 +79,7 @@ extension MoveServiceStopsConfirmation {
     var button: some View {
         Button(action: {
             Task{
-                if let company  = masterDataManager.selectedCompany {
+                if let company  = masterDataManager.currentCompany {
                     do {
                         try await serviceStopVM.updateServiceStopListServiceDate(companyId: company.id, serviceStopList: selectedServiceStopList, date: date,companyUser:tech)
                         dismiss()
@@ -91,10 +91,8 @@ extension MoveServiceStopsConfirmation {
             
         }, label: {
             Text("Submit")
-                .foregroundColor(Color.white)
-                .padding(5)
-                .background(Color.accentColor)
-                .cornerRadius(5)
+                .modifier(SubmitButtonModifier())
+
         })
         .background(Color.white // any non-transparent background
             .cornerRadius(5)

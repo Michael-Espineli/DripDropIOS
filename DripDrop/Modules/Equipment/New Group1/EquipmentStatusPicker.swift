@@ -8,18 +8,24 @@
 
 
 import SwiftUI
-
+@MainActor
+final class EquipmentStatusPickerViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+}
 struct EquipmentStatusPicker: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
 
-    @StateObject var customerVM : CustomerViewModel
-    @Binding var customer : Customer
+    @StateObject var VM : EquipmentStatusPickerViewModel
+    @Binding var status : EquipmentStatus
     
-    init(dataService:any ProductionDataServiceProtocol,customer:Binding<Customer>){
-        _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
+    init(dataService:any ProductionDataServiceProtocol,status:Binding<EquipmentStatus>){
+        _VM = StateObject(wrappedValue: EquipmentStatusPickerViewModel(dataService: dataService))
         
-        self._customer = customer
+        self._status = status
     }
     
     @State var search:String = ""
@@ -28,93 +34,21 @@ struct EquipmentStatusPicker: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                HStack{
-                    Spacer()
+                ForEach(EquipmentStatus.allCases){ datum in
                     Button(action: {
+                        status = datum
                         dismiss()
                     }, label: {
-                        Image(systemName: "xmark")
+                        HStack{
+                            Spacer()
+                                Text("\(datum.rawValue)")
+                            Spacer()
+                        }
+                        .padding(.horizontal,8)
+                        .foregroundColor(Color.basicFontText)
                     })
-                    .padding(16)
+                    Divider()
                 }
-                customerList
-                searchBar
-            }
-        }
-        .task {
-            do {
-                if let company = masterDataManager.currentCompany {
-                    try await customerVM.filterAndSortSelected(companyId: company.id, filter: .active, sort: .firstNameHigh)
-                    customers = customerVM.customers
-                }
-            } catch {
-                print("Error")
-                
-            }
-        }
-        .onChange(of: search, perform: { term in
-            if term == "" {
-                Task{
-                    do {
-                        if let company = masterDataManager.currentCompany {
-                            try await customerVM.filterAndSortSelected(companyId: company.id, filter: .active, sort: .firstNameHigh)
-                            customers = customerVM.customers
-                        }
-                    } catch {
-                        print("Error")
-                        
-                    }
-                }
-            } else {
-                Task{
-                    do {
-                        if let company = masterDataManager.currentCompany {
-                            try await customerVM.filterCustomerList(filterTerm: term, customers: customerVM.customers)
-                            customers = customerVM.filteredCustomers
-                            print("Received \(customers.count) Customers")
-                            
-                        }
-                    } catch {
-                        print("Error")
-                    }
-                }
-            }
-        })
-    }
-}
-extension CustomerPickerScreen {
-    var searchBar: some View {
-        TextField(
-            text: $search,
-            label: {
-                Text("Search: ")
-            })
-        .modifier(SearchTextFieldModifier())
-        .padding(8)
-    }
-    var customerList: some View {
-        ScrollView{
-            ForEach(customers){ datum in
-                
-                Button(action: {
-                    customer = datum
-                    dismiss()
-                }, label: {
-                    HStack{
-                        Spacer()
-                        if datum.displayAsCompany {
-                            Text("\(datum.company ?? "\(datum.firstName) \(datum.lastName)")")
-                        } else {
-                            Text("\(datum.firstName) \(datum.lastName)")
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal,8)
-                    .foregroundColor(Color.basicFontText)
-                })
-                
-                Divider()
             }
         }
     }

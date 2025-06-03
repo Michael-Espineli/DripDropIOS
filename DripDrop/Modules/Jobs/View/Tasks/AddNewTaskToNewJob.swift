@@ -11,13 +11,15 @@ struct AddNewTaskToNewJob: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
 
-    init(dataService:any ProductionDataServiceProtocol,jobId:String,taskTypes:[String],customerId:String,serviceLocationId:String,task){
+    init(dataService:any ProductionDataServiceProtocol,jobId:String,taskTypes:[String],customerId:String,serviceLocationId:String, tasks:Binding<[JobTask]>, shoppingList:Binding<[ShoppingListItem]>){
         _VM = StateObject(wrappedValue: AddNewTaskToJobViewModel(dataService: dataService))
 
         _jobId = State(wrappedValue: jobId)
         _taskTypes = State(wrappedValue: taskTypes)
         _customerId = State(wrappedValue: customerId)
         _serviceLocationId = State(wrappedValue: serviceLocationId)
+        self._tasks = tasks
+        self._shoppingList = shoppingList
     }
     
     @StateObject var VM : AddNewTaskToJobViewModel
@@ -25,7 +27,9 @@ struct AddNewTaskToNewJob: View {
     @State var taskTypes:[String]
     @State var customerId:String
     @State var serviceLocationId:String
-    
+    @Binding var tasks:[JobTask]
+    @Binding var shoppingList:[ShoppingListItem]
+
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -89,7 +93,7 @@ extension AddNewTaskToNewJob {
                 Text("Name")
                     .bold(true)
                 TextField(
-                    "Name",
+                    "Name...",
                     text: $VM.name
                 )
                 .modifier(TextFieldModifier())
@@ -101,6 +105,7 @@ extension AddNewTaskToNewJob {
                     "Contracted Rate",
                     text: $VM.contractedRateString
                 )
+                .keyboardType(.decimalPad)
                 .modifier(TextFieldModifier())
             }
             HStack{
@@ -110,58 +115,84 @@ extension AddNewTaskToNewJob {
                     "Estimated Time",
                     text: $VM.estimatedTimeString
                 )
-                .modifier(ListButtonModifier())
+                .keyboardType(.decimalPad)
+                .modifier(TextFieldModifier())
             }
-            
             HStack{
-                Text("Task Type: ")
-                    .bold(true)
-                Picker("Task Type", selection: $VM.selectedTaskType) {
-                    ForEach(JobTaskType.allCases){ type in
-                        Text(type.rawValue).tag(type)
-                    }
-                }
-                Spacer()
+                Button(action: {
+                    VM.showTaskTypePicker.toggle()
+                }, label: {
+                    Text(VM.selectedTaskType.rawValue)
+                        .modifier(SubmitButtonModifier())
+                })
+                .sheet(isPresented: $VM.showTaskTypePicker, content: {
+                    JobTaskTypePicker(taskType: $VM.selectedTaskType)
+                })
             }
+
             VStack{
                 switch VM.selectedTaskType {
                     case .basic, .clean:
                         Text("No Extra Details Needed")
                     case .cleanFilter:
-                    Text("Filter Clean \(VM.equipmentList.count)")
-                    Picker("Equipment", selection: $VM.selectedEquipmentId) {
-                        Text("Select Equipment").tag("")
-                        ForEach(VM.equipmentList){ equipment in
-                            Text("\(equipment.name)").tag(equipment.id)
-                        }
-                    }
+                        Button(action: {
+                            VM.showEquipmentPicker.toggle()
+                        }, label: {
+                            if VM.selectedEquipment.id != "" {
+                                
+                                Text("Select Equipment")
+                            } else {
+                                Text(VM.selectedEquipment.name)
+                            }
+                        })
+                        .sheet(isPresented: $VM.showEquipmentPicker, content: {
+                            EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
+                        })
+                    
                     case .emptyWater:
-                        Text("Empty Water")
-                        Picker("Body Of Water", selection: $VM.selectedBodyOfWaterId) {
-                            Text("Select Body Of Water").tag("")
-                            ForEach(VM.bodyOfWaterList){ BOW in
-                                Text(BOW.name).tag(BOW.id)
+                        Button(action: {
+                            VM.showEquipmentPicker.toggle()
+                        }, label: {
+                            if VM.selectedBodyOfWater.id != "" {
+                                
+                                Text("Select Body Of Water")
+                            } else {
+                                Text(VM.selectedBodyOfWater.name)
                             }
-                        }
+                        })
+                        .sheet(isPresented: $VM.showBOWPicker, content: {
+                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
+                        })
                     case .fillWater:
-                        Text("Fill Water")
-                        Picker("Body Of Water", selection: $VM.selectedBodyOfWaterId) {
-                            Text("Select Body Of Water").tag("")
-                            ForEach(VM.bodyOfWaterList){ BOW in
-                                Text(BOW.name).tag(BOW.id)
+                        Button(action: {
+                            VM.showBOWPicker.toggle()
+                        }, label: {
+                            if VM.selectedBodyOfWater.id != "" {
+                                
+                                Text("Select Body Of Water")
+                            } else {
+                                Text(VM.selectedBodyOfWater.name)
                             }
-                        }
+                        })
+                        .sheet(isPresented: $VM.showBOWPicker, content: {
+                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
+                        })
                     case .inspection:
                         Text("Inspection")
                     case .install:
-                        Text("Install")
-                    
-                        Picker("Body Of Water", selection: $VM.selectedBodyOfWaterId) {
-                            Text("Select Body Of Water").tag("")
-                            ForEach(VM.bodyOfWaterList){ BOW in
-                                Text(BOW.name).tag(BOW.id)
+                        Button(action: {
+                            VM.showBOWPicker.toggle()
+                        }, label: {
+                            if VM.selectedBodyOfWater.id != "" {
+                                
+                                Text("Select Body Of Water")
+                            } else {
+                                Text(VM.selectedBodyOfWater.name)
                             }
-                        }
+                        })
+                        .sheet(isPresented: $VM.showBOWPicker, content: {
+                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
+                        })
                         Button(action: {
                             VM.showItemPicker.toggle()
                         }, label: {
@@ -189,21 +220,46 @@ extension AddNewTaskToNewJob {
                             .modifier(TextFieldModifier())
                         }
                     case .remove:
-                        Text("Remove")
-                        Picker("Equipment", selection: $VM.selectedEquipmentId) {
-                            Text("Select Equipment").tag("")
-                            ForEach(VM.equipmentList){ equipment in
-                                Text("\(equipment.name) - \(equipment.category.rawValue)").tag(equipment.id)
+                        Button(action: {
+                            VM.showEquipmentPicker.toggle()
+                        }, label: {
+                            if VM.selectedEquipment.id != "" {
+                                
+                                Text("Select Equipment")
+                            } else {
+                                Text(VM.selectedEquipment.name)
                             }
-                        }
+                        })
+                        .sheet(isPresented: $VM.showEquipmentPicker, content: {
+                            EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
+                        })
                     case .replace:
-                        Text("Replace")
-                        Picker("Equipment", selection: $VM.selectedEquipmentId) {
-                            Text("Select Equipment").tag("")
-                            ForEach(VM.equipmentList){ equipment in
-                                Text("\(equipment.name) - \(equipment.category.rawValue)").tag(equipment.id)
+                        Button(action: {
+                            VM.showEquipmentPicker.toggle()
+                        }, label: {
+                            if VM.selectedEquipment.id != "" {
+                                
+                                Text("Select Equipment")
+                            } else {
+                                Text(VM.selectedEquipment.name)
                             }
-                        }
+                        })
+                        .sheet(isPresented: $VM.showEquipmentPicker, content: {
+                            EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
+                        })
+                        Button(action: {
+                            VM.showEquipmentPicker.toggle()
+                        }, label: {
+                            if VM.selectedBodyOfWater.id != "" {
+                                
+                                Text("Select Body Of Water")
+                            } else {
+                                Text(VM.selectedBodyOfWater.name)
+                            }
+                        })
+                        .sheet(isPresented: $VM.showBOWPicker, content: {
+                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
+                        })
                         Divider()
                         Text("Install")
                         Button(action: {
@@ -232,28 +288,45 @@ extension AddNewTaskToNewJob {
                             .modifier(TextFieldModifier())
                         }
                 case .maintenance:
-                    
-                    Picker("Equipment", selection: $VM.selectedEquipmentId) {
-                        Text("Select Equipment").tag("")
-                        ForEach(VM.equipmentList){ equipment in
-                            Text("\(equipment.name) - \(equipment.category.rawValue)").tag(equipment.id)
+                    Button(action: {
+                        VM.showEquipmentPicker.toggle()
+                    }, label: {
+                        if VM.selectedEquipment.id != "" {
+                            
+                            Text("Select Equipment")
+                        } else {
+                            Text(VM.selectedEquipment.name)
                         }
-                    }
+                    })
+                    .sheet(isPresented: $VM.showEquipmentPicker, content: {
+                        EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
+                    })
                 case .repair:
-                    
-                    Picker("Equipment", selection: $VM.selectedEquipmentId) {
-                        Text("Select Equipment").tag("")
-                        ForEach(VM.equipmentList){ equipment in
-                            Text("\(equipment.name) - \(equipment.category.rawValue)").tag(equipment.id)
+                    Button(action: {
+                        VM.showEquipmentPicker.toggle()
+                    }, label: {
+                        if VM.selectedBodyOfWater.id != "" {
+                            
+                            Text("Select Body Of Water")
+                        } else {
+                            Text(VM.selectedBodyOfWater.name)
                         }
-                    }
+                    })
+                    .sheet(isPresented: $VM.showBOWPicker, content: {
+                        BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
+                    })
                 }
             }
             Button(action: {
                 Task{
                     if let company = masterDataManager.currentCompany {
                         do {
-                            try await VM.addNewTaskToJob(companyId: company.id, jobId: jobId, serviceLocationId: serviceLocationId)
+                            let values = try await VM.addNewTaskToJobTaskList(companyId: company.id, jobId: jobId, serviceLocationId: serviceLocationId)
+                            tasks.append(values.0)
+                            if let item = values.1 {
+                                
+                                shoppingList.append(item)
+                            }
                         } catch let error {
                             print(error)
                             let myError: AddNewTaskToJobError = error as! AddNewTaskToJobError

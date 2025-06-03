@@ -138,72 +138,25 @@ extension OwesMoneyView{
     var finace: some View {
         VStack{
             HStack{
-                Text("Finance")
+                Text("Sales")
                 Spacer()
             }
-            .font(.title)
             .modifier(HeaderModifier())
             Text("Need to figure out Invoice to and from clients and buisnesses")
                 .background(Color.pink)
-            HStack{
-                Text("B to C")
-                Spacer()
-            }
-            .modifier(HeaderModifier())
             finishedJobs
             Divider()
             contracts
             Divider()
             recurringContracts
             Divider()
-            HStack{
-                Text("B to B")
-                Spacer()
-            }
-            .modifier(HeaderModifier())
-            Button(action: {
-                selectedSection = "Labor Contracts"
-            }, label: {
-                Text("Labor Contracts")
-            })
-            .modifier(ListButtonModifier())
-            if selectedSection == "Labor Contracts" {
-                
-                sentLaborContract
-                Divider()
-                receivedLaborContract
-                Divider()
-            }
-            Button(action: {
-                selectedSection = "Recurring Labor Contracts"
-            }, label: {
-                Text("Recurring Labor Contracts")
-            })
-            .modifier(ListButtonModifier())
-            if selectedSection == "Recurring Labor Contracts" {
-                sentRecurringLaborContract
-                Divider()
-                receivedRecurringLaborContract
-                Divider()
-            }
-            HStack{
-                Text("General")
-                Spacer()
-            }
-            .modifier(HeaderModifier())
             invoices
-            Divider()
-            purchases
-            Divider()
-            receipts
-            Divider()
-            accountsPayable
             Divider()
             accountsReceivable
             Divider()
-            payRoll
+            receivedLaborContract
             Divider()
-            venders
+            receivedRecurringLaborContract
             Divider()
         }
     }
@@ -632,110 +585,7 @@ extension OwesMoneyView{
         }
     }
     
-    var payRoll: some View {
-        VStack{
-            HStack{
-                Text("Pay Roll // Developer")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.accountsPayableList(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .accountsPayable
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        HStack{
-                            if let items = VM.APOutstandingCount {
-                                Text("Total Outstanding Invoices :  \(String(items))")
-                            }
-                            Spacer()
-                            if let amount = VM.APTotal {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                        HStack{
-                            if let items = VM.APOutstandingLateCount {
-                                Text("Total Outstanding Late :  \(String(items))")
-                            }
-                            Spacer()
-                            if let amount = VM.APTotalOutstandingLate {
-                                Text("\(Double(amount)/100, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-
-            if VM.APInvoiceList.count == 0 {
-                HStack{
-                    SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Invoice")
-                    Spacer()
-                }
-            } else {
-                ScrollView(.horizontal, showsIndicators: false){
-                    HStack{
-                        ForEach(VM.APInvoiceList){ datum in
-                            let title =  datum.senderName + " $" + String(datum.total/100)
-                            if UIDevice.isIPhone {
-                                NavigationLink(value:Route.accountsPayableDetail(invoice:datum, dataService:dataService), label: {
-                                    SquareSnapShot(color: Color.gray, footer: Color.poolRed,textColor: Color.white,text:title, iconName: "creditcard.fill")
-                                })
-                            } else {
-                                Button(action: {
-                                    masterDataManager.selectedAccountsPayableInvoice = datum
-                                }, label: {
-                                    SquareSnapShot(color: Color.gray, footer: Color.poolRed,textColor: Color.white,text:title, iconName: "creditcard.fill")
-                                })
-                            }
-                        }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
+  
     var accountsPayable: some View {
         VStack{
             HStack{
@@ -935,93 +785,7 @@ extension OwesMoneyView{
         }
     }
     
-    var venders: some View {
-        VStack{
-            HStack{
-                Text("Vender")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.venders(dataService: dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .vender
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        if let count = VM.venderCount {
-                            HStack{
-                                Text("Venders: \(count)")
-                                Spacer()
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.listOfVenders.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Venders")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.listOfVenders){ datum in
-                                let text:String = datum.name ?? ""
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.vender(vender: datum, dataService: dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.yellow,textColor: Color.white,text: text, iconName: "building.2")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        navigationManager.routes.append(Route.vender(vender: datum, dataService: dataService))
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.yellow,textColor: Color.white,text: text, iconName: "building.2")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
+
     var contracts: some View {
         VStack{
             HStack{

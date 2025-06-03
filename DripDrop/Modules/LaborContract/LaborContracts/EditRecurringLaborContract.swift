@@ -1,5 +1,5 @@
 //
-//  EditLaborContract.swift
+//  EditRecurringLaborContract.swift
 //  DripDrop
 //
 //  Created by Michael Espineli on 7/10/24.

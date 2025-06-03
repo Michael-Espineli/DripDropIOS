@@ -1,48 +1,41 @@
-//
-//  JobDetailView.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 12/30/23.
-//
-//
-//DEVELOPER NOTES - I ADDED UPDATES TO THE FIRST PAGE (INFO) I NEED TO ADD UPDATES TO CUSTOMER, PARTS, SCHEDULE
+    //
+    //  JobDetailView.swift
+    //  ThePoolApp
+    //
+    //  Created by Michael Espineli on 12/30/23.
+    //
+    //
+    //DEVELOPER NOTES - I ADDED UPDATES TO THE FIRST PAGE (INFO) I NEED TO ADD UPDATES TO CUSTOMER, PARTS, SCHEDULE
 
 
 import SwiftUI
-
 struct JobDetailView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject var settingsVM = SettingsViewModel()
-    @StateObject var jobVM : JobViewModel
-    @StateObject var customerVM : CustomerViewModel
-    @StateObject var serviceLocationVM : ServiceLocationViewModel
-    @StateObject var bodyOfWaterVM : BodyOfWaterViewModel
-    @StateObject var equipmentVM : EquipmentViewModel
-    @StateObject var servicestopVM : ServiceStopsViewModel
-
-    @StateObject var techVM = TechViewModel()
-    @State var job:Job
     init(job:Job,dataService:any ProductionDataServiceProtocol){
-        _jobVM = StateObject(wrappedValue: JobViewModel(dataService: dataService))
-        _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
-        _serviceLocationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: dataService))
-        _bodyOfWaterVM = StateObject(wrappedValue: BodyOfWaterViewModel(dataService: dataService))
-        _equipmentVM = StateObject(wrappedValue: EquipmentViewModel(dataService: dataService))
-        _servicestopVM = StateObject(wrappedValue: ServiceStopsViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: JobDetailViewModel(dataService: dataService))
+        
         _job = State(wrappedValue: job)
     }
+    
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService : ProductionDataService
+    @EnvironmentObject var masterDataManager : MasterDataManager
+
+    @StateObject var VM : JobDetailViewModel
+
+    @State var job:Job
+
     @State var view:String = "Info"
-    @State var viewList:[String] = ["Info","Customer","Parts","Schedule","Review"]
+    @State var viewList:[String] = ["Info","Customer","Tasks","Schedule"]
     @State var jobId:String = "J"
-//Body Of Water
+    
+    
+        //Body Of Water
     @State var jobTemplate:JobTemplate = JobTemplate(id: "", name: "")
     @State var serviceStopTemplate:ServiceStopTemplate = ServiceStopTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), color: "")
-
+    
     @State var dateCreated:Date = Date()
     @State var description:String = ""
-
+    
     @State var operationStatus:JobOperationStatus = .estimatePending
     
     @State var billingStatus:JobBillingStatus = .draft
@@ -63,7 +56,8 @@ struct JobDetailView: View {
         active: true,
         displayAsCompany: true,
         hireDate: Date(),
-        billingNotes: ""
+        billingNotes: "",
+        linkedInviteId: UUID().uuidString
     )
     
     @State var serviceLocations:[ServiceLocation] = []
@@ -103,7 +97,8 @@ struct JobDetailView: View {
         gallons: "",
         material: "",
         customerId: "",
-        serviceLocationId: ""
+        serviceLocationId: "", 
+        lastFilled: Date()
     )
     
     @State var equipmentList:[Equipment] = []
@@ -120,12 +115,13 @@ struct JobDetailView: View {
         customerName: "",
         customerId: "",
         serviceLocationId: "",
-        bodyOfWaterId: ""
+        bodyOfWaterId: "", 
+        isActive: true
     )
-
-    @State var admin:DBUser = DBUser(id: "",exp: 0)
-    @State var tech:DBUser = DBUser(id: "",exp: 0)
-
+    
+    @State var admin:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .contractor)
+    @State var tech:DBUser = DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
+    
     @State var serviceStopIds:[String] = []
     
     @State var installationParts:[WODBItem] = []
@@ -143,20 +139,20 @@ struct JobDetailView: View {
     @State var miscParts:[WODBItem] = []
     @State var miscPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
     @State var showmiscParts:Bool = false
-
+    
     
     @State var rate:String = "0"
     @State var laborCost:String = "0"
     @State var showCustomerSelector:Bool = false
     @State var showPurchasedItemSelector:Bool = false
-
-
+    
+    
     @State var showBodyOfWaterSheet:Bool = false
     
     @State var showTreeSheet:Bool = false
     @State var showBushSheet:Bool = false
     @State var showDeleteConfirmation:Bool = false
-    //Service Stop
+        //Service Stop
     @State var showAddNewServiceStop:Bool = false
     @State var serviceDate:Date = Date()
     @State var includeReadings:Bool = false
@@ -164,7 +160,7 @@ struct JobDetailView: View {
     @State var checkList:[String] = []
     @State var duration:String = "0"
     @State var serviceStopDescription:String = "0"
-
+    
     @State var serviceStopList:[ServiceStop] = []
     @State var workingJob:Job? = nil
     @State var isLoading:Bool = false
@@ -172,62 +168,121 @@ struct JobDetailView: View {
     @State var bodyOfWaterPicker:Bool = false
     @State var equipmentPicker:Bool = false
     @State var showCostBreakDown:Bool = false
+    
 
-    @State var alertMessage:String = ""
-    @State var showAlert:Bool = false
     @State var showDeletePartConfirmation:Bool = false
     @State var partToDelete:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
     @State var categoryToDeleteFrom:String = ""
+    @State var showInfoOptions:Bool = false
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-
-                HStack{
-                  
-                    Picker("", selection: $view) {
-                        ForEach(viewList,id: \.self){ datum in
-                            Text(datum).tag(datum)
+                if !VM.isEdit {
+                    HStack{
+                        ForEach(VM.viewOptionList,id: \.self){ datum in
+                            if view == datum {
+                                Text(datum)
+//                                    .font(.footnote)
+                                    .modifier(SubmitButtonModifier())
+                                
+                            } else {
+                                let index = (VM.viewOptionList.firstIndex(where: {$0 == datum}) ?? 0)
+                                let selectedIndex = (VM.viewOptionList.firstIndex(where: {$0 == view}) ?? 0)
+                                
+                                Button(action: {
+                                    view = datum
+                                }, label: {
+                                    
+                                    if index > selectedIndex {
+                                        Text(datum)
+//                                            .font(.footnote)
+                                            .modifier(ListButtonModifier())
+                                    } else {
+                                        Text(datum)
+//                                            .font(.footnote)
+                                            .modifier(FadedGreenButtonModifier())
+                                    }
+                                })
+                            }
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .font(.footnote)
+                    .fontDesign(.monospaced)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    Rectangle()
+                        .foregroundColor(Color.poolGreen)
+                        .frame(height: 30)
+                        .overlay(
+                            HStack{
+                                Spacer()
+                                Text("Editing")
+                                Spacer()
+                            }
+                        )
                 }
-                    switch view {
+                switch view {
                     case "Info":
-                        info
-                        
-                    case "Customer":
-                        customerView
-                
-                    case "Parts":
-                        part
+                        if VM.isEdit {
+                            editInfo
+                        } else {
+                            info
+                        }
+                        if VM.isEdit {
+                            Button(action: {
+                                VM.isEdit.toggle()
+                            }, label: {
+                                Text("Cancel")
+                            })
+                        }
+                    case "Tasks":
+                        if VM.isEdit {
+                            editTaskView
+                            
+                        } else {
+                            taskView
+                        }
+                    case "Shopping":
+                        if VM.isEdit {
+                            Button(action: {
+                                VM.isEdit.toggle()
+                            }, label: {
+                                Text("Cancel")
+                            })
+                        } else {
+                            shoppingListView
+                        }
                         
                     case "Schedule":
-                        schedule
-                        
-                    case "Review":
-                        review
-                        
+                        if VM.isEdit {
+                            Button(action: {
+                                VM.isEdit.toggle()
+                            }, label: {
+                                Text("Cancel")
+                            })
+                        } else {
+                            schedule
+                        }
                     default:
                         info
-                    }
-  
+                }
+                
             }
         }
-        .navigationTitle("Job Id: \(job.id)")
 
-        .alert(alertMessage, isPresented: $showAlert) {
+        .navigationTitle("Job Id: \(job.internalId)")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
         .task {
- 
+            
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     workingJob = job
                     dateCreated = job.dateCreated
-                    jobTemplate.id = job.jobTemplateId
-                    jobTemplate.name = job.type
-
+                    
                     description = job.description
                     operationStatus = job.operationStatus
                     billingStatus = job.billingStatus
@@ -236,68 +291,34 @@ struct JobDetailView: View {
                     
                     serviceStopIds = job.serviceStopIds
                     admin.id = job.adminId
-                    admin.firstName = job.adminName
-                    
-                    installationParts = job.installationParts
-                    pvcParts = job.pvcParts
-                    electricalParts = job.electricalParts
-                    chemicals = job.chemicals
-                    miscParts = job.miscParts
+                    admin.userName = job.adminName
                     laborCost = String(job.laborCost)
                     print(job.rate)
                     rate = String(job.rate)
                     print(rate)
-                    try await serviceLocationVM.getServiceLocationByCustomerAndLocationId(companyId: company.id, customerId: job.customerId, locationId: job.serviceLocationId)
-                    if let location = serviceLocationVM.serviceLocation {
-                        serviceLocation = location
-                    }
-                    try await bodyOfWaterVM.getSpecificBodyOfWater(companyId: company.id, bodyOfWaterId: job.bodyOfWaterId ?? "0")
-                    if let BOW = bodyOfWaterVM.bodyOfWater {
-                        bodyOfWater = BOW
-                    }
-                    try await equipmentVM.getSinglePieceOfEquipmentWithId(companyId: company.id, equipmentId: job.equipmentId ?? "0")
-                    if let eq = equipmentVM.equipment {
-                        equipment = eq
-                    }
-                    try await servicestopVM.getserviceStopsByJobId(companyId: company.id, jobId: job.id)
-                    serviceStopList = servicestopVM.serviceStops
-                        //DEVELOPER CAN GET RID OF THIS LATER, BUT THIS IS BECAUSE I AM NOT MAKRING ALL OF MY JOBS WITH THE SERVICE STOPS ASSOCIATED WITH THEM, I WILL NEED TO DO THAT LATER
-                    if job.serviceStopIds.count != serviceStopList.count {
-                        for stop in serviceStopList{
-                            try await jobVM.addServiceIdToJob(companyId: company.id, jobId: job.id, serviceStopId: stop.id)
-                        }
-                    }
+                    
+                    try await VM.onLoad(
+                        companyId: company.id,
+                        serviceLocationId: job.serviceLocationId,
+                        job: job
+                    )
                 }
             } catch {
                 print("")
-                print("Job Detail ViewError")
+                print("Job - task - [JobDetailView]")
                 print(error)
                 print("")
             }
-
-            do {
-                if let company = masterDataManager.selectedCompany {
-                    try await settingsVM.getWorkOrderTemplates(companyId: company.id)
-                    try await settingsVM.getSrerviceStopTemplates(companyId: company.id)
-
-                    try await techVM.getAllCompanyTechs(companyId: company.id)
-                } else {
-                    print("No Companies")
-                }
-            } catch {
-                print("Error")
-            }
         }
-        .onChange(of: masterDataManager.selectedWorkOrder, perform: { job1 in
+        .onChange(of: masterDataManager.selectedJob, perform: { job1 in
             Task {
-     
+                
                 do {
-                    if let company = masterDataManager.selectedCompany,let job = job1 {
+                    if let company = masterDataManager.currentCompany,let job = job1 {
                         workingJob = job
                         dateCreated = job.dateCreated
-                        jobTemplate.id = job.jobTemplateId
                         jobTemplate.name = job.type
-
+                        
                         description = job.description
                         operationStatus = job.operationStatus
                         billingStatus = job.billingStatus
@@ -306,46 +327,22 @@ struct JobDetailView: View {
                         
                         serviceStopIds = job.serviceStopIds
                         admin.id = job.adminId
-                        admin.firstName = job.adminName
-                        
-                        installationParts = job.installationParts
-                        pvcParts = job.pvcParts
-                        electricalParts = job.electricalParts
-                        chemicals = job.chemicals
-                        miscParts = job.miscParts
-                        
+                        admin.userName = job.adminName
                         rate = String(job.rate)
                         laborCost = String(job.laborCost)
-                        try await serviceLocationVM.getServiceLocationByCustomerAndLocationId(companyId: company.id, customerId: job.customerId, locationId: job.serviceLocationId)
-                        if let location = serviceLocationVM.serviceLocation {
-                            serviceLocation = location
-                        }
-                        try await bodyOfWaterVM.getSpecificBodyOfWater(companyId: company.id, bodyOfWaterId: job.bodyOfWaterId ?? "0")
-                        if let BOW = bodyOfWaterVM.bodyOfWater {
-                            bodyOfWater = BOW
-                        }
-                        try await equipmentVM.getSinglePieceOfEquipmentWithId(companyId: company.id, equipmentId: job.equipmentId ?? "0")
-                        if let eq = equipmentVM.equipment {
-                            equipment = eq
-                        }
-                        try await jobVM.getPurchaseCost(companyId: company.id, purchaseIds: job.purchasedItemsIds ?? [])
+                        
+                        try await VM.onLoad(companyId: company.id, serviceLocationId: job.serviceLocationId, job: job)
+                        
+                        try await VM.getPurchaseCost(companyId: company.id, purchaseIds: job.purchasedItemsIds ?? [])
                     }
                 } catch {
-                    print("Error")
+                    
+                    print("")
+                    print("Job - masterDataManager.selectedJob - [JobDetailView]")
+                    print(error)
+                    print("")
                 }
-
-                do {
-                    if let company = masterDataManager.selectedCompany {
-                        try await settingsVM.getWorkOrderTemplates(companyId: company.id)
-                        try await settingsVM.getSrerviceStopTemplates(companyId: company.id)
-
-                        try await techVM.getAllCompanyTechs(companyId: company.id)
-                    } else {
-                        print("No Companies")
-                    }
-                } catch {
-                    print("Error")
-                }
+                
             }
             
         })
@@ -355,19 +352,20 @@ struct JobDetailView: View {
         .alert(isPresented:$showDeleteConfirmation) {
             Alert(
                 title: Text("Alert"),
-                message: Text("\(alertMessage)"),
+                message: Text("\(VM.alertMessage)"),
                 primaryButton: .destructive(Text("Delete")) {
                     Task{
-                        if let company = masterDataManager.selectedCompany{
+                        if let company = masterDataManager.currentCompany{
                             do {
-                                        for stop in job.serviceStopIds {
-                                            try await ServiceStopManager.shared.deleteServiceStop(companyId: company.id, serviceStopId: stop)
-                                        }
-                                    
-                                try await jobVM.deleteJob(companyId: company.id, jobId: job.id)
-                                alertMessage = "Deleted"
-                                print(alertMessage)
-                                showAlert = true
+                                try await VM.delete(
+                                    companyId: company.id,
+                                    jobId: job.id,
+                                    serviceStopIds: job.serviceStopIds,
+                                    laborContractIds: job.laborContractIds
+                                )
+                                VM.alertMessage = "Deleted"
+                                print(VM.alertMessage)
+                                VM.showAlert = true
                             } catch {
                                 print(error)
                             }
@@ -380,1058 +378,677 @@ struct JobDetailView: View {
         .onChange(of: customer, perform: { cus in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if cus.id != "" {
-                            try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: customer.id)
-                            serviceLocations = serviceLocationVM.serviceLocations
-                            if serviceLocations.count != 0 {
-                                serviceLocation = serviceLocations.first!
-                            } else {
-                                serviceLocation = ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: "", preText: false)
-                            }
+                            try await VM.onChangeOfCustomer(companyId: company.id, customerId: cus.id)
                         }
                     }
                 } catch {
-                    print("Error")
+                    print("")
+                    print("Job - customer - [JobDetailView]")
+                    print(error)
+                    print("")
                 }
             }
         })
-
+        
         .onChange(of: serviceLocation, perform: { loc in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if loc.id != "" {
-                            try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
-                            bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
-                            
-                            if bodyOfWaterList.count != 0 {
-                                bodyOfWater = bodyOfWaterList.first!
-                            } else {
-                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "")
-                            }
+                            try await VM.onChangeOfServiceLocation(companyId: company.id, serviceLocation: loc)
                         }
                     }
                 } catch {
-                    print("Error")
+                    print("")
+                    print("Job - serviceLocation - [JobDetailView]")
+                    print(error)
+                    print("")
                 }
             }
         })
-        .onChange(of: bodyOfWater,
-                  perform: {
-            BOW in
+        .onChange(of: bodyOfWater,perform: {BOW in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if BOW.id != "" {
-                            try await equipmentVM.getAllEquipmentFromBodyOfWater(companyId: company.id, bodyOfWater: BOW)
-                            equipmentList = equipmentVM.listOfEquipment
-                            
-                            if equipmentList.count != 0 {
-                                equipment = equipmentList.first!
-                            } else {
-                                equipment = Equipment(
-                                    id: "",
-                                    name: "",
-                                    category: .filter,
-                                    make: "",
-                                    model: "",
-                                    dateInstalled: Date(),
-                                    status: .operational,
-                                    needsService: true,
-                                    notes: "",
-                                    customerName: "",
-                                    customerId: "",
-                                    serviceLocationId: "",
-                                    bodyOfWaterId: ""
-                                )
-                            }
+                            try await VM.onChangeOfBodyOfWater(companyId: company.id, bodyOfWater: BOW)
                         }
                     }
                 } catch {
-                    print("Error")
+                    print("")
+                    print("Job - bodyOfWater - [JobDetailView]")
+                    print(error)
+                    print("")
                 }
             }
         })
+        .onChange(of: VM.description, perform: { description in
+                Task{
+                    do {
+                        print(description)
+                        if let company = masterDataManager.currentCompany {
+                                try await VM.updateDescription(companyId: company.id, jobId: job.id)
+                        }
+                    } catch {
+                        print("")
+                        print(error)
+                        print("")
+                    }
+                }
+        })
     }
-    func getTotalParts(installation:[WODBItem], pvc:[WODBItem], electrical:[WODBItem], chems:[WODBItem], misc:[WODBItem])->Double {
-        var total:Double = 0
-            for part in installation {
-                total = part.total + total
-            }
-            for part in pvc {
-                total = part.total + total
-            }
-            for part in electrical {
-                total = part.total + total
-            }
-            for part in chems {
-                total = part.total + total
-            }
-            for part in misc {
-                total = part.total + total
-            }
-        
-        return total
-    }
-    func getTotal(installation:[WODBItem], pvc:[WODBItem], electrical:[WODBItem], chems:[WODBItem], misc:[WODBItem], labor:String)->Double {
-        var total:Double = 0
-        if let labor = Double(labor) {
-            for part in installation {
-                total = part.total + total
-            }
-            for part in pvc {
-                total = part.total + total
-            }
-            for part in electrical {
-                total = part.total + total
-            }
-            for part in chems {
-                total = part.total + total
-            }
-            for part in misc {
-                total = part.total + total
-            }
-            total = total + labor
-        }
-        return total
-    }
+
 }
 
 extension JobDetailView {
-    var review: some View {
+    
+    var info: some View {
         ZStack{
             ScrollView {
-                VStack(alignment: .leading){
-                    VStack(alignment: .leading,spacing: 10){
-                        
-                        Text("Review")
-                            .font(.headline)
-                        HStack{
-                            Text("Admin: \(admin.firstName ?? "") \(admin.lastName ?? "")")
-                            Spacer()
-                            Button(action: {
-                                view = "Info"
-                            }, label: {
-                                Image(systemName: "pencil")
-                            })
-                        }
-                        HStack{
-                            Text("Customer: \(customer.firstName) \(customer.lastName)")
-                            Spacer()
-                            Button(action: {
-                                view = "Customer"
-                            }, label: {
-                                Image(systemName: "pencil")
-                            })
-                        }
-                        Text("Address: \(serviceLocation.address.streetAddress) \(serviceLocation.address.city)")
-                        if bodyOfWater.id == "" {
-                            Text("\(bodyOfWater.name)")
-                        }
-                        if equipment.id == "" {
-                            Text("\(equipment.name)")
-                        }
-                        Text("Equipment: \(equipment.name)")
-                    }
-                    if installationParts.count != 0 || pvcParts.count != 0 || electricalParts.count != 0 || chemicals.count != 0 || miscParts.count != 0 {
-                        VStack(alignment: .leading,spacing: 10){
-                            
-                            Text("Parts")
-                                .font(.headline)
-                            if installationParts.count != 0 {
-                                Text(" Installation Parts: ")
-                                ForEach(installationParts){ datum in
-                                    Text(" -\(datum.name) \(String(datum.quantity)) \(String(datum.total))")
-                                }
-                            }
-                            if pvcParts.count != 0 {
-                                Text(" Installation Parts: ")
-                                ForEach(pvcParts){ datum in
-                                    Text(" -\(datum.name) \(String(datum.quantity)) \(String(datum.total))")
-                                }
-                            }
-                            if electricalParts.count != 0 {
-                                Text(" Installation Parts: ")
-                                ForEach(electricalParts){ datum in
-                                    Text(" -\(datum.name) \(String(datum.quantity)) \(String(datum.total))")
-                                }
-                            }
-                            if chemicals.count != 0 {
-                                Text(" Installation Parts: ")
-                                ForEach(installationParts){ datum in
-                                    Text(" -\(datum.name) \(String(datum.quantity)) \(String(datum.total))")
-                                }
-                            }
-                            if miscParts.count != 0 {
-                                Text(" Installation Parts: ")
-                                ForEach(installationParts){ datum in
-                                    Text(" -\(datum.name) \(String(datum.quantity)) \(String(datum.total))")
-                                }
-                            }
-                        }
-                    }
-                    Rectangle()
-                        .frame(height: 2)
-                    VStack(alignment: .leading,spacing: 10){
-                        Text("Estimate Break down")
-                            .font(.headline)
-                        VStack{
-                            HStack{
-                                Text("Rate")
-                                Spacer()
-                                Text("$\(rate)")
-                            }
-                            HStack{
-                                Text("Labor Cost: ")
-                                Spacer()
-                                Text("$\(laborCost)")
-                            }
-                            HStack{
-                                Text("Estimated Material Cost: ")
-                                Spacer()
-                                Text("$\(String(format:"%2.f",getTotalParts(installation: installationParts, pvc: pvcParts, electrical: electricalParts, chems: chemicals, misc: miscParts)))")
-                            }
-                        }
-                        .padding(.leading,16)
-                    }
-                    Rectangle()
-                        .frame(height: 2)
-                    VStack(alignment: .leading,spacing: 10){
-                        Text("Cost Review")
-                            .font(.headline)
-                        if let purchase = jobVM.purchasedPartCost, let rate = Double(rate), let labor = Double(laborCost) {
-
-                        VStack{
-                            HStack{
-                                Text("Rate")
-                                Spacer()
-                                Text("$\(String(format:"%2.f",rate))")
-
-                            }
-                            HStack{
-                                Text("Ideal Rate: ")
-                                Spacer()
-                                Text("$\(String(format:"%2.f",2.4*(purchase + labor)))")
-                            }
-                            .font(.footnote)
-                            .padding(.horizontal,8)
-                            HStack{
-                                Text("Total Cost: ")
-                                Spacer()
-                                Text("$\(String(format:"%2.f",purchase + labor))")
-
-                            }
-                            HStack{
-                                Spacer()
-                                Button(action: {
-                                    self.showCostBreakDown.toggle()
-                                }, label: {
-                                    
-                                    Text("Show Break Down")
-                                        .font(.footnote)
-                                    Image(systemName: showCostBreakDown ? "chevron.down" : "chevron.forward")
-                                })
-                            }
-                            if showCostBreakDown {
-                                
+                VStack(alignment: .leading,spacing: 8){
+                    
+                    if job.otherCompany {
+                        if let currentCompany = masterDataManager.currentCompany {
+                            if currentCompany.id == job.receiverId {
                                 HStack{
-                                    Text("Labor Cost: ")
+                                    if let otherCompany = VM.senderCompany {
+                                        CompanyCardView(company: otherCompany)
+                                    }
                                     Spacer()
-                                    Text("$\(laborCost)")
-                                }
-                                
-                                HStack{
-                                    Text("Purchases Cost: ")
-                                    Spacer()
-                                    Text("$\(String(format:"%2.f",purchase))")
-                                    
-                                }
-                            }
-                            Rectangle()
-                                .frame(height: 1)
-                                HStack{
-                                    Text("Profit: ")
-                                    Spacer()
-                                    Text("$\(String(format:"%2.f",rate - purchase - labor))")
-                                }
-                            }
-                        .padding(.leading,16)
-                        }
-                    }
-                }
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Spacer()
-                    Button(action: {
-                        showDeleteConfirmation.toggle()
-                    }, label: {
-                        Text("Delete")
-                            .foregroundColor(Color.white)
-                            .padding(.horizontal,8)
-                            .padding(.vertical,3)
-                            .background(Color.red)
-                            .cornerRadius(8)
-                    })
-                }
-            }
-        }
-        .padding(5)
-        .cornerRadius(5)
-        .border(Color.realYellow)
-    }
-    var newServiceStopForm: some View {
-        VStack{
-            HStack{
-                Text("Service Date: ")
-                DatePicker(selection: $serviceDate, displayedComponents: .date) {
-                }
-            }
-            HStack{
-                Text("Service Type")
-                    .bold(true)
-                Picker("Service Stop Type", selection: $serviceStopTemplate) {
-                    Text("Pick Type").tag(ServiceStopTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), color: ""))
-                    ForEach(settingsVM.serviceStopTemplates){ template in
-                        Text(template.name).tag(template)
-                    }
-                }
-            }
-            VStack{
-                HStack{
-                    Text("\(serviceLocation.address.streetAddress)")
-                }
-                HStack{
-                    Text("\(serviceLocation.address.city)")
-                    Text("\(serviceLocation.address.state)")
-                    Text("\(serviceLocation.address.zip)")
-                    
-                }
-            }
-            HStack{
-                Text("Tech")
-                    .bold(true)
-                Picker("Tech", selection: $tech) {
-                    Text("Pick Tech").tag(DBUser(id: "",exp: 0))
-                    ForEach(techVM.techList){ template in
-                        let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
-                        Text(fullName).tag(template)
-                    }
-                }
-            }
-            Toggle(isOn: $includeDosages, label: {
-                Text("Include Dosages")
-            })
-            Toggle(isOn: $includeReadings, label: {
-                Text("Include Readings")
-            })
-            HStack{
-                Text("Duration: ")
-                TextField(
-                    "Duration",
-                    text: $duration,
-                    axis: .vertical
-                    
-                )
-                .padding(5)
-                .background(Color.gray.opacity(0.5))
-                .foregroundColor(Color.basicFontText)
-                .cornerRadius(5)
-                .padding(5)
-            }
-            HStack{
-                Text("Description: ")
-                TextField(
-                    "Service Stop Description",
-                    text: $serviceStopDescription,
-                    axis: .vertical
-                )
-                .padding(5)
-                .background(Color.gray.opacity(0.5))
-                .foregroundColor(Color.basicFontText)
-                .cornerRadius(5)
-                .padding(5)
-            }
-            Button(action: {
-                Task{
-                    do {
-                        if let company = masterDataManager.selectedCompany {
-                            let customerFullName = customer.firstName + " " + customer.lastName
-                            let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
-                            let serviceStopId = try await servicestopVM.addNewServiceStopWithValidation(companyId: company.id,
-                                                                                    typeId: jobTemplate.id,
-                                                                                    customerName: customerFullName,
-                                                                                    customerId: customer.id,
-                                                                                    address: serviceLocation.address,
-                                                                                    dateCreated: Date(),
-                                                                                    serviceDate: serviceDate,
-                                                                                    duration: duration,
-                                                                                    rate: rate,
-                                                                                    tech: techFullName,
-                                                                                    techId: tech.id,
-                                                                                    recurringServiceStopId: "",
-                                                                                    description: serviceStopDescription,
-                                                                                    serviceLocationId: serviceLocation.id,
-                                                                                    type: jobTemplate.name,
-                                                                                    typeImage: jobTemplate.typeImage ?? "",
-                                                                                    jobId: job.id,
-                                                                                    finished: false,
-                                                                                    skipped: false,
-                                                                                    invoiced: false,
-                                                                                    checkList: checkList,
-                                                                                    includeReadings: includeReadings,
-                                                                                    includeDosages: includeDosages)
-                            try await jobVM.addServiceIdToJob(companyId: company.id, jobId: job.id, serviceStopId: serviceStopId)
-                            operationStatus = .estimatePending
-                            
-                            billingStatus = .estimate
-                            alertMessage = "Successfully Added Service Stop"
-                            showAlert = true
-                            showAddNewServiceStop.toggle()
-                        }
-                    } catch {
-                        print(error)
-                    }
-                }
-            }, label: {
-                Text("Add Service stop")
-                    .padding(8)
-                    .background(Color.poolBlue)
-                    .foregroundColor(Color.basicFontText)
-                    .cornerRadius(8)
-            })
-       
-        }
-    }
-    var schedule: some View {
-        ZStack{
-            ScrollView{
-                VStack(alignment: .leading){
-                    if serviceStopList.count == 0 {
-                        Text("Schedule First Service Stop")
-                        
-                        newServiceStopForm
-                    } else {
-                        HStack{
-                            Text("Stops: \(serviceStopList.count)")
-                            Spacer()
-                            Button(action: {
-                                showAddNewServiceStop.toggle()
-                            }, label: {
-                                Text("Add Service Stop")
-                                    .padding(8)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(8)
-                            })
-                            .sheet(isPresented: $showAddNewServiceStop, content: {
-                                newServiceStopForm
-                            })
-                        }
-                        ForEach(serviceStopList){ stop in
-                            HStack{
-                                Text("\(stop.type) - \(fullDate(date:stop.dateCreated)) - ")
-                                Text("\(stop.finished ? "Finished" : "Unfinished")")
-                                    .foregroundColor(stop.finished ? Color.green : Color.red)
-                            }
-                        }
-                    }
-                    
-                }
-            }
-            VStack{
-        Spacer()
-                HStack{
-                    Spacer()
-                    Button(action: {
-                        view = "Review"
-                    }, label: {
-                        Text("Next")
-                    })
-                    .padding(5)
-                    .background(Color.poolBlue)
-                    .foregroundColor(Color.basicFontText)
-                    .cornerRadius(5)
-                    .padding(5)
-                }
-            }
-    }
-        .padding(5)
-        .cornerRadius(5)
-        .border(Color.realYellow)
-    }
-    var part: some View {
-        ZStack{
-            ScrollView{
-                VStack(spacing: 10){
-                    Text("Shopping List Items")
-                        .font(.title)
-                    Rectangle()
-                        .frame(height: 1)
-                    
-                    VStack(alignment: .leading){
-                        HStack{
-                            Text("Installation Parts:")
-                                .font(.headline)
-                            Spacer()
-                            Button(action: {
-                                showInstallationParts.toggle()
-                            }, label: {
-                                Text("Add")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(8)
-                            })
-                            .sheet(isPresented: $showInstallationParts,onDismiss: {
-                                Task{
-                                    if let company = masterDataManager.selectedCompany {
-                                        do {
-                                            try await jobVM.updateInstallationJobParts(companyId: company.id, jobId: job.id, installationPart: installationPart)
-                                            installationParts.append(installationPart)
-                                        } catch {
-                                            print(error)
-                                        }
+                                    if let laborContract = VM.laborContract {
+                                        NavigationLink(value: Route.laborContractDetailView(dataService: dataService, contract: laborContract), label: {
+                                            Text("Labor Contract Details")
+                                                .modifier(RedLinkModifier())
+                                        })
                                     }
                                 }
-                            }, content: {
-                                jobItemPicker(jobDBItems: $installationPart, category: "Equipment")
-                                
-                            })
-                        }
-                        ForEach(installationParts){ datum in
-                            Divider()
-                            HStack{
-                                Text("\(datum.name)")
-                                Text("\(String(datum.quantity))")
-                                Text("\(String(datum.cost))")
-                                Button(action: {
-                                    categoryToDeleteFrom = "installationParts"
-                                    partToDelete = datum
-                                    alertMessage = "Please Confirm Delete"
-                                    Task{
-                                        if let company = masterDataManager.selectedCompany {
-                                            if categoryToDeleteFrom != "" {
-                                                do {
-                                                    print("Deleting...")
-                                                    print(partToDelete)
-                                                    try await jobVM.deletePart(companyId: company.id, jobId: job.id, part: partToDelete,category:categoryToDeleteFrom)
-                                                    partToDelete = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-                                                    categoryToDeleteFrom = ""
-                                                } catch {
-                                                    print(error)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }, label: {
-                                    Image(systemName: "trash.circle.fill")
-                                })
                             }
                         }
                     }
-                    VStack(alignment: .leading){
-                        HStack{
-                            Text("PVC Parts:")
-                                .font(.headline)
-                            
-                            Spacer()
-                            Button(action: {
-                                showpvcParts.toggle()
-                            }, label: {
-                                Text("Add")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
-                            .sheet(isPresented: $showpvcParts,onDismiss: {
-                                Task{
-                                    if let company = masterDataManager.selectedCompany {
-                                        do {
-                                            try await jobVM.updatePVCobParts(companyId: company.id, jobId: job.id, pvc: pvcPart)
-                                            pvcParts.append(pvcPart)
-                                        } catch {
-                                            print(error)
-                                        }
-                                    }
-                                }
-                            },  content: {
-                                jobItemPicker(jobDBItems: $pvcPart, category: "PVC")
-                            })
-                        }
-                        ForEach(pvcParts){ datum in
-                            Divider()
-                            
-                            HStack{
-                                Text("\(datum.name)")
-                                Text("\(String(datum.quantity))")
-                                Text("\(String(datum.cost))")
-                                Button(action: {
-                                    categoryToDeleteFrom = "pvcParts"
-                                    partToDelete = datum
-                                    alertMessage = "Please Confirm Delete"
-                                    
-                                    Task{
-                                        if let company = masterDataManager.selectedCompany {
-                                            if categoryToDeleteFrom != "" {
-                                                do {
-                                                    print("Deleting...")
-                                                    print(partToDelete)
-                                                    try await jobVM.deletePart(companyId: company.id, jobId: job.id, part: partToDelete,category:categoryToDeleteFrom)
-                                                    partToDelete = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-                                                    categoryToDeleteFrom = ""
-                                                } catch {
-                                                    print(error)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }, label: {
-                                    Image(systemName: "trash.circle.fill")
-                                })
-                            }
-                        }
-                    }
-                    VStack(alignment: .leading){
-                        HStack{
-                            Text("Electrical Parts:")
-                                .font(.headline)
-                            Spacer()
-                            Button(action: {
-                                showelectricalParts.toggle()
-                            }, label: {
-                                Text("Add")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
-                            .sheet(isPresented: $showelectricalParts,onDismiss: {
-                                Task{
-                                    if let company = masterDataManager.selectedCompany {
-                                        do {
-                                            try await jobVM.updatePVCobParts(companyId: company.id, jobId: job.id, pvc: electricalPart)
-                                            electricalParts.append(electricalPart)
-                                        } catch {
-                                            print(error)
-                                        }
-                                    }
-                                }
-                            },  content: {
-                                jobItemPicker(jobDBItems: $electricalPart, category: "Electrical")
-                            })
-                        }
-                        ForEach(electricalParts){ datum in
-                            Divider()
-                            
-                            HStack{
-                                Text("\(datum.name)")
-                                Text("\(String(datum.quantity))")
-                                Text("\(String(datum.cost))")
-                                Button(action: {
-                                    categoryToDeleteFrom = "electricalParts"
-                                    partToDelete = datum
-                                    alertMessage = "Please Confirm Delete"
-                                    
-                                    Task{
-                                        if let company = masterDataManager.selectedCompany {
-                                            if categoryToDeleteFrom != "" {
-                                                do {
-                                                    print("Deleting...")
-                                                    print(partToDelete)
-                                                    try await jobVM.deletePart(companyId: company.id, jobId: job.id, part: partToDelete,category:categoryToDeleteFrom)
-                                                    partToDelete = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-                                                    categoryToDeleteFrom = ""
-                                                } catch {
-                                                    print(error)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }, label: {
-                                    Image(systemName: "trash.circle.fill")
-                                })
-                            }
-                        }
-                    }
-                    VStack(alignment: .leading){
-                        HStack{
-                            Text("Chemicals:")
-                                .font(.headline)
-                            Spacer()
-                            Button(action: {
-                                showchemicals.toggle()
-                            }, label: {
-                                Text("Add")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
-                            .sheet(isPresented: $showchemicals,onDismiss: {
-                                Task{
-                                    if let company = masterDataManager.selectedCompany {
-                                        do {
-                                            try await jobVM.updateChemicalsJobParts(companyId: company.id, jobId: job.id, chemical: chemical)
-                                            chemicals.append(chemical)
-                                        } catch {
-                                            print(error)
-                                        }
-                                    }
-                                }
-                            },  content: {
-                                jobItemPicker(jobDBItems: $chemical, category: "Chems")
-                            })
-                        }
-                        ForEach(chemicals){ datum in
-                            Divider()
-                            
-                            HStack{
-                                Text("\(datum.name)")
-                                Text("\(String(datum.quantity))")
-                                Text("\(String(datum.cost))")
-                                Button(action: {
-                                    categoryToDeleteFrom = "chemicals"
-                                    partToDelete = datum
-                                    alertMessage = "Please Confirm Delete"
-                                    
-                                    Task{
-                                        if let company = masterDataManager.selectedCompany {
-                                            if categoryToDeleteFrom != "" {
-                                                do {
-                                                    print("Deleting...")
-                                                    print(partToDelete)
-                                                    try await jobVM.deletePart(companyId: company.id, jobId: job.id, part: partToDelete,category:categoryToDeleteFrom)
-                                                    partToDelete = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-                                                    categoryToDeleteFrom = ""
-                                                } catch {
-                                                    print(error)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                }, label: {
-                                    Image(systemName: "trash.circle.fill")
-                                })
-                            }
-                        }
-                    }
-                    VStack(alignment: .leading){
-                        HStack{
-                            Text("Misc:")
-                                .font(.headline)
-                            
-                            Spacer()
-                            Button(action: {
-                                showmiscParts.toggle()
-                            }, label: {
-                                Text("Add")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
-                            .sheet(isPresented: $showmiscParts,onDismiss: {
-                                Task{
-                                    if let company = masterDataManager.selectedCompany {
-                                        do {
-                                            try await jobVM.updateMiscJobParts(companyId: company.id, jobId: job.id, misc: miscPart)
-                                            miscParts.append(miscPart)
-                                        } catch {
-                                            print(error)
-                                        }
-                                    }
-                                }
-                            },  content: {
-                                jobItemPicker(jobDBItems: $miscPart, category: "")
-                            })
-                        }
-                        ForEach(miscParts){ datum in
-                            Divider()
-                            HStack{
-                                Text("\(datum.name)")
-                                Text("\(String(datum.quantity))")
-                                Text("\(String(datum.cost))")
-                                Button(action: {
-                                    categoryToDeleteFrom = "miscParts"
-                                    partToDelete = datum
-                                    alertMessage = "Please Confirm Delete"
-                                    
-                                    Task{
-                                        if let company = masterDataManager.selectedCompany {
-                                            if categoryToDeleteFrom != "" {
-                                                do {
-                                                    print("Deleting...")
-                                                    print(partToDelete)
-                                                    try await jobVM.deletePart(companyId: company.id, jobId: job.id, part: partToDelete,category:categoryToDeleteFrom)
-                                                    partToDelete = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-                                                    categoryToDeleteFrom = ""
-                                                } catch {
-                                                    print(error)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }, label: {
-                                    Image(systemName: "trash.circle.fill")
-                                })
-                            }
-                        }
-                    }
-                    Text("Purchased Items")
-                        .font(.title)
-                    
-                    Rectangle()
-                        .frame(height: 1)
-                    VStack{
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                self.showPurchasedItemSelector.toggle()
-                            }, label: {
-                                Text("Select Purchased Items")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(8)
-                            })
-                            .sheet(isPresented: $showPurchasedItemSelector, content: {
-                                PurchaseItemPicker()
-                            })
-                        }
-                        if let array = job.purchasedItemsIds {
-                            ForEach(array,id:\.self) { id in
-                                PurchaseItemFromIdCardView(id:id)
-                            }
-                        }
-                    }
-                }
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Spacer()
-                    Button(action: {
-                        view = "Schedule"
-                    }, label: {
-                        Text("Next")
-                    })
-                    .padding(5)
-                    .background(Color.poolBlue)
-                    .foregroundColor(Color.basicFontText)
-                    .cornerRadius(5)
-                    .padding(5)
-                }
-            }
-    }
-        .padding(5)
-        .cornerRadius(5)
-        .border(Color.realYellow)
-    }
-    var customerView: some View {
-        
-        ZStack{
-            ScrollView{
-                VStack(alignment: .leading,spacing:16){
                     HStack{
-                        Text("Customer")
+                        Text("Date Created: ")
+                            .bold(true)
+                        Spacer()
+                        Text(fullDate(date: job.dateCreated))
+                    }
+                    HStack{
+                        Text("Customer: ")
                             .bold(true)
                         Spacer()
                         Text("\(customer.firstName) \(customer.lastName)")
                     }
                     HStack{
-                        Text("Service Location")
+                        Text("Admin: ")
                             .bold(true)
                         Spacer()
-                        Text("\(serviceLocation.address.streetAddress)")
+                        Text(job.adminName)
                         
+                        Button(action: {
+                            view = "Info"
+                        }, label: {
+                            Image(systemName: "pencil")
+                        })
                     }
                     HStack{
-                        Text("Body Of Water")
+                        Text("Operation: ")
                             .bold(true)
                         Spacer()
-                        if bodyOfWater.id == "" {
-                            Text("\(bodyOfWater.name)")
-                            Button(action: {
-                                bodyOfWaterPicker.toggle()
-                            }, label: {
-                                Image(systemName: "gobackward")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
-                        } else {
-                            Button(action: {
-                                bodyOfWaterPicker.toggle()
-                            }, label: {
-                                Text("Add")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
+                        Text(job.operationStatus.rawValue)
+                    }
+                    HStack{
+                        Text("Billing: ")
+                            .bold(true)
+                        Spacer()
+                        Text(job.billingStatus.rawValue)
+                    }
+                    HStack{
+                        Text("Address: ")
+                            .bold(true)
+                        Spacer()
+                        if let location = VM.serviceLocation {
+                            Text("\(location.address.streetAddress)")
                         }
                     }
-                    .sheet(isPresented: $bodyOfWaterPicker, content: {
-                        Text("Developer Create Body Of Water Picker")
-                        
-                    })
                     HStack{
-                        Text("Equipment")
+                        Text("Description:")
                             .bold(true)
                         Spacer()
-                        if equipment.id == "" {
-                            Text("\(equipment.name)")
-                            Button(action: {
-                                equipmentPicker.toggle()
-                            }, label: {
-                                Image(systemName: "gobackward")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
-                        } else {
-                            Button(action: {
-                                equipmentPicker.toggle()
+                    }
+                    TextField(
+                        "Description",
+                        text: $VM.description,
+                        axis:.vertical
+                    )
+                    .lineLimit(5, reservesSpace: true)
+                    .modifier(PlainTextFieldModifier())
+                    VStack(alignment: .leading){
+                        Rectangle()
+                            .frame(height: 2)
+                        VStack(alignment: .leading,spacing: 10){
+                            HStack{
+                                Text("Estimate Break down")
+                                    .font(.headline)
+                                Spacer()
+                                Button(action: {
+                                    VM.showEstimate.toggle()
+                                }, label: {
+                                    HStack{
+                                        if VM.showEstimate {
+                                            
+                                            Text("Hide Estiamte")
+                                            Image(systemName: "chevron.up")
+                                        } else {
+                                            Text("Show Estiamte")
+                                            Image(systemName: "chevron.down")
+                                        }
+                                    }
+                                    .modifier(RedLinkModifier())
+                                })
                                 
-                            }, label: {
-                                Text("Add")
-                                    .padding(.horizontal,8)
-                                    .padding(.vertical,3)
-                                    .background(Color.poolBlue)
-                                    .foregroundColor(Color.basicFontText)
-                                    .cornerRadius(3)
-                            })
+                            }
+                            if VM.showEstimate {
+                                VStack(alignment:.leading){
+                                    HStack{
+                                        if let rate = Double(rate), let laborCost = Double(laborCost), let shoppingListCost = VM.shoppingListCost, let shoppingListPrice = VM.shoppingListPrice {
+                                            Text("Ideal Rate")
+                                            Spacer()
+                                            Text("\(Double((2.4*laborCost) + shoppingListPrice)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                        }
+                                    }
+                                    Divider()
+                                    HStack{
+                                        if let updatedLaborCost = VM.updatedLaborCost {
+                                            Button(action: {
+                                                VM.showLaborCostBreakDown.toggle()
+                                            }, label: {
+                                                Image(systemName: "chevron.down")
+                                            })
+                                            .sheet(isPresented: $VM.showLaborCostBreakDown, content: {
+                                                VStack(alignment:.leading){
+                                                    ForEach(VM.jobTaskList){ item in
+                                                        HStack{
+                                                            Text("\(String(VM.jobTaskList.firstIndex(where:{$0 == item})! + 1)). \(item.name) ")
+                                                            Spacer()
+                                                            Text("\(Double(item.contractedRate)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                                        }
+                                                    }
+                                                }
+                                                .padding(8)
+                                                .presentationDetents([.medium])
+                                            })
+                                            Text("Labor Cost: ")
+                                            Spacer()
+                                            Text("\(updatedLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                        }
+                                    }
+                                    .padding(8)
+                                    HStack{
+                                        if let employeeLaborCost = VM.employeeLaborCost {
+                                            Text("\(displayMinAsMinAndHour(min: Int(VM.employeeHours*60))) x \(VM.employeeHourlyRate/100, format: .currency(code: "USD").precision(.fractionLength(2))) = \(employeeLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                                .lineLimit(1)
+                                        }
+                                    }
+                                    .padding(.horizontal,16)
+                                    HStack{
+                                        if let shoppingListCost = VM.shoppingListCost {
+                                            Button(action: {
+                                                VM.showMaterialCostBreakDown.toggle()
+                                            }, label: {
+                                                Image(systemName: "chevron.down")
+                                            })
+                                            .sheet(isPresented: $VM.showMaterialCostBreakDown, content: {
+                                                VStack(alignment:.leading){
+                                                    ForEach(VM.shoppingItemList){ item in
+                                                        HStack{
+                                                            Text("\(String(VM.shoppingItemList.firstIndex(where:{$0 == item})! + 1 )). \(item.name)")
+                                                            Spacer()
+                                                            Text("1")
+                                                        }
+                                                    }
+                                                }
+                                                .padding(8)
+                                                .presentationDetents([.medium])
+                                            })
+                                            Text("Estimated Material Cost: ")
+                                            Spacer()
+                                            Text("\(shoppingListCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                        }
+                                    }
+                                    .padding(8)
+                                    Divider()
+                                    HStack{
+                                        if let laborCost = Double(laborCost), let shoppingListCost = VM.shoppingListCost, let shoppingListPrice = VM.shoppingListPrice {
+                                            Text("Ideal Profit: ")
+                                            Spacer()
+                                            let idealRate = Double((2.4*laborCost) + shoppingListPrice)
+                                            Text("\((idealRate-laborCost-shoppingListCost)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                        }
+                                    }
+                                }
+                                .padding(.leading,16)
+                                
+                                .fontDesign(.monospaced)
+                            }
+                        }
+                        Rectangle()
+                            .frame(height: 2)
+                        VStack(alignment: .leading,spacing: 10){
+                            Text("Cost Review")
+                                .font(.headline)
+                            VStack{
+                                HStack{
+                                    if let rate = Double(rate){
+                                        Text("Rate")
+                                        Spacer()
+                                        Text("\(rate/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                    }
+                                }
+                                Divider()
+                                HStack{
+                                    if let updatedLaborCost = VM.updatedLaborCost {
+                                        Text("Labor Cost: ")
+                                        Spacer()
+                                        Text("\(updatedLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                    }
+                                }
+                                HStack{
+                                    if let shoppingListCost = VM.shoppingListCost {
+                                        Text("Estimated Material Cost: ")
+                                        Spacer()
+                                        Text("\(shoppingListCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                    }
+                                }
+                                Divider()
+                                HStack{
+                                    if let rate = Double(rate), let laborCost = Double(laborCost),let shoppingListCost = VM.shoppingListCost {
+                                        Text("Profit: ")
+                                        Spacer()
+                                        Text("\((rate-laborCost-shoppingListCost)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                    }
+                                }
+                            }
+                            .padding(.leading,16)
+//                            if let purchase = VM.purchasedPartCost, let rate = Double(rate), let labor = Double(laborCost) {
+//                                
+//                                VStack{
+//                                    HStack{
+//                                        Text("Rate")
+//                                        Spacer()
+//                                        Text("\(Double(rate)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+//
+//                                    }
+//                                    HStack{
+//                                        Text("Ideal Rate: ")
+//                                        Spacer()
+//                                        Text("\(Double(2.4*(purchase + labor))/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+//
+//                                    }
+//                                    .font(.footnote)
+//                                    .padding(.horizontal,8)
+//                                    HStack{
+//                                        Text("Total Cost: ")
+//                                        Spacer()
+//                                        Text("\(Double(purchase + labor)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+//
+//                                    }
+//                                    HStack{
+//                                        Spacer()
+//                                        Button(action: {
+//                                            self.showCostBreakDown.toggle()
+//                                        }, label: {
+//                                            
+//                                            Text("Show Break Down")
+//                                                .font(.footnote)
+//                                            Image(systemName: showCostBreakDown ? "chevron.down" : "chevron.forward")
+//                                        })
+//                                    }
+//                                    if showCostBreakDown {
+//                                        
+//                                        HStack{
+//                                            Text("Labor Cost: ")
+//                                            Spacer()
+//                                            Text("\(Double(laborCost)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+//
+//                                        }
+//                                        
+//                                        HStack{
+//                                            Text("Purchases Cost: ")
+//                                            Spacer()
+//                                            Text("$\(String(format:"%2.f",purchase))")
+//                                            
+//                                        }
+//                                    }
+//                                    Rectangle()
+//                                        .frame(height: 1)
+//                                    HStack{
+//                                        Text("Profit: ")
+//                                        Spacer()
+//                                        Text("$\(String(format:"%2.f",rate - purchase - labor))")
+//                                    }
+//                                }
+//                                .padding(.leading,16)
+//                            }
                         }
                     }
-                    .sheet(isPresented: $equipmentPicker, content: {
-                        Text("Developer Create Equipment Picker")
-                    })
+
                 }
+                .padding(5)
+                Text("s")
+                    .padding(16)
+                    .foregroundColor(Color.clear)
             }
             VStack{
                 Spacer()
-                HStack{
-                    Spacer()
-                    Button(action: {
-                        view = "Parts"
-                    }, label: {
-                        Text("Next")
-                    })
-                    .padding(5)
-                    .background(Color.poolBlue)
-                    .foregroundColor(Color.basicFontText)
-                    .cornerRadius(5)
-                    .padding(5)
+                if job.otherCompany {
+                    if let currentCompany = masterDataManager.currentCompany {
+                        if currentCompany.id == job.senderId {
+                            senderCompanyBillingInfo
+                        } else {
+                            //If you get sent JOb from other company you  dont get to send invoices and estiamtes
+                            HStack{
+                                
+                                Button(action: {
+                                    Task{
+                                        do {
+                                            if let company = masterDataManager.currentCompany {
+                                                try await VM.markJobAsFinished(
+                                                    companyId: company.id,
+                                                    job: job
+                                                )
+                                                VM.alertMessage = "Finished"
+                                                VM.showAlert.toggle()
+                                            }
+                                        } catch {
+                                            print("")
+                                            print("Job - markJobAsFinished - [JobDetailView]")
+                                            print(error)
+                                            print("")
+                                        }
+                                    }
+                                }, label: {
+                                    if VM.operationStatus == .finished {
+                                        Text("Finished")
+                                            .modifier(SubmitButtonModifier())
+                                    } else {
+                                        Text("Finish")
+                                            .modifier(ListButtonModifier())
+                                    }
+                                })
+                            }
+                        }
+                    }
+                } else {
+                    senderCompanyBillingInfo
                 }
             }
         }
         .padding(5)
-        .cornerRadius(5)
-        .border(Color.realYellow)
-
     }
-    var info: some View {
+    var senderCompanyBillingInfo: some View{
+            HStack{
+                Button(action: {
+                    showInfoOptions.toggle()
+                }, label: {
+                    Text("More")
+                        .modifier(ListButtonModifier())
+                })
+                .sheet(isPresented: $showInfoOptions, onDismiss: {
+                    
+                }, content: {
+                    VStack{
+                        Button(action: {
+                            Task{
+                                do {
+                                    if let company = masterDataManager.currentCompany {
+                                        try await VM.sendEstiamteToCustomer(
+                                            companyId: company.id,
+                                            job: job
+                                        )
+                                        VM.alertMessage = "Estimate Sent To Customer"
+                                        VM.showAlert.toggle()
+                                    }
+                                } catch {
+                                    print("")
+                                    print("Job - sendEstiamteToCustomer - [JobDetailView]")
+                                    print(error)
+                                    print("")
+                                }
+                            }
+                        }, label: {
+                            Text("Send Estimate")
+                        })
+                        .modifier(ListButtonModifier())
+                        
+                        Button(action: {
+                            VM.isPresentingMarkEstiamteAsAccepted.toggle()
+                        }, label: {
+                            Text("Mark Estimate As Accepted")
+                        })
+                        .modifier(ListButtonModifier())
+                        .sheet(isPresented: $VM.isPresentingMarkEstiamteAsAccepted, onDismiss: {
+                            
+                        }, content: {
+                            manualEstimateAcceptInfo
+                        })
+                        
+                        Button(action: {
+                            Task{
+                                do {
+                                    if let company = masterDataManager.currentCompany {
+                                        if VM.billingStatus == .invoiced {
+                                            if let type = VM.invoiceType {
+                                                if type == .manual {
+                                                    print("Resetting Invoice Info")
+                                                    try await VM.markJobAsNotInvoiced(
+                                                        companyId: company.id,
+                                                        job: job
+                                                    )
+                                                    VM.alertMessage = "Invoiced"
+                                                    VM.showAlert.toggle()
+                                                }
+                                            }
+                                        } else {
+                                            print("Presenting Invoice Info")
+                                            VM.isPresentingMarkJobAsInvoiced.toggle()
+                                        }
+                                    }
+                                }
+                            }
+                        }, label: {
+                            if VM.billingStatus == .invoiced {
+                                HStack{
+                                    Text("Invoiced")
+                                }
+                                .modifier(SubmitButtonModifier())
+                            } else {
+                                HStack{
+                                    Text("Mark As Invoiced")
+                                }
+                                .modifier(ListButtonModifier())
+                            }
+                        })
+                        .sheet(isPresented: $VM.isPresentingMarkJobAsInvoiced, onDismiss: {
+                        }, content: {
+                            manualInvoicedInfo
+                        })
+                        
+                        Button(action: {
+                            showDeleteConfirmation.toggle()
+                        }, label: {
+                            Text("Delete")
+                                .modifier(DismissButtonModifier())
+                        })
+                    }
+                    .presentationDetents([.fraction(0.4),.large])
+                })
+                Spacer()
+                if VM.operationStatus == .finished {
+                    Button(action: {
+                        print("Show Accepted Invoice Details")
+                        
+                    }, label: {
+                            if VM.billingStatus == .invoiced {
+                                HStack{
+                                    
+                                    Text("Invoiced")
+                                    Image(systemName: "checkmark.circle.fill")
+
+                                }
+                                    .modifier(SubmitButtonModifier())
+                            } else {
+                                HStack{
+                                    Text("Invoice")
+                                    Image(systemName: "circle")
+                                }
+                                .modifier(ListButtonModifier())
+                            }
+                    })
+                }
+                Button(action: {
+                    Task{
+                        do {
+                            if let company = masterDataManager.currentCompany {
+                                if VM.operationStatus == .finished {
+                                    try await VM.markJobAsUnFinished(
+                                        companyId: company.id,
+                                        job: job
+                                    )
+                                    VM.alertMessage = "Finished"
+                                    VM.showAlert.toggle()
+                                } else {
+                                    
+                                    try await VM.markJobAsFinished(
+                                        companyId: company.id,
+                                        job: job
+                                    )
+                                    VM.alertMessage = "Finished"
+                                    VM.showAlert.toggle()
+                                }
+                            }
+                        } catch {
+                            print("")
+                            print("Job - markJobAsFinished - [JobDetailView]")
+                            print(error)
+                            print("")
+                        }
+                    }
+                }, label: {
+                    if VM.operationStatus == .finished {
+                            HStack{
+                                Text("Finished")
+                                Image(systemName: "checkmark.circle.fill")
+                            }
+                            .modifier(SubmitButtonModifier())
+                    } else {
+                        HStack{
+                            Text("Finish")
+                            Image(systemName: "circle")
+                        }
+                            .modifier(ListButtonModifier())
+                    }
+                })
+            }
+            .padding(.horizontal,8)
+    }
+    var editInfo: some View {
         ZStack{
             ScrollView {
-            VStack(alignment: .leading){
-                HStack{
-                    Text("Admin")
-                        .bold(true)
-                    Picker("Admin", selection: $admin) {
-                        Text("Pick Admin").tag(DBUser(id: "",exp: 0))
-                        ForEach(techVM.techList){ template in
-                            let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
-                            Text(fullName).tag(template)
+                VStack(alignment: .leading,spacing: 8){
+                    HStack{
+                        Text("Admin")
+                            .bold(true)
+                        Picker("Admin", selection: $admin) {
+                            Text("Pick Admin").tag( CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .contractor))
+                            ForEach(VM.techList){ user in
+                                Text(user.userName).tag(user)
+                            }
                         }
                     }
-                }
-                
-                HStack{
-                    Text("Job Type")
-                        .bold(true)
-                    Picker("Job Type", selection: $jobTemplate) {
-                        Text("Pick Type").tag(JobTemplate(id: "", name: ""))
-                        ForEach(settingsVM.jobTemplates){ template in
-                            Text(template.name).tag(template)
+                    HStack{
+                        Text("Job Type")
+                            .bold(true)
+                        Picker("Job Type", selection: $jobTemplate) {
+                            Text("Pick Type").tag(JobTemplate(id: "", name: ""))
+                            ForEach(VM.jobTemplates){ template in
+                                Text(template.name).tag(template)
+                            }
                         }
                     }
-                }
-                HStack{
-                    Text("Operation")
-                        .bold(true)
-                    Picker("Operation", selection: $operationStatus) {
-                        ForEach(JobOperationStatus.allCases,id: \.self){ status in
-                            Text(status.rawValue).tag(status)
+                    HStack{
+                        Text("Operation: ")
+                            .bold(true)
+                        Picker("Operation", selection: $operationStatus) {
+                            ForEach(JobOperationStatus.allCases,id: \.self){ status in
+                                Text(status.rawValue).tag(status)
+                            }
                         }
                     }
-                }
-                HStack{
-                    Text("Billing")
-                        .bold(true)
-                    Picker("Billing", selection: $billingStatus) {
-                        ForEach(JobBillingStatus.allCases,id: \.self){ status in
-                            Text(status.rawValue).tag(status)
+                    HStack{
+                        Text("Billing: ")
+                            .bold(true)
+                        Picker("Billing", selection: $billingStatus) {
+                            ForEach(JobBillingStatus.allCases,id: \.self){ status in
+                                Text(status.rawValue).tag(status)
+                            }
                         }
                     }
-                }
-                
-                HStack{
-                    Text("Rate")
-                        .bold(true)
-                    TextField(
-                        "Rate",
-                        text: $rate
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
-                HStack{
-                    Text("Labor Cost")
-                        .bold(true)
-                    TextField(
-                        "laborCost",
-                        text: $laborCost
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
-                HStack{
-                    Text("Description")
-                        .bold(true)
+                    
+                    HStack{
+                        Text("Rate")
+                            .bold(true)
+                        TextField(
+                            "Rate",
+                            text: $rate
+                        )
+                        .padding(3)
+                        .background(Color.gray.opacity(0.3))
+                        .cornerRadius(3)
+                        .padding(5)
+                    }
+                    HStack{
+                        Text("Labor Cost")
+                            .bold(true)
+                        TextField(
+                            "laborCost",
+                            text: $laborCost
+                        )
+                        .padding(3)
+                        .background(Color.gray.opacity(0.3))
+                        .cornerRadius(3)
+                        .padding(5)
+                    }
+                    HStack{
+                        Text("Description")
+                            .bold(true)
+                        Spacer()
+                    }
                     TextField(
                         "Description",
-                        text: $description
+                        text: $description,
+                        axis:.vertical
                     )
                     .padding(3)
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
+                    .padding(5)
+                    
+                    
                 }
+                .padding(5)
+            }
+            
+            VStack{
+                Spacer()
                 HStack{
                     Button(action: {
                         print("Build in Save Changes")
                         Task{
-                            if let company = masterDataManager.selectedCompany{
+                            if let company = masterDataManager.currentCompany{
                                 do {
-                                    if admin.id != job.adminId || admin.firstName != job.adminName ||  jobTemplate.id != job.jobTemplateId ||  jobTemplate.name != job.type || operationStatus != job.operationStatus || billingStatus != job.billingStatus  || String(job.rate) != rate || laborCost != String(job.laborCost) || description != job.description{
-                                        try await jobVM.updateJobInfo(companyId:company.id,updatingJob: job,
+                                    if admin.id != job.adminId || admin.userName != job.adminName ||  jobTemplate.name != job.type || operationStatus != job.operationStatus || billingStatus != job.billingStatus  || String(job.rate) != rate || laborCost != String(job.laborCost) || description != job.description{
+                                        try await VM.updateJobInfo(companyId:company.id,updatingJob: job,
                                                                       admin: admin,
                                                                       jobTemplate: jobTemplate,
                                                                       operationStatus: operationStatus,
@@ -1441,9 +1058,9 @@ extension JobDetailView {
                                                                       description: description)
                                     } else {
                                         
-                                        alertMessage = "No Change Made"
-                                        print(alertMessage)
-                                        showAlert = true
+                                        VM.alertMessage = "No Change Made"
+                                        print(VM.alertMessage)
+                                        VM.showAlert = true
                                     }
                                 } catch {
                                     
@@ -1454,139 +1071,558 @@ extension JobDetailView {
                     }, label: {
                         Text("Save Changes")
                     })
-                    .padding(5)
-                    .background(Color.accentColor)
-                    .foregroundColor(Color.white)
-                    .cornerRadius(5)
-                    .padding(5)
-                    //Check For Changes in Admin, jobTemplate, operationStatus, billingStatus, Rate, laborRate, and Description
-                    if admin.id != job.adminId || admin.firstName != job.adminName ||  jobTemplate.id != job.jobTemplateId ||  jobTemplate.name != job.type || operationStatus != job.operationStatus || billingStatus != job.billingStatus  || String(job.rate) != rate || laborCost != String(job.laborCost) || description != job.description{
+                    .modifier(SubmitButtonModifier())
+                    Spacer()
+                        //Check For Changes in Admin, jobTemplate, operationStatus, billingStatus, Rate, laborRate, and Description
+                    Button(action: {
+                        VM.isEdit = false
+                        admin.id = job.adminId
+                        admin.userName = job.adminName
+                        
+                        jobTemplate.name = job.type
+                        
+                        operationStatus = job.operationStatus
+                        billingStatus = job.billingStatus
+                        rate = String(job.rate)
+                        laborCost = String(job.laborCost)
+                        description = job.description
+                    }, label: {
+                        Text("Cancel")
+                            .modifier(DeleteButtonModifier())
+                    })
+                }
+                .padding(.horizontal,8)
+            }
+        }
+        .padding(5)
+        .cornerRadius(5)
+    }
+    
+    var taskView: some View {
+        ZStack{
+            ScrollView {
+                VStack(alignment: .center,spacing: 8){
+                    Text("Task List")
+                        .font(.headline)
+                    ForEach(VM.jobTaskList){ task in
+                            //                        Text("\(task.name)")
+                        HStack{
+                            JobTaskCardView(dataService: dataService, jobId: job.id, jobTask: task)
+                        }
+                    }
+                    HStack{
                         Button(action: {
-                            admin.id = job.adminId
-                            admin.firstName = job.adminName
-                            
-                            jobTemplate.id = job.jobTemplateId
-                            jobTemplate.name = job.type
-                            
-                            operationStatus = job.operationStatus
-                            billingStatus = job.billingStatus
-                            rate = String(job.rate)
-                            laborCost = String(job.laborCost)
-                            description = job.description
+                            VM.isAddTask.toggle()
                         }, label: {
-                            Text("Undo")
-                                .foregroundColor(Color.black)
-                                .padding(5)
-                                .background(Color.red)
-                                .padding(5)
-                                .cornerRadius(5)
+                            HStack{
+                                Spacer()
+                                Text("New Task")
+                                Spacer()
+                            }
+                            .modifier(AddButtonModifier())
+                        })
+                        .sheet(isPresented: $VM.isAddTask, onDismiss: {
+                            Task {
+                                do {
+                                    if let company = masterDataManager.currentCompany {
+                                        try await VM.onDismissAddTaskSheet(companyId: company.id, serviceLocationId: job.serviceLocationId, jobId: job.id)
+                                    }
+                                } catch {
+                                    print("")
+                                    print("Dismiss Add Task Sheet Error")
+                                    print(error)
+                                    print("")
+                                }
+                            }
+                        }, content: {
+                            AddNewTaskToJob(dataService: dataService, jobId: job.id, taskTypes: VM.taskTypes,customerId: job.customerId,serviceLocationId: job.serviceLocationId)
+                                .presentationDetents([.medium,.large])
+                        })
+                        Button(action: {
+                            VM.isAddTaskGroup.toggle()
+                        }, label: {
+                            HStack{
+                                Spacer()
+                                Text("Task Group")
+                                Spacer()
+                            }
+                            .modifier(AddButtonModifier())
+                        })
+                        .sheet(isPresented: $VM.isAddTaskGroup,
+                               onDismiss: {
+                            if let company = masterDataManager.currentCompany {
+                                VM.addNewTasks(companyId: company.id, jobId: job.id)
+                            }
+                            
+                        },
+                               content: {
+                            TaskGroupPickerView(dataService: dataService, tasks: $VM.taskGroupItems)
                         })
                     }
-                    Spacer()
-
                 }
+                .padding(5)
             }
-            
+            VStack{
+                Spacer()
+                HStack{
+                    Button(action: {
+                        VM.isEdit = true
+                    }, label: {
+                        Text("Edit")
+                            .modifier(SubmitButtonModifier())
+                    })
+                    
+                    Spacer()
+                    Button(action: {
+                        view = "Shopping List"
+                    }, label: {
+                        Text("Next")
+                            .modifier(AddButtonModifier())
+                    })
+                }
+                .padding(.horizontal,8)
+                .background(Color.listColor)
+            }
         }
+        .padding(5)
+    }
+    
+    var editTaskView: some View {
+        ZStack{
+            ScrollView {
+                VStack(alignment: .center,spacing: 8){
+                    Text("Task List")
+                        .font(.headline)
+                    HStack{
+                        Button(action: {
+                            VM.isAddTask.toggle()
+                        }, label: {
+                            HStack{
+                                Spacer()
+                                Text("Add New Task")
+                                Spacer()
+                            }
+                            .modifier(AddButtonModifier())
+                        })
+                        .sheet(isPresented: $VM.isAddTask, onDismiss: {
+                            Task {
+                                do {
+                                    if let company = masterDataManager.currentCompany {
+                                        try await VM.onDismissAddTaskSheet(companyId: company.id, serviceLocationId: job.serviceLocationId, jobId: job.id)
+                                    }
+                                } catch {
+                                    print("")
+                                    print("Dismiss Add Task Sheet Error")
+                                    print(error)
+                                    print("")
+                                }
+                            }
+                        }, content: {
+                            AddNewTaskToJob(dataService: dataService, jobId: job.id, taskTypes: VM.taskTypes,customerId: job.customerId,serviceLocationId: job.serviceLocationId)
+                                .presentationDetents([.medium])
+                        })
+                        Spacer()
+                    }
+                    
+                    ForEach(VM.jobTaskList){ task in
+                            //                        Text("\(task.name)")
+                        HStack{
+                            Image(systemName: "square.and.pencil")
+                                .modifier(SubmitButtonModifier())
+                            JobTaskCardView(dataService: dataService, jobId: job.id, jobTask: task)
+                            Button(action: {
+                                Task{
+                                    if let currentCompany = masterDataManager.currentCompany {
+                                        do {
+                                            try await VM.deleteJobTaskItem(companyId: currentCompany.id, jobId: jobId, task: task)
+                                        } catch {
+                                            print(error)
+                                        }
+                                    }
+                                }
+                            }, label: {
+                                Image(systemName: "trash.fill")
+                                    .modifier(DismissButtonModifier())
+                            })
+                            .padding(4)
+                        }
+                    }
+                }
+                .padding(5)
+            }
+            VStack{
+                Spacer()
+                HStack{
+                    Button(action: {
+                        VM.isEdit.toggle()
+                    }, label: {
+                        Text("Save")
+                            .modifier(SubmitButtonModifier())
+                    })
+                    Spacer()
+                    Button(action: {
+                        VM.isEdit.toggle()
+                    }, label: {
+                        Text("Cancel")
+                            .modifier(DeleteButtonModifier())
+                    })
+                }
+                .padding(.horizontal,8)
+            }
+        }
+        .padding(5)
+    }
+    
+    var shoppingListView: some View {
+        ZStack{
+            ScrollView {
+                VStack(alignment: .leading,spacing: 8){
+                    Text("Shopping List")
+                    ForEach(VM.shoppingItemList){ item in
+                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
+                    }
+                    HStack{
+                        Button(action: {
+                            VM.isAddShoppingList.toggle()
+                        }, label: {
+                            HStack{
+                                Spacer()
+                                Text("Add New Shopping List Item")
+                                Spacer()
+                            }
+                            .modifier(AddButtonModifier())
+                        })
+                        .sheet(isPresented: $VM.isAddShoppingList){
+                            AddNewShoppingListItemToJob(dataService: dataService, job: job)
+                                .presentationDetents([.medium,.large])
+                        }
+                        Spacer()
+                    }
+                }
+                .padding(5)
+            }
+            VStack{
+                Spacer()
+                HStack{
+                    Button(action: {
+                        VM.isEdit = true
+                    }, label: {
+                        Text("Edit")
+                            .modifier(SubmitButtonModifier())
+                    })
+                    Spacer()
+                    Button(action: {
+                        view = "Schedule"
+                    }, label: {
+                        Text("Next")
+                            .modifier(AddButtonModifier())
+                    })
+                }
+                .padding(.horizontal,8)
+            }
+        }
+        .padding(5)
+    }
+    
+    var schedule: some View {
+        ZStack{
+            ScrollView{
+                VStack(alignment: .center,spacing: 8){
+                    Text("Service Stops")
+                        .font(.headline)
+                    Divider()
+                    if VM.serviceStops.isEmpty {
+                        ForEach(VM.serviceStopIds, id:\.self) { id in
+                            ZStack {
+                                if id != "" {
+                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: id)
+                                }
+                                ProgressView()
+                            }
+                        }
+                    } else {
+                        ForEach(VM.serviceStops) { stop in
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.serviceStop(serviceStop: stop, dataService: dataService), label: {
+                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: stop.id)
+                                })
+                            } else {
+                                Button(action: {
+                                    masterDataManager.selectedCategory = .serviceStops
+                                    masterDataManager.selectedID = stop.id
+                                    masterDataManager.selectedServiceStops = stop
+                                    
+                                }, label: {
+                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: stop.id)
+                                })
+                            }
+                        }
+                    }
+                    Button(action: {
+                        VM.isPresentServiceStop.toggle()
+                    }, label: {
+                        Text("Schedule Service Stop")
+                            .modifier(AddButtonModifier())
+                    })
+                    .sheet(isPresented: $VM.isPresentServiceStop,
+                           onDismiss: {
+                                Task{
+                                    if let currentCompany = masterDataManager.currentCompany {
+                                        do {
+                                            try await VM.onDismissOfScheduleServiceStop(
+                                                companyId: currentCompany.id,
+                                                serviceLocationId: job.serviceLocationId,
+                                                job: job
+                                            )
+                                        } catch {
+                                            print(error)
+                                        }
+                                    }
+                                }
+                            },
+                           content: {
+                        ScheduleServiceStopView(
+                            dataService: dataService,
+                            job: job,
+                            customerId: job.customerId,
+                            customerName: job.customerName,
+                            serviceLocationId: job.serviceLocationId,
+                            description: job.description,
+                            jobTaskList: VM.jobTaskList
+                        )
+                        .presentationDetents([.medium, .large])
+                    })
+                    Rectangle()
+                        .frame(height: 1)
+                    Text("Labor Contracts")
+                        .font(.headline)
+                    Divider()
+                    if VM.laborContracts.isEmpty {
+                        ForEach(VM.laborContractIds, id:\.self) { id in
+                            ZStack {
+                                if id != "" {
+                                    
+                                    LaborContractIdCardView(dataService: dataService, laborContractId: id)
+                                }
+                                ProgressView()
+                            }
+                        }
+                    } else {
+                        ForEach(VM.laborContracts) { laborContract in
+                            NavigationLink(value: Route.laborContractDetailView(dataService: dataService, contract: laborContract), label: {
+                                LaborContractCardView(laborContract: laborContract)
+                            })
+                        }
+                    }
+                    
+                    Button(action: {
+                        VM.isPresentLaborContract.toggle()
+                        print("Presenting CreateNewLaborContractView")
+                    }, label: {
+                        Text("Offer New Labor Contract")
+                            .modifier(AddButtonModifier())
+                    })
+                    
+                    .sheet(isPresented: $VM.isPresentLaborContract,
+                           onDismiss: {
+                        Task{
+                            if let currentCompany = masterDataManager.currentCompany {
+                                do {
+                                    try await VM.onDismissOfOfferLaborContract(
+                                        companyId: currentCompany.id,
+                                        serviceLocationId: job.serviceLocationId,
+                                        job: job
+                                    )
+                                } catch {
+                                    print(error)
+                                }
+                            }
+                        }
+                    },
+                           content: {
+                        CreateNewLaborContractView(
+                            dataService: dataService,
+                            jobId: job.id,
+                            customerId: job.customerId,
+                            customerName: job.customerName,
+                            serviceLocationId: job.serviceLocationId,
+                            description: job.description,
+                            jobTaskList: VM.jobTaskList
+                        )
+                        .presentationDetents([.medium,.large])
+                    })
+                    Rectangle()
+                        .frame(height: 1)
+                        //----------------------------------------
+                        //Add Back in During Roll out of Phase 2
+                        //----------------------------------------
+//                    Text("Post To Job Board")
+//                        .font(.headline)
+//                        .background(Color.pink)
+//                    Divider()
+//                    ForEach(VM.laborContractIds, id: \.self) { id in
+//                        Text(id)
+//                    }
+//                    Button(action: {
+//                        VM.isPresentLaborContract.toggle()
+//                    }, label: {
+//                        Text("Post To Job Board")
+//                            .modifier(AddButtonModifier())
+//                    })
+//                    .sheet(isPresented: $VM.isPresentLaborContract){
+//                        
+//                        CreateNewLaborContractView(
+//                            dataService: dataService,
+//                            jobId: job.id,
+//                            customerId: job.customerId,
+//                            customerName: job.customerName,
+//                            serviceLocationId: job.serviceLocationId,
+//                            description: job.description,
+//                            jobTaskList: VM.jobTaskList
+//                        )
+//                        .presentationDetents([.medium,.large])
+//                    }
+                }
+                .padding(5)
+            }
+            VStack{
+                Spacer()
+                HStack{
+                    Button(action: {
+                        VM.isEdit = true
+                    }, label: {
+                        Text("Edit")
+                            .modifier(SubmitButtonModifier())
+                    })
+                    Spacer()
+                    Button(action: {
+                        view = "Info"
+                    }, label: {
+                        Text("Review")
+                            .modifier(AddButtonModifier())
+                    })
+                }
+                .padding(.horizontal,8)
+            }
+        }
+        .padding(5)
+    }
+    
+    var review: some View {
+        ZStack{
+            ScrollView {
+            }
             VStack{
                 Spacer()
                 HStack{
                     Spacer()
                     Button(action: {
-                        view = "Customer"
+                        showDeleteConfirmation.toggle()
                     }, label: {
-                        Text("Next")
+                        Text("Delete")
+                            .modifier(DismissButtonModifier())
                     })
-                    .padding(5)
-                    .background(Color.poolBlue)
-                    .foregroundColor(Color.white)
-                    .cornerRadius(5)
-                    .padding(5)
                 }
             }
         }
-            .padding(5)
-            .cornerRadius(5)
-            .border(Color.realYellow)
+        .padding(5)
+        .cornerRadius(5)
     }
-    var submitButton: some View {
+    var manualEstimateAcceptInfo: some View {
         VStack{
             HStack{
-                Spacer()
-                Button(action: {
-                    Task{
-                        do {
-                            guard let company = masterDataManager.selectedCompany else {
-                                return
-                            }
-                            let customerFullName = customer.firstName + " " + customer.lastName
-                            let adminFullName = (admin.firstName ?? "") + " " + (admin.lastName ?? "")
-                            
-                            try await jobVM.addNewJobWithValidation(companyId: company.id,
-                                                                    jobId: jobId,
-                                                                    jobTemplate: jobTemplate,
-                                                                    dateCreated: dateCreated,
-                                                                    description: description,
-                                                                    operationStatus: operationStatus,
-                                                                    billingStatus: billingStatus,
-                                                                    customerId: customer.id,
-                                                                    customerName: customerFullName,
-                                                                    serviceLocationId: "",
-                                                                    serviceStopIds: serviceStopIds,
-                                                                    adminId: admin.id,
-                                                                    adminName: adminFullName,
-                                                                    installationParts: installationParts,
-                                                                    pvcParts: pvcParts,
-                                                                    electricalParts: electricalParts,
-                                                                    chemicals: chemicals,
-                                                                    miscParts: miscParts,
-                                                                    rate: rate,
-                                                                    laborCost: laborCost,
-                                                                    bodyOfWater: bodyOfWater,
-                                                                    equipment: equipment)
-                            alertMessage = "Successfully Updated"
-                            print(alertMessage)
-                            showAlert = true
-                            dismiss()
-                        } catch JobError.invalidRate{
-                            alertMessage = "Invalid Rate"
-                            print(alertMessage)
-                            showAlert = true
-                        } catch JobError.invalidLaborCost{
-                            alertMessage = "Invalid Labor Cost"
-                            print(alertMessage)
-                            showAlert = true
-                        } catch JobError.invalidAdmin{
-                            alertMessage = "Invalid Admin Selected"
-                            print(alertMessage)
-                            showAlert = true
-                        } catch JobError.invalidCustomer{
-                            alertMessage = "Invalid Customer Selected"
-                            print(alertMessage)
-                            showAlert = true
-                        } catch JobError.invalidJobType{
-                            alertMessage = "Invalid Job Selected"
-                            print(alertMessage)
-                            showAlert = true
-                        } catch JobError.invalidServiceLocation{
-                            alertMessage = "Invalid Service Location Selected"
-                            print(alertMessage)
-                            showAlert = true
-                        } catch  {
-                            alertMessage = "Invalid Something"
-                            print(alertMessage)
-                            showAlert = true
-                        }
-                    }
-                }, label: {
-                    Text("Submit")
-                })
-                .foregroundColor(Color.basicFontText)
-                .padding(5)
-                .background(Color.accentColor)
-                .cornerRadius(5)
-                .padding(5)
+                Text("Date Accepted :")
+                    .bold(true)
+                DatePicker(selection: $VM.estiamtedAcceptedDate, displayedComponents: .date) {
+                }
             }
+            HStack{
+                Text("Who Accepted: ")
+                    .bold(true)
+                TextField(
+                    "Who Accepted",
+                    text: $VM.estimateAcceptedNotes
+                )
+                .modifier(PlainTextFieldModifier())
+            }
+            Button(action: {
+                Task{
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            if VM.estimateAcceptedNotes != "" {
+                                try await VM.markEstimateAsAccepted(
+                                    companyId: company.id,
+                                    job: job
+                                )
+                                VM.alertMessage = "Successfully Accapted"
+                                VM.showAlert.toggle()
+                                VM.isPresentingMarkEstiamteAsAccepted.toggle()
+                            } else {
+                                VM.alertMessage = "Please Provide Notes"
+                                VM.showAlert.toggle()
+                            }
+                        }
+                    } catch {
+                        print("")
+                        print("Job - markEstimateAsAccepted - [JobDetailView]")
+                        print(error)
+                        print("")
+                    }
+                }
+            }, label: {
+                Text("Mark As Accepted")
+                    .modifier(SubmitButtonModifier())
+            })
         }
+        .padding(8)
+    }
+    
+    var manualInvoicedInfo: some View {
+        VStack{
+            HStack{
+                Text("Invoice Ref: ")
+                    .bold(true)
+                TextField(
+                    "Refrence Number...",
+                    text: $VM.invoiceRef
+                )
+                .modifier(PlainTextFieldModifier())
+            }
+            HStack{
+                Text("Invoice Notes: ")
+                    .bold(true)
+                TextField(
+                    "notes...",
+                    text: $VM.invoiceNotes
+                )
+                .modifier(PlainTextFieldModifier())
+            }
+            Button(action: {
+                Task{
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            if VM.billingStatus != .invoiced && VM.billingStatus != .paid {
+                                try await VM.markJobAsInvoiced(
+                                    companyId: company.id,
+                                    job: job
+                                )
+                                VM.alertMessage = "Invoiced"
+                                VM.showAlert.toggle()
+                                VM.isPresentingMarkJobAsInvoiced.toggle()
+                            }
+                        }
+                    } catch {
+                        print("")
+                        print("Job - markJobAsFinished - [JobDetailView]")
+                        print(error)
+                        print("")
+                    }
+                }
+            }, label: {
+                Text("Mark As Accepted")
+                    .modifier(SubmitButtonModifier())
+            })
+        }
+        .padding(8)
     }
 }

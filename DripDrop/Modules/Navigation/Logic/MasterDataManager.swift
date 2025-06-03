@@ -1,4 +1,4 @@
-//
+//f
 //  MasterDataManager.swift
 //  ThePoolApp
 //
@@ -9,205 +9,218 @@ import Foundation
 import Combine
 import SwiftUI
 class MasterDataManager: ObservableObject {
-    
-    @Published var detailViewWidthMax: Int = 3000
-    @Published var detailViewWidthideal: Int = 100
-    
-    @Published var detailViewWidthMin: Int = 700
-    
-    @Published var columnVisibility: NavigationSplitViewVisibility = .all
-    ///Route Builder
-    @Published var routeBuilderDay:String? = nil
-    @Published var routeBuilderTech:CompanyUser? = nil
-    @Published var reloadBuilderView:Bool? = nil
-    //    @Published var selectedRandom: String? = nil
-    @Published var user:DBUser? = nil
-    @Published var companyUser:CompanyUser? = nil
-    @Published var role:Role? = nil
-    
+    @Published var selectedCategory: MacCategories? = .businesses //DEVELOPER
+    @Published var selectedMobileCategory: MobileCategories? = nil
+    @Published var mobileHomeScreen: MobileHomeScreenCategories = .all
+
+    //Login Flow
     @Published var showSignInView:Bool = true
+    
     @Published var modifyRoute:Bool = true
     @Published var newRoute:Bool = true
     @Published var reassignRoute:Bool = true
-    @Published var recurringRoute:RecurringRoute? = nil
-    @Published var vehical:Vehical? = nil
-    
-    @Published var accountsPayableInvoice:StripeInvoice? = nil
-    @Published var accountsReceivableInvoice:StripeInvoice? = nil
+    @Published var reloadBuilderView:Bool? = nil
+
+    //Formatting
+    @Published var detailViewWidthMax: Int = 3000
+    @Published var detailViewWidthideal: Int = 100
+    @Published var detailViewWidthMin: Int = 700
+    @Published var columnVisibility: NavigationSplitViewVisibility = .all
     @Published var showPaymentSheet:Bool = false
-    @Published var paymentSheetType:PaymentSheetType? = nil
-
-
-    @Published var selectedShoppingListItem:ShoppingListItem? = nil
-    @Published var selectedToDo:ToDo? = nil
+    @Published var mainScreenDisplayType:MainScreenDisplayType = .compactList
+    @Published var tabViewSelection : String = "Dashboard"
     
-    @Published var selectedCategory: MacCategories? = .dashBoard //DEVELOPER
-    @Published var selectedMobileCategory: MobileCategories? = nil
-    @Published var selectedReport: ReportType? = nil
-
     
-    @Published var selectedDate: Date? = nil
-    
-    @Published var selectedTech1: DBUser? = nil
-    @Published var selectedCompany: Company? = nil
+    // User, Role, and Permission Verification
+    @Published var user:DBUser? = nil
+    @Published var companyUser:CompanyUser? = nil
+    @Published var role:Role? = nil
     @Published var allCompanies: [Company] = []
+    @Published var currentCompany: Company? = nil
 
-    @Published var selectedDays: [String] = []
     
-    @Published var selectedCustomer: Customer? = nil{
-        didSet {
-            selectedID = selectedCustomer?.id
-        }
-    }
-    @Published var selectedServiceLocation: ServiceLocation? = nil
-    @Published var selectedBodyOfWater: BodyOfWater? = nil
-    @Published var selectedEquipment: Equipment? = nil
+    //For Details and List Flow
 
-    @Published var selectedServiceStops: ServiceStop? = nil {
-        didSet {
-            selectedID = selectedServiceStops?.id
-        }
-    }
-    @Published var selectedRouteServiceStop: ServiceStop? = nil {
-        didSet {
-            selectedID = selectedServiceStops?.id
-        }
-    }
-    @Published var selectedServiceStopList: [ServiceStop]? = []
+    //Selected Items
     
-    @Published var selectedRoute: RecurringServiceStop? = nil{
-        didSet {
-            selectedID = selectedRoute?.id
-        }
-    }
-    @Published var selectedLocations: [ServiceLocation] = []
-    @Published var selectedMapLocations: [MapLocation] = []
-    @Published var selectedMapLocation: MapLocation? = nil{
-        didSet {
-            selectedID = selectedMapLocation?.id
-        }
-    }
-    @Published var selectedReceipt: Receipt? = nil{
-        didSet {
-            selectedID = selectedReceipt?.id
-        }
-    }
-    @Published var selectedPurchases: PurchasedItem? = nil{
-        didSet {
-            selectedID = selectedPurchases?.id
-        }
-    }
-    @Published var selectedContract: Contract? = nil{
-        didSet {
-            selectedID = selectedPurchases?.id
-        }
-    }
-    @Published var selectedDataBaseItem: DataBaseItem? = nil{
-        didSet {
-            selectedID = selectedDataBaseItem?.id
-        }
-    }
-    @Published var selectedGenericItem: GenericItem? = nil{
-        didSet {
-            selectedID = selectedGenericItem?.id
-        }
-    }
-    @Published var selectedStore: Vender? = nil{
-        didSet {
-            selectedID = selectedStore?.id
-        }
-    }
-    @Published var selectedWorkOrder: Job? = nil{
-        didSet {
-            selectedID = selectedWorkOrder?.id
-        }
-    }
-    @Published var selectedActiveRoute: ActiveRoute? = nil{
-        didSet {
-            selectedID = selectedWorkOrder?.id
-        }
-    }
+    //A
+    @Published var selectedActiveRoute: ActiveRoute? = nil
     @Published var selectedActiveRouteList: [ActiveRoute] = []
+    @Published var selectedAccountsReceivableInvoice:StripeInvoice? = nil
 
-    @Published var selectedManagementView: String? = nil
+    //B
+    @Published var selectedBuisness: AssociatedBusiness? = nil
+    @Published var selectedAccountsPayableInvoice:StripeInvoice? = nil
+
+    //C
+    @Published var selectedCompanyUser: CompanyUser? = nil
+    @Published var selectedCustomer: Customer? = nil
+    @Published var selectedContract: RecurringContract? = nil
+    @Published var selectedChat: Chat? = nil
+    @Published var selectedCompany1: Company? = nil
+    @Published var customerSearchTerm: String? = nil
+
+    //B
+    @Published var selectedBodyOfWater: BodyOfWater? = nil
+    @Published var selectedBillingTemplate: BillingTemplate? = nil
+
+    //D
+    @Published var selectedDate: Date? = nil
+    @Published var selectedDays: [String] = []
+    @Published var selectedDataBaseItem: DataBaseItem? = nil
+    @Published var selectedDosageTemplate: SavedDosageTemplate? = nil
+
+    //E
+    @Published var selectedEquipment: Equipment? = nil
     
-    @Published var selectedPNLSummary: CustomerMonthlySummary? = nil{
-        didSet {
-            selectedID = selectedPNLSummary?.id
-        }
-    }
-    @Published var selectedChat: Chat? = nil{
-        didSet {
-            selectedID = selectedChat?.id
-        }
-    }
-    @Published var selectedRepairRequest: RepairRequest? = nil{
-        didSet {
-            selectedID = selectedRepairRequest?.id
-        }
-    }
-    @Published var selectedWorkOrderTemplate: JobTemplate? = nil{
-        didSet {
-            selectedID = selectedWorkOrderTemplate?.id
-        }
-    }
-    @Published var selectedReadingsTemplate: ReadingsTemplate? = nil{
-        didSet {
-            selectedID = selectedReadingsTemplate?.id
-        }
-    }
-    @Published var selectedDosageTemplate: DosageTemplate? = nil{
-        didSet {
-            selectedID = selectedDosageTemplate?.id
-        }
-    }
-    @Published var selectedTrainingTemplate: TrainingTemplate? = nil{
-        didSet {
-            selectedID = selectedTrainingTemplate?.id
-        }
-    }
-    @Published var selectedBillingTemplate: BillingTemplate? = nil{
-        didSet {
-            selectedID = selectedBillingTemplate?.id
-        }
-    }
+    //G
+    @Published var selectedGenericItem: GenericItem? = nil
+
+    //J
+    @Published var selectedJobTemplate: JobTemplate? = nil
+    @Published var selectedJob: Job? = nil
+
+    //M
+    @Published var selectedMapLocations: [MapLocation] = []
+    @Published var selectedMapLocation: MapLocation? = nil
+    @Published var selectedManagementView: String? = nil
+
+    //L
+    @Published var selectedRecurringLaborContract:ReccuringLaborContract? = nil
+    @Published var selectedLaborContract:LaborContract? = nil
+
+    //P
+    @Published var selectedPurchases: PurchasedItem? = nil
+    @Published var selectedPNLSummary: CustomerMonthlySummary? = nil//DEVELOPER
+    @Published var selectedPaymentSheetType:PaymentSheetType? = nil
+
+    //R
+    @Published var selectedReport: ReportType? = nil
+    @Published var selectedRole:Role? = nil
+    @Published var selectedRouteServiceStop: ServiceStop? = nil
+    @Published var selectedRoute: RecurringServiceStop? = nil
+    @Published var selectedReceipt: Receipt? = nil
+    @Published var selectedRepairRequest: RepairRequest? = nil
+    @Published var selectedReadingsTemplate: SavedReadingsTemplate? = nil
+    @Published var selectedRouteBuilderDay:String? = nil
+    @Published var selectedRouteBuilderTech:CompanyUser? = nil
+    @Published var selectedRecurringRoute:RecurringRoute? = nil
+    //S
+    @Published var selectedShoppingListItem:ShoppingListItem? = nil
+    @Published var selectedServiceLocation: ServiceLocation? = nil
+    @Published var selectedServiceStops: ServiceStop? = nil
+    @Published var selectedServiceStopList: [ServiceStop]? = []
+    @Published var selectedLocations: [ServiceLocation] = []
+
+    //T
+    @Published var selectedTech1: DBUser? = nil
+    @Published var selectedToDo:ToDo? = nil
+    @Published var selectedTrainingTemplate: TrainingTemplate? = nil
+    @Published var selectedTaskGroup: JobTaskGroup? = nil
+
+    
+    //V
+    @Published var selectedVender: Vender? = nil
+    @Published var selectedVehical:Vehical? = nil
+//    {
+//            didSet {
+//                selectedID = selectedWorkOrder?.id
+//            }
+//        }
+    
     @Published var selectedID: String? = nil
     
     var subscriptions = Set<AnyCancellable>()
-    
     init() {
-        /*
         // clear selection when category changes
-        $selectedCategory.sink { [weak self] _ in
-            self?.selectedDate = nil
-            self?.selectedTech1 = nil
-            self?.selectedDays = []
+        $currentCompany.sink { [weak self] _ in
+            //A
+            self?.selectedActiveRoute = nil
+            self?.selectedActiveRouteList = []
+            self?.selectedAccountsReceivableInvoice = nil
+
+            //B
+            self?.selectedBuisness = nil
+            self?.selectedAccountsPayableInvoice = nil
+
+            //C
+            self?.selectedCompanyUser = nil
             self?.selectedCustomer = nil
-            self?.selectedServiceStops = nil
-            self?.selectedServiceStopList = []
-            self?.selectedRoute = nil
-            self?.selectedLocations = []
+            self?.selectedContract = nil
+            self?.selectedChat = nil
+            self?.selectedCategory = nil
+            
+            //B
+            self?.selectedBodyOfWater = nil
+            self?.selectedBillingTemplate = nil
+
+            //D
+            self?.selectedDate = nil
+            self?.selectedDays = []
+            self?.selectedDataBaseItem = nil
+            self?.selectedDosageTemplate = nil
+
+            //E
+            self?.selectedEquipment = nil
+            
+            //G
+            self?.selectedGenericItem = nil
+
+            //J
+            self?.selectedJobTemplate = nil
+            self?.selectedJob = nil
+
+            //M
             self?.selectedMapLocations = []
             self?.selectedMapLocation = nil
-            self?.selectedReceipt = nil
+            self?.selectedManagementView = nil
+
+            //L
+            self?.selectedRecurringLaborContract = nil
+
+            //P
             self?.selectedPurchases = nil
-            self?.selectedDataBaseItem = nil
-            self?.selectedStore = nil
-            self?.selectedWorkOrder = nil
-            self?.selectedWorkOrderTemplate = nil
+            self?.selectedPNLSummary = nil//DEVELOPER
+            self?.selectedPaymentSheetType = nil
+
+            //R
+            self?.selectedReport = nil
+            self?.selectedRole = nil
+            self?.selectedRouteServiceStop = nil
+            self?.selectedRoute = nil
+            self?.selectedReceipt = nil
+            self?.selectedRepairRequest = nil
             self?.selectedReadingsTemplate = nil
-            self?.selectedDosageTemplate = nil
+            self?.selectedRouteBuilderDay = nil
+            self?.selectedRouteBuilderTech = nil
+            self?.selectedRecurringRoute = nil
+            //S
+            self?.selectedShoppingListItem = nil
+            self?.selectedServiceLocation = nil
+            self?.selectedServiceStops = nil
+            self?.selectedServiceStopList = []
+            self?.selectedLocations = []
+
+            //T
+            self?.selectedTech1 = nil
+            self?.selectedToDo = nil
             self?.selectedTrainingTemplate = nil
-            self?.selectedBillingTemplate = nil
-            
-            
+
+            //V
+            self?.selectedVender = nil
+            self?.selectedVehical = nil
         }
         .store(in: &subscriptions)
-         */
+         
     }
-    
     func goToSettings() {
         
     }
   
+}
+enum MainScreenDisplayType:String, CaseIterable {
+    case compactList = "Compact"
+    case preview = "Preview"
+    case fullPreview = "Full Preview"
+
 }

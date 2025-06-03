@@ -24,15 +24,16 @@ struct AddNewLaborContract: View {
     
     @State var showPicker:Bool = false
     @State var associatedBusiness:AssociatedBusiness = AssociatedBusiness(id: "", companyId: "", companyName: "")
-    @State var companyUser:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .subContractor)
+    @State var companyUser:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .contractor)
 
     @State var businessType:String = "Techs"
+    @State var showFindNewAssociatedBusiness:Bool = false
 
     //Form
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
-            ScrollView{
+            VStack{
                 if isFullScreen {
                     HStack{
                         Spacer()
@@ -45,23 +46,10 @@ struct AddNewLaborContract: View {
                     }
                 }
                 if associatedBusiness.id == "" {
-                    VStack{
-                        HStack{
-                            Picker("Type", selection: $businessType) {
-                                Text("Techs").tag("Techs")
-                                Text("Company").tag("Company")
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                        switch businessType {
-                        case "Techs":
-                            associatedBusinesses
-                        case "Company":
-                            newBusinesses
-                        default:
+                        ScrollView{
                             associatedBusinesses
                         }
-                    }
+                    
                 } else {
                     HStack{
                         Button(action: {
@@ -75,7 +63,9 @@ struct AddNewLaborContract: View {
                         })
                         Spacer()
                     }
-                    AddNewLaborContractFromAssociatedBusiness(dataService: dataService, associatedBusiness: associatedBusiness, isPresented:$isPresented, isFullScreen: false)
+                    ScrollView{
+                        AddNewLaborContractFromAssociatedBusiness(dataService: dataService, associatedBusiness: associatedBusiness, isPresented:$isPresented, isFullScreen: false)
+                    }
                 }
             }
             .padding(8)
@@ -132,6 +122,25 @@ extension AddNewLaborContract {
     }
     var associatedBusinesses: some View {
         VStack{
+            Button(action: {
+                showFindNewAssociatedBusiness.toggle()
+            }, label: {
+                Text("Find New")
+                    .modifier(AddButtonModifier())
+            })
+            .sheet(isPresented: $showFindNewAssociatedBusiness,onDismiss: {
+                Task{
+                    if let selectedCompany = masterDataManager.currentCompany {
+                        do {
+                            try await VM.onLoadAddNewLaborContractView(companyId: selectedCompany.id)
+                        } catch {
+                            print(error)
+                        }
+                    }
+                }
+            }, content: {
+                FindBusinesses(dataService: dataService)
+            })
             ForEach(VM.companyUsers){ user in
                 Button(action: {
                     if user.linkedCompanyId != nil && user.linkedCompanyName != nil {
@@ -142,9 +151,10 @@ extension AddNewLaborContract {
                         .modifier(ListButtonModifier())
                 })
                 .disabled(user.linkedCompanyId == nil)
-                .opacity(user.linkedCompanyId == nil ? 0.6 : 1)
+                .opacity(user.linkedCompanyId == nil ? 0.5 : 1)
                 Divider()
             }
         }
     }
+
 }

@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct XlsxFileSelector: View {
-    @StateObject private var customerFileVM = CustomerFileManager()
+    @StateObject private var customerFileVM = CustomerFileManager(dataService: ProductionDataService())
     
     @Binding var workSheetName:String
     @Binding var pathName:String

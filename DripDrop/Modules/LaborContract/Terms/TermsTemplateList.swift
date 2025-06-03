@@ -10,12 +10,12 @@ import SwiftUI
 struct TermsTemplateList: View {
     //Init
     init(dataService:ProductionDataService){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
     }
     
     //Objects
     @EnvironmentObject var masterDataManager: MasterDataManager
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
 
     var body: some View {
         ZStack{

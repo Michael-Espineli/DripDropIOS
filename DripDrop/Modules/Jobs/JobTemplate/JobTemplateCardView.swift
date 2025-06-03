@@ -17,18 +17,21 @@ struct JobTemplateCardView: View {
                     Spacer()
                     Text("\(template.name)")
                     Spacer()
+                    if let locked = template.locked {
+                        Image(systemName: locked ? "lock.fill" : "lock.open.fill")
+                    }
                 }
+                
                 HStack{
                     Spacer()
                     Text("\(template.type ?? "")")
                         .font(.footnote)
                 }
-                .padding()
+                Rectangle()
+                    .fill(Color[template.color ?? ""])
+                    .frame(height: 1)
             }
-            .padding(5)
-            .background(Color.blue)
-            .cornerRadius(10)
-            .foregroundColor(Color.white)
+            .modifier(ListButtonModifier())
         }
     }
 }

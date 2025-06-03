@@ -8,111 +8,146 @@
 import SwiftUI
 
 struct ThreeColumnMenuView: View {
-    
+    init(dataService:any ProductionDataServiceProtocol,layoutExperience:Binding<LayoutExperienceSetting>) {
+        _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
+        self._layoutExperience = layoutExperience
+    }
     @EnvironmentObject private var routerManager: NavigationRouter
     @EnvironmentObject private var navigationManager: NavigationStateManager
     @EnvironmentObject var masterDataManager : MasterDataManager
+    @StateObject private var userAccessVM = UserAccessViewModel()
 
     @EnvironmentObject var dataService : ProductionDataService
 
     @StateObject var roleVM = RoleViewModel()
     @StateObject var accessVM = UserAccessViewModel()
+    @StateObject private var VM : AuthenticationViewModel
 
-    @Binding var columnVisibility: NavigationSplitViewVisibility
-    @Binding var showCart: Bool
-    @Binding var showSettings: Bool
-    @Binding var showCompany: Bool
-    @Binding var layoutExperience: LayoutExperienceSetting?
-    @Binding var showSignInView: Bool
-    let user:DBUser
+    @State var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @Binding var layoutExperience: LayoutExperienceSetting
     @State var jobSettingsPicker:String = "Present"
     var body: some View {
         Group{
             if let role = masterDataManager.role {
                 NavigationSplitView(columnVisibility: $columnVisibility) {
-                    
-                    //            SecondarySideBar(selectedCategory: $routerManager.selectedCategory, layoutExperience:$layoutExperience)
                     SideBarView(dataService: dataService, role: role, selectedCategory: $masterDataManager.selectedCategory)
                         .navigationTitle("Menu")
                         .font(.system(.body , design: .rounded))
                         .navigationBarTitleDisplayMode(.inline)
                         .navigationBarBackground()
-
-//                        .toolbar {
-//                            ToolbarItem(placement: .primaryAction) {
-//                                Button(action: {
-//                                    
-//                                }, label: {
-//                                    Text("Something")
-//                                })
-//                            }
-//                            if UIDevice.current.userInterfaceIdiom != .phone {
-//                                ToolbarItem {
-//                                    Button {
-//                                        showSettings.toggle()
-//                                    } label: {
-//                                        Image(systemName: "gear")
-//                                    }
-//                                }
-//                            }
-//                            
-//                        }
-                    
+                        .navigationSplitViewColumnWidth(min: 300, ideal: 450, max: 600)
                 } content: {
                     ZStack {
-                        MiddleSidebarView(user: user, company: masterDataManager.selectedCompany!, showSignInView: showSignInView)
-                            .toolbar {
-                                if  masterDataManager.selectedCategory == .customers {
-                                    ToolbarItem {
-                                        Button {
-                                            showCompany.toggle()
-                                        } label: {
-                                            Image(systemName: "person.text.rectangle")
-                                        }
-                                    }
-                                }
-                            }
-                            .font(.system(.body , design: .rounded))
-                            .navigationBarTitleDisplayMode(.inline)
-                            .navigationBarBackground()
+                        if let user = masterDataManager.user, let company = masterDataManager.currentCompany{
+                            MiddleSidebarView(user: user, company: company, showSignInView: masterDataManager.showSignInView)
+                                .font(.system(.body , design: .rounded))
+                                .navigationBarTitleDisplayMode(.inline)
+                                .navigationBarBackground()
+                        }
                     }
-                    
-                    
+                    .navigationSplitViewColumnWidth(min: 300, ideal: 450, max: 600)
                 } detail: {
                     
                     NavigationStack(path: $navigationManager.routes) {
-                        
                         DetailView(dataService:dataService)
                             .navigationDestination(for: Route.self) { $0 }
+                            .toolbar{
+                                ToolbarItem(placement: .topBarLeading, content: {
+                                    Button(action: {
+                                        switch columnVisibility{
+                                        case .all:
+                                            columnVisibility = .detailOnly
+                                        case .doubleColumn:
+                                            columnVisibility = .detailOnly
+                                        case .detailOnly:
+                                            columnVisibility = .detailOnly
+                                        default:
+                                            columnVisibility = .detailOnly
+                                        }
+                                    }, label: {
+                                        Image(systemName: columnVisibility == .detailOnly ? "" : "square.leftthird.inset.filled")
+                                    })
+                                })
+                            }
                     }
                 }
                 .navigationBarBackground()
             } else {
-                ProgressView()
+                WaterLevelLoading()
             }
         }
         .task {
-            do{
-                try await accessVM.getUserAccessCompanies(userId: user.id, companyId: masterDataManager.selectedCompany!.id)
-                if let access = accessVM.userAccess{
-                    print("Access >> \(access)")
-                    try await roleVM.getSpecificRole(companyId: masterDataManager.selectedCompany!.id, roleId: access.roleId)
-                    if let role = roleVM.role {
-                        masterDataManager.role = role
+            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
+                do{
+                    try await userAccessVM.getUserAccessCompanies(userId: user.id, companyId: company.id)
+                    if let access = userAccessVM.userAccess{
+                        print("Mobile Home Access >> \(access)")
+                        try await roleVM.getSpecificRole(companyId: company.id, roleId: access.roleId)
+                        if let role = roleVM.role {
+                            masterDataManager.role = role
+                        } else {
+                            masterDataManager.showSignInView = true
+                        }
                     } else {
                         masterDataManager.showSignInView = true
                     }
-                } else {
-                    masterDataManager.showSignInView = true
+                } catch {
+                    print("Error 1 Mobile Home")
+                    print(error)
                 }
-            } catch {
-                print("Error")
+                do {
+                    try await userAccessVM.getAllUserAvailableCompanies(userId: user.id)
+                    try await userAccessVM.getCompaniesFromAccess(accessList: userAccessVM.allAvailableAccess)
+                    masterDataManager.allCompanies = userAccessVM.companies
+                } catch {
+                    print("Error 2 Mobile Home")
+                    print(error)
+                }
+            } else {
+                print("No Company or User on Three Column")
+                do {
+                    print("Root View")
+                    try await VM.onInitialLoad()
+                    masterDataManager.user = VM.user
+                    masterDataManager.currentCompany = VM.company
+                    masterDataManager.companyUser = VM.companyUser
+                    VM.isLoading = false
+                    masterDataManager.showSignInView = false
+                } catch {
+                    print("error")
+                    print(error)
+                }
+                if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
+                    do{
+                        try await userAccessVM.getUserAccessCompanies(userId: user.id, companyId: company.id)
+                        if let access = userAccessVM.userAccess{
+                            print("Mobile Home Access >> \(access)")
+                            try await roleVM.getSpecificRole(companyId: company.id, roleId: access.roleId)
+                            if let role = roleVM.role {
+                                masterDataManager.role = role
+                            } else {
+                                masterDataManager.showSignInView = true
+                            }
+                        } else {
+                            masterDataManager.showSignInView = true
+                        }
+                    } catch {
+                        print("Error 1 Mobile Home")
+                        print(error)
+                    }
+                    do {
+                        try await userAccessVM.getAllUserAvailableCompanies(userId: user.id)
+                        try await userAccessVM.getCompaniesFromAccess(accessList: userAccessVM.allAvailableAccess)
+                        masterDataManager.allCompanies = userAccessVM.companies
+                    } catch {
+                        print("Error 2 Mobile Home")
+                        print(error)
+                    }
+                } else {
+                    print("No Company or User on Three Column Twice")
+                }
             }
         }
-        .onChange(of: masterDataManager.selectedCategory, perform: { id in
-            columnVisibility = .doubleColumn
-        })
-  
     }
 }
 

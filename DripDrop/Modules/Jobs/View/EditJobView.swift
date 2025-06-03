@@ -9,9 +9,10 @@ import SwiftUI
 
 struct EditJobView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService : ProductionDataService
 
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @StateObject var jobVM : JobViewModel
     @StateObject var customerVM : CustomerViewModel
     @StateObject var serviceLocationVM : ServiceLocationViewModel
@@ -60,7 +61,8 @@ struct EditJobView: View {
         active: true,
         displayAsCompany: true,
         hireDate: Date(),
-        billingNotes: ""
+        billingNotes: "",
+        linkedInviteId: UUID().uuidString
     )
     
     @State var serviceLocations:[ServiceLocation] = []
@@ -100,7 +102,8 @@ struct EditJobView: View {
         gallons: "",
         material: "",
         customerId: "",
-        serviceLocationId: ""
+        serviceLocationId: "",
+        lastFilled: Date()
     )
     
     @State var equipmentList:[Equipment] = []
@@ -117,11 +120,11 @@ struct EditJobView: View {
         customerName: "",
         customerId: "",
         serviceLocationId: "",
-        bodyOfWaterId: ""
+        bodyOfWaterId: "", isActive: true
     )
 
-    @State var admin:DBUser = DBUser(id: "",exp: 0)
-    @State var tech:DBUser = DBUser(id: "",exp: 0)
+    @State var admin:DBUser = DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
+    @State var tech:DBUser = DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
 
     @State var serviceStopIds:[String] = []
     
@@ -196,7 +199,6 @@ struct EditJobView: View {
         }
         .task {
             dateCreated = job.dateCreated
-            jobTemplate.id = job.jobTemplateId
             jobTemplate.name = job.type
 
             description = job.description
@@ -209,35 +211,23 @@ struct EditJobView: View {
             admin.id = job.adminId
             admin.firstName = job.adminName
             
-            installationParts = job.installationParts
-            pvcParts = job.pvcParts
-            electricalParts = job.electricalParts
-            chemicals = job.chemicals
-            miscParts = job.miscParts
             
             rate = String(job.rate)
             laborCost = String(job.laborCost)
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     try await serviceLocationVM.getServiceLocationByCustomerAndLocationId(companyId: company.id, customerId: job.customerId, locationId: job.serviceLocationId)
                     if let location = serviceLocationVM.serviceLocation {
                         serviceLocation = location
                     }
-                    try await bodyOfWaterVM.getSpecificBodyOfWater(companyId: company.id, bodyOfWaterId: job.bodyOfWaterId ?? "")
-                    if let BOW = bodyOfWaterVM.bodyOfWater {
-                        bodyOfWater = BOW
-                    }
-                    try await equipmentVM.getSinglePieceOfEquipmentWithId(companyId: company.id, equipmentId: job.equipmentId ?? "")
-                    if let eq = equipmentVM.equipment {
-                        equipment = eq
-                    }
+                    
                 }
             } catch {
                 print("Error")
             }
 
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     try await settingsVM.getWorkOrderTemplates(companyId: company.id)
                     try await settingsVM.getSrerviceStopTemplates(companyId: company.id)
 
@@ -312,7 +302,7 @@ struct EditJobView: View {
         .onChange(of: customer, perform: { cus in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if cus.id != "" {
                             try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: customer.id)
                             serviceLocations = serviceLocationVM.serviceLocations
@@ -332,7 +322,7 @@ struct EditJobView: View {
         .onChange(of: serviceLocation, perform: { loc in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if loc.id != "" {
                             try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
                             bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
@@ -340,7 +330,7 @@ struct EditJobView: View {
                             if bodyOfWaterList.count != 0 {
                                 bodyOfWater = bodyOfWaterList.first!
                             } else {
-                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "")
+                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
                             }
                         }
                     }
@@ -354,7 +344,7 @@ struct EditJobView: View {
             BOW in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if BOW.id != "" {
                             try await equipmentVM.getAllEquipmentFromBodyOfWater(companyId: company.id, bodyOfWater: BOW)
                             equipmentList = equipmentVM.listOfEquipment
@@ -375,7 +365,8 @@ struct EditJobView: View {
                                     customerName: "",
                                     customerId: "",
                                     serviceLocationId: "",
-                                    bodyOfWaterId: ""
+                                    bodyOfWaterId: "",
+                                    isActive: true
                                 )
                             }
                         }
@@ -522,7 +513,7 @@ extension EditJobView {
                 Text("Tech")
                     .bold(true)
                 Picker("Tech", selection: $tech) {
-                    Text("Pick Tech").tag(DBUser(id: "",exp: 0))
+                    Text("Pick Tech").tag(DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
                         let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
                         Text(fullName).tag(template)
@@ -552,32 +543,33 @@ extension EditJobView {
             Button(action: {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             let customerFullName = customer.firstName + " " + customer.lastName
                             let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
-                            try await servicestopVM.addNewServiceStopWithValidation(companyId: company.id,
-                                                                                    typeId: jobTemplate.id,
-                                                                                    customerName: customerFullName,
-                                                                                    customerId: customer.id,
-                                                                                    address: serviceLocation.address,
-                                                                                    dateCreated: Date(),
-                                                                                    serviceDate: serviceDate,
-                                                                                    duration: duration,
-                                                                                    rate: rate,
-                                                                                    tech: techFullName,
-                                                                                    techId: tech.id,
-                                                                                    recurringServiceStopId: "",
-                                                                                    description: description,
-                                                                                    serviceLocationId: serviceLocation.id,
-                                                                                    type: jobTemplate.name,
-                                                                                    typeImage: jobTemplate.typeImage ?? "",
-                                                                                    jobId: jobId,
-                                                                                    finished: false,
-                                                                                    skipped: false,
-                                                                                    invoiced: false,
-                                                                                    checkList: checkList,
-                                                                                    includeReadings: includeReadings,
-                                                                                    includeDosages: includeDosages)
+                            //Developer Keep and Fix
+//                            try await servicestopVM.addNewServiceStopWithValidation(companyId: company.id,
+//                                                                                    typeId: jobTemplate.id,
+//                                                                                    customerName: customerFullName,
+//                                                                                    customerId: customer.id,
+//                                                                                    address: serviceLocation.address,
+//                                                                                    dateCreated: Date(),
+//                                                                                    serviceDate: serviceDate,
+//                                                                                    duration: duration,
+//                                                                                    rate: rate,
+//                                                                                    tech: techFullName,
+//                                                                                    techId: tech.id,
+//                                                                                    recurringServiceStopId: "",
+//                                                                                    description: description,
+//                                                                                    serviceLocationId: serviceLocation.id,
+//                                                                                    type: jobTemplate.name,
+//                                                                                    typeImage: jobTemplate.typeImage ?? "",
+//                                                                                    jobId: jobId,
+//                                                                                    finished: false,
+//                                                                                    skipped: false,
+//                                                                                    invoiced: false,
+//                                                                                    checkList: checkList,
+//                                                                                    includeReadings: includeReadings,
+//                                                                                    includeDosages: includeDosages)
                             operationStatus = .estimatePending
 
                             billingStatus = .estimate
@@ -610,8 +602,8 @@ extension EditJobView {
                 ForEach(serviceStopList){ stop in
                     HStack{
                         Text("\(stop.type) - \(fullDate(date:stop.dateCreated)) - ")
-                        Text("\(stop.finished ? "Finished" : "Unfinished")")
-                            .foregroundColor(stop.finished ? Color.green : Color.red)
+                        Text("\(stop.operationStatus.rawValue)")
+                            .foregroundColor(stop.operationStatus == .finished ? Color.green : Color.red)
                     }
                 }
             }
@@ -634,7 +626,7 @@ extension EditJobView {
                     })
                     .sheet(isPresented: $showInstallationParts,onDismiss: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     try await jobVM.updateInstallationJobParts(companyId: company.id, jobId: job.id, installationPart: installationPart)
                                     installationParts.append(installationPart)
@@ -644,7 +636,7 @@ extension EditJobView {
                             }
                         }
                     }, content: {
-                        jobItemPicker(jobDBItems: $installationPart, category: "Equipment")
+                        jobItemPicker(dataService: dataService, jobDBItems: $installationPart, category: "Equipment")
                         
                     })
                 }
@@ -663,7 +655,7 @@ extension EditJobView {
                     })
                     .sheet(isPresented: $showpvcParts,onDismiss: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     try await jobVM.updatePVCobParts(companyId: company.id, jobId: job.id, pvc: pvcPart)
                                     pvcParts.append(pvcPart)
@@ -673,7 +665,7 @@ extension EditJobView {
                             }
                         }
                     },  content: {
-                        jobItemPicker(jobDBItems: $pvcPart, category: "PVC")
+                        jobItemPicker(dataService: dataService, jobDBItems: $pvcPart, category: "PVC")
                     })
                 }
                 ForEach(pvcParts){ datum in
@@ -691,7 +683,7 @@ extension EditJobView {
                     })
                     .sheet(isPresented: $showelectricalParts,onDismiss: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     try await jobVM.updatePVCobParts(companyId: company.id, jobId: job.id, pvc: electricalPart)
                                     electricalParts.append(electricalPart)
@@ -701,7 +693,8 @@ extension EditJobView {
                             }
                         }
                     },  content: {
-                        jobItemPicker(jobDBItems: $electricalPart, category: "Electrical")
+                        jobItemPicker(dataService: dataService
+                                      , jobDBItems: $electricalPart, category: "Electrical")
                     })
                 }
                 ForEach(electricalParts){ datum in
@@ -719,7 +712,7 @@ extension EditJobView {
                     })
                     .sheet(isPresented: $showchemicals,onDismiss: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     try await jobVM.updateChemicalsJobParts(companyId: company.id, jobId: job.id, chemical: chemical)
                                     chemicals.append(chemical)
@@ -729,7 +722,7 @@ extension EditJobView {
                             }
                         }
                     },  content: {
-                        jobItemPicker(jobDBItems: $chemical, category: "Chems")
+                        jobItemPicker(dataService: dataService, jobDBItems: $chemical, category: "Chems")
                     })
                 }
                 ForEach(chemicals){ datum in
@@ -747,7 +740,7 @@ extension EditJobView {
                     })
                     .sheet(isPresented: $showmiscParts,onDismiss: {
                         Task{
-                            if let company = masterDataManager.selectedCompany {
+                            if let company = masterDataManager.currentCompany {
                                 do {
                                     try await jobVM.updateMiscJobParts(companyId: company.id, jobId: job.id, misc: miscPart)
                                     miscParts.append(miscPart)
@@ -757,7 +750,7 @@ extension EditJobView {
                             }
                         }
                     },  content: {
-                        jobItemPicker(jobDBItems: $miscPart, category: "")
+                        jobItemPicker(dataService: dataService, jobDBItems: $miscPart, category: "")
                     })
                 }
                 ForEach(miscParts){ datum in
@@ -837,7 +830,7 @@ extension EditJobView {
                     Text("Admin")
                         .bold(true)
                     Picker("Admin", selection: $admin) {
-                        Text("Pick Admin").tag(DBUser(id: "",exp: 0))
+                        Text("Pick Admin").tag(DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                         ForEach(techVM.techList){ template in
                             let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
                             Text(fullName).tag(template)
@@ -932,7 +925,7 @@ extension EditJobView {
                 Button(action: {
                     Task{
                         do {
-                            guard let company = masterDataManager.selectedCompany else {
+                            guard let company = masterDataManager.currentCompany else {
                                 return
                             }
                             let customerFullName = customer.firstName + " " + customer.lastName
@@ -997,11 +990,8 @@ extension EditJobView {
                 }, label: {
                     Text("Submit")
                 })
-                .foregroundColor(Color.basicFontText)
-                .padding(5)
-                .background(Color.accentColor)
-                .cornerRadius(5)
-                .padding(5)
+                .modifier(SubmitButtonModifier())
+
             }
         }
     }

@@ -10,7 +10,7 @@ import SwiftUI
 struct JobPickerScreen: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
-
+    
     @StateObject var jobVM : JobViewModel
     @Binding var job : Job
     
@@ -20,7 +20,6 @@ struct JobPickerScreen: View {
         self._job = job
     }
     
-    @State var search:String = ""
     @State var jobs:[Job] = []
     var body: some View {
         VStack{
@@ -30,34 +29,34 @@ struct JobPickerScreen: View {
         .padding()
         .task {
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     try await jobVM.getAllUnbilledJobs(companyId: company.id) //DEVELOPER GET LIMITED JOBS
                     jobs = jobVM.workOrders
                 }
             } catch {
                 print("Error")
-
+                
             }
         }
-        .onChange(of: search, perform: { term in
+        .onChange(of: jobVM.searchTerm, perform: { term in
             if term == "" {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             try await jobVM.getAllUnbilledJobs(companyId: company.id) //DEVELOPER GET LIMITED JOBS
                             jobs = jobVM.workOrders
                         }
                     } catch {
                         print("Error")
-
+                        
                     }
                 }
             } else {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             
-                            try await jobVM.filterWorkOrderList(filterTerm: term, workOrders: jobs)
+                            try await jobVM.filterWorkOrderList()
                             jobs = jobVM.filteredWorkOrders
                         }
                     } catch {
@@ -71,40 +70,41 @@ struct JobPickerScreen: View {
 extension JobPickerScreen {
     var searchBar: some View {
         TextField(
-            text: $search,
+            text: $jobVM.searchTerm,
             label: {
                 Text("Search: ")
             })
-        .textFieldStyle(PlainTextFieldStyle())
-        .font(.headline)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 5)
-        .background(Color.white)
-        .clipShape(Capsule())
-        .foregroundColor(Color.basicFontText)
+        .modifier(SearchTextFieldModifier())
+        .padding(8)
         
     }
     var jobList: some View {
         ScrollView{
             Divider()
-
+            
             ForEach(jobs){ datum in
-                HStack{
-                    Spacer()
-                    Button(action: {
-                        job = datum
-                        dismiss()
-                    }, label: {
+                Button(action: {
+                    job = datum
+                    dismiss()
+                }, label: {
+                    HStack{
+                        Spacer()
+                        
                         Text("\(datum.id) - \(datum.customerName) - \(fullDate(date:datum.dateCreated))")
-                    })
+                        
+                        Spacer()
+                        if datum == job {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(Color.poolGreen)
+                        }
+                    }
+                    .padding(.horizontal,8)
+                    .padding(.vertical,3)
+                    .background(datum == job ? Color.poolBlue : Color.clear)
+                    .foregroundColor(datum == job ? Color.white : Color.black)
+                    .cornerRadius(8)
+                })
                 
-                    Spacer()
-                }
-                .padding(8)
-                .background(Color.accentColor.opacity(0.1))
-                .foregroundColor(Color.black)
-                .cornerRadius(5)
-                .padding(2)
                 Divider()
             }
         }

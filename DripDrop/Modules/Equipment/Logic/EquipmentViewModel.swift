@@ -43,7 +43,7 @@ final class EquipmentViewModel:ObservableObject{
         for equipment in equipmentList {
             print("\(count) / \(equipmentList.count)")
             do {
-                let customer = try await CustomerManager.shared.getCustomerById(companyId: companyId, customerId: equipment.customerId)
+                let customer = try await dataService.getCustomerById(companyId: companyId, customerId: equipment.customerId)
                 let equipment = Equipment(
                     id: equipment.id,
                     name: equipment.name,
@@ -61,7 +61,8 @@ final class EquipmentViewModel:ObservableObject{
                     customerName: customer.firstName + " " + customer.lastName,
                     customerId: equipment.customerId,
                     serviceLocationId: equipment.serviceLocationId,
-                    bodyOfWaterId: equipment.bodyOfWaterId
+                    bodyOfWaterId: equipment.bodyOfWaterId, 
+                    isActive: equipment.isActive
                 )
                 try await EquipmentManager.shared.updateEquipmentCustomer(companyId: companyId,equipment:equipment)
             } catch {
@@ -89,7 +90,7 @@ final class EquipmentViewModel:ObservableObject{
         let list = try await BodyOfWaterManager.shared.getAllBodiesOfWater(companyId: companyId)
         var count = 0
         for part in list {
-            let customer = try await CustomerManager.shared.getCustomerById(
+            let customer = try await dataService.getCustomerById(
                 companyId: companyId,
                 customerId: part.customerId
             )
@@ -111,7 +112,8 @@ final class EquipmentViewModel:ObservableObject{
                     customerName: fullName,
                     customerId: part.customerId,
                     serviceLocationId: part.serviceLocationId,
-                    bodyOfWaterId: part.id
+                    bodyOfWaterId: part.id,
+                    isActive: true
                 )
             )
             try await EquipmentManager.shared.addNewEquipmentWithParts(
@@ -137,7 +139,8 @@ final class EquipmentViewModel:ObservableObject{
                     customerName: fullName,
                     customerId: part.customerId,
                     serviceLocationId: part.serviceLocationId,
-                    bodyOfWaterId: part.id
+                    bodyOfWaterId: part.id, 
+                    isActive: true
                 )
             )
         }
@@ -182,7 +185,8 @@ final class EquipmentViewModel:ObservableObject{
             customerName: customerName,
             customerId: customerId,
             serviceLocationId: serviceLocationId,
-            bodyOfWaterId: bodyOfWaterId
+            bodyOfWaterId: bodyOfWaterId, 
+            isActive: true
         )
         try await EquipmentManager.shared.addNewEquipmentWithParts(
             companyId: companyId,
@@ -217,7 +221,10 @@ final class EquipmentViewModel:ObservableObject{
         
         self.listOfEquipment = try await EquipmentManager.shared.getEquipmentByBodyOfWater(companyId: companyId, bodyOfWater: bodyOfWater)
     }
-    
+    func getAllEquipmentFromServiceLocationId(companyId: String, serviceLocationId: String) async throws {
+        
+        self.listOfEquipment = try await dataService.getEquipmentByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
+    }
     func getSinglePieceOfEquipment(companyId: String,customer:Customer,serviceLocation:ServiceLocation,bodyOfWater:BodyOfWater,equipmentId:String) async throws {
         self.equipment = try await EquipmentManager.shared.getSinglePieceOfEquipment(companyId: companyId, equipmentId: equipmentId)
     }
@@ -286,7 +293,8 @@ final class EquipmentViewModel:ObservableObject{
             customerName: customerName,
             customerId: customerId,
             serviceLocationId: serviceLocationId,
-            bodyOfWaterId: bodyOfWaterId
+            bodyOfWaterId: bodyOfWaterId, 
+            isActive: true
         )
         try await EquipmentManager.shared.updateEquipment(
             companyId: companyId,

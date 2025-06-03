@@ -18,7 +18,25 @@ struct RouteFinder {
         case .customer:
             let queryParams = url.queryParameters
             guard let itemQueryVal = queryParams?["id"] as? String else {return nil}
-            let customer =  Customer(id: itemQueryVal, firstName: "", lastName: "", email: "", billingAddress: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), active: true, displayAsCompany: true, hireDate: Date(), billingNotes: "")
+            let customer =  Customer(
+                id: itemQueryVal,
+                firstName: "",
+                lastName: "",
+                email: "",
+                billingAddress: Address(
+                    streetAddress: "",
+                    city: "",
+                    state: "",
+                    zip: "",
+                    latitude: 0,
+                    longitude: 0
+                ),
+                active: true,
+                displayAsCompany: true,
+                hireDate: Date(),
+                billingNotes: "",
+                linkedInviteId: UUID().uuidString
+            )
             print("Returning Customer")
             return .customer(customer: customer, dataService: dataService)
             

@@ -8,9 +8,24 @@
 import SwiftUI
 
 struct ContractTermsList: View {
-    let contractTerms : ContractTerms
+    let contractTerms : [ContractTerms]
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            ScrollView{
+                Text("Terms")
+                    .fontWeight(.bold)
+                ForEach(contractTerms,id:\.self){ datum in
+                    let index = contractTerms.firstIndex(of: datum)
+                    HStack{
+                        Text("\((index ?? 0) + 1):")
+                        Text(datum.description)
+                        Spacer()
+                    }
+                }
+            }
+            .padding(8)
+        }
     }
 }
 

@@ -11,7 +11,7 @@ import SwiftUI
 struct TermsTemplatePicker: View {
     //Init
     init(dataService:ProductionDataService,selectedTemplate:Binding<TermsTemplate>,termsList:Binding<[ContractTerms]>){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
         self._selectedTemplate = selectedTemplate
         self._termsList = termsList
     }
@@ -19,7 +19,7 @@ struct TermsTemplatePicker: View {
     //Objects
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
 
     //Variables
     @Binding var selectedTemplate:TermsTemplate

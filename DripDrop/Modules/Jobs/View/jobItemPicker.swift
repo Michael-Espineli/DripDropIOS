@@ -7,30 +7,81 @@
 
 
 import SwiftUI
+@MainActor
+final class JobItemPickerViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
+    @Published private(set) var dataServiceDataBaseItems: [DataBaseItem] = []
+    @Published private(set) var dataBaseItems: [DataBaseItem] = []
+    @Published var filterTerm: String = ""
+    @Published var quantityStr: String = ""
+    @Published var quantity: Double = 0
 
+    @Published var selectedDataBaseItem:DataBaseItem = DataBaseItem(
+        id: "",
+        name: "",
+        rate: 0,
+        storeName: "",
+        venderId: "",
+        category: .misc,
+        subCategory: .misc,
+        description: "",
+        dateUpdated: Date(),
+        sku: "",
+        billable: true,
+        color: "",
+        size: "",
+        UOM:.ft
+    )
+    
+    func getAllDataBaseItemsByCategory(companyId:String,category:String) async throws{
+        self.dataServiceDataBaseItems = try await DatabaseManager.shared.getAllDataBaseItemsByCategory(companyId: companyId, category: category)
+        self.dataBaseItems = dataServiceDataBaseItems
+    }
+    func filterDataBaseList() {
+        //very facncy Search Bar
+        if filterTerm != "" {
+            var filteredListOfCustomers:[DataBaseItem] = []
+            for item in dataServiceDataBaseItems {
+                let rateString = String(item.rate)
+                
+                if item.sku.lowercased().contains(
+                    filterTerm.lowercased()
+                ) || item.name.lowercased().contains(
+                    filterTerm.lowercased()
+                ) || rateString.lowercased().contains(
+                    filterTerm.lowercased()
+                ) || item.description.lowercased().contains(
+                    filterTerm.lowercased()
+                ) {
+                    filteredListOfCustomers.append(item)
+                }
+            }
+            
+            self.dataBaseItems = filteredListOfCustomers
+        } else {
+            self.dataBaseItems = dataServiceDataBaseItems
+        }
+    }
+}
 struct jobItemPicker: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
-
-    @StateObject var dataBaseVM = ReceiptDatabaseViewModel()
+    @StateObject var VM : JobItemPickerViewModel
+    
     @State var category:String
     @Binding var jobDBItems : WODBItem
     
-    init(jobDBItems:Binding<WODBItem>,category:String){
-        
+    init(dataService:any ProductionDataServiceProtocol, jobDBItems:Binding<WODBItem>,category:String){
+        _VM = StateObject(wrappedValue: JobItemPickerViewModel(dataService: dataService))
         self._jobDBItems = jobDBItems
         _category = State(wrappedValue: category)
     }
-    
-    @State var dataBaseItem:DataBaseItem = DataBaseItem(id: "", name: "", rate: 0, storeName: "", venderId: "", category: .misc,subCategory: .misc, description: "", dateUpdated: Date(), sku: "", billable: true, color: "", size: "",UOM:.ft)
-    @State var dataBaseItems:[DataBaseItem] = []
-    
-    @State var search:String = ""
-    @State var quantity:String = ""
-
     var body: some View {
         VStack{
-            if dataBaseItem.id == "" {
+            if VM.selectedDataBaseItem.id == "" {
                 dataBaseList
                 searchBar
             } else {
@@ -40,10 +91,9 @@ struct jobItemPicker: View {
         .padding()
         .task {
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     if category != "" {
-                        try await dataBaseVM.getAllDataBaseItemsByCategory(companyId: company.id, category: category)
-                        dataBaseItems = dataBaseVM.dataBaseItems
+                        try await VM.getAllDataBaseItemsByCategory(companyId: company.id, category: category)
                     }
                 }
             } catch {
@@ -51,14 +101,8 @@ struct jobItemPicker: View {
 
             }
         }
-        .onChange(of: search, perform: { term in
-            if term == "" {
-                        dataBaseItems = dataBaseVM.dataBaseItems
-            } else {
-                            dataBaseVM.filterDataBaseList(filterTerm: term, items: dataBaseVM.dataBaseItems)
-                            dataBaseItems = dataBaseVM.dataBaseItemsFiltered
-
-            }
+        .onChange(of: VM.filterTerm, perform: { term in
+                VM.filterDataBaseList()
         })
     }
 }
@@ -66,25 +110,31 @@ extension jobItemPicker {
     var itemInfo: some View {
         VStack{
             Button(action: {
-                dataBaseItem = DataBaseItem(id: "", name: "", rate: 0, storeName: "", venderId: "", category: .misc,subCategory: .misc, description: "", dateUpdated: Date(), sku: "", billable: true, color: "", size: "",UOM:.ft)
+                VM.selectedDataBaseItem = DataBaseItem(id: "", name: "", rate: 0, storeName: "", venderId: "", category: .misc,subCategory: .misc, description: "", dateUpdated: Date(), sku: "", billable: true, color: "", size: "",UOM:.ft)
             }, label: {
-                Text("Name: \(dataBaseItem.name) - \(String(dataBaseItem.rate)) - \(String(dataBaseItem.sellPrice ?? 0))")
+                Text("Name: \(VM.selectedDataBaseItem.name) - \(String(VM.selectedDataBaseItem.rate)) - \(String(VM.selectedDataBaseItem.sellPrice ?? 0))")
                     
             })
             TextField(
-                text: $quantity,
+                text: $VM.quantityStr,
                 label: {
                     Text("Quantity: ")
                 })
             .keyboardType(.decimalPad)
             Button(action: {
-                if let quantity = Double(quantity) {
-                    
-                    let item = WODBItem(id: UUID().uuidString, name: dataBaseItem.name, quantity: quantity, cost: dataBaseItem.rate, genericItemId: dataBaseItem.id)
+                if let quantity = Double(VM.quantityStr) {
+                    let item = WODBItem(
+                        id: UUID().uuidString,
+                        name: VM.selectedDataBaseItem.name,
+                        quantity: quantity,
+                        cost: VM.selectedDataBaseItem.rate,
+                        genericItemId: VM.selectedDataBaseItem.id
+                    )
                     jobDBItems = item
                 }
                 dismiss()
-            }, label: {
+            },
+                   label: {
                 Text("Add")
             })
         }
@@ -92,16 +142,12 @@ extension jobItemPicker {
     var searchBar: some View {
         HStack{
             TextField(
-                text: $search,
+                text: $VM.filterTerm,
                 label: {
                     Text("Search: ")
                 })
-                .textFieldStyle(PlainTextFieldStyle())
-                .foregroundColor(.black)
-                .padding(.vertical, 5)
-                .padding(.horizontal, 20)
-                .background(Color.poolWhite)
-                .clipShape(Capsule())
+            .modifier(SearchTextFieldModifier())
+            .padding(8)
 
         }
         .foregroundColor(Color.white)
@@ -109,9 +155,9 @@ extension jobItemPicker {
     }
     var dataBaseList: some View {
         ScrollView{
-            ForEach(dataBaseItems){ datum in
+            ForEach(VM.dataBaseItems){ datum in
                 Button(action: {
-                    dataBaseItem = datum
+                    VM.selectedDataBaseItem = datum
                 }, label: {
                     HStack{
                         Text("\(datum.name)")

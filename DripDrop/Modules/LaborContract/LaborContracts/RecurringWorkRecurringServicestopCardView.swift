@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct RecurringWorkRecurringServicestopCardView: View {
-    init(dataService: any ProductionDataServiceProtocol,recurringServiceStopId:String,laborContract:RepeatingLaborContract){
+    init(dataService: any ProductionDataServiceProtocol,recurringServiceStopId:String,laborContract:ReccuringLaborContract){
         _VM = StateObject(wrappedValue: RecurringWorkRecurringServicestopCardViewModel(dataService: dataService))
         _recurringServiceStopId = State(wrappedValue: recurringServiceStopId)
         _laborContract = State(wrappedValue: laborContract)
     }
     @StateObject var VM : RecurringWorkRecurringServicestopCardViewModel
     @State var recurringServiceStopId:String
-    @State var laborContract:RepeatingLaborContract
+    @State var laborContract:ReccuringLaborContract
     var body: some View {
         HStack{
             if let recurringServiceStop = VM.recurringServiceStop {
@@ -37,5 +37,5 @@ struct RecurringWorkRecurringServicestopCardView: View {
 }
 
 #Preview {
-    RecurringWorkRecurringServicestopCardView(dataService: MockDataService(), recurringServiceStopId: "", laborContract: MockDataService.mockLaborContracts.first!)
+    RecurringWorkRecurringServicestopCardView(dataService: MockDataService(), recurringServiceStopId: "", laborContract: MockDataService.mockRecurringLaborContracts.first!)
 }

@@ -28,6 +28,7 @@ final class ReceivedRecurringLaborContractListViewModel:ObservableObject{
 
     //Get
     func getLaborContracts(companyId:String) async throws {
+        print("Getting Recurring Labor Contracts for \(companyId)")
         self.recurringLaborContractList = try await dataService.getReceivedLaborContracts(companyId: companyId)
     }
 }
@@ -88,7 +89,7 @@ struct ReceivedRecurringLaborContractListView: View {
                     filters
                 })
             Text("")
-                .fullScreenCover(isPresented: $VM.showAddNewLaborContract, onDismiss: {
+                .sheet(isPresented: $VM.showAddNewLaborContract, onDismiss: {
                     Task{
                         if let selectedCompany = masterDataManager.currentCompany {
                             do {
@@ -103,7 +104,7 @@ struct ReceivedRecurringLaborContractListView: View {
                     AddNewLaborContract(dataService: dataService,isPresented: $VM.showAddNewLaborContract,isFullScreen: true)
                 })
         }
-        .navigationTitle(VM.recurringLaborContractList.isEmpty ? "Sent Recurring Labor Contracts" : "Sent Recurring Labor Contracts - \(VM.recurringLaborContractList.count)")
+        .navigationTitle("Received Recurring Labor Contracts")
         .task {
             if let selectedCompany = masterDataManager.currentCompany {
                 do {
@@ -119,19 +120,19 @@ struct ReceivedRecurringLaborContractListView: View {
 #Preview {
     SentRecurringLaborContractListView(dataService: MockDataService())
 }
-extension SentRecurringLaborContractListView {
+extension ReceivedRecurringLaborContractListView {
     var list: some View {
         VStack{
             if !VM.recurringLaborContractList.isEmpty {
                 ForEach(VM.recurringLaborContractList) { contract in
                     Divider()
                     if UIDevice.isIPhone {
-                        NavigationLink(value: Route.laborContractDetailView(contract: contract, dataService: dataService), label: {
+                        NavigationLink(value: Route.recurringLaborContractDetailView(contract: contract, dataService: dataService), label: {
                             LaborContractCardSmall(dataService: dataService, laborContract: contract)
                         })
                     } else {
                         Button(action: {
-                            masterDataManager.selectedLaborContract = contract
+                            masterDataManager.selectedRecurringLaborContract = contract
                         }, label: {
                             LaborContractCardSmall(dataService: dataService, laborContract: contract)
                         })

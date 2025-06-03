@@ -25,7 +25,7 @@ final class GenericItemViewModel:ObservableObject{
     }
     //READ
     func getAllGenericItems(companyId:String) async throws {
-        self.genericItems = try await dataService.getAllDataBaseItems(companyId: companyId)
+        self.genericItems = try await dataService.getAllGenericDataBaseItems(companyId: companyId)
     }
     //UPDATE
     func updateGenericItem(companyId:String,genericItem:GenericItem,commonName:String,specificName:String,category:String,description:String, dateUpdated:Date, sku:String, rate:Double,UOM:String,storeItems:[String],storItemIds:[String]) async throws{

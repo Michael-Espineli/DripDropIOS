@@ -10,7 +10,7 @@ import SwiftUI
 struct LaborContractRecurringWorkPicker: View {
     //Init
     init(dataService:ProductionDataService,laborContractRecurringWork:Binding<LaborContractRecurringWork>){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
         self._laborContractRecurringWork = laborContractRecurringWork
     }
 
@@ -19,7 +19,7 @@ struct LaborContractRecurringWorkPicker: View {
 
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
 
     @Binding var laborContractRecurringWork:LaborContractRecurringWork
     
@@ -74,7 +74,7 @@ struct LaborContractRecurringWorkPicker: View {
         .onChange(of: rateStr, perform: { datum in
             if datum != "" {
                 if let rate = Double(rateStr){
-                    laborContractRecurringWork.rate = rate
+                    laborContractRecurringWork.rate = Int(rate*100)
                 } else {
                     rateStr = "0"
                 }
@@ -91,7 +91,6 @@ struct LaborContractRecurringWorkPicker: View {
         })
         .onChange(of: VM.selectedJobTemplate, perform: { template in
             laborContractRecurringWork.jobTemplateId = template.id
-
         })
     }
 }
@@ -187,44 +186,47 @@ extension LaborContractRecurringWorkPicker {
                     .fontWeight(.semibold)
                 Spacer()
             }
-            HStack{
+            VStack{
                 HStack{
-                    TextField(
-                        "Rate",
-                        text: $rateStr
-                    )
-                    .keyboardType(.decimalPad)
-                    Button(action: {
-                        rateStr = "0"
-                    }, label: {
-                        Image(systemName: "xmark")
-                    })
+                    HStack{
+                        Button(action: {
+                            rateStr = "0"
+                        }, label: {
+                            Image(systemName: "xmark")
+                        })
+                        TextField(
+                            "Rate",
+                            text: $rateStr
+                        )
+                        .keyboardType(.decimalPad)
+                    }
+                    .modifier(PlainTextFieldModifier())
+                    VStack{
+                        Button(action: {
+                            if var rate = Double(rateStr){
+                                rate += 1
+                                rateStr = String(rate)
+                            }
+                        }, label: {
+                            Image(systemName: "chevron.up.square.fill")
+                                .foregroundColor(Color.poolGreen)
+                                .font(.headline)
+                                .fontDesign(.monospaced)
+                        })
+                        Button(action: {
+                            if var rate = Double(rateStr){
+                                rate -= 1
+                                rateStr = String(rate)
+                            }
+                        }, label: {
+                            Image(systemName: "chevron.down.square.fill")
+                                .foregroundColor(Color.poolRed)
+                                .font(.headline)
+                                .fontDesign(.monospaced)
+                        })
+                    }
                 }
-                .modifier(TextFieldModifier())
-                .padding(.vertical,8)
-                .padding(.trailing,8)
-                VStack{
-                    Button(action: {
-                        if var rate = Double(rateStr){
-                            rate += 1
-                            rateStr = String(rate)
-                        }
-                    }, label: {
-                        Image(systemName: "chevron.up.square.fill")
-                            .modifier(SubmitButtonModifier())
-                            .padding(3)
-                    })
-                    Button(action: {
-                        if var rate = Double(rateStr){
-                            rate -= 1
-                            rateStr = String(rate)
-                        }
-                    }, label: {
-                        Image(systemName: "chevron.down.square.fill")
-                            .modifier(DismissButtonModifier())
-                            .padding(3)
-                    })
-                }
+                
                 Picker("Labor Type", selection: $laborContractRecurringWork.laborType, content: {
                     Text("Hour").tag(RateSheetLaborType.hour)
                     Text("Job").tag(RateSheetLaborType.job)
@@ -237,44 +239,47 @@ extension LaborContractRecurringWorkPicker {
                     .fontWeight(.semibold)
                 Spacer()
             }
-            HStack{
+            VStack{
                 HStack{
-                    TextField(
-                        "Frequency",
-                        text: $perFrequencyTime
-                    )
-                    .keyboardType(.decimalPad)
-                    Button(action: {
-                        perFrequencyTime = "0"
-                    }, label: {
-                        Image(systemName: "xmark")
-                    })
+                    HStack{
+                        Button(action: {
+                            perFrequencyTime = "0"
+                        }, label: {
+                            Image(systemName: "xmark")
+                        })
+                        TextField(
+                            "Frequency",
+                            text: $perFrequencyTime
+                        )
+                        .keyboardType(.decimalPad)
+                    }
+                    .modifier(PlainTextFieldModifier())
+                    VStack{
+                        Button(action: {
+                            if var rate = Int(perFrequencyTime){
+                                rate += 1
+                                perFrequencyTime = String(rate)
+                            }
+                        }, label: {
+                            Image(systemName: "chevron.up.square.fill")
+                                .foregroundColor(Color.poolGreen)
+                                .font(.headline)
+                                .fontDesign(.monospaced)
+                        })
+                        Button(action: {
+                            if var rate = Int(perFrequencyTime){
+                                rate -= 1
+                                perFrequencyTime = String(rate)
+                            }
+                        }, label: {
+                            Image(systemName: "chevron.down.square.fill")
+                                .foregroundColor(Color.poolRed)
+                                .font(.headline)
+                                .fontDesign(.monospaced)
+                        })
+                    }
                 }
-                .modifier(TextFieldModifier())
-                .padding(.vertical,8)
-                .padding(.trailing,8)
-                VStack{
-                    Button(action: {
-                        if var rate = Int(perFrequencyTime){
-                            rate += 1
-                            perFrequencyTime = String(rate)
-                        }
-                    }, label: {
-                        Image(systemName: "chevron.up.square.fill")
-                            .modifier(SubmitButtonModifier())
-                            .padding(3)
-                    })
-                    Button(action: {
-                        if var rate = Int(perFrequencyTime){
-                            rate -= 1
-                            perFrequencyTime = String(rate)
-                        }
-                    }, label: {
-                        Image(systemName: "chevron.down.square.fill")
-                            .modifier(DismissButtonModifier())
-                            .padding(3)
-                    })
-                }
+                
                 Picker("Labor Type", selection: $laborContractRecurringWork.frequency, content: {
                     Text("Daily").tag(LaborContractFrequency.daily)
                     Text("Weekly").tag(LaborContractFrequency.weekly)
@@ -283,7 +288,6 @@ extension LaborContractRecurringWorkPicker {
                 })
                 .pickerStyle(.segmented)
             }
-            
     
             HStack{
                 Text("Offered Start Date:")
@@ -311,7 +315,9 @@ extension LaborContractRecurringWorkPicker {
                     timesPerFrequency: 1,
                     timesPerFrequencySetUp: 1,
                     routeSetUp: false,
-                    recurringServiceStopIdList: []
+                    recurringServiceStopIdList: [],
+                    isActive: true,
+                    lastBilled: Date()
                 )
                 
                 customer = Customer(

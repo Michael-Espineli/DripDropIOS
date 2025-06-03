@@ -23,6 +23,7 @@ struct LandingView: View {
     @State private var showCompany:Bool = false
     @State var layoutExperience: LayoutExperienceSetting = .threeColumn
     @State var showSignInView:Bool = false
+
     @State private var columVisibility: NavigationSplitViewVisibility = .automatic
     var body: some View {
         ZStack{
@@ -30,44 +31,25 @@ struct LandingView: View {
                 WaterLevelLoading()
             } else {
                 if masterDataManager.showPaymentSheet {
-                    if let sheetType = masterDataManager.paymentSheetType {
+                    if let sheetType = masterDataManager.selectedPaymentSheetType {
                         StripePaymentSheet(sheetType: sheetType)
                     }
                 } else {
                     Group {
-                        if UIDevice.isIPad{
-//                            if let user = VM.user {
-//                                ThreeColumnMenuView(
-//                                    columnVisibility: $columVisibility,
-//                                    showCart: $showCart,
-//                                    showSettings: $showSettings,
-//                                    showCompany:$showCompany,
-//                                    layoutExperience:$layoutExperience,
-//                                    showSignInView: $showSignInView,
-//                                    user: user
-//                                )
-//                            }
-                        } else if UIDevice.isIPhone {
+                        if UIDevice.isIPhone {
                             MobileHome(dataService: dataService)
                         } else {
-//                            if let user = VM.user {
-//                                
-//                                ThreeColumnMenuView(
-//                                    columnVisibility: $columVisibility,
-//                                    showCart: $showCart,
-//                                    showSettings: $showSettings,
-//                                    showCompany:$showCompany,
-//                                    layoutExperience:$layoutExperience,
-//                                    showSignInView: $showSignInView,
-//                                    user: user
-//                                    )
-//                                
-//                            }
+                                ThreeColumnMenuView(
+                                    dataService: dataService,
+                                    layoutExperience: $layoutExperience
+                                )
                         }
                     }
                 }
             }
+       
         }
+ 
         .task {
             isLoading = true
             do {
@@ -75,7 +57,7 @@ struct LandingView: View {
                 
                 try await VM.initalLoad()
                 masterDataManager.user = VM.user
-                 masterDataManager.selectedCompany = VM.company
+                 masterDataManager.currentCompany = VM.company
                  masterDataManager.companyUser = VM.companyUser
 
             } catch {

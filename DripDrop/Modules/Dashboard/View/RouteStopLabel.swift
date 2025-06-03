@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct RouteStopLabel: View {
+    @EnvironmentObject var dataService: ProductionDataService
     @State var stop : ServiceStop
     @State var index:Int
     let selected:Bool
@@ -21,19 +22,31 @@ struct RouteStopLabel: View {
                     Spacer()
                 }
                 .padding(EdgeInsets(top: 0, leading: 12.5, bottom: 0, trailing: 0))
-                HStack{
-                    icon
-                    Image(systemName: "\(String(index)).square.fill")
-                        .font(.headline)
-                    Spacer()
+                VStack{
                     HStack{
-                        homeNav
+                        icon
+                        Image(systemName: "\(String(index)).square.fill")
+                            .font(.headline)
                         Spacer()
-                        serviceStopNav
-                        message
+                        HStack{
+                            homeNav
+                            Spacer()
+                            serviceStopNav
+                            message
+                        }
+                    }
+                    if stop.otherCompany {
+                            if stop.contractedCompanyId != ""{
+                                HStack{
+                                    Spacer()
+                                    CompanyNameCardView(dataService: dataService, companyId: stop.contractedCompanyId)
+                                }
+                            }
+                        
                     }
                 }
                 .padding(EdgeInsets(top: 20, leading: 0, bottom: 20, trailing: 0))
+
             }
         }
         .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
@@ -43,7 +56,7 @@ struct RouteStopLabel: View {
 struct RouteStopLabel_Previews: PreviewProvider {
     static var previews: some View {
         @State var showSignInView : Bool = false
-        RouteStopLabel(stop: ServiceStop(id: UUID().uuidString, typeId: "Estimate", customerName: "Kellie Lewis", customerId: "", address: Address(streetAddress: "3300 W Camelback Rd", city: "Phoeniz", state: "Az", zip: "85017", latitude: 33.30389, longitude: -112.07432), dateCreated: Date(), serviceDate: Date(), duration: 60, rate: 0, tech: "Keler Smith", techId: "2M8ws9EtYCZufCeoZDl1Z5J28pq1", recurringServiceStopId: "", description: "", serviceLocationId: "", type: "", typeImage: "list.bullet.clipboard", jobId: "", finished: true, skipped: false, invoiced: false, checkList: [], includeReadings: true, includeDosages: true),index:1,selected: false)
+        RouteStopLabel(stop: MockDataService().mockServiceStops.first!,index:1,selected: false)
     }
 }
 extension RouteStopLabel {
@@ -64,42 +77,35 @@ extension RouteStopLabel {
             )
     }
     var serviceStopNav: some View {
-
-            Text("\(stop.customerName)")
-                .frame(minWidth: 50)
-                .font(.body)
-
-        
-        .lineLimit(2, reservesSpace: true)
-        .padding(5)
-        .background(selected ? Color.poolGreen : Color.darkGray)
-        .foregroundColor(Color.white)
-        .cornerRadius(5)
-        .background(Color.white // any non-transparent background
+        Text("\(stop.customerName)")
+            .frame(minWidth: 50)
+            .font(.body)
+            .lineLimit(2, reservesSpace: true)
+            .padding(5)
+            .background(selected ? Color.poolGreen : Color.darkGray)
+            .foregroundColor(Color.white)
             .cornerRadius(5)
-          .shadow(color: Color.black, radius: 5, x: 5, y: 5)
-        )
-    
+            .background(Color.white // any non-transparent background
+                .cornerRadius(5)
+                .shadow(color: Color.black.opacity(0.75), radius: 4, x: 4, y: 4)
+            )
     }
     var homeNav: some View {
         ZStack{
-                    HStack{
-                        Image(systemName: "house.fill")
-                        Text("\(stop.address.streetAddress)")
-                            .lineLimit(2, reservesSpace: true)
-                            .font(.body)
-                    }
-                
-                .padding(5)
-                .background(selected ? Color.poolGreen : Color.darkGray)
-                .foregroundColor(Color.white)
+            HStack{
+                Image(systemName: "house.fill")
+                Text("\(stop.address.streetAddress)")
+                    .lineLimit(2, reservesSpace: true)
+                    .font(.body)
+            }
+            .padding(5)
+            .background(selected ? Color.poolGreen : Color.darkGray)
+            .foregroundColor(Color.white)
+            .cornerRadius(5)
+            .background(Color.white // any non-transparent background
                 .cornerRadius(5)
-                .background(Color.white // any non-transparent background
-                    .cornerRadius(5)
-                  .shadow(color: Color.black, radius: 5, x: 5, y: 5)
-                )
-                
-           
+                .shadow(color: Color.black.opacity(0.75), radius: 4, x: 4, y: 4)
+            )
         }
     }
 

@@ -9,26 +9,58 @@ import SwiftUI
 
 struct FleetListView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
-    @State var showSearch:Bool = false
-    @State var searchTerm:String = ""
+    @EnvironmentObject var dataService : ProductionDataService
     @StateObject var fleetVM : FleetViewModel
 
     init(dataService:ProductionDataService){
         _fleetVM = StateObject(wrappedValue: FleetViewModel(dataService: dataService))
     }
+    @State var showSearch:Bool = false
+    @State var searchTerm:String = ""
+    @State var showAddVehical:Bool = false
+
     var body: some View {
         ZStack{
+            Color.listColor.ignoresSafeArea()
             list
             icons
+            Text("")
+                .sheet(isPresented: $showAddVehical, onDismiss: {
+                    Task{
+                        if let company = masterDataManager.currentCompany {
+                            do {
+                                try await fleetVM.getFleetList(companyId: company.id)
+                            } catch {
+                                print("Fleet Error")
+                                print(error)
+                            }
+                        }
+                    }
+                }, content: {
+                    AddNewVehical(dataService: dataService)
+                })
         }
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
-                    try await fleetVM.readFleetList(companyId: company.id)
+                    try await fleetVM.getFleetList(companyId: company.id)
                 } catch {
                     print("Fleet Error")
+                    print(error)
                 }
             }
+        }
+        .toolbar{
+            ToolbarItem(content: {
+                Button(action: {
+                    showAddVehical.toggle()
+                }, label: {
+                    Text("Add")
+                        .foregroundColor(.poolWhite)
+                        .fontDesign(.monospaced)
+                        .padding(3)
+                })
+            })
         }
     }
 }
@@ -43,14 +75,37 @@ struct FleetListView_Previews: PreviewProvider {
 extension FleetListView {
     var list: some View {
         VStack{
-            ScrollView{
-                Divider()
-                ForEach(fleetVM.listOfVehicals){ vehical in
-                    VehicleCardView(vehical: vehical)
-                    Divider()
+                if fleetVM.listOfVehicals.isEmpty {
+                    Spacer()
+                    Button(action: {
+                        showAddVehical.toggle()
+                    }, label: {
+                        Text("Add First Vehical")
+                            .modifier(AddButtonModifier())
+                    })
+                    Spacer()
+                } else {
+                    ScrollView{
+                        ForEach(fleetVM.listOfVehicals){ vehical in
+                            Divider()
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.vehicalDetailView(vehical:vehical,dataService: dataService), label: {
+                                    VehicleCardView(vehical: vehical)
+                                })
+                            } else {
+                                Button(action: {
+                                    masterDataManager.selectedCategory = .fleet
+                                    masterDataManager.selectedVehical = vehical
+                                }, label: {
+                                    VehicleCardView(vehical: vehical)
+                                })
+                            }
+                        }
+                    }
                 }
-            }
+            
         }
+        .padding(.horizontal,8)
     }
     var icons: some View {
         VStack{
@@ -114,11 +169,14 @@ extension FleetListView {
                         "Search",
                         text: $searchTerm
                     )
-                    .padding()
-                    .background(Color.gray)
-                    .foregroundColor(Color.white)
-                    .cornerRadius(10)
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
             }
             
         }

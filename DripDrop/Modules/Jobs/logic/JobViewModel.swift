@@ -11,6 +11,7 @@ import SwiftUI
 //import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
+
 @MainActor
 final class JobViewModel:ObservableObject{
     
@@ -26,6 +27,7 @@ final class JobViewModel:ObservableObject{
     @Published private(set) var workOrder: Job? = nil
 
     @Published private(set) var workOrders: [Job] = []
+
     @Published private(set) var filteredWorkOrders: [Job] = []
 
     @Published private(set) var unscheduledWorkOrders: [Job] = []
@@ -34,7 +36,8 @@ final class JobViewModel:ObservableObject{
     @Published private(set) var readingHistory: [StopData] = []
     @Published private(set) var changeHistory: [History] = []
 
-    
+    @Published var searchTerm: String = ""
+
 //    @Published private(set) var billableServiceStops: [ServiceStop] = []
     @Published private(set) var purchasedPartCost: Double? = nil
 
@@ -44,171 +47,9 @@ final class JobViewModel:ObservableObject{
     private var lastDocument: DocumentSnapshot? = nil
     
     
+
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                             Uploading Jobs
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    func updateJobInfo(companyId:String,updatingJob:Job,admin:DBUser,jobTemplate:JobTemplate,operationStatus:JobOperationStatus,billingStatus:JobBillingStatus,rate:String,laborCost:String,description:String) async throws{
-        //Check Which Parts Need Updating
-        if admin.id != updatingJob.adminId || admin.firstName != updatingJob.adminName{
-            print("Change in Admin")
-            let name:String = admin.firstName ?? ""  //DEVELOPER THINK ABOUT CHANGING THIS TO BOTH THE FIRST AND THE LAST NAME
-            try await dataService.updateJobAdmin(companyId: companyId, jobId: updatingJob.id, adminName: name, adminId: admin.id)
-        }
-        if jobTemplate.id != updatingJob.jobTemplateId || jobTemplate.name != updatingJob.type{
-            print("Change in Job Template")
-            try await dataService.updateJobTemplate(companyId: companyId, jobId: updatingJob.id, templateId: jobTemplate.id, templateName: jobTemplate.name)
-        }
- 
-        if operationStatus != updatingJob.operationStatus {
-            print("Change in Operation Status")
-            try await dataService.updateJobOperationStatus(companyId: companyId, jobId: updatingJob.id, operationStatus: operationStatus)
-        }
-        if billingStatus != updatingJob.billingStatus {
-            print("Change in Billing Status")
-            try await dataService.updateJobBillingStatus(companyId: companyId, jobId: updatingJob.id, billingStatus: billingStatus)
-        }
-        if String(updatingJob.rate) != rate {
-            print("Change in Rate")
-            try await dataService.updateJobRate(companyId: companyId, jobId: updatingJob.id, rate: rate)
-        }
-        if laborCost != String(updatingJob.laborCost) {
-            print("Change in Labor Cost")
-            try await dataService.updateJobLaborCost(companyId: companyId, jobId: updatingJob.id, laborCost: laborCost)
-        }
-        if description != updatingJob.description{
-            print("Change in Description")
-            try await dataService.updateJobDescription(companyId: companyId, jobId: updatingJob.id, description: description)
-        }
-    }
-    func updateJobCustomer() async throws{
-        
-    }
-    
-    func updateInstallationJobParts(companyId:String,jobId:String,installationPart:WODBItem) async throws{
-        try await dataService.updateInstallationJobParts(companyId: companyId, jobId: jobId, installationPart: installationPart)
-    }
-    
-    func updatePVCobParts(companyId:String,jobId:String,pvc:WODBItem) async throws{
-        //Add to job
-        try await dataService.updatePVCobParts(companyId: companyId, jobId: jobId, pvc: pvc)
-        
-        //Add to Shopping List
-        try await dataService.addNewShoppingListItem(
-            companyId: companyId,
-            shoppingListItem: ShoppingListItem(
-                id: UUID().uuidString,
-                category: .job,
-                subCategory: .part,
-                status: .needToPurchase,
-                purchaserId: "",
-                purchaserName: "",
-                genericItemId: pvc.genericItemId,
-                name: pvc.name,
-                description: "",
-                datePurchased: nil,
-                quantiy: String(pvc.quantity),
-                jobId: jobId,
-                customerId: nil,
-                customerName: nil,
-                userId: nil,
-                userName: nil
-            )
-        )
-    }
-    
-    func updateElectricalJobParts(companyId:String,jobId:String,electical:WODBItem) async throws{
-        //Add to job
-        try await dataService.updateElectricalJobParts(companyId: companyId, jobId: jobId, electical: electical)
-        
-        //Add to Shopping List
-        try await dataService.addNewShoppingListItem(
-            companyId: companyId,
-            shoppingListItem: ShoppingListItem(
-                id: UUID().uuidString,
-                category: .job,
-                subCategory: .part,
-                status: .needToPurchase,
-                purchaserId: "",
-                purchaserName: "",
-                genericItemId: electical.genericItemId,
-                name: electical.name,
-                description: "",
-                datePurchased: nil,
-                quantiy: String(electical.quantity),
-                jobId: jobId,
-                customerId: nil,
-                customerName: nil,
-                userId: nil,
-                userName: nil
-            )
-        )
-
-    }
-    
-    func updateChemicalsJobParts(companyId:String,jobId:String,chemical:WODBItem) async throws{
-        //Add to job
-        try await dataService.updateChemicalsJobParts(companyId: companyId, jobId: jobId, chemical: chemical)
-        
-        //Add to Shopping List
-        try await dataService.addNewShoppingListItem(
-            companyId: companyId,
-            shoppingListItem: ShoppingListItem(
-                id: UUID().uuidString,
-                category: .job,
-                subCategory: .chemical,
-                status: .needToPurchase,
-                purchaserId: "",
-                purchaserName: "",
-                genericItemId: chemical.genericItemId,
-                name: chemical.name,
-                description: "",
-                datePurchased: nil,
-                quantiy: String(chemical.quantity),
-                jobId: jobId,
-                customerId: nil,
-                customerName: nil,
-                userId: nil,
-                userName: nil
-            )
-        )
-
-    }
-    
-    func updateMiscJobParts(companyId:String,jobId:String,misc:WODBItem) async throws{
-        //Add to job
-        try await dataService.updateMiscJobParts(companyId: companyId, jobId: jobId, misc: misc)
-        
-        //Add to Shopping List
-        try await dataService.addNewShoppingListItem(
-            companyId: companyId,
-            shoppingListItem: ShoppingListItem(
-                id: UUID().uuidString,
-                category: .job,
-                subCategory: .part,
-                status: .needToPurchase,
-                purchaserId: "",
-                purchaserName: "",
-                genericItemId: misc.genericItemId,
-                name: misc.name,
-                description: "",
-                datePurchased: nil,
-                quantiy: String(misc.quantity),
-                jobId: jobId,
-                customerId: nil,
-                customerName: nil,
-                userId: nil,
-                userName: nil
-            )
-        )
-
-    }
-    
-    func updateJobSchedule() async throws{
-        
-    }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    //                             Get Recordings
+    //                             Get Jobs
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     func getAllJobSnapShot(companyId: String) async throws{
         self.workOrders = try await dataService.getAllWorkOrders(companyId: companyId)
@@ -253,11 +94,11 @@ final class JobViewModel:ObservableObject{
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //Filter Service Locations
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    func filterWorkOrderList(filterTerm:String,workOrders:[Job]) {
+    func filterWorkOrderList() {
         var filteredWorkOrderList:[Job] = []
         
         for wo in workOrders {
-            if wo.adminName.lowercased().contains(filterTerm) || wo.type.lowercased().contains(filterTerm) || wo.description.lowercased().contains(filterTerm)  || wo.customerName.lowercased().contains(filterTerm)  {
+            if wo.adminName.lowercased().contains(searchTerm) || wo.type.lowercased().contains(searchTerm) || wo.description.lowercased().contains(searchTerm) || wo.customerName.lowercased().contains(searchTerm) || wo.internalId.lowercased().contains(searchTerm) {
                 
                 filteredWorkOrderList.append(wo)
             }
@@ -291,7 +132,39 @@ final class JobViewModel:ObservableObject{
         print("WO COUNT : ")
         print(workOrderCount)
 
-        try await dataService.uploadWorkOrder(companyId: companyId, workOrder: Job(id: String(workOrderCount), type: workOrderTemplateType.type ?? "..Loading", dateCreated: workOrder.dateCreated, description: workOrder.description, operationStatus: workOrder.operationStatus, billingStatus: workOrder.billingStatus, customerId: workOrder.customerId,customerName: workOrder.customerName, serviceLocationId: workOrder.serviceLocationId, serviceStopIds: workOrder.serviceStopIds, adminId: workOrder.adminId,adminName: workOrder.adminName, jobTemplateId: workOrder.jobTemplateId, installationParts: workOrder.installationParts, pvcParts: workOrder.pvcParts,electricalParts: workOrder.pvcParts,chemicals: workOrder.chemicals,miscParts: workOrder.miscParts, rate: workOrder.rate, laborCost: workOrder.laborCost))
+        try await dataService.uploadWorkOrder(
+            companyId: companyId,
+            workOrder: Job(
+                id: "comp_wo_" + UUID().uuidString,
+                internalId: "J" + String(workOrderCount),
+                type: workOrderTemplateType.type ?? "..Loading",
+                dateCreated: workOrder.dateCreated,
+                description: workOrder.description,
+                operationStatus: workOrder.operationStatus,
+                billingStatus: workOrder.billingStatus,
+                customerId: workOrder.customerId,
+                customerName: workOrder.customerName,
+                serviceLocationId: workOrder.serviceLocationId,
+                serviceStopIds: workOrder.serviceStopIds,
+                laborContractIds: workOrder.laborContractIds,
+                adminId: workOrder.adminId,
+                adminName: workOrder.adminName,
+                rate: workOrder.rate,
+                laborCost: workOrder.laborCost,
+                otherCompany: false,
+                receivedLaborContractId: "",
+                receiverId: "",
+                senderId : companyId,
+                dateEstimateAccepted: nil,
+                estimateAcceptedById: nil,
+                estimateAcceptType: nil,
+                estimateAcceptedNotes: nil,
+                invoiceDate: nil,
+                invoiceRef: nil,
+                invoiceType: nil,
+                invoiceNotes: nil
+            )
+        )
             print("Uploaded")
    
     }
@@ -300,10 +173,10 @@ final class JobViewModel:ObservableObject{
         var bodyOfWaterInside : BodyOfWater? = nil
         var equipmentInside : Equipment? = nil
 
-        guard let laborCost = Double(laborCost) else {
+        guard let laborCost = Int(laborCost) else {
             throw JobError.invalidLaborCost
         }
-        guard let rate = Double(rate) else {
+        guard let rate = Int(rate) else {
             throw JobError.invalidRate
         }
         if customerId == "" {
@@ -326,7 +199,8 @@ final class JobViewModel:ObservableObject{
             equipmentInside = equipment
         }
         try await dataService.uploadWorkOrder(companyId: companyId,
-                                              workOrder: Job(id: jobId,
+                                              workOrder: Job(id: jobId, 
+                                                             internalId: "J",
                                                              type: jobTemplate.type ?? "..Loading",
                                                              dateCreated: dateCreated,
                                                              description: description,
@@ -336,23 +210,26 @@ final class JobViewModel:ObservableObject{
                                                              customerName: customerName,
                                                              serviceLocationId: serviceLocationId,
                                                              serviceStopIds: serviceStopIds,
+                                                             //Developer Check Out
+                                                             laborContractIds: [],
                                                              adminId: adminId,
                                                              adminName: adminName,
-                                                             jobTemplateId: jobTemplate.id,
-                                                             
-                                                             bodyOfWaterId: bodyOfWaterInside?.id,
-                                                             bodyOfWaterName:bodyOfWaterInside?.name,
-                                                             
-                                                             equipmentId: equipmentInside?.id,
-                                                             equipmentName:equipmentInside?.name,
-                                                            
-                                                             installationParts: installationParts,
-                                                             pvcParts: pvcParts,
-                                                             electricalParts: pvcParts,
-                                                             chemicals: chemicals,
-                                                             miscParts: miscParts,
                                                              rate: rate,
-                                                             laborCost: laborCost  ))
+                                                             laborCost: laborCost,
+                                                             otherCompany: false,
+                                                             receivedLaborContractId: "",
+                                                             receiverId: "",
+                                                             senderId : companyId,
+                                                             dateEstimateAccepted: nil,
+                                                             estimateAcceptedById: nil,
+                                                             estimateAcceptType: nil,
+                                                             estimateAcceptedNotes: nil,
+                                                             invoiceDate: nil,
+                                                             invoiceRef: nil,
+                                                             invoiceType: nil,
+                                                             invoiceNotes: nil
+                                                            )
+        )
         
             print("Uploaded")
    
@@ -362,48 +239,10 @@ final class JobViewModel:ObservableObject{
     }
 
     func addServiceStopToCustomerHistory(serviceStop:Job,stopData:StopData) async throws{
-//        try await ReadingsManager.shared.uploadReadingToCustomerHistory(serviceStop: serviceStop, stopData: stopData)
+//        try await dataService.uploadReadingToCustomerHistory(serviceStop: serviceStop, stopData: stopData)
 
     }
-    
-    
-//    func addServiceStopToWorkOrder(companyId: String,workOrder:WorkOrder,serviceStop:ServiceStop) async throws{
-//        let workOrdertempalte = try await SettingsManager.shared.getAllWorkOrderTemplate(workOrderId:workOrder.workOrderTemplateId )
-//        //get tech name from tech Id
-//        print(workOrder.workOrderTemplateId)
-//        let techName = try await DBUserManager.shared.findSpecificTech(techId: serviceStop.techId ?? "No User Id")
-//        print("shit")
-//        let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-//        print(serviceStopCount)
-//        let id = "S" + String(serviceStopCount)
-//        print(id)
-//        //adds service Stop to database
-//        try await ServiceStopManager.shared.uploadServiceStop(serviceStop: ServiceStop(id:id,
-//                                                                                       typeId: serviceStop.typeId,
-//                                                                                       customerName: serviceStop.customerName,
-//                                                                                       customerId: serviceStop.customerId,
-//                                                                                       address: serviceStop.address,
-//                                                                                       dateCreated: Date(),
-//                                                                                       serviceDate: serviceStop.serviceDate,
-//                                                                                       duration: 0,
-//                                                                                       rate:0,
-//                                                                                       tech: serviceStop.tech,
-//                                                                                       techId: serviceStop.techId,
-//                                                                                       recurringServiceStopId: serviceStop.id,
-//                                                                                       description: serviceStop.description,
-//                                                                                       serviceLocationId: serviceStop.serviceLocationId ,
-//                                                                                       type: serviceStop.type,
-//                                                                                       workOrderId:workOrder.id,
-//                                                                                       finished: false,
-//                                                                                       skipped: false,
-//                                                                                       invoiced:false,
-//                                                                                       checkList: [],
-//                                                                                      includeReadings: true,
-//                                                                                      includeDosages: true))
-//                //Adds the Service Stop id to the workOrder you added it too.
-//        try await dataService.updateServiceStopListOfWorkOrder(companyId: companyId, workOrder: workOrder, serviceStopId: id)
-//    }
-    
+
     
     func addInstallationItemsToWorkOrder(companyId: String,workOrder:Job,installPart:WODBItem) async throws{
         //Adds the Service Stop id to the workOrder you added it too.
@@ -427,7 +266,7 @@ final class JobViewModel:ObservableObject{
         try await dataService.updateMiscPartsListOfWorkOrder(companyId: companyId, workOrderId: workOrder.id, miscPart: miscItem)
     }
     func getAllHistoryByCustomer(customer: Customer,companyId: String)async throws{
-        self.readingHistory = try await ReadingsManager.shared.readAllHistory(companyId: companyId, customer: customer)
+        self.readingHistory = try await dataService.readAllHistory(companyId: companyId, customer: customer)
 
     }
     func getAllPastJobsBasedOnCustomer(companyId: String,customer: Customer)async throws{
@@ -438,11 +277,11 @@ final class JobViewModel:ObservableObject{
 
     }
     func getFourMostRecentHistoryByCustomer(companyId: String,customer: Customer)async throws{
-        self.readingHistory = try await ReadingsManager.shared.readFourMostRecentStops(companyId: companyId, customer: customer)
+        self.readingHistory = try await dataService.readFourMostRecentStops(companyId: companyId, customer: customer)
 
     }
     func getFourMostRecentHistoryByCustomerId(companyId: String,customerId: String)async throws{
-        self.readingHistory = try await ReadingsManager.shared.readFourMostRecentStopsById(companyId: companyId, customerId: customerId)
+        self.readingHistory = try await dataService.readFourMostRecentStopsById(companyId: companyId, customerId: customerId)
 
     }
     func updateServiceStop(originalWorkOrder:Job,updatedWorkOrder:Job) async throws {
@@ -502,16 +341,22 @@ final class JobViewModel:ObservableObject{
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     func addListenerForAllJobsOperations(companyId: String, status: [JobOperationStatus], requesterIds: [String], startDate: Date, endDate: Date){
-        print("Adding Job Listener")
-
+        print("")
+        print("Adding Operations Job Listener")
+        print("Company Id: \(companyId)")
         dataService.addListenerForAllJobsOperations(companyId: companyId, status: status, requesterIds: requesterIds, startDate: startDate, endDate: endDate){ [weak self] jobs in
+            print("Jobs: \(jobs.count)")
            self?.workOrders = jobs
        }
+        
     }
     func addListenerForAllJobsBillings(companyId: String, status: [JobBillingStatus], requesterIds: [String], startDate: Date, endDate: Date){
-        print("Adding Job Listener")
-
+        print("")
+        print("Adding Billing Job Listener")
+        
+        print("Company Id: \(companyId)")
          dataService.addListenerForAllJobsBilling(companyId: companyId, status: status, requesterIds: requesterIds, startDate: startDate, endDate: endDate){ [weak self] jobs in
+             print("Jobs: \(jobs.count)")
             self?.workOrders = jobs
         }
     }
@@ -528,4 +373,163 @@ final class JobViewModel:ObservableObject{
         }
         self.purchasedPartCost = total
     }
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        //                             Uploading Jobs
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        func updateJobInfo(companyId:String,updatingJob:Job,admin:DBUser,jobTemplate:JobTemplate,operationStatus:JobOperationStatus,billingStatus:JobBillingStatus,rate:String,laborCost:String,description:String) async throws{
+            //Check Which Parts Need Updating
+            if admin.id != updatingJob.adminId || admin.firstName != updatingJob.adminName{
+                print("Change in Admin")
+                let name:String = admin.firstName ?? ""  //DEVELOPER THINK ABOUT CHANGING THIS TO BOTH THE FIRST AND THE LAST NAME
+                try await dataService.updateJobAdmin(companyId: companyId, jobId: updatingJob.id, adminName: name, adminId: admin.id)
+            }
+     
+            if operationStatus != updatingJob.operationStatus {
+                print("Change in Operation Status")
+                try await dataService.updateJobOperationStatus(companyId: companyId, jobId: updatingJob.id, operationStatus: operationStatus)
+            }
+            if billingStatus != updatingJob.billingStatus {
+                print("Change in Billing Status")
+                try await dataService.updateJobBillingStatus(companyId: companyId, jobId: updatingJob.id, billingStatus: billingStatus)
+            }
+            if String(updatingJob.rate) != rate {
+                print("Change in Rate")
+                try await dataService.updateJobRate(companyId: companyId, jobId: updatingJob.id, rate: rate)
+            }
+            if laborCost != String(updatingJob.laborCost) {
+                print("Change in Labor Cost")
+                try await dataService.updateJobLaborCost(companyId: companyId, jobId: updatingJob.id, laborCost: laborCost)
+            }
+            if description != updatingJob.description{
+                print("Change in Description")
+                try await dataService.updateJobDescription(companyId: companyId, jobId: updatingJob.id, description: description)
+            }
+        }
+        func updateJobCustomer() async throws{
+            
+        }
+        
+        func updateInstallationJobParts(companyId:String,jobId:String,installationPart:WODBItem) async throws{
+            try await dataService.updateInstallationJobParts(companyId: companyId, jobId: jobId, installationPart: installationPart)
+        }
+        
+        func updatePVCobParts(companyId:String,jobId:String,pvc:WODBItem) async throws{
+            //Add to job
+            try await dataService.updatePVCobParts(companyId: companyId, jobId: jobId, pvc: pvc)
+            
+            //Add to Shopping List
+            try await dataService.addNewShoppingListItem(
+                companyId: companyId,
+                shoppingListItem: ShoppingListItem(
+                    id: UUID().uuidString,
+                    category: .job,
+                    subCategory: .part,
+                    status: .needToPurchase,
+                    purchaserId: "",
+                    purchaserName: "",
+                    genericItemId: pvc.genericItemId,
+                    name: pvc.name,
+                    description: "",
+                    datePurchased: nil,
+                    quantiy: String(pvc.quantity),
+                    jobId: jobId,
+                    customerId: nil,
+                    customerName: nil,
+                    userId: nil,
+                    userName: nil
+                )
+            )
+        }
+        
+        func updateElectricalJobParts(companyId:String,jobId:String,electical:WODBItem) async throws{
+            //Add to job
+            try await dataService.updateElectricalJobParts(companyId: companyId, jobId: jobId, electical: electical)
+            
+            //Add to Shopping List
+            try await dataService.addNewShoppingListItem(
+                companyId: companyId,
+                shoppingListItem: ShoppingListItem(
+                    id: UUID().uuidString,
+                    category: .job,
+                    subCategory: .part,
+                    status: .needToPurchase,
+                    purchaserId: "",
+                    purchaserName: "",
+                    genericItemId: electical.genericItemId,
+                    name: electical.name,
+                    description: "",
+                    datePurchased: nil,
+                    quantiy: String(electical.quantity),
+                    jobId: jobId,
+                    customerId: nil,
+                    customerName: nil,
+                    userId: nil,
+                    userName: nil
+                )
+            )
+
+        }
+        
+        func updateChemicalsJobParts(companyId:String,jobId:String,chemical:WODBItem) async throws{
+            //Add to job
+            try await dataService.updateChemicalsJobParts(companyId: companyId, jobId: jobId, chemical: chemical)
+            
+            //Add to Shopping List
+            try await dataService.addNewShoppingListItem(
+                companyId: companyId,
+                shoppingListItem: ShoppingListItem(
+                    id: UUID().uuidString,
+                    category: .job,
+                    subCategory: .chemical,
+                    status: .needToPurchase,
+                    purchaserId: "",
+                    purchaserName: "",
+                    genericItemId: chemical.genericItemId,
+                    name: chemical.name,
+                    description: "",
+                    datePurchased: nil,
+                    quantiy: String(chemical.quantity),
+                    jobId: jobId,
+                    customerId: nil,
+                    customerName: nil,
+                    userId: nil,
+                    userName: nil
+                )
+            )
+
+        }
+        
+        func updateMiscJobParts(companyId:String,jobId:String,misc:WODBItem) async throws{
+            //Add to job
+            try await dataService.updateMiscJobParts(companyId: companyId, jobId: jobId, misc: misc)
+            
+            //Add to Shopping List
+            try await dataService.addNewShoppingListItem(
+                companyId: companyId,
+                shoppingListItem: ShoppingListItem(
+                    id: UUID().uuidString,
+                    category: .job,
+                    subCategory: .part,
+                    status: .needToPurchase,
+                    purchaserId: "",
+                    purchaserName: "",
+                    genericItemId: misc.genericItemId,
+                    name: misc.name,
+                    description: "",
+                    datePurchased: nil,
+                    quantiy: String(misc.quantity),
+                    jobId: jobId,
+                    customerId: nil,
+                    customerName: nil,
+                    userId: nil,
+                    userName: nil
+                )
+            )
+
+        }
+        
+        func updateJobSchedule() async throws{
+            
+        }
 }

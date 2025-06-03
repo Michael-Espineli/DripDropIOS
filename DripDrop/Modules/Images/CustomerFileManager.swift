@@ -33,6 +33,10 @@ public struct XLSXFile2 {
 }
 @MainActor
 final class CustomerFileManager:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
+    }
     @Published private(set) var isLoading: Bool? = nil
     @Published private(set) var loadingText: String? = nil
     @Published private(set) var totalCustomer: Int? = nil
@@ -190,7 +194,7 @@ final class CustomerFileManager:ObservableObject{
         var customerCount = 0
         for customer in excelCustomerList {
             let fullName = customer.firstName + " " + customer.lastName
-            try await CustomerManager.shared.uploadCSVCustomerToFireStore(companyId: companyId, customer: customer)
+            try await dataService.uploadCSVCustomerToFireStore(companyId: companyId, customer: customer)
             //remove before Production
             customerCount = customerCount + 1
             self.currentCustomer = customerCount
@@ -207,14 +211,14 @@ final class CustomerFileManager:ObservableObject{
         do {
             let text2 = try String(contentsOf: fileURL, encoding: .utf8)
             print("Successfully Read")
-            let customerList = try await CustomerManager.shared.convertCustomerCSVToStruct(contents: text2)
+            let customerList = try await dataService.convertCustomerCSVToStruct(contents: text2)
             print("Successfully Converted")
             self.totalCustomer = customerList.count
             //This will Fail if there are any double spaced columns
             for customer in customerList {
                 let fullName = customer.firstName + " " + customer.lastName
                 
-                try await CustomerManager.shared.uploadCSVCustomerToFireStore(companyId: companyId, customer: customer)
+                try await dataService.uploadCSVCustomerToFireStore(companyId: companyId, customer: customer)
                 //remove before Production
                 customerCount = customerCount + 1
                 self.loadingText = fullName
@@ -264,10 +268,23 @@ final class CustomerFileManager:ObservableObject{
         DBAddress.longitude = pushCoordinates?.longitude ?? -117.8
         print("Received Coordinates from geoCoder : \(String(describing: pushCoordinates))")
         
-        let DBCustomer:Customer = Customer(id: identification,firstName: customer.firstName ,lastName:customer.lastName,email:customer.email, billingAddress:DBAddress , phoneNumber: customer.phone, active: true, rate: Double(customer.rate), company: "", displayAsCompany: false, hireDate: hireDate, billingNotes: "NA")
+        let DBCustomer:Customer = Customer(
+            id: identification,
+            firstName: customer.firstName ,
+            lastName:customer.lastName,
+            email:customer.email,
+            billingAddress:DBAddress ,
+            phoneNumber: customer.phone,
+            active: true,
+            company: "",
+            displayAsCompany: false,
+            hireDate: hireDate,
+            billingNotes: "NA",
+            linkedInviteId: UUID().uuidString
+        )
         
         print("Uploading Customer")
-        try await CustomerManager.shared.uploadCustomer(companyId: companyId, customer: DBCustomer)
+        try await dataService.uploadCustomer(companyId: companyId, customer: DBCustomer)
         let serviceLocationId:String = UUID().uuidString
         let bodyOfWaterId:String = UUID().uuidString
         
@@ -331,7 +348,8 @@ final class CustomerFileManager:ObservableObject{
             gallons: "16000",
             material: "Plaster",
             customerId: DBCustomer.id,
-            serviceLocationId: serviceLocation.id
+            serviceLocationId: serviceLocation.id, 
+            lastFilled: Date()
         )
         try await BodyOfWaterManager.shared.uploadBodyOfWaterByServiceLocation(
             companyId: companyId,
@@ -354,7 +372,8 @@ final class CustomerFileManager:ObservableObject{
             customerName: fullName,
             customerId: DBCustomer.id,
             serviceLocationId: serviceLocation.id,
-            bodyOfWaterId: bodyOfwater.id
+            bodyOfWaterId: bodyOfwater.id, 
+            isActive: true
         )
         try await EquipmentManager.shared.uploadEquipment(
             companyId: companyId,
@@ -385,7 +404,8 @@ final class CustomerFileManager:ObservableObject{
             customerName: fullName,
             customerId: DBCustomer.id,
             serviceLocationId: serviceLocation.id,
-            bodyOfWaterId: bodyOfwater.id
+            bodyOfWaterId: bodyOfwater.id, 
+            isActive: true
         )
         try await EquipmentManager.shared.uploadEquipment(
             companyId: companyId,

@@ -10,14 +10,14 @@ import SwiftUI
 struct RecurringLaborContractDetailView: View {
     //Init
     init(dataService:any ProductionDataServiceProtocol,laborContract:ReccuringLaborContract){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
         _laborContract = State(wrappedValue: laborContract)
     }
     
     //Objects
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
 
     //Form
     @State var laborContract:ReccuringLaborContract
@@ -48,14 +48,14 @@ struct RecurringLaborContractDetailView: View {
             notes = laborContract.notes
             if let currentCompany = masterDataManager.currentCompany {
                 do {
-                    try await VM.onLoadDetailView(companyId: currentCompany.id, laborContractId: laborContract.id)
+                    try await VM.onLoadDetailView(companyId: currentCompany.id, laborContract: laborContract)
                 } catch {
                     print("Error")
                     print(error)
                 }
             }
         }
-        .onChange(of: masterDataManager.selectedLaborContract, perform: { datum in
+        .onChange(of: masterDataManager.selectedRecurringLaborContract, perform: { datum in
             Task{
                 if let datum {
                     print("Change In Labor Contract")
@@ -63,7 +63,7 @@ struct RecurringLaborContractDetailView: View {
                     notes = laborContract.notes
                     if let currentCompany = masterDataManager.currentCompany {
                         do {
-                            try await VM.onLoadDetailView(companyId: currentCompany.id, laborContractId: laborContract.id)
+                            try await VM.onLoadDetailView(companyId: currentCompany.id, laborContract: laborContract)
                         } catch {
                             print("Error")
 

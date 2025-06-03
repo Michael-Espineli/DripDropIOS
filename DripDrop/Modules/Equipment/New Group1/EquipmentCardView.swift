@@ -17,22 +17,22 @@ struct EquipmentCardView: View {
                 HStack{
                     Text("\(equipment.make)")
                     Text("\(equipment.model)")
-                    Text("\(equipment.category)")
-
+                    Text("\(equipment.category.rawValue)")
                 }
                 HStack{
                     Text("\(fullDate(date:equipment.dateInstalled))")
                     Text("\(equipment.status)")
-                    if equipment.needsService {
-                        Text("Needs Service")
-                    }
+                }
+                if equipment.needsService {
+                    Text("Needs Service")
+                        .modifier(DismissButtonModifier())
                 }
             }
-        
+            .frame(maxWidth: .infinity)
         .foregroundColor(Color.basicFontText)
     }
 }
 
 #Preview {
-    EquipmentCardView(equipment: Equipment(id: "", name: "", category: .filter, make: "", model: "", dateInstalled: Date(), status: .operational, needsService: false, notes: "",customerName: "", customerId: "", serviceLocationId: "", bodyOfWaterId: ""))
+    EquipmentCardView(equipment: Equipment(id: "", name: "", category: .filter, make: "", model: "", dateInstalled: Date(), status: .operational, needsService: false, notes: "",customerName: "", customerId: "", serviceLocationId: "", bodyOfWaterId: "", isActive: true))
 }

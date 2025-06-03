@@ -15,22 +15,20 @@ struct NavigationCardView: View {
 NavigationLink(value: route, label: {
 
             HStack(spacing:3){
-                ZStack{
-                    Color.poolBlue
-                    Image(systemName: "doc.fill")
-                }
-                .frame(width: 40,height: 40)
-                Divider()
                 Text("\(route.title())")
                     .font(.callout)
                     .lineLimit(2)
+                
                 Spacer()
 
             }
+            .padding(3)
+            .frame(height: 40)
             .foregroundColor(Color.white)
             .background(Color.darkGray)
             .cornerRadius(6)
             .fontDesign(.monospaced)
+            .padding(3)
         })
     }
 }

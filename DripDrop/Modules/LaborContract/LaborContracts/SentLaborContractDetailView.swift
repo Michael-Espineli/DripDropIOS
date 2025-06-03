@@ -9,19 +9,19 @@ import SwiftUI
 
 struct SentLaborContractDetailView: View {
     //Init
-    init(dataService:any ProductionDataServiceProtocol,laborContract:RepeatingLaborContract){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+    init(dataService:any ProductionDataServiceProtocol,laborContract:ReccuringLaborContract){
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
         _laborContract = State(wrappedValue: laborContract)
     }
     
     //Objects
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
     
     //Received
-    @State var laborContract:RepeatingLaborContract
-    
+    @State var laborContract:ReccuringLaborContract
+
     var body: some View {
         ZStack{
             Color.darkGray.ignoresSafeArea()
@@ -34,17 +34,17 @@ struct SentLaborContractDetailView: View {
                 footer
             }
             Text("")
-                .fullScreenCover(isPresented: $VM.showGenerateLaborContract , onDismiss: {
+                .sheet(isPresented: $VM.showGenerateLaborContract , onDismiss: {
                     print("on Dismiss")
                     
                 }, content: {
-                    GenerateRouteFromLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $VM.showGenerateLaborContract,isFullScreenCover: true)
+                    GenerateRouteFromLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $VM.showGenerateLaborContract,isFullScreenCover: false)
                 })
             Text("")
-                .fullScreenCover(isPresented: $VM.showEditLaborContract, onDismiss: {
+                .sheet(isPresented: $VM.showEditLaborContract, onDismiss: {
                     print("on Dismiss")
                 }, content: {
-                    EditLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $VM.showEditLaborContract,isFullScreenCover: true)
+                    EditRecurringLaborContract(dataService: dataService, laborContract: laborContract,isPresented: $VM.showEditLaborContract,isFullScreenCover: false)
                 })
         }
         .fontDesign(.monospaced)
@@ -55,14 +55,14 @@ struct SentLaborContractDetailView: View {
             VM.notes = laborContract.notes
             if let currentCompany = masterDataManager.currentCompany {
                 do {
-                    try await VM.onLoadDetailView(companyId: currentCompany.id, laborContractId: laborContract.id)
+                    try await VM.onLoadDetailView(companyId: currentCompany.id, laborContract: laborContract)
                 } catch {
                     print("Error")
                     print(error)
                 }
             }
         }
-        .onChange(of: masterDataManager.selectedLaborContract, perform: { datum in
+        .onChange(of: masterDataManager.selectedRecurringLaborContract, perform: { datum in
             Task{
                 if let datum {
                     print("Change In Labor Contract")
@@ -70,7 +70,7 @@ struct SentLaborContractDetailView: View {
                     VM.notes = laborContract.notes
                     if let currentCompany = masterDataManager.currentCompany {
                         do {
-                            try await VM.onLoadDetailView(companyId: currentCompany.id, laborContractId: laborContract.id)
+                            try await VM.onLoadDetailView(companyId: currentCompany.id, laborContract: laborContract)
                         } catch {
                             print("Error")
                             
@@ -94,12 +94,15 @@ extension SentLaborContractDetailView{
                 Spacer()
                 if laborContract.receiverAcceptance {
                     Text("\(LaborContractStatus.accepted.rawValue)")
-                        .padding(8)
+                        .padding(4)
+                        .padding(.horizontal,2)
                         .background(VM.getBackGroundColor(status: LaborContractStatus.accepted))
-                        .cornerRadius(8)
+                        .cornerRadius(4)
                         .foregroundColor(VM.getForeGroundColor(status: LaborContractStatus.accepted))
+                        .font(.footnote)
                 }
             }
+            .lineLimit(1)
             HStack{
                 Text("Date Sent:")
                     .fontWeight(.bold)
@@ -109,10 +112,14 @@ extension SentLaborContractDetailView{
             VStack{
                 HStack{
                     Text("Start Date: \(fullDate(date: laborContract.startDate))")
+                        .fontWeight(.bold)
+                    Text("\(fullDate(date: laborContract.startDate))")
                     Spacer()
                 }
                 HStack{
-                    Text("End Date : \(fullDate(date: laborContract.endDate))")
+                    Text("End Date: ")
+                        .fontWeight(.bold)
+                    Text("\(fullDate(date: laborContract.endDate))")
                     Spacer()
                 }
             }
@@ -122,6 +129,7 @@ extension SentLaborContractDetailView{
         .padding(.horizontal,8)
         .foregroundColor(Color.poolWhite)
         .background(Color.darkGray)
+        .fontDesign(.default)
     }
     
     var details: some View {
@@ -167,22 +175,83 @@ extension SentLaborContractDetailView{
                 ForEach(VM.laborContractRecurringWorkList,id:\.self){ datum in
                     let index = VM.laborContractRecurringWorkList.firstIndex(of: datum)
                     VStack{
-                        HStack{
-                            Text("\((index ?? 0) + 1): \(datum.customerName): \(datum.jobTemplateName) - \(datum.rate, format: .currency(code: "USD").precision(.fractionLength(2))) - \(datum.timesPerFrequency) \(datum.frequency.rawValue)")
-                            Spacer()
-                            if datum.routeSetUp {
-                                Image(systemName: "checkmark.circle")
-                                    .modifier(SubmitButtonModifier())
-                            } else {
-                                Image(systemName: "circle")
-                                    .modifier(DismissButtonModifier())
-                            }
-                            Button(action: {
-                                
-                            }, label: {
-                                Text("More")
+                        Button(action: {
+                            VM.selectedRecurringWorkOptional = datum
+                        }, label: {
+                            VStack{
+                                HStack{
+                                    Text("\((index ?? 0) + 1): \(datum.customerName)")
+                                    Spacer()
+                                    if datum.routeSetUp {
+                                        Image(systemName: "checkmark.circle")
+                                            .modifier(SubmitButtonModifier())
+                                    } else {
+                                        Image(systemName: "circle")
+                                            .modifier(DismissButtonModifier())
+                                    }
+                                }
+                                Text("\(datum.jobTemplateName) - \(datum.rate, format: .currency(code: "USD").precision(.fractionLength(2))) - \(datum.timesPerFrequency) \(datum.frequency.rawValue)")
                                     .font(.footnote)
-                                    .padding(8)
+                            }
+                            .modifier(ListButtonModifier())
+                        })
+                        if VM.selectedRecurringWorkId == datum.id {
+                            VStack{
+                                HStack{
+                                    Spacer()
+                                    Button(action: {
+                                        VM.selectedRecurringWorkId = ""
+                                    }, label: {
+                                        Text("Close Details")
+                                            .modifier(RedLinkModifier())
+                                    })
+                                }
+                                ForEach(datum.recurringServiceStopIdList,id:\.self){ id in
+                                    HStack{
+                                        Text(id.internalId)
+                                            .modifier(ListButtonModifier())
+                                        //Developer Update IdInfo
+                                        RecurringWorkRecurringServicestopCardView(dataService: dataService, recurringServiceStopId: id.internalId, laborContract: laborContract)
+                                        Spacer()
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(.leading,16)
+                        } else {
+                            HStack{
+                                Spacer()
+                                Button(action: {
+                                    VM.selectedRecurringWorkId = datum.id
+                                }, label: {
+                                    
+                                    Text("See Details")
+                                        .modifier(RedLinkModifier())
+                                })
+                            }
+                            .padding(.leading,16)
+                        }
+                    }
+                    .sheet(item: $VM.selectedRecurringWorkOptional, onDismiss: {
+                        
+                    }, content: { work in
+                        VStack{
+                            Text("\(work.customerName)")
+                            Rectangle()
+                                .frame(height: 1)
+                            Button(action: {
+                            }, label: {
+                                
+                                Text("Cancel Work")
+                                    .frame(maxWidth: .infinity)
+                                    .modifier(ListButtonModifier())
+                            })
+                            Button(action: {
+                                VM.showOfferNewRate.toggle()
+                            }, label: {
+                                Text("Offer New Rate")
+                                    .frame(maxWidth: .infinity)
+                                    .modifier(ListButtonModifier())
                             })
                             .sheet(isPresented: $VM.showOfferNewRate,
                                    onDismiss: {
@@ -196,67 +265,27 @@ extension SentLaborContractDetailView{
                                 )
                             })
                         }
-                        HStack{
-                            Rectangle()
-                                .frame(height: 1)
-                            Spacer()
-                        }
-                        if VM.selectedRecurringWorkId == datum.id {
-                            VStack{
-                                HStack{
-                                    Button(action: {
-                                        VM.selectedRecurringWorkId = ""
-                                    }, label: {
-                                        Text("Close Details")
-                                            .foregroundColor(Color.poolRed)
-                                    })
-                                    Spacer()
-                                }
-                                Rectangle()
-                                    .frame(height: 1)
-                                    .padding(.horizontal,17)
-                                ForEach(datum.recurringServiceStopIdList,id:\.self){ id in
-                                    HStack{
-                                        Text(id)
-                                            .modifier(ListButtonModifier())
-                                        RecurringWorkRecurringServicestopCardView(dataService: dataService, recurringServiceStopId: id, laborContract: laborContract)
-                                        Spacer()
-                                    }
-                                }
-                                Spacer()
-                            }
-                            .padding(.leading,16)
-                        } else {
-                            HStack{
-                                Button(action: {
-                                    VM.selectedRecurringWorkId = datum.id
-                                }, label: {
-                                    
-                                    Text("See Details")
-                                        .foregroundColor(Color.poolRed)
-                                })
-                                Spacer()
-                            }
-                            .padding(.leading,16)
-                        }
-                    }
+                        .padding(8)
+                        .presentationDetents([.medium,.large])
+                    })
                 }
             }
         }
     }
     
     var termsView: some View {
-        VStack{
+        HStack{
             Text("Terms")
                 .fontWeight(.bold)
-            ForEach(laborContract.terms,id:\.self){ datum in
-                let index = laborContract.terms.firstIndex(of: datum)
+            Spacer()
+            NavigationLink(value: Route.contractTermsList(dataService: dataService, termsList: laborContract.terms), label: {
                 HStack{
-                    Text("\((index ?? 0) + 1):")
-                    Text(datum.description)
-                    Spacer()
+                    Text("See More")
+                    Image(systemName: "chevron.right")
                 }
-            }
+                .modifier(RedLinkModifier())
+                .lineLimit(1)
+            })
         }
     }
     

@@ -20,13 +20,13 @@ final class ContractViewModel:ObservableObject{
     //----------------------------------------------------
     
     //SINGLES
-    @Published private(set) var contract: Contract? = nil
+    @Published private(set) var contract: RecurringContract? = nil
     @Published private(set) var count: Int? = nil
     @Published private(set) var formDisabled: Bool = true
 
     //ARRAYS
-    @Published private(set) var listOfContrats:[Contract] = []
-    @Published private(set) var filteredContractList:[Contract] = []
+    @Published private(set) var listOfContrats:[RecurringContract] = []
+    @Published private(set) var filteredContractList:[RecurringContract] = []
 
     //----------------------------------------------------
     //------------------  CRUD  --------------------------
@@ -35,9 +35,10 @@ final class ContractViewModel:ObservableObject{
     //----------------------------------------------------
     //                    CREATE
     //----------------------------------------------------
-    func uploadContract(companyId:String,contract:Contract) async throws {
+    func uploadContract(companyId:String,contract:RecurringContract) async throws {
         try await dataService.uploadContact(companyId: companyId, contract: contract)
     }
+    
     //----------------------------------------------------
     //                    READ
     //----------------------------------------------------
@@ -57,32 +58,37 @@ final class ContractViewModel:ObservableObject{
     //----------------------------------------------------
     //                    UPDATE
     //----------------------------------------------------
-    func updateContract(companyId:String,contract:Contract) async throws {
+    func updateContract(companyId:String,contract:RecurringContract) async throws {
         try await dataService.updateContract(companyId: companyId, contract: contract)
     }
-    func updateContractWithValidation(companyId:String,contract:Contract,dateToAccept:Date,status:LaborContractStatus,locations:Double,rate:Double,rateType:String,laborType:String,chemType:String,terms:String,notes:String,startDate:Date?,endDate:Date?) async throws {
+    func updateContractWithValidation(
+        companyId : String,
+        contract : RecurringContract,
+        dateToAccept : Date,
+        status : RecurringContractStatus,
+        locations : Double,
+        rate : String,
+        rateType : RecurringContractRateType,
+        laborType : RecurringContractLaborType,
+        chemType : RecurringContractChemType,
+        cleaningPlan : RecurringContractCleaningPlan,
+        filterServiceType : BillingType,
+        repairType : BillingType,
+        repairMax : String,
+        serviceFrequency : RecurringContractServiceFrequency,
+        serviceFrequencyAmount : String,
+        internalNotes : String,
+        externalNotes : String
+    ) async throws {
         if contract.status != status {
             try await dataService.updateContractStatus(companyId: companyId, contractId: contract.id, status: status)
 
         } else {
             print("No Change in Status")
         }
-        if contract.startDate != startDate {
-            if let date = startDate {
-                try await dataService.updateContractStartDate(companyId: companyId, contractId: contract.id, startDate: date)
-            }
-        } else {
-            print("No Change in Start Date")
-        }
-        if contract.endDate != endDate {
-            if let date = startDate {
-                
-                try await dataService.updateContractEndDate(companyId: companyId, contractId: contract.id, endDate: date)
-            }
-        } else {
-            print("No Change in End Date")
-        }
     }
+    
+    
     //----------------------------------------------------
     //                    DELETE
     //----------------------------------------------------
@@ -92,19 +98,19 @@ final class ContractViewModel:ObservableObject{
     //----------------------------------------------------
     //                    FUNCTIONS
     //----------------------------------------------------
-    func filterContractList(list:[Contract],filterTerm:String) {
-        var contractList:[Contract] = []
+    func filterContractList(list:[RecurringContract],filterTerm:String) {
+        var contractList:[RecurringContract] = []
         for contract in list {
-            if contract.customerName.lowercased().contains(filterTerm.lowercased()) {
+            if contract.internalCustomerName.lowercased().contains(filterTerm.lowercased()) {
                 contractList.append(contract)
             }
         }
         self.filteredContractList = contractList
     }
-    func totalContracts(contracts:[Contract]) -> Double {
+    func totalContracts(contracts:[RecurringContract]) -> Double {
         var total:Double = 0
         for contract in contracts {
-            total = total + contract.rate
+            total = total + Double(contract.rate)/100
         }
         return total
     }

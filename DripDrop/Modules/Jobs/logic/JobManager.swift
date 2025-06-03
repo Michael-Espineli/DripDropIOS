@@ -10,32 +10,18 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
-enum JobOperationStatus:String, CaseIterable, Codable {
-    case estimatePending = "Estimate Pending"
-    case unscheduled = "Unscheduled"
-    case scheduled = "Scheduled"
-    case inProgress = "In Progress"
-    case finished = "Finished"
-}
-enum JobBillingStatus:String, CaseIterable,Codable {
-    case draft = "Draft"
-    case estimate = "Estimate"
-    case accepted = "Accepted"
-    case inProgress = "In Progress"
-    case invoiced = "Invoiced"
-    case paid = "Paid"
-    
-}
+
 
 struct Job:Identifiable, Codable, Hashable{
     //work Order info
     var id :String
+    var internalId : String
     var type: String
     var dateCreated : Date
     var description: String
     
     //status
-    var operationStatus : JobOperationStatus //EstimatePending, Unscheduled, Scheduled, InProgress, Finished
+    var operationStatus : JobOperationStatus //Estimate Pending, Unscheduled, Scheduled, In Progress, Finished
     var billingStatus : JobBillingStatus // Draft, Estimate, Accepted, InProgress, Invoiced, Paid
     
     //refrences
@@ -43,36 +29,42 @@ struct Job:Identifiable, Codable, Hashable{
     var customerName : String
     var serviceLocationId: String
     var serviceStopIds: [String]
+    var laborContractIds: [String] //Labor Contract Sent out
+
     var adminId: String
     var adminName: String //Person In charge
-    var jobTemplateId: String
-    
-    //Optional Refrences
-    var bodyOfWaterId : String?
-    var bodyOfWaterName : String?
-    
-    var equipmentId : String?
-    var equipmentName : String?
-    //Aditional Parts
-    var installationParts: [WODBItem]
-    var pvcParts: [WODBItem]
-    var electricalParts: [WODBItem]
-    var chemicals: [WODBItem]
-    var miscParts: [WODBItem]
     
     //Purchased Items
     var purchasedItemsIds:[String]?
     
     //Tasks
-    var tasks:[ServiceStopTaskTemplate]? //MAYBE DEVELOPER MAKE Required
-    //calculations
-    var rate : Double
-    var laborCost : Double
+    var tasks:[ServiceStopTaskTemplate]? //MAYBE DEVELOPER MAKE REMOVE
     
-    var cost: Double {
+    //calculations
+    var rate : Int
+    var laborCost : Int
+    
+    let otherCompany: Bool
+    let receivedLaborContractId: String? //receivedLaborContractId from
+    let receiverId: String? //Actually Optional
+    var senderId : String?
+    
+    //Estiamte Info
+    let dateEstimateAccepted: Date?
+    let estimateAcceptedById: String?
+    let estimateAcceptType: JobEstiamteAcceptanceType? //Client , Customer
+    let estimateAcceptedNotes: String?
+    
+    //Invoice Info
+    let invoiceDate:Date?
+    let invoiceRef: String?
+    let invoiceType: JobInvoiceType? //Manual , Auto
+    let invoiceNotes: String?
+
+    var cost: Int {
         laborCost // + installationPartsCost + auxiliaryPartsCost
     }
-    var profit: Double {
+    var profit: Int {
         rate - cost
     }
     static func == (lhs: Job, rhs: Job) -> Bool {
@@ -80,8 +72,7 @@ struct Job:Identifiable, Codable, Hashable{
         lhs.type == rhs.type &&
         lhs.customerId == rhs.customerId &&
         lhs.serviceLocationId == rhs.serviceLocationId &&
-        lhs.adminId == rhs.adminId &&
-        lhs.jobTemplateId == rhs.jobTemplateId
+        lhs.adminId == rhs.adminId
     }
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -264,31 +255,7 @@ final class MockJobManager:JobManagerProtocol {
         
     }
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
-        
-        let wo = try await workOrderDocument(workOrderId: workOrder.id, companyId: companyId).getDocument(as: Job.self)
-        
-        //        let itemRef = workOrderDocument(workOrderId: workOrder.id, companyId: user.companyId)
-        
-        let auxiliaryParts = wo.installationParts
-        print(auxiliaryParts)
-        //        for id in ids {
-        //            if wo.auxiliaryParts.contains(id) {
-        //
-        //            } else {
-        //                auxiliaryParts.append(id)
-        //            }
-        //        }
-        //        print(auxiliaryParts)
-        //
-        //        itemRef.updateData([
-        //            "installationParts":auxiliaryParts
-        //        ]) { err in
-        //            if let err = err {
-        //                print("Error updating document: \(err)")
-        //            } else {
-        //                print("Document successfully updated")
-        //            }
-        //        }
+        //DEVELOPER REMOVE THIS FUNCTION
     }
     func addPurchaseItemsToWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
         
@@ -740,31 +707,7 @@ final class JobManager:JobManagerProtocol {
         
     }
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
-        
-        let wo = try await workOrderDocument(workOrderId: workOrder.id, companyId: companyId).getDocument(as: Job.self)
-        
-        //        let itemRef = workOrderDocument(workOrderId: workOrder.id, companyId: user.companyId)
-        
-        let auxiliaryParts = wo.installationParts
-        print(auxiliaryParts)
-        //        for id in ids {
-        //            if wo.auxiliaryParts.contains(id) {
-        //
-        //            } else {
-        //                auxiliaryParts.append(id)
-        //            }
-        //        }
-        //        print(auxiliaryParts)
-        //
-        //        itemRef.updateData([
-        //            "installationParts":auxiliaryParts
-        //        ]) { err in
-        //            if let err = err {
-        //                print("Error updating document: \(err)")
-        //            } else {
-        //                print("Document successfully updated")
-        //            }
-        //        }
+        //Something To Delete
     }
     func addPurchaseItemsToWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
         

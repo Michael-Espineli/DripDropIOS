@@ -1,31 +1,37 @@
-//
-//  AddNewLaborContract.swift
-//  DripDrop
-//
-//  Created by Michael Espineli on 7/4/24.
-//
+    //
+    //  AddNewLaborContract.swift
+    //  DripDrop
+    //
+    //  Created by Michael Espineli on 7/4/24.
+    //
 
+import Foundation
 import SwiftUI
+import Firebase
+import FirebaseFirestore
+import FirebaseFirestoreSwift
 
-struct AddNewLaborContractFromAssociatedBusiness: View {
-    //Init
-    init(dataService:ProductionDataService,associatedBusiness:AssociatedBusiness,isPresented:Binding<Bool>,isFullScreen:Bool){
-        _VM = StateObject(wrappedValue: BuisnessViewModel(dataService: dataService))
-        _associatedBusiness = State(wrappedValue: associatedBusiness)
-        self._isPresented = isPresented
-        _isFullScreen = State(wrappedValue: isFullScreen)
+@MainActor
+final class AddNewLaborContractFromAssociatedBusinessViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
     }
+    @Published var findNewBusiness : Bool = false
     
-    //Objects
-    @EnvironmentObject var masterDataManager: MasterDataManager
-    @StateObject var VM : BuisnessViewModel
-    @EnvironmentObject var dataService : ProductionDataService
-    @Binding var isPresented:Bool
-    @State var isFullScreen:Bool
+    @Published private(set) var buisness : AssociatedBusiness? = nil
+    @Published private(set) var buisnessList : [AssociatedBusiness] = []
+    @Published private(set) var company : Company? = nil
+    @Published private(set) var companyList : [Company] = []
     
-    //Form
-    @State var associatedBusiness:AssociatedBusiness
-    @State var laborContract:LaborContractRecurringWork = LaborContractRecurringWork(
+    @Published private(set) var companyUsers: [CompanyUser] = []
+    
+    @Published private(set) var owner : DBUser? = nil
+    
+    @Published private(set) var sentContracts : [ReccuringLaborContract] = []
+    @Published private(set) var receivedContracts : [ReccuringLaborContract] = []
+        //Form
+    @Published var laborContract:LaborContractRecurringWork = LaborContractRecurringWork(
         id: UUID().uuidString,
         customerId: UUID().uuidString,
         customerName: "Jessica",
@@ -39,29 +45,127 @@ struct AddNewLaborContractFromAssociatedBusiness: View {
         timesPerFrequency: 1,
         timesPerFrequencySetUp: 0,
         routeSetUp: false,
-        recurringServiceStopIdList: []
+        recurringServiceStopIdList: [],
+        isActive: true,
+        lastBilled: Date()
     )
-    @State var recurringWork:[LaborContractRecurringWork] = []
-    @State var notes:String = ""
-    @State var term:String = ""
-    @State var endDate:Date = Date()
-    @State var startDate:Date = Date()
+    @Published var recurringWork:[LaborContractRecurringWork] = []
+    @Published var notes:String = ""
+    @Published var term:String = ""
+    @Published var endDate:Date = Date()
+    @Published var startDate:Date = Date()
     
-    @State var lastDateToAccept:Date = Date()
+    @Published var lastDateToAccept:Date = Calendar.current.date(byAdding: .day, value: 14, to: Date())!
     
-    @State var atWill:Bool = false
-    @State var termList:[ContractTerms] = []
-    @State var contractLengthInMonthsStr:String = ""
+    @Published var atWill:Bool = false
+    @Published var termList:[ContractTerms] = []
+    @Published var contractLengthInMonthsStr:String = ""
     
-    @State var selectedTermsTemplate:TermsTemplate = TermsTemplate(id: "", name: "")
-    @State var selectedTermList:[ContractTerms] = []
+    @Published var selectedTermsTemplate:TermsTemplate = TermsTemplate(id: "", name: "")
+    @Published var selectedTermList:[ContractTerms] = []
     
-    //Alert
-    @State var alertMessage:String = ""
-    @State var showAlert:Bool = false
-    @State var addRecurringWork:Bool = false
+        //Alert
+    @Published var alertMessage:String = ""
+    @Published var showAlert:Bool = false
+    @Published var addRecurringWork:Bool = false
     
-    @State var selectTermsTemplate:Bool = false
+    @Published var selectTermsTemplate:Bool = false
+    
+    func sendNewLaborContractToAssociatedBusiness(company:Company,associatedBusiness:AssociatedBusiness) async throws {
+        if recurringWork.isEmpty {
+            throw FireBaseRead.unableToRead
+        }
+        print("1")
+        var contractLengthInMonths:Int? = 0
+        
+        if !atWill {
+            contractLengthInMonths = Int(contractLengthInMonthsStr)
+        }
+        
+        print("2")
+        let recurringContract = ReccuringLaborContract(
+            id: UUID().uuidString,
+            senderName: company.name,
+            senderId: company.id,
+            senderAcceptance: true,
+            receiverName: associatedBusiness.companyName,
+            receiverId: associatedBusiness.companyId,
+            receiverAcceptance: false,
+            dateSent: Date(),
+            lastDateToAccept: lastDateToAccept,
+            dateAccepted: nil,
+            startDate: startDate,
+            endDate: endDate,
+            status: .pending,
+            isActive: false,
+            terms: termList,
+            notes: notes,
+            atWill: atWill,
+            contractLengthInMonths:contractLengthInMonths
+        )
+        
+        
+        print("3")
+        try await dataService.addLaborContract(companyId: company.id, laborContract: recurringContract)
+        
+        print("4")
+        try await dataService.addLaborContract(companyId: recurringContract.receiverId, laborContract: recurringContract)
+        
+        print("5")
+        for work in recurringWork {
+            try await dataService.addLaborContractRecurringWork(companyId: company.id, laborContractId: recurringContract.id, laborContractRecurringWork: work)
+            try await dataService.addLaborContractRecurringWork(companyId: recurringContract.receiverId, laborContractId: recurringContract.id, laborContractRecurringWork: work)
+        }
+        
+        print("6")
+        try await dataService.addDripDropAlert(
+            companyId: recurringContract.receiverId,
+            dripDropAlert: DripDropAlert(
+                category: .receivedLaborContracts,
+                route: .laborContractDetailView,
+                itemId: laborContract.id,
+                name: "New Labor Contract",
+                description: "From \(recurringContract.senderName)",
+                date: Date()
+            )
+        )
+        
+        print("7")
+            //Reset
+        self.alertMessage = "Successfully Added"
+        self.showAlert = true
+        print(alertMessage)
+        self.recurringWork = []
+        self.notes = ""
+        self.term = ""
+        self.endDate = Date()
+        self.startDate = Date()
+        self.atWill = false
+        self.termList = []
+        self.contractLengthInMonthsStr = ""
+        self.selectedTermsTemplate = TermsTemplate(id: "", name: "")
+        self.selectedTermList = []
+        
+    }
+}
+struct AddNewLaborContractFromAssociatedBusiness: View {
+        //Objects
+    @EnvironmentObject var dataService : ProductionDataService
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    
+    @StateObject var VM : AddNewLaborContractFromAssociatedBusinessViewModel
+    
+    @Binding var isPresented:Bool
+    @State var isFullScreen:Bool
+    @State var associatedBusiness:AssociatedBusiness
+    
+        //Init
+    init(dataService:ProductionDataService,associatedBusiness:AssociatedBusiness,isPresented:Binding<Bool>,isFullScreen:Bool){
+        _VM = StateObject(wrappedValue: AddNewLaborContractFromAssociatedBusinessViewModel(dataService: dataService))
+        _associatedBusiness = State(wrappedValue: associatedBusiness)
+        self._isPresented = isPresented
+        _isFullScreen = State(wrappedValue: isFullScreen)
+    }
     
     var body: some View {
         ZStack{
@@ -73,23 +177,23 @@ struct AddNewLaborContractFromAssociatedBusiness: View {
             .fontDesign(.monospaced)
             .padding(8)
         }
-        .alert(alertMessage, isPresented: $showAlert) {
+        .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
         .task {
-            endDate = Calendar.current.date(byAdding: .month, value: 2, to: Date())!
+            VM.endDate = Calendar.current.date(byAdding: .month, value: 2, to: Date())!
         }
     }
 }
 
-//#Preview {
-//    AddNewVehical()
-//}
+    //#Preview {
+    //    AddNewVehical()
+    //}
 extension AddNewLaborContractFromAssociatedBusiness {
     var form: some View {
         VStack{
-            DatePicker("Date To Accept", selection: $lastDateToAccept, in: Date()...,displayedComponents: .date)
-            Toggle("At Will", isOn: $atWill)
+            DatePicker("Date To Accept", selection: $VM.lastDateToAccept, in: Date()...,displayedComponents: .date)
+            Toggle("At Will", isOn: $VM.atWill)
                 .padding(.trailing,8)
             Divider()
             work
@@ -99,37 +203,39 @@ extension AddNewLaborContractFromAssociatedBusiness {
             Divider()
             HStack{
                 Text("Notes:")
-                TextField(
-                    "Notes",
-                    text: $notes
-                )
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
-                
+                    .bold()
                 Spacer()
             }
+            TextField(
+                "Notes",
+                text: $VM.notes
+            )
+            .modifier(PlainTextFieldModifier())
         }
     }
     var work: some View {
         VStack{
-            
             HStack{
-                Text("Recurring Work Requested:")
-                    .fontWeight(.bold)
+                Spacer()
+                    Text("Recurring Work Requested:")
+                        .fontWeight(.bold)
+                Spacer()
+            }
+            .lineLimit(1)
+            HStack{
                 Spacer()
                 Button(action: {
-                    addRecurringWork.toggle()
+                    VM.addRecurringWork.toggle()
                 }, label: {
                     Text("Add Work")
                         .modifier(AddButtonModifier())
                 })
-                .sheet(isPresented: $addRecurringWork,
+                .sheet(isPresented: $VM.addRecurringWork,
                        onDismiss: {
                     print("Dismissed")
-                    if laborContract.customerId != "" && laborContract.serviceLocationId != "" && laborContract.jobTemplateId != "" && laborContract.rate != 0  {
-                        recurringWork.append(laborContract)
-                        laborContract = LaborContractRecurringWork(
+                    if VM.laborContract.customerId != "" && VM.laborContract.serviceLocationId != "" && VM.laborContract.jobTemplateId != "" && VM.laborContract.rate != 0  {
+                        VM.recurringWork.append(VM.laborContract)
+                        VM.laborContract = LaborContractRecurringWork(
                             id: UUID().uuidString,
                             customerId: UUID().uuidString,
                             customerName: "",
@@ -143,32 +249,34 @@ extension AddNewLaborContractFromAssociatedBusiness {
                             timesPerFrequency: 1,
                             timesPerFrequencySetUp: 0,
                             routeSetUp: false,
-                            recurringServiceStopIdList: []
+                            recurringServiceStopIdList: [],
+                            isActive: true,
+                            lastBilled: Date()
                         )
                         print("Added Recurring Work")
                         
                     } else {
                         print("Did not add Recurring Work")
-
-                        print("customerId \(laborContract.customerId)")
-                        print("serviceLocationId \(laborContract.serviceLocationId)")
-                        print("jobTemplateId \(laborContract.jobTemplateId)")
-                        print("rate \(laborContract.rate)")
+                        
+                        print("Customer Id: \(VM.laborContract.customerId)")
+                        print("Service Location Id: \(VM.laborContract.serviceLocationId)")
+                        print("Job Template Id: \(VM.laborContract.jobTemplateId)")
+                        print("Rate: \(VM.laborContract.rate)")
                         
                     }
                 },
-                       content: {
-                    LaborContractRecurringWorkPicker(dataService: dataService, laborContractRecurringWork: $laborContract)
+               content: {
+                    LaborContractRecurringWorkPicker(dataService: dataService, laborContractRecurringWork: $VM.laborContract)
                 })
             }
-            ForEach(recurringWork,id:\.self){ datum in
-                let index = recurringWork.firstIndex(of: datum)
+            ForEach(VM.recurringWork,id:\.self){ datum in
+                let index = VM.recurringWork.firstIndex(of: datum)
                 HStack{
                     Text("\((index ?? 0) + 1): ")
-                    Text("\(datum.customerName): \(datum.jobTemplateName) - \(datum.rate, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                    Text("\(datum.customerName): \(datum.jobTemplateName) - \(datum.rate/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
                     Spacer()
                     Button(action: {
-                        recurringWork.remove(datum)
+                        VM.recurringWork.remove(datum)
                     }, label: {
                         Image(systemName: "trash.fill")
                             .modifier(DismissButtonModifier())
@@ -184,60 +292,48 @@ extension AddNewLaborContractFromAssociatedBusiness {
                 Text("Terms:")
                     .fontWeight(.bold)
                 Spacer()
-                Button(action: {
-                    selectTermsTemplate.toggle()
-                }, label: {
-                    Text("Use Terms Template")
-                        .modifier(AddButtonModifier())
-                })
-                .sheet(isPresented: $selectTermsTemplate, onDismiss: {
-                    termList = selectedTermList
-                }, content: {
-                    TermsTemplatePicker(dataService: dataService, selectedTemplate: $selectedTermsTemplate, termsList: $selectedTermList)
+                NavigationLink(value: Route.contractTermsList(dataService: dataService, termsList: VM.termList), label: {
+                    Text("See Terms")
+                        .modifier(RedLinkModifier())
                 })
             }
+            
+            Button(action: {
+                VM.selectTermsTemplate.toggle()
+            }, label: {
+                Text("Use Terms Template")
+                    .modifier(AddButtonModifier())
+            })
+            .sheet(isPresented: $VM.selectTermsTemplate, onDismiss: {
+                VM.termList = VM.termList + VM.selectedTermList
+            }, content: {
+                TermsTemplatePicker(dataService: dataService, selectedTemplate: $VM.selectedTermsTemplate, termsList: $VM.selectedTermList)
+            })
             HStack{
                 HStack{
                     Button(action: {
-                        term = ""
+                        VM.term = ""
                     }, label: {
                         Image(systemName: "xmark")
                     })
                     TextField(
                         "Term",
-                        text: $term
+                        text: $VM.term
                     )
                 }
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
+                .modifier(PlainTextFieldModifier())
                 Spacer()
                 Button(action: {
-                    if term != "" {
-                        termList.append(ContractTerms(description: term))
-                        term = ""
+                    if VM.term != "" {
+                        VM.termList.append(ContractTerms(description: VM.term))
+                        VM.term = ""
                     }
                 }, label: {
                     Text("Add Terms")
                         .modifier(AddButtonModifier())
                 })
-                .disabled(term == "")
-                .opacity(term == "" ? 0.6 : 1)
-            }
-            ForEach(termList,id:\.self){ datum in
-                let index = termList.firstIndex(of: datum)
-                HStack{
-                    Text("\((index ?? 0) + 1):")
-                    Text(datum.description)
-                    Spacer()
-                    Button(action: {
-                        termList.remove(datum)
-                    }, label: {
-                        Image(systemName: "trash.fill")
-                            .modifier(DismissButtonModifier())
-                    })
-                }
-                
+                .disabled(VM.term == "")
+                .opacity(VM.term == "" ? 0.6 : 1)
             }
         }
     }
@@ -256,51 +352,14 @@ extension AddNewLaborContractFromAssociatedBusiness {
                 Task{
                     if let selectedCompany = masterDataManager.currentCompany {
                         do {
-                            var contractLengthInMonths:Int? = 0
-                            if !atWill {
-                                contractLengthInMonths = Int(contractLengthInMonthsStr)
-                            }
                             try await VM.sendNewLaborContractToAssociatedBusiness(
-                                companyId: selectedCompany.id,
-                                laborContract: RepeatingLaborContract(
-                                    id: UUID().uuidString,
-                                    senderName: selectedCompany.name,
-                                    senderId: selectedCompany.id,
-                                    senderAcceptance: true,
-                                    receiverName: associatedBusiness.companyName,
-                                    receiverId: associatedBusiness.companyId,
-                                    receiverAcceptance: false,
-                                    dateSent: Date(),
-                                    lastDateToAccept: lastDateToAccept,
-                                    dateAccepted: nil,
-                                    startDate: startDate,
-                                    endDate: endDate,
-                                    status: .pending,
-                                    terms: termList,
-                                    notes: notes,
-                                    atWill: atWill,
-                                    contractLengthInMonths:contractLengthInMonths
-                                ),
-                                recurringWork:recurringWork
+                                company: selectedCompany,
+                                associatedBusiness: associatedBusiness
                             )
-                            alertMessage = "Successfully Added"
-                            showAlert = true
-                            print(alertMessage)
-                            recurringWork = []
-                            notes = ""
-                            term = ""
-                            endDate = Date()
-                            startDate = Date()
-                            atWill = false
-                            termList = []
-                            contractLengthInMonthsStr = ""
-                            selectedTermsTemplate = TermsTemplate(id: "", name: "")
-                            selectedTermList = []
-                            
                         } catch {
-                            alertMessage = "Failed To Added"
-                            showAlert = true
-                            print(alertMessage)
+                            VM.alertMessage = "Failed To Added"
+                            VM.showAlert = true
+                            print(VM.alertMessage)
                             print("Error")
                             print(error)
                         }
@@ -312,5 +371,6 @@ extension AddNewLaborContractFromAssociatedBusiness {
                     .modifier(SubmitButtonModifier())
             })
         }
+        .padding(.vertical,8)
     }
 }

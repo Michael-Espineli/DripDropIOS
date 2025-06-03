@@ -9,7 +9,12 @@ import SwiftUI
 
 struct GenerateRouteFromLaborContract: View {
     //Init
-    init(dataService:any ProductionDataServiceProtocol,laborContract:RepeatingLaborContract,isPresented:Binding<Bool>,isFullScreenCover:Bool){
+    init(
+        dataService:any ProductionDataServiceProtocol,
+        laborContract:ReccuringLaborContract,
+        isPresented:Binding<Bool>,
+        isFullScreenCover:Bool
+    ){
         _VM = ObservedObject(wrappedValue: GenerateRouteFromLaborContractViewModel(dataService: dataService))
         _laborContract = State(wrappedValue: laborContract)
         self._isPresented = isPresented
@@ -26,8 +31,9 @@ struct GenerateRouteFromLaborContract: View {
     @State var isFullScreenCover:Bool
     
     //Form
-    @State var laborContract:RepeatingLaborContract
-    
+    @State var laborContract:ReccuringLaborContract
+    @State var isLoading:Bool = false
+
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -36,6 +42,12 @@ struct GenerateRouteFromLaborContract: View {
             }
             .padding(8)
             .foregroundColor(Color.basicFontText)
+            if isLoading {
+                ProgressView()
+                    .padding(10)
+                    .background(Color.gray.opacity(0.75))
+                    .cornerRadius(8)
+            }
         }
         .environmentObject(VM)
         .task{
@@ -68,9 +80,14 @@ extension GenerateRouteFromLaborContract {
                     }, label: {
                         Image(systemName: "xmark")
                             .modifier(DismissButtonModifier())
+                            .opacity(isLoading ? 0.75 : 1)
+                            .disabled(isLoading)
                     })
                 }
             }
+            .font(.headline)
+            Rectangle()
+                .frame(height: 1)
             ScrollView(.horizontal,showsIndicators: false){
                 HStack{
                     ForEach(VM.laborContractRecurringWorkList){ work in
@@ -79,14 +96,15 @@ extension GenerateRouteFromLaborContract {
                                 VM.selectedRecurringWork = work
                             }, label: {
                                 Text("\(work.customerName)")
-                                    .padding(8)
+                                    .padding(4)
+                                    .padding(.horizontal, 2)
                                     .background(VM.selectedRecurringWork == work ? Color.poolGreen : Color.poolWhite)
-                                    .cornerRadius(8)
+                                    .cornerRadius(4)
                                     .foregroundColor(VM.selectedRecurringWork == work ? Color.poolWhite : Color.darkGray)
                                     .fontDesign(.monospaced)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(.poolGreen, lineWidth: 4)
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(.poolGreen, lineWidth: 2)
                                     )
                                     .padding(4)
                             })
@@ -95,14 +113,15 @@ extension GenerateRouteFromLaborContract {
                                 VM.selectedRecurringWork = work
                             }, label: {
                                 Text("\(work.customerName)")
-                                    .padding(8)
+                                    .padding(4)
+                                    .padding(.horizontal, 2)
                                     .background(VM.selectedRecurringWork == work ? Color.poolRed : Color.poolWhite)
-                                    .cornerRadius(8)
+                                    .cornerRadius(4)
                                     .foregroundColor(VM.selectedRecurringWork == work ? Color.poolWhite : Color.darkGray)
                                     .fontDesign(.monospaced)
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(.poolRed, lineWidth: 4)
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(.poolRed, lineWidth: 2)
                                     )
                                     .padding(4)
                             })
@@ -111,7 +130,7 @@ extension GenerateRouteFromLaborContract {
                 }
             }
             if VM.selectedRecurringWork.id != "" {
-                VStack{
+                VStack(spacing:16){
                     HStack{
                         Text("Customer Name:")
                             .fontWeight(.semibold)
@@ -119,7 +138,7 @@ extension GenerateRouteFromLaborContract {
                         Spacer()
                     }
                     HStack{
-                        Text("Service Location Name:")
+                        Text("Service Location:")
                             .fontWeight(.semibold)
                         Text("\(VM.selectedRecurringWork.serviceLocationName)")
                         Spacer()
@@ -134,7 +153,7 @@ extension GenerateRouteFromLaborContract {
                         HStack{
                             Text("Required:")
                                 .fontWeight(.semibold)
-                            Text("\(String(VM.selectedRecurringWork.timesPerFrequency)) per \(VM.frequency.rawValue)")
+                            Text("\(String(VM.selectedRecurringWork.timesPerFrequency)) per \(VM.selectedRecurringWork.frequency.rawValue)")
                             Spacer()
                         }
                         HStack{
@@ -144,27 +163,18 @@ extension GenerateRouteFromLaborContract {
                             Spacer()
                         }
                     }
-                    NewRecurringServiceStopFromLaborContract(dataService: dataService, laborContract: laborContract, recurringWork: $VM.selectedRecurringWork)
-                }
-            }
-        }
-    }
-    var submitButton: some View {
-        VStack{
-            Button(action: {
-                Task{
-                    if let company = masterDataManager.currentCompany{
-                        do {
-                            try await VM.generateRecurringStopFromRecurringWork(companyId: company.id)
-                        } catch {
-                            print(error)
-                        }
+                    if VM.selectedRecurringWork.timesPerFrequencySetUp != VM.selectedRecurringWork.timesPerFrequency {
+                        NewRecurringServiceStopFromLaborContract(
+                            dataService: dataService,
+                            laborContract: laborContract,
+                            recurringWork: $VM.selectedRecurringWork,
+                            isLoading: $isLoading
+                        )
+                    } else {
+                        Text("Already Set Up")
                     }
                 }
-            }, label: {
-                Text("Submit Button")
-                    .modifier(SubmitButtonModifier())
-            })
+            }
         }
     }
 }

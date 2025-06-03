@@ -10,20 +10,22 @@ import SwiftUI
 struct MobileDashboard: View {
     @EnvironmentObject var navigationManager: NavigationStateManager
     @EnvironmentObject var masterDataManager: MasterDataManager
-
+ //DEVELOPER CONSAOLIDATE STATO BJECTS
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var activeRouteVM = ActiveRouteViewModel()
-    @StateObject var recurringRouteVM = RecurringRouteViewModel()
+    @StateObject var activeRouteVM : ActiveRouteViewModel
+    @StateObject var recurringRouteVM : RecurringRouteViewModel
     @StateObject var toDoVM : ToDoViewModel
     @StateObject var shoppingListVM : ShoppingListViewModel
     @StateObject var repairRequestVM : RepairRequestViewModel
-    @StateObject var purchaseVM = PurchasesViewModel()
+    @StateObject var purchaseVM : PurchasesViewModel
+    
     init(dataService:any ProductionDataServiceProtocol){
         _shoppingListVM = StateObject(wrappedValue: ShoppingListViewModel(dataService: dataService))
         _repairRequestVM = StateObject(wrappedValue: RepairRequestViewModel(dataService: dataService))
         _toDoVM = StateObject(wrappedValue: ToDoViewModel(dataService: dataService))
-
-
+        _recurringRouteVM = StateObject(wrappedValue: RecurringRouteViewModel(dataService: dataService))
+        _purchaseVM = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
+        _activeRouteVM = StateObject(wrappedValue: ActiveRouteViewModel(dataService: dataService))
     }
     let data = (1...100).map { "Item \($0)" }
     
@@ -50,11 +52,13 @@ struct MobileDashboard: View {
         //        .background(Color.white)
         .task{
             isLoading = true
-            if let company = masterDataManager.selectedCompany, let user = masterDataManager.user {
+            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                 do {
                     let recurringRouteId = weekDay(date: Date()) + user.id
                     print(recurringRouteId)
-                    try await recurringRouteVM.getSingleRoute(companyId: company.id, recurringRouteId: recurringRouteId)
+                    //DEVELOPER
+                    print("Developer")
+//                    try await recurringRouteVM.getSingleRoute(companyId: company.id, recurringRouteId: recurringRouteId)
                     print("Successfully Got Recurring Route \(fullDateAndDay(date: Date())) for \(user.id)")
                 } catch {
                     print("\(recurringRouteVM.recurringRoute == nil ? "No Route Today" : "Route Exists")")

@@ -11,6 +11,8 @@ import FirebaseFirestoreSwift
 
 struct Invite:Identifiable,Codable,Equatable,Hashable{
     var id : String
+    var userId : String
+
     var firstName : String
     var lastName : String
     var email : String
@@ -19,10 +21,14 @@ struct Invite:Identifiable,Codable,Equatable,Hashable{
     var roleId : String
     var roleName : String
     var status : String
+    var workerType : WorkerTypeEnum
+    var currentUser : Bool
 
 
     init(
         id: String,
+        userId: String,
+
         firstName: String,
         lastName: String,
         email: String,
@@ -30,9 +36,13 @@ struct Invite:Identifiable,Codable,Equatable,Hashable{
         companyId: String,
         roleId: String,
         roleName: String,
-        status: String
+        status: String,
+        workerType: WorkerTypeEnum,
+        currentUser: Bool
+
     ){
         self.id = id
+        self.userId = userId
         self.firstName = firstName
         self.lastName = lastName
         self.email = email
@@ -42,10 +52,13 @@ struct Invite:Identifiable,Codable,Equatable,Hashable{
         self.roleName = roleName
 
         self.status = status
+        self.workerType = workerType
+        self.currentUser = currentUser
 
     }
     enum CodingKeys:String, CodingKey {
         case id = "id"
+        case userId = "userId"
         case firstName = "firstName"
         case lastName = "lastName"
         case email = "email"
@@ -54,7 +67,8 @@ struct Invite:Identifiable,Codable,Equatable,Hashable{
         case roleId = "roleId"
         case roleName = "roleName"
         case status = "status"
-
+        case workerType = "workerType"
+        case currentUser = "currentUser"
     }
 }
 

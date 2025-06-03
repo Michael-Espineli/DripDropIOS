@@ -20,21 +20,17 @@ struct VehicleCardView: View {
                         .foregroundColor(Color.white)
                         .frame(width: 50, height: 50)
                     switch vehical.vehicalType {
-                    case "Car":
+                    case .car:
                         Image(systemName: "car.fill")
                             .foregroundColor(Color.accentColor)
                             .frame(width: 50, height: 50)
 
-                    case "Truck":
+                    case .truck:
                         Image(systemName: "box.truck.fill")
                             .foregroundColor(Color.accentColor)
                             .frame(width: 50, height: 50)
-                    case "Van":
+                    case .van:
                         Image(systemName: "bus")
-                            .foregroundColor(Color.accentColor)
-                            .frame(width: 50, height: 50)
-                    default:
-                        Image(systemName: "car.fill")
                             .foregroundColor(Color.accentColor)
                             .frame(width: 50, height: 50)
                     }
@@ -52,18 +48,20 @@ struct VehicleCardView: View {
                     HStack{
                         Text("\(fullDate(date:vehical.datePurchased))")
                             .font(.footnote)
-                        Text("\(Measurement(value: vehical.miles, unit: UnitLength.kilometers).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale)))")
+                        Text("\(Measurement(value: vehical.miles, unit: UnitLength.miles).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale)))")
                             .font(.footnote)
                     }
                 }
                 Spacer()
             }
         }
+        .modifier(ListButtonModifier())
+
     }
 }
 
 struct VehicleCardView_Previews: PreviewProvider {
     static var previews: some View {
-        VehicleCardView(vehical: Vehical(id: "", nickName: "", vehicalType: "", year: "", make: "", model: "", color: "Green",plate: "8UAWQHF", datePurchased: Date(), miles: 23503.1))
+        VehicleCardView(vehical: MockDataService.mockVehical)
     }
 }

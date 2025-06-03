@@ -8,11 +8,30 @@
 import SwiftUI
 
 struct JobBoardCardView: View {
+    let jobBoard : JobBoard
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ZStack{
+            VStack{
+                HStack{
+                    Text(jobBoard.name)
+                    Spacer()
+                }
+                
+                Text(jobBoard.permissionType.rawValue)
+                    .padding(8)
+                    .background(jobBoard.permissionType == .publicAccess ? Color.poolGreen.opacity(0.75) : Color.poolRed.opacity(0.75))
+                    .cornerRadius(8)
+                Spacer()
+                HStack{
+                    Text(jobBoard.region)
+                }
+            }
+            .frame(width:150,height: 150)
+        }
+        .modifier(ListButtonModifier())
     }
 }
 
-#Preview {
-    JobBoardCardView()
-}
+//#Preview {
+//    JobBoardCardView()
+//}

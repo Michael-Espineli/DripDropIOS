@@ -67,21 +67,27 @@ struct ShiftDetailView: View {
     var body: some View {
         ZStack{
             VStack{
-                HStack{
-                    Text(shortDate(date: workShift.date))
-                    Spacer()
+                VStack{
+                    HStack{
+                        Text(shortDate(date: workShift.date))
+                        Spacer()
+                    }
+                    HStack{
+                        if let timeMin = VM.timeMin {
+                            Text(displayMinAsMinAndHour(min: timeMin))
+                        }
+                        Spacer()
+                        if let milage = VM.milage {
+                            Text(Measurement(value: Double(milage), unit: UnitLength.miles).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale)))
+                        }
+                    }
                 }
-                HStack{
-                    if let timeMin = VM.timeMin {
-                        Text(displayMinAsMinAndHour(min: timeMin))
-                    }
-                    Spacer()
-                    if let milage = VM.milage {
-                        Text(Measurement(value: Double(milage), unit: UnitLength.miles).formatted(.measurement(width: .abbreviated, usage: .road).locale(locale)))
-                    }
+                .modifier(ListButtonModifier())
+                .padding(8)
+                ForEach(VM.workLogs){ log in
+                    WorkLogCardView(workLog: log)
                 }
             }
-            .modifier(ListButtonModifier())
         }
         .task {
             if let currentCompany = masterDataManager.currentCompany, let user = masterDataManager.user{

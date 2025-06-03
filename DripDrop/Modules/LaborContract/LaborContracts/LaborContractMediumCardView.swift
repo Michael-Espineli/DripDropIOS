@@ -10,7 +10,7 @@ import SwiftUI
 struct LaborContractMediumCardView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
 
-    let laborContract:RepeatingLaborContract
+    let laborContract:ReccuringLaborContract
     var body: some View {
         VStack(alignment:.leading){
             if let company = masterDataManager.currentCompany {
@@ -75,14 +75,14 @@ struct LaborContractMediumCardView: View {
 }
 
 #Preview {
-    LaborContractMediumCardView(laborContract: MockDataService.mockLaborContracts.first!)
+    LaborContractMediumCardView(laborContract: MockDataService.mockRecurringLaborContracts.first!)
 }
 extension LaborContractMediumCardView {
     func getBackGroundColor(status:LaborContractStatus) -> Color {
         switch status {
         case .accepted:
             return Color.poolGreen
-        case .past:
+        case .finished, .rejected:
             return Color.poolRed
         case .pending:
             return Color.poolYellow
@@ -93,7 +93,7 @@ extension LaborContractMediumCardView {
         switch status {
         case .accepted:
             return Color.poolWhite
-        case .past:
+        case .finished, .rejected:
             return Color.poolWhite
         case .pending:
             return Color.poolBlack

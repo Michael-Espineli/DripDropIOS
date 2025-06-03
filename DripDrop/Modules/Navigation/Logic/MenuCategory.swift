@@ -4,9 +4,9 @@
 //
 //  Created by Michael Espineli on 12/15/23.
 //
-
+//DEVELOPER GO THROUGH AND MAKE SURE THAT THE ROUTE AND THE MACCATEGORIES USE THE SAME NAMING CONVETION
 import Foundation
-enum MacCategories: String, Hashable, CaseIterable, Identifiable{
+enum MacCategories: String, Hashable, CaseIterable, Identifiable,Codable{
     
     case profile//
     case dashBoard//
@@ -14,6 +14,7 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable{
     case dailyDisplay//
     case customers//
     case serviceStops//
+    case managementTables//
 
     case routeBuilder//
     case management
@@ -37,6 +38,10 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable{
     case readingsAndDosages//
     case calendar//
     case maps//
+    case companyAlerts
+    case personalAlerts
+    case receivedLaborContracts
+    case sentLaborContracts
 
     //Private
     case chat//
@@ -45,13 +50,29 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable{
     case marketPlace//
     case jobPosting//
     case feed//
+    //New
+    case companyRouteOverView//
+    case externalRoutesOverview//
 
-    
+    case accountsPayable//
+    case accountsReceivable//
+    case equipment//
+    case settings
+    case jobTemplates
+    case contracts
+    case alerts
+    case shoppingList
+    case businesses
+    case companyUser
+    case taskGroups
+
     var id: String{
         return self.rawValue
     }
     func title() -> String{
         switch self{
+        case .managementTables:
+            return "Management Tables"
         case .dashBoard:
             return "Dashboard"
             
@@ -135,6 +156,40 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable{
             
         case .genericItems:
             return "Generic Items"
+        case .companyRouteOverView:
+            return "Company Route OverView"
+        case .accountsPayable:
+            return "Accounts Payable"
+        case .accountsReceivable:
+            return "Accounts Receivable"
+        case .equipment:
+            return "Equipment"
+        case .settings:
+            return "Settings"
+        case .jobTemplates:
+            return "Job Templates"
+        case .contracts:
+            return "Contracts"
+        case .companyUser:
+            return "Company User"
+        case .alerts:
+            return "Alerts"
+        case .shoppingList:
+            return "Shopping List"
+        case .businesses:
+            return "Businesses"
+        case .companyAlerts:
+            return "company Alerts"
+        case .personalAlerts:
+            return "personal Alerts"
+        case .receivedLaborContracts:
+            return "labor Contracts"
+        case .externalRoutesOverview:
+            return "External Labor Contracts"
+        case .taskGroups:
+            return "Task Groups"
+        case .sentLaborContracts:
+            return "Sent Labor Contracts"
         }
     }
     func imageName() -> String{
@@ -223,6 +278,45 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable{
         case .genericItems:
             return "book"
 
+        case .companyRouteOverView:
+            return "book" //DEVELOPER FIX
+        case .accountsPayable:
+            return "book" //DEVELOPER FIX
+
+        case .accountsReceivable:
+            return "book" //DEVELOPER FIX
+
+        case .equipment:
+            return "book" //DEVELOPER FIX
+        case .settings:
+            return "testtube.2"
+        case .jobTemplates:
+            return "terminal"
+        case .contracts:
+            return "terminal"
+        case .companyUser:
+            return "testtube.2"
+
+        case .alerts:
+            return "testtube.2"
+        case .shoppingList:
+            return "testtube.2"
+        case .businesses:
+            return "doc.richtext.fill"
+        case .companyAlerts:
+            return "testtube.2"
+        case .personalAlerts:
+            return "testtube.2"
+        case .receivedLaborContracts:
+            return "testtube.2"
+        case .externalRoutesOverview:
+            return "testtube.2"
+        case .managementTables:
+            return "archivebox"
+        case .taskGroups:
+            return "archivebox"
+        case .sentLaborContracts:
+            return "archivebox"
         }
     }
     

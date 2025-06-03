@@ -10,7 +10,11 @@ import SwiftUI
 struct JobView: View{
     @EnvironmentObject var dataService: ProductionDataService
 
-    @StateObject private var viewModel = PurchasesViewModel()
+    @StateObject private var viewModel : PurchasesViewModel
+    init(dataService: any ProductionDataServiceProtocol){
+        _viewModel = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
+
+    }
     @State private var selected = Set<PurchasedItem.ID>()
     @State private var isPresented = false
 

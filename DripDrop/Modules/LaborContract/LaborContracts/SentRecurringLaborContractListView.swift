@@ -5,15 +5,40 @@
 //  Created by Michael Espineli on 12/12/24.
 //
 
+import Foundation
 import SwiftUI
 
-struct SentRecurringLaborContractListView: View {
-    init(dataService:any ProductionDataServiceProtocol) {
-        _VM = StateObject(wrappedValue: LaborContractListViewModel(dataService: dataService))
+@MainActor
+final class SentRecurringLaborContractListViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
     }
+    @Published var searchTerm:String = ""
+
+    @Published var showSearch:Bool = false
+    @Published var showFilters:Bool = false
+    @Published var showAddNewLaborContract:Bool = false
+    @Published var selectedStatus:LaborContractStatus = .accepted
+
+    @Published var statusList:[LaborContractStatus] = [.accepted]
+
+    @Published private(set) var recurringLaborContractList:[ReccuringLaborContract] = []
+
+    //Get
+    func getLaborContracts(companyId:String) async throws {
+        self.recurringLaborContractList = try await dataService.getSentLaborContracts(companyId: companyId)
+    }
+}
+struct SentRecurringLaborContractListView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : LaborContractListViewModel
+    
+    @StateObject var VM : SentRecurringLaborContractListViewModel
+    
+    init(dataService:any ProductionDataServiceProtocol) {
+        _VM = StateObject(wrappedValue: SentRecurringLaborContractListViewModel(dataService: dataService))
+    }
     
     var body: some View {
         ZStack{
@@ -62,7 +87,7 @@ struct SentRecurringLaborContractListView: View {
                     filters
                 })
             Text("")
-                .fullScreenCover(isPresented: $VM.showAddNewLaborContract, onDismiss: {
+                .sheet(isPresented: $VM.showAddNewLaborContract, onDismiss: {
                     Task{
                         if let selectedCompany = masterDataManager.currentCompany {
                             do {
@@ -77,7 +102,7 @@ struct SentRecurringLaborContractListView: View {
                     AddNewLaborContract(dataService: dataService,isPresented: $VM.showAddNewLaborContract,isFullScreen: true)
                 })
         }
-        .navigationTitle(VM.recurringLaborContractList.isEmpty ? "Sent Recurring Labor Contracts" : "Sent Recurring Labor Contracts - \(VM.recurringLaborContractList.count)")
+        .navigationTitle("Sent Recurring Labor Contracts")
         .task {
             if let selectedCompany = masterDataManager.currentCompany {
                 do {
@@ -100,12 +125,12 @@ extension SentRecurringLaborContractListView {
                 ForEach(VM.recurringLaborContractList) { contract in
                     Divider()
                     if UIDevice.isIPhone {
-                        NavigationLink(value: Route.laborContractDetailView(contract: contract, dataService: dataService), label: {
+                        NavigationLink(value: Route.recurringLaborContractDetailView(contract: contract, dataService: dataService), label: {
                             LaborContractCardSmall(dataService: dataService, laborContract: contract)
                         })
                     } else {
                         Button(action: {
-                            masterDataManager.selectedLaborContract = contract
+                            masterDataManager.selectedRecurringLaborContract = contract
                         }, label: {
                             LaborContractCardSmall(dataService: dataService, laborContract: contract)
                         })

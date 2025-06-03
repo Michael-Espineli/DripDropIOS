@@ -13,7 +13,7 @@ struct AddNewJobFromRepairRequest: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService: ProductionDataService
 
-    @StateObject var settingsVM = SettingsViewModel()
+    @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @StateObject var jobVM : JobViewModel
     @StateObject var customerVM : CustomerViewModel
     @StateObject var serviceLocationVM : ServiceLocationViewModel
@@ -48,7 +48,25 @@ struct AddNewJobFromRepairRequest: View {
     
     @State var billingStatus:JobBillingStatus = .draft
     
-    @State var customerEntity:Customer = Customer(id: "", firstName: "", lastName: "", email: "", billingAddress: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), active: true, displayAsCompany: true, hireDate: Date(), billingNotes: "")
+    @State var customerEntity:Customer = Customer(
+        id: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        billingAddress: Address(
+            streetAddress: "",
+            city: "",
+            state: "",
+            zip: "",
+            latitude: 0,
+            longitude: 0
+        ),
+        active: true,
+        displayAsCompany: true,
+        hireDate: Date(),
+        billingNotes: "",
+        linkedInviteId: UUID().uuidString
+    )
     
     @State var serviceLocations:[ServiceLocation] = []
     @State var serviceLocation:ServiceLocation = ServiceLocation(
@@ -87,7 +105,8 @@ struct AddNewJobFromRepairRequest: View {
         gallons: "",
         material: "",
         customerId: "",
-        serviceLocationId: ""
+        serviceLocationId: "",
+        lastFilled: Date()
     )
     
     @State var equipmentList:[Equipment] = []
@@ -102,14 +121,14 @@ struct AddNewJobFromRepairRequest: View {
         needsService: true,
         notes: "",
         customerName: "",
-
         customerId: "",
         serviceLocationId: "",
-        bodyOfWaterId: ""
+        bodyOfWaterId: "",
+        isActive: true
     )
     
-    @State var admin:DBUser = DBUser(id: "",exp: 0)
-    @State var tech:DBUser = DBUser(id: "",exp: 0)
+    @State var admin:DBUser = DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
+    @State var tech:DBUser = DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
     
     @State var serviceStopIds:[String] = []
     
@@ -206,7 +225,7 @@ struct AddNewJobFromRepairRequest: View {
         }
         .task {
             do {
-                if let company = masterDataManager.selectedCompany {
+                if let company = masterDataManager.currentCompany {
                     let id = try await settingsVM.getWorkOrderCount(companyId: company.id)
                     jobId = "J" + String(id)
                     if let customer1 = customer {
@@ -289,7 +308,7 @@ struct AddNewJobFromRepairRequest: View {
         .onChange(of: customerEntity, perform: { cus in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if cus.id != "" {
                             try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: cus.id)
                             serviceLocations = serviceLocationVM.serviceLocations
@@ -309,7 +328,7 @@ struct AddNewJobFromRepairRequest: View {
         .onChange(of: serviceLocation, perform: { loc in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if loc.id != "" {
                             try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
                             bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
@@ -317,7 +336,7 @@ struct AddNewJobFromRepairRequest: View {
                             if bodyOfWaterList.count != 0 {
                                 bodyOfWater = bodyOfWaterList.first!
                             } else {
-                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "")
+                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
                             }
                         }
                     }
@@ -331,7 +350,7 @@ struct AddNewJobFromRepairRequest: View {
             BOW in
             Task{
                 do {
-                    if let company = masterDataManager.selectedCompany {
+                    if let company = masterDataManager.currentCompany {
                         if BOW.id != "" {
                             try await equipmentVM.getAllEquipmentFromBodyOfWater(companyId: company.id, bodyOfWater: BOW)
                             equipmentList = equipmentVM.listOfEquipment
@@ -352,7 +371,8 @@ struct AddNewJobFromRepairRequest: View {
                                     customerName: "",
                                     customerId: "",
                                     serviceLocationId: "",
-                                    bodyOfWaterId: ""
+                                    bodyOfWaterId: "",
+                                    isActive:true
                                 )
                             }
                         }
@@ -499,7 +519,7 @@ extension AddNewJobFromRepairRequest {
                 Text("Tech")
                     .bold(true)
                 Picker("Tech", selection: $tech) {
-                    Text("Pick Tech").tag(DBUser(id: "",exp: 0))
+                    Text("Pick Tech").tag( DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
                         let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
                         Text(fullName).tag(template)
@@ -537,34 +557,32 @@ extension AddNewJobFromRepairRequest {
             Button(action: {
                 Task{
                     do {
-                        if let company = masterDataManager.selectedCompany {
+                        if let company = masterDataManager.currentCompany {
                             let customerFullName = customerEntity.firstName + " " + customerEntity.lastName
                             let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
-                            try await servicestopVM.addNewServiceStopWithValidation(companyId: company.id,
-                                                                                    typeId: jobTemplate.id,
-                                                                                    customerName: customerFullName,
-                                                                                    customerId: customerEntity.id,
-                                                                                    address: serviceLocation.address,
-                                                                                    dateCreated: Date(),
-                                                                                    serviceDate: serviceDate,
-                                                                                    duration: duration,
-                                                                                    rate: rate,
-                                                                                    tech: techFullName,
-                                                                                    techId: tech.id,
-                                                                                    recurringServiceStopId: "",
-                                                                                    description: description,
-                                                                                    serviceLocationId: serviceLocation.id,
-                                                                                    type: jobTemplate.name,
-                                                                                    typeImage: jobTemplate.typeImage ?? "",
-                                                                                    jobId: jobId,
-                                                                                    finished: false,
-                                                                                    skipped: false,
-                                                                                    invoiced: false,
-                                                                                    checkList: checkList,
-                                                                                    includeReadings: includeReadings,
-                                                                                    includeDosages: includeDosages)
+                            try await servicestopVM.addNewServiceStopWithValidation(
+                                companyId: company.id,
+                                typeId: jobTemplate.id,
+                                customerName: customerFullName,
+                                customerId: customerEntity.id,
+                                address: serviceLocation.address,
+                                dateCreated: Date(),
+                                serviceDate: serviceDate,
+                                duration: duration,
+                                tech: techFullName,
+                                techId: tech.id,
+                                recurringServiceStopId: "",
+                                description: description,
+                                serviceLocationId: serviceLocation.id,
+                                type: jobTemplate.name,
+                                typeImage: jobTemplate.typeImage ?? "",
+                                jobId: jobId,
+                                operationStatus: .notFinished,
+                                billingStatus: .notInvoiced,
+                                includeReadings: true,
+                                includeDosages: true
+                            )
                             operationStatus = .estimatePending
-                            
                             billingStatus = .estimate
                             alertMessage = "Successfully Added Service Stop"
                             showAlert = true
@@ -573,7 +591,8 @@ extension AddNewJobFromRepairRequest {
                         print(error)
                     }
                 }
-            }, label: {
+            },
+                   label: {
                 Text("Add Service stop")
             })
             HStack{
@@ -595,8 +614,8 @@ extension AddNewJobFromRepairRequest {
                 ForEach(serviceStopList){ stop in
                     HStack{
                         Text("\(stop.type) - \(fullDate(date:stop.dateCreated)) - ")
-                        Text("\(stop.finished ? "Finished" : "Unfinished")")
-                            .foregroundColor(stop.finished ? Color.green : Color.red)
+                        Text("\(stop.operationStatus.rawValue)")
+                            .foregroundColor(stop.operationStatus == .finished ? Color.green : Color.red)
                     }
                 }
             }
@@ -621,7 +640,7 @@ extension AddNewJobFromRepairRequest {
                         installationParts.append(installationPart)
 
                     }, content: {
-                        jobItemPicker(jobDBItems: $installationPart, category: "Equipment")
+                        jobItemPicker(dataService: dataService, jobDBItems: $installationPart, category: "Equipment")
                         
                     })
                 }
@@ -642,7 +661,7 @@ extension AddNewJobFromRepairRequest {
                         pvcParts.append(pvcPart)
 
                     },  content: {
-                        jobItemPicker(jobDBItems: $pvcPart, category: "PVC")
+                        jobItemPicker(dataService: dataService, jobDBItems: $pvcPart, category: "PVC")
                     })
                 }
                 ForEach(pvcParts){ datum in
@@ -662,7 +681,7 @@ extension AddNewJobFromRepairRequest {
                         electricalParts.append(electricalPart)
 
                     },  content: {
-                        jobItemPicker(jobDBItems: $electricalPart, category: "Electrical")
+                        jobItemPicker(dataService: dataService, jobDBItems: $electricalPart, category: "Electrical")
                     })
                 }
                 ForEach(electricalParts){ datum in
@@ -682,7 +701,7 @@ extension AddNewJobFromRepairRequest {
                         chemicals.append(chemical)
 
                     },  content: {
-                        jobItemPicker(jobDBItems: $chemical, category: "Chems")
+                        jobItemPicker(dataService: dataService, jobDBItems: $chemical, category: "Chems")
                     })
                 }
                 ForEach(chemicals){ datum in
@@ -702,7 +721,7 @@ extension AddNewJobFromRepairRequest {
                         miscParts.append(miscPart)
 
                     },  content: {
-                        jobItemPicker(jobDBItems: $miscPart, category: "")
+                        jobItemPicker(dataService: dataService, jobDBItems: $miscPart, category: "")
                     })
                 }
                 ForEach(miscParts){ datum in
@@ -734,7 +753,7 @@ extension AddNewJobFromRepairRequest {
                     .bold(true)
                 Spacer()
                 Picker("Tech", selection: $admin) {
-                    Text("Pick Tech").tag(DBUser(id: "",exp: 0))
+                    Text("Pick Tech").tag( DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
                         let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
                         Text(fullName).tag(template)
@@ -760,18 +779,9 @@ extension AddNewJobFromRepairRequest {
                 .foregroundColor(Color.basicFontText)
                 .cornerRadius(5)
                 .padding(5)
-                .fullScreenCover(isPresented: $showCustomerSelector, content: {
-                    VStack{
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                showCustomerSelector = false
-                            }, label: {
-                                
-                            })
-                        }
-                        CustomerPickerScreen(dataService: dataService, customer: $customerEntity)
-                    }
+                .sheet(isPresented: $showCustomerSelector, content: {
+                    CustomerPickerScreen(dataService: dataService, customer: $customerEntity)
+
                 })
             }
             HStack{
@@ -874,18 +884,9 @@ extension AddNewJobFromRepairRequest {
                 .foregroundColor(Color.basicFontText)
                 .cornerRadius(5)
                 .padding(5)
-                .fullScreenCover(isPresented: $showCustomerSelector, content: {
-                    VStack{
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                showCustomerSelector = false
-                            }, label: {
-                                
-                            })
-                        }
-                        CustomerPickerScreen(dataService: dataService, customer: $customerEntity)
-                    }
+                .sheet(isPresented: $showCustomerSelector, content: {
+                    CustomerPickerScreen(dataService: dataService, customer: $customerEntity)
+
                 })
             }
                 HStack{
@@ -902,7 +903,7 @@ extension AddNewJobFromRepairRequest {
                     Text("Body Of Water")
                         .bold(true)
                     Picker("BOW", selection: $bodyOfWater) {
-                        Text("Pick Location").tag(BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: ""))
+                        Text("Pick Location").tag(BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date()))
                         ForEach(bodyOfWaterList){ BOW in
                             Text(BOW.name).tag(BOW)
                         }
@@ -912,7 +913,7 @@ extension AddNewJobFromRepairRequest {
                     Text("Equipmnet")
                         .bold(true)
                     Picker("Equipment", selection: $equipment) {
-                        Text("Pick Location").tag(
+                        Text("Pick Equipment").tag(
                             Equipment(
                                 id: "",
                                 name: "",
@@ -926,7 +927,8 @@ extension AddNewJobFromRepairRequest {
                                 customerName: "",
                                 customerId: "",
                                 serviceLocationId: "",
-                                bodyOfWaterId: ""
+                                bodyOfWaterId: "",
+                                isActive: true
                             )
                         )
                         ForEach(equipmentList){ equipment in
@@ -959,7 +961,7 @@ extension AddNewJobFromRepairRequest {
                 Text("Admin")
                     .bold(true)
                 Picker("Admin", selection: $admin) {
-                    Text("Pick Admin").tag(DBUser(id: "",exp: 0))
+                    Text("Pick Admin").tag( DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
                         let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
                         Text(fullName).tag(template)
@@ -1051,7 +1053,7 @@ extension AddNewJobFromRepairRequest {
                 Button(action: {
                     Task{
                         do {
-                            guard let company = masterDataManager.selectedCompany else {
+                            guard let company = masterDataManager.currentCompany else {
                                 return
                             }
                             let customerFullName = customerEntity.firstName + " " + customerEntity.lastName
@@ -1119,9 +1121,7 @@ extension AddNewJobFromRepairRequest {
                 }, label: {
                     Text("Submit")
                         .frame(maxWidth: .infinity)
-                        .foregroundColor(Color.basicFontText)
-                        .padding(5)
-                        .background(Color.poolBlue)
+                        .modifier(SubmitButtonModifier())
                         .clipShape(Capsule())
                 })
     
@@ -1134,65 +1134,65 @@ extension AddNewJobFromRepairRequest {
                 Button(action: {
                     Task{
                         do {
-                            guard let company = masterDataManager.selectedCompany else {
+                            guard let company = masterDataManager.currentCompany else {
                                 return
                             }
                             let customerFullName = customerEntity.firstName + " " + customerEntity.lastName
                             let adminFullName = (admin.firstName ?? "") + " " + (admin.lastName ?? "")
                             let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
-                            let SSID = try await servicestopVM.addNewServiceStopWithValidation(companyId: company.id,
-                                                                                    typeId: jobTemplate.id,
-                                                                                    customerName: customerFullName,
-                                                                                    customerId: customerEntity.id,
-                                                                                    address: serviceLocation.address,
-                                                                                    dateCreated: Date(),
-                                                                                    serviceDate: serviceDate,
-                                                                                    duration: duration,
-                                                                                    rate: rate,
-                                                                                    tech: techFullName,
-                                                                                    techId: tech.id,
-                                                                                    recurringServiceStopId: "",
-                                                                                    description: description,
-                                                                                    serviceLocationId: serviceLocation.id,
-                                                                                    type: jobTemplate.name,
-                                                                                    typeImage: jobTemplate.typeImage ?? "",
-                                                                                    jobId: jobId,
-                                                                                    finished: false,
-                                                                                    skipped: false,
-                                                                                    invoiced: false,
-                                                                                    checkList: checkList,
-                                                                                    includeReadings: includeReadings,
-                                                                                    includeDosages: includeDosages)
+                            let SSID = try await servicestopVM.addNewServiceStopWithValidation(
+                                companyId: company.id,
+                                typeId: jobTemplate.id,
+                                customerName: customerFullName,
+                                customerId: customerEntity.id,
+                                address: serviceLocation.address,
+                                dateCreated: Date(),
+                                serviceDate: serviceDate,
+                                duration: duration,
+                                tech: techFullName,
+                                techId: tech.id,
+                                recurringServiceStopId: "",
+                                description: description,
+                                serviceLocationId: serviceLocation.id,
+                                type: jobTemplate.id,
+                                typeImage: jobTemplate.typeImage ?? "",
+                                jobId: jobId,
+                                operationStatus: .notFinished,
+                                billingStatus: .notInvoiced,
+                                includeReadings: true,
+                                includeDosages: true
+                            )
                             serviceStopIds.append(SSID)
-                            
-                            try await jobVM.addNewJobWithValidation(companyId: company.id,
-                                                                    jobId: jobId,
-                                                                    jobTemplate: jobTemplate,
-                                                                    dateCreated: dateCreated,
-                                                                    description: description,
-                                                                    operationStatus: operationStatus,
-                                                                    billingStatus: billingStatus,
-                                                                    customerId: customerEntity.id,
-                                                                    customerName: customerFullName,
-                                                                    serviceLocationId: serviceLocation.id,
-                                                                    serviceStopIds: serviceStopIds,
-                                                                    adminId: admin.id,
-                                                                    adminName: adminFullName,
-                                                                    installationParts: installationParts,
-                                                                    pvcParts: pvcParts,
-                                                                    electricalParts: electricalParts,
-                                                                    chemicals: chemicals,
-                                                                    miscParts: miscParts,
-                                                                    rate: rate,
-                                                                    laborCost: laborCost,
-                                                                    bodyOfWater: bodyOfWater,
-                                                                    equipment: equipment)
+                            try await jobVM.addNewJobWithValidation(
+                                companyId: company.id,
+                                jobId: jobId,
+                                jobTemplate: jobTemplate,
+                                dateCreated: dateCreated,
+                                description: description,
+                                operationStatus: operationStatus,
+                                billingStatus: billingStatus,
+                                customerId: customerEntity.id,
+                                customerName: customerFullName,
+                                serviceLocationId: serviceLocation.id,
+                                serviceStopIds: serviceStopIds,
+                                adminId: admin.id,
+                                adminName: adminFullName,
+                                installationParts: installationParts,
+                                pvcParts: pvcParts,
+                                electricalParts: electricalParts,
+                                chemicals: chemicals,
+                                miscParts: miscParts,
+                                rate: rate,
+                                laborCost: laborCost,
+                                bodyOfWater: bodyOfWater,
+                                equipment: equipment
+                            )
                             returnJobId = jobId
-
+                            
                             alertMessage = "Successfully Created Job"
                             print(alertMessage)
                             showAlert = true
-//                            receivedJobId = jobId
+                                //                            receivedJobId = jobId
                             dismiss()
                             
                         } catch JobError.invalidRate{
@@ -1225,12 +1225,12 @@ extension AddNewJobFromRepairRequest {
                             showAlert = true
                         }
                     }
-                }, label: {
+                },
+                       label: {
                     Text("Submit")
                         .frame(maxWidth: .infinity)
-                        .foregroundColor(Color.basicFontText)
-                        .padding(5)
-                        .background(Color.poolBlue)
+                        .modifier(SubmitButtonModifier())
+
                         .clipShape(Capsule())
                 })
     

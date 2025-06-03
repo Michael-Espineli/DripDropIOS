@@ -48,7 +48,8 @@ struct BillingJobList: View{
     @State var startDate:Date = Date()
     @State var endDate:Date = Date()
     
-    @State var selectedStatus:[JobBillingStatus] = [.finished]
+    @State var selectedStatus:[JobBillingStatus] = [.draft,.estimate,.accepted,.inProgress]
+    
     @State var techIds:[String] = []
     var body: some View{
         ZStack{
@@ -56,7 +57,7 @@ struct BillingJobList: View{
             list
             icons
         }
-        .navigationTitle("Job List")
+        .navigationTitle("Billing Job List")
         .task {
             if let company = masterDataManager.currentCompany {
                 
@@ -67,7 +68,7 @@ struct BillingJobList: View{
                         techIds.append(companyUser.userId)
                     }
                     startDate = Calendar.current.date(byAdding: .day, value: -300, to: Date())!
-                    jobVM.addListenerForAllJobsOperations(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
+                    jobVM.addListenerForAllJobsBillings(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
                     
                 } catch {
                     print("Error - [JobListView]")
@@ -146,7 +147,7 @@ extension BillingJobList {
                                         }
                                         
                                         startDate = Calendar.current.date(byAdding: .day, value: -300, to: Date())!
-                                        jobVM.addListenerForAllJobsOperations(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
+                                        jobVM.addListenerForAllJobsBillings(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
                                         
                                     } catch {
                                         print("Error Getting Users By status")
@@ -222,7 +223,7 @@ extension BillingJobList {
                             if let company = masterDataManager.currentCompany {
                                 do {
                                     jobVM.removeListenerForJob()
-                                    jobVM.addListenerForAllJobsOperations(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
+                                    jobVM.addListenerForAllJobsBillings(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
                                     
                                 } catch {
                                     print(error)
@@ -249,15 +250,15 @@ extension BillingJobList {
                                     Button(action: {
                                         print("All Selected")
                                         selectedStatus = []
-                                        for status in JobOperationStatus.allCases {
+                                        for status in JobBillingStatus.allCases {
                                             selectedStatus.append(status)
                                         }
                                         
                                     }, label: {
-                                        Text("All \(selectedStatus == JobOperationStatus.allCases ? "✓" : "")")
+                                        Text("All \(selectedStatus == JobBillingStatus.allCases ? "✓" : "")")
                                     })
                                     
-                                    ForEach(JobOperationStatus.allCases,id:\.self) { status in
+                                    ForEach(JobBillingStatus.allCases,id:\.self) { status in
                                         Button(action: {
                                             if selectedStatus.contains(status) {
                                                 selectedStatus.removeAll(where: {$0 == status})

@@ -30,7 +30,7 @@ struct GenericItemList: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackground()
         .task {
-            if let company = masterDataManager.selectedCompany {
+            if let company = masterDataManager.currentCompany {
                 do {
                     try await genericItemVM.getAllGenericItems(companyId: company.id)
                 } catch {
@@ -133,11 +133,14 @@ extension GenericItemList {
                         "Search",
                         text: $searchTerm
                     )
-                    .padding()
-                    .background(Color.gray)
-                    .foregroundColor(Color.white)
-                    .cornerRadius(10)
+                    Button(action: {
+                        searchTerm = ""
+                    }, label: {
+                        Image(systemName: "xmark")
+                    })
                 }
+                .modifier(SearchTextFieldModifier())
+                .padding(8)
             }
             
         }

@@ -31,33 +31,12 @@ struct TwoColumnMenuView: View {
             if let role = masterDataManager.role{
                 NavigationSplitView(columnVisibility: $columnVisibility, sidebar: {
                     SideBarView(dataService: dataService, role: role, selectedCategory: $masterDataManager.selectedCategory)
-                        .navigationTitle("Menu")
                         .navigationBarBackground()
                         .font(.system(.body , design: .rounded))
-
-//                        .toolbar {
-//                            ToolbarItem(placement: .primaryAction) {
-//                                Button(action: {
-//                                    
-//                                }, label: {
-//                                    Text("Something")
-//                                })
-//                            }
-//                            if UIDevice.current.userInterfaceIdiom != .phone {
-//                                ToolbarItem {
-//                                    Button {
-//                                        showSettings.toggle()
-//                                    } label: {
-//                                        Image(systemName: "gear")
-//                                    }
-//                                }
-//                            }
-//                            
-//                        }
                 }, detail: {
                     NavigationStack(path: $navigationManager.routes) {
                         
-                        MiddleSidebarView(user: user, company: masterDataManager.selectedCompany!, showSignInView: showSignInView)
+                        MiddleSidebarView(user: user, company: masterDataManager.currentCompany!, showSignInView: showSignInView)
                         
                             .navigationDestination(for: Route.self) { $0 }
                     }
@@ -72,10 +51,10 @@ struct TwoColumnMenuView: View {
         }
         .task {
             do{
-                try await accessVM.getUserAccessCompanies(userId: user.id, companyId: masterDataManager.selectedCompany!.id)
+                try await accessVM.getUserAccessCompanies(userId: user.id, companyId: masterDataManager.currentCompany!.id)
                 if let access = accessVM.userAccess{
                     print("Access >> \(access)")
-                    try await roleVM.getSpecificRole(companyId: masterDataManager.selectedCompany!.id, roleId: access.roleId)
+                    try await roleVM.getSpecificRole(companyId: masterDataManager.currentCompany!.id, roleId: access.roleId)
                     if let role = roleVM.role {
                         masterDataManager.role = role
                     } else {

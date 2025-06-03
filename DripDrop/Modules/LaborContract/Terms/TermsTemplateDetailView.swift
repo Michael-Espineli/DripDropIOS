@@ -10,7 +10,7 @@ import SwiftUI
 struct TermsTemplateDetailView: View {
     //Init
     init(dataService:any ProductionDataServiceProtocol,termsTemplate:TermsTemplate){
-        _VM = StateObject(wrappedValue: LaborContractViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
         _termsTemplate = State(wrappedValue: termsTemplate)
     }
     
@@ -18,7 +18,7 @@ struct TermsTemplateDetailView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService: ProductionDataService
 
-    @StateObject var VM : LaborContractViewModel
+    @StateObject var VM : RecurringLaborContractViewModel
 
     //Variables
     @State var termsTemplate:TermsTemplate
