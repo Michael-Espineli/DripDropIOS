@@ -67,9 +67,10 @@ extension TaskGroupListView {
         VStack{
             ForEach(VM.taskGroupList){ group in
                 if UIDevice.isIPhone {
-                    NavigationLink(value: Route.taskGroupDetail(dataService: dataService, taskGroup: group), label: {
+//                    NavigationLink(value: Route.taskGroupDetail(dataService: dataService, taskGroup: group), label: {
                         TaskGroupCardView(taskGroup: group)
-                    })
+                    
+//                    })
                 } else {
                     Button(action: {
                         masterDataManager.selectedTaskGroup = group
