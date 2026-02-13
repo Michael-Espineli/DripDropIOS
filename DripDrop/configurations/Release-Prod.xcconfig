@@ -1,0 +1,9 @@
+//
+//  Release-Prod.xcconfig
+//  DripDrop
+//
+//  Created by Michael Espineli on 1/27/26.
+//
+
+// Configuration settings file format documentation can be found at:
+// https://developer.apple.com/documentation/xcode/adding-a-build-configuration-file-to-your-project

@@ -12,7 +12,6 @@ import FirebaseFirestoreSwift
 struct Invite:Identifiable,Codable,Equatable,Hashable{
     var id : String
     var userId : String
-
     var firstName : String
     var lastName : String
     var email : String
@@ -23,12 +22,11 @@ struct Invite:Identifiable,Codable,Equatable,Hashable{
     var status : String
     var workerType : WorkerTypeEnum
     var currentUser : Bool
-
+//Date Created
 
     init(
         id: String,
         userId: String,
-
         firstName: String,
         lastName: String,
         email: String,
