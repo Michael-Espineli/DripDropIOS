@@ -12,29 +12,23 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
+    @Published var showAlert: Bool = false
+    @Published private(set) var alertMessage: String = ""
+
     @Published private(set) var RSSList: [RecurringServiceStop] = []
     @Published private(set) var locations: [ServiceLocation] = []
     @Published var companyUsers: [CompanyUser] = []
-    @Published var days: [String] = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-    ]
-    
+
     @Published var showSnapshot: Bool = false
     @Published var startOn: Date = Date()
     @Published var frequency: LaborContractFrequency = .weekly
-    @Published var selectedDay: String = "Monday"
+    @Published var selectedDay: DaysOfWeek = .monday
     @Published var selectedUser: CompanyUser = CompanyUser(
-        id: "",
-        userId: "",
-        userName: "",
-        roleId: "",
-        roleName: "",
+        id: "2",
+        userId: "2",
+        userName: "2",
+        roleId: "2",
+        roleName: "2",
         dateCreated: Date(),
         status: .active,
         workerType: .employee
@@ -59,7 +53,8 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
         laborCost: "",
         rate: "",
         customerId: "",
-        customerName: ""
+        customerName: "",
+        isActive: true
     )
 
 
@@ -68,6 +63,9 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
         Task{
             do {
                 self.companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
+                if !companyUsers.isEmpty  {
+                    self.selectedUser = companyUsers.first!
+                }
                 self.locations = try await dataService.getAllCustomerServiceLocationsId(companyId: companyId, customerId: customerId)
                 if !locations.isEmpty  {
                     self.selectedLocation = locations.first!
@@ -91,16 +89,25 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
     func submit(companyId:String,customerId:String) {
         Task{
             if selectedUser.id != "" {
+                print("")
+                print("[NewSingleRecurringServiceStopViewModel][submit] selectedUserId: \(selectedUser.id)")
                 if selectedLocation.id != "" {
+                    print("")
+                    print("[NewSingleRecurringServiceStopViewModel][submit] selectedLocationId: \(selectedLocation.id)")
                     do {
                         var name = ""
                         let customer = try await dataService.getCustomerById(companyId: companyId, customerId: customerId)
                         if customer.displayAsCompany {
-                            name = customer.firstName + " " + customer.lastName
+                            name = customer.company ?? "Company Name"
                         }else {
-                            name = customer.company ?? customer.firstName + " " + customer.lastName
+                            name = customer.firstName + " " + customer.lastName
                         }
+                        print("")
+                        print("[NewSingleRecurringServiceStopViewModel][submit] 1")
                         let rssCount = try await dataService.getRecurringServiceStopCount(companyId: companyId)
+                        
+                        print("")
+                        print("[NewSingleRecurringServiceStopViewModel][submit] New Count \(rssCount)")
                         let rss = RecurringServiceStop(
                             id: "comp_rss_" + UUID().uuidString,
                             internalId: "RSS" + String(rssCount),
@@ -117,34 +124,56 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
                             endDate: nil,
                             noEndDate: true,
                             frequency: frequency,
-                            daysOfWeek: selectedDay,
+                            day: selectedDay,
                             description: "",
                             lastCreated: Date(),
                             serviceLocationId: selectedLocation.id,
-                            estimatedTime: "15",
+                            estimatedTime: selectedLocation.estimatedTime ?? 15,
                             otherCompany: false
                         )
+                        print("")
+                        print("[NewSingleRecurringServiceStopViewModel][submit] rss \(rss)")
                         let id = try await dataService.addNewRecurringServiceStop(companyId: companyId, recurringServiceStop: rss)
+                        
+                        print("")
+                        print("[NewSingleRecurringServiceStopViewModel][submit] successfully loaded RSS: \(String(describing: id))")
+                        
 //                        try await dataService.uploadRecurringServiceStop(companyId: companyId, recurringServiceStop: rss)
                         //Developer Add RSS Tasks
+                        
                         self.selectedUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .employee)
-                        self.selectedDay = ""
+                        self.selectedDay = .monday
                         self.startOn = Date()
+                        self.alertMessage = "Successfully Uplaoded"
+                        print(alertMessage)
+                        self.showAlert.toggle()
                     } catch {
-                        print(error)
+                        print("")
+                        print("[NewSingleRecurringServiceStopViewModel][submit] Error \(error)")
+                        
+                        self.alertMessage = "Failed To Uplaoded"
+                        print(alertMessage)
+                        self.showAlert.toggle()
                     }
+                } else {
+                    
+                    print("")
+                    print("[NewSingleRecurringServiceStopViewModel][submit] no selected Location Id")
                 }
+            } else {
+                print("")
+                print("[NewSingleRecurringServiceStopViewModel][submit] no selected user Id")
+                
             }
         }
     }
 }
 struct NewSingleRecurringServiceStop: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
-
     @StateObject var VM : NewSingleRecurringServiceStopViewModel
-    
     @State var customerId:String
-
+    @Environment(\.dismiss) var dismiss
+    
     init(dataService: any ProductionDataServiceProtocol,customerId:String) {
         _customerId = State(wrappedValue: customerId)
         _VM = StateObject(wrappedValue: NewSingleRecurringServiceStopViewModel(dataService: dataService))
@@ -153,11 +182,14 @@ struct NewSingleRecurringServiceStop: View {
         
         ZStack{
             Color.listColor.ignoresSafeArea()
-            ScrollView{
+            VStack{
                 form
+                Divider()
                 snapshot
             }
             .padding(8)
+            .padding(.horizontal,16)
+
         }
         .task{
             if let currentCompany = masterDataManager.currentCompany {
@@ -174,6 +206,10 @@ struct NewSingleRecurringServiceStop: View {
                 VM.onChange(companyId: currentCompany.id)
             }
         })
+        
+        .alert(VM.alertMessage, isPresented: $VM.showAlert) {
+            Button("OK", role: .cancel) { }
+        }
     }
 }
 
@@ -182,9 +218,16 @@ struct NewSingleRecurringServiceStop: View {
 }
 extension NewSingleRecurringServiceStop {
     var form : some View {
-        VStack(alignment: .leading){
-            HStack{
-                Text("Service Location : ")
+        VStack{
+            
+            Text("Add New Recurring Service Stop")
+                .font(.headline)
+            Divider()
+            VStack{
+                HStack{
+                    Text("Service Location:")
+                    Spacer()
+                }
                 Picker("Select Location", selection: $VM.selectedLocation) {
                     Text("Select Location").tag(
                         ServiceLocation(
@@ -207,25 +250,27 @@ extension NewSingleRecurringServiceStop {
                             laborCost: "",
                             rate: "",
                             customerId: "",
-                            customerName: ""
+                            customerName: "",
+                            isActive: true
                         )
                     )
                     ForEach(VM.locations){ datum in
                         Text(datum.address.streetAddress).tag(datum)
                     }
                 }
-            }
-            HStack{
-                Text("User : ")
-                
+            
+                HStack{
+                    Text("User:")
+                    Spacer()
+                }
                 Picker("Picker User", selection: $VM.selectedUser) {
                     Text("Select User").tag(
                         CompanyUser(
-                            id: "",
-                            userId: "",
-                            userName: "",
-                            roleId: "",
-                            roleName: "",
+                            id: "1",
+                            userId: "1",
+                            userName: "1",
+                            roleId: "1",
+                            roleName: "1",
                             dateCreated: Date(),
                             status: .active,
                             workerType: .contractor
@@ -234,43 +279,48 @@ extension NewSingleRecurringServiceStop {
                     ForEach(VM.companyUsers){ datum in
                         Text(datum.userName).tag(datum)
                     }
+                    
                 }
-            }
-            HStack{
-                Text("Day : ")
-            Picker("Pick Day", selection: $VM.selectedDay) {
-                Text("Select Day").tag("")
-                ForEach(VM.days, id: \.self){ day in
-                    Text(day).tag(day)
+                HStack{
+                    Text("Day:")
+                    Spacer()
                 }
-            }
-            }
-            HStack{
-                Text("Frequency : ")
+                Picker("Pick Day", selection: $VM.selectedDay) {
+                    ForEach(DaysOfWeek.allCases, id: \.self){ day in
+                        Text(day.rawValue).tag(day)
+                    }
+                }
+                HStack{
+                    Text("Frequency:")
+                    Spacer()
+                }
+                
                 Picker("Pick Frequency", selection: $VM.frequency) {
                     ForEach(LaborContractFrequency.allCases, id: \.self){ day in
                         Text(day.rawValue).tag(day)
                     }
                 }
+                DatePicker("Start On:", selection: $VM.startOn, in: Date()...,displayedComponents: .date)
+                Button(action: {
+                    if let currentCompany = masterDataManager.currentCompany {
+                        VM.submit(companyId: currentCompany.id, customerId: customerId)
+                        dismiss()
+                    }
+                }, label: {
+                    HStack{
+                        Spacer()
+                        Text("Add")
+                        Spacer()
+                    }
+                    .modifier(AddButtonModifier())
+                })
             }
-            DatePicker("Start On : ", selection: $VM.startOn, in: Date()...,displayedComponents: .date)
-            Button(action: {
-                if let currentCompany = masterDataManager.currentCompany {
-                    VM.submit(companyId: currentCompany.id, customerId: customerId)
-                }
-            }, label: {
-                HStack{
-                    Spacer()
-                    Text("Add")
-                    Spacer()
-                }
-                .modifier(AddButtonModifier())
-            })
         }
     }
     var snapshot : some View {
-        VStack{
+        ScrollView{
             HStack{
+                Text("Route Snapshot")
                 Spacer()
                 Button(action: {
                     VM.showSnapshot.toggle()

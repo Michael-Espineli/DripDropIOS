@@ -12,16 +12,16 @@ struct ReassignRouteView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject private var VM : ReassignRouteViewModel
 
-    init(dataService:any ProductionDataServiceProtocol,tech:CompanyUser,day:String,recurringRoute:RecurringRoute){
+    init(dataService: any ProductionDataServiceProtocol,tech: CompanyUser,day: DaysOfWeek,recurringRoute: RecurringRoute){
         _VM = StateObject(wrappedValue: ReassignRouteViewModel(dataService: dataService))
         _tech = State(wrappedValue: tech)
         _day = State(wrappedValue: day)
         _recurringRoute = State(wrappedValue: recurringRoute)
   
     }
-    @State var tech:CompanyUser
-    @State var day:String
-    @State var recurringRoute:RecurringRoute
+    @State var tech: CompanyUser
+    @State var day: DaysOfWeek
+    @State var recurringRoute: RecurringRoute
     
 
     var body: some View {
@@ -153,9 +153,8 @@ extension ReassignRouteView {
                     }
                 }
             Picker("Day", selection: $VM.selectedDay) {
-                    Text("Day").tag("")
-                ForEach(VM.days,id:\.self){ day in
-                        Text("\(day)").tag(day)
+                ForEach(DaysOfWeek.allCases,id:\.self){
+                    Text($0.rawValue).tag($0)
                     }
                 }
             
