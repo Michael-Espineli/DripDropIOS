@@ -423,6 +423,20 @@ extension ProductionDataService {
             "type": templateName,
         ])
     }
+    func updateTermsTemplateName(companyId:String,templateId:String,templateName:String) async throws{
+        let ref = termsTemplateDocument(companyId: companyId, templateId: templateId)
+        try await ref.updateData([
+            "name": templateName,
+        ])
+    }
+    
+    func updateTermsTemplateDescription(companyId:String,templateId:String,templateDescription:String) async throws{
+        let ref = termsTemplateDocument(companyId: companyId, templateId: templateId)
+        try await ref.updateData([
+            "description": templateDescription,
+        ])
+    }
+    
     func updateJobOperationStatus(companyId:String,jobId:String,operationStatus:JobOperationStatus) async throws{
         let ref = workOrderDocument(workOrderId: jobId, companyId: companyId)
         try await ref.updateData([
@@ -435,10 +449,10 @@ extension ProductionDataService {
             "billingStatus": billingStatus.rawValue,
         ])
     }
-    func updateJobRate(companyId:String,jobId:String,rate:String) async throws{
+    func updateJobRate(companyId:String,jobId:String,rate:Int) async throws{
         let ref = workOrderDocument(workOrderId: jobId, companyId: companyId)
         try await ref.updateData([
-            "rate": Double(rate) ?? 0,//DEVELOPER MOVE THIS HIGHER UP THE CHAIN, SO WE CAN VALIDATE BETTER
+            "rate": rate,
         ])
     }
     func updateJobLaborCost(companyId:String,jobId:String,laborCost:String) async throws{

@@ -61,7 +61,8 @@ final class BodyOfWaterViewModel:ObservableObject{
             length: length,
             depth: depth,
             width: width,
-            lastFilled: lastFilled
+            lastFilled: lastFilled,
+            isActive: true
         )
         //DEVELOPER ADD UPdated serviceLocation Id list view
         try await dataService.uploadBodyOfWaterByServiceLocation(companyId: companyId, bodyOfWater: bodyOfWater)

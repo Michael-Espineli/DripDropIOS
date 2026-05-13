@@ -16,11 +16,14 @@ import FirebaseStorage
 
 struct Equipment:Identifiable,Codable,Equatable,Hashable{
     
-    var id : String = "comp_equ_" + UUID().uuidString
+    var id : String = "com_equ_" + UUID().uuidString
     var name: String
-    var category: EquipmentCategory
+    var type: EquipmentCategory
+    var typeId: String
     var make : String
-    var model : String
+    var makeId :String //For Universal Equipment Says Custom If Not Selected
+    var model : String //
+    var modelId :String //For Universal equipment. Says Custom if not selected
     var dateInstalled : Date
     var status : EquipmentStatus
     var needsService : Bool
@@ -28,8 +31,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
     var currentPressure: Int?
 
     var lastServiceDate : Date?
-    var serviceFrequency : String? //? Maybe number
-    var serviceFrequencyEvery : String? //? Time Frequencies
+    var serviceFrequency : Int? //? Maybe number
+    var serviceFrequencyEvery : EquipmentFrequency? //? Time Frequencies
     var nextServiceDate : Date?
 
     var notes : String
@@ -44,9 +47,12 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
     init(
         id: String,
         name :String,
-        category :EquipmentCategory,
+        type :EquipmentCategory,
+        typeId : String,
         make : String,
+        makeId : String,
         model : String,
+        modelId : String,
         dateInstalled  : Date,
         status:EquipmentStatus,
         needsService:Bool,
@@ -54,8 +60,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         currentPressure : Int? = nil,
 
         lastServiceDate : Date? = nil,
-        serviceFrequency : String? = nil,
-        serviceFrequencyEvery : String? = nil,
+        serviceFrequency : Int? = nil,
+        serviceFrequencyEvery : EquipmentFrequency? = nil,
         nextServiceDate : Date? = nil,
         notes : String,
         
@@ -71,9 +77,12 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.id = id
         self.name = name
 
-        self.category = category
+        self.type = type
+        self.typeId = typeId
         self.make = make
+        self.makeId = makeId
         self.model = model
+        self.modelId = modelId
         self.dateInstalled = dateInstalled
         self.status = status
         
@@ -98,9 +107,12 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             case id = "id"
             case name = "name"
 
-            case category = "category"
+            case type = "type"
+            case typeId = "typeId"
             case make = "make"
+            case makeId = "makeId"
             case model = "model"
+            case modelId = "modelId"
             case dateInstalled = "dateInstalled"
             case status = "status"
             case needsService = "needsService"
@@ -121,6 +133,58 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             case dateUninstalled = "dateUninstalled"
         }
 }
+struct EquipmentServiceHistory:Identifiable,Codable,Equatable,Hashable{
+    
+    var id : String = "com_equ_sh_" + UUID().uuidString
+    var name: String
+    var type: EquipmentServiceType
+    var date: Date
+    var description: String
+    var performedBy: ServicePerformaceType
+    var addedBy: ServiceRecordType
+    var techId: String
+    var techName: String
+    var jobId: String
+    var partIds: [String]
+    init(
+        id: String,
+        name : String,
+        type : EquipmentServiceType,
+        date : Date,
+        description : String,
+        performedBy : ServicePerformaceType,
+        addedBy : ServiceRecordType,
+        techId:String,
+        techName:String,
+        jobId : String,
+        partIds : [String],
+    ){
+        self.id = id
+        self.name = name
+        self.type = type
+        self.date = date
+        self.description = description
+        self.performedBy = performedBy
+        self.addedBy = addedBy
+        self.techId = techId
+        self.techName = techName
+        self.jobId = jobId
+        self.partIds = partIds
+    }
+    enum CodingKeys:String, CodingKey {
+        case id = "id"
+        case name = "name"
+        case type = "type"
+        case date = "date"
+        case description = "description"
+        case performedBy = "performedBy"
+        case addedBy = "addedBy"
+        case techId = "techId"
+        case techName = "techName"
+        case jobId = "jobId"
+        case partIds = "partIds"
+    }
+}
 
 extension ProductionDataService {
  
@@ -133,9 +197,18 @@ extension ProductionDataService {
     func equipmentDoc(companyId:String,equipmentId:String)-> DocumentReference{
        equipmentCollection(companyId: companyId).document(equipmentId)
    }
+    func equipmentServiceHistoryCollection(companyId:String,equipmentId:String) -> CollectionReference{
+       db.collection("companies/\(companyId)/equipment/\(equipmentId)/serviceHistory")
+   }
+    func equipmentServiceHistoryDoc(companyId:String,equipmentId:String,historyId:String)-> DocumentReference{
+        equipmentServiceHistoryCollection(companyId: companyId, equipmentId:equipmentId).document(historyId)
+  }
     //CREATE
     func uploadEquipment(companyId:String,equipment:Equipment) async throws {
         try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: false)
+    }
+    func uploadEquipmentHistory(companyId:String,equipmentId:String,history:EquipmentServiceHistory) async throws {
+        try equipmentServiceHistoryCollection(companyId: companyId,equipmentId:equipmentId).document(history.id).setData(from:history, merge: false)
     }
     func uploadEquipmentImage(companyId: String,equipmentId:String, image: DripDropImage) async throws ->(path:String, name:String){
         guard let data = image.image.jpegData(compressionQuality: 1) else {
@@ -189,6 +262,12 @@ extension ProductionDataService {
         return try await equipmentCollection(companyId: companyId)
             .getDocuments(as:Equipment.self)
     }
+    
+    func getAllEquipmentServiceHistory(companyId:String, equipmentId:String) async throws -> [EquipmentServiceHistory] {
+        
+        return try await equipmentServiceHistoryCollection(companyId: companyId, equipmentId: equipmentId)
+            .getDocuments(as:EquipmentServiceHistory.self)
+    }
     func getEquipmentByBodyOfWater(companyId:String,bodyOfWater:BodyOfWater) async throws -> [Equipment] {
         
         return try await equipmentCollection(companyId: companyId)
@@ -205,7 +284,7 @@ extension ProductionDataService {
     func updateEquipmentCategory(companyId:String,equipmentId:String,category:EquipmentCategory) throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         equipmentRef.updateData([
-            Equipment.CodingKeys.category.stringValue:category.rawValue
+            Equipment.CodingKeys.type.stringValue:category.rawValue
         ])
     }
 
@@ -251,16 +330,16 @@ extension ProductionDataService {
             Equipment.CodingKeys.lastServiceDate.stringValue:lastServiceDate
         ])
     }
-    func updateEquipmentServiceFrequency(companyId:String,equipmentId:String,serviceFrequency:String) throws {
+    func updateEquipmentServiceFrequency(companyId:String,equipmentId:String,serviceFrequency:Int) throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         equipmentRef.updateData([
             Equipment.CodingKeys.serviceFrequency.stringValue:serviceFrequency
         ])
     }
-    func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:String) throws {
+    func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:EquipmentFrequency) throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         equipmentRef.updateData([
-            Equipment.CodingKeys.serviceFrequencyEvery.stringValue:serviceFrequencyEvery
+            Equipment.CodingKeys.serviceFrequencyEvery.stringValue:serviceFrequencyEvery.rawValue
         ])
     }
     func updateEquipmentNextServiceDate(companyId: String, equipmentId: String, nextServiceDate: Date) throws {
@@ -307,7 +386,7 @@ extension ProductionDataService {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.category.stringValue:equipment.category,
+            Equipment.CodingKeys.type.stringValue:equipment.type,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.model.stringValue:equipment.model,
             Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
@@ -319,10 +398,10 @@ extension ProductionDataService {
         ])
         if equipment.needsService {
             try await equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate,
+                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
+                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
+                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
+                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
             ])
         }
     }

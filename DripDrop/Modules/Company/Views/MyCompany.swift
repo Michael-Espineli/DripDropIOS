@@ -28,11 +28,18 @@ struct MyCompany: View {
     @State var showOperations:Bool = false //DEVELOPER LATER MAKE THIS TRUE
     @State var showFinace:Bool = false //DEVELOPER LATER MAKE THIS TRUE
     @State var showManagement:Bool = false //DEVELOPER LATER MAKE THIS TRUE
-    
+    @State var showCompanySettings:Bool = false
+    @State var showMoreCompanySettings:Bool = false
+
     @State var isLoading: Bool = true
     
     var body: some View {
         ZStack{
+            
+            Text("")
+                .sheet(isPresented: $showMoreCompanySettings, content: {
+                    CompanySettings(dataService: dataService)
+                })
             Color.listColor.ignoresSafeArea()
             
             ScrollView(showsIndicators: false){
@@ -51,6 +58,7 @@ struct MyCompany: View {
                 showOperations = true
                 showFinace = true
                 showManagement = true
+                showCompanySettings = true
             }
         })
         .task{
@@ -125,14 +133,15 @@ extension MyCompany{
             if let currentCompany = masterDataManager.currentCompany {
                 WorkPreviewBasedOnCompany(dataService: dataService, company: currentCompany)
             }
-            HStack{
-                Text("To Do List:")
-                    .fontWeight(.bold)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-            }
-            Text("Company To Do List")
+            //Update 2.1
+//            HStack{
+//                Text("To Do List:")
+//                    .fontWeight(.bold)
+//                    .fontDesign(.monospaced)
+//                    .foregroundColor(Color.basicFontText)
+//                Spacer()
+//            }
+//            Text("Company To Do List")
         }
     }
     var overViewLoading: some View {
@@ -223,17 +232,19 @@ extension MyCompany{
         ZStack{
             if let role = masterDataManager.role {
                 VStack(alignment: .leading,spacing: 20){
-                    if role.permissionIdList.contains("11") {
+                    if role.permissionIdList.contains("0") {
                         operations
                     }
-                    if role.permissionIdList.contains("7") {
+                    if role.permissionIdList.contains("200") {
                         
                         management
                     }
-                    if role.permissionIdList.contains("13") {
-                        
-                        finace
-                    }
+                    companySettingsView
+        //                Update 2.1
+//                    if role.permissionIdList.contains("400") {
+//                        
+//                        finace
+//                    }
                 }
             }
         }
@@ -333,19 +344,24 @@ extension MyCompany{
             })
             
             if showOperations {
-                managementTables
-                Divider()
+//                Update 2.1
+//                managementTables
+//                Divider()
                 customers
                 Divider()
                 jobs
-                Divider()
-                shoppingListItems
+                
+    //                Update 2.1
+//                Divider()
+//                shoppingListItems
                 Divider()
                 repairRequests
                 Divider()
                 equipment
-                Divider()
-                businesses
+                
+    //                Update 2.1
+//                Divider()
+//                businesses
                 Divider()
                 serviceStops
             }
@@ -383,12 +399,12 @@ extension MyCompany{
                 Divider()
                 accountsReceivable
                 Divider()
-                
                 venders
             }
         }
         
     }
+    
     var management: some View {
         VStack{
             if let role = masterDataManager.role {
@@ -405,9 +421,11 @@ extension MyCompany{
                 })
                 
                 if showManagement {
-                    
+                    //Techs
                     users
                     Divider()
+                    
+                    //Route Management
                     if let role = masterDataManager.role {
                         
                         if role.permissionIdList.contains("12") {
@@ -415,12 +433,16 @@ extension MyCompany{
                             Divider()
                         }
                     }
-                    
+                    //
+                    //Internal and external Routes
                     routeOverView
                     Divider()
                     externalRoutes
-                    Divider()
-                    routeSandBox
+                    
+                    //Update 2.1
+                    //Route Sandbox
+//                    Divider()
+//                    routeSandBox
                     
                     Divider()
                     
@@ -429,6 +451,117 @@ extension MyCompany{
                     
                 }
             }
+        }
+    }
+    
+    var companySettingsView: some View {
+        ZStack{
+            
+            VStack(alignment: .leading,spacing: 20){
+                Button(action: {
+                    showCompanySettings.toggle()
+                }, label: {
+                    HStack{
+                        Text("Company Settings")
+                        Spacer()
+                        Image(systemName: showCompanySettings ? "chevron.down" : "chevron.right")
+                    }
+                    .modifier(HeaderModifier())
+                    
+                })
+//                Button(action: {
+//                    showMoreCompanySettings.toggle()
+//                }, label: {
+//                        Text("See More Settings")
+//                    .modifier(BlueButtonModifier())
+//                })
+                
+                if showCompanySettings {
+                    VStack{
+                        taskGroupView
+                        Divider()
+                        emailConfigurationView
+                        Divider()
+                        ReadingsAndDosagesView
+                        Divider()
+                        DataBaseView
+                        Divider()
+                        JobTemplatesView
+                        Divider()
+                        ReportsView
+                        Divider()
+                        UserRolesView
+                    }
+                    VStack{
+                        
+                        Divider()
+                        
+                        HStack{
+                            Text("Company Info")
+                                .font(.headline)
+                                .fontDesign(.monospaced)
+                                .foregroundColor(Color.basicFontText)
+                            Spacer()
+                            Button(action: {
+                                masterDataManager.selectedCategory = .companyInfo
+                            }, label: {
+                                HStack{
+                                    Text("See More")
+                                    Image(systemName: "arrow.right")
+                                }
+                                .font(.footnote)
+                                .padding(3)
+                                .foregroundColor(Color.black)
+                                .background(Color.pink)
+                            })
+                        }
+                        
+                        Divider()
+                        HStack{
+                            Text("Manage Subscriptions")
+                                .font(.headline)
+                                .fontDesign(.monospaced)
+                                .foregroundColor(Color.basicFontText)
+                            Spacer()
+                            Button(action: {
+                                masterDataManager.selectedCategory = .manageSubscriptions
+                            }, label: {
+                                HStack{
+                                    Text("See More")
+                                    Image(systemName: "arrow.right")
+                                }
+                                .font(.footnote)
+                                .padding(3)
+                                .foregroundColor(Color.black)
+                                .background(Color.pink)
+                            })
+                        }
+                        
+                        Divider()
+                        HStack{
+                            Text("Stripe Configuration")
+                                .font(.headline)
+                                .fontDesign(.monospaced)
+                                .foregroundColor(Color.basicFontText)
+                            Spacer()
+                            Button(action: {
+                                masterDataManager.selectedCategory = .stripeConfiguration
+                            }, label: {
+                                HStack{
+                                    Text("See More")
+                                    Image(systemName: "arrow.right")
+                                }
+                                .font(.footnote)
+                                .padding(3)
+                                .foregroundColor(Color.black)
+                                .background(Color.pink)
+                            })
+                        }
+                    }
+                }
+            }
+            .foregroundColor(Color.basicFontText)
+            .fontDesign(.monospaced)
         }
     }
     var managementTables: some View {
@@ -1737,7 +1870,7 @@ extension MyCompany{
     var users: some View {
         VStack{
             HStack{
-                Text("Techs")
+                Text("Directory")
                     .font(.headline)
                     .fontDesign(.monospaced)
                     .foregroundColor(Color.basicFontText)
@@ -1932,7 +2065,7 @@ extension MyCompany{
     var routeBuilder: some View {
         VStack{
             HStack{
-                Text("Route Managment")
+                Text("Route Management")
                     .font(.headline)
                     .fontDesign(.monospaced)
                     .foregroundColor(Color.basicFontText)
@@ -2047,7 +2180,7 @@ extension MyCompany{
     var routeOverView: some View {
         VStack{
             HStack{
-                Text("Internal Routes")
+                Text("Routes")
                     .font(.headline)
                     .fontDesign(.monospaced)
                     .foregroundColor(Color.basicFontText)
@@ -2480,36 +2613,200 @@ extension MyCompany{
             }
             if masterDataManager.mainScreenDisplayType == .fullPreview{
 
-            if VM.laborContractList.count == 0 {
-                HStack{
-                    
-                    SquareEmpty(color: Color.teal, footer: Color.clear,textColor: Color.black,text: "Labor Contracts")
-                    Spacer()
-                }
-            } else {
-                ScrollView(.horizontal, showsIndicators: false){
+                if VM.laborContractList.count == 0 {
                     HStack{
-                        ForEach(VM.laborContractList){ datum in
-                            if UIDevice.isIPhone {
-                                NavigationLink(value: Route.recurringLaborContractDetailView(contract: datum, dataService: dataService), label: {
-                                    SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
-                                })
-                            } else {
-                                Button(action: {
-                                    masterDataManager.selectedCategory = .receivedLaborContracts
-                                    masterDataManager.selectedRecurringLaborContract = datum
-                                }, label: {
-                                    SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
-                                })
+                        
+                        SquareEmpty(color: Color.teal, footer: Color.clear,textColor: Color.black,text: "Labor Contracts")
+                        Spacer()
+                    }
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false){
+                        HStack{
+                            ForEach(VM.laborContractList){ datum in
+                                if UIDevice.isIPhone {
+                                    NavigationLink(value: Route.recurringLaborContractDetailView(contract: datum, dataService: dataService), label: {
+                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
+                                    })
+                                } else {
+                                    Button(action: {
+                                        masterDataManager.selectedCategory = .receivedLaborContracts
+                                        masterDataManager.selectedRecurringLaborContract = datum
+                                    }, label: {
+                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
+                                    })
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+    
+    var taskGroupView: some View {
+        VStack{
+            HStack{
+                Text("Task Groups")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                Button(action: {
+                    masterDataManager.selectedCategory = .taskGroups
+
+                }, label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.black)
+                    .background(Color.pink)
+                })
             }
         }
     }
+    var emailConfigurationView: some View {
+        VStack{
+            HStack{
+                Text("Email Configuration")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                Button(action: {
+                    masterDataManager.selectedCategory = .emailConfirguration
 
+                }, label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.black)
+                    .background(Color.pink)
+                })
+            }
+        }
+    }
+    var ReadingsAndDosagesView: some View {
+        VStack{
+            HStack{
+                Text("Readings and Dosages")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                Button(action: {
+                    masterDataManager.selectedCategory = .readingsAndDosages
+
+                }, label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.red)
+                })
+            }
+        }
+    }
+    var DataBaseView: some View {
+        VStack{
+            HStack{
+                Text("Data Base")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                Button(action: {
+                    masterDataManager.selectedCategory = .readingsAndDosages
+
+                }, label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.red)
+                })
+            }
+        }
+    }
+    var JobTemplatesView: some View {
+        VStack{
+            HStack{
+                Text("Jobs Templates")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                Button(action: {
+                    masterDataManager.selectedCategory = .jobTemplates
+
+                }, label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.red)
+                })
+            }
+        }
+    }
+    var ReportsView: some View {
+        VStack{
+            HStack{
+                Text("Reports")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                Button(action: {
+                    masterDataManager.selectedCategory = .reports
+
+                }, label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.red)
+                })
+            }
+        }
+    }
+    var UserRolesView: some View {
+        VStack{
+            HStack{
+                Text("User Roles")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                Button(action: {
+                    masterDataManager.selectedCategory = .userRoles
+
+                }, label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.red)
+                })
+            }
+        }
+    }
+    
     
 }
 

@@ -80,7 +80,7 @@ final class MyCompanyViewModel:ObservableObject{
     @Published private(set) var alertCount: Int? = nil
 
     @Published var companyUsers: [CompanyUser] = []
-    @Published var daysAndRoutes: [String:Int] = [:]
+    @Published var daysAndRoutes: [DaysOfWeek:Int] = [:]
     
     @Published private(set) var laborContractList:[ReccuringLaborContract] = []
     @Published private(set) var sentLaborContractTotal: Double? = nil
@@ -139,10 +139,9 @@ final class MyCompanyViewModel:ObservableObject{
 
         //Alerts
         self.alertCount = try await dataService.getDripDropAlertsCount(companyId: companyId)
+        
         //Routes
-        let days:[String] = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-
-        for day in days {
+        for day in DaysOfWeek.allCases {
             let count = try await dataService.getRecurringRouteByDayCount(companyId: companyId, day: day)
             if count != 0 {
                 daysAndRoutes[day] = count
@@ -254,7 +253,7 @@ final class MyCompanyViewModel:ObservableObject{
             
             if typesAndAmount[stop.type] == nil {
                 //Does Not have type Yet
-                print("Type Not In Dict")
+                print("  [MyCompanyViewModel][onLoad] Type Not In Dict")
                 typesAndAmount[stop.type] = 1
             } else {
                 //Un wraps amount
@@ -265,7 +264,7 @@ final class MyCompanyViewModel:ObservableObject{
                 }
             }
         }
-        print(typesAndAmount)
+        print("  [MyCompanyViewModel][onLoad] \(typesAndAmount)")
         self.typesAndAmount = typesAndAmount
         
         //AR

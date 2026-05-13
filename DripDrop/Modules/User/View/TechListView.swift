@@ -10,10 +10,9 @@ import SwiftUI
 struct TechListView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : TechListViewModel
+    @EnvironmentObject var VM : TechListViewModel
 
     init(dataService:any ProductionDataServiceProtocol) {
-        _VM = StateObject(wrappedValue: TechListViewModel(dataService: dataService))
     }
 
     @State var showInviteSheet:Bool = false
@@ -28,7 +27,7 @@ struct TechListView: View {
                 Picker("Pick Type", selection: $selected) {
                     Text("Active").tag("Active")
                     Text("Pending").tag("Pending")
-                    Text("Past").tag("Past")
+//                    Text("Past").tag("Past")
                 }
                 .pickerStyle(.segmented)
                 .fontDesign(.monospaced)
@@ -37,13 +36,13 @@ struct TechListView: View {
                     Button(action: {
                         showInviteSheet.toggle()
                     }, label: {
-                        Text("Add Tech with out app")
+                        Text("Add tech with out app")
                     })
          
                     Button(action: {
                         showInviteSheetForTechWithApp.toggle()
                     }, label: {
-                        Text("Add Tech with app")
+                        Text("Add tech with app")
                     })
          
                 })
@@ -60,7 +59,7 @@ struct TechListView: View {
                         case "Pending":
                             pendingTechList
                         case "Past":
-                            Text("Developer add Past Tech List")
+                            pastTechList
                         default:
                             companyUserTechList
                         }
@@ -72,19 +71,13 @@ struct TechListView: View {
             }
 //            icons
         }
-
-        .task {
-            if let company = masterDataManager.currentCompany {
-                do {
-                    try await VM.onFirstLoad(companyId: company.id)
-                } catch {
-                    print("")
-                    print("Tech List View Error")
-                    print(error)
-                    print("")
-                }
-            }
-        }
+        .navigationTitle("Directory")
+        .onAppear(perform: {
+            VM.onFirstLoad(companyId: masterDataManager.currentCompany?.id)
+        })
+        .onDisappear(perform: {
+            VM.stop()
+        })
         .onChange(of: selected, perform: { status in
             Task{
                 if let company = masterDataManager.currentCompany {
@@ -148,49 +141,65 @@ extension TechListView {
         }
     }
     var acceptedTechList: some View {
-        ForEach(VM.acceptedInviteList){ invite in
-            NavigationLink(destination: {
-                InviteDetailView(invite: invite)
-            }, label: {
-                InviteCardView(invite: invite)
-            })
-            Divider()
+        VStack{
+            ForEach(VM.acceptedInviteList){ invite in
+                NavigationLink(value: Route.inviteDetailView(dataService: dataService, invite: invite), label: {
+                    InviteCardView(invite: invite)
+                })
+                Divider()
+            }
         }
     }
     var pendingTechList: some View {
+        VStack{
+            if VM.pendingInviteList.isEmpty {
+                Text("No Pending Invites")
+            }
+            ForEach(VM.pendingInviteList){ invite in
+                NavigationLink(value: Route.inviteDetailView(dataService: dataService, invite: invite), label: {
+                    InviteCardView(invite: invite)
+                    
+                })
+            }
+        }
+    }
+    var pastTechList: some View {
         ForEach(VM.pendingInviteList){ invite in
-            NavigationLink(destination: {
-                InviteDetailView(invite: invite)
-            }, label: {
+            NavigationLink(value: Route.inviteDetailView(dataService: dataService, invite: invite), label: {
                 InviteCardView(invite: invite)
+                
             })
-            Divider()
         }
     }
     var companyUserTechList: some View {
-        ForEach(VM.companyUsers){ user in
-            HStack{
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.companyUserDetailView(user: user, dataService: dataService), label: {
-                        CompanyUserCardView(dataService: dataService, companyUser: user)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCompanyUser = user
-                    }, label: {
-                        CompanyUserCardView(dataService: dataService, companyUser: user)
-                    })
-                }
+        
+        VStack{
+            if VM.companyUsers.isEmpty {
+                Text("No Current Users")
             }
-            .padding(.horizontal,8)
-            .padding(.vertical,3)
-            Divider()
+            ForEach(VM.companyUsers){ user in
+                HStack{
+                    if UIDevice.isIPhone {
+                        NavigationLink(value: Route.companyUserDetailView(user: user, dataService: dataService), label: {
+                            CompanyUserCardView(dataService: dataService, companyUser: user)
+                        })
+                    } else {
+                        Button(action: {
+                            masterDataManager.selectedCompanyUser = user
+                        }, label: {
+                            CompanyUserCardView(dataService: dataService, companyUser: user)
+                        })
+                    }
+                }
+                .padding(.horizontal,8)
+                .padding(.vertical,3)
+            }
         }
     }
     var toolbar: some View {
         VStack{
             if let role = masterDataManager.role {
-                if role.permissionIdList.contains("9") {
+                if role.permissionIdList.contains("262") {
                     HStack{
                     }
                     .padding(5)

@@ -59,7 +59,7 @@ final class CompanyViewModel: ObservableObject{
     }
     func getCompaniesByUserAccessList(userId:String) async throws{
         let accessList = try await UserAccessManager.shared.getAllUserAvailableCompanies(userId: userId)
-        print("Received List of \(accessList.count) Companies available to Access")
+        print("  [CompanyViewModel][getCompaniesByUserAccessList] Received List of \(accessList.count) Companies available to Access")
         var listOfCompanies:[Company] = []
         for access in accessList{
             let company = try await CompanyManager.shared.getCompany(companyId: access.id)// access id is company id

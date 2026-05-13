@@ -54,11 +54,11 @@ struct EditTechView: View {
 
                 })
             }
-            Text("\(tech.firstName ?? "") \(tech.lastName ?? "")")
+            Text("\(tech.firstName) \(tech.lastName)")
             Text("Position: ")
             Text("Date Created: \(fullDate(date:tech.dateCreated))")
             Text("Company: ")
-            Text("Email: \(tech.email ?? "")")
+            Text("Email: \(tech.email)")
             HStack{
                 Text("Roles 1 ")
                 

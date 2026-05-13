@@ -17,9 +17,7 @@ import FirebaseStorage
 @MainActor
 final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject {
 
-    
 
- 
     var storage = Storage.storage().reference()
     let id = UUID().uuidString
     nonisolated static func == (lhs: ProductionDataService, rhs: ProductionDataService) -> Bool {
@@ -105,8 +103,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func WorkOrderTemplateCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/settings/workOrders/workOrders")
     }
-        //repairRequests Collections
-
+    
         //                    toDos Collections
     
     func ToDoCollection(companyId:String) -> CollectionReference{
@@ -200,6 +197,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func stripeInvoiceDocument(invoiceId:String)-> DocumentReference{
         stripeInvoiceCollection().document(invoiceId)
     }
+
     func ReadingsTemplateDocument(readingTemplateId:String,companyId:String)-> DocumentReference{
         ReadingsCollection(companyId: companyId).document(readingTemplateId)
     }
@@ -377,7 +375,6 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         //----------------------------------------------------
         //                    Listeners
         //----------------------------------------------------
-    private var serviceStopListener: ListenerRegistration? = nil
     private var chatListener: ListenerRegistration? = nil
     private var unreadChatListener: ListenerRegistration? = nil
     private var customerListener: ListenerRegistration? = nil
@@ -387,6 +384,24 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     private var dataBaseListener: ListenerRegistration? = nil
     private var requestListener: ListenerRegistration? = nil
     private var jobListener: ListenerRegistration? = nil
+    private var savedBusinessListener: ListenerRegistration? = nil
+    
+    private var termsTemplateListener: ListenerRegistration? = nil
+    private var vehicalListener: ListenerRegistration? = nil
+    private var companyUserListener: ListenerRegistration? = nil
+    private var inviteListener: ListenerRegistration? = nil
+    
+    private var recurringRouteListListener: ListenerRegistration? = nil
+    private var recurringServiceStopListener: ListenerRegistration? = nil
+    
+    private var currentCompanyUserListener: ListenerRegistration? = nil
+    private var currentRoleListener: ListenerRegistration? = nil
+    private var userAccessListener: ListenerRegistration? = nil
+    
+    //MainDashboard Listeners
+    private var serviceStopListener: ListenerRegistration? = nil
+    private var activeRouteListener: ListenerRegistration? = nil
+    private var recurringRouteListener: ListenerRegistration? = nil
     
     private var sentLaborContractListeners: ListenerRegistration? = nil
     private var receivedLaborContractListener: ListenerRegistration? = nil
@@ -811,6 +826,10 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         try await stripeInvoiceDocument(invoiceId: stripeInvoiceId)
             .delete()
     }
+    func deleteDBUser(userId:String) async throws{
+        try await userDocument(userId: userId).delete()
+    }
+    
     func getAccountsPayableInvoice(companyId: String) async throws -> [StripeInvoice] {
         return try await stripeInvoiceCollection()
             .whereField("receiverId", isEqualTo: companyId)
@@ -825,7 +844,334 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             .order(by: "dateSent", descending: true)
             .getDocuments(as: StripeInvoice.self)
     }
-        //
+
+    func listenServiceStops(
+         companyId: String,
+         date: Date,
+         techId: String,
+         onChange: @escaping ([ServiceStop]) -> Void
+    ) {
+        serviceStopListener?.remove()
+
+        serviceStopListener = serviceStopCollection(companyId: companyId)
+            .whereField("techId", isEqualTo: techId)
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThan: date.startOfDay())
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: date.endOfDay())
+            .addSnapshotListener { snapshot, error in
+                guard let docs = snapshot?.documents else {
+                    onChange([])
+                    return
+                }
+                let stops = docs.compactMap {
+                    try? $0.data(as: ServiceStop.self)
+                }
+                onChange(stops)
+            }
+        
+    }
+    func addListenerForEquipmentByServiceLocation(companyId: String,locationId:String, completion: @escaping ([Equipment]) -> Void){
+        equipmentListener?.remove()
+        equipmentListener = equipmentCollection(companyId: companyId)
+            .whereField("serviceLocationId", isEqualTo: locationId)
+            .addSnapshotListener { snapshot, error in
+                guard let docs = snapshot?.documents else {
+                    completion([])
+                    return
+                }
+                let equipment = docs.compactMap {
+                    try? $0.data(as: Equipment.self)
+                }
+                completion(equipment)
+            }
+    }
+
+    func listenActiveRoute(
+          companyId: String,
+          date: Date,
+          techId: String,
+          onChange: @escaping (ActiveRoute?) -> Void
+    ) {
+        activeRouteListener?.remove()
+        activeRouteListener = ActiveRouteCollection(companyId: companyId)
+            .whereField("techId", isEqualTo: techId)
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
+            .limit(to: 1)
+            .addSnapshotListener { snapshot, error in
+                guard let doc = snapshot?.documents.first else {
+                    onChange(nil)
+                    return
+                }
+                let route = try? doc.data(as: ActiveRoute.self)
+                onChange(route)
+            }
+    }
+    private func UserAccessDocument(userId:String,accessId:String) -> DocumentReference{
+        userAccessCollection(userId: userId).document(accessId)
+    }
+    func addCurrentUserAccessListener(companyId: String, userId:String, onChange: @escaping ([UserAccess]) -> Void) {
+        currentCompanyUserListener?.remove()
+        currentCompanyUserListener = userAccessCollection(userId: userId)
+            .whereField("companyId", isEqualTo: companyId)
+            .addSnapshotListener { snapshot, error in
+                guard let docs = snapshot?.documents else {
+                    onChange([])
+                    return
+                }
+                let stops = docs.compactMap {
+                    try? $0.data(as: UserAccess.self)
+                }
+                onChange(stops)
+            }
+    }
+    private func CompanyUserCollection(companyId:String) -> CollectionReference{
+        db.collection("companies/\(companyId)/companyUsers")
+    }
+    private func CompanyUserDocument(companyId:String,companyUserId:String) -> DocumentReference{
+        CompanyUserCollection(companyId: companyId).document(companyUserId)
+    }
+    func addCurrentCompanyUserListener(companyId: String, userId:String, onChange: @escaping ([CompanyUser]) -> Void) {
+//      currentCompanyUserListener currentRoleListener userAccessListener
+        currentCompanyUserListener?.remove()
+        currentCompanyUserListener = CompanyUserCollection(companyId: companyId)
+            .whereField("userId", isEqualTo: userId)
+            .addSnapshotListener { snapshot, error in
+                guard let docs = snapshot?.documents else {
+                    onChange([])
+                    return
+                }
+                let stops = docs.compactMap {
+                    try? $0.data(as: CompanyUser.self)
+                }
+                onChange(stops)
+            }
+    }
+    
+    private func RoleCollection(companyId:String) -> CollectionReference{
+        db.collection("companies/\(companyId)/roles")
+    }
+    private func RoleDocument(companyId:String,roleId:String) -> DocumentReference{
+        RoleCollection(companyId: companyId).document(roleId)
+    }
+    func addRoleListener(companyId: String, roleId:String, onChange: @escaping (Role?) -> Void) {
+        let docRef = RoleDocument(companyId: companyId,roleId: roleId)
+        currentRoleListener?.remove()
+        currentRoleListener = docRef.addSnapshotListener { snapshot, error in
+            if let error = error {
+                print("CompanyUser listener error:", error)
+                onChange(nil)
+                return
+            }
+            guard let snapshot = snapshot, snapshot.exists else {
+                onChange(nil)
+                return
+            }
+            let companyUser = try? snapshot.data(as: Role.self)
+            onChange(companyUser)
+        }
+    }
+
+    func listenRecurringRoute(
+        companyId: String,
+        techId: String,
+        day: String,
+        onChange: @escaping (RecurringRoute?) -> Void
+    ) {
+        recurringRouteListener?.remove()
+        recurringRouteListener = recurringRouteCollection(companyId: companyId)
+            .whereField("techId", isEqualTo: techId)
+            .whereField("day", isEqualTo: day)
+            .limit(to: 1)
+        
+            .addSnapshotListener { snapshot, error in
+                guard let doc = snapshot?.documents.first else {
+                    onChange(nil)
+                    return
+                }
+
+                let route = try? doc.data(as: RecurringRoute.self)
+                onChange(route)
+            }
+    }
+    func addlistenerVehicals(companyId: String, status:String, onChange: @escaping ([Vehical]) -> Void) {
+        
+        vehicalListener?.remove()
+        vehicalListener = vehicalCollection(companyId: companyId)
+        .addSnapshotListener { snapshot, error in
+            guard let docs = snapshot?.documents else {
+                onChange([])
+                return
+            }
+            let stops = docs.compactMap {
+                try? $0.data(as: Vehical.self)
+            }
+            onChange(stops)
+        }
+    }
+    
+    func addListenerForRecurringRoute(companyId: String, onChange: @escaping ([RecurringRoute]) -> Void) {
+        recurringRouteListListener?.remove()
+        recurringRouteListListener = recurringRouteCollection(companyId: companyId)
+        .addSnapshotListener { snapshot, error in
+            guard let docs = snapshot?.documents else {
+                onChange([])
+                return
+            }
+            let stops = docs.compactMap {
+                try? $0.data(as: RecurringRoute.self)
+            }
+            onChange(stops)
+        }
+    }
+    
+    func addListenerForRecurringServiceStop(companyId: String, onChange: @escaping ([RecurringServiceStop]) -> Void){
+        recurringServiceStopListener?.remove()
+        recurringServiceStopListener = recurringServiceStopCollection(companyId: companyId)
+        .addSnapshotListener { snapshot, error in
+            guard let docs = snapshot?.documents else {
+                onChange([])
+                return
+            }
+            let stops = docs.compactMap {
+                try? $0.data(as: RecurringServiceStop.self)
+            }
+            onChange(stops)
+        }
+    }
+
+    func addCompanyUserListener(companyId: String, status:String, onChange: @escaping ([CompanyUser]) -> Void) {
+        companyUserListener?.remove()
+        companyUserListener = companyUsersCollection(companyId: companyId)
+            .whereField("status", isEqualTo: status)
+        .addSnapshotListener { snapshot, error in
+            guard let docs = snapshot?.documents else {
+                onChange([])
+                return
+            }
+            let stops = docs.compactMap {
+                try? $0.data(as: CompanyUser.self)
+            }
+            onChange(stops)
+        }
+    }
+    func addInviteListener(companyId: String, status:String, onChange: @escaping ([Invite]) -> Void) {
+        inviteListener?.remove()
+        inviteListener = inviteCollection()
+            .whereField("companyId", isEqualTo: companyId)
+            .whereField("status", isEqualTo: status)
+        .addSnapshotListener { snapshot, error in
+            guard let docs = snapshot?.documents else {
+                onChange([])
+                return
+            }
+            let stops = docs.compactMap {
+                try? $0.data(as: Invite.self)
+            }
+            onChange(stops)
+        }
+    }
+    func addListenerForFutureCustomerServiceStops(companyId:String,customerId:String,completion:@escaping (_ serviceStops:[ServiceStop]) -> Void){
+        
+            serviceStopListener?.remove()
+            serviceStopListener = serviceStopCollection(companyId: companyId)
+            .whereField(ServiceStop.CodingKeys.customerId.rawValue, isEqualTo: customerId)
+            .whereField(ServiceStop.CodingKeys.serviceDate.rawValue, isGreaterThan: Date().startOfDay())
+            .addSnapshotListener { snapshot, error in
+                guard let docs = snapshot?.documents else {
+                    completion([])
+                    return
+                }
+                let stops = docs.compactMap {
+                    try? $0.data(as: ServiceStop.self)
+                }
+                completion(stops)
+            }
+    }
+
+    func listenTermsTemplate(
+        companyId: String,
+        onChange: @escaping ([TermsTemplate]) -> Void
+    ) {
+        termsTemplateListener?.remove()
+        termsTemplateListener = termsTemplateCollection(companyId: companyId)
+        .addSnapshotListener { snapshot, error in
+            guard let docs = snapshot?.documents else {
+                onChange([])
+                return
+            }
+            let stops = docs.compactMap {
+                try? $0.data(as: TermsTemplate.self)
+            }
+            onChange(stops)
+        }
+        
+    }
+    func applyRouteChanges(companyId:String,diff:ActiveRouteDiff,calledFrom:String){
+        Task{
+            do {
+                print("")
+                print("    [ProductionDataService][applyRouteChanges] Called From \(calledFrom) Listener")
+                //if Diff oldRoute is nil then upload the new ActiveRoute. Other wise update the status and order
+                if diff.old == nil {
+                    print("    [ProductionDataService][applyRouteChanges] Old Route is nil")
+                    print("    [ProductionDataService][applyRouteChanges] Upload New Active route because Old Route is nil")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: ID: \(diff.new.id)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Date: \(diff.new.date)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Total Stops: \(diff.new.totalStops)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Service Stop Ids: \(diff.new.serviceStopsIds.count)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Service Stop Order: \(String(describing: diff.new.order?.count))")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Tech Id: \(diff.new.techId)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Tech Name: \(diff.new.techName)")
+                    try ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
+                        .setData(from:diff.new, merge: false)
+                } else {
+                    //If Order is Changed make updates to Ar Order
+                    if diff.orderChanged {
+                     print("    [ProductionDataService][applyRouteChanges] Update Order Changed")
+                        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
+                        try await ref.updateData([
+                            "order": []
+                        ])
+                        
+                        for order in diff.new.order ?? [] {
+                            let data =  [
+                                "order": FieldValue.arrayUnion([
+                                    [
+                                        "id": order.id,
+                                        "order": order.order,
+                                        "serviceStopId": order.serviceStopId,
+                                        "recurringServiceStopId": order.recurringServiceStopId,
+                                    ]
+                                ])
+                            ]
+                            try await ref.updateData(data)
+                        }
+                        
+                    } else {
+                        print("    [ProductionDataService][applyRouteChanges] No Change To Order")
+                    }
+//                    if Status has changed make updates
+                    if diff.statusChanged {
+                     print("    [ProductionDataService][applyRouteChanges]Update Status Changed")
+                        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
+                        try await ref.updateData([
+                            "status": diff.new.status
+                        ])
+                    } else {
+                        print("    [ProductionDataService][applyRouteChanges] No Change To Status")
+                    }
+                }
+            } catch {
+                print("[ProductionDataService][applyRouteChanges] [Build] Error \(error)")
+            }
+        }
+    }
+    func stopServiceStopActiveRouteRecurringRouteListenrs() {
+         serviceStopListener?.remove()
+         activeRouteListener?.remove()
+         recurringRouteListener?.remove()
+        companyUserListener?.remove()
+     }
     func addListenerForSentLaborContracts(companyId:String, status:[LaborContractStatus], isInvoiced:Bool, completion:@escaping (_ customers:[LaborContract]) -> Void){
         let stringStatus = status.map {$0.rawValue}
         if stringStatus.isEmpty {
@@ -966,6 +1312,17 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func removeListenerForReceivedLaborContracts() {
         self.receivedLaborContractListener?.remove()
     }
+    func removeVehicalListener() {
+        self.vehicalListener?.remove()
+    }
+    
+    func removeRecurringRouteListener() {
+        self.recurringRouteListListener?.remove()
+    }
+    func removeRecurringServiceStopListener() {
+        self.recurringRouteListener?.remove()
+        
+    }
     func addListenerForAllCustomers(companyId:String,storeId:String,completion:@escaping (_ serviceStops:[DataBaseItem]) -> Void){
         
         let listener = DataBaseCollection(companyId: companyId)
@@ -980,6 +1337,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
                 completion(serviceStops)
             }
         self.dataBaseListener = listener
+        
     }
     func addListenerForAllCustomers(companyId:String,sort:CustomerSortOptions,filter:CustomerFilterOptions,completion:@escaping (_ customers:[Customer]) -> Void){
         var listener: ListenerRegistration? = nil
@@ -1335,12 +1693,12 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             .order(by: "mostRecentChat", descending: false)
             .addSnapshotListener { querySnapshot, error in
                 guard let documents = querySnapshot?.documents else {
-                    print("- There are no documents in the Read Chat Collection")
+                    print("[ProductionDataService] [addListenerForAllChats] - There are no documents in the Read Chat Collection")
                     return
                 }
                 
                 let chats: [Chat] = documents.compactMap({try? $0.data(as: Chat.self)})
-                print("- Received Read Chats \(chats.count)")
+                print("[ProductionDataService] [addListenerForAllChats] - Received Read Chats \(chats.count)")
                 completion(chats)
             }
         self.chatListener = listener
@@ -1549,7 +1907,20 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         print("")
 
     }
-    
+    func addSavedCompanyListener(userId:String,completion:@escaping (_ savedCompanies:[AssociatedBusiness]) -> Void) {
+        
+        let listener = savedCompaniesCollection(userId: userId)
+            .addSnapshotListener { querySnapshot, error in
+                guard let documents = querySnapshot?.documents else {
+                    print("There are no documents in the Customer Collection")
+                    return
+                }
+                let chats: [AssociatedBusiness] = documents.compactMap({try? $0.data(as: AssociatedBusiness.self)})
+                completion(chats)
+            }
+        self.savedBusinessListener = listener
+    }
+
     func removeListenerForJobs(){
         self.jobListener?.remove()
         
@@ -1562,7 +1933,17 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func removeListenerForMessages() {
         self.messageListener?.remove()
     }
-    
+    func removeCurrentRoleListener() {
+        self.currentRoleListener?.remove()
+    }
+    func removeRoleListener() {
+        self.currentRoleListener?.remove()
+    }
+    func removeUserAccessListener() {
+        self.userAccessListener?.remove()
+        
+    }
+
     func removeListenerForChats(){
         self.chatListener?.remove()
         self.unreadChatListener?.remove()
@@ -1579,5 +1960,21 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func removeEquipmentListener() {
         self.equipmentListener?.remove()
     }
-    
+    func removeSavedCompanyListener() {
+        self.savedBusinessListener?.remove()
+    }
+    func removeTermsTemplateListern() {
+        self.termsTemplateListener?.remove()
+    }
+    func removeCompanyUserListener() {
+        self.companyUserListener?.remove()
+    }
+    func removeInviteListener() {
+        self.inviteListener?.remove()
+    }
+    func dateOnlyTimestamp(_ date: Date) -> Timestamp {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        return Timestamp(date: startOfDay)
+    }
 }

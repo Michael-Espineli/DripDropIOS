@@ -17,14 +17,61 @@ final class EditSubscriptionViewModel: ObservableObject{
         self.dataService = dataService
     }
     @Published var activeSubscriptions:[StripeSubscription] = []
+    @Published var newSubscription:StripeSubscription? = nil
 
     @Published var currentSubscription: CompanySubscription? = nil
     func onLoad(company:Company){
         Task{
             do {
                     //Get Current Subscription
-                self.currentSubscription = try await dataService.getCompanySubscription(company: company)
-                self.subscriptions = try await dataService.getActiveSubscriptions(active: true)
+                self.currentSubscription = try await dataService.getCompanySubscription(companyId: company.id)
+                self.activeSubscriptions = try await dataService.getActiveSubscriptions(active: true)
+            } catch {
+                print(error)
+            }
+        }
+    }
+    func cancelSubscription(company:Company){
+        Task{
+            do {
+                    //Cancel Subscription
+                let data:[String:Any] = [
+                    "subscriptionId": "stripeId",
+                    "stripeVersion": "2023-10-16",
+                ]
+                print(data)
+                let result = try await Functions.functions().httpsCallable("cancelStripeSubscription").call(data)
+                print(result)
+                guard let _ = result.data as? [String: Any] else {
+                        // Handle error
+                    print("Failed to Parse JSON")
+                    return
+                }
+                
+            } catch {
+                print(error)
+            }
+        }
+    }
+    func changeSubscription(company:Company){
+        Task{
+            do {
+                if newSubscription != nil {
+                    
+                        //Update Subscription
+                    let data:[String:Any] = [
+                        "subscriptionId": "stripeId",
+                        "stripeVersion": "2023-10-16",
+                    ]
+                    print(data)
+                    let result = try await Functions.functions().httpsCallable("updateStripeSubscription").call(data)
+                    print(result)
+                    guard let _ = result.data as? [String: Any] else {
+                            // Handle error
+                        print("Failed to Parse JSON")
+                        return
+                    }
+                }
             } catch {
                 print(error)
             }

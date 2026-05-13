@@ -27,6 +27,7 @@ struct Chat:Identifiable, Codable, Equatable{
     var companyId:String?
     var mostRecentChat:Date
     var userWhoHaveNotRead:[String]
+    var lastMessage:String
 }
 struct Message:Identifiable, Codable,Hashable{
     var id:String
@@ -249,15 +250,9 @@ final class ChatManager:ChatManagerProtocol {
         array.removeAll(where: {$0 == userId})
         let chatRef = chatDocument(chatId: chat.id)
 
-        chatRef.updateData([
+        try await chatRef.updateData([
             "userWhoHaveNotRead": FieldValue.arrayRemove([userId])
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
+            ])
     }
     func markChatAsUnread(userId:String,chat:Chat) async throws {
         print("Trying to mark the chat as unread")
@@ -265,15 +260,9 @@ final class ChatManager:ChatManagerProtocol {
         
         array.removeAll(where: {$0 == userId})
         let chatRef = chatDocument(chatId: chat.id)
-        chatRef.updateData([
+        try await chatRef.updateData([
           "userWhoHaveNotRead" : FieldValue.arrayUnion(array)
-        ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
+        ])
     }
 
     //----------------------------------------------------

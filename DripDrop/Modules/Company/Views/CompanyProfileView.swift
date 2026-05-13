@@ -64,15 +64,16 @@ struct CompanyProfileView: View {
                 }
             }
         }
-        .onChange(of: selectedPhoto, perform: { newValue in
-            if let newValue {
-                Task{
-                print("Save Profile")
-                    //Developer Fix Later
+        
+#warning("Developer Fix: Save Profile Image")
+//        .onChange(of: selectedPhoto, perform: { newValue in
+//            if let newValue {
+//                Task{
+//                print("Save Profile")
 //                    companyVM.saveProfileImage(user: user, companyId: companyVM.company?.id ?? user.favoriteCompanyId, item: newValue)
-                }
-            }
-        })
+//                }
+//            }
+//        })
     }
 }
 
@@ -310,7 +311,6 @@ extension CompanyProfileView {
             Text("Score based on completing work and paying out")
                 .font(.footnote)
             HStack{
-                
                 Text("Yelp Rating")
                     .bold()
                 Spacer()

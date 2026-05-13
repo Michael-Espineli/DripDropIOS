@@ -28,7 +28,7 @@ struct Customer:Identifiable, Codable,Hashable{
     var hireDate : Date
     var billingNotes : String
     var tags : [String]?
-    var linkedCustomerIds : [String]?
+    var linkedCustomerIds : [String]? //only one
     var linkedInviteId : String
 
     init(

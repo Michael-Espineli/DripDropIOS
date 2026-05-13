@@ -63,7 +63,7 @@ final class StoreManager {
     
     //       COLLECTION
     private func StoreCollection(companyId:String) -> CollectionReference{
-        Firestore.firestore().collection("companies/\(companyId)/settings/venders/vender")
+        Firestore.firestore().collection("companies/\(companyId)/settings/vendors/vendor")
     }
     //       DOCUMENT
 

@@ -60,7 +60,7 @@ struct AddNewVenderView: View {
             VStack{
                 HStack{
                     TextField(
-                        "streetAddress",
+                        "Street Address",
                         text: $streetAddress
                     )
                     .padding(3)

@@ -78,22 +78,30 @@ struct BodyOfWaterDetailView: View {
     @State var isLoading:Bool = false
     
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            VStack{
-                if isLoading {
-                    VStack{
-                        Spacer()
-                        LoadingSpinner()
-                        Spacer()
+
+            if isLoading {
+                VStack {
+                    Spacer()
+                    ProgressView().scaleEffect(1.1)
+                    Spacer()
+                }
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 12) {
+                            info
+                                .padding(12)
+                            photos
+                                .padding(12)
+                            recentReadings
+                                .padding(12)
+                        Divider()
+                            .opacity(0.15)
+                            .padding(.vertical, 2)
+
+                        equipment
                     }
-                } else {
-                    Divider()
-                    info
-                    photos
-                    Rectangle()
-                        .frame(height: 4)
-                    equipment
                 }
             }
         }
@@ -177,138 +185,235 @@ extension BodyOfWaterDetailView {
             })
         }
     }
-    var info: some View {
-        VStack{
-            
-            if let bodyOfWater = masterDataManager.selectedBodyOfWater {
-                VStack{
-                    HStack{
-                        Text("Name: \(bodyOfWater.name)")
-                        Spacer()
-                        edit
-                    }
-                    
-                    HStack{
-                        Text("Gallons: \(bodyOfWater.gallons)")
-                        Spacer()
-                    }
-                    
-                    
-                    HStack{
-                        Text("Material: \(bodyOfWater.material)")
-                        Spacer()
-                    }
-                    HStack{
-                        Text("Shape:")
-                        if let shape = bodyOfWater.shape {
-                            Text("\(shape)")
-                        }
-                        Spacer()
-                    }
-                    HStack{
-                        Text("Dimensions: \(bodyOfWater.material)")
-                        Spacer()
-                    }
-                    HStack{
-                        Text("Notes:")
-                        if let notes = bodyOfWater.notes {
-                            Text("\(notes)")
-                        }
-                        Spacer()
-                    }
-                }
-            }
-        }
-        .padding(8)
-        .background(Color.gray.opacity(0.5))
-        .cornerRadius(8)
-    }
     
-    var photos: some View {
-        VStack{
-            PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
-            if !VM.selectedDripDropPhotos.isEmpty {
-                HStack{
-                    Text("Loading Images...")
-                    ProgressView()
+    var info: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let bodyOfWater = masterDataManager.selectedBodyOfWater {
+
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(bodyOfWater.name)
+                            .font(.title3.weight(.semibold))
+                            .lineLimit(1)
+
+                        Text("Body of Water")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                    edit
+                }
+
+                Divider().opacity(0.15)
+
+                InfoRow(title: "Gallons", value: "\(bodyOfWater.gallons)")
+                InfoRow(title: "Material", value: "\(bodyOfWater.material)")
+                InfoRow(title: "Shape", value: "\(bodyOfWater.shape ?? "-")")
+                InfoRow(title: "Dimensions", value: "\(bodyOfWater.material)")
+
+                Divider().opacity(0.15)
+
+                Text("Notes").ddSectionTitle()
+
+                if let notes = bodyOfWater.notes {
+                    Text("\(notes)")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .modifier(PlainTextFieldModifier())
+                } else {
+                    Text("No notes")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
-                if VM.loadedImages.isEmpty {
-                    Text("No Images")
-                } else {
-                    DripDropStoredImageRow(images: VM.loadedImages)
-                }
-            
         }
+        .ddCard()
     }
+
+    var photos: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Photos").ddSectionTitle()
+                Spacer()
+            }
+
+            PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
+
+            if !VM.selectedDripDropPhotos.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Loading Images...")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(Capsule().fill(Color.primary.opacity(0.06)))
+            }
+
+            if VM.loadedImages.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .foregroundStyle(.secondary)
+                    Text("No Images")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 6)
+            } else {
+                DripDropStoredImageRow(images: VM.loadedImages)
+            }
+        }
+        .ddCard()
+    }
+
+    
+    var recentReadings: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Recent Readings").ddSectionTitle()
+                Spacer()
+                Button(action: {
+
+                }, label: {
+                    Text("See History")
+                        .modifier(RedLinkModifier())
+                })
+            }
+        }
+        .ddCard()
+    }
+
+    
     var equipment: some View {
-        VStack{
-            Divider()
-            Text("Equipment Detail View")
-                .font(.headline)
-            ScrollView(.horizontal, showsIndicators: false){
-                HStack{
-                    Button(action: {
-                        showAddSheet = true
-                    }, label: {
-                        Image(systemName: "plus.square.on.square")
-                            .modifier(AddButtonModifier())
-                    })
-                    .sheet(isPresented: $showAddSheet, content: {
-                        AddEquipmentView(dataService: dataService, bodyOfWater: bodyOfWater)
-                    })
-                    if VM.equipmentList.count == 0 {
-                        Button(action: {
-                            showAddSheet = true
-                        }, label: {
-                            Text("Add First Equipment")
-                        })
-                    } else {
-                        ForEach(VM.equipmentList){ equipment in
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Equipment").ddSectionTitle()
+                Spacer()
+            }
+
+            if let role = masterDataManager.role {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+
+                        if role.permissionIdList.contains("62") {
                             Button(action: {
-                                Task{
-                                    VM.selectedEquipment = nil
-                                    VM.selectedEquipment = equipment
-                                    masterDataManager.selectedEquipment = equipment
-                                }
+                                showAddSheet = true
                             }, label: {
-                                HStack{
-                                    if equipment.status != .operational {
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundColor(Color.poolRed)
-                                    }
-                                    if VM.selectedEquipment == equipment {
-                                        Text(equipment.category.rawValue)
-                                            .modifier(AddButtonModifier())
-                                    } else {
-                                        Text(equipment.category.rawValue)
-                                            .modifier(ListButtonModifier())
+                                Image(systemName: "plus")
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(.primary)
+                                    .padding(10)
+                                    .background(Circle().fill(Color.primary.opacity(0.08)))
+                            })
+                            .sheet(isPresented: $showAddSheet, onDismiss: {
+                                Task {
+                                    do {
+                                        if let currentCompany = masterDataManager.currentCompany,
+                                           let bodyOfWater = masterDataManager.selectedBodyOfWater {
+                                            try await VM.onLoad(companyId: currentCompany.id, bodyOfWater: bodyOfWater)
+                                        }
+                                    } catch {
+                                        print("Error")
                                     }
                                 }
+                            }, content: {
+                                AddEquipmentView(dataService: dataService, bodyOfWater: bodyOfWater)
                             })
-                            .padding(EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 5))
+                        }
+
+                        if VM.equipmentList.count == 0 {
+                            if role.permissionIdList.contains("62") {
+                                Button(action: {
+                                    showAddSheet = true
+                                }, label: {
+                                    Text("Add First Equipment")
+                                        .font(.subheadline.weight(.semibold))
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 12)
+                                        .background(Capsule().fill(Color.primary.opacity(0.08)))
+                                })
+                            } else {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("No Equipment")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("You do not have permission to add equipment")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 6)
+                            }
+                        } else {
+                            ForEach(VM.equipmentList) { equipment in
+                                Button(action: {
+                                    Task {
+                                        VM.selectedEquipment = nil
+                                        VM.selectedEquipment = equipment
+                                        masterDataManager.selectedEquipment = equipment
+                                    }
+                                }, label: {
+                                    HStack(spacing: 8) {
+                                        if equipment.status != .operational {
+                                            Image(systemName: "exclamationmark.triangle.fill")
+                                                .foregroundColor(Color.poolRed)
+                                        }
+
+                                        Text(equipment.type.rawValue)
+                                            .font(.subheadline.weight(.semibold))
+                                    }
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(
+                                        Capsule().fill(
+                                            VM.selectedEquipment == equipment
+                                            ? Color.primary.opacity(0.14)
+                                            : Color.primary.opacity(0.06)
+                                        )
+                                    )
+                                    .overlay(
+                                        Capsule().stroke(
+                                            VM.selectedEquipment == equipment
+                                            ? Color.primary.opacity(0.22)
+                                            : Color.primary.opacity(0.10),
+                                            lineWidth: 1
+                                        )
+                                    )
+                                })
+                            }
                         }
                     }
-                    
+                    .padding(.horizontal, 2)
                 }
             }
+
+            Divider().opacity(0.15)
+
             if VM.selectedEquipment == nil {
-                if VM.equipmentList.count == 0 {
-                    Text("No Equipment")
-                    Text("Please Set Up")
-                } else {
-                    Text("Please select an Equipment")
+                Group {
+                    if VM.equipmentList.count == 0 {
+                        Text("No Equipment")
+                        Text("Please Set Up")
+                    } else {
+                        Text("Please select an Equipment")
+                    }
                 }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 6)
             } else {
                 if let equipment = VM.selectedEquipment {
-                    EquipmentDetailView(dataService:dataService,equipment: equipment)
+                    EquipmentDetailView(dataService: dataService, equipment: equipment)
+//                        .ddCard()
                 } else {
                     Text("Please select an Equipment")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
+//        .ddCard()
     }
-    
+
 }
 struct BodyOfWaterDetailView_Previews: PreviewProvider {
     static let dataService = ProductionDataService()
@@ -322,10 +427,48 @@ struct BodyOfWaterDetailView_Previews: PreviewProvider {
                 material: "",
                 customerId: "",
                 serviceLocationId: "",
-                lastFilled: Date()
+                lastFilled: Date(),
+                isActive: true
             )
         )
     }
 }
 
 
+private extension View {
+    func ddCard() -> some View {
+        self
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
+    }
+
+    func ddSectionTitle() -> some View {
+        self
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+}
+
+private struct InfoRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .multilineTextAlignment(.trailing)
+        }
+        .font(.subheadline)
+    }
+}

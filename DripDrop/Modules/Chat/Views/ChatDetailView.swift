@@ -103,14 +103,14 @@ extension ChatDetailView {
                                         Spacer()
                                         Text("\(item.senderName)")
                                             .font(.footnote)
-                                        Text("\(fullDateAndTime(date:item.dateSent))")
+                                        Text("\(fullTime(date:item.dateSent))")
                                             .font(.footnote)
                                     }
                                 } else {
                                     HStack{
                                         Text("\(item.senderName)")
                                             .font(.footnote)
-                                        Text("\(fullDateAndTime(date:item.dateSent))")
+                                        Text("\(fullTime(date:item.dateSent))")
                                             .font(.footnote)
                                         Spacer()
                                     }
@@ -146,7 +146,6 @@ extension ChatDetailView {
                                         }, label: {
                                             VStack{
                                                 Text("No More Messages")
-Text("Return to bottom")
                                             }
                                         })
                                             .flippedUpsideDown()
@@ -202,14 +201,14 @@ Text("Return to bottom")
                                             Spacer()
                                             Text("\(i.senderName)")
                                                 .font(.footnote)
-                                            Text("\(shortDateAndTime(date:i.dateSent))")
+                                            Text("\(fullTime(date:i.dateSent))")
                                                 .font(.footnote)
                                         }
                                     } else {
                                         HStack{
                                             Text("\(i.senderName)")
                                                 .font(.footnote)
-                                            Text("\(shortDateAndTime(date:i.dateSent))")
+                                            Text("\(fullTime(date:i.dateSent))")
                                                 .font(.footnote)
                                             Spacer()
                                         }
@@ -244,6 +243,28 @@ Text("Return to bottom")
                 )
                 .foregroundColor(Color.black)
                 .background(Color.white)
+                .onSubmit {
+                    Task {
+                        do {
+                            if message == "" {
+                                return
+                            }
+                            if let user = masterDataManager.user {
+                                let fullName = (user.firstName) + " " + (user.lastName)
+                                    try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, message: message, chatId: chat.id)
+                                    try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
+                                    message = ""
+                          
+                            } else {
+                                print("Invalid User")
+                            }
+                            //DEVELOPER ADD Subscriber Rather than having to re grab every time
+                            
+                        } catch {
+                            print("[ChatDetailView][onSubmit] \(error)")
+                        }
+                    }
+                }
             if message != "" {
                 Button(action: {
                     Task {
@@ -260,7 +281,7 @@ Text("Return to bottom")
                             //DEVELOPER ADD Subscriber Rather than having to re grab every time
                             
                         } catch {
-                            
+                            print("[ChatDetailView][buttonPress] \(error)")
                         }
                     }
                 }, label: {

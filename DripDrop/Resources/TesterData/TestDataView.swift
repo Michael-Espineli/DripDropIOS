@@ -1,21 +1,25 @@
 //
-//  TestData.swift
+//  TestDataView.swift
 //  DripDrop
 //
 //  Created by Michael Espineli on 11/11/25.
 //
 
-
+import Foundation
+import SwiftUI
 struct TestDataView: View {
-    @StateObject private var VM = TestDataViewModel()
+//    @StateObject private var VM = TestDataViewModel()
 
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
+                
+                Rectangle()
+                    .frame(height: 2)
                 Text("Development Data")
                     Button(action: {
-                        VM.setUpTestCompany()
+//                        VM.setUpTestCompany()
                     }, label: {
                         Text("Create All Company Test Data")
                             .modifier(BlueButtonModifier())
@@ -24,14 +28,14 @@ struct TestDataView: View {
                         .frame(height: 1)
                 VStack{
                     Button(action: {
-                        VM.setUpTestCustomers()
+//                        VM.setUpTestCustomers()
                         
                     }, label: {
                         Text("Customer Test Data")
                             .modifier(BlueButtonModifier())
                     })
                     Button(action: {
-                        VM.setUpTestCompanyUsers()
+//                        VM.setUpTestCompanyUsers()
                         
                     }, label: {
                         Text("Company User Test Data")
@@ -39,21 +43,21 @@ struct TestDataView: View {
                     })
                     
                     Button(action: {
-                        VM.setUpTestRoles()
+//                        VM.setUpTestRoles()
                         
                     }, label: {
                         Text("Roles Test Data")
                             .modifier(BlueButtonModifier())
                     })
                     Button(action: {
-                        VM.setUpTestFleet()
+//                        VM.setUpTestFleet()
                         
                     }, label: {
                         Text("Fleet Test Data")
                             .modifier(BlueButtonModifier())
                     })
                     Button(action: {
-                        VM.setUpTestJobs()
+//                        VM.setUpTestJobs()
                         
                     }, label: {
                         Text("Jobs Test Data")
@@ -63,21 +67,28 @@ struct TestDataView: View {
                 
                 VStack{
                     Button(action: {
-                        VM.setUpTestRoutes()
+//                        VM.setUpTestRecurringRoutes()
                         
                     }, label: {
-                        Text("Routes Test Data")
+                        Text("Recurring Routes Test Data")
                             .modifier(BlueButtonModifier())
                     })
                     Button(action: {
-                        VM.setUpTestServiceStops()
+//                        VM.setUpTestActiveRoutes()
+                        
+                    }, label: {
+                        Text("Active Routes Test Data")
+                            .modifier(BlueButtonModifier())
+                    })
+                    Button(action: {
+//                        VM.setUpTestServiceStops()
                         
                     }, label: {
                         Text("Service Stops Test Data")
                             .modifier(BlueButtonModifier())
                     })
                     Button(action: {
-                        VM.setUpTestRecurringServiceStops()
+//                        VM.setUpTestRecurringServiceStops()
                         
                     }, label: {
                         Text("Recurring Service Stops Test Data")

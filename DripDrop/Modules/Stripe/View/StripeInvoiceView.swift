@@ -54,16 +54,16 @@ struct StripeInvoiceView: View {
                 }
             }
         }
-        .task{
-            if let user = masterDataManager.user, let stripeId = user.stripeId {
-                do {
-//                    try await model.preparePaymentSheet(stripeId: stripeId, total: invoice.total)
-                    try await model.setUpPaymentIntent(stripeId: stripeId)
-                }  catch {
-                    print(error)
-                }
-            }
-        }
+//        .task{
+//            if let user = masterDataManager.user, let stripeId = user.stripeId {
+//                do {
+////                    try await model.preparePaymentSheet(stripeId: stripeId, total: invoice.total)
+//                    try await model.setUpPaymentIntent(stripeId: stripeId)
+//                }  catch {
+//                    print(error)
+//                }
+//            }
+//        }
     }
 }
 

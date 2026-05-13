@@ -23,9 +23,12 @@ enum AppEnvironment: String {
            let value = AppEnvironment(rawValue: env) {
             return value
         }
+//        return .prod //Change Back to Dev
         return .dev
+
         #else
         return .prod
         #endif
     }()
 }
+

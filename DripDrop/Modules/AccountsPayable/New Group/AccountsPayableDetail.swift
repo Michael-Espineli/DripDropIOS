@@ -9,6 +9,7 @@
 import SwiftUI
 import StripePaymentSheet
 import StripePaymentsUI
+    
 struct AccountsPayableDetail: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
     @ObservedObject var stripeVM = StripeViewModel()
@@ -52,22 +53,19 @@ struct AccountsPayableDetail: View {
                     .clipShape(Capsule())
                     .padding(.horizontal,20)
                 }
-  
-                
             }
         }
         .alert(stripeVM.alertMessage ?? "", isPresented: $stripeVM.showAlert) {
             Button("OK", role: .cancel) { }
         }
         .task{
-            if let user = masterDataManager.user, let stripeId = user.stripeId {
-                do {
-//                    try await model.preparePaymentSheet(stripeId: stripeId, total: invoice.total)
-                    try await stripeVM.preparePaymentSheet(stripeId: stripeId, total: invoice.total)
-                }  catch {
-                    print(error)
-                }
-            }
+//            if let user = masterDataManager.user, let stripeId = user.stripeId {
+//                do {
+//                    try await stripeVM.preparePaymentSheet(stripeId: stripeId, total: invoice.total)
+//                }  catch {
+//                    print(error)
+//                }
+//            }
         }
 
     }

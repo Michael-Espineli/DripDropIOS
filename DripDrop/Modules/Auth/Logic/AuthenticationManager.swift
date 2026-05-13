@@ -100,7 +100,7 @@ final class AuthenticationManager {
         print("Signed out Successfully")
     }
     func resetPassword(email:String) throws {
-        try Auth.auth().sendPasswordReset(withEmail: email) { error in
+        Auth.auth().sendPasswordReset(withEmail: email) { error in
           // ...
         }
     }

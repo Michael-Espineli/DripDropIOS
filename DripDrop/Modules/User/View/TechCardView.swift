@@ -38,7 +38,7 @@ struct TechCardView: View {
                 }
             }
             Spacer()
-            Text("\(tech.firstName ?? "") \(tech.lastName ?? "")")
+            Text("\(tech.firstName) \(tech.lastName)")
             Text("Position")
         }
         .padding()

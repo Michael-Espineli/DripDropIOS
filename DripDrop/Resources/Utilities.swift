@@ -107,6 +107,17 @@ func fullDateAndTime(date:Date?)->String{
     }
     
 }
+func fullTime(date:Date?)->String{
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "HH:mm"//this your string date format
+    if date != nil{
+        return String(dateFormatter.string(from:date!))
+        
+    } else {
+        return "no service Date"
+    }
+    
+}
 func shortDateAndTime(date:Date?)->String{
     let dateFormatter = DateFormatter()
     dateFormatter.dateFormat = "MM/dd/yy' 'HH:mm"//this your string date format
@@ -301,7 +312,6 @@ func shortDate(date:Date?)->String{
     } else {
         return "no service Date"
     }
-    
 }
 func dayMonth(date:Date?)->String{
     let dateFormatter = DateFormatter()
@@ -935,45 +945,40 @@ func startOfWeek(for date: Date) -> Date {
     print(calendar.date(from: components)!)
     return calendar.date(from: components)!
 }
-func getNextServiceDate(lastServiceDate:Date?,every:String?,frequency:String?) -> Date? {
+func getNextServiceDate(lastServiceDate:Date?,frequency:Int?,every:EquipmentFrequency?) -> Date? {
     let calendar = Calendar.current
     
     var date = Date()
-    guard let everyString = every else {
+    guard let frequency else {
+        return nil
+    }
+    guard let every else {
         return nil
     }
     guard let lastServiceDateValidated = lastServiceDate else {
         return nil
     }
-    if let repeatingEvery = Int(everyString) {
-        switch frequency {
-        case "Day":
-            print("Day")
-            date = calendar.date(byAdding: .day, value: repeatingEvery, to: lastServiceDateValidated)!
-            
-        case "Week":
-            print("Week")
-            
-            let week = repeatingEvery * 7
-            date = calendar.date(byAdding: .day, value: week, to: lastServiceDateValidated)!
-            
-        case "Month":
-            print("Month")
-            
-            date = calendar.date(byAdding: .month, value: repeatingEvery, to: lastServiceDateValidated)!
-            
-        case "Year":
-            print("Year")
-            
-            date = calendar.date(byAdding: .year, value: repeatingEvery, to: lastServiceDateValidated)!
-            
-        default:
-            print("None")
-            return nil
-        }
-    } else {
-        print("Error Converting Number")
-        return nil
+    switch every {
+    case .daily:
+        print("Day")
+        date = calendar.date(byAdding: .day, value: frequency, to: lastServiceDateValidated)!
+        
+    case .weekly:
+        print("Week")
+        
+        let week = frequency * 7
+        date = calendar.date(byAdding: .day, value: week, to: lastServiceDateValidated)!
+        
+    case .monthly:
+        print("Month")
+        
+        date = calendar.date(byAdding: .month, value: frequency, to: lastServiceDateValidated)!
+        
+    case .yearly:
+        print("Year")
+        
+        date = calendar.date(byAdding: .year, value: frequency, to: lastServiceDateValidated)!
+
     }
     return date
 }

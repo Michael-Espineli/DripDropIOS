@@ -16,9 +16,23 @@ import MapKit
 protocol ProductionDataServiceProtocol: Equatable {
     var id:String { get }
 
+    func getActiveSubscriptions(active:Bool) async throws -> [StripeSubscription] 
+    func createSubscription(subscription:UserSubscription,user:DBUser,company:Company) async throws
+    func createCompanySubscription(subscription:CompanySubscription,company:Company) async throws
+    func getCompanySubscription(companyId:String) async throws -> CompanySubscription?
+
+    func getUserSubscription(userId:String) async throws -> UserSubscription?
+
     func updateRepairRequestPhotoURLs(companyId: String, repairRequest: String, photoUrls: [DripDropStoredImage]) async throws
+    func updateRepairRequestDescription(companyId:String,repairRequestId:String,description:String) async throws
 
     func uploadServiceStopImage(companyId: String,serviceStopId:String, image: DripDropImage) async throws ->(path:String, name:String)
+    
+    func uploadServiceStopImages(
+        companyId: String,
+        serviceStopId: String,
+        images: [DripDropImage]
+    ) async throws -> [DripDropStoredImage]
     func updateServiceStopPhotoURLs(companyId: String, serviceStopId: String, photoUrls: [DripDropStoredImage]) async throws
 
     func modifyRecurringServiceStopToNew(
@@ -47,7 +61,10 @@ protocol ProductionDataServiceProtocol: Equatable {
     func addTermsToTermsTemplate(companyId:String,termsTemplateId:String,terms:ContractTerms) async throws
     
     func createNewJobPost(jobPost:JobPost) async throws
-
+    
+    func updateSavedReadingAmount(companyId:String, readingTemplateId:String,newArray:[String]) async throws
+    func updateSavedDosageAmount(companyId:String, dosageTemplateId:String,newArray:[String]) async throws 
+    
     func addLaborContract(companyId:String,laborContract:ReccuringLaborContract) async throws
     func getLaborContracts(companyId:String) async throws -> [ReccuringLaborContract]
     func getReceivedLaborContracts(companyId:String) async throws -> [ReccuringLaborContract] 
@@ -138,6 +155,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func uploadServiceLocationBodyOfWater(companyId:String,bodyOfWater:BodyOfWater) async throws
     func uploadBodyOfWaterByServiceLocation(companyId:String,bodyOfWater:BodyOfWater) async throws
     func uploadEquipment(companyId:String,equipment:Equipment) async throws
+    func uploadEquipmentHistory(companyId:String,equipmentId:String,history:EquipmentServiceHistory) async throws
+
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws
     func addPartsToEquipment(companyId: String,equipment:Equipment) async throws
     func uploadEquipmentPart(companyId:String,equipmentId:String,part:EquipmentPart) async throws
@@ -149,8 +168,10 @@ protocol ProductionDataServiceProtocol: Equatable {
     func createDataBaseItem(companyId:String,genericItem : GenericItem) async throws
     func createIntialGenericDataBaseItems(companyId:String) async throws
     func uploadStore(companyId:String,store : Vender) async throws
-    func uploadChat(userId:String,chat:Chat) async throws
-    func sendMessage(userId: String, message: Message) async throws
+    
+    func uploadChat(chat:Chat) async throws
+    func sendMessage(message: Message) async throws
+    
     func uploadRepairRequest(companyId:String,repairRequest:RepairRequest) async throws
     func uploadGenericItem(companyId:String,workOrderTemplate : GenericItem) async throws
     func uploadWorkOrderTemplate(companyId:String,workOrderTemplate : JobTemplate) async throws
@@ -188,28 +209,34 @@ protocol ProductionDataServiceProtocol: Equatable {
     func uploadRecurringServiceStop(companyId:String,recurringServiceStop : RecurringServiceStop) async throws
     func uploadRoute(companyId:String,recurringRoute:RecurringRoute) async throws
     func addNewRecurringServiceStop(companyId:String,recurringServiceStop:RecurringServiceStop) async throws ->(String?)
-    func addNewRecurringServiceStopFromLaborContract(companyId:String,recurringServiceStop:RecurringServiceStop,laborContract:ReccuringLaborContract) async throws ->(String?)
+    
+    func addNewRecurringServiceStopFromLaborContract(
+        companyId:String,
+        recurringServiceStop:RecurringServiceStop,
+        laborContract:ReccuringLaborContract
+    ) async throws ->(String?)
 
     func helpCreateDailyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                       noEndDate:Bool,startDate:Date,endDate:Date) async throws
+                                       noEndDate:Bool,startDate:Date,endDate:Date?) async throws
     //WeekDay
     func helpCreateWeekDayRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws
+                                         noEndDate:Bool,startDate:Date,endDate:Date?) async throws
     //Weeekly
     func helpCreateWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                        noEndDate:Bool,startDate:Date,endDate:Date) async throws
+                                        noEndDate:Bool,startDate:Date,endDate:Date?) async throws
     //Bi Weekly
     func helpCreateBiWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                          noEndDate:Bool,startDate:Date,endDate:Date) async throws
+                                          noEndDate:Bool,startDate:Date,endDate:Date?) async throws
     //Monthly
     func helpCreateMonthlyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws
+                                         noEndDate:Bool,startDate:Date,endDate:Date?) async throws
     //Custom
     func helpCreateCustomRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
                                         standardFrequencyNumber:Int,
                                         customFrequencyType:String,
                                         CustomFrequency:String,
                                         daysOfWeek:[String])
+    
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws
     func addPurchaseItemsToWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws
@@ -220,6 +247,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func uploadBodyOfWaterImage(companyId:String,bodyOfWaterId:String,image:DripDropImage) async throws ->(path:String, name:String)
     func uploadEquipmentImage(companyId:String,equipmentId:String,image:DripDropImage) async throws ->(path:String, name:String)
     func saveAssociatedBusinessToCompany(companyId:String,business:AssociatedBusiness) async throws
+    func saveAssociatedBusinessToUser(userId:String,business:AssociatedBusiness) async throws
+
     func upLoadInitialEmailSettings(companyId:String) async throws
     func createCustomerEmailConfiguration(companyId:String,customerEmailConfig:CustomerEmailConfiguration) async throws
     func uploadJobTask(companyId:String,jobId:String,task:JobTask) async throws
@@ -316,6 +345,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getAllEquipmentCount(companyId:String,count:Int,lastDocument:DocumentSnapshot?) async throws -> (equipmentList:[Equipment],lastDocument:DocumentSnapshot?)
     func getEquipmentSnapShot(companyId:String) async throws -> [Equipment]
     func getAllEquipment(companyId:String) async throws -> [Equipment]
+    func getAllEquipmentServiceHistory(companyId:String,equipmentId:String) async throws -> [EquipmentServiceHistory]
+
     func getEquipmentByBodyOfWater(companyId:String,bodyOfWater:BodyOfWater) async throws -> [Equipment]
     
     func getSinglePieceOfEquipment(companyId:String,equipmentId:String) async throws ->Equipment
@@ -351,6 +382,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getServiceStopsByRecurringsServiceStop(companyId:String,recurringsServicestop:RecurringServiceStop) async throws -> [ServiceStop]
     func getServiceStopsByRecurringsServiceStopNotFinished(companyId:String,recurringsServicestop:RecurringServiceStop) async throws -> [ServiceStop]
     func getUnfinishedServiceStopsByCustomer(companyId:String,customer:Customer) async throws -> [ServiceStop]
+    func getFutureerviceStopsByCustomer(companyId:String,customerId:String) async throws -> [ServiceStop]
+
     func getUnfinished4ServiceStopsByCustomer(companyId:String,customer:Customer) async throws -> [ServiceStop]
     func getServiceStopsBetweenDatesAndByCustomer(companyId:String,startDate: Date,endDate:Date,customer:Customer) async throws -> [ServiceStop]
     func getServiceStopsBetweenDatesAndByType(companyId:String,startDate: Date,endDate:Date,workOrderType:String) async throws -> [ServiceStop]
@@ -402,8 +435,10 @@ protocol ProductionDataServiceProtocol: Equatable {
     
     func getSingleStore(companyId:String,storeId:String) async throws -> Vender
     func getAllChatsByUser(userId:String) async throws -> [Chat]
+    func getrecentChatsByUser(userId:String, numberOfChats:Int) async throws -> [Chat]
+
     func getSpecificChat(chatId:String) async throws ->Chat
-    func getChatBySenderAndReceiver(companyId:String,senderId:String,receiverId:String) async throws ->Chat?
+    func getChatBySenderAndReceiver(senderId:String,receiverId:String) async throws ->Chat?
 
     func getChatsByCompany(companyId: String) async throws ->[Chat]
     func getAllMessagesByChat(chatId: String) async throws ->[Message]
@@ -421,6 +456,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getRecentServiceStopsByBodyOfWater(companyId:String,bodyOfWaterId: String,amount:Int)async throws->[StopData]
     func getStopDataByServiceStopId(companyId:String,serviceStopId: String) async throws ->[StopData]
     func getStopDataByServiceStopIdAndBodyOfWaterId(companyId:String,serviceStopId: String,bodyOfWaterId:String)async throws->[StopData]
+    func getStopDataByServiceStopIdAndLocationId(companyId:String,serviceStopId: String,locationId:String)async throws->[StopData]
+
     func getStopDataByCustomer(companyId:String,customerId: String)async throws->[StopData]
     func getStopDataByBodyOfWater(companyId:String,bodyOfWaterId: String)async throws->[StopData]
     func getStopDataByDateRange(companyId:String,startDate: Date,endDate:Date)async throws->[StopData]
@@ -449,7 +486,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getAllPastJobsBasedOnCustomer(companyId: String, customer: Customer) async throws -> [Job]
     func getAllFutureJobsBasedOnCustomer(companyId: String, customer: Customer) async throws -> [Job]
     func getSingleRoute(companyId:String,recurringRouteId:String) async throws -> RecurringRoute
-    func getSingleRouteFromTechIdAndDay(companyId:String,techId:String,day:String) async throws -> RecurringRoute?
+    func getSingleRouteFromTechIdAndDay(companyId:String,techId:String,day:DaysOfWeek) async throws -> RecurringRoute?
     func getAllActiveRoutes(companyId:String,param:String) async throws -> [RecurringRoute]
     
     func updateEquipmentIsActive(companyId:String,equipmentId:String,isActive:Bool) throws
@@ -461,10 +498,10 @@ protocol ProductionDataServiceProtocol: Equatable {
 
     func getActiveRoute(companyId: String,activeRouteId:String) async throws -> ActiveRoute
 
-    func getAllActiveRoutesBasedOnDate(companyId:String,day:String,techId:String) async throws -> [RecurringRoute]
-    func getRecurringRouteByDayAndTech(companyId:String,day:String,techId:String) async throws ->[RecurringRoute]
-    func getRecurringRouteByDay(companyId:String,day:String) async throws ->[RecurringRoute]
-    func getRecurringRouteByDayCount(companyId:String,day:String) async throws ->Int
+    func getAllActiveRoutesBasedOnDate(companyId:String,day: DaysOfWeek,techId:String) async throws -> [RecurringRoute]
+    func getRecurringRouteByDayAndTech(companyId:String,day: DaysOfWeek,techId:String) async throws ->[RecurringRoute]
+    func getRecurringRouteByDay(companyId:String,day:DaysOfWeek) async throws ->[RecurringRoute]
+    func getRecurringRouteByDayCount(companyId:String,day:DaysOfWeek) async throws ->Int
 
     func getAllReceipts(companyId: String) async throws -> [Receipt]
     func getReceipt(companyId: String,receiptId:String) async throws -> Receipt
@@ -488,8 +525,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getSingleRecurringServiceStop(companyId:String,recurringServiceStopId:String) async throws -> RecurringServiceStop
     func getAllRecurringServiceStop(companyId:String) async throws -> [RecurringServiceStop]
     func getReucrringServiceStopsWithOutEndDate(companyId:String) async throws -> [RecurringServiceStop]
-    func getRecurringServiceStopsByDays(companyId:String,day:String) async throws -> [RecurringServiceStop]
-    func getRecurringServiceStopsByDayAndTech(companyId:String,techId:String,day:String) async throws -> [RecurringServiceStop]
+    func getRecurringServiceStopsByDays(companyId:String,day: DaysOfWeek) async throws -> [RecurringServiceStop]
+    func getRecurringServiceStopsByDayAndTech(companyId: String, techId: String, day: DaysOfWeek) async throws -> [RecurringServiceStop]
     func getAllRecurringServiceStopByCustomerId(companyId:String,customerId:String) async throws -> [RecurringServiceStop]
     func getRecurringServiceStopByServiceLocationId(companyId:String, serviceLocationId:String) async throws  -> [RecurringServiceStop]
 
@@ -500,6 +537,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func readAllHistory(companyId:String,customer : Customer) async throws -> [StopData]
     func getHistoryByCustomerByDateRange(companyId:String,customer : Customer,startDate:Date,endDate:Date) async throws -> [StopData]
     func getAllCompanyInvites(comapnyId : String) async throws ->[Invite]
+    func getUserInvitesByStatus(userId:String,status : String) async throws ->[Invite]
     func getAllAcceptedCompanyInvites(comapnyId : String) async throws ->[Invite]
     func getSpecificInvite(inviteId : String) async throws ->Invite
     func getAllTrainings(companyId: String,techId:String) async throws -> [Training]
@@ -565,6 +603,9 @@ protocol ProductionDataServiceProtocol: Equatable {
     //Associated Buisnesses
     func getAssociatedBusinesses(companyId:String) async throws -> [AssociatedBusiness]
     func getAssociatedBusiness(companyId:String,businessId:String) async throws -> AssociatedBusiness
+    func getUserSavedBusiness(userId:String,businessId:String) async throws -> AssociatedBusiness
+    func getUserSavedBusinessList(userId:String) async throws -> [AssociatedBusiness]
+
     func getAssociatedBusinessByCompanyId(companyId:String,businessCompanyId:String) async throws -> AssociatedBusiness
 
     func getEmailConfigurationSettings(companyId:String) async throws -> CompanyEmailConfiguration
@@ -576,18 +617,44 @@ protocol ProductionDataServiceProtocol: Equatable {
     //----------------------------------------------------
     //                    Update Functions
     //----------------------------------------------------
+    func updateCompanyName(companyId:String,name:String) async throws
+    func updateCompanyEmail(companyId:String,email:String) async throws
+    func updateCompanyPhoneNumber(companyId:String,phoneNumber:String) async throws
+    func updateCompanyServicesOffered(companyId:String,servicesOffered:[String]) async throws
+    func updateCompanyZipCodes(companyId:String,serviceZipCodes:[String]) async throws
+    func updateCompanyYelpURl(companyId:String,yelpURL:String) async throws
+    func updateCompanyWebUrl(companyId:String,websiteUrl:String) async throws
+
+    func updateDBUserEmail(userId:String,email:String) throws
+    
+    func updateDBUserPhotoUrl(userId:String,photoUrl:String) throws
+    
+    func updateDBUserProfileImagePath(userId:String,profileImagePath:String) throws
+    
+    func updateDBUserFirstName(userId:String,firstName:String) throws
+    
+    func updateDBUserLastName(userId:String,lastName:String) throws
+    
+    func updateDBUserBio(userId:String,bio:String) throws
+    
+    func updateDBUserExp(userId:String,exp:Int) throws
+    
+    func updateDBUserPhoneNumber(userId:String,phoneNumber:String) throws
+    
     func updateEquipmentName(companyId:String,equipmentId:String,name:String) throws
+    
     func updateEquipmentCategory(companyId:String,equipmentId:String,category:EquipmentCategory) throws
 
     func updateEquipmentMake(companyId:String,equipmentId:String,make:String) throws
+    
     func updateEquipmentModel(companyId:String,equipmentId:String,model:String) throws
     func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws
     func updateEquipmentStatus(companyId:String,equipmentId:String,status:EquipmentStatus) throws
     func updateEquipmentCleanFilterPressure(companyId:String,equipmentId:String,cleanFilterPressure:Int) throws
     func updateEquipmentCurrentPressure(companyId:String,equipmentId:String,currentPressure:Int) throws
     func updateEquipmentCleanLastServiceDate(companyId:String,equipmentId:String,lastServiceDate:Date) throws
-    func updateEquipmentServiceFrequency(companyId:String,equipmentId:String,serviceFrequency:String) throws
-    func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:String) throws
+    func updateEquipmentServiceFrequency(companyId:String,equipmentId:String,serviceFrequency:Int) throws
+    func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:EquipmentFrequency) throws
     func updateEquipmentNextServiceDate(companyId:String,equipmentId:String,nextServiceDate:Date) throws
     func updateEquipmentNotes(companyId:String,equipmentId:String,notes:String) throws
     func updateEquipmentPhotoUrls(companyId:String,equipmentId:String,image:DripDropStoredImage) throws
@@ -625,8 +692,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateActiveRouteDuration(companyId:String,activeRouteId:String,duration:Int)
     func updateActiveRouteDistnace(companyId:String,activeRouteId:String,distance:Double)
     func updateActiveRouteStatus(companyId:String,activeRouteId:String,status:ActiveRouteStatus)
-    func updateActiveRouteStartMilage(companyId:String,activeRouteId:String,startMilage:Int)
-    func updateActiveRouteEndMilage(companyId:String,activeRouteId:String,endMilage:Int)
+    func updateActiveRouteStartMilage(companyId:String,activeRouteId:String,startMilage:Double)
+    func updateActiveRouteEndMilage(companyId:String,activeRouteId:String,endMilage:Double)
     func updateActiveRouteFinishedStop(companyId:String,activeRouteId:String,finishedStops:Int)
     func updateActiveRouteTotalStop(companyId:String,activeRouteId:String,totalStops:Int)
     func updateActiveRouteVehicalId(companyId:String,activeRouteId:String,vehicalId:String)
@@ -640,13 +707,21 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateCustomerDisplayAsCompany(companyId:String,customerId:String,displayAsCompany:Bool) async throws
     func updateCustomerBillingNotes(companyId:String,customerId:String,billingNotes:String) async throws
     func updateCustomerTags(companyId:String,customerId:String,tags:[String]) async throws
+    
     func updateCustomerLinkedInviteId(companyId:String,customerId:String,linkedInviteId:String) async throws
+    func updateInviteStatus(invite:String,status:String) async throws
+    
+    
     func updateInvoiceAsPaid(stripeInvoiceId:String,paymentType:InvoicePaymentType) async throws
     func removingReadingTemplateAmountArray(companyId:String,readingTemplateId : String,amount:String) async throws
     func removingDosageTemplateAmountArray(companyId:String,dosageTemplateId : String,amount:String) async throws
     func uploadDosageTemplateAmountArray(companyId:String,dosageTemplateId : String,amount:String) async throws
     func uploadReadingTemplateAmountArray(companyId:String,readingTemplateId : String,amount:String) async throws
+    func updateVehical(companyId:String,vehicle:Vehical,newVehical:Vehical) async throws
+
     func markInviteAsAccepted(invite:Invite) async throws
+    func markInviteAsRejected(invite:Invite) async throws
+
     func endRecurringServiceStop(companyId:String,recurringServiceStopId:String,endDate:Date) async throws
     func editDataBaseItem(companyId:String,
         dataBaseItemId:String,
@@ -681,9 +756,12 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateWorkOrder(originalJob:Job,newJob:Job) async throws
     func updateJobAdmin(companyId:String,jobId:String,adminName:String,adminId:String) async throws
     func updateJobTemplate(companyId:String,jobId:String,templateId:String,templateName:String) async throws
+    func updateTermsTemplateName(companyId:String,templateId:String,templateName:String) async throws
+    func updateTermsTemplateDescription(companyId:String,templateId:String,templateDescription:String) async throws
+
     func updateJobOperationStatus(companyId:String,jobId:String,operationStatus:JobOperationStatus) async throws
     func updateJobBillingStatus(companyId:String,jobId:String,billingStatus:JobBillingStatus) async throws
-    func updateJobRate(companyId:String,jobId:String,rate:String) async throws
+    func updateJobRate(companyId:String,jobId:String,rate:Int) async throws
     func updateJobLaborCost(companyId:String,jobId:String,laborCost:String) async throws
     func updateJobDescription(companyId:String,jobId:String,description:String) async throws
     
@@ -719,9 +797,11 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws
     func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,newServiceStop:ServiceStop) async throws // Developer Break Out into Induvidual and Delete
     func updateServiceStopAddress(companyId:String,serviceStopId:String,address:Address) async throws
-    func updateServicestopOperationStatus(companyId:String,serviceStop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws
+    func updateServicestopOperationStatus(companyId:String,serviceStopId:String,operationStatus:ServiceStopOperationStatus) async throws
     func updateServicestopBillingStatus(companyId:String,serviceStop:ServiceStop,billingStatus:ServiceStopBillingStatus) async throws
-    
+    func updateServiceStopStartTime(companyId:String,serviceStopId:String,startTime:Date) async throws
+    func updateServiceStopEndTime(companyId:String,serviceStopId:String,endTime:Date) async throws
+
     func updatePart(companyId:String,equipmentId:String,part:EquipmentPart) async throws
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws
     func updateEquipmentCustomer(companyId:String,equipment:Equipment) async throws
@@ -793,6 +873,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     //                    Delete Functions
     //----------------------------------------------------
     func deleteInvoice(stripeInvoiceId:String) async throws
+    func deleteDBUser(userId:String) async throws
     func deleteRecurringServiceStop(companyId:String,recurringServiceStopId : String) async throws
     func deleteRecurringRoute(companyId:String,recurringRouteId : String) async throws
 
@@ -805,12 +886,14 @@ protocol ProductionDataServiceProtocol: Equatable {
     func deleteServiceStop(companyId:String,serviceStop:ServiceStop)async throws
     func deleteServiceStopById(companyId:String,serviceStopId:String)async throws
     func deleteEquipment(companyId:String,equipmentId:String) async throws
-    func deleteCustomer(companyId:String,serviceLocationId:String)async throws
+    func deleteLocation(companyId:String,serviceLocationId:String)async throws
     func deleteAllCustomerSummaries(companyId:String,customer:Customer) async throws
     func deleteCustomer(companyId:String,customer:Customer) throws
     func deleteCustomer(companyId:String,customer:Customer)async throws
     func deleteToDo(companyId:String,toDoId:String) async throws
     func deleteAssociatedBusinessToCompany(companyId:String,businessId:String) async throws
+    func deleteSavedCompany(userId:String,businessId:String) async throws
+
     func deleteBodyOfWater(companyId:String,bodyOfWaterId:String) async throws
     func deleteTaskGroupItem(companyId:String,taskGroupId:String,taskId:String) async throws 
     func updateTaskGroupName(companyId: String, taskGroupId: String, name: String) async throws 
@@ -818,6 +901,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateTaskGroupNumberOfTasks(companyId: String, taskGroupId: String, numberOfTasks: Int) async throws
     func deleteTaskGroup(companyId:String,taskGroupId:String) async throws
     func deleteRecurringServiceStopTask(companyId:String,recurringServiceStopId:String,taskId:String) async throws 
+    func deleteJobTaskItem(companyId:String,jobId:String,taskId:String) async throws
 
     //----------------------------------------------------
     //
@@ -847,11 +931,14 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getPreviousShiftByUserId(companyId:String, userId:String, count:Int) async throws -> [WorkShift]
     func getShiftByUserIdBetweenDates(companyId:String, userId:String, start:Date, end:Date) async throws -> [WorkShift]
     func getNextShiftByUserId(companyId:String, userId:String, count:Int) async throws -> [WorkShift]
-
-    //----------------------------------------------------
-    //                    Listeners
-    //----------------------------------------------------
     func uploadCustomer(companyId:String,customer : Customer) async throws
+    
+    func upLoadActiveRouteLocation(companyId:String,activeRouteId:String,location: ActiveRouteLocation) async throws
+    func upLoadActiveRouteLog(companyId:String,activeRouteId:String, log: ActiveRouteLog) async throws
+    
+//----------------------------------------------------
+//                    Listeners
+//----------------------------------------------------
     func addListenerForAllCustomers(companyId:String,storeId:String,completion:@escaping (_ serviceStops:[DataBaseItem]) -> Void)
     func addListenerForUnreadChats(userId:String,completion:@escaping (_ serviceStops:[Chat]) -> Void)
     func addListenerForAllMessages(chatId: String,amount:Int, completion: @escaping ([Message]) -> Void)
@@ -862,23 +949,72 @@ protocol ProductionDataServiceProtocol: Equatable {
 
     func addListenerForAllChats(userId:String,completion:@escaping (_ serviceStops:[Chat]) -> Void)
     func addListenerForAllServiceStops(companyId:String,completion:@escaping (_ serviceStops:[ServiceStop]) -> Void)
+    
+    func addListenerForFutureCustomerServiceStops(companyId:String,customerId:String,completion:@escaping (_ serviceStops:[ServiceStop]) -> Void)
+
     func addListenerForAllEquipment(companyId: String,amount:Int, completion: @escaping ([Equipment]) -> Void)
     func addListenerForAllCustomers(companyId:String, sort:CustomerSortOptions,filter:CustomerFilterOptions,completion:@escaping (_ customers:[Customer]) -> Void)
-    
+    func addListenerForEquipmentByServiceLocation(companyId: String,locationId:String, completion: @escaping ([Equipment]) -> Void)
+
     func addListenerForSentLaborContracts(companyId:String,status:[LaborContractStatus], isInvoiced:Bool, completion:@escaping (_ customers:[LaborContract]) -> Void)
     func addListenerForReceivedLaborContracts(companyId:String,status:[LaborContractStatus], isInvoiced:Bool, completion:@escaping (_ customers:[LaborContract]) -> Void)
     func addListenerForReceivedLaborContractsAllInvoiceStatus(companyId:String, status:[LaborContractStatus], completion:@escaping (_ customers:[LaborContract]) -> Void)
     func addListenerForSentLaborContractsAllInvoiceStatus(companyId:String, status:[LaborContractStatus], completion:@escaping (_ customers:[LaborContract]) -> Void)
+    func addSavedCompanyListener(userId:String,completion:@escaping (_ savedCompanies:[AssociatedBusiness]) -> Void)
+    func listenTermsTemplate(companyId: String,onChange: @escaping ([TermsTemplate]) -> Void)
+    func addlistenerVehicals(companyId: String, status:String, onChange: @escaping ([Vehical]) -> Void)
+    func addCurrentCompanyUserListener(companyId: String, userId:String, onChange: @escaping ([CompanyUser]) -> Void)
+    func addRoleListener(companyId: String, roleId:String, onChange: @escaping (Role?) -> Void)
+
+    func addCompanyUserListener(companyId: String, status:String, onChange: @escaping ([CompanyUser]) -> Void)
+    func addInviteListener(companyId: String, status:String, onChange: @escaping ([Invite]) -> Void)
     
+//    Route Board Listeners
+    func addListenerForRecurringRoute(companyId: String, onChange: @escaping ([RecurringRoute]) -> Void)
+    func addListenerForRecurringServiceStop(companyId: String, onChange: @escaping ([RecurringServiceStop]) -> Void)
+    func addCurrentUserAccessListener(companyId: String, userId:String, onChange: @escaping ([UserAccess]) -> Void) 
+
+//    Mobile Dashboard listeners
+    func listenServiceStops(companyId: String,date: Date,techId: String,onChange: @escaping ([ServiceStop]) -> Void)
+    func listenActiveRoute(
+          companyId: String,
+          date: Date,
+          techId: String,
+          onChange: @escaping (ActiveRoute?) -> Void
+      )
+    func listenRecurringRoute(
+        companyId: String,
+        techId: String,
+        day: String,
+        onChange: @escaping (RecurringRoute?) -> Void
+    )
+
+    func applyRouteChanges(companyId: String, diff:ActiveRouteDiff,calledFrom:String)
+//----------------------------------------------------
+//                Remove Listeners
+//----------------------------------------------------
     func removeListenerForSentLaborContracts()
     func removeListenerForReceivedLaborContracts()
-
     func removeListenerForJobs()
-
     func removeListenerForAllCustomers()
     func removeListenerForMessages()
     func removeListenerForChats()
     func removeListenerForRequests()
     func removeListenerForAllServiceStops()
     func removeEquipmentListener()
+    func removeSavedCompanyListener()
+    func removeTermsTemplateListern() 
+    func removeVehicalListener()
+    func removeCompanyUserListener()
+    func removeInviteListener()
+    
+    func removeRecurringRouteListener()
+    func removeRecurringServiceStopListener()
+    
+    func removeCurrentRoleListener()
+    func removeRoleListener()
+    func removeUserAccessListener()
+//    Mobile Dashboard listeners
+    func stopServiceStopActiveRouteRecurringRouteListenrs()
+
 }

@@ -52,7 +52,7 @@ enum RecurringContractServiceFrequency:String,Codable,CaseIterable{
     case twicePerWeek = "Twice Per Week"
     case threeTimesPerWeek = "Three Times Per Week"
 }
-enum LaborContractFrequency:String,Codable, CaseIterable {
+enum LaborContractFrequency:String, Codable, CaseIterable {
     case daily = "Daily"
     case weekDay = "Week Day"
     case weekly = "Weekly"	
@@ -68,9 +68,10 @@ enum RecurringContractStatus:String, Codable, CaseIterable{
     case past = "Past"
     case rejected = "Rejected"
     case draft = "Draft"
-
 }
-enum LaborContractStatus:String, Codable, CaseIterable{
+
+
+enum LaborContractStatus:String, Codable, CaseIterable{ // Draft, Sent, Viewed, Accepted, Rejected, Expired, Invoiced, Paid
     case pending = "Pending"
     case accepted = "Accepted"
     case rejected = "Rejected"
@@ -134,6 +135,7 @@ enum RepairRequestStatus:String,Codable, CaseIterable{
     case resolved = "Resolved"
     case unresolved = "Unresolved"
     case inprogress = "In Progress"
+    case cancelled = "Cancelled"
 }
 enum RateSheetStatus:String ,Codable{
     case active = "Active"
@@ -169,8 +171,25 @@ enum EquipmentStatus:String, Codable, CaseIterable, Identifiable{
     case nonoperational = "Nonoperational"
     case needsRepair = "Needs Repair"
     case needsMaintenance = "Needs Maintenance"
+    
 }
-
+enum EquipmentFrequency:String, Codable, CaseIterable, Identifiable{
+    var id: String { rawValue }
+    case daily = "Day"
+    case weekly = "Week"
+    case monthly = "Month"
+    case yearly = "Year"
+    
+}
+enum DripDropFrequency:String, Codable, CaseIterable, Identifiable{
+    var id: String { rawValue }
+    case daily = "Daily"
+    case weekly = "Weekly"
+    case biWeekly = "Bi-Weekly"
+    case monthly = "Monthly"
+    case yearly = "Yearly"
+    
+}
 enum EquipmentCategory:String,Codable,CaseIterable {
     case pump = "Pump"
     case filter = "Filter"
@@ -180,6 +199,18 @@ enum EquipmentCategory:String,Codable,CaseIterable {
     case cleaner = "Cleaner"
     case controlSystem = "Control System"
     case autoChlorinator = "Auto Chlorinator"
+}
+enum EquipmentServiceType:String,Codable,CaseIterable {
+    case repair = "Repair"
+    case maintenance = "Maintenance"
+}
+enum ServicePerformaceType:String,Codable,CaseIterable {
+    case customer = "Customer"
+    case company = "Company"
+}
+enum ServiceRecordType:String,Codable,CaseIterable {
+    case manual = "Manual"
+    case auto = "Auto" //From Job
 }
 
 enum VehicalStatus:String, Codable,CaseIterable {
@@ -323,7 +354,7 @@ enum DataBaseItemSubCategoryPVC: String, CaseIterable, Codable {
     case maleAdaptor  = "Male Adaptor"
     case misc = "Misc"
 }
-enum DaysOfWeek: String, Hashable, CaseIterable, Identifiable {
+enum DaysOfWeek: String, Hashable, CaseIterable, Identifiable, Codable {
     case sunday = "Sunday"
     case monday = "Monday"
     case tuesday = "Tuesday"
@@ -334,6 +365,24 @@ enum DaysOfWeek: String, Hashable, CaseIterable, Identifiable {
 
     var id: String {
         return self.rawValue
+    }
+    var numberValue: Int {
+        switch self {
+        case .sunday:
+            return 0
+        case .monday:
+            return 1
+        case .tuesday:
+            return 2
+        case .wednesday:
+            return 3
+        case .thursday:
+            return 4
+        case .friday:
+            return 5
+        case .saturday:
+            return 6
+        }
     }
 }
 

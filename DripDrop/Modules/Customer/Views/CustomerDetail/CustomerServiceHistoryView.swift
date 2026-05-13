@@ -64,11 +64,13 @@ struct CustomerServiceHistoryView: View {
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     
     @State var bodyOfWaterList:[BodyOfWater] = []
-    @State var bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
+    @State var bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date(),
+                                         isActive: true)
     
     @State var viewList:[String] = ["Chem History","Service History","Equipment History"]
     @State var stringView:String = "Chem History"

@@ -31,7 +31,7 @@ struct CompanyInfoListView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView {
-                
+                list
             }
         }
     }
@@ -39,4 +39,32 @@ struct CompanyInfoListView: View {
 
 #Preview {
     CompanyInfoListView(dataService: MockDataService())
+}
+extension CompanyInfoListView {
+    
+    var list: some View {
+        VStack{
+            Button(action: {
+                masterDataManager.seePublicCompanyView = true
+            }, label: {
+                HStack{
+                    Spacer()
+                    Text("Company Profile")
+                    Spacer()
+                }
+                .modifier(HeaderModifier())
+            })
+            Button(action: {
+                
+                    masterDataManager.seePublicCompanyView = false
+            }, label: {
+                HStack{
+                    Spacer()
+                    Text("Company Information")
+                    Spacer()
+                }
+                .modifier(HeaderModifier())
+            })
+        }
+    }
 }

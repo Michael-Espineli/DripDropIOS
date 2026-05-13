@@ -94,7 +94,7 @@ final class WorkLogListViewModel:ObservableObject{
                 let activeRoute = try? await dataService.getAllActiveRoutesBasedOnDate(companyId: companyId, date: shift.date, tech: user).first
                 if let activeRoute, let endMilage = activeRoute.endMilage, let startMilage = activeRoute.startMilage {
                     let duration = endMilage - startMilage
-                    totalMiles = totalMiles + duration
+                    totalMiles = totalMiles + Int(duration)
                 }
             }
             self.totalMiles = totalMiles

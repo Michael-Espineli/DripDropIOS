@@ -78,7 +78,7 @@ final class CompanyAccessManager {
     }
     
     func getAllUserAvailableCompanies(companyId:String) async throws ->[CompanyAccess]{
-        print("Attempting to get User Access \(companyId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
+        print("      [CompanyAccessManager][getAllUserAvailableCompanies] Attempting to get User Access \(companyId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
         return try await companyAccessCollection(companyId: companyId)
             .getDocuments(as:CompanyAccess.self)
     }

@@ -101,7 +101,8 @@ struct AddNewCustomerConfirmationScreen: View {
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     @State var addFirstServiceLocation:Bool = false
 
@@ -686,7 +687,8 @@ extension AddNewCustomerConfirmationScreen {
                             ),
                             customerId: customerId,
                             customerName: fullName,
-                            preText: preText
+                            preText: preText,
+                            isActive: true
                         ),
                         companyId: masterDataManager.currentCompany!.id
                     )

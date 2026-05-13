@@ -8,6 +8,12 @@
 import SwiftUI
 
 struct ReadingsAndDosagesList: View {
+    
+    init(dataService:any ProductionDataServiceProtocol){
+        _VM = StateObject(wrappedValue: ReadingsAndDosagesListViewModel(dataService: dataService))
+    }
+    @StateObject private var VM : ReadingsAndDosagesListViewModel
+
     @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @EnvironmentObject var navigationManager: NavigationStateManager
     @EnvironmentObject var masterDataManager : MasterDataManager
@@ -50,7 +56,7 @@ struct ReadingsAndDosagesList: View {
 
 struct ReadingsAndDosagesList_Previews: PreviewProvider {
     static var previews: some View {
-        ReadingsAndDosagesList()
+        ReadingsAndDosagesList(dataService: MockDataService())
     }
 }
 extension ReadingsAndDosagesList {

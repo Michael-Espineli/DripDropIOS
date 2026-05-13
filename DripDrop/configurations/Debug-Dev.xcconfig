@@ -7,3 +7,39 @@
 
 // Configuration settings file format documentation can be found at:
 // https://developer.apple.com/documentation/xcode/adding-a-build-configuration-file-to-your-project
+ 
+    // Inherit from the default Debug base if you have one (optional)
+    // #include? "Base-Debug.xcconfig"
+
+    // MARK: - Code signing & identity
+    PRODUCT_BUNDLE_IDENTIFIER = Espineli-LLC.DripDrop
+    PRODUCT_NAME = ThePoolApp
+    DEVELOPMENT_TEAM = YOURTEAMID
+    CODE_SIGN_STYLE = Automatic
+    PROVISIONING_PROFILE_SPECIFIER =
+
+    // MARK: - App display name (optional, adds a suffix for dev builds)
+    INFOPLIST_KEY_CFBundleDisplayName = $(PRODUCT_NAME) Dev
+
+    // MARK: - Swift & compilation
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG DEV
+    SWIFT_OPTIMIZATION_LEVEL = -Onone
+    ENABLE_TESTABILITY = YES
+
+    // MARK: - Logging & diagnostics
+    OTHER_SWIFT_FLAGS = $(inherited) -DDEBUG -DDEV
+    GCC_PREPROCESSOR_DEFINITIONS = $(inherited) DEBUG=1 DEV=1
+
+    // MARK: - API endpoints (example)
+    API_BASE_URL = https://api-dev.yourdomain.com
+    WEBSOCKET_URL = wss://ws-dev.yourdomain.com
+
+    // Expose values to Info.plist via user-defined settings if needed
+    INFOPLIST_KEY_APIBaseURL = $(API_BASE_URL)
+
+    // MARK: - App transport (example toggle)
+    INFOPLIST_KEY_NSAppTransportSecurity = { NSAllowsArbitraryLoads = YES; }
+
+    // MARK: - Feature flags (examples)
+    FEATURE_NEW_ONBOARDING = YES
+    FEATURE_EXPERIMENTAL_CACHE = YES

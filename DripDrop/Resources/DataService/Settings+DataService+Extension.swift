@@ -6,18 +6,27 @@
 //
 
 import Foundation
+import FirebaseFirestore
+import FirebaseFirestoreSwift
+import Firebase
+import Darwin
 extension ProductionDataService {
-    private func ReadingsTemplateDocument(readingTemplateId:String,companyId:String)-> DocumentReference{
-        Firestore.firestore().collection("companies/\(companyId)/settings/readings/readings/").document(readingTemplateId)
-        
+//    func ReadingsTemplateDocument(readingTemplateId:String,companyId:String)-> DocumentReference{
+//        ReadingsCollection(companyId: companyId).document(readingTemplateId)
+//    }
+//    func DosageTemplateDocument(dosageTemplateId:String,companyId:String)-> DocumentReference{
+//        DosageCollection(companyId: companyId).document(dosageTemplateId)
+//    }
+    func updateSavedReadingAmount(companyId:String, readingTemplateId:String,newArray:[String]) async throws {
+        try await  ReadingsTemplateDocument(readingTemplateId: readingTemplateId,companyId: companyId)
+            .updateData([
+                "amount":newArray
+                        ])
     }
-    func TaskGroupCollection(companyId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/settings/taskGroup/taskGroup")
-    }
-    func updateSavedReadingAmount(companyId:String, readingTemplateId:String,newArray:[String]) {
-        
-    }
-    func updateSavedDosageAmount(companyId:String, dosageTemplateId:String,newArray:[String]) {
-        
+    func updateSavedDosageAmount(companyId:String, dosageTemplateId:String,newArray:[String]) async throws {
+        try await  DosageTemplateDocument(dosageTemplateId: dosageTemplateId,companyId: companyId)
+            .updateData([
+                "amount":newArray
+                        ])
     }
 }

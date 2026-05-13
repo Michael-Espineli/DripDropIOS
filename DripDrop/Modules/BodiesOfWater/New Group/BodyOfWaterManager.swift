@@ -44,6 +44,7 @@ struct BodyOfWater:Identifiable, Codable,Equatable,Hashable{
     var width:[String]?
     var photoUrls:[DripDropStoredImage]?
     var lastFilled:Date
+    var isActive:Bool
     init(
         id: String,
         name :String,
@@ -57,7 +58,8 @@ struct BodyOfWater:Identifiable, Codable,Equatable,Hashable{
         depth : [String]? = nil,
         width : [String]? = nil,
         photoUrls : [DripDropStoredImage]? = nil,
-        lastFilled : Date
+        lastFilled : Date,
+        isActive : Bool
 
     ){
         self.id = id
@@ -73,6 +75,7 @@ struct BodyOfWater:Identifiable, Codable,Equatable,Hashable{
         self.width = width
         self.photoUrls = photoUrls
         self.lastFilled = lastFilled
+        self.isActive = isActive
 
     }
         enum CodingKeys:String, CodingKey {
@@ -89,6 +92,7 @@ struct BodyOfWater:Identifiable, Codable,Equatable,Hashable{
             case width = "width"
             case photoUrls = "photoUrls"
             case lastFilled = "lastFilled"
+            case isActive = "isActive"
 
         }
 }
@@ -142,7 +146,16 @@ final class MockBodyOfWaterManager:BodyOfWaterManagerProtocol {
     }
     func getSpecificBodyOfWater(companyId: String,bodyOfWaterId:String) async throws -> BodyOfWater{
         print("Upload Successful")
-        return BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
+        return BodyOfWater(
+            id: "",
+            name: "",
+            gallons: "",
+            material: "",
+            customerId: "",
+            serviceLocationId: "",
+            lastFilled: Date(),
+            isActive: true
+        )
 
     }
     func getAllBodiesOfWaterByServiceLocationIdAndCustomerId(serviceLocationId: String, customerId: String, companyId: String) async throws -> [BodyOfWater] {

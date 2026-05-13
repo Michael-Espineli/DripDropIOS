@@ -1,3 +1,16 @@
+//
+//  LaborContractRepository.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 1/27/26.
+//
+import SwiftUI
+import Firebase
+import StripeCore
+import BackgroundTasks
+import FirebaseCore
+import FirebaseFirestore
+
 protocol LaborContractRepository {
     func fetchContracts(for userId: String) async throws -> [LaborContract]
     func save(_ contract: LaborContract) async throws

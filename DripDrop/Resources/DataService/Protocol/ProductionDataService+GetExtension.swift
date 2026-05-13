@@ -45,7 +45,6 @@ extension ProductionDataService {
    
 
     func getEmailConfigurationSettings(companyId:String) async throws -> CompanyEmailConfiguration {
-        
         return try await CompanyEmailConfigurationDocument(companyId: companyId)
             .getDocument(as:CompanyEmailConfiguration.self)
     }
@@ -60,28 +59,12 @@ extension ProductionDataService {
 
     func searchForUsers(searchTerm:String) async throws -> [DBUser] {
         var userList:[DBUser] = []
-
-        if searchTerm.contains(" ") || searchTerm.count <= 10 {
-            
             userList.append(contentsOf: try await userCollection()
-                .whereField("firstName", isGreaterThanOrEqualTo: searchTerm)
+                .whereField("email", isGreaterThanOrEqualTo: searchTerm.lowercased())
+                .whereField("accountType", isEqualTo: "Company")
                 .limit(to: 5)
                 .getDocuments(as:DBUser.self))
-            
-            userList.append(contentsOf: try await userCollection()
-                .whereField("lastName", isGreaterThanOrEqualTo: searchTerm)
-                .limit(to: 5)
-                .getDocuments(as:DBUser.self))
-
-        } else {
-            userList = try await userCollection()
-                .whereField("id", isEqualTo: searchTerm)
-                .getDocuments(as:DBUser.self)
-            userList.append(contentsOf: try await userCollection()
-                .whereField("email", isGreaterThanOrEqualTo: searchTerm)
-                .limit(to: 5)
-                .getDocuments(as:DBUser.self))
-        }
+        
         return userList
     }
     func getPersonalAlertsCount(userId:String) async throws -> Int {
@@ -210,7 +193,7 @@ extension ProductionDataService {
     }
     
     func getAllUserAvailableCompanies(userId:String) async throws ->[UserAccess]{
-        print("Attempting to get User Access \(userId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
+        print("      [ProductionDataService][getAllUserAvailableCompanies] Attempting to get User Access \(userId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
         return try await userAccessCollection(userId: userId)
             .getDocuments(as:UserAccess.self) // DEVELOPER FIX LATER, BUT FOR NOW I WANNA TEST WHAT IT LOOKS LIKE WITH OUT HAVING A COMPANY
         //        return []
@@ -901,18 +884,27 @@ extension ProductionDataService {
         
             .getDocuments(as:Chat.self)
     }
+    func getrecentChatsByUser(userId:String, numberOfChats:Int) async throws -> [Chat] {
+        return try await chatCollection()
+            .whereField("participantIds", arrayContains: userId)
+            .limit(to: numberOfChats)
+            .order(by: "mostRecentChat", descending: true)
+            .getDocuments(as:Chat.self)
+    }
     func getSpecificChat(chatId:String) async throws ->Chat{
         
         return try await chatDocument(chatId: chatId)
             .getDocument(as: Chat.self)
         //            .getDocuments(as:Equipment.self)
     }
-    func getChatBySenderAndReceiver(companyId:String,senderId:String,receiverId:String) async throws ->Chat? {
+    func getChatBySenderAndReceiver(senderId:String,receiverId:String) async throws ->Chat? {
+        print("SenderId: \(senderId)")
+        print("ReceiverId: \(receiverId)")
         let chats = try await chatCollection()
-            .whereField("participantIds", arrayContains: senderId)
+        .whereField("participantIds", in: [[senderId,receiverId],[receiverId,senderId]])
             .getDocuments(as: Chat.self)
-        print("Chats \(chats)")
-        return chats.first(where: {$0.participantIds.contains(receiverId)})
+        print("Chats \(chats.count)")
+        return chats.first
     }
     
     func getChatsByCompany(companyId: String) async throws ->[Chat]{
@@ -954,9 +946,18 @@ extension ProductionDataService {
             .order(by: "date", descending: true)
             .getDocuments(as:StopData.self)
     }
+    func getStopDataByServiceStopIdAndLocationId(companyId:String,serviceStopId: String,locationId:String)async throws->[StopData] {
+        return try await stopDataCollection(companyId: companyId)
+            .whereField("serviceStopId", isEqualTo: serviceStopId)
+            .whereField("serviceLocationId", isEqualTo: locationId)
+            .order(by: "date", descending: false)
+            .getDocuments(as:StopData.self)
+    }
+
     func getStopDataByServiceStopIdAndBodyOfWaterId(companyId:String,serviceStopId: String,bodyOfWaterId:String)async throws->[StopData]{
         //Memory Leak
-        print("Getting Stop Data for >> \(serviceStopId) and Body Of Water >> \(bodyOfWaterId)")
+        
+        print("      [ProductionDataService][getStopDataByServiceStopIdAndBodyOfWaterId] serviceStopId: \(serviceStopId), bodyOfWaterId:\(bodyOfWaterId)")
         return try await stopDataCollection(companyId: companyId)
             .whereField("serviceStopId", isEqualTo: serviceStopId)
             .whereField("bodyOfWaterId", isEqualTo: bodyOfWaterId)
@@ -1193,7 +1194,8 @@ extension ProductionDataService {
                                           observation: [], bodyOfWaterId: "",
                                           customerId: "",
                                           serviceLocationId: "",
-                                          userId: "")
+                                          userId: "",
+                                          equipmentMeasurements: [])
     }
     func readAllHistory(companyId:String,customer : Customer) async throws -> [StopData]{
         print("Trying to get data")
@@ -1217,6 +1219,20 @@ extension ProductionDataService {
             .whereField(Invite.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
             .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: "Pending")
             .getDocuments(as:Invite.self)
+    }
+    func getUserInvitesByStatus(userId:String,status : String) async throws ->[Invite] {
+        if status == "All" {
+            return try await inviteCollection()
+                .whereField(Invite.CodingKeys.userId.rawValue, isEqualTo: userId)
+                .getDocuments(as:Invite.self)
+            
+        } else {
+            return try await inviteCollection()
+                .whereField(Invite.CodingKeys.userId.rawValue, isEqualTo: userId)
+                .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: status)
+                .getDocuments(as:Invite.self)
+            
+        }
     }
     func getAllAcceptedCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
@@ -1344,16 +1360,17 @@ extension ProductionDataService {
         var recurringServiceStopCount = 0
         let doc = try await SettingsCollection(companyId: companyId).document("recurringServiceStops").getDocument(as: Increment.self)
         recurringServiceStopCount = doc.increment
-        sleep(1)
+        print("")
+        print("      [ProductionDataService][getRecurringServiceStopCount] recurringServiceStopCount: \(recurringServiceStopCount)")
         let updatedRecurringServiceStopCount = recurringServiceStopCount + 1
         
         try await SettingsCollection(companyId: companyId).document("recurringServiceStops")
             .updateData([
                 "increment": updatedRecurringServiceStopCount
             ])
-        print("recurringServiceStop Count " + String(updatedRecurringServiceStopCount))
+        print("")
+        print("      [ProductionDataService][getRecurringServiceStopCount] RSS Count: " + String(updatedRecurringServiceStopCount))
         return updatedRecurringServiceStopCount
-        //        return 2
         
     }
     func getAllWorkOrderTemplate(companyId:String,workOrderId:String) async throws -> JobTemplate{

@@ -15,6 +15,15 @@ enum SignInFormLabels {
     case email
 
 }
+enum SignUpFormLabels {
+    case firstName
+    case lastName
+    case companyName
+    case email
+    case password
+    case confirmPassword
+
+}
 
 enum NewContactFormLabels {
     case name

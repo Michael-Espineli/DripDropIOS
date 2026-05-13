@@ -31,49 +31,83 @@ struct DripDropAlertCardSmall: View {
                     if dripDropAlert.itemId != "" {
                         switch dripDropAlert.category {
                         case .taskGroups:
-                            Text("Task Groups")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .managementTables:
                             print(".managementTables")
                         case .profile:
-                            print("reports Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .dashBoard:
                             print("dashBoard Does Not Need Item")
                         case .dailyDisplay:
                             print("dailyDisplay Does Not Need Item")
                         case .routeBuilder:
-                            print("routeBuilder Need more complex Logic")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .management:
-                            print("Developer Make function for getting management by Id")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .pnl:
-                            print("PNL Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .companyProfile:
-                            print("reports Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .reports:
-                            print("reports Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .readingsAndDosages:
                             print("routeBuilder Need more complex Logic")
                         case .calendar:
-                            print("Calendar Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .maps:
-                            print("maps Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .companyAlerts:
-                            print("companyAlerts Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .personalAlerts:
-                            print("personalAlerts Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .marketPlace:
-                            print("MarketPlace Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .jobPosting:
-                            print("JobPosting Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .feed:
-                            print("Feed Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         case .companyRouteOverView:
-                            print("reports Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                  
                         case .settings:
-                            print("Settings Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                
                         case .alerts:
-                            print("alerts Not Built Out Yet")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                             //A
                         case .accountsPayable:
                             masterDataManager.selectedAccountsPayableInvoice = VM.stripeInvoice
@@ -120,7 +154,7 @@ struct DripDropAlertCardSmall: View {
                             
                             //L
                         case .receivedLaborContracts:
-                            print("labor Contract - \(VM.laborContract?.id)")
+                            print("labor Contract - \(String(describing: VM.laborContract?.id))")
                             masterDataManager.selectedRecurringLaborContract = VM.laborContract
                             
                             //S
@@ -152,7 +186,25 @@ struct DripDropAlertCardSmall: View {
                             print("externalRoutesOverview Not Built Out Yet")
 
                         case .sentLaborContracts:
-                            print("Developer")
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
+                        case .emailConfirguration:
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
+                        case .companyInfo:
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
+                        case .manageSubscriptions:
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
+                        case .stripeConfiguration:
+                            print(" please build out")
+            #warning("Update 2.5   please build out")
+                            
                         }
                     }
                     print("Category - \(dripDropAlert.category)")

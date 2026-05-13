@@ -43,16 +43,16 @@ struct CompanyUserDetailView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     
     @EnvironmentObject var dataService : ProductionDataService
-    
+    @EnvironmentObject var techListVM : TechListViewModel
+
     @StateObject var VM : CompanyUserDetailViewModel
     
-    @State var receivedCompanyUser:CompanyUser
-    init(dataService:any ProductionDataServiceProtocol,companyUser:CompanyUser) {
+    init(dataService:any ProductionDataServiceProtocol,companyUserId:String) {
         _VM = StateObject(wrappedValue: CompanyUserDetailViewModel(dataService: dataService))
-        _receivedCompanyUser = State(wrappedValue: companyUser)
+        _companyUserId = State(wrappedValue: companyUserId)
     }
-    @State var companyUser:CompanyUser? = nil
-    
+    @State var companyUserId:String
+
     @State private var showSheet:Bool = false
     @State var showNewPerformaceHistory:Bool = false
     @State var showPerformaceHistory:Bool = false
@@ -62,6 +62,9 @@ struct CompanyUserDetailView: View {
     
     @State var tech: DBUser? = nil
     
+    private var companyUser: CompanyUser? {
+        techListVM.companyUsers.first { $0.id == companyUserId }
+    }
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -76,7 +79,6 @@ struct CompanyUserDetailView: View {
         }
         .task{
             do {
-                companyUser = receivedCompanyUser
                 if let companyUser, let company = masterDataManager.currentCompany {
                     try await VM.onLoad(companyId: company.id, companyUser: companyUser)
                 } else {
@@ -87,18 +89,6 @@ struct CompanyUserDetailView: View {
                 print(error)
             }
         }
-        .onChange(of: masterDataManager.selectedCompanyUser, perform: { user in
-            Task{
-                if let user {
-                    companyUser = user
-                    if let companyUser, let currentCompany = masterDataManager.currentCompany {
-                        try await VM.onLoad(companyId: currentCompany.id, companyUser: companyUser)
-                    } else {
-                        print("Company User Error")
-                    }
-                }
-            }
-        })
         .toolbar{
             ToolbarItem(content: {
                 Button(action: {
@@ -557,41 +547,43 @@ extension CompanyUserDetailView {
     }
     var performaceHistory: some View {
         ScrollView{
-            HStack{
-                Spacer()
-                Text("Performace History")
-                    .font(.title)
-                Spacer()
-            }
-            HStack{
-                Button(action: {
-                    showNewPerformaceHistory.toggle()
-                }, label: {
-                    Text("Add")
-                        .modifier(AddButtonModifier())
-                })
-                .sheet(isPresented: $showNewPerformaceHistory, content: {
-                    AddNewPerformanceHistory(dataService: dataService, companyUser: receivedCompanyUser)
-                })
-                Spacer()
-                Button(action: {
-                    showPerformaceHistory.toggle()
-                }, label: {
-                    HStack{
-                        Text("See More")
-                        Image(systemName: "arrow.right")
-                    }
-                    .foregroundColor(Color.poolRed)
-                })
-                .sheet(isPresented: $showPerformaceHistory, content: {
-                    PerformaceHistoryList(dataService: dataService, companyUser: receivedCompanyUser)
-                })
-            }
-            
-            Rectangle()
-                .frame(height: 1)
-            ForEach(VM.performaceHistoryList){ performace in
-                PerformanceHistoryCardView(performanceHistory: performace)
+            if let companyUser {
+                HStack{
+                    Spacer()
+                    Text("Performace History")
+                        .font(.title)
+                    Spacer()
+                }
+                HStack{
+                    Button(action: {
+                        showNewPerformaceHistory.toggle()
+                    }, label: {
+                        Text("Add")
+                            .modifier(AddButtonModifier())
+                    })
+                    .sheet(isPresented: $showNewPerformaceHistory, content: {
+                        AddNewPerformanceHistory(dataService: dataService, companyUser: companyUser)
+                    })
+                    Spacer()
+                    Button(action: {
+                        showPerformaceHistory.toggle()
+                    }, label: {
+                        HStack{
+                            Text("See More")
+                            Image(systemName: "arrow.right")
+                        }
+                        .foregroundColor(Color.poolRed)
+                    })
+                    .sheet(isPresented: $showPerformaceHistory, content: {
+                        PerformaceHistoryList(dataService: dataService, companyUser: companyUser)
+                    })
+                }
+                
+                Rectangle()
+                    .frame(height: 1)
+                ForEach(VM.performaceHistoryList){ performace in
+                    PerformanceHistoryCardView(performanceHistory: performace)
+                }
             }
         }
     }

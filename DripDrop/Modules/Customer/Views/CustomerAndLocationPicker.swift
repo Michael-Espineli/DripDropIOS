@@ -23,7 +23,7 @@ final class CustomerAndLocationPickerModel:ObservableObject{
         Task{
             do {
                 self.customers = try await dataService.getCustomersActiveAndLastName(companyId: companyId, active: true, lastNameHigh: false)
-
+                print("[CustomerAndLocationPickerModel][onLoad] customers count: \(self.customers.count)")
                 self.displayCustomer = customers
             } catch {
                 print(error)
@@ -64,7 +64,8 @@ final class CustomerAndLocationPickerModel:ObservableObject{
             companyId: companyId,
             customerId: customerId
         )
-  
+        print("[CustomerAndLocationPickerModel][getAllCustomerServiceLocationsById] serviceLocations: \(self.serviceLocations.count)")
+
     }
 }
 struct CustomerAndLocationPicker: View {
@@ -95,22 +96,34 @@ struct CustomerAndLocationPicker: View {
             Color.listColor.ignoresSafeArea()
             VStack{
                 if customer.id == "" {
+                    Text("Customer Picker")
+                        .bold(true)
+                        .padding(.top,8)
+                    Divider()
                     customerList
                     searchBar
                 } else {
-                    HStack{
-                        Button(action: {
-                            customer.id = ""
-                        }, label: {
-                            HStack{
-                                Image(systemName: "chevron.left")
-                                Text("Back")
-                            }
-                            .modifier(DismissButtonModifier())
-                        })
-                        .padding(8)
-                        Spacer()
+                    ZStack{
+                        HStack{
+                            Button(action: {
+                                customer.id = ""
+                            }, label: {
+                                HStack{
+                                    Image(systemName: "chevron.left")
+                                    Text("Back")
+                                }
+                                .modifier(DismissButtonModifier())
+                            })
+                            .padding(8)
+                            Spacer()
+                        }
+                        HStack{
+                            Spacer()
+                            Text("Location Picker")
+                            Spacer()
+                        }
                     }
+                    
                     locationList
                     searchBar
                 }
@@ -122,7 +135,7 @@ struct CustomerAndLocationPicker: View {
                     VM.onLoad(companyId: company.id)
                 }
             } catch {
-                print("Error")
+                print("[CustomerAndLocationPicker][task]Error \(error)")
                 
             }
         }

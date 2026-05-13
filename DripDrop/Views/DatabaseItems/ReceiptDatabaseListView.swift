@@ -168,17 +168,10 @@ extension ReceiptDatabaseListView {
                     Button(action: {
                         showFilter.toggle()
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 50, height: 50)
-                            Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(Color.orange)
-                        }
+                        Image(systemName: "slider.horizontal.3")
+                            .modifier(FilterIconModifer())
                     })
-                    .padding(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .padding(8)
                     .sheet(isPresented: $showFilter, content: {
                         VStack{
                             Text("Filter Information")
@@ -189,17 +182,10 @@ extension ReceiptDatabaseListView {
                     Button(action: {
                         showAddNew.toggle()
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 50, height: 50)
-                            Image(systemName: "plus.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(Color.green)
-                        }
+                        Image(systemName: "plus")
+                            .modifier(PlusIconModifer())
                     })
-                    .padding(10)
+                    .padding(8)
                     .confirmationDialog("Select Type", isPresented: self.$showAddNew, actions: {
                         Button(action: {
                             self.pickerType = .manual
@@ -242,17 +228,10 @@ extension ReceiptDatabaseListView {
                     Button(action: {
                         showSearch.toggle()
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 50, height: 50)
-                            Image(systemName: "magnifyingglass.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(Color.blue)
-                        }
+                        Image(systemName: "magnifyingglass")
+                            .modifier(SearchIconModifer())
                     })
-                    .padding(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .padding(10)
                 }
             }
             if showSearch {

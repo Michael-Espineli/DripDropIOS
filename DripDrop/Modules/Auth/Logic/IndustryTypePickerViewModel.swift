@@ -41,6 +41,7 @@ final class IndustryTypePickerViewModel:ObservableObject{
             commonZipCodes.append(zipCode)
             commonZipCodes.removeDuplicates()
             self.zipCode = ""
+            self.placemark = nil
         }
     }
 }

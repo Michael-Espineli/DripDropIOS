@@ -17,6 +17,48 @@ extension ProductionDataService {
     //----------------------------------------------------
     //                    Update Functions
     //----------------------------------------------------
+    func updateCompanyName(companyId:String,name:String) async throws{
+        try await CompanyDocument(companyId: companyId)
+            .updateData([
+                "name": name
+            ])
+    }
+    func updateCompanyEmail(companyId:String,email:String) async throws{
+        try await CompanyDocument(companyId: companyId)
+            .updateData([
+                "email": email
+            ])
+    }
+    func updateCompanyPhoneNumber(companyId:String,phoneNumber:String) async throws{
+        try await CompanyDocument(companyId: companyId)
+            .updateData([
+                "phoneNumber": phoneNumber
+            ])
+    }
+    func updateCompanyServicesOffered(companyId:String,servicesOffered:[String]) async throws{
+        try await CompanyDocument(companyId: companyId)
+            .updateData([
+                "services": servicesOffered
+            ])
+    }
+    func updateCompanyZipCodes(companyId:String,serviceZipCodes:[String]) async throws{
+        try await CompanyDocument(companyId: companyId)
+            .updateData([
+                "serviceZipCodes": serviceZipCodes
+            ])
+    }
+    func updateCompanyYelpURl(companyId:String,yelpURL:String) async throws{
+        try await CompanyDocument(companyId: companyId)
+            .updateData([
+                "yelpURL": yelpURL
+            ])
+    }
+    func updateCompanyWebUrl(companyId:String,websiteUrl:String) async throws{
+        try await CompanyDocument(companyId: companyId)
+            .updateData([
+                "websiteURL": websiteUrl
+            ])
+    }
     func updateCustomerEmailConfig(companyId:String,customerEmailConfigId:String,emailIsOn:Bool) async throws {
         try await CustomerEmailConfigurationDocument(companyId: companyId, id: customerEmailConfigId)
             .updateData([
@@ -173,7 +215,19 @@ extension ProductionDataService {
             
         ])
     }
-
+    func markInviteAsRejected(invite:Invite) async throws {
+        let itemRef = inviteDoc(inviteId: invite.id)
+        
+        // Set the "capital" field of the city 'DC'
+        try await itemRef.updateData([
+            Invite.CodingKeys.status.rawValue:"Rejected"
+            
+        ])
+    }
+    func updateVehical(companyId:String,vehicle:Vehical,newVehical:Vehical) async throws {
+        
+        print("[ProductionDataService][updateVehical]Need to add Logic")
+    }
     func editDataBaseItem(
         companyId:String,
         dataBaseItemId:String,
@@ -303,7 +357,7 @@ extension ProductionDataService {
         
         //        let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
         
-        var history:History =  History(id: UUID().uuidString, date: Date(), tech: user.firstName ?? "UNKNOWN", changes: [])
+        var history:History =  History(id: UUID().uuidString, date: Date(), tech: user.firstName, changes: [])
         var historyArray:[String] = []
         var pushHistoryArray:[String] = []
         
@@ -316,7 +370,7 @@ extension ProductionDataService {
         if originalServiceStop.tech != newServiceStop.tech {
             counter = counter + 1
             dateAndTech = " ** " + (originalServiceStop.tech) + " on " + fullDate(date: Date()) + " changed ** "
-            valueChange = " ** " + (originalServiceStop.tech) + " --> " + (newServiceStop.tech ?? "") + " ** "
+            valueChange = " ** " + (originalServiceStop.tech) + " --> " + (newServiceStop.tech) + " ** "
             historyArray.append(valueChange)
             
             let ref = db.collection("serviceStops").document(originalServiceStop.id)

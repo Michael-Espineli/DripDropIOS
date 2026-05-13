@@ -447,7 +447,6 @@ final class CustomerViewModel:ObservableObject{
         var DBAddress = Address(streetAddress: customer.billingAddress.streetAddress, city: customer.billingAddress.city, state: customer.billingAddress.state, zip: customer.billingAddress.zip,latitude: 0.0,longitude: 0.0)
         
         let fulladdress = DBAddress.streetAddress + " " + DBAddress.city + " " + DBAddress.state + " " + DBAddress.zip
-        let fullName = customer.firstName + " " + customer.lastName
         let geoCoder = CLGeocoder()
         
         geoCoder.geocodeAddressString(fulladdress) {
@@ -490,14 +489,7 @@ final class CustomerViewModel:ObservableObject{
         let fullName = customer.firstName + " " + customer.lastName
         let geoCoder = CLGeocoder()
         
-        geoCoder.geocodeAddressString(fulladdress) {
-            placemarks, error in
-            let placemark = placemarks?.first
-            self.Coordinates = placemark?.location?.coordinate
-
-                try? ServiceLocationManager.shared.updateServiceLocationLatLong(companyId: companyId, serviceLocationId: serviceLocationId, lat: placemark?.location?.coordinate.latitude ?? 69, long: placemark?.location?.coordinate.longitude ?? 69)
  
-        }
 
         
         let pushCoordinates = self.Coordinates
@@ -521,12 +513,23 @@ final class CustomerViewModel:ObservableObject{
         
         print("Uploading Service Location For >> \(serviceLocation.customerName)")
         try await ServiceLocationManager.shared.uploadCustomerServiceLocations(companyId: companyId, customer: finalCustomer,serviceLocation:serviceLocation)
+        
+//        I think with the address auto complete the zip code always exists
+//        geoCoder.geocodeAddressString(fulladdress) {
+//            placemarks, error in
+//            let placemark = placemarks?.first
+//            self.Coordinates = placemark?.location?.coordinate
+//
+//                try? ServiceLocationManager.shared.updateServiceLocationLatLong(companyId: companyId, serviceLocationId: serviceLocationId, lat: placemark?.location?.coordinate.latitude ?? 69, long: placemark?.location?.coordinate.longitude ?? 69)
+// 
+//        }
+        
         try await dataService.uploadCustomerContact(companyId: companyId, customerId: customerId, contact: serviceLocation.mainContact)
 
         print("Uploading Body Of Water For >> \(serviceLocation.customerName)")
         try await dataService.uploadCustomerContact(companyId: companyId, customerId: customerId, contact: serviceLocation.mainContact)
 
-        try await BodyOfWaterManager.shared.uploadServiceLocationBodyOfWater(
+        try await dataService.uploadServiceLocationBodyOfWater(
             companyId: companyId,
             bodyOfWater: BodyOfWater(
                 id: bodyOfWaterId,
@@ -540,7 +543,8 @@ final class CustomerViewModel:ObservableObject{
                 length: [],
                 depth: [],
                 width: [],
-                lastFilled: Date()
+                lastFilled: Date(),
+                isActive: true
             )
         )
         print(
@@ -549,24 +553,27 @@ final class CustomerViewModel:ObservableObject{
         let filterId = UUID().uuidString
         let pumpId = UUID().uuidString
         
-        try await EquipmentManager.shared.addNewEquipmentWithParts(
+        try await dataService.addNewEquipmentWithParts(
             companyId: companyId,
             equipment: Equipment(
                 id: filterId,
                 name:"Filter 1",
-                category: .filter,
+                type: .filter,
+                typeId: "",
                 make: "",
+                makeId: "",
                 model: "",
+                modelId: "",
                 dateInstalled: Date(),
                 status: .operational,
                 needsService: true,
                 lastServiceDate: Date(),
-                serviceFrequency: "Month",
-                serviceFrequencyEvery: "6",
+                serviceFrequency: 6,
+                serviceFrequencyEvery: .monthly,
                 nextServiceDate: getNextServiceDate(
                     lastServiceDate: Date(),
-                    every: "6",
-                    frequency: "Month"
+                    frequency: 6,
+                    every: .monthly
                 ),
                 
                 notes: "",
@@ -578,14 +585,17 @@ final class CustomerViewModel:ObservableObject{
             )
         )
         // Add Basic Parts for Filter
-        try await EquipmentManager.shared.addNewEquipmentWithParts(
+        try await dataService.addNewEquipmentWithParts(
             companyId: companyId,
             equipment: Equipment(
                 id: pumpId,
                 name:"Pump 1",
-                category: .pump,
+                type: .pump,
+                typeId: "",
                 make: "",
+                makeId: "",
                 model: "",
+                modelId: "",
                 dateInstalled: Date(),
                 status: .operational,
                 needsService: false,

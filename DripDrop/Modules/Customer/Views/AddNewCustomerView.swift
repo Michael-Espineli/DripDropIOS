@@ -55,10 +55,12 @@ struct AddNewCustomerView: View {
     @State var serviceLocationMainContactNotes:String = ""
     
     @State var serviceLocationMainContactGateCode:String = ""
-    @State var serviceLocationMainContactNickName:String = ""
+    @State var serviceLocationMainContactNickName:String = "Main"
+    @State var locationHasSeperateContact:Bool = false
 
     @State var estimatedTime:String = "15"
     @State var dogName:String = ""
+    @State var isPreText:Bool = false
 
 
     
@@ -68,8 +70,17 @@ struct AddNewCustomerView: View {
     @State var showAlert:Bool = false
     @State var alertMessage:String = ""
     @State var addFirstServiceLocation:Bool = false
+    
     //Custom
-    @State var billingAddress:Address = Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0)
+    @State var billingAddressQuery:String = ""
+
+    @State var billingAddress:Address? = nil
+    
+    @State var serviceLocationAddressQuery:String = ""
+    @State var serviceLocationAddress:Address? = nil
+    
+    @State var useDifferentBillingAddress:Bool = false
+
     @State var testAddress:Address = Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0)
 
     @State var serviceLocation:ServiceLocation = ServiceLocation(
@@ -102,7 +113,8 @@ struct AddNewCustomerView: View {
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     @FocusState private var focusedField: NewCustomerFormLabels?
     @State var enableSheetDismiss:Bool = false
@@ -116,11 +128,6 @@ struct AddNewCustomerView: View {
                     .font(.title)
                     .bold()
                 basicInfo
-                Rectangle()
-                    .frame(height: 1)
-                billingAddressView
-                Rectangle()
-                    .frame(height: 1)
                 serviceLocationView
                 Rectangle()
                     .frame(height: 1)
@@ -151,188 +158,7 @@ struct AddNewCustomerView: View {
                    case .billingAddressState:
                        focusedField = .billingAddressZip
                    case .billingAddressZip:
-                       if addFirstServiceLocation {
                            focusedField = .serviceLocationMainContactNickName
-                       } else {
-                           
-                               Task{
-                                   do {
-                                       
-                               if let company = masterDataManager.currentCompany {
-                                   let customerId = UUID().uuidString
-                                   
-                                   if billingAddressStreetAddress == "" {
-                                       showAlert = true
-                                       alertMessage = "Billing Street Address Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   if billingAddressCity == "" {
-                                       showAlert = true
-                                       alertMessage = "Billing City Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   if billingAddressState == "" {
-                                       showAlert = true
-                                       alertMessage = "Billing State Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   if billingAddressZip == "" {
-                                       showAlert = true
-                                       alertMessage = "Billing Zip Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   if serviceLocationAddressStreetAddress == "" {
-                                       showAlert = true
-                                       alertMessage = "Service Location Street Address Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   if serviceLocationAddressCity == "" {
-                                       showAlert = true
-                                       alertMessage = "Service Location City Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   if serviceLocationAddressState == "" {
-                                       showAlert = true
-                                       alertMessage = "Service Location State Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   if serviceLocationAddressZip == "" {
-                                       showAlert = true
-                                       alertMessage = "Service Location Zip Empty"
-                                       print(alertMessage)
-                                       return
-                                   }
-                                   guard let time = Int(estimatedTime) else {
-                                       throw ServiceLocationError.invalidTime
-                                   }
-                                   let fullName = firstName + " " + lastName
-                                   
-                                   let pushFirstName = firstName
-                                   let pushLastName = lastName
-                                   let pushEmail = email
-                                   let pushAddress = billingAddress
-                                   let pushPhoneNumber = phoneNumber
-                                   let pushRate = rate
-                                   let pushCompany = companyName
-                                   let pushDisplayAsCompany = displayAsCompany
-                                   
-                         
-                                           if addFirstServiceLocation {
-                                               try await customerVM.addNewCustomerWithLocation(
-                                                customer:Customer(
-                                                    id: customerId,
-                                                    firstName:pushFirstName,
-                                                    lastName:pushLastName,
-                                                    email: pushEmail ,
-                                                    billingAddress: Address(
-                                                        streetAddress: billingAddressStreetAddress,
-                                                        city: billingAddressCity,
-                                                        state: billingAddressState,
-                                                        zip: billingAddressZip,
-                                                        latitude: 0,
-                                                        longitude: 0
-                                                    ),
-                                                    phoneNumber: pushPhoneNumber,
-                                                    active: true,
-                                                    company: pushCompany,
-                                                    displayAsCompany: pushDisplayAsCompany,
-                                                    hireDate:Date(),
-                                                    billingNotes: "",
-                                                    linkedInviteId: UUID().uuidString
-                                                ),
-                                                serviceLocation: ServiceLocation(
-                                                    id: UUID().uuidString,
-                                                    nickName: serviceLocationMainContactNickName,
-                                                    address: Address(
-                                                        streetAddress: serviceLocationAddressStreetAddress,
-                                                        city: serviceLocationAddressCity,
-                                                        state: serviceLocationAddressState,
-                                                        zip: serviceLocationAddressZip,
-                                                        latitude: 0,
-                                                        longitude: 0
-                                                    ),
-                                                    gateCode: serviceLocationMainContactGateCode,
-                                                    dogName: [dogName],
-                                                    estimatedTime: time,
-                                                    mainContact: Contact(
-                                                        id: UUID().uuidString,
-                                                        name: serviceLocationMainContactName,
-                                                        phoneNumber: serviceLocationMainContactPhoneNumber,
-                                                        email: serviceLocationMainContactEmail,
-                                                        notes: contactNotes
-                                                    ),
-                                                    notes: notes,
-                                                    bodiesOfWaterId: [""],
-                                                    rateType: "",
-                                                    laborType:"",
-                                                    chemicalCost:"",
-                                                    laborCost: "",
-                                                    rate: String(
-                                                        rate
-                                                    ),
-                                                    customerId: customerId,
-                                                    customerName: fullName
-                                                ),
-                                                companyId: company.id
-                                               )
-                                           } else {
-                                               try await customerVM.addNewCustomerWithOutLocation(
-                                                customer:Customer(
-                                                    id: customerId,
-                                                    firstName:pushFirstName,
-                                                    lastName:pushLastName,
-                                                    email: pushEmail ,
-                                                    billingAddress: Address(
-                                                        streetAddress: billingAddressStreetAddress,
-                                                        city: billingAddressCity,
-                                                        state: billingAddressState,
-                                                        zip: billingAddressZip,
-                                                        latitude: 0,
-                                                        longitude: 0
-                                                    ),
-                                                    phoneNumber: pushPhoneNumber,
-                                                    active: true,
-                                                    company: pushCompany,
-                                                    displayAsCompany: pushDisplayAsCompany,
-                                                    hireDate:Date(),
-                                                    billingNotes: "",
-                                                    linkedInviteId: UUID().uuidString
-                                                ),
-                                                companyId: company.id
-                                               )
-                                           }
-                                           showAlert = true
-                                           alertMessage = "Success"
-                                           print(alertMessage)
-                                   }
-                                   
-                                   firstName = ""
-                                   lastName = ""
-                                   email = ""
-                                   billingAddress = Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0)
-                                   phoneNumber = ""
-                                   rate = 0
-                                   companyName = ""
-                                   displayAsCompany = false
-                                       enableSheetDismiss = true
-
-                                   dismiss()
-                                   } catch {
-                                       showAlert = true
-                                       print(error)
-                                       alertMessage = "Failed To Upload"
-                                       print(alertMessage)
-                                       return
-                                   }
-                           }
-                       }
                    case .serviceLocationMainContactNickName:
                        focusedField = .serviceLocationMainContactGateCode
                    case .serviceLocationMainContactGateCode:
@@ -359,191 +185,191 @@ struct AddNewCustomerView: View {
                    case .serviceLocationMainContactEmail:
                        focusedField = .serviceLocationMainContactNotes
                    default:
-                       Task{
-                           if let company = masterDataManager.currentCompany {
-                               Task{
-                                   do {
-                               let customerId = UUID().uuidString
-                               
-                               if billingAddressStreetAddress == "" {
-                                   showAlert = true
-                                   alertMessage = "Billing Street Address Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                               if billingAddressCity == "" {
-                                   showAlert = true
-                                   alertMessage = "Billing City Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                               if billingAddressState == "" {
-                                   showAlert = true
-                                   alertMessage = "Billing State Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                               if billingAddressZip == "" {
-                                   showAlert = true
-                                   alertMessage = "Billing Zip Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                               if serviceLocationAddressStreetAddress == "" {
-                                   showAlert = true
-                                   alertMessage = "Service Location Street Address Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                               if serviceLocationAddressCity == "" {
-                                   showAlert = true
-                                   alertMessage = "Service Location City Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                               if serviceLocationAddressState == "" {
-                                   showAlert = true
-                                   alertMessage = "Service Location State Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                               if serviceLocationAddressZip == "" {
-                                   showAlert = true
-                                   alertMessage = "Service Location Zip Empty"
-                                   print(alertMessage)
-                                   return
-                               }
-                                       guard let time = Int(estimatedTime) else {
-                                           throw ServiceLocationError.invalidTime
+                       if let company = masterDataManager.currentCompany {
+                           Task{
+                               do {
+                                   let customerId = UUID().uuidString
+                                   if displayAsCompany {
+                                       if companyName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                           showAlert = true
+                                           alertMessage = "Add FIrst Name"
+                                           print(alertMessage)
+                                           return
                                        }
-                               let fullName = firstName + " " + lastName
-                               
-                               let pushFirstName = firstName
-                               let pushLastName = lastName
-                               let pushEmail = email
-                               let pushAddress = billingAddress
-                               let pushPhoneNumber = phoneNumber
-                               let pushRate = rate
-                               let pushCompany = companyName
-                               let pushDisplayAsCompany = displayAsCompany
-                               
-                           
-                                       
-                                       if addFirstServiceLocation {
-                                           try await customerVM.addNewCustomerWithLocation(
-                                            customer:Customer(
-                                                id: customerId,
-                                                firstName:pushFirstName,
-                                                lastName:pushLastName,
-                                                email: pushEmail ,
-                                                billingAddress: Address(
-                                                    streetAddress: billingAddressStreetAddress,
-                                                    city: billingAddressCity,
-                                                    state: billingAddressState,
-                                                    zip: billingAddressZip,
-                                                    latitude: 0,
-                                                    longitude: 0
-                                                ),
-                                                phoneNumber: pushPhoneNumber,
-                                                active: true,
-                                                company: pushCompany,
-                                                displayAsCompany: pushDisplayAsCompany,
-                                                hireDate:Date(),
-                                                billingNotes: "",
-                                                linkedInviteId: UUID().uuidString
-                                            ),
-                                            serviceLocation: ServiceLocation(
-                                                id: UUID().uuidString,
-                                                nickName: serviceLocationMainContactNickName,
-                                                address: Address(
-                                                    streetAddress: serviceLocationAddressStreetAddress,
-                                                    city: serviceLocationAddressCity,
-                                                    state: serviceLocationAddressState,
-                                                    zip: serviceLocationAddressZip,
-                                                    latitude: 0,
-                                                    longitude: 0
-                                                ),
-                                                gateCode: serviceLocationMainContactGateCode,
-                                                dogName: [dogName],
-                                                estimatedTime: time,
-                                                mainContact: Contact(
-                                                    id: UUID().uuidString,
-                                                    name: serviceLocationMainContactName,
-                                                    phoneNumber: serviceLocationMainContactPhoneNumber,
-                                                    email: serviceLocationMainContactEmail,
-                                                    notes: contactNotes
-                                                ),
-                                                notes: notes,
-                                                bodiesOfWaterId: [""],
-                                                rateType: "",
-                                                laborType:"",
-                                                chemicalCost:"",
-                                                laborCost: "",
-                                                rate: String(
-                                                    rate
-                                                ),
-                                                customerId: customerId,
-                                                customerName: fullName
-                                            ),
-                                            companyId: company.id
-                                           )
-                                       } else {
-                                           try await customerVM.addNewCustomerWithOutLocation(
-                                            customer:Customer(
-                                                id: customerId,
-                                                firstName:pushFirstName,
-                                                lastName:pushLastName,
-                                                email: pushEmail ,
-                                                billingAddress: Address(
-                                                    streetAddress: billingAddressStreetAddress,
-                                                    city: billingAddressCity,
-                                                    state: billingAddressState,
-                                                    zip: billingAddressZip,
-                                                    latitude: 0,
-                                                    longitude: 0
-                                                ),
-                                                phoneNumber: pushPhoneNumber,
-                                                active: true,
-                                                company: pushCompany,
-                                                displayAsCompany: pushDisplayAsCompany,
-                                                hireDate:Date(),
-                                                billingNotes: "",
-                                                linkedInviteId: UUID().uuidString
-                                            ),
-                                            companyId: company.id
-                                           )
+                                   } else {
+                                       if firstName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                           showAlert = true
+                                           alertMessage = "Add FIrst Name"
+                                           print(alertMessage)
+                                           return
                                        }
+                                       if firstName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                           showAlert = true
+                                           alertMessage = "Add First Name"
+                                           print(alertMessage)
+                                           return
+                                       }
+                                   }
+                                   
+                                   if phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
                                        showAlert = true
-                                       alertMessage = "Success"
+                                       alertMessage = "Add phone Number"
                                        print(alertMessage)
-                                       
-                         
-                               
-                               firstName = ""
-                               lastName = ""
-                               email = ""
-                               billingAddress = Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0)
-                               phoneNumber = ""
-                               rate = 0
-                               companyName = ""
-                               displayAsCompany = false
-                                       enableSheetDismiss = true
-
-                               dismiss()
-                                   } catch {
-                                       print("")
-                                       showAlert = true
-                                       print(error)
-                                       alertMessage = "Failed To Upload"
-                                       print(alertMessage)
-                                       print(error)
-                                       print("")
                                        return
                                    }
                                    
+                                   if email.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                       showAlert = true
+                                       alertMessage = "Add email"
+                                       print(alertMessage)
+                                       return
+                                   }
+                                   if !useDifferentBillingAddress {
+                                       //Only Needs ServiceLocation Address
+                                       billingAddress = serviceLocationAddress
+                                   }
+                                    guard let newServiceLocationAddress = serviceLocationAddress else  {
+                                       showAlert = true
+                                       alertMessage = "Billing Street Address Empty"
+                                       print(alertMessage)
+                                       return
+                                   }
+                                    guard let newBillingAddress = billingAddress else  {
+                                       showAlert = true
+                                       alertMessage = "Billing Street Address Empty"
+                                       print(alertMessage)
+                                       return
+                                   }
+                                   let fullName = firstName + " " + lastName
+
+                                   var contact:Contact? = nil
+                                   if locationHasSeperateContact {
+                                       //Use Fields
+                                       if serviceLocationMainContactName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                          showAlert = true
+                                          alertMessage = "Add Contact Name or use Main Contact Information"
+                                          print(alertMessage)
+                                          return
+                                       }
+                                       if serviceLocationMainContactPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                          showAlert = true
+                                          alertMessage = "Add Phone Number or use Main Contact Information"
+                                          print(alertMessage)
+                                          return
+                                       }
+                                       if serviceLocationMainContactEmail.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                          showAlert = true
+                                          alertMessage = "Add Email or use Main Contact Information"
+                                          print(alertMessage)
+                                          return
+                                       }
+                                       
+                                       contact = Contact(
+                                        id: UUID().uuidString,
+                                        name: serviceLocationMainContactName.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        phoneNumber: serviceLocationMainContactPhoneNumber,
+                                        email: serviceLocationMainContactEmail.trimmingCharacters(in: .whitespacesAndNewlines),
+                                        notes: contactNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    )
+
+                                   } else {
+                                       // Use Primary Information
+                                       contact = Contact(
+                                        id: UUID().uuidString,
+                                        name: fullName,
+                                        phoneNumber: phoneNumber,
+                                        email: email,
+                                        notes: ""
+                                       )
+                                   }
+                                   guard let contact else {
+                                       showAlert = true
+                                       alertMessage = "Contact Error"
+                                       print(alertMessage)
+                                       return
+                                   }
+                                   guard let time = Int(estimatedTime) else {
+                                       throw ServiceLocationError.invalidTime
+                                   }
+                                   
+                                   let pushFirstName = firstName
+                                   let pushLastName = lastName
+                                   let pushEmail = email
+                                   let pushPhoneNumber = phoneNumber
+                                   let pushRate = rate
+                                   let pushCompany = companyName
+                                   let pushDisplayAsCompany = displayAsCompany
+                                   
+                                           
+                                   try await customerVM.addNewCustomerWithLocation(
+                                    customer:Customer(
+                                        id: customerId,
+                                        firstName:pushFirstName,
+                                        lastName:pushLastName,
+                                        email: pushEmail ,
+                                        billingAddress: newBillingAddress,
+                                        phoneNumber: pushPhoneNumber,
+                                        active: true,
+                                        company: pushCompany,
+                                        displayAsCompany: pushDisplayAsCompany,
+                                        hireDate:Date(),
+                                        billingNotes: "",
+                                        linkedInviteId: UUID().uuidString
+                                    ),
+                                    serviceLocation: ServiceLocation(
+                                        id: UUID().uuidString,
+                                        nickName: serviceLocationMainContactNickName,
+                                        address: newServiceLocationAddress,
+                                        gateCode: serviceLocationMainContactGateCode,
+                                        dogName: [dogName],
+                                        estimatedTime: time,
+                                        mainContact: contact,
+                                        notes: notes,
+                                        bodiesOfWaterId: [""],
+                                        rateType: "",
+                                        laborType:"",
+                                        chemicalCost:"",
+                                        laborCost: "",
+                                        rate: String(
+                                            rate
+                                        ),
+                                        customerId: customerId,
+                                        customerName: fullName,
+                                        isActive: true
+                                    ),
+                                    companyId: company.id
+                                   )
+                                   showAlert = true
+                                   alertMessage = "Success"
+                                   print(alertMessage)
+                                           
+                                   
+                                   firstName = ""
+                                   lastName = ""
+                                   email = ""
+                                   billingAddress = nil
+                                   serviceLocationAddress = nil
+                                   phoneNumber = ""
+                                   rate = 0
+                                   companyName = ""
+                                   displayAsCompany = false
+                                   enableSheetDismiss = true
+
+                                   dismiss()
+                               } catch {
+                                   print("")
+                                   showAlert = true
+                                   print(error)
+                                   alertMessage = "Failed To Upload"
+                                   print(alertMessage)
+                                   print(error)
+                                   print("")
+                                   return
                                }
+                               
                            }
                        }
+                       
                    }
                }
         }
@@ -581,7 +407,6 @@ extension AddNewCustomerView{
         VStack{
             HStack{
                 Text("First Name")
-                    .font(.headline)
                 TextField(
                     "First Name",
                     text: $firstName
@@ -592,7 +417,6 @@ extension AddNewCustomerView{
             }
             HStack{
                 Text("Last Name")
-                    .font(.headline)
                 
                 TextField(
                     "Last Name",
@@ -637,7 +461,6 @@ extension AddNewCustomerView{
             if displayAsCompany {
                 HStack{
                     Text("Company Name")
-                        .font(.headline)
                     
                     TextField(
                         "Company Name",
@@ -653,7 +476,6 @@ extension AddNewCustomerView{
      
             HStack{
                 Text("Phone Number")
-                    .font(.headline)
                 TextField(
                     "Phone Number",
                     text: $phoneNumber
@@ -667,7 +489,6 @@ extension AddNewCustomerView{
             }
             HStack{
                 Text("Email")
-                    .font(.headline)
                 TextField(
                     "Email",
                     text: $email
@@ -679,210 +500,113 @@ extension AddNewCustomerView{
             }
         }
     }
-    
-    var billingAddressView: some View {
-        VStack{
-                //----------------------------------------
-                //Add Back in During Roll out of Phase 2
-                //----------------------------------------
-
-//            AddressSearchBar(dataService: dataService, address: $testAddress)
-            HStack{
-                Text("Billing Address")
-                    .font(.title)
-                Spacer()
-            }
-            HStack{
-                TextField(
-                    "Street Address",
-                    text: $billingAddressStreetAddress
-                )
-                .modifier(PlainTextFieldModifier())
-                .focused($focusedField, equals: .billingAddressStreetAddress)
-                     .submitLabel(.next)
-            }
-            HStack{
-                TextField(
-                    "City",
-                    text: $billingAddressCity
-                )
-                .modifier(PlainTextFieldModifier())
-                .focused($focusedField, equals: .billingAddressCity)
-                     .submitLabel(.next)
-                TextField(
-                    "State",
-                    text: $billingAddressState
-                )
-                .modifier(PlainTextFieldModifier())
-                .focused($focusedField, equals: .billingAddressState)
-                     .submitLabel(.next)
-                TextField(
-                    "Zip",
-                    text: $billingAddressZip
-                )
-                .modifier(PlainTextFieldModifier())
-                .focused($focusedField, equals: .billingAddressZip)
-                .keyboardType(.decimalPad)
-                .submitLabel(addFirstServiceLocation ? .next : .done)
-            }
-        }
-    }
-    
+ 
     var serviceLocationView: some View {
         VStack{
             HStack{
                 Spacer()
-                Button(action: {
-                    addFirstServiceLocation.toggle()
-                }, label: {
-                    Text(addFirstServiceLocation ?  "Add Location Later" : "Add First Location")
+                Toggle(isOn: $useDifferentBillingAddress, label: {
+                    Text("Use Different Billing Address")
                 })
-                .modifier(AddButtonModifier())
             }
-            if addFirstServiceLocation {
+            if useDifferentBillingAddress {
+                HStack{
+                    Text("Billing Address")
+                        .font(.title)
+                    Spacer()
+                }
+                AddressAutocompleteView(
+                    text: $billingAddressQuery,
+                    selectedAddress: $billingAddress
+                )
+            }
+            
+            Rectangle()
+                .frame(height: 1)
+            VStack{
+                
                 VStack{
-                    Text("Service Location Info")
-                    VStack{
-                        HStack{
-                            Text("Nick Name")
-                                .font(.headline)
-                            TextField(
-                                "Nick Name",
-                                text: $serviceLocationMainContactNickName
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .serviceLocationMainContactNickName)
-                                 .submitLabel(.next)
-                        }
-                        HStack{
-                            Text("Gate Code")
-                                .font(.headline)
-                            TextField(
-                                "Gate Code",
-                                text: $serviceLocationMainContactGateCode
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .serviceLocationMainContactGateCode)
-                                 .submitLabel(.next)
-                        }
-                        HStack{
-                            Text("Dog Name")
-                                .font(.headline)
-                            TextField(
-                                "Dog Name",
-                                text: $dogName
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .dogName)
-                                 .submitLabel(.next)
-                        }
-                        HStack{
-                            Text("Estimated Time")
-                                .font(.headline)
-                            TextField(
-                                "Estimated Time",
-                                text: $estimatedTime
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .estimatedTime)
-                                 .submitLabel(.next)
-                        }
-                        HStack{
-                            Text("Notes")
-                                .font(.headline)
-                            TextField(
-                                "Notes",
-                                text: $contactNotes
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .contactNotes)
-                                 .submitLabel(.next)
-                        }
+                    Text("Service Location")
+                        .font(.title)
+                    
+                    AddressAutocompleteView(
+        //                        text: $vm.addressQuery,
+                        text: $serviceLocationAddressQuery,
+                        selectedAddress: $serviceLocationAddress
+                    )
+                }
+                Text("Service Location Info")
+
+                VStack{
+                    HStack{
+                        Text("Nick Name")
+                        TextField(
+                            "Nick Name",
+                            text: $serviceLocationMainContactNickName
+                        )
+                        .modifier(PlainTextFieldModifier())
+                        .focused($focusedField, equals: .serviceLocationMainContactNickName)
+                             .submitLabel(.next)
                     }
-                    VStack{
-                        Text("Service Location")
-                            .font(.title)
-                        HStack{
-                            Spacer()
-                            
-                            Button(action: {
-                                serviceLocationAddressStreetAddress = billingAddressStreetAddress
-                                serviceLocationAddressCity = billingAddressCity
-                                serviceLocationAddressState = billingAddressState
-                                serviceLocationAddressZip = billingAddressZip
-                            }, label: {
-                                Text("Use Billing Address")
-                            })
-                            .modifier(AddButtonModifier())
-                        }
-                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-                        HStack{
-                            TextField(
-                                "Street Address",
-                                text: $serviceLocationAddressStreetAddress
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .serviceLocationAddressStreetAddress)
-                                 .submitLabel(.next)
-                        }
-                        HStack{
-                            
-                            TextField(
-                                "City",
-                                text: $serviceLocationAddressCity
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .serviceLocationAddressCity)
-                                 .submitLabel(.next)
-                            TextField(
-                                "State",
-                                text: $serviceLocationAddressState
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .focused($focusedField, equals: .serviceLocationAddressState)
-                                 .submitLabel(.next)
-                            TextField(
-                                "Zip",
-                                text: $serviceLocationAddressZip
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            .keyboardType(.decimalPad)
-                            .focused($focusedField, equals: .serviceLocationAddressZip)
-                                 .submitLabel(.next)
-                        }
+                    HStack{
+                        Text("Gate Code")
+                        TextField(
+                            "Gate Code",
+                            text: $serviceLocationMainContactGateCode
+                        )
+                        .modifier(PlainTextFieldModifier())
+                        .focused($focusedField, equals: .serviceLocationMainContactGateCode)
+                             .submitLabel(.next)
                     }
-                    VStack{
-                        Text("Service Location Contact")
-                            .font(.headline)
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                serviceLocationMainContactName = firstName + " " + lastName
-                                serviceLocationMainContactPhoneNumber = phoneNumber
-                                serviceLocationMainContactEmail = email
-                            }, label: {
-                                Text("Use Main Contact")
-                                
-                            })
-                            .modifier(AddButtonModifier())
-                        }
-                        .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
+                    HStack{
+                        Text("Dog Name")
+                        TextField(
+                            "Dog Name",
+                            text: $dogName
+                        )
+                        .modifier(PlainTextFieldModifier())
+                        .focused($focusedField, equals: .dogName)
+                             .submitLabel(.next)
+                    }
+                    HStack{
+                        Toggle(isOn: $isPreText, label: {
+                            Text("Has Pre Text")
+                        })
+                    }
+                    HStack{
+                        Text("Notes")
+                        TextField(
+                            "Notes",
+                            text: $contactNotes
+                        )
+                        .modifier(PlainTextFieldModifier())
+                        .focused($focusedField, equals: .contactNotes)
+                             .submitLabel(.next)
+                    }
+                }
+                VStack{
+                    Text("Service Location Contact")
+                        .font(.headline)
+                    HStack{
+                        Spacer()
+                        Toggle(isOn: $locationHasSeperateContact, label: {
+                            Text("Use Seperate Contact")
+                        })
+                    }
+                    .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
+                    if locationHasSeperateContact {
                         HStack{
                             Text("Name")
-                                .font(.headline)
-                            
                             TextField(
                                 "Name",
                                 text: $serviceLocationMainContactName
                             )
                             .modifier(PlainTextFieldModifier())
                             .focused($focusedField, equals: .serviceLocationMainContactName)
-                                 .submitLabel(.next)
+                            .submitLabel(.next)
                         }
                         HStack{
                             Text("Phone Number")
-                                .font(.headline)
-                            
                             TextField(
                                 "Phone Number",
                                 text: $serviceLocationMainContactPhoneNumber
@@ -890,12 +614,10 @@ extension AddNewCustomerView{
                             .modifier(PlainTextFieldModifier())
                             .keyboardType(.namePhonePad)
                             .focused($focusedField, equals: .serviceLocationMainContactPhoneNumber)
-                                 .submitLabel(.next)
+                            .submitLabel(.next)
                         }
                         HStack{
                             Text("Email")
-                                .font(.headline)
-                            
                             TextField(
                                 "Email",
                                 text: $serviceLocationMainContactEmail
@@ -903,210 +625,212 @@ extension AddNewCustomerView{
                             .modifier(PlainTextFieldModifier())
                             .keyboardType(.emailAddress)
                             .focused($focusedField, equals: .serviceLocationMainContactEmail)
-                                 .submitLabel(.next)
+                            .submitLabel(.next)
                         }
+                        
                         HStack{
-                            Text("notes")
-                                .font(.headline)
-                            
+                            Text("Notes")
                             TextField(
-                                "notes",
+                                "Notes",
                                 text: $serviceLocationMainContactNotes
                             )
                             .modifier(PlainTextFieldModifier())
                             .focused($focusedField, equals: .serviceLocationMainContactNotes)
-                                 .submitLabel(.next)
-                            
+                            .submitLabel(.next)
                         }
                     }
                 }
             }
+            
         }
     }
     
     var submitButton:some View {
         Button(action: {
-            Task{
-                do {
-                    if let company = masterDataManager.currentCompany {
+            if let company = masterDataManager.currentCompany {
+                Task{
+                    do {
                         let customerId = UUID().uuidString
+                        if displayAsCompany {
+                            if companyName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                showAlert = true
+                                alertMessage = "Add company Name"
+                                print(alertMessage)
+                                return
+                            }
+                        } else {
+                            if firstName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                showAlert = true
+                                alertMessage = "Add First Name"
+                                print(alertMessage)
+                                return
+                            }
+                            if firstName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                                showAlert = true
+                                alertMessage = "Add First Name"
+                                print(alertMessage)
+                                return
+                            }
+                        }
                         
-                        if billingAddressStreetAddress == "" {
+                        if phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                            showAlert = true
+                            alertMessage = "Add phone Number"
+                            print(alertMessage)
+                            return
+                        }
+                        
+                        if email.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                            showAlert = true
+                            alertMessage = "Add email"
+                            print(alertMessage)
+                            return
+                        }
+                        if !useDifferentBillingAddress {
+                            //Only Needs ServiceLocation Address
+                            billingAddress = serviceLocationAddress
+                        }
+                         guard let newServiceLocationAddress = serviceLocationAddress else  {
                             showAlert = true
                             alertMessage = "Billing Street Address Empty"
                             print(alertMessage)
                             return
                         }
-                        if billingAddressCity == "" {
+                         guard let newBillingAddress = billingAddress else  {
                             showAlert = true
-                            alertMessage = "Billing City Empty"
+                            alertMessage = "Billing Street Address Empty"
                             print(alertMessage)
                             return
                         }
-                        if billingAddressState == "" {
-                            showAlert = true
-                            alertMessage = "Billing State Empty"
-                            print(alertMessage)
-                            return
-                        }
-                        if billingAddressZip == "" {
-                            showAlert = true
-                            alertMessage = "Billing Zip Empty"
-                            print(alertMessage)
-                            return
-                        }
-                        if addFirstServiceLocation {
+                        let fullName = firstName + " " + lastName
+
+                        var contact:Contact? = nil
+                        if locationHasSeperateContact {
+                            //Use Fields
+                            if serviceLocationMainContactName.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                               showAlert = true
+                               alertMessage = "Add Contact Name or use Main Contact Information"
+                               print(alertMessage)
+                               return
+                            }
+                            if serviceLocationMainContactPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                               showAlert = true
+                               alertMessage = "Add Phone Number or use Main Contact Information"
+                               print(alertMessage)
+                               return
+                            }
+                            if serviceLocationMainContactEmail.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
+                               showAlert = true
+                               alertMessage = "Add Email or use Main Contact Information"
+                               print(alertMessage)
+                               return
+                            }
                             
-                            if serviceLocationAddressStreetAddress == "" {
-                                showAlert = true
-                                alertMessage = "Service Location Street Address Empty"
-                                print(alertMessage)
-                                return
-                            }
-                            if serviceLocationAddressCity == "" {
-                                showAlert = true
-                                alertMessage = "Service Location City Empty"
-                                print(alertMessage)
-                                return
-                            }
-                            if serviceLocationAddressState == "" {
-                                showAlert = true
-                                alertMessage = "Service Location State Empty"
-                                print(alertMessage)
-                                return
-                            }
-                            if serviceLocationAddressZip == "" {
-                                showAlert = true
-                                alertMessage = "Service Location Zip Empty"
-                                print(alertMessage)
-                                return
-                            }
+                            contact = Contact(
+                             id: UUID().uuidString,
+                             name: serviceLocationMainContactName.trimmingCharacters(in: .whitespacesAndNewlines),
+                             phoneNumber: serviceLocationMainContactPhoneNumber,
+                             email: serviceLocationMainContactEmail.trimmingCharacters(in: .whitespacesAndNewlines),
+                             notes: contactNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+                         )
+
+                        } else {
+                            // Use Primary Information
+                            contact = Contact(
+                             id: UUID().uuidString,
+                             name: fullName,
+                             phoneNumber: phoneNumber,
+                             email: email,
+                             notes: ""
+                            )
+                        }
+                        guard let contact else {
+                            showAlert = true
+                            alertMessage = "Contact Error"
+                            print(alertMessage)
+                            return
                         }
                         guard let time = Int(estimatedTime) else {
                             throw ServiceLocationError.invalidTime
                         }
-                        let fullName = firstName + " " + lastName
                         
                         let pushFirstName = firstName
                         let pushLastName = lastName
                         let pushEmail = email
-                        let pushAddress = billingAddress
                         let pushPhoneNumber = phoneNumber
-                        let pushRate = rate
                         let pushCompany = companyName
                         let pushDisplayAsCompany = displayAsCompany
                         
-                        
-                        
-                        if addFirstServiceLocation {
-                            try await customerVM.addNewCustomerWithLocation(
-                                customer:Customer(
-                                    id: customerId,
-                                    firstName:pushFirstName,
-                                    lastName:pushLastName,
-                                    email: pushEmail ,
-                                    billingAddress: Address(
-                                        streetAddress: billingAddressStreetAddress,
-                                        city: billingAddressCity,
-                                        state: billingAddressState,
-                                        zip: billingAddressZip,
-                                        latitude: 0,
-                                        longitude: 0
-                                    ),
-                                    phoneNumber: pushPhoneNumber,
-                                    active: true,
-                                    company: pushCompany,
-                                    displayAsCompany: pushDisplayAsCompany,
-                                    hireDate:Date(),
-                                    billingNotes: "",
-                                    linkedInviteId: UUID().uuidString
-                                ),
-                                serviceLocation: ServiceLocation(
-                                    id: UUID().uuidString,
-                                    nickName: serviceLocationMainContactNickName,
-                                    address: Address(
-                                        streetAddress: serviceLocationAddressStreetAddress,
-                                        city: serviceLocationAddressCity,
-                                        state: serviceLocationAddressState,
-                                        zip: serviceLocationAddressZip,
-                                        latitude: 0,
-                                        longitude: 0
-                                    ),
-                                    gateCode: serviceLocationMainContactGateCode,
-                                    dogName: [dogName],
-                                    estimatedTime: time,
-                                    mainContact: Contact(
-                                        id: UUID().uuidString,
-                                        name: serviceLocationMainContactName,
-                                        phoneNumber: serviceLocationMainContactPhoneNumber,
-                                        email: serviceLocationMainContactEmail,
-                                        notes: contactNotes
-                                    ),
-                                    notes: notes,
-                                    bodiesOfWaterId: [""],
-                                    rateType: "",
-                                    laborType:"",
-                                    chemicalCost:"",
-                                    laborCost: "",
-                                    rate: String(
-                                        rate
-                                    ),
-                                    customerId: customerId,
-                                    customerName: fullName
-                                ),
-                                companyId: company.id
-                            )
-                        } else {
-                            try await customerVM.addNewCustomerWithOutLocation(
-                                customer:Customer(
-                                    id: customerId,
-                                    firstName:pushFirstName,
-                                    lastName:pushLastName,
-                                    email: pushEmail ,
-                                    billingAddress: Address(
-                                        streetAddress: billingAddressStreetAddress,
-                                        city: billingAddressCity,
-                                        state: billingAddressState,
-                                        zip: billingAddressZip,
-                                        latitude: 0,
-                                        longitude: 0
-                                    ),
-                                    phoneNumber: pushPhoneNumber,
-                                    active: true,
-                                    company: pushCompany,
-                                    displayAsCompany: pushDisplayAsCompany,
-                                    hireDate:Date(),
-                                    billingNotes: "",
-                                    linkedInviteId: UUID().uuidString
-                                ),
-                                companyId: company.id
-                            )
-                        }
+                                
+                        try await customerVM.addNewCustomerWithLocation(
+                         customer:Customer(
+                             id: customerId,
+                             firstName:pushFirstName,
+                             lastName:pushLastName,
+                             email: pushEmail ,
+                             billingAddress: newBillingAddress,
+                             phoneNumber: pushPhoneNumber,
+                             active: true,
+                             company: pushCompany,
+                             displayAsCompany: pushDisplayAsCompany,
+                             hireDate:Date(),
+                             billingNotes: "",
+                             linkedInviteId: UUID().uuidString
+                         ),
+                         serviceLocation: ServiceLocation(
+                             id: UUID().uuidString,
+                             nickName: serviceLocationMainContactNickName,
+                             address: newServiceLocationAddress,
+                             gateCode: serviceLocationMainContactGateCode,
+                             dogName: [dogName],
+                             estimatedTime: time,
+                             mainContact: contact,
+                             notes: notes,
+                             bodiesOfWaterId: [""],
+                             rateType: "",
+                             laborType:"",
+                             chemicalCost:"",
+                             laborCost: "",
+                             rate: String(
+                                 rate
+                             ),
+                             customerId: customerId,
+                             customerName: fullName,
+                             isActive: true
+                         ),
+                         companyId: company.id
+                        )
+                        showAlert = true
                         alertMessage = "Success"
                         print(alertMessage)
-                        showAlert = true
-
+                                
+                        
                         firstName = ""
                         lastName = ""
                         email = ""
-                        billingAddress = Address(streetAddress: "", city: "", state: "", zip: "",latitude: 0,longitude: 0)
-
+                        billingAddress = nil
+                        serviceLocationAddress = nil
                         phoneNumber = ""
                         rate = 0
                         companyName = ""
                         displayAsCompany = false
                         enableSheetDismiss = true
+
                         dismiss()
+                    } catch {
+                        print("")
+                        showAlert = true
+                        print(error)
+                        alertMessage = "Failed To Upload"
+                        print(alertMessage)
+                        print(error)
+                        print("")
+                        return
                     }
-                } catch {
-                    print("")
-                    print(error)
-                    alertMessage = "upload Failed"
-                    print(alertMessage)
-                    showAlert = true
-                    return
+                    
                 }
             }
+            
         },
                label: {
             Text("Submit")

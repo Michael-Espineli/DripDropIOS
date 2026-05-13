@@ -21,20 +21,21 @@ final class StripeConnectedAccountConfigViewModel: ObservableObject{
 struct StripeConnectedAccountConfigView: View {
     
     init(dataService:any ProductionDataServiceProtocol){
-        _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
-        _AuthVM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
-        _VM = StateObject(wrappedValue: CompanySettingsViewModel(dataService: dataService))
+        _VM = StateObject(wrappedValue: StripeConnectedAccountConfigViewModel(dataService: dataService))
     }
+    @StateObject private var VM : StripeConnectedAccountConfigViewModel
+
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
-                
+                Text("StripeConnectedAccountConfigView")
+
             }
         }
     }
 }
 
 #Preview {
-    StripeConnectedAccountConfigView()
+    StripeConnectedAccountConfigView(dataService: MockDataService())
 }

@@ -84,7 +84,7 @@ final class UserAccessManager {
     }
     
     func getAllUserAvailableCompanies(userId:String) async throws ->[UserAccess]{
-        print("Attempting to get User Access \(userId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
+        print("      [UserAccessManager][getAllUserAvailableCompanies] Attempting to get User Access \(userId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
         return try await userAccessCollection(userId: userId)
             .getDocuments(as:UserAccess.self) // DEVELOPER FIX LATER, BUT FOR NOW I WANNA TEST WHAT IT LOOKS LIKE WITH OUT HAVING A COMPANY
                                               //        return []

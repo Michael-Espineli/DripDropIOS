@@ -15,7 +15,9 @@ import SwiftUI
 import CoreLocation
 import MapKit
 import Darwin
-struct RecurringServiceStop:Identifiable, Codable,Equatable, Hashable{
+
+
+struct RecurringServiceStop:Identifiable, Codable, Equatable, Hashable{
     static func == (lhs: RecurringServiceStop, rhs: RecurringServiceStop) -> Bool {
         return lhs.id == rhs.id &&
         lhs.type == rhs.type &&
@@ -38,11 +40,11 @@ struct RecurringServiceStop:Identifiable, Codable,Equatable, Hashable{
     let endDate :Date?
     let noEndDate: Bool
     let frequency: LaborContractFrequency // was customMeasuresOfTime
-    let daysOfWeek:String //DEVELOPER there is going to be only one day in here but it should work.
+    let day: DaysOfWeek
     let description : String
     var lastCreated : Date
     let serviceLocationId : String	
-    let estimatedTime : String
+    let estimatedTime : Int
     let otherCompany:Bool
     let laborContractId:String? //Actually Optional
     let contractedCompanyId:String? //Actually Optional
@@ -64,11 +66,11 @@ struct RecurringServiceStop:Identifiable, Codable,Equatable, Hashable{
         endDate : Date? = nil,
         noEndDate: Bool,
         frequency : LaborContractFrequency,
-        daysOfWeek: String,
+        day: DaysOfWeek,
         description: String,
         lastCreated: Date,
         serviceLocationId: String,
-        estimatedTime: String,
+        estimatedTime: Int,
         otherCompany: Bool,
         laborContractId: String? = nil,
         contractedCompanyId: String? = nil,
@@ -90,7 +92,7 @@ struct RecurringServiceStop:Identifiable, Codable,Equatable, Hashable{
         self.endDate = endDate
         self.noEndDate = noEndDate
         self.frequency = frequency
-        self.daysOfWeek = daysOfWeek
+        self.day = day
         self.description = description
         self.lastCreated = lastCreated
         self.serviceLocationId = serviceLocationId
@@ -116,7 +118,7 @@ struct RecurringServiceStop:Identifiable, Codable,Equatable, Hashable{
             case startDate = "startDate"
             case noEndDate = "noEndDate"
             case frequency = "frequency"
-            case daysOfWeek = "daysOfWeek"
+            case day = "day"
             case description = "description"
             case lastCreated = "lastCreated"
             case serviceLocationId = "serviceLocationId"
@@ -170,29 +172,29 @@ extension ProductionDataService {
             .getDocuments(as:RecurringServiceStop.self)
         
     }
-    func getRecurringServiceStopsByDays(companyId:String,day:String) async throws -> [RecurringServiceStop] {
+    func getRecurringServiceStopsByDays(companyId: String, day: DaysOfWeek) async throws -> [RecurringServiceStop] {
         
         return try await recurringServiceStopCollection(companyId: companyId)
-            .whereField(RecurringServiceStop.CodingKeys.daysOfWeek.rawValue, arrayContains: day)
+            .whereField(RecurringServiceStop.CodingKeys.day.rawValue, isEqualTo: day.rawValue)
             .getDocuments(as:RecurringServiceStop.self)
     }
     
-    func getRecurringServiceStopsByDayAndTech(companyId:String,techId:String,day:String) async throws -> [RecurringServiceStop] {
-        
+    func getRecurringServiceStopsByDayAndTech(companyId: String, techId: String, day: DaysOfWeek) async throws -> [RecurringServiceStop] {
+        print("[ProductionDataService][getRecurringServiceStopsByDayAndTech] techId:\(techId) day:\(day)")
         return try await recurringServiceStopCollection(companyId: companyId)
-            .whereField(RecurringServiceStop.CodingKeys.daysOfWeek.rawValue, arrayContains: day)
+            .whereField(RecurringServiceStop.CodingKeys.day.rawValue, isEqualTo: day.rawValue)
             .whereField(RecurringServiceStop.CodingKeys.techId.rawValue, isEqualTo: techId)
-        
             .getDocuments(as:RecurringServiceStop.self)
     }
     
     func getAllRecurringServiceStopByCustomerId(companyId:String,customerId:String) async throws -> [RecurringServiceStop]{
-        
+        print("")
+        print("[ProductionDataService][getAllRecurringServiceStopByCustomerId] customerId:\(customerId) companyId:\(companyId)")
         return try await recurringServiceStopCollection(companyId: companyId)
             .whereField("customerId", isEqualTo: customerId)
             .getDocuments(as:RecurringServiceStop.self)
-        
     }
+    
     //UPDATE
     func updateRecurringServiceStopAddress(companyId: String, recurringServiceStopId: String, address: Address) async throws {
         let recurringServiceStopRef = recurringServiceStopDocument(recurringServiceStopId: recurringServiceStopId, companyId: companyId)
@@ -209,6 +211,7 @@ extension ProductionDataService {
             ]
         )
     }
+    
     func endRecurringServiceStop(companyId:String,recurringServiceStopId:String,endDate:Date) async throws {
         //DEVELOPER ADD LOGIC
         print("End Recurring Service Stop Logic")
@@ -227,7 +230,11 @@ extension ProductionDataService {
 }
 //ADDITIONAL CREATE FUNCTIONS
 extension ProductionDataService {
-    func addNewRecurringServiceStopFromLaborContract(companyId:String,recurringServiceStop:RecurringServiceStop,laborContract:ReccuringLaborContract) async throws ->(String?) {
+    func addNewRecurringServiceStopFromLaborContract(
+        companyId:String,
+        recurringServiceStop:RecurringServiceStop,
+        laborContract:ReccuringLaborContract
+    ) async throws ->(String?) {
         print("addNewRecurringServiceStop - [DataService]")
         let startDate:Date = recurringServiceStop.startDate
         
@@ -242,9 +249,10 @@ extension ProductionDataService {
         dateFormatter.dateFormat = "EEEE"//String Day of the Week
         let dateDisplayFornmatter = DateFormatter()
         dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
+        
         let numberOfWeek = DateFormatter()
         numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        var pushRecurring = recurringServiceStop
+        let pushRecurring = recurringServiceStop
         
         switch recurringServiceStop.frequency{
         case .daily:
@@ -279,63 +287,605 @@ extension ProductionDataService {
 
         return pushRecurring.id
     }
-
     func addNewRecurringServiceStop(companyId:String,recurringServiceStop:RecurringServiceStop) async throws ->(String?){
-        print("addNewRecurringServiceStop - [DataService]")
-        let startDate:Date = recurringServiceStop.startDate
-        
-        guard let endDate:Date = recurringServiceStop.endDate else {
-            return nil
-        }
-        let noEndDate:Bool = recurringServiceStop.noEndDate
-        //initial Creating of the Route
-        
-        let recurringServiceStopCount = try await SettingsManager.shared.getRecurringServiceStopCount(companyId: companyId)
-        sleep(1)
-        let recurringServiceStopId = "R" + String(recurringServiceStopCount)
-        
+        try await FunctionsManager.shared.createFirstRecurringServiceStop(companyId: companyId, recurringServiceStop: recurringServiceStop)
+        return recurringServiceStop.id
+    }
+//    func addNewRecurringServiceStop(companyId:String,recurringServiceStop:RecurringServiceStop) async throws ->(String?){
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] start")
+//        let startDate:Date = recurringServiceStop.startDate
+//        
+//        var endDate: Date? = nil
+//        if let recurringEndDate = recurringServiceStop.endDate {
+//            print("")
+//            print("[ProductionDataService][addNewRecurringServiceStop] Has End Date ")
+//
+//            endDate = recurringEndDate
+//        }
+//        let noEndDate:Bool = recurringServiceStop.noEndDate
+//
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 1")
+//        
+//        let dateFormatter = DateFormatter()
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 2")
+//        
+//        dateFormatter.dateFormat = "EEEE"//String Day of the Week
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 3")
+//        
+//        let dateDisplayFornmatter = DateFormatter()
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 4")
+//        
+//        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 5")
+//        
+//        let numberOfWeek = DateFormatter()
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 6")
+//        
+//        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 7")
+//        
+//        var pushRecurring = recurringServiceStop
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] 8")
+//        
+//        pushRecurring.id = recurringServiceStop.id
+//        
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] Frequency \(recurringServiceStop.frequency)")
+//        switch recurringServiceStop.frequency{
+//        case .daily:
+//            print("")
+//            print("[ProductionDataService][addNewRecurringServiceStop] Making Stops Daily")
+//            try await helpCreateDailyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
+//            //Daily
+//        case .weekDay:
+//            //skipped weekends
+//            print("")
+//            print("[ProductionDataService][addNewRecurringServiceStop] Making Stops on Week days")
+//            try await helpCreateWeekDayRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
+//            
+//        case .weekly:
+//            //weekly
+//            print("")
+//            print("[ProductionDataService][addNewRecurringServiceStop] Making Stops Weekly")
+//            try await helpCreateWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
+//            
+//        case .biWeekly:
+//            //weekly
+//            print("")
+//            print("[ProductionDataService][addNewRecurringServiceStop] Making Stops Bi Weekly")
+//            try await helpCreateBiWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
+//            
+//            
+//        case .monthly:
+//            //Monthly
+//            print("")
+//            print("[ProductionDataService][addNewRecurringServiceStop] Making Stops Monthly")
+//            try await helpCreateMonthlyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
+//
+//        case .yearly:
+//            print("")
+//            print("[ProductionDataService][addNewRecurringServiceStop] Developer Make Yearly")
+//        }
+//        print("")
+//        print("[ProductionDataService][addNewRecurringServiceStop] Finished Creating Recurring Route and Returning recurringServiceStopId >>\(recurringServiceStop.id)")
+//
+//        return recurringServiceStop.id
+//    }
+//    
+    //Daily
+     func helpCreateDailyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
+                                       noEndDate:Bool,startDate:Date,endDate:Date?) async throws{
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "EEEE"//String Day of the Week
         let dateDisplayFornmatter = DateFormatter()
         dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
         let numberOfWeek = DateFormatter()
         numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        var pushRecurring = recurringServiceStop
-        pushRecurring.id = recurringServiceStopId
-        switch recurringServiceStop.frequency{
-        case .daily:
-            print("Making Stops Daily")
-            try await helpCreateDailyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            //Daily
-        case .weekDay:
-            //skipped weekends
-            print("Making Stops on Week days")
-            try await helpCreateWeekDayRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-        case .weekly:
-            //weekly
-            print("Making Stops Weekly")
-            try await helpCreateWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-        case .biWeekly:
-            //weekly
-            print("Making Stops Bi Weekly")
-            try await helpCreateBiWeeklyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-            
-            
-        case .monthly:
-            //Monthly
-            print("Making Stops Monthly")
-            try await helpCreateMonthlyRecurringRoute(companyId: companyId, recurringServiceStop: pushRecurring, noEndDate: noEndDate, startDate: startDate, endDate: endDate)
-
-        case .yearly:
-            print("Developer Make Daily")
+        var functionalStartDate:Date = Date()
+        var functionalEndDate:Date = Date()
+        let calendar = Calendar.current
+        var lastCreated:Date = Date()
+        
+        var counter :Int = 0
+        
+        if noEndDate {
+            functionalStartDate = startDate
+            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
+        } else {
+            functionalStartDate = startDate
+            if let endDate {
+                functionalEndDate = endDate
+            } else {
+                print("")
+                print("[ProductionDataService][helpCreateDailyRecurringRoute] No End Date and Needed it")
+                throw FireBasePublish.unableToPublish
+            }
         }
-        print("Finished Creating Recurring Route and Returning recurringServiceStopId >>\(recurringServiceStopId)")
+        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
+        print("Creating standard Recurring service stop")
+        while counter < daysBetween {
+            var pushDate = Date()
+            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
+            
+            var otherCompany = false
+            if recurringServiceStop.otherCompany {
+                otherCompany = true
+            } else {
+                otherCompany = false
+            }
+            
+            let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
 
-        return recurringServiceStopId
+            let singleRecurringServiceStop = ServiceStop(
+                id: "comp_ss_" + UUID().uuidString,
+                internalId: "SS" + String(doc.increment),
+                companyId: companyId,
+                companyName: "",
+                customerId: recurringServiceStop.customerId,
+                customerName: recurringServiceStop.customerName,
+                address: recurringServiceStop.address,
+                dateCreated: Date(),
+                serviceDate: pushDate,
+                startTime: nil,
+                endTime: nil,
+                duration: recurringServiceStop.estimatedTime,
+                estimatedDuration: recurringServiceStop.estimatedTime,
+                tech: recurringServiceStop.tech,
+                techId: recurringServiceStop.techId,
+                recurringServiceStopId: recurringServiceStop.id,
+                description: recurringServiceStop.description,
+                serviceLocationId: recurringServiceStop.serviceLocationId,
+                typeId: recurringServiceStop.typeId,
+                type: recurringServiceStop.type,
+                typeImage: recurringServiceStop.typeImage,
+                jobId: "",
+                jobName: "",
+                operationStatus: .notFinished,
+                billingStatus: .notInvoiced,
+                includeReadings: true,
+                includeDosages: true,
+                otherCompany: otherCompany,
+                laborContractId: recurringServiceStop.laborContractId ?? "",
+                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
+                isInvoiced: false
+            )
+            
+            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
+            //                    let serviceStopId = "S" + String(serviceStopCount)
+            
+            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
+            if pushDate > lastCreated {
+                lastCreated = pushDate
+            }
+            
+            print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
+            
+            counter = counter + 1
+        }
     }
     
+    //WeekDay
+     func helpCreateWeekDayRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
+                                         noEndDate:Bool,startDate:Date,endDate:Date?) async throws{
+        var functionalStartDate:Date = Date()
+        var functionalEndDate:Date = Date()
+        let calendar = Calendar.current
+        var lastCreated:Date = Date()
+        var counter :Int = 0
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "EEEE"//String Day of the Week
+        let dateDisplayFornmatter = DateFormatter()
+        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
+        let numberOfWeek = DateFormatter()
+        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
+        
+        if noEndDate {
+            functionalStartDate = startDate
+            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
+        } else {
+            functionalStartDate = startDate
+            if let endDate {
+                functionalEndDate = endDate
+            } else {
+                print("")
+                print("[ProductionDataService][helpCreateDailyRecurringRoute] No End Date and Needed it")
+                throw FireBasePublish.unableToPublish
+            }
+        }
+        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
+        print("Creating standard Recurring service stop")
+        while counter < daysBetween {
+            var pushDate = Date()
+            
+            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
+            
+            
+            
+            if String(dateFormatter.string(from:pushDate)) == "Saturday" || String(dateFormatter.string(from:pushDate)) == "Sunday" {
+                print(String(dateFormatter.string(from:pushDate)))
+                
+                print("Skipped")
+            }else {
+                var otherCompany = false
+                if recurringServiceStop.otherCompany {
+                    otherCompany = true
+                } else {
+                    otherCompany = false
+                }
+                let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
+
+                let singleRecurringServiceStop = ServiceStop(
+                    id: "comp_ss_" + UUID().uuidString,
+                    internalId: "S" + String(doc.increment),
+                    companyId: companyId,
+                    companyName: "",
+                    customerId: recurringServiceStop.customerId,
+                    customerName: recurringServiceStop.customerName,
+                    address: recurringServiceStop.address,
+                    dateCreated: Date(),
+                    serviceDate: pushDate,
+                    startTime: nil,
+                    endTime: nil,
+                    duration: 0,
+                    estimatedDuration: recurringServiceStop.estimatedTime,
+                    tech: recurringServiceStop.tech,
+                    techId: recurringServiceStop.techId,
+                    recurringServiceStopId: recurringServiceStop.id,
+                    description: recurringServiceStop.description,
+                    serviceLocationId: recurringServiceStop.serviceLocationId,
+                    typeId: recurringServiceStop.typeId,
+                    type: recurringServiceStop.type,
+                    typeImage: recurringServiceStop.typeImage,
+                    jobId: "",
+                    jobName: "",
+                    operationStatus: .notFinished,
+                    billingStatus: .notInvoiced,
+                    includeReadings: true,
+                    includeDosages: true,
+                    otherCompany: otherCompany,
+                    laborContractId: recurringServiceStop.laborContractId ?? "",
+                    contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
+                    isInvoiced: false
+                )
+                
+                //                        let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
+                //                        let serviceStopId = "S" + String(serviceStopCount)
+                
+                
+                try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
+                if pushDate > lastCreated {
+                    lastCreated = pushDate
+                }
+                
+            }
+            
+            counter = counter + 1
+        }
+    }
+    
+    //Weeekly
+     func helpCreateWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
+                                        noEndDate:Bool,startDate:Date,endDate:Date?) async throws{
+        print("Create Weekly Recurring Route helper Function")
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "EEEE"//String Day of the Week
+        let dateDisplayFornmatter = DateFormatter()
+        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
+        let numberOfWeek = DateFormatter()
+        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
+        
+        var functionalStartDate:Date = Date()
+        var functionalEndDate:Date = Date()
+        let calendar = Calendar.current
+        var lastCreated:Date = Date()
+        
+        var counter :Int = 0
+        
+        if noEndDate {
+            print("No End Date")
+            functionalStartDate = startDate
+            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
+        } else {
+            print("Has End Date")
+            
+            functionalStartDate = startDate
+            if let endDate {
+                functionalEndDate = endDate
+            } else {
+                print("")
+                print("[ProductionDataService][helpCreateDailyRecurringRoute] No End Date and Needed it")
+                throw FireBasePublish.unableToPublish
+            }
+        }
+        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
+        print("Creating standard Recurring service stop on ")
+        print("Day \(recurringServiceStop.day.rawValue)")
+        print("\(daysBetween) Days Between")
+        
+        while counter < daysBetween {
+            //Check to Make sure the day you are adding is the proper day.
+            
+            
+            print("\(counter) / \(daysBetween)")
+            var pushDate = Date()
+            let startDayOfWeek = String(dateDisplayFornmatter.string(from:startDate))
+            //Check if the start day is the day of the week you would like to be adding.
+            if recurringServiceStop.day.rawValue == startDayOfWeek  {
+                pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
+            } else {
+                //Get the actual start Day
+                    
+                var serviceDayOfWeekAsNumber = recurringServiceStop.day.numberValue
+                var startDayOfWeekAsNumber = DaysOfWeek(rawValue: dateFormatter.string(from:startDate))?.numberValue
+                if let startDayOfWeekAsNumber {
+                    let difference = serviceDayOfWeekAsNumber - startDayOfWeekAsNumber
+                    print("startDayOfWeekAsNumber \(startDayOfWeekAsNumber)")
+                    print("serviceDayOfWeekAsNumber \(serviceDayOfWeekAsNumber)")
+                    print("difference \(difference)")
+                    
+                    if difference >= 0 {
+                        
+                        pushDate = Calendar.current.date(byAdding: .day, value: difference + counter, to: startDate)!
+                    } else {
+                        pushDate = Calendar.current.date(byAdding: .day, value: difference + counter + 7, to: startDate)!
+                    }
+                }
+            }
+            print("Create Stops on \(fullDate(date: pushDate)) - \(dateFormatter.string(from:pushDate)) - days Of Week \(recurringServiceStop.day.rawValue)")
+            
+            let SSId = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
+            var otherCompany = false
+            if recurringServiceStop.otherCompany {
+                otherCompany = true
+            } else {
+                otherCompany = false
+            }
+            let singleRecurringServiceStop = ServiceStop(
+                id: "comp_ss_" + UUID().uuidString,
+                internalId: "S" + String(SSId),
+                companyId: companyId,
+                companyName: "",
+                customerId: recurringServiceStop.customerId,
+                customerName: recurringServiceStop.customerName,
+                address: recurringServiceStop.address,
+                dateCreated: Date(),
+                serviceDate: pushDate,
+                startTime: nil,
+                endTime: nil,
+                duration: 0,
+                estimatedDuration: recurringServiceStop.estimatedTime,
+                tech: recurringServiceStop.tech,
+                techId: recurringServiceStop.techId,
+                recurringServiceStopId: recurringServiceStop.id,
+                description: recurringServiceStop.description,
+                serviceLocationId: recurringServiceStop.serviceLocationId,
+                typeId: recurringServiceStop.typeId,
+                type: recurringServiceStop.type,
+                typeImage: recurringServiceStop.typeImage,
+                jobId: "",
+                jobName: "",
+                operationStatus: .notFinished,
+                billingStatus: .notInvoiced,
+                includeReadings: true,
+                includeDosages: true,
+                otherCompany: otherCompany,
+                laborContractId: recurringServiceStop.laborContractId ?? "",
+                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
+                isInvoiced: false
+            )
+            
+            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
+            //                    let serviceStopId = "S" + String(serviceStopCount)
+            
+            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
+            if pushDate > lastCreated {
+                lastCreated = pushDate
+            }
+            counter = counter + 7
+        }
+        print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
+        var pushRecurring = recurringServiceStop
+        pushRecurring.lastCreated = lastCreated
+        print("Adding Recurring Service Stop with id - \(pushRecurring.id) *helpCreateWeeklyRecurringRoute on RecurringRouteManager")
+        try recurringServiceStopDocument(recurringServiceStopId: pushRecurring.id, companyId: companyId).setData(from:pushRecurring, merge: true)
+    }
+    
+    //Bi Weekly
+     func helpCreateBiWeeklyRecurringRoute(
+        companyId:String,
+        recurringServiceStop:RecurringServiceStop,
+        noEndDate:Bool,
+        startDate:Date,
+        endDate:Date?
+    ) async throws{
+        var functionalStartDate:Date = Date()
+        var functionalEndDate:Date = Date()
+        let calendar = Calendar.current
+        var lastCreated:Date = Date()
+        
+        var counter :Int = 0
+        
+        if noEndDate {
+            functionalStartDate = startDate
+            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
+        } else {
+            functionalStartDate = startDate
+            if let endDate {
+                functionalEndDate = endDate
+            } else {
+                print("")
+                print("[ProductionDataService][helpCreateDailyRecurringRoute] No End Date and Needed it")
+                throw FireBasePublish.unableToPublish
+            }
+        }
+        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
+        print("Creating standard Recurring service stop")
+        while counter < daysBetween {
+            var pushDate = Date()
+            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
+            var otherCompany = false
+            if recurringServiceStop.otherCompany {
+                otherCompany = true
+            } else {
+                otherCompany = false
+            }
+            let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
+
+            let singleRecurringServiceStop = ServiceStop(
+                id: "comp_ss_" + UUID().uuidString,
+                internalId: "S" + String(doc.increment),
+                companyId: companyId,
+                companyName: "",
+                customerId: recurringServiceStop.customerId,
+                customerName: recurringServiceStop.customerName,
+                address: recurringServiceStop.address,
+                dateCreated: Date(),
+                serviceDate: pushDate,
+                startTime: nil,
+                endTime: nil,
+                duration: 0,
+                estimatedDuration: recurringServiceStop.estimatedTime,
+                tech: recurringServiceStop.tech,
+                techId: recurringServiceStop.techId,
+                recurringServiceStopId: recurringServiceStop.id,
+                description: recurringServiceStop.description,
+                serviceLocationId: recurringServiceStop.serviceLocationId,
+                typeId: recurringServiceStop.typeId,
+                type: recurringServiceStop.type,
+                typeImage: recurringServiceStop.typeImage,
+                jobId: "",
+                jobName: "",
+                operationStatus: .notFinished,
+                billingStatus: .notInvoiced,
+                includeReadings: true,
+                includeDosages: true,
+                otherCompany: otherCompany,
+                laborContractId: recurringServiceStop.laborContractId ?? "",
+                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
+                isInvoiced: false
+            )
+            
+            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
+            //                    let serviceStopId = "S" + String(serviceStopCount)
+            
+            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
+            if pushDate > lastCreated {
+                lastCreated = pushDate
+            }
+            
+            
+            
+            counter = counter + 14
+        }
+    }
+    
+    //Monthly
+     func helpCreateMonthlyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
+                                         noEndDate:Bool,startDate:Date,endDate:Date?) async throws{
+        var functionalStartDate:Date = Date()
+        var functionalEndDate:Date = Date()
+        let calendar = Calendar.current
+        var lastCreated:Date = Date()
+        var counter :Int = 0
+        var monthCounter :Int = 0
+        
+        if noEndDate {
+            functionalStartDate = startDate
+            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
+        } else {
+            functionalStartDate = startDate
+            if let endDate {
+                functionalEndDate = endDate
+            } else {
+                print("")
+                print("[ProductionDataService][helpCreateDailyRecurringRoute] No End Date and Needed it")
+                throw FireBasePublish.unableToPublish
+            }
+        }
+        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
+        print("Creating standard Recurring service stop")
+        while counter < daysBetween {
+            var pushDate = Date()
+            pushDate = Calendar.current.date(byAdding: .month, value: monthCounter, to: startDate)!
+            var otherCompany = false
+            if recurringServiceStop.otherCompany {
+                otherCompany = true
+            } else {
+                otherCompany = false
+            }
+            
+            let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
+
+            let singleRecurringServiceStop = ServiceStop(
+                id: "comp_ss_" + UUID().uuidString,
+                internalId: "S" + String(doc.increment),
+                companyId: companyId,
+                companyName: "",
+                customerId: recurringServiceStop.customerId,
+                customerName: recurringServiceStop.customerName,
+                address: recurringServiceStop.address,
+                dateCreated: Date(),
+                serviceDate: pushDate,
+                startTime: nil,
+                endTime: nil,
+                duration: 0,
+                estimatedDuration: recurringServiceStop.estimatedTime,
+                tech: recurringServiceStop.tech,
+                techId: recurringServiceStop.techId,
+                recurringServiceStopId: recurringServiceStop.id,
+                description: recurringServiceStop.description,
+                serviceLocationId: recurringServiceStop.serviceLocationId,
+                typeId: recurringServiceStop.typeId,
+                type: recurringServiceStop.type,
+                typeImage: recurringServiceStop.typeImage,
+                jobId: "",
+                jobName: "",
+                operationStatus: .notFinished,
+                billingStatus: .notInvoiced,
+                includeReadings: true,
+                includeDosages: true,
+                otherCompany: otherCompany,
+                laborContractId: recurringServiceStop.laborContractId ?? "",
+                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
+                isInvoiced: false
+            )
+            
+            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
+            //                    let serviceStopId = "S" + String(serviceStopCount)
+            
+            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
+            if pushDate > lastCreated {
+                lastCreated = pushDate
+            }
+            monthCounter = monthCounter + 1
+            counter = counter + 30
+            
+        }
+        
+    }
+    //Custom
+    nonisolated func helpCreateCustomRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
+                                                    standardFrequencyNumber:Int,
+                                                    customFrequencyType:String,
+                                                    CustomFrequency:String,
+                                                    daysOfWeek:[String]){
+    }
     func modifyRecurringServiceStopToNew(
         companyId:String,
         recurringServiceStop:RecurringServiceStop,
@@ -347,12 +897,7 @@ extension ProductionDataService {
     ) async throws ->(String?){
         //Developer Create Functions that will Update Service Stops based on NEw RSS Rather than Create New ones
 
-        let calendar = Calendar.current
-        let startDate:Date = recurringServiceStop.startDate
-        guard let endDate:Date = recurringServiceStop.endDate else {
-            return nil
-        }
-        let noEndDate:Bool = recurringServiceStop.noEndDate
+
         //initial Creating of the Route
         let recurringServiceStopCount = try await SettingsManager.shared.getRecurringServiceStopCount(companyId: companyId)
         sleep(1)
@@ -399,502 +944,5 @@ extension ProductionDataService {
         print("Finished Creating Recurring Route and Returning recurringServiceStopId >>\(recurringServiceStopId)")
         return recurringServiceStopId
     }
-    func helpCreateDailyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                       noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        
-        var counter :Int = 0
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-            
-            var otherCompany = false
-            if recurringServiceStop.otherCompany {
-                otherCompany = true
-            } else {
-                otherCompany = true
-            }
-            
-            let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
 
-            let singleRecurringServiceStop = ServiceStop(
-                id: "comp_ss_" + UUID().uuidString,
-                internalId: "SS" + String(doc.increment),
-                companyId: companyId,
-                companyName: "",
-                customerId: recurringServiceStop.customerId,
-                customerName: recurringServiceStop.customerName,
-                address: recurringServiceStop.address,
-                dateCreated: Date(),
-                serviceDate: pushDate,
-                startTime: nil,
-                endTime: nil,
-                duration: Int(recurringServiceStop.estimatedTime) ?? 15,
-                estimatedDuration: Int(recurringServiceStop.estimatedTime) ?? 15,
-                tech: recurringServiceStop.tech,
-                techId: recurringServiceStop.techId,
-                recurringServiceStopId: recurringServiceStop.id,
-                description: recurringServiceStop.description,
-                serviceLocationId: recurringServiceStop.serviceLocationId,
-                typeId: recurringServiceStop.typeId,
-                type: recurringServiceStop.type,
-                typeImage: recurringServiceStop.typeImage,
-                jobId: "",
-                jobName: "",
-                operationStatus: .notFinished,
-                billingStatus: .notInvoiced,
-                includeReadings: true,
-                includeDosages: true,
-                otherCompany: otherCompany,
-                laborContractId: recurringServiceStop.laborContractId ?? "",
-                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
-                isInvoiced: false
-            )
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            
-            print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
-            
-            counter = counter + 1
-        }
-    }
-    //WeekDay
-    func helpCreateWeekDayRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        var counter :Int = 0
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            
-            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-            
-            
-            
-            if String(dateFormatter.string(from:pushDate)) == "Saturday" || String(dateFormatter.string(from:pushDate)) == "Sunday" {
-                print(String(dateFormatter.string(from:pushDate)))
-                
-                print("Skipped")
-            }else {
-                var otherCompany = false
-                if recurringServiceStop.otherCompany {
-                    otherCompany = true
-                } else {
-                    otherCompany = true
-                }
-                let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
-
-                let singleRecurringServiceStop = ServiceStop(
-                    id: "comp_ss_" + UUID().uuidString,
-                    internalId: "S" + String(doc.increment),
-                    companyId: companyId,
-                    companyName: "",
-                    customerId: recurringServiceStop.customerId,
-                    customerName: recurringServiceStop.customerName,
-                    address: recurringServiceStop.address,
-                    dateCreated: Date(),
-                    serviceDate: pushDate,
-                    startTime: nil,
-                    endTime: nil,
-                    duration: 0,
-                    estimatedDuration: Int(recurringServiceStop.estimatedTime) ?? 15,
-                    tech: recurringServiceStop.tech,
-                    techId: recurringServiceStop.techId,
-                    recurringServiceStopId: recurringServiceStop.id,
-                    description: recurringServiceStop.description,
-                    serviceLocationId: recurringServiceStop.serviceLocationId,
-                    typeId: recurringServiceStop.typeId,
-                    type: recurringServiceStop.type,
-                    typeImage: recurringServiceStop.typeImage,
-                    jobId: "",
-                    jobName: "",
-                    operationStatus: .notFinished,
-                    billingStatus: .notInvoiced,
-                    includeReadings: true,
-                    includeDosages: true,
-                    otherCompany: otherCompany,
-                    laborContractId: recurringServiceStop.laborContractId ?? "",
-                    contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
-                    isInvoiced: false
-                )
-                
-                //                        let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-                //                        let serviceStopId = "S" + String(serviceStopCount)
-                
-                
-                try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-                if pushDate > lastCreated {
-                    lastCreated = pushDate
-                }
-                
-            }
-            
-            counter = counter + 1
-        }
-    }
-    //Weeekly
-    func helpCreateWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                        noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        print("Create Weekly Recurring Route helper Function")
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEEE"//String Day of the Week
-        let dateDisplayFornmatter = DateFormatter()
-        dateDisplayFornmatter.dateFormat = "MM-dd-yy"//this your string date format
-        let numberOfWeek = DateFormatter()
-        numberOfWeek.dateFormat = "EEEEE"//Number Day of the Week
-        
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        
-        var counter :Int = 0
-        
-        if noEndDate {
-            print("No End Date")
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            print("Has End Date")
-            
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop on ")
-        print("Day \(recurringServiceStop.daysOfWeek)")
-        print("\(daysBetween) Days Between")
-        
-        while counter < daysBetween {
-            //Check to Make sure the day you are adding is the proper day.
-            
-            
-            print("\(counter) / \(daysBetween)")
-            var pushDate = Date()
-            let startDayOfWeek = String(dateDisplayFornmatter.string(from:startDate))
-            //Check if the start day is the day of the week you would like to be adding.
-            if recurringServiceStop.daysOfWeek.contains(startDayOfWeek) {
-                pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-            } else {
-                //Get the actual start Day
-                    
-                    var serviceDayOfWeekAsNumber = 0
-                    switch recurringServiceStop.daysOfWeek {
-                    case "Sunday":
-                        serviceDayOfWeekAsNumber = 1
-                    case "Monday":
-                        serviceDayOfWeekAsNumber = 2
-                    case "Tuesday":
-                        serviceDayOfWeekAsNumber = 3
-                    case "Wednesday":
-                        serviceDayOfWeekAsNumber = 4
-                    case "Thursday":
-                        serviceDayOfWeekAsNumber = 5
-                    case "Friday":
-                        serviceDayOfWeekAsNumber = 6
-                    case "Saturday":
-                        serviceDayOfWeekAsNumber = 7
-                    default:
-                        print("Error No days of Week Selected")
-                        throw FireBasePublish.unableToPublish
-                    }
-                    var startDayOfWeekAsNumber = 0  //This ONly Works For Monday
-                    switch dateFormatter.string(from:startDate) {
-                    case "Sunday":
-                        startDayOfWeekAsNumber = 1
-                    case "Monday":
-                        startDayOfWeekAsNumber = 2
-                    case "Tuesday":
-                        startDayOfWeekAsNumber = 3
-                    case "Wednesday":
-                        startDayOfWeekAsNumber = 4
-                    case "Thursday":
-                        startDayOfWeekAsNumber = 5
-                    case "Friday":
-                        startDayOfWeekAsNumber = 6
-                    case "Saturday":
-                        startDayOfWeekAsNumber = 7
-                    default:
-                        print("Error No days of Week Selected For Start Date")
-                        throw FireBasePublish.unableToPublish
-                    }
-                    let difference = serviceDayOfWeekAsNumber - startDayOfWeekAsNumber
-                    print("startDayOfWeekAsNumber \(startDayOfWeekAsNumber)")
-                    print("serviceDayOfWeekAsNumber \(serviceDayOfWeekAsNumber)")
-                    print("difference \(difference)")
-                    
-                    if difference >= 0 {
-                        
-                        pushDate = Calendar.current.date(byAdding: .day, value: difference + counter, to: startDate)!
-                    } else {
-                        pushDate = Calendar.current.date(byAdding: .day, value: difference + counter + 7, to: startDate)!
-                    }
-            }
-            print("Create Stops on \(fullDate(date: pushDate)) - \(dateFormatter.string(from:pushDate)) - days Of Week \(recurringServiceStop.daysOfWeek)")
-            
-            let SSId = try await SettingsManager.shared.getServiceOrderCount(companyId: companyId)
-            var otherCompany = false
-            if recurringServiceStop.otherCompany {
-                otherCompany = true
-            } else {
-                otherCompany = true
-            }
-            let singleRecurringServiceStop = ServiceStop(
-                id: "comp_ss_" + UUID().uuidString,
-                internalId: "S" + String(SSId),
-                companyId: companyId,
-                companyName: "",
-                customerId: recurringServiceStop.customerId,
-                customerName: recurringServiceStop.customerName,
-                address: recurringServiceStop.address,
-                dateCreated: Date(),
-                serviceDate: pushDate,
-                startTime: nil,
-                endTime: nil,
-                duration: 0,
-                estimatedDuration: Int(recurringServiceStop.estimatedTime) ?? 15,
-                tech: recurringServiceStop.tech,
-                techId: recurringServiceStop.techId,
-                recurringServiceStopId: recurringServiceStop.id,
-                description: recurringServiceStop.description,
-                serviceLocationId: recurringServiceStop.serviceLocationId,
-                typeId: recurringServiceStop.typeId,
-                type: recurringServiceStop.type,
-                typeImage: recurringServiceStop.typeImage,
-                jobId: "",
-                jobName: "",
-                operationStatus: .notFinished,
-                billingStatus: .notInvoiced,
-                includeReadings: true,
-                includeDosages: true,
-                otherCompany: otherCompany,
-                laborContractId: recurringServiceStop.laborContractId ?? "",
-                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
-                isInvoiced: false
-            )
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            counter = counter + 7
-        }
-        print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
-        var pushRecurring = recurringServiceStop
-        pushRecurring.lastCreated = lastCreated
-        print("Adding Recurring Service Stop with id - \(pushRecurring.id) *helpCreateWeeklyRecurringRoute on RecurringRouteManager")
-        try recurringServiceStopDocument(recurringServiceStopId: pushRecurring.id, companyId: companyId).setData(from:pushRecurring, merge: true)
-    }
-    
-    //Bi Weekly
-    
-    func helpCreateBiWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                          noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        
-        var counter :Int = 0
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
-            var otherCompany = false
-            if recurringServiceStop.otherCompany {
-                otherCompany = true
-            } else {
-                otherCompany = true
-            }
-            let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
-
-            let singleRecurringServiceStop = ServiceStop(
-                id: "comp_ss_" + UUID().uuidString,
-                internalId: "S" + String(doc.increment),
-                companyId: companyId,
-                companyName: "",
-                customerId: recurringServiceStop.customerId,
-                customerName: recurringServiceStop.customerName,
-                address: recurringServiceStop.address,
-                dateCreated: Date(),
-                serviceDate: pushDate,
-                startTime: nil,
-                endTime: nil,
-                duration: 0,
-                estimatedDuration: Int(recurringServiceStop.estimatedTime) ?? 15,
-                tech: recurringServiceStop.tech,
-                techId: recurringServiceStop.techId,
-                recurringServiceStopId: recurringServiceStop.id,
-                description: recurringServiceStop.description,
-                serviceLocationId: recurringServiceStop.serviceLocationId,
-                typeId: recurringServiceStop.typeId,
-                type: recurringServiceStop.type,
-                typeImage: recurringServiceStop.typeImage,
-                jobId: "",
-                jobName: "",
-                operationStatus: .notFinished,
-                billingStatus: .notInvoiced,
-                includeReadings: true,
-                includeDosages: true,
-                otherCompany: otherCompany,
-                laborContractId: recurringServiceStop.laborContractId ?? "",
-                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
-                isInvoiced: false
-            )
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            
-            
-            
-            counter = counter + 14
-        }
-    }
-    //Monthly
-    
-    func helpCreateMonthlyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws{
-        var functionalStartDate:Date = Date()
-        var functionalEndDate:Date = Date()
-        let calendar = Calendar.current
-        var lastCreated:Date = Date()
-        var counter :Int = 0
-        var monthCounter :Int = 0
-        
-        if noEndDate {
-            functionalStartDate = startDate
-            functionalEndDate = calendar.date(byAdding: .day, value: 28, to: functionalStartDate)!
-        } else {
-            functionalStartDate = startDate
-            functionalEndDate = endDate
-        }
-        let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
-        print("Creating standard Recurring service stop")
-        while counter < daysBetween {
-            var pushDate = Date()
-            pushDate = Calendar.current.date(byAdding: .month, value: monthCounter, to: startDate)!
-            var otherCompany = false
-            if recurringServiceStop.otherCompany {
-                otherCompany = true
-            } else {
-                otherCompany = true
-            }
-            
-            let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
-
-            let singleRecurringServiceStop = ServiceStop(
-                id: "comp_ss_" + UUID().uuidString,
-                internalId: "S" + String(doc.increment),
-                companyId: companyId,
-                companyName: "",
-                customerId: recurringServiceStop.customerId,
-                customerName: recurringServiceStop.customerName,
-                address: recurringServiceStop.address,
-                dateCreated: Date(),
-                serviceDate: pushDate,
-                startTime: nil,
-                endTime: nil,
-                duration: 0,
-                estimatedDuration: Int(recurringServiceStop.estimatedTime) ?? 15,
-                tech: recurringServiceStop.tech,
-                techId: recurringServiceStop.techId,
-                recurringServiceStopId: recurringServiceStop.id,
-                description: recurringServiceStop.description,
-                serviceLocationId: recurringServiceStop.serviceLocationId,
-                typeId: recurringServiceStop.typeId,
-                type: recurringServiceStop.type,
-                typeImage: recurringServiceStop.typeImage,
-                jobId: "",
-                jobName: "",
-                operationStatus: .notFinished,
-                billingStatus: .notInvoiced,
-                includeReadings: true,
-                includeDosages: true,
-                otherCompany: otherCompany,
-                laborContractId: recurringServiceStop.laborContractId ?? "",
-                contractedCompanyId: recurringServiceStop.contractedCompanyId ?? "",
-                isInvoiced: false
-            )
-            
-            //                    let serviceStopCount = try await SettingsManager.shared.getServiceOrderCount()
-            //                    let serviceStopId = "S" + String(serviceStopCount)
-            
-            try await uploadServiceStop(companyId: companyId, serviceStop: singleRecurringServiceStop)
-            if pushDate > lastCreated {
-                lastCreated = pushDate
-            }
-            
-        }
-        monthCounter = monthCounter + 1
-        counter = counter + 30
-        
-    }
-    
-    //Custom
-    nonisolated func helpCreateCustomRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                                    standardFrequencyNumber:Int,
-                                                    customFrequencyType:String,
-                                                    CustomFrequency:String,
-                                                    daysOfWeek:[String]){
-    }
 }

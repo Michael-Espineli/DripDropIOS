@@ -14,7 +14,7 @@ struct GenericLoadingView: View {
             ProgressView()
         }
         .padding(16)
-        .background(Color.gray.opacity(0.2))
+        .background(Color.gray.opacity(0.6))
         .cornerRadius(8)
     }
 }

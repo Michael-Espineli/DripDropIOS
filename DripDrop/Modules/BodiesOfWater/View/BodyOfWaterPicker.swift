@@ -39,7 +39,25 @@ struct BodyOfWaterPicker: View {
         .task {
             do {
                 if let company = masterDataManager.currentCompany {
-                    try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: ServiceLocation(id: serviceLocationId, nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: ""))
+                    try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(
+                        companyId: company.id,
+                        serviceLocation: ServiceLocation(
+                            id: serviceLocationId,
+                            nickName: "",
+                            address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+                            gateCode: "",
+                            mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
+                            bodiesOfWaterId: [],
+                            rateType: "",
+                            laborType: "",
+                            chemicalCost: "",
+                            laborCost: "",
+                            rate: "",
+                            customerId: "",
+                            customerName: "",
+                            isActive: true
+                        )
+                    )
                     bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
                     if bodyOfWaterList.count == 1 {
                         bodyOfWater = bodyOfWaterList.first!
@@ -86,7 +104,7 @@ extension BodyOfWaterPicker {
                 }, label: {
                     HStack{
                         Spacer()
-                        Text("\(bodyOfWater.name)")
+                        Text("\(datum.name)")
                         Spacer()
                     }
                     .modifier(ListButtonModifier())

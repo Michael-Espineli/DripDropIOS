@@ -38,185 +38,147 @@ struct TechSignUpView: View {
     @State var position:String = ""
     
     var body: some View {
-        VStack{
+        ZStack{
+            Color.listColor.ignoresSafeArea()
             ScrollView{
+                Text("Welcome Technican")
+                    .font(.title)
+                Text("If you have an invite code, you can redeem it now or later.")
+                    .font(.footnote)
                 VStack{
-                    Text("Welcome Technican")
-                        .font(.title)
-                    Text("If you have an invite code, you can redeem it now or later.")
-                        .font(.footnote)
-                    VStack{
-                        VStack{
-                            HStack{
-                                Text("First Name :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            TextField(
-                                "First Name",
-                                text: $firstName
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                        VStack{
-                            HStack{
-                                Text("Last Name :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            TextField(
-                                "Last Name",
-                                text: $lastName
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                        
-                        VStack{
-                            HStack{
-                                Text("Email :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            TextField(
-                                "Email",
-                                text: $email
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                        
-                        VStack{
-                            HStack{
-                                Text("Password :")
-                                    .font(.footnote)
-                                Spacer()
-                            }
-                            SecureField(
-                                "Password",
-                                text: $password
-                            )
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 5)
-                            .background(Color.white)
-                            .clipShape(Capsule())
-                            .foregroundColor(Color.basicFontText)
-                        }
-                        .padding(10)
-                    }
-                    if password == confirmPassword {
-                        Text("")
-                    } else {
-                        Text("PassWords Must Match")
-                            .foregroundColor(Color.red)
-                    }
                     VStack{
                         HStack{
-                            Text("Confirm Password :")
-                                .font(.footnote)
+                            Text("First Name:")
                             Spacer()
                         }
-                        SecureField(
-                            "Confirm Password",
-                            text: $confirmPassword
+                        TextField(
+                            "First Name",
+                            text: $firstName
                         )
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .font(.headline)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 5)
-                        .background(Color.white)
-                        .clipShape(Capsule())
-                        .foregroundColor(Color.basicFontText)
+                        .modifier(PlainTextFieldModifier())
+                    }
+                    .padding(10)
+                    VStack{
+                        HStack{
+                            Text("Last Name:")
+                            Spacer()
+                        }
+                        TextField(
+                            "Last Name",
+                            text: $lastName
+                        )
+                        .modifier(PlainTextFieldModifier())
                     }
                     .padding(10)
                     
-                    Button{
-                        if password == confirmPassword {
-                            Task{
-                                do{
-                                    isLoading = true
-                                    if email == "" {
-                                        errorCode = "Email Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    if password == "" {
-                                        errorCode = "Password Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    if firstName == "" {
-                                        errorCode = "First Name Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    if lastName == "" {
-                                        errorCode = "Last Name Field Empty"
-                                        print(errorCode)
-                                        showAlert = true
-                                        isLoading = false
-                                        return
-                                    }
-                                    try await VM.signUpWithEmailWithOutInviteCode(email: email, password: password,firstName:firstName,lastName:lastName)
-                                    showAlert = false
-                                    masterDataManager.showSignInView = false
-                                } catch {
-                                    print(error)
-                                }
-                            }
-                        } else {
-                            errorCode = "Passwords Do Not Match"
-                            print(errorCode)
-                            showAlert = true
+                    VStack{
+                        HStack{
+                            Text("Email :")
+                            Spacer()
                         }
-                        
-                    } label: {
-                        Text("Submit")
-                            .modifier(SubmitButtonModifier())
-
+                        TextField(
+                            "Email",
+                            text: $email
+                        )
+                        .modifier(PlainTextFieldModifier())
                     }
-                    .padding()
-                    NavigationLink(destination: {
-                        SignInView(dataService: dataService)
-                        
-                    }, label: {
-                        Text("Already have an acount? Sign In Here.")
-                    })
-                    .padding()
-                    Spacer()
+                    .padding(10)
+                    
+                    VStack{
+                        HStack{
+                            Text("Password :")
+                            Spacer()
+                        }
+                        SecureField(
+                            "Password",
+                            text: $password
+                        )
+                        .modifier(PlainTextFieldModifier())
+                    }
+                    .padding(10)
+                }
+                if password == confirmPassword {
+                    Text("")
+                } else {
+                    Text("Passwords Must Match")
+                        .foregroundColor(Color.red)
+                }
+                VStack{
+                    HStack{
+                        Text("Confirm Password :")
+                        Spacer()
+                    }
+                    SecureField(
+                        "Confirm Password",
+                        text: $confirmPassword
+                    )
+                    .modifier(PlainTextFieldModifier())
                 }
                 .padding(10)
-                .background(Color.gray.opacity(0.65))
-                .cornerRadius(10)
-                .padding(5)
+                Button{
+                    if password == confirmPassword {
+                        Task{
+                            do{
+                                isLoading = true
+                                if email == "" {
+                                    errorCode = "Email Field Empty"
+                                    print(errorCode)
+                                    showAlert = true
+                                    isLoading = false
+                                    return
+                                }
+                                if password == "" {
+                                    errorCode = "Password Field Empty"
+                                    print(errorCode)
+                                    showAlert = true
+                                    isLoading = false
+                                    return
+                                }
+                                if firstName == "" {
+                                    errorCode = "First Name Field Empty"
+                                    print(errorCode)
+                                    showAlert = true
+                                    isLoading = false
+                                    return
+                                }
+                                if lastName == "" {
+                                    errorCode = "Last Name Field Empty"
+                                    print(errorCode)
+                                    showAlert = true
+                                    isLoading = false
+                                    return
+                                }
+                                try await VM.signUpWithEmailWithOutInviteCode(email: email, password: password,firstName:firstName,lastName:lastName)
+                                print("Success")
+                                showAlert = false
+                                masterDataManager.showSignInView = false
+                            } catch {
+                                print("")
+                                print("[TechSignUpView][Create New User] Error \(error)")
+                            }
+                        }
+                    } else {
+                        errorCode = "Passwords Do Not Match"
+                        print(errorCode)
+                        showAlert = true
+                    }
+                    
+                } label: {
+                    Text("Submit")
+                        .modifier(SubmitButtonModifier())
+
+                }
+                .padding()
+                NavigationLink(destination: {
+                    SignInView(dataService: dataService)
+                    
+                }, label: {
+                    Text("Already have an acount? Sign In Here.")
+                        .underline(true)
+                })
+                .padding()
             }
+            .padding()
         }
         .alert(errorCode, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }

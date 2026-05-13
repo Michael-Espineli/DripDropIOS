@@ -18,14 +18,16 @@ import Darwin
     var dateCreated : Date?
     var firstName: String
     var lastName: String
-    var accountType: String? // Change to Account Type (Buisness, Technican, Homeowner)
+    var accountType: String? // Change to Account Type (Company, Technican, Homeowner) //Maybe Remove Technician and Replace with Vender Eventually
     var profileImagePath: String?
     var color: String?
     var bio: String?
     var exp: Int
-    var stripeId: String?
+//    var stripeId: String?
+//    var stripeConnectedAccountId: String?
     var recentlySelectedCompany: String
     var phoneNumber: String?
+     
     init(
         id: String,
         email :String,
@@ -38,7 +40,8 @@ import Darwin
         color: String? = nil,
         bio: String? = nil,
         exp: Int,
-        stripeId: String? = nil,
+//        stripeId: String? = nil,
+        //        stripeConnectedAccountId: String? = nil,
         recentlySelectedCompany: String,
         phoneNumber: String? = nil
     ){
@@ -53,7 +56,8 @@ import Darwin
         self.color = color
         self.bio = bio
         self.exp = exp
-        self.stripeId = stripeId
+//        self.stripeId = stripeId
+//        self.stripeConnectedAccountId = stripeConnectedAccountId
         self.recentlySelectedCompany = recentlySelectedCompany
         self.phoneNumber = phoneNumber
 
@@ -71,7 +75,8 @@ import Darwin
             case color = "color"
             case bio = "bio"
             case exp = "exp"
-            case stripeId = "stripeId"
+//            case stripeId = "stripeId"
+//            case stripeConnectedAccountId = "stripeConnectedAccountId"
             case recentlySelectedCompany = "recentlySelectedCompany"
             case phoneNumber = "phoneNumber"
 

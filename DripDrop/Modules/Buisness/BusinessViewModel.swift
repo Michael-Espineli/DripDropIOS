@@ -92,7 +92,7 @@ final class BuisnessViewModel:ObservableObject{
     }
     //Delete
     func deleteAssociatedBusinessToCompany(companyId:String,businessId:String) async throws {
-//        try await dataService.deleteAssociatedBusinessToCompany(companyId: companyId, businessId: businessId)
+        try await dataService.deleteAssociatedBusinessToCompany(companyId: companyId, businessId: businessId)
     }
 }
 

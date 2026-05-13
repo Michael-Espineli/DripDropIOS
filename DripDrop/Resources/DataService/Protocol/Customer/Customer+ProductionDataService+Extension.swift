@@ -120,7 +120,8 @@ extension ProductionDataService {
                     DBCustomer.lastName
                 )
             ),
-            preText: false
+            preText: false,
+            isActive: true
         )
         
         try await ServiceLocationManager.shared.uploadCustomerServiceLocations(
@@ -141,7 +142,8 @@ extension ProductionDataService {
             material: "Plaster",
             customerId: DBCustomer.id,
             serviceLocationId: serviceLocation.id,
-            lastFilled: Date()
+            lastFilled: Date(),
+            isActive: true
         )
         try await BodyOfWaterManager.shared.uploadBodyOfWaterByServiceLocation(
             companyId:companyId,
@@ -153,9 +155,12 @@ extension ProductionDataService {
         let pump = Equipment(
             id: UUID().uuidString,
             name:"Pump 1",
-            category: .pump,
+            type: .pump,
+            typeId: "",
             make: "",
+            makeId: "",
             model: "",
+            modelId: "",
             dateInstalled: Date(),
             status: .operational,
             needsService: false,
@@ -169,15 +174,18 @@ extension ProductionDataService {
         let filter = Equipment(
             id: UUID().uuidString,
             name:"Filter 1",
-            category: .filter,
+            type: .filter,
+            typeId: "",
             make: "",
+            makeId: "",
             model: "",
+            modelId: "",
             dateInstalled: Date(),
             status: .operational,
             needsService: true,
             lastServiceDate: Date(),
-            serviceFrequency: "Month",
-            serviceFrequencyEvery: "6",
+            serviceFrequency: 6,
+            serviceFrequencyEvery: .monthly,
             notes: "",
             customerName: fullName,
             customerId: DBCustomer.id,
@@ -414,6 +422,14 @@ extension ProductionDataService {
         
         try await customerRef.updateData([
             Customer.CodingKeys.linkedInviteId.rawValue:linkedInviteId,
+        ])
+    }
+    
+    func updateInviteStatus(invite:String,status:String) async throws {
+        let customerRef = inviteDoc(inviteId: invite)
+        
+        try await customerRef.updateData([
+            Invite.CodingKeys.status.rawValue:status,
         ])
     }
     func updateCustomer(companyId:String,currentCustomer:Customer,customerWithUpdates:Customer) async  throws {

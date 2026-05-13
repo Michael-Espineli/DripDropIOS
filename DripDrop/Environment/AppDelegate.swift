@@ -9,12 +9,22 @@
 import Foundation
 import UIKit
 import FirebaseCore
+
 class AppDelegate: NSObject, UIApplicationDelegate {
 
     // swiftlint: disable line_length
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        FirebaseApp.configure()
+//        FirebaseApp.configure()
+        FirebaseManager.shared.configure()
+        #if DEBUG
+        // Optional: connect to Firestore emulator for local testing
+        // let settings = Firestore.firestore().settings
+        // settings.host = "localhost:8080"
+        // settings.isSSLEnabled = false
+        // Firestore.firestore().settings = settings
+        #endif
+        
         setupMyApp()
         return true
     }

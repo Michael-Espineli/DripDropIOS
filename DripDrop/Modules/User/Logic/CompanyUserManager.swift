@@ -75,6 +75,7 @@ final class CompanyUserManager {
             .getDocuments(as:CompanyUser.self).first! // DEVELOPER PROPPERLY UNWRAP
         
     }
+    
     func getAllRateSheetByCompanyUserId(companyId: String, companyUserId: String) async throws -> [RateSheet]{
         return try await companyUsersRateSheetCollection(companyId: companyId,companyUserId: companyUserId)
             .getDocuments(as:RateSheet.self)

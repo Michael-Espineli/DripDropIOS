@@ -16,6 +16,62 @@ import MapKit
 
 @MainActor
 final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
+    func upLoadActiveRouteLocation(companyId:String,activeRouteId:String,location: ActiveRouteLocation) async throws {
+        
+    }
+    func upLoadActiveRouteLog(companyId:String,activeRouteId:String, log: ActiveRouteLog) async throws {
+        
+    }
+    
+    
+    func createCompanySubscription(subscription:CompanySubscription,company:Company) async throws{
+        
+    }
+    func getCompanySubscription(companyId:String) async throws -> CompanySubscription?{
+        return nil
+    }
+
+    func updateCompanyName(companyId:String,name:String) async throws{
+        
+    }
+    func updateCompanyEmail(companyId:String,email:String) async throws{
+        
+    }
+    func updateCompanyPhoneNumber(companyId:String,phoneNumber:String) async throws{
+        
+    }
+    func updateCompanyServicesOffered(companyId:String,servicesOffered:[String]) async throws{
+        
+    }
+    func updateCompanyZipCodes(companyId:String,serviceZipCodes:[String]) async throws{
+        
+    }
+    func updateCompanyYelpURl(companyId:String,yelpURL:String) async throws{
+        
+    }
+    func updateCompanyWebUrl(companyId:String,websiteUrl:String) async throws{
+        
+    }
+
+    func getActiveSubscriptions(active:Bool) async throws -> [StripeSubscription] {
+        return []
+    }
+    func createSubscription(subscription:UserSubscription,user:DBUser,company:Company) async throws{
+    }
+    func getUserSubscription(userId:String) async throws -> UserSubscription?{
+        return UserSubscription(
+            id: "",
+            stripeSubscriptionId: "",
+            stripeProductId: "",
+            stripePriceId: "",
+            price: 0,
+            name: .free,
+            description: "",
+            status: "",
+            lastPaid: Date(),
+            started: Date()
+        )
+    }
     func removeListenerForSentLaborContracts() {
         
     }
@@ -56,6 +112,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func deleteTaskGroupItem(companyId:String,taskGroupId:String,taskId:String) async throws {
     }
+    func deleteJobTaskItem(companyId:String,jobId:String,taskId:String) async throws {
+        
+    }
+
     func deleteTaskGroup(companyId:String,taskGroupId:String) async throws {
     }
 //    func getAllTaskGroups(companyId:String, taskGroupId:String) async throws ->[JobTaskGroupItem] {
@@ -79,6 +139,30 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return []
     }
     //Update
+    func updateDBUserEmail(userId:String,email:String) throws {
+    }
+    
+    func updateDBUserPhotoUrl(userId:String,photoUrl:String) throws {
+    }
+    
+    func updateDBUserProfileImagePath(userId:String,profileImagePath:String) throws {
+    }
+    
+    func updateDBUserFirstName(userId:String,firstName:String) throws {
+    }
+    
+    func updateDBUserLastName(userId:String,lastName:String) throws {
+    }
+    
+    func updateDBUserBio(userId:String,bio:String) throws {
+    }
+    
+    func updateDBUserExp(userId:String,exp:Int) throws {
+    }
+    
+    func updateDBUserPhoneNumber(userId:String,phoneNumber:String) throws {
+        
+    }
     func updateRecurringServiceStopTaskStatus(companyId:String,recurringServiceStopId:String,taskId:String,status:JobTaskStatus){
         
     }
@@ -89,7 +173,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func uploadServiceStopImage(companyId: String, serviceStopId: String, image: DripDropImage) async throws -> (path: String, name: String) {
         return (path: "", name: "")
     }
-    
+    func uploadServiceStopImages(
+        companyId: String,
+        serviceStopId: String,
+        images: [DripDropImage]
+    ) async throws -> [DripDropStoredImage] {
+        return []
+    }
     func updateServiceStopPhotoURLs(companyId: String, serviceStopId: String, photoUrls: [DripDropStoredImage]) async throws {
         
     }
@@ -123,7 +213,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateEquipmentModel(companyId:String,equipmentId:String,model:String) throws {
         
     }
-    func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:String) throws {
+    func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:EquipmentFrequency) throws {
         
     }
     func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws {
@@ -141,7 +231,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateEquipmentCleanLastServiceDate(companyId:String,equipmentId:String,lastServiceDate:Date) throws {
         
     }
-    func updateEquipmentServiceFrequency(companyId:String,equipmentId:String,serviceFrequency:String) throws {
+    func updateEquipmentServiceFrequency(companyId:String,equipmentId:String,serviceFrequency:Int) throws {
         
     }
     func updateEquipmentNextServiceDate(companyId:String,equipmentId:String,nextServiceDate:Date) throws {
@@ -206,6 +296,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateActiveRouteStartTime(companyId:String,activeRouteId:String,startTime:Date){
     }
+    func updateServiceStopStartTime(companyId:String,serviceStopId:String,startTime:Date) async throws{
+    }
+    func updateServiceStopEndTime(companyId:String,serviceStopId:String,endTime:Date) async throws{
+    }
     func updateActiveRouteEndTime(companyId:String,activeRouteId:String,endTime:Date){
     }
     func updateActiveRouteDuration(companyId:String,activeRouteId:String,duration:Int){
@@ -214,9 +308,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateActiveRouteStatus(companyId:String,activeRouteId:String,status:ActiveRouteStatus){
     }
-    func updateActiveRouteStartMilage(companyId:String,activeRouteId:String,startMilage:Int){
+    func updateActiveRouteStartMilage(companyId:String,activeRouteId:String,startMilage:Double){
     }
-    func updateActiveRouteEndMilage(companyId:String,activeRouteId:String,endMilage:Int){
+    func updateActiveRouteEndMilage(companyId:String,activeRouteId:String,endMilage:Double){
     }
     func updateActiveRouteFinishedStop(companyId:String,activeRouteId:String,finishedStops:Int){
     }
@@ -247,6 +341,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateCustomerLinkedInviteId(companyId:String,customerId:String,linkedInviteId:String) async throws {
     }
+    func updateInviteStatus(invite:String,status:String) async throws {
+        
+    }
+
     func getServiceStopByServiceLocationId(companyId: String, serviceLocationId: String) async throws-> [ServiceStop] {
         return []
     }
@@ -270,7 +368,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return []
     }
     
-    func updateServicestopOperationStatus(companyId: String, serviceStop: ServiceStop, operationStatus: ServiceStopOperationStatus) async throws {
+    func updateServicestopOperationStatus(companyId: String, serviceStopId: String, operationStatus: ServiceStopOperationStatus) async throws {
             //DEVELOPER
         
     }
@@ -780,7 +878,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func getTermsTemplate(companyId:String,termsTemplateId:String) async throws -> TermsTemplate{
-        return TermsTemplate(name: "")
+        return TermsTemplate(name: "", description: "")
     }
     func getTermsTemplateList(companyId:String) async throws -> [TermsTemplate]{
         return []
@@ -810,22 +908,37 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func deleteAssociatedBusinessToCompany(companyId:String,businessId:String) async throws {
         
     }
-    
+    func deleteSavedCompany(userId:String,businessId:String) async throws {
+        
+    }
+
     func saveAssociatedBusinessToCompany(companyId:String,business:AssociatedBusiness) async throws {
         
     }
+    func saveAssociatedBusinessToUser(userId:String,business:AssociatedBusiness) async throws {
+        
+    }
+
     func getVehical(companyId: String,vehicalId:String) async throws -> Vehical {
         return MockDataService.mockVehical
     }
     func addNewVehical(companyId:String,vehical:Vehical) async throws {
         
     }
+    
     func getAssociatedBusinesses(companyId:String) async throws -> [AssociatedBusiness] {
         return []
     }
     func getAssociatedBusiness(companyId:String,businessId:String) async throws -> AssociatedBusiness {
         return AssociatedBusiness(id: "", companyId: "", companyName: "")
     }
+    func getUserSavedBusiness(userId:String,businessId:String) async throws -> AssociatedBusiness{
+        return AssociatedBusiness(id: "", companyId: "", companyName: "")
+    }
+    func getUserSavedBusinessList(userId:String) async throws -> [AssociatedBusiness]{
+        return []
+    }
+
     func getAssociatedBusinessByCompanyId(companyId:String,businessCompanyId:String) async throws -> AssociatedBusiness {
         return AssociatedBusiness(id: "", companyId: "", companyName: "")
     }
@@ -849,7 +962,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         print("uploadBodyOfWaterImage")
         return (path:"",name:"")
     }
-    
+    func uploadEquipmentHistory(companyId:String,equipmentId:String,history:EquipmentServiceHistory) async throws {
+    }
     func uploadEquipmentImage(companyId: String,equipmentId:String, image: DripDropImage) async throws ->(path:String, name:String){
         print("uploadEquipmentImage")
         return (path:"",name:"")
@@ -951,7 +1065,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         print("deleteInvoice")
         
     }
-    
+    func deleteDBUser(userId:String) async throws{
+        
+    }
+
     func updateEquipmentIsActive(companyId:String,equipmentId:String,isActive:Bool) throws {
     }
     func updateEquipmentDateUninstalled(companyId:String,equipmentId:String,dateUninstalled:Date) throws {
@@ -1552,7 +1669,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     private var dataBaseListener: ListenerRegistration? = nil
     private var requestListener: ListenerRegistration? = nil
     private var jobListener: ListenerRegistration? = nil
-    
+    private var savedBusinessListener: ListenerRegistration? = nil
+
         //----------------------------------------------------
         //                    Coordinates
         //----------------------------------------------------
@@ -1740,7 +1858,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                                                               rate: customer.rate,
                                                               customerId: DBCustomer.id,
                                                               customerName: ((DBCustomer.firstName) + " " + (DBCustomer.lastName)),
-                                                              preText: false)
+                                                              preText: false,
+                                                              isActive: true)
         
         try await ServiceLocationManager.shared.uploadCustomerServiceLocations(
             companyId: companyId,
@@ -1760,7 +1879,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             material: "Plaster",
             customerId: DBCustomer.id,
             serviceLocationId: serviceLocation.id, 
-            lastFilled: Date()
+            lastFilled: Date(),
+            isActive: true
         )
         try await BodyOfWaterManager.shared.uploadBodyOfWaterByServiceLocation(
             companyId:companyId,
@@ -1772,9 +1892,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let pump = Equipment(
             id: UUID().uuidString,
             name:"Pump 1",
-            category: .pump,
+            type: .pump,
+            typeId: "",
             make: "",
+            makeId: "",
             model: "",
+            modelId: "",
             dateInstalled: Date(),
             status: .operational,
             needsService: false,
@@ -1788,15 +1911,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let filter = Equipment(
             id: UUID().uuidString,
             name:"Filter 1",
-            category: .filter,
+            type: .filter,
+            typeId: "",
             make: "",
+            makeId: "",
             model: "",
+            modelId: "",
             dateInstalled: Date(),
             status: .operational,
             needsService: true,
             lastServiceDate: Date(),
-            serviceFrequency: "Month",
-            serviceFrequencyEvery: "6",
+            serviceFrequency: 6,
+            serviceFrequencyEvery: .monthly,
             notes: "",
             customerName: fullName,
             customerId: DBCustomer.id,
@@ -1845,8 +1971,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
         try await EquipmentManager.shared.uploadEquipment(companyId: companyId, equipment: equipment)
-        print("\(equipment.category)")
-        switch equipment.category {
+        print("\(equipment.type)")
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -1977,7 +2103,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         }
     }
     func addPartsToEquipment(companyId: String,equipment:Equipment) async throws {
-        switch equipment.category {
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -2275,11 +2401,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         return try StoreDocument(storeId: store.id, companyId: companyId).setData(from:store, merge: false)
     }
-    func uploadChat(userId:String,chat:Chat) async throws {
+    func uploadChat(chat:Chat) async throws {
         try chatDocument(chatId: chat.id)
             .setData(from:chat, merge: false)
     }
-    func sendMessage(userId: String, message: Message) async throws {
+    func sendMessage(message: Message) async throws {
         try messageDocument(messageId: message.id)
             .setData(from:message, merge: false)
     }
@@ -2590,11 +2716,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func uploadGenericTraingTempaltes(companyId: String,templateList:[TrainingTemplate]) async throws{
             //        let genericTemplateList:[TrainingTemplate] = [
-            //            TrainingTemplate(id: UUID().uuidString, name: "Pool Cleaning", description: "", workOrderIds: ["FUCK"]),
-            //            TrainingTemplate(id: UUID().uuidString, name: "Filter Cleaning", description: "", workOrderIds: ["FUCK"]),
-            //            TrainingTemplate(id: UUID().uuidString, name: "Filter Repair / Install", description: "", workOrderIds: ["FUCK"]),
-            //            TrainingTemplate(id: UUID().uuidString, name: "Pump Repair / Install", description: "", workOrderIds: ["FUCK"]),
-            //            TrainingTemplate(id: UUID().uuidString, name: "Heater Repair / Install", description: "", workOrderIds: ["FUCK"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Pool Cleaning", description: "", workOrderIds: ["Messy"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Filter Cleaning", description: "", workOrderIds: ["Messy"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Filter Repair / Install", description: "", workOrderIds: ["Messy"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Pump Repair / Install", description: "", workOrderIds: ["Messy"]),
+            //            TrainingTemplate(id: UUID().uuidString, name: "Heater Repair / Install", description: "", workOrderIds: ["Messy"]),
             //
             //        ]
         for tempalte in templateList {
@@ -2800,21 +2926,21 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func helpCreateDailyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                       noEndDate:Bool,startDate:Date,endDate:Date) async throws{}
+                                       noEndDate:Bool,startDate:Date,endDate:Date?) async throws{}
         //WeekDay
     func helpCreateWeekDayRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async throws{}
+                                         noEndDate:Bool,startDate:Date,endDate:Date?) async throws{}
         //Weeekly
     func helpCreateWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                        noEndDate:Bool,startDate:Date,endDate:Date) async throws{}
+                                        noEndDate:Bool,startDate:Date,endDate:Date?) async throws{}
         //Bi Weekly
     
     func helpCreateBiWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                          noEndDate:Bool,startDate:Date,endDate:Date) async  throws{}
+                                          noEndDate:Bool,startDate:Date,endDate:Date?) async  throws{}
         //Monthly
     
     func helpCreateMonthlyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
-                                         noEndDate:Bool,startDate:Date,endDate:Date) async  throws{}
+                                         noEndDate:Bool,startDate:Date,endDate:Date?) async  throws{}
     
         //Custom
     func helpCreateCustomRecurringRoute(companyId: String, recurringServiceStop: RecurringServiceStop, standardFrequencyNumber: Int, customFrequencyType: String, CustomFrequency: String, daysOfWeek: [String]) {
@@ -2949,7 +3075,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func getAllUserAvailableCompanies(userId:String) async throws ->[UserAccess]{
-        print("Attempting to get User Access \(userId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
+        print("      [MockDataService][getAllUserAvailableCompanies]Attempting to get User Access \(userId) - Page: UserAccessManager - Func: getAllUserAvailableCompanies")
         return try await userAccessCollection(userId: userId)
             .getDocuments(as:UserAccess.self) // DEVELOPER FIX LATER, BUT FOR NOW I WANNA TEST WHAT IT LOOKS LIKE WITH OUT HAVING A COMPANY
                                               //        return []
@@ -3671,6 +3797,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return try await equipmentCollection(companyId: companyId)
             .getDocuments(as:Equipment.self)
     }
+    func getAllEquipmentServiceHistory(companyId:String,equipmentId:String) async throws -> [EquipmentServiceHistory] {
+        return []
+    }
+
     func getEquipmentByBodyOfWater(companyId:String,bodyOfWater:BodyOfWater) async throws -> [Equipment] {
         
         return try await equipmentCollection(companyId: companyId)
@@ -3737,7 +3867,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func getAllServiceStopsByTechAndDate(companyId: String,date:Date,tech:DBUser) async throws -> [ServiceStop]{
             //DEVELOPER WHY DOES THIS FUNCTION RUN TWICE
-        print("Getting All Service Stops By Tech For \(tech.firstName ?? "") \(tech.lastName ?? "") and Day by \(fullDate(date: date))")
+        print("Getting All Service Stops By Tech For \(tech.firstName) \(tech.lastName) and Day by \(fullDate(date: date))")
         let stops = try await serviceStopCollection(companyId: companyId)
             .whereField(ServiceStop.CodingKeys.serviceDate.rawValue, isGreaterThan: date.startOfDay())
             .whereField(ServiceStop.CodingKeys.serviceDate.rawValue, isLessThan: date.endOfDay())
@@ -3873,6 +4003,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:ServiceStop.self)
         
     }
+    func getFutureerviceStopsByCustomer(companyId:String,customerId:String) async throws -> [ServiceStop] {
+        return []
+    }
+
     func getUnfinished4ServiceStopsByCustomer(companyId:String,customer:Customer) async throws -> [ServiceStop]{
         
         return try await serviceStopCollection(companyId: companyId)
@@ -4060,6 +4194,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
             .getDocuments(as:Chat.self)
     }
+    func getrecentChatsByUser(userId:String, numberOfChats:Int) async throws -> [Chat] {
+        return []
+    }
+
     func getSpecificChat(chatId:String) async throws ->Chat{
         
         return try await chatDocument(chatId: chatId)
@@ -4078,7 +4216,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getAllContactsByCustomer(companyId:String,customerId:String) async throws -> [Contact] {
         return []
     }
-    func getChatBySenderAndReceiver(companyId:String,senderId:String,receiverId:String) async throws ->Chat? {
+    func getChatBySenderAndReceiver(senderId:String,receiverId:String) async throws ->Chat? {
         return try await chatDocument(chatId: receiverId)
             .getDocument(as: Chat.self)
     }
@@ -4176,6 +4314,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .order(by: "date", descending: false)
             .getDocuments(as:StopData.self)
     }
+    func getStopDataByServiceStopIdAndLocationId(companyId:String,serviceStopId: String,locationId:String)async throws->[StopData]{
+        return []
+    }
+
     func getStopDataByCustomer(companyId:String,customerId: String)async throws->[StopData]{
         return try await stopDataCollection(companyId: companyId)
             .whereField("customerId", isEqualTo: customerId)
@@ -4327,7 +4469,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return try await reccuringRouteDoc(companyId: companyId, recurringRouteId: recurringRouteId)
             .getDocument(as: RecurringRoute.self)
     }
-    func getSingleRouteFromTechIdAndDay(companyId: String, techId: String, day: String) async throws -> RecurringRoute? {
+    func getSingleRouteFromTechIdAndDay(companyId: String, techId: String, day: DaysOfWeek) async throws -> RecurringRoute? {
         return try await reccuringRouteDoc(companyId: companyId, recurringRouteId: "1")
             .getDocument(as: RecurringRoute.self)
     }
@@ -4338,33 +4480,33 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             //            .getDocuments(as:Equipment.self)
     }
     
-    func getAllActiveRoutesBasedOnDate(companyId:String,day:String,techId:String) async throws -> [RecurringRoute] {
+    func getAllActiveRoutesBasedOnDate(companyId:String,day:DaysOfWeek,techId:String) async throws -> [RecurringRoute] {
         
         return try await  recurringRouteCollection(companyId: companyId)
-            .whereField("day", isEqualTo: day)
+            .whereField("day", isEqualTo: day.rawValue)
             .whereField("techId", isEqualTo: techId)
             .getDocuments(as: RecurringRoute.self)
     }
-    func getRecurringRouteByDayAndTech(companyId:String,day:String,techId:String) async throws ->[RecurringRoute] {
+    func getRecurringRouteByDayAndTech(companyId:String,day: DaysOfWeek,techId:String) async throws ->[RecurringRoute] {
         return try await  recurringRouteCollection(companyId: companyId)
             .whereField("techId", isEqualTo: techId)
-            .whereField("day", isEqualTo: day)
+            .whereField("day", isEqualTo: day.rawValue)
             .getDocuments(as: RecurringRoute.self)
         
             //            .whereField(recurringRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
             //            .whereField(recurringRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
             //            .whereField(recurringRoute.CodingKeys.techId.rawValue, isEqualTo: tech.id)
     }
-    func getRecurringRouteByDay(companyId:String,day:String) async throws ->[RecurringRoute] {
+    func getRecurringRouteByDay(companyId:String,day:DaysOfWeek) async throws ->[RecurringRoute] {
         return try await  recurringRouteCollection(companyId: companyId)
-            .whereField("day", isEqualTo: day)
+            .whereField("day", isEqualTo: day.rawValue)
             .getDocuments(as: RecurringRoute.self)
         
             //            .whereField(recurringRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
             //            .whereField(recurringRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
             //            .whereField(recurringRoute.CodingKeys.techId.rawValue, isEqualTo: tech.id)
     }
-    func getRecurringRouteByDayCount(companyId:String,day:String) async throws ->Int {
+    func getRecurringRouteByDayCount(companyId:String,day:DaysOfWeek) async throws ->Int {
         return 9
     }
     
@@ -4516,19 +4658,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:RecurringServiceStop.self)
         
     }
-    func getRecurringServiceStopsByDays(companyId:String,day:String) async throws -> [RecurringServiceStop] {
+    func getRecurringServiceStopsByDays(companyId: String, day: DaysOfWeek) async throws -> [RecurringServiceStop] {
         
         return try await recurringServiceStopCollection(companyId: companyId)
-            .whereField(RecurringServiceStop.CodingKeys.daysOfWeek.rawValue, arrayContains: day)
+            .whereField(RecurringServiceStop.CodingKeys.day.rawValue, isEqualTo: day.rawValue)
             .getDocuments(as:RecurringServiceStop.self)
     }
     
-    func getRecurringServiceStopsByDayAndTech(companyId:String,techId:String,day:String) async throws -> [RecurringServiceStop] {
+    func getRecurringServiceStopsByDayAndTech(companyId:String,techId:String,day:DaysOfWeek) async throws -> [RecurringServiceStop] {
         
         return try await recurringServiceStopCollection(companyId: companyId)
-            .whereField(RecurringServiceStop.CodingKeys.daysOfWeek.rawValue, arrayContains: day)
+            .whereField(RecurringServiceStop.CodingKeys.day.rawValue, isEqualTo: day.rawValue)
             .whereField(RecurringServiceStop.CodingKeys.techId.rawValue, isEqualTo: techId)
-        
             .getDocuments(as:RecurringServiceStop.self)
     }
     
@@ -4585,9 +4726,17 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             bodyOfWaterId: "",
             customerId: "",
             serviceLocationId: "",
-            userId: ""
+            userId: "",
+            equipmentMeasurements: []
         )
     }
+    func updateSavedReadingAmount(companyId:String, readingTemplateId:String,newArray:[String])  async throws {
+        
+    }
+    func updateSavedDosageAmount(companyId:String, dosageTemplateId:String,newArray:[String])  async throws {
+        
+    }
+    
     func readAllHistory(companyId:String,customer : Customer) async throws -> [StopData]{
         print("Trying to get data")
         return try await readingCollectionForCustomerHistory(customerId: customer.id, companyId: companyId)
@@ -4604,6 +4753,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("date", isLessThan: endDate)
             .getDocuments(as:StopData.self)
         
+    }
+    
+    func getUserInvitesByStatus(userId:String,status : String) async throws ->[Invite] {
+        return []
     }
     func getAllCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
@@ -4660,16 +4813,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
         serviceStopCount = doc.increment
         let updatedServiceStopCount = serviceStopCount + 1
-        SettingsCollection(companyId: companyId).document("serviceStops")
+        try await SettingsCollection(companyId: companyId).document("serviceStops")
             .updateData([
                 "increment": updatedServiceStopCount
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
+            ])
         print("Service Stop Count " + String(serviceStopCount))
         return updatedServiceStopCount
             //        return 1
@@ -4693,16 +4840,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let doc = try await SettingsCollection(companyId: companyId).document("workOrders").getDocument(as: Increment.self)
         workOrderCount = doc.increment
         let updatedWorkOrderCount = workOrderCount + 1
-        SettingsCollection(companyId: companyId).document("workOrders")
+        try await SettingsCollection(companyId: companyId).document("workOrders")
             .updateData([
                 "increment": updatedWorkOrderCount
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
+            ])
         print("Work Order Count " + String(updatedWorkOrderCount))
         return updatedWorkOrderCount
         
@@ -4713,16 +4854,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let doc = try await SettingsCollection(companyId: companyId).document("repairRequests").getDocument(as: Increment.self)
         workOrderCount = doc.increment
         let updatedWorkOrderCount = workOrderCount + 1
-        SettingsCollection(companyId: companyId).document("repairRequests")
+        try await SettingsCollection(companyId: companyId).document("repairRequests")
             .updateData([
                 "increment": updatedWorkOrderCount
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
+            ])
         print("Repair Request Count " + String(updatedWorkOrderCount))
         return updatedWorkOrderCount
         
@@ -4732,16 +4867,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let doc = try await SettingsCollection(companyId: companyId).document("serviceStops").getDocument(as: Increment.self)
         serviceStopCount = doc.increment
         let updatedServiceStopCount = serviceStopCount + 1
-        SettingsCollection(companyId: companyId).document("serviceStops")
+        try await SettingsCollection(companyId: companyId).document("serviceStops")
             .updateData([
                 "increment": updatedServiceStopCount
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
+            ])
         print("Service Stop Count " + String(serviceStopCount))
         return updatedServiceStopCount
             //        return 1
@@ -4756,16 +4885,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         sleep(1)
         let updatedRecurringServiceStopCount = recurringServiceStopCount + 1
         
-        SettingsCollection(companyId: companyId).document("recurringServiceStops")
+        try await SettingsCollection(companyId: companyId).document("recurringServiceStops")
             .updateData([
                 "increment": updatedRecurringServiceStopCount
-            ]) { err in
-                if let err = err {
-                    print("Error updating document: \(err)")
-                } else {
-                    print("Document successfully updated")
-                }
-            }
+            ])
         print("recurringServiceStop Count " + String(updatedRecurringServiceStopCount))
         return updatedRecurringServiceStopCount
             //        return 2
@@ -4774,9 +4897,6 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getAllWorkOrderTemplate(companyId:String,workOrderId:String) async throws -> JobTemplate{
         
         return try await WorkOrderDocument(workOrderTemplateId: workOrderId,companyId: companyId).getDocument(as: JobTemplate.self)
-        
-        
-        
     }
     func getAllWorkOrderTemplates(companyId:String) async throws -> [JobTemplate]{
         
@@ -4832,23 +4952,26 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func uploadReadingTemplateAmountArray(companyId:String,readingTemplateId : String,amount:String) async throws {
         
-        try await  ReadingsTemplateDocument(readingTemplateId: readingTemplateId,companyId: companyId).updateData(["amount":FieldValue.arrayUnion([amount])
-                                                                                                                  ])
+        try await  ReadingsTemplateDocument(readingTemplateId: readingTemplateId,companyId: companyId).updateData(
+            ["amount":FieldValue.arrayUnion([amount])
+            ]
+        )
     }
     func markInviteAsAccepted(invite:Invite) async throws {
         let itemRef = inviteDoc(inviteId: invite.id)
         
             // Set the "capital" field of the city 'DC'
-        itemRef.updateData([
+        try await itemRef.updateData([
             Invite.CodingKeys.status.rawValue:"Accepted"
             
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }    }
+        ])
+    }
+    func updateVehical(companyId:String,vehicle:Vehical,newVehical:Vehical) async throws {
+    }
+    func markInviteAsRejected(invite:Invite) async throws {
+        
+    }
+
     func endRecurringServiceStop(companyId:String,recurringServiceStopId:String,endDate:Date) async throws {
             //DEVELOPER ADD LOGIC
         print("End Recurring Service Stop Logic")
@@ -4895,7 +5018,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let itemRef = DataBaseDocument(dataBaseId: dataBaseItem.id, companyId: companyId)
         
             // Set the "capital" field of the city 'DC'
-        itemRef.updateData([
+        try await itemRef.updateData([
             "name":name,
             "rate":rate,
             "category":category.rawValue,
@@ -4908,27 +5031,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             "sellPrice":sellPrice,
             "UOM":UOM.rawValue,
             "subCategory":subCategory.rawValue,
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
+        ])
     }
     func updateReceiptPDFPath(companyId: String,receiptItemId:String,path:String) async throws {
         
         let ref = ReceiptItemDocument(receiptItemId: receiptItemId, companyId: companyId)
         
-        ref.updateData([
+        try await ref.updateData([
             Receipt.CodingKeys.pdfUrlList.rawValue: FieldValue.arrayUnion([path])
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Updated Tech Image List Successfully")
-            }
-        }
+        ])
     }
     func updateRouteServiceStopId(companyId:String,activeRoute:ActiveRoute,serviceStopId:String) async throws {
         try await reccuringRouteDoc(companyId: companyId, recurringRouteId: activeRoute.id)
@@ -4953,7 +5064,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func updateInstallationPartsListOfWorkOrder(companyId: String,workOrder:Job,installationPart:WODBItem) async throws{
-        workOrderCollection(companyId: companyId).document(workOrder.id).updateData([
+        try await workOrderCollection(companyId: companyId).document(workOrder.id).updateData([
             "installationParts": FieldValue.arrayUnion([[
                 
                 "id": installationPart.id,
@@ -4964,17 +5075,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 
             ] as [String : Any]])
             
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
+        ])
     }
     func updatePVCPartsListOfWorkOrder(companyId: String,workOrderId:String,pvcPart:WODBItem) async throws{
             //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
-        workOrderCollection(companyId: companyId).document(workOrderId).updateData([
+        try await workOrderCollection(companyId: companyId).document(workOrderId).updateData([
             "pvcParts": [
                 [
                     
@@ -4986,13 +5091,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     
                 ] as [String : Any]]
             
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
+        ])
     }
     func updateElectricalPartsListOfWorkOrder(companyId: String,workOrderId:String,electricalPart:WODBItem) async throws{
             //        let workOrder =  try await workOrderDocument(workOrderId: workOrderId, companyId: user.companyId).getDocument(as: WorkOrder.self)
@@ -5234,6 +5333,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
     }
+    func updateTermsTemplateName(companyId:String,templateId:String,templateName:String) async throws{
+    }
+    func updateTermsTemplateDescription(companyId:String,templateId:String,templateDescription:String) async throws{
+    }
     func updateJobOperationStatus(companyId:String,jobId:String,operationStatus:JobOperationStatus) async throws{
         let ref = workOrderDocument(workOrderId: jobId, companyId: companyId)
         ref.updateData([
@@ -5258,7 +5361,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
     }
-    func updateJobRate(companyId:String,jobId:String,rate:String) async throws{
+    func updateJobRate(companyId:String,jobId:String,rate:Int) async throws{
         let ref = workOrderDocument(workOrderId: jobId, companyId: companyId)
         ref.updateData([
             "rate": Double(rate),//DEVELOPER MOVE THIS HIGHER UP THE CHAIN, SO WE CAN VALIDATE BETTER
@@ -5383,6 +5486,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
     }
+    func updateRepairRequestDescription(companyId:String,repairRequestId:String,description:String) async throws {
+        
+    }
+
     func uploadRepairRequestImage(companyId: String, requestId: String, image: DripDropImage) async throws -> (path: String, name: String) {
         return ("","")
     }
@@ -5487,9 +5594,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
-        equipmentRef.updateData([
+        try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.category.stringValue:equipment.category,
+            Equipment.CodingKeys.type.stringValue:equipment.type,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.model.stringValue:equipment.model,
             Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
@@ -5498,26 +5605,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,
             Equipment.CodingKeys.bodyOfWaterId.stringValue:equipment.bodyOfWaterId,
-        ]) { err in
-            if let err = err {
-                print("Error updating Equipment: \(err)")
-            } else {
-                print("Equipment successfully updated")
-            }
-        }
+        ])
         if equipment.needsService {
-            equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate,
-            ]) { err in
-                if let err = err {
-                    print("Error updating equipment: \(err)")
-                } else {
-                    print("Equipment successfully updated")
-                }
-            }
+            try await equipmentRef.updateData([
+                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
+                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
+                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
+                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
+            ])
         }
     }
     func updateEquipmentCustomer(companyId:String,equipment:Equipment) async throws {
@@ -5530,15 +5625,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let bodyOfWaterRef = bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWater.id)
         
         
-        bodyOfWaterRef.updateData([
+        try await bodyOfWaterRef.updateData([
             "name":name
-        ]) { err in
-            if let err = err {
-                print("Error updating Body Of Water Name: \(err)")
-            } else {
-                print("Document successfully updated Body Of Water Name")
-            }
-        }
+        ])
     }
     func editBodyOfWaterGallons(companyId:String,bodyOfWater:BodyOfWater,gallons:String) async throws{
         let bodyOfWaterRef = bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWater.id)
@@ -5643,17 +5732,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let bodyOfWaterRef = bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWater.id)
         
         
-        bodyOfWaterRef.updateData([
+        try await bodyOfWaterRef.updateData([
             "gallons":updatedBodyOfWater.gallons,
             "material":updatedBodyOfWater.material,
             "name":updatedBodyOfWater.name
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
+        ])
     }
     func updateServiceLocationAddress(companyId:String,currentCustomerId:String,serviceLocationId:String,address:Address) async throws {
         let customerRef = serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocationId)
@@ -6178,7 +6261,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
      let dataBaseServiceStopCount = try await SettingsManager.shared.getServiceOrderCount()
      let id = "S" + String(dataBaseServiceStopCount)
      
-     var serviceStop = ServiceStop(id: id, typeId: weeklyCleaningTemplate?.id ?? "1", finished: true, customerName: customerFullName, customerId: customer.id, address: customer.billingAddress, dateCreated: date, serviceDate: date, duration: 15, rate: 15, tech: user.displayName, techId: user.id, invoiced: false, description: "NA", serviceLocationId: location.id, type: weeklyCleaningTemplate?.type ?? "Weekly Cleaning")//It might get fuckie without a real serviceLocationId
+     var serviceStop = ServiceStop(id: id, typeId: weeklyCleaningTemplate?.id ?? "1", finished: true, customerName: customerFullName, customerId: customer.id, address: customer.billingAddress, dateCreated: date, serviceDate: date, duration: 15, rate: 15, tech: user.displayName, techId: user.id, invoiced: false, description: "NA", serviceLocationId: location.id, type: weeklyCleaningTemplate?.type ?? "Weekly Cleaning")//It might get Messy without a real serviceLocationId
      
      try await ServiceStopManager.shared.uploadServiceStop(serviceStop: serviceStop)
      
@@ -6683,7 +6766,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func deleteEquipment(companyId:String,equipmentId:String) async throws {
         try await equipmentDoc(companyId: companyId, equipmentId: equipmentId).delete()
     }
-    func deleteCustomer(companyId:String,serviceLocationId:String)async throws {
+    func deleteLocation(companyId:String,serviceLocationId:String)async throws {
         try await serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocationId).delete()
         
     }
@@ -6982,6 +7065,99 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
         try customerDocument(customerId: pushCustomer.id,companyId: companyId).setData(from:pushCustomer, merge: false)
     }
+    func listenServiceStops(
+         companyId: String,
+         date: Date,
+         techId: String,
+         onChange: @escaping ([ServiceStop]) -> Void
+    ) {
+        
+    }
+    func addListenerForEquipmentByServiceLocation(companyId: String,locationId:String, completion: @escaping ([Equipment]) -> Void){
+        
+    }
+
+    func listenActiveRoute(
+          companyId: String,
+          date: Date,
+          techId: String,
+          onChange: @escaping (ActiveRoute?) -> Void
+    ) {
+        
+    }
+    func addCurrentCompanyUserListener(companyId: String, userId:String, onChange: @escaping ([CompanyUser]) -> Void) {
+    }
+    func addRoleListener(companyId: String, roleId:String, onChange: @escaping (Role?) -> Void) {
+        
+    }
+
+    func listenRecurringRoute(
+        companyId: String,
+        techId: String,
+        day: String,
+        onChange: @escaping (RecurringRoute?) -> Void
+    ) {
+        
+    }
+    func addCurrentUserAccessListener(companyId: String, userId:String, onChange: @escaping ([UserAccess]) -> Void) {
+    }
+    func removeTermsTemplateListern() {
+    }
+    
+    func listenTermsTemplate(
+        companyId: String,
+        onChange: @escaping ([TermsTemplate]) -> Void
+    ){
+        
+    }
+    func addListenerForFutureCustomerServiceStops(companyId:String,customerId:String,completion:@escaping (_ serviceStops:[ServiceStop]) -> Void){
+        
+    }
+
+    func addlistenerVehicals(companyId: String, status:String, onChange: @escaping ([Vehical]) -> Void){
+        
+    }
+    func removeVehicalListener() {
+        
+    }
+    func removeCurrentRoleListener() {
+    }
+    func removeRoleListener() {
+    }
+    func removeUserAccessListener() {
+    }
+    func addCompanyUserListener(companyId: String, status:String, onChange: @escaping ([CompanyUser]) -> Void) {
+        
+    }
+    func addListenerForRecurringRoute(companyId: String, onChange: @escaping ([RecurringRoute]) -> Void) {
+        
+    }
+    func addListenerForRecurringServiceStop(companyId: String, onChange: @escaping ([RecurringServiceStop]) -> Void){
+        
+    }
+
+    func addInviteListener(companyId: String, status:String, onChange: @escaping ([Invite]) -> Void){
+        
+    }
+    func removeCompanyUserListener(){
+        
+    }
+    func removeInviteListener(){
+        
+    }
+    
+    func removeRecurringRouteListener(){
+        
+    }
+    func removeRecurringServiceStopListener(){
+        
+    }
+    func stopServiceStopActiveRouteRecurringRouteListenrs(){
+        
+    }
+    func applyRouteChanges(companyId: String, diff: ActiveRouteDiff,calledFrom:String) {
+        
+    }
     func addListenerForAllCustomers(companyId:String,storeId:String,completion:@escaping (_ serviceStops:[DataBaseItem]) -> Void){
         
         let listener = DataBaseCollection(companyId: companyId)
@@ -7067,6 +7243,22 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         self.chatListener = listener
     }
+    func addSavedCompanyListener(userId:String,completion:@escaping (_ savedCompanies:[AssociatedBusiness]) -> Void) {
+        
+        let listener = chatCollection()
+            .whereField("participantIds", arrayContains: userId)
+            .order(by: "mostRecentChat", descending: false)
+            .addSnapshotListener { querySnapshot, error in
+                guard let documents = querySnapshot?.documents else {
+                    print("There are no documents in the Customer Collection")
+                    return
+                }
+                let chats: [AssociatedBusiness] = documents.compactMap({try? $0.data(as: AssociatedBusiness.self)})
+                completion(chats)
+            }
+        self.chatListener = listener
+    }
+
     func addListenerForAllServiceStops(companyId:String,completion:@escaping (_ serviceStops:[ServiceStop]) -> Void){
         
         let listener = serviceStopCollection(companyId: companyId)
@@ -7377,6 +7569,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func removeEquipmentListener() {
         self.equipmentListener?.remove()
     }
+    func removeSavedCompanyListener() {
+        self.savedBusinessListener?.remove()
+    }
+
         //----------------------------------------------------
         //                    All Mock Data
         //----------------------------------------------------
@@ -7694,7 +7890,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         backYardTree: [],
         backYardBushes: [],
         backYardOther: [],
-        preText: false
+        preText: false,
+        isActive: true
     )
     static let mockServiceLocations:[ServiceLocation] = [
         ServiceLocation(
@@ -7729,7 +7926,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -7764,7 +7962,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -7799,7 +7998,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -7834,7 +8034,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -7869,7 +8070,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -7904,7 +8106,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -7939,7 +8142,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -7974,7 +8178,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -8009,7 +8214,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -8044,7 +8250,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -8079,7 +8286,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         )
     ]
     let mockServiceStops:[ServiceStop] = []
@@ -8107,11 +8315,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         endDate: Date(),
         noEndDate: false,
         frequency: .biWeekly,
-        daysOfWeek: "",
+        day: .monday,
         description: "",
         lastCreated: Date(),
         serviceLocationId: "",
-        estimatedTime: "",
+        estimatedTime: 15,
         otherCompany: false
     )
     static let mockCompany:Company = Company(
@@ -8125,7 +8333,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         phoneNumber: "6195556969",
         verified: false,
         serviceZipCodes: [],
-        services: []
+        services: [],
+        accountType: .free,
+        paidUntil: Date(),
+        status: .free,
+        stripeConnectAccountStatus: .notStarted,
+        yelpURL : "",
+        websiteURL : ""
     )
     static let mockAssociatedBusiness : AssociatedBusiness = AssociatedBusiness(
         id: UUID().uuidString,
@@ -8464,12 +8678,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         name: "",
         description: "",
         datePurchased: Date(),
-        quantiy: "",
+        quantity: "",
         jobId: "",
         customerId: "",
         customerName: "",
         userId: "",
-        userName: ""
+        userName: "",
+        invoiced: true
     )
     static let mockLaborContractRecurringWork : [LaborContractRecurringWork] = [
         LaborContractRecurringWork(
@@ -8528,6 +8743,5 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             isActive: true,
             lastBilled: Date()
         )
-        
     ]
 }

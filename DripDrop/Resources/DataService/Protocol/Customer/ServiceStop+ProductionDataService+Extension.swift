@@ -234,6 +234,14 @@ extension ProductionDataService {
             .getDocuments(as:ServiceStop.self)
         
     }
+    func getFutureerviceStopsByCustomer(companyId:String,customerId:String) async throws -> [ServiceStop] {
+        return try await serviceStopCollection(companyId:companyId)
+            .whereField("customerId", isEqualTo: customerId)
+            .whereField("serviceDate", isGreaterThan: Date().startOfDay())
+            .getDocuments(as:ServiceStop.self)
+        
+    }
+
     func getUnfinished4ServiceStopsByCustomer(companyId:String,customer:Customer) async throws -> [ServiceStop]{
         
         return try await serviceStopCollection(companyId: companyId)
@@ -343,6 +351,39 @@ extension ProductionDataService {
         let urlString = try await Storage.storage().reference(withPath: returnedPath).downloadURL().absoluteString
         return (urlString,returnedName)
     }
+    func uploadServiceStopImages(
+        companyId: String,
+        serviceStopId: String,
+        images: [DripDropImage]
+    ) async throws -> [DripDropStoredImage] {
+
+        try await withThrowingTaskGroup(of: DripDropStoredImage.self) { group in
+
+            for image in images {
+                group.addTask {
+                    let (url, name) = try await self.uploadServiceStopImage(
+                        companyId: companyId,
+                        serviceStopId: serviceStopId,
+                        image: image
+                    )
+
+                    return DripDropStoredImage(
+                        id: UUID().uuidString,
+                        description: name,
+                        imageURL: url
+                    )
+                }
+            }
+
+            var uploadedImages: [DripDropStoredImage] = []
+
+            for try await uploadedImage in group {
+                uploadedImages.append(uploadedImage)
+            }
+
+            return uploadedImages
+        }
+    }
     func updateServiceStopPhotoURLs(companyId: String, serviceStopId: String, photoUrls: [DripDropStoredImage]) async throws {
         let serviceStopRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
         for image in photoUrls {
@@ -407,16 +448,30 @@ extension ProductionDataService {
     func updateHomeOwnerServiceStopFinish(companyId: String, serviceStop: ServiceStop, finished: Bool) async throws {
        
     }
-    func updateServicestopOperationStatus(companyId: String, serviceStop: ServiceStop, operationStatus: ServiceStopOperationStatus) async throws {
+    func updateServicestopOperationStatus(companyId: String, serviceStopId: String, operationStatus: ServiceStopOperationStatus) async throws {
         print("updateServicestopOperationStatus  - [dataService]")
-        print("Service Stop Id : \(serviceStop.id)")
+        print("Service Stop Id : \(serviceStopId)")
         
         print("Company Id : \(companyId)")
-            let itemRef = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
+            let itemRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
             
             try await itemRef.updateData([
                 ServiceStop.CodingKeys.operationStatus.rawValue:operationStatus.rawValue
             ])
+    }
+    func updateServiceStopStartTime(companyId:String,serviceStopId:String,startTime:Date) async throws{
+        let itemRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+
+        try await itemRef.updateData([
+            ServiceStop.CodingKeys.startTime.rawValue:startTime
+        ])
+    }
+    func updateServiceStopEndTime(companyId:String,serviceStopId:String,endTime:Date) async throws{
+        let itemRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+
+        try await itemRef.updateData([
+            ServiceStop.CodingKeys.endTime.rawValue:endTime
+        ])
     }
     func updateServicestopBillingStatus(companyId: String, serviceStop: ServiceStop, billingStatus: ServiceStopBillingStatus) async throws {
         let itemRef = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)

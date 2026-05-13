@@ -64,8 +64,9 @@ extension ProductionDataService {
         
     }
     func createNewUser(user:DBUser) async throws{
-        _ = try await DBUserManager.shared.loadCurrentUser()//DEVELOPER DELETE
-        try userDocument(userId: user.id).setData(from: user,merge: false,encoder: encoder)
+//        _ = try await DBUserManager.shared.loadCurrentUser()//DEVELOPER DELETE
+        print("[ProductionDataService][createNewUser] user: \(user)")
+        try userDocument(userId: user.id).setData(from: user,merge: false)
     }
     func createFirstCompanyUser(user:DBUser) async throws{
         try userDocument(userId: user.id ).setData(from: user,merge: false)
@@ -165,8 +166,8 @@ extension ProductionDataService {
  
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
         try await EquipmentManager.shared.uploadEquipment(companyId: companyId, equipment: equipment)
-        print("\(equipment.category)")
-        switch equipment.category {
+        print("\(equipment.type.rawValue)")
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -297,7 +298,7 @@ extension ProductionDataService {
         }
     }
     func addPartsToEquipment(companyId: String,equipment:Equipment) async throws {
-        switch equipment.category {
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -586,11 +587,11 @@ extension ProductionDataService {
         
         return try StoreDocument(storeId: store.id, companyId: companyId).setData(from:store, merge: false)
     }
-    func uploadChat(userId:String,chat:Chat) async throws {
+    func uploadChat(chat:Chat) async throws {
         try chatDocument(chatId: chat.id)
             .setData(from:chat, merge: false)
     }
-    func sendMessage(userId: String, message: Message) async throws {
+    func sendMessage(message: Message) async throws {
         try messageDocument(messageId: message.id)
             .setData(from:message, merge: false)
     }
@@ -643,18 +644,53 @@ extension ProductionDataService {
         try db.collection("companies/\(companyId)/settings").document("receipts").setData(from:RIncrement , merge:false)
         try db.collection("companies/\(companyId)/settings").document("recurringServiceStops").setData(from:RountIncrement , merge:false)
         try db.collection("companies/\(companyId)/settings").document("venders").setData(from:StoreIncrement , merge:false)
-        try db.collection("companies/\(companyId)/settings").document("workOrders").setData(from:ToDoIncrement , merge:false)
+        try db.collection("companies/\(companyId)/settings").document("toDos").setData(from:ToDoIncrement , merge:false)//this used to be "workOrders" , but I changed it to "toDos"
         
     }
     
     func upLoadInitialGenericRoles(companyId:String) async throws {
         let roles:[Role] = [
-            Role(id: "1", name: "Owner", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
+            Role(
+                id: "1",
+                name: "Owner",
+                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                listOfUserIdsToManage: [],
+                color: "red",
+                description: "All Permissions Enabled"
+            ),
             
-            Role(id: UUID().uuidString, name: "Tech", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Techs"),
-            Role(id: UUID().uuidString, name: "Manager", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Manager"),
-            Role(id: UUID().uuidString, name: "Admin", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
-            Role(id: UUID().uuidString, name: "Office", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Office Personal")
+            Role(
+                id: UUID().uuidString,
+                name: "Tech",
+                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","17","18","19","20","21"],
+                listOfUserIdsToManage: [],
+                color: "red",
+                description: "Basic Permissions For Techs"
+            ),
+            Role(
+                id: UUID().uuidString,
+                name: "Manager",
+                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                listOfUserIdsToManage: [],
+                color: "red",
+                description: "Basic Permissions For Manager"
+            ),
+            Role(
+                id: UUID().uuidString,
+                name: "Admin",
+                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                listOfUserIdsToManage: [],
+                color: "red",
+                description: "Basic Permissions For Admin"
+            ),
+            Role(
+                id: UUID().uuidString,
+                name: "Office",
+                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                listOfUserIdsToManage: [],
+                color: "red",
+                description: "Basic Permissions For Office Personal"
+            )
         ]
         print("Adding Work Order Templates")
         for role in roles {
@@ -715,7 +751,7 @@ extension ProductionDataService {
         
             // Get Universal Readings Templates
         let universalReadingTemplates = try await universalReadingsTemplateCollection()
-           .getDocuments(as: DosageTemplate.self)
+           .getDocuments(as: ReadingsTemplate.self)
         print("Got Universal Reading Templates")
 
         print("Adding Work Order Templates")
@@ -902,11 +938,11 @@ extension ProductionDataService {
     }
     func uploadGenericTraingTempaltes(companyId: String,templateList:[TrainingTemplate]) async throws{
         //        let genericTemplateList:[TrainingTemplate] = [
-        //            TrainingTemplate(id: UUID().uuidString, name: "Pool Cleaning", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Filter Cleaning", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Filter Repair / Install", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Pump Repair / Install", description: "", workOrderIds: ["FUCK"]),
-        //            TrainingTemplate(id: UUID().uuidString, name: "Heater Repair / Install", description: "", workOrderIds: ["FUCK"]),
+        //            TrainingTemplate(id: UUID().uuidString, name: "Pool Cleaning", description: "", workOrderIds: ["Messy"]),
+        //            TrainingTemplate(id: UUID().uuidString, name: "Filter Cleaning", description: "", workOrderIds: ["Messy"]),
+        //            TrainingTemplate(id: UUID().uuidString, name: "Filter Repair / Install", description: "", workOrderIds: ["Messy"]),
+        //            TrainingTemplate(id: UUID().uuidString, name: "Pump Repair / Install", description: "", workOrderIds: ["Messy"]),
+        //            TrainingTemplate(id: UUID().uuidString, name: "Heater Repair / Install", description: "", workOrderIds: ["Messy"]),
         //
         //        ]
         for tempalte in templateList {

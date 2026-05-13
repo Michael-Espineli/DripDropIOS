@@ -31,8 +31,11 @@ struct IndustryTypePicker: View {
         .toolbar{
             ToolbarItem{
                 NavigationLink(destination: {
-                    SignUpView(dataService:dataService,services: VM.selectedIndustryTypes,serviceZipCodes: VM.selectedZipCodes)//DEVELOPER ADD PAY WALL
-                    
+                    SignUpView(
+                        dataService:dataService,
+                        services: VM.selectedIndustryTypes,
+                        serviceZipCodes: VM.selectedZipCodes
+                    )
                 }, label: {
                     Text("Next")
                         .modifier(AddButtonModifier())
@@ -67,24 +70,25 @@ extension IndustryTypePicker {
                 }
                 Spacer()
             }
-            ScrollView(.horizontal,showsIndicators: false) {
-                HStack{
-                    
-                    ForEach(VM.industryTypes,id:\.self) { type in
-                        Button(action: {
-                            if !VM.selectedIndustryTypes.contains(type) {
-                                VM.selectedIndustryTypes.append(type)
-                            }
-                        }, label: {
-                            Text(type)
-                                .font(.headline)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 5)
-                                .background(VM.selectedIndustryTypes.contains(type) ? Color.poolBlue : Color.white)
-                                .clipShape(Capsule())
-                                .foregroundColor(VM.selectedIndustryTypes.contains(type) ? Color.white : Color.poolBlue)
-                        })
-                    }
+            Text("You will be able to add and edit more later")
+                .font(.footnote)
+            VStack(alignment: .leading) {
+                ForEach(VM.industryTypes,id:\.self) { type in
+                    Button(action: {
+                        if !VM.selectedIndustryTypes.contains(type) {
+                            VM.selectedIndustryTypes.append(type)
+                        } else {
+                            VM.selectedIndustryTypes.remove(type)
+                        }
+                    }, label: {
+                        Text(type)
+                            .font(.headline)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 5)
+                            .background(VM.selectedIndustryTypes.contains(type) ? Color.poolBlue : Color.white)
+                            .clipShape(Capsule())
+                            .foregroundColor(VM.selectedIndustryTypes.contains(type) ? Color.white : Color.poolBlue)
+                    })
                 }
             }
         }
@@ -106,10 +110,11 @@ extension IndustryTypePicker {
                 }
                 Spacer()
             }
-
+            Text("You will be able to add and edit more later")
+                .font(.footnote)
                 HStack{
                     TextField("Zip Code:", text: $VM.zipCode, prompt: Text("Zip Code"))
-                        .modifier(TextFieldModifier())
+                        .modifier(PlainTextFieldModifier())
                     Button(action: {
                         Task{
                             try? await VM.addZipToList()
@@ -118,11 +123,13 @@ extension IndustryTypePicker {
                         Text("Add")
                             .modifier(AddButtonModifier())
                     })
-                    if let placemark = VM.placemark, let address = placemark.postalAddress{
-                        Text(" \(address.city)")
-                    }
                 }
-            
+            HStack{
+                if let placemark = VM.placemark, let address = placemark.postalAddress{
+                    Text(" \(address.city), \(address.state)")
+                }
+                Spacer()
+            }
                 HStack{
                     Text("Selected: ")
                         .fontWeight(.bold)

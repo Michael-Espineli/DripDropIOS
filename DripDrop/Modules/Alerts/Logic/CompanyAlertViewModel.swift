@@ -86,13 +86,16 @@ final class CompanyAlertViewModel:ObservableObject{
                         print("No Item To Get")
                         
                     case .editUser:
-                        print("Developer Update Edit User")
-                        
+                        print("Update Edit User")
+#warning("[Update 2.5] Update Edit User")
+
                     case .rateSheet:
-                        print("Developer Update Rate Sheet")
+                        print("Update Rate Sheet")
+#warning("[Update 2.5] Update Rate Sheet")
                         
                     case .companyUserRateSheet:
-                        print("Developer Update Rate Sheet")
+                        print("Update Rate Sheet")
+#warning("[Update 2.5] Update Rate Sheet")
                         
                     case .compileInvoice:
                         print("No Item for compileInvoice")
@@ -109,7 +112,7 @@ final class CompanyAlertViewModel:ObservableObject{
                     case .equipmentDetailView:
                         print("No Item for equipmentDetailView")
                     case .allTechRouteOverview:
-                        print("Developer Needs more Help")
+#warning("[Update 2.5] Needs more Help")
                         self.route = Route.allTechRouteOverview(route: [], dataService: dataService)
                     case .routeOverview:
                         let item = try await dataService.getActiveRoute(companyId: companyId, activeRouteId: alert.itemId)
@@ -212,21 +215,27 @@ final class CompanyAlertViewModel:ObservableObject{
                         print("No Item To Get")
 
                     case .bankDetailView:
-                        print("Developer Build out")
+                        print(" Build out")
+#warning("[Update 2.5] Build out")
+
                     case .transactionDetailView:
-                        print("Developer Build out")
+                        print(" Build out")
+#warning("Update 2.5 Build out")
 
                     case .emailConfiguration:
-                        print("Developer Please Build out")
+                        print(" Please Build out")
+#warning("Update 2.5 Build out")
                     case .employeeMainDailyDisplayView:
-                        print("Developer Please Build out")
+                        print(" Please Build out")
+#warning("Update 2.5 Build out")
 
                     }
                 }
             } else {
                 switch alert.category {
                 case .sentLaborContracts:
-                    print("Developer")
+                    print("")
+#warning("Update 2.5 Build out")
                 case .managementTables:
                     print("Management Tables")
                 case .profile:
@@ -238,7 +247,9 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .routeBuilder:
                     print("routeBuilder Need more complex Logic")
                 case .management:
-                    print("Developer Make function for getting management by Id")
+                    print(" Make function for getting management by Id")
+                    
+#warning("Update 2.5 Make function for getting management by Id")
                 case .pnl:
                     print("PNL Not Built Out Yet")
                 case .companyProfile:
@@ -319,7 +330,20 @@ final class CompanyAlertViewModel:ObservableObject{
                     self.companyUser = try await dataService.getCompanyUserById(companyId: companyId, companyUserId: alert.itemId)
                     
                 case .taskGroups:
-                    print("DEVELOPER FIX")
+                    print(" FIX")
+#warning("Update 2.5 FIX")
+                case .emailConfirguration:
+                    print(" FIX")
+#warning("Update 2.5 FIX")
+                case .companyInfo:
+                    print(" FIX")
+#warning("Update 2.5 FIX")
+                case .manageSubscriptions:
+                    print(" FIX")
+#warning("Update 2.5 FIX")
+                case .stripeConfiguration:
+                    print(" FIX")
+#warning("Update 2.5 FIX")
                 }
             }
         } else {
@@ -327,14 +351,18 @@ final class CompanyAlertViewModel:ObservableObject{
                 switch alert.route {
                 case .cart:
                     print("Has Item")
+                    
                 case .editUser:
-                    print("Developer Update Edit User")
+                    print("Update Edit User")
+    #warning("Update 2.5  Update Edit User")
                     
                 case .rateSheet:
-                    print("Developer Update Rate Sheet")
+                    print("Update Rate Sheet")
+#warning("Update 2.5  Update Rate Sheet")
                     
                 case .companyUserRateSheet:
-                    print("Developer Update Rate Sheet")
+                    print("Update Rate Sheet")
+#warning("Update 2.5   Update Rate Sheet")
                     
                 case .operation:
                     self.route = Route.operation(dataService: dataService)
@@ -452,17 +480,26 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .externalRouteOverView:
                     self.route = Route.externalRouteOverView(dataService: dataService)
                 case .banks:
-                    print("Developer please build out")
-
+                    print(" please build out")
+                    
+    #warning("Update 2.5   please build out")
                 case .transactions:
-                    print("Developer please build out")
+                    print(" please build out")
+                    
+    #warning("Update 2.5   please build out")
                 case .activeRouteOverView:
-                    print("Please build out")
+                    print(" please build out")
+                    
+    #warning("Update 2.5   please build out")
                 case .emailConfiguration:
-                    print("Developer Please Build out")
+                    print(" please build out")
+                    
+    #warning("Update 2.5   please build out")
                     
                 case .employeeMainDailyDisplayView:
-                    print("Developer Please Build out")
+                    print(" please build out")
+                    
+    #warning("Update 2.5   please build out")
                 }
             
         }
@@ -508,7 +545,9 @@ final class CompanyAlertViewModel:ObservableObject{
                     case .equipmentDetailView:
                         print("No Item for equipmentDetailView")
                     case .allTechRouteOverview:
-                        print("Developer Needs more Help")
+                        print(" please build out")
+                        
+        #warning("Update 2.5   please build out")
                         self.route = Route.allTechRouteOverview(route: [], dataService: dataService)
                         
                     case .routeOverview:
@@ -610,13 +649,21 @@ final class CompanyAlertViewModel:ObservableObject{
                
                         
                     case .bankDetailView:
-                        print("Developer Please Build out")
+                        print(" please build out")
+                        
+        #warning("Update 2.5   please build out")
                     case .transactionDetailView:
-                        print("Developer Please Build out")
+                        print(" please build out")
+                        
+        #warning("Update 2.5   please build out")
                     case .emailConfiguration:
-                        print("Developer Please Build out")
+                        print(" please build out")
+                        
+        #warning("Update 2.5   please build out")
                     case .employeeMainDailyDisplayView:
-                        print("Developer Please Build out")
+                        print(" please build out")
+                        
+        #warning("Update 2.5   please build out")
                     }
                 }
             } else {
@@ -714,7 +761,23 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .companyUser:
                     self.companyUser = try await dataService.getCompanyUserById(companyId: companyId, companyUserId: recentActivity.itemId)
                 case .taskGroups:
-                    print("DEVELOPER FIX")
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
+                case .emailConfirguration:
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
+                case .companyInfo:
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                case .manageSubscriptions:
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
+                case .stripeConfiguration:
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
                 }
             }
         } else {
@@ -834,7 +897,9 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .createCustomer:
                     self.route = Route.createCustomer(dataService: dataService)
                 case .equipmentDetailView:
-                    print("Fix")
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
 //                    self.route = Route.equipmentDetailView(dataService: dataService)
                 case .laborContracts:
                     self.route = Route.laborContracts(dataService: dataService)
@@ -847,15 +912,25 @@ final class CompanyAlertViewModel:ObservableObject{
                 case .externalRouteOverView:
                     self.route = Route.externalRouteOverView(dataService: dataService)
                 case .banks:
-                    print("Please build out")
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
                 case .transactions:
-                    print("Please build out")
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
                 case .activeRouteOverView:
-                    print("Please build out")
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
                 case .emailConfiguration:
-                    print("Developer Please Build out")
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
                 case .employeeMainDailyDisplayView:
-                    print("Developer Please Build out")
+                    print(" please build out")
+    #warning("Update 2.5   please build out")
+                    
                 }
             
         }

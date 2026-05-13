@@ -45,6 +45,10 @@ struct CustomerProfileEditView: View {
     @State var billingAddressCity:String = ""
     @State var billingAddressState:String = ""
     @State var billingAddressZip:String = ""
+    
+    @State var billingAddress:Address? = nil
+    @State var searchAddress:String = ""
+
     /*
     //Service Location
 
@@ -71,14 +75,12 @@ struct CustomerProfileEditView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView(showsIndicators: false){
-                HStack{
-                    deleteButton
-                    Spacer()
-                    saveButton
-                }
-                .padding(EdgeInsets(top: 8, leading: 8, bottom: 5, trailing: 8))
+                buttons
+                Divider()
                 info
+                deleteButton
             }
+            .padding()
         }
         .alert(alertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
@@ -123,13 +125,15 @@ struct CustomerProfileEditView: View {
             }
         }
         .onAppear(perform: {
-                firstName = customer.firstName
-                lastName = customer.lastName
-                companyName = customer.company ?? ""
-                displayAsCompany = customer.displayAsCompany
-                phoneNumber = customer.phoneNumber ?? ""
-                email = customer.email
-                active = customer.active
+            firstName = customer.firstName
+            lastName = customer.lastName
+            companyName = customer.company ?? ""
+            displayAsCompany = customer.displayAsCompany
+            phoneNumber = customer.phoneNumber ?? ""
+            email = customer.email
+            active = customer.active
+            
+            billingAddress = customer.billingAddress
             
             billingAddressStreetAddress = customer.billingAddress.streetAddress
             billingAddressCity = customer.billingAddress.city
@@ -140,11 +144,26 @@ struct CustomerProfileEditView: View {
     }
 }
 extension CustomerProfileEditView {
+    var buttons: some View {
+        HStack{
+            Button(action: {
+                dismiss()
+            }, label: {
+                Text("Cancel")
+                    .modifier(DeleteButtonModifier())
+            })
+            Spacer()
+            Text("Edit Customer")
+            Spacer()
+            saveButton
+        }
+    }
     var deleteButton: some View {
         Button(action: {
             showDeleteAlert.toggle()
         }, label: {
             Text("Delete")
+                .frame(maxWidth: .infinity)
                 .modifier(DismissButtonModifier())
         })
     }
@@ -155,25 +174,28 @@ extension CustomerProfileEditView {
                     if let company = masterDataManager.currentCompany { 
                         //DEVELPER ADD THE REST OF THE UPDATABLE FIELDS FOR CUSTOMERS
                         //DEVLOPER FIX LATITUDE AND LONGITUDE CALCULATIONS ON ADDRESS UPDATES.
-                        try await customerVM.updateCustomerInfoWithValidation(
-                            currentCustomer: customer,
-                            companyId: company.id,
-                            firstName: firstName,
-                            lastName: lastName,
-                            email: email,
-                            phoneNumber: phoneNumber,
-                            company: companyName,
-                            displayAsCompany: displayAsCompany,
-                            billingAddress: Address(
-                                streetAddress: billingAddressStreetAddress,
-                                city: billingAddressCity,
-                                state: billingAddressState,
-                                zip: billingAddressZip,
-                                latitude: customer.billingAddress.latitude,
-                                longitude: customer.billingAddress.longitude
-                            ),
-                            active: active
-                        )
+                        if let billingAddress {
+                            try await customerVM.updateCustomerInfoWithValidation(
+                                currentCustomer: customer,
+                                companyId: company.id,
+                                firstName: firstName,
+                                lastName: lastName,
+                                email: email,
+                                phoneNumber: phoneNumber,
+                                company: companyName,
+                                displayAsCompany: displayAsCompany,
+                                billingAddress: billingAddress,
+//                                billingAddress: Address(
+//                                    streetAddress: billingAddressStreetAddress,
+//                                    city: billingAddressCity,
+//                                    state: billingAddressState,
+//                                    zip: billingAddressZip,
+//                                    latitude: customer.billingAddress.latitude,
+//                                    longitude: customer.billingAddress.longitude
+//                                ),
+                                active: active
+                            )
+                        }
                     }
                     masterDataManager.selectedID = ""
                     masterDataManager.selectedCustomer = nil
@@ -192,7 +214,6 @@ extension CustomerProfileEditView {
     var info: some View {
         VStack{
                 VStack{
-                    Toggle("Display As Company", isOn: $displayAsCompany)
                     HStack{
                         Text("Display as Company")
                         Spacer()
@@ -287,32 +308,33 @@ extension CustomerProfileEditView {
                         Text("Billing Address: ")
                             .bold(true)
                     }
-                    VStack{
-                        HStack{
-                            TextField(
-                                "Street Address",
-                                text: $billingAddressStreetAddress
-                            )
-                            .modifier(PlainTextFieldModifier())
-                        }
-                        HStack{
-                            TextField(
-                                "City",
-                                text: $billingAddressCity
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            TextField(
-                                "State",
-                                text: $billingAddressState
-                            )
-                            .modifier(PlainTextFieldModifier())
-                            TextField(
-                                "Zip",
-                                text: $billingAddressZip
-                            )
-                            .modifier(PlainTextFieldModifier())
-                        }
-                    }
+                    AddressAutocompleteView(text: $searchAddress, selectedAddress: $billingAddress)
+//                    VStack{
+//                        HStack{
+//                            TextField(
+//                                "Street Address",
+//                                text: $billingAddressStreetAddress
+//                            )
+//                            .modifier(PlainTextFieldModifier())
+//                        }
+//                        HStack{
+//                            TextField(
+//                                "City",
+//                                text: $billingAddressCity
+//                            )
+//                            .modifier(PlainTextFieldModifier())
+//                            TextField(
+//                                "State",
+//                                text: $billingAddressState
+//                            )
+//                            .modifier(PlainTextFieldModifier())
+//                            TextField(
+//                                "Zip",
+//                                text: $billingAddressZip
+//                            )
+//                            .modifier(PlainTextFieldModifier())
+//                        }
+//                    }
                     
                     HStack{
                         Text("Active: ")

@@ -13,7 +13,7 @@ import SwiftUI
 import CoreLocation
 import MapKit
 import FirebaseStorage
-struct ServiceLocation:Identifiable, Codable,Hashable{
+struct ServiceLocation: Identifiable, Codable,Hashable{
  
     var id:String
     var nickName:String
@@ -38,6 +38,8 @@ struct ServiceLocation:Identifiable, Codable,Hashable{
     var verified:Bool? //DEVELOPER Make Required
 
     var photoUrls:[DripDropStoredImage]? //DEVELOPER Make Required
+    
+    var isActive:Bool
     init(
         id: String,
         nickName :String,
@@ -60,7 +62,8 @@ struct ServiceLocation:Identifiable, Codable,Hashable{
         backYardOther: [String]? = nil,
         preText: Bool? = nil,
         verified: Bool? = nil,
-        photoUrls: [DripDropStoredImage]? = nil
+        photoUrls: [DripDropStoredImage]? = nil,
+        isActive: Bool
 
 
     ){
@@ -87,6 +90,7 @@ struct ServiceLocation:Identifiable, Codable,Hashable{
         self.preText = preText
         self.verified = verified
         self.photoUrls = photoUrls
+        self.isActive = isActive
         
     }
         enum CodingKeys:String, CodingKey {
@@ -113,6 +117,7 @@ struct ServiceLocation:Identifiable, Codable,Hashable{
             case preText = "preText"
             case verified = "verified"
             case photoUrls = "photoUrls"
+            case isActive = "isActive"
         }
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -302,7 +307,7 @@ extension ProductionDataService {
         )
     }
         //Delete
-    func deleteCustomer(companyId:String,serviceLocationId:String)async throws {
+    func deleteLocation(companyId:String,serviceLocationId:String)async throws {
         try await serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocationId).delete()
         
     }

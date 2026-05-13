@@ -24,61 +24,83 @@ final class RedeemInviteCodeViewModel:ObservableObject{
     @Published var confirmPassword:String = ""
     @Published var firstName:String = ""
     @Published var lastName:String = ""
-    @Published var inviteCode:String = ""
+    @Published var inviteCode:String = "043917E4-362E-4A02-8FD9-ABD0764759E0"
     @Published var company:String = ""
     @Published var companyId:String = ""
     @Published var loggedin:Bool = false
 
     @Published private(set) var invite: Invite? = nil
     @Published private(set) var position:String = ""
-    @Published private(set) var isLoading:Bool = false
+    @Published var isLoading:Bool = false
 
     func onLoad() async throws{
         
     }
     func signUpWithEmailFromInviteCode(invite:Invite) async throws{
+        print("[RedeemInviteCodeViewModel][signUpWithEmailFromInviteCode] ",
+              "password: ",password,
+              "confirmPassword: ",confirmPassword,
+              "firstName: ",firstName,
+              "lastName: ",lastName,
+              "email: ",email,
+        )
         isLoading = true
-        if password == confirmPassword {
-            errorCode = "Email Field Empty"
+        if password == "" {
+            errorCode = "Password Field Empty"
             print(errorCode)
             showAlert = true
             isLoading = false
-            return
+            throw FireBasePublish.unableToPublish
+        }
+        if confirmPassword == "" {
+            errorCode = "Confirm Password Field Empty"
+            print(errorCode)
+            showAlert = true
+            isLoading = false
+            throw FireBasePublish.unableToPublish
+        }
+        if password != confirmPassword {
+            errorCode = "Passwords do not Match"
+            print(errorCode)
+            showAlert = true
+            isLoading = false
+            throw FireBasePublish.unableToPublish
         }
         if email == "" {
+            print("email: \(email)")
             errorCode = "Email Field Empty"
             print(errorCode)
             showAlert = true
             isLoading = false
-            return
+            throw FireBasePublish.unableToPublish
         }
         if password == "" {
             errorCode = "Password Field Empty"
             print(errorCode)
             showAlert = true
             isLoading = false
-            return
+            throw FireBasePublish.unableToPublish
         }
         if firstName == "" {
             errorCode = "First Name Field Empty"
             print(errorCode)
             showAlert = true
             isLoading = false
-            return
+            throw FireBasePublish.unableToPublish
         }
         if lastName == "" {
             errorCode = "Last Name Field Empty"
             print(errorCode)
             showAlert = true
             isLoading = false
-            return
+            throw FireBasePublish.unableToPublish
         }
         if company == "" {
             errorCode = "Company Field Empty"
             print(errorCode)
             showAlert = true
             isLoading = false
-            return
+            throw FireBasePublish.unableToPublish
         }
         let authDataResult = try await AuthenticationManager.shared.createUser(email: email, password: password)
         let userId = authDataResult.uid
@@ -88,6 +110,7 @@ final class RedeemInviteCodeViewModel:ObservableObject{
         try await DBUserManager.shared.createNewUser(user: user)
 
         print("User Created")
+        
         let userAccess = UserAccess(id: invite.companyId,
                                     companyId: invite.companyId,
                                     companyName: invite.companyName,
@@ -107,7 +130,7 @@ final class RedeemInviteCodeViewModel:ObservableObject{
                 roleName: invite.roleName,
                 dateCreated: Date(),
                 status: .active,
-                workerType: .contractor
+                workerType: invite.workerType
             )
         )
         

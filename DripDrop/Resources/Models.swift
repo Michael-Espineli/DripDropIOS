@@ -152,8 +152,10 @@ struct CustomerMonthlySummary:Identifiable, Codable,Hashable{
 struct Dosage:Identifiable, Codable,Hashable{
     
     let id :String
-    let templateId :String
+    let templateId :String //Locaal Template Id
+    let universalTemplateId: String
 //    let itemId :String
+    
     let name: String?
     let amount : String?
     let UOM : String?
@@ -385,6 +387,8 @@ struct MapLocation:Identifiable, Codable,Equatable{
     }
     
 }
+
+//Rename to Simple Map Location
 struct MapLocation2:Identifiable{
     var id = UUID().uuidString
     let name: String

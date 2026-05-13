@@ -25,8 +25,44 @@ struct CompileInvoice: View {
     @State var showDetailSheet : Bool = false
 
     
-    @State var company:Company = Company(id: "", ownerId: "", ownerName: "", name: "", photoUrl: "", dateCreated: Date(), email: "", phoneNumber: "", verified: false, serviceZipCodes: [], services: [])
-    @State var billableCompany:Company = Company(id: "", ownerId: "", ownerName: "", name: "", photoUrl: "", dateCreated: Date(), email: "", phoneNumber: "", verified: false, serviceZipCodes: [], services: [])
+    @State var company:Company = Company(
+        id: "",
+        ownerId: "",
+        ownerName: "",
+        name: "",
+        photoUrl: "",
+        dateCreated: Date(),
+        email: "",
+        phoneNumber: "",
+        verified: false,
+        serviceZipCodes: [],
+        services: [],
+        accountType: .free,
+        paidUntil: Date(),
+        status: .free,
+        stripeConnectAccountStatus: .notStarted,
+        yelpURL : "",
+        websiteURL : ""
+    )
+    @State var billableCompany:Company = Company(
+        id: "",
+        ownerId: "",
+        ownerName: "",
+        name: "",
+        photoUrl: "",
+        dateCreated: Date(),
+        email: "",
+        phoneNumber: "",
+        verified: false,
+        serviceZipCodes: [],
+        services: [],
+        accountType: .free,
+        paidUntil: Date(),
+        status: .free,
+        stripeConnectAccountStatus: .notStarted,
+        yelpURL : "",
+        websiteURL : ""
+    )
     
     @State var invoiceTerms:AcountingTermsTypes = .net15
     var body: some View {
@@ -139,9 +175,9 @@ extension CompileInvoice {
                                         id: UUID().uuidString,
                                         internalIdenifier: UUID().uuidString,//DEVELOPER CHANGE
                                         senderId: company.id,
-                                        senderName: company.name ?? "",
+                                        senderName: company.name,
                                         receiverId: billableCompany.id,
-                                        receiverName: billableCompany.name ?? "",
+                                        receiverName: billableCompany.name,
                                         dateSent: Date(),
                                         total: Int(total),
                                         terms: invoiceTerms,
@@ -185,14 +221,14 @@ extension CompileInvoice {
             HStack{
                 if let company = masterDataManager.currentCompany {
                     
-                    Text("Current Company \(company.name ?? "")")
+                    Text("Current Company \(company.name)")
                 }
                 Spacer()
                 Button(action: {
                     showCompanyChangeSheet.toggle()
                 }, label: {
                     HStack{
-                            Text("\(company.name ?? "")")
+                            Text(company.name)
                         Image(systemName: "gobackward")
                     }
                         .padding(8)

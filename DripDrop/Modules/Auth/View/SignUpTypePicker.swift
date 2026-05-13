@@ -17,6 +17,7 @@ struct SignUpTypePicker: View {
             if UIDevice.isIPhone{
                 VStack{
                     Spacer()
+                    /*
                     NavigationLink(destination: {
                         IndustryTypePicker(dataService: dataService)//DEVELOPER ADD PAY WALL
                     }, label: {
@@ -40,6 +41,9 @@ struct SignUpTypePicker: View {
                         .padding(8)
                     })
                     Spacer()
+                     */
+                        //Phase 4.1 Invite Code
+                    
                     NavigationLink(destination: {
                         TechSignUpPicker()
                     }, label: {
@@ -62,11 +66,12 @@ struct SignUpTypePicker: View {
                         .cornerRadius(8)
                         .padding(8)
                     })
+                     
                     Spacer()
                 }
                 .padding(8)
             } else {
-                HStack{
+                VStack{
                     Spacer()
                     NavigationLink(destination: {
                         IndustryTypePicker(dataService: dataService)//DEVELOPER ADD PAY WALL
@@ -91,6 +96,8 @@ struct SignUpTypePicker: View {
                         .padding(8)
                     })
                     Spacer()
+                        //Phase 4.1 Invite Code
+                    /*
                     NavigationLink(destination: {
                         TechSignUpPicker()
                     }, label: {
@@ -113,9 +120,12 @@ struct SignUpTypePicker: View {
                         .cornerRadius(8)
                         .padding(8)
                     })
+                     */
                     Spacer()
                 }
             }
+            //Phase 4.1 Invite Code
+            /*
             NavigationLink(destination: {
                 RedeemInviteCode(dataService:dataService)//DEVELOPER ADD PAY WALL
             }, label: {
@@ -128,6 +138,7 @@ struct SignUpTypePicker: View {
                 .cornerRadius(8)
                 .padding(8)
             })
+            */
         }
     }
         .fontDesign(.monospaced)

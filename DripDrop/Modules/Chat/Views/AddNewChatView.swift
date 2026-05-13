@@ -54,6 +54,10 @@ struct AddNewChatView: View {
     @State private var scrollPosition: Int? = 0
     @State var scrollToBottom:Bool = true
     @State var messagesToGet:Int = 25
+    
+    @State private var selectedOtherParticipantId: String? = nil
+    @State private var showInitiation: Bool = false
+    
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -66,6 +70,16 @@ struct AddNewChatView: View {
                 }
             }
         }
+        .background(
+            NavigationLink(isActive: Binding(get: { showInitiation }, set: { showInitiation = $0 })) {
+                if let otherId = selectedOtherParticipantId {
+                    ChatInitiationView(dataService: dataService, otherParticipantId: otherId)
+                } else {
+                    EmptyView()
+                }
+            } label: { EmptyView() }
+            .hidden()
+        )
         .toolbar{
             ToolbarItem{
                 button
@@ -115,6 +129,13 @@ struct AddNewChatView: View {
                 }
             }
         })
+    }
+    
+    private func handleUserSelect(_ selected: DBUser) {
+        selectedOtherParticipantId = selected.id
+        showInitiation = true
+        // If this view is presented as a sheet, dismiss it. NavigationLink above will push from the underlying stack.
+        dismiss()
     }
 }
 extension AddNewChatView {
@@ -175,7 +196,7 @@ extension AddNewChatView {
     }
     var chatPreview: some View {
         ZStack{
-            if let chat = chatVM.chat {
+            if chatVM.chat != nil {
                 VStack{
                     ScrollView(.vertical, showsIndicators: false) {
                         messages2
@@ -279,6 +300,11 @@ extension AddNewChatView {
                     }
                     
                 }
+                .onChange(of: user, perform: { selected in
+                    if selected.id != "" {
+                        handleUserSelect(selected)
+                    }
+                })
             }
         }
     }
@@ -434,3 +460,4 @@ extension AddNewChatView {
         }
     }
 }
+

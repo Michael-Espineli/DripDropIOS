@@ -131,4 +131,10 @@ extension ProductionDataService {
         }
     }
     //DELETE
+    
+    func deleteJobTaskItem(companyId:String,jobId:String,taskId:String) async throws {
+        try await workOrderTaskDocument(companyId: companyId, workOrderId: jobId, taskId: taskId)
+            .delete()
+    }
+
 }

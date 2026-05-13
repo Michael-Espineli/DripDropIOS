@@ -40,18 +40,18 @@ final class ChatViewModel:ObservableObject{
     //                    CREATE
     //----------------------------------------------------
     func uploadChat(userId:String,chat:Chat) async throws {
-        try await dataService.uploadChat(userId: userId, chat: chat)
+        try await dataService.uploadChat(chat: chat)
     }
     func uploadChatandMessageWithValidation(userId:String,senderName:String,participantIds:[String],participants:[BasicUserInfo],companyId:String,message:String,mostRecentChat:Date) async throws {
         let chatId = UUID().uuidString
-        let chat = Chat(id: chatId,participantIds: participantIds, participants: participants, companyId: companyId,mostRecentChat: mostRecentChat, userWhoHaveNotRead: participantIds)
-        try await dataService.uploadChat(userId: userId, chat: chat)
+        let chat = Chat(id: chatId,participantIds: participantIds, participants: participants, companyId: companyId,mostRecentChat: mostRecentChat, userWhoHaveNotRead: participantIds, lastMessage: message)
+        try await dataService.uploadChat(chat: chat)
         //Send Message
-        try await dataService.sendMessage(userId: userId, message: Message(id: UUID().uuidString, senderName: senderName, senderId: userId, message: message, read: false, dateSent: Date(), chatId: chatId))
+        try await dataService.sendMessage(message: Message(id: UUID().uuidString, senderName: senderName, senderId: userId, message: message, read: false, dateSent: Date(), chatId: chatId))
     }
     func sendNewMessage(userId:String,senderName:String,message:String,chatId:String) async throws {
         let message = Message(id: UUID().uuidString, senderName: senderName, senderId: userId, message: message, read: false, dateSent: Date(), chatId: chatId)
-        try await dataService.sendMessage(userId: userId, message: message)
+        try await dataService.sendMessage( message: message)
 
     }
     //----------------------------------------------------
@@ -64,7 +64,7 @@ final class ChatViewModel:ObservableObject{
         self.chat = try await dataService.getSpecificChat(chatId: contractId)
     }
     func getChatBySenderAndReceiver(companyId:String,senderId:String,receiverId:String) async throws {
-        self.chat = try await dataService.getChatBySenderAndReceiver(companyId: companyId, senderId: senderId, receiverId: receiverId)
+        self.chat = try await dataService.getChatBySenderAndReceiver(senderId: senderId, receiverId: receiverId)
     }
     func getContractsByCompany(companyId:String) async throws {
         self.listOfChats = try await dataService.getChatsByCompany(companyId: companyId)

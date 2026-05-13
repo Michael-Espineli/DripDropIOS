@@ -23,10 +23,12 @@ final class FirebaseManager {
         }
 
         let plistName: String = {
-            switch AppEnvironment.current {
-            case .dev: return "GoogleService-Info-Dev"
-            case .prod: return "GoogleService-Info-prod"
-            }
+            return "GoogleService-Info-prod"
+//            switch AppEnvironment.current {
+//            case .dev: return "GoogleService-Info-Dev"
+//            case .prod: return "GoogleService-Info-prod"
+//            }
+            
         }()
 
         guard let filePath = Bundle.main.path(forResource: plistName, ofType: "plist"),

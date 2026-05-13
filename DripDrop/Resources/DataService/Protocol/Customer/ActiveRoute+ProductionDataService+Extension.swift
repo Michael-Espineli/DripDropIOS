@@ -21,8 +21,8 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
     var order : [ServiceStopOrder]?
     var startTime : Date?
     var endTime : Date?
-    var startMilage: Int?
-    var endMilage: Int?
+    var startMilage: Double?
+    var endMilage: Double?
     var techId : String
     var techName : String
 
@@ -46,8 +46,8 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
 
         startTime: Date? = nil,
         endTime: Date? = nil,
-        startMilage : Int? = nil,
-        endMilage : Int? = nil,
+        startMilage : Double? = nil,
+        endMilage : Double? = nil,
         techId: String,
         techName: String,
 
@@ -103,7 +103,6 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
             case status = "status"
             case finishedStops = "finishedStops"
             case totalStops = "totalStops"
-            
             case vehicalId = "vehicalId"
         }
     static func == (lhs: ActiveRoute, rhs: ActiveRoute) -> Bool {
@@ -122,13 +121,33 @@ extension ProductionDataService {
     func ActiveRouteCollection(companyId:String) -> CollectionReference{
         Firestore.firestore().collection("companies/\(companyId)/activeRoutes")
     }
+    
+    func ActiveRouteLocationCollection(companyId:String,activeRouteId:String) -> CollectionReference{
+        Firestore.firestore().collection("companies/\(companyId)/activeRouteLocations")
+    }
+    func ActiveRouteLogCollection(companyId:String,activeRouteId:String) -> CollectionReference{
+        Firestore.firestore().collection("companies/\(companyId)/activeRouteLogs")
+    }
     func ActiveRouteDocument(companyId:String,activeRouteId:String)-> DocumentReference{
         ActiveRouteCollection(companyId: companyId).document(activeRouteId)
+    }
+    func activeRouteLocationDocument(companyId:String,activeRouteId:String,locationId:String)-> DocumentReference{
+        ActiveRouteLocationCollection(companyId: companyId, activeRouteId: activeRouteId).document(locationId)
+    }
+    func activeRouteLogDocument(companyId:String,activeRouteId:String,logId:String)-> DocumentReference{
+        ActiveRouteLogCollection(companyId: companyId, activeRouteId: activeRouteId).document(logId)
     }
         //
         //CREATE
     func uploadRoute(companyId: String,activeRoute:ActiveRoute) async throws {
         try ActiveRouteCollection(companyId: companyId).document(activeRoute.id).setData(from:activeRoute, merge: false)
+    }
+    func upLoadActiveRouteLocation(companyId:String,activeRouteId:String,location: ActiveRouteLocation) async throws {
+        try ActiveRouteLocationCollection(companyId: companyId, activeRouteId: activeRouteId).document(location.id).setData(from:location, merge: false)
+    }
+    func upLoadActiveRouteLog(companyId:String,activeRouteId:String, log: ActiveRouteLog) async throws {
+        try ActiveRouteLogCollection(companyId: companyId, activeRouteId: activeRouteId).document(log.id).setData(from:log, merge: false)
+
     }
         //READ
     func getRecentActiveRouteForTech(companyId: String,techId:String,days:Int) async throws -> [ActiveRoute] {
@@ -188,23 +207,20 @@ extension ProductionDataService {
             ])
     }
     func updateActiveRouteOrderList(companyId:String,activeRouteId:String,serviceStopOrderList:[ServiceStopOrder]) async throws {
+        //Replaced order with new order
         let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
-        try await ref.updateData([
-            "order": nil
-        ])
-        
+        var orderArray:[[String:Any]] = []
+        //Convert to JSON
         for order in serviceStopOrderList {
-            let data =  [
-                "order": FieldValue.arrayUnion([
-                    [
-                        "id": order.id,
-                        "order": order.order,
-                        "serviceStopId": order.serviceStopId,
-                    ]
-                ])
+            let data:[String:Any] = [
+                "id": order.id,
+                "order": order.order,
+                "recurringServiceStopId":order.recurringServiceStopId,
+                "serviceStopId": order.serviceStopId,
             ]
-            try await ref.updateData(data)
+            orderArray.append(data)
         }
+        try await ref.updateData(["order":orderArray])
         
     }
     func updateActiveRouteName(companyId:String,activeRouteId:String,name:String){
@@ -286,20 +302,19 @@ extension ProductionDataService {
         }
     }
     func updateActiveRouteStatus(companyId:String,activeRouteId:String,status:ActiveRouteStatus){
-        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
-        ref.updateData([
-            
-            ActiveRoute.CodingKeys.status.rawValue: status.rawValue
-            
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
+        Task{
+            do {
+                let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
+                try await ref.updateData([
+                    ActiveRoute.CodingKeys.status.rawValue: status.rawValue
+                ])
+                
+            } catch {
+                print("[][] Error \(error)")
             }
         }
     }
-    func updateActiveRouteStartMilage(companyId:String,activeRouteId:String,startMilage:Int){
+    func updateActiveRouteStartMilage(companyId:String,activeRouteId:String,startMilage:Double){
         let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
         ref.updateData([
             
@@ -313,7 +328,7 @@ extension ProductionDataService {
             }
         }
     }
-    func updateActiveRouteEndMilage(companyId:String,activeRouteId:String,endMilage:Int){
+    func updateActiveRouteEndMilage(companyId:String,activeRouteId:String,endMilage:Double){
         let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
         ref.updateData([
             

@@ -41,11 +41,11 @@ struct TechDetailView: View {
                     }
 
                 }
-                Text("\(tech.firstName ?? "") \(tech.lastName ?? "")")
+                Text("\(tech.firstName) \(tech.lastName)")
                 Text("Position: ")
                 Text("Date Created: \(fullDate(date:tech.dateCreated))")
                 Text("Company: ")
-                Text("Tech: \(tech.email ?? "")")
+                Text("Tech: \(tech.email)")
                 Text("Role: ")
                 NavigationLink(value: Route.rateSheet(user: tech, dataService:dataService), label: {
                     Text("Rate Sheet")

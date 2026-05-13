@@ -17,7 +17,7 @@ final class MyCompanyPickerViewModel:ObservableObject{
     
     func onLoad(userId:String) async throws {
         let accessList = try await dataService.getAllUserAvailableCompanies(userId: userId)
-        print("Received List of \(accessList.count) Companies available to Access")
+        print("  [MyCompanyPickerViewModel][onLoad] Received List of \(accessList.count) Companies available to Access")
         var listOfCompanies:[Company] = []
         for access in accessList{
             let company = try await dataService.getCompany(companyId: access.id)// access id is company id
@@ -30,17 +30,20 @@ struct MyCompanyPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject var VM : MyCompanyPickerViewModel
-    init(dataService: any ProductionDataServiceProtocol,company:Binding<Company>) {
+    init(dataService: any ProductionDataServiceProtocol,company:Binding<Company?>) {
         _VM = StateObject(wrappedValue: MyCompanyPickerViewModel(dataService: dataService))
         self._company = company
     }
-    @Binding var company : Company
+    @Binding var company : Company?
     var body: some View {
-        VStack{
-            companyList
-            searchBar
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            VStack{
+                companyList
+                searchBar
+            }
+            .padding()
         }
-        .padding()
         .task {
             if let user = masterDataManager.user {
                 do {
@@ -74,6 +77,15 @@ extension MyCompanyPickerView {
                 })
                 Divider()
             }
+            
+            Button(action: {
+                company = nil
+                print("Company set to nil")
+                dismiss()
+            }, label: {
+                Text("Go To Main Hub")
+            })
+            Divider()
         }
     }
 }

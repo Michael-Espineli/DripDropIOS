@@ -21,19 +21,23 @@ final class TechListViewModel:ObservableObject{
     
     @Published private(set) var specificTech: DBUser? = nil
 
-    func onFirstLoad(companyId:String) async throws {
+    func onFirstLoad(companyId:String?){
+        guard let companyId else {return}
+        dataService.addCompanyUserListener(companyId: companyId, status: "Active",
+        ) { [weak self] route in
+            self?.companyUsers = route
+        }
         print("Company Users")
-
-        self.companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
- 
+        dataService.addInviteListener(companyId: companyId, status: "Pending",
+        ) { [weak self] route in
+            self?.pendingInviteList = route
+        }
         print("Pending Invites")
-        self.pendingInviteList = try await dataService.getAllCompanyInvites(comapnyId: companyId)
-        print("Accepted Invites")
-
-        self.acceptedInviteList = try await dataService.getAllAcceptedCompanyInvites(comapnyId: companyId)
-
     }
-    
+    func stop() {
+        dataService.removeCompanyUserListener()
+        dataService.removeInviteListener()
+    }
     func onChangeOfSelectedStatus(companyId:String,status:String) async throws {
         
         self.companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")

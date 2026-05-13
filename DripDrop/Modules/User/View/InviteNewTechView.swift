@@ -29,6 +29,8 @@ struct InviteNewTechView: View {
     var body: some View {
         VStack{
             ScrollView{
+                Text("Invite Without app")
+                    .padding(.top, 10)
                 VStack{
                     VStack{
                         HStack{
@@ -68,19 +70,22 @@ struct InviteNewTechView: View {
                             }
                             
                         }
-                        HStack{
-                            ForEach(selectedRole.permissionIdList,id:\.self){
-                                Text($0)
-                            }
-                        }
+//                        HStack{
+//                            ForEach(selectedRole.permissionIdList,id:\.self){
+//                                Text($0)
+//                            }
+//                        }
+//
                         Picker("Worker Type", selection: $workerType) {
                             Text(WorkerTypeEnum.employee.rawValue).tag(WorkerTypeEnum.employee)
-                            Text(WorkerTypeEnum.contractor.rawValue).tag(WorkerTypeEnum.contractor)
+//                            Text(WorkerTypeEnum.contractor.rawValue).tag(WorkerTypeEnum.contractor)
                         }
                         .pickerStyle(.segmented)
                         HStack{
                             Text("Invite Code:")
-                                .bold()
+                          Spacer()
+                        }
+                        HStack{
                             Text("\(inviteCode)")
                                 .padding(3)
                                 .background(Color.gray.opacity(0.3))
@@ -96,7 +101,7 @@ struct InviteNewTechView: View {
                                                                                       userId: "",
                                                                                       firstName: firstName,
                                                                                       lastName: lastName,
-                                                                                      email: email,
+                                                                                      email: email.lowercased(),
                                                                                       companyName: company.name,
                                                                                       companyId: company.id,
                                                                                       roleId: selectedRole.id,

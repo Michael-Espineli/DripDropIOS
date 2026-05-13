@@ -40,4 +40,60 @@ extension ProductionDataService {
     func personalAlertDocument(userId:String,alertId:String)-> DocumentReference{
         personalAlertCollection(userId:userId).document(alertId)
     }
+    func updateDBUserEmail(userId:String,email:String) throws {
+        try userDocument(userId: userId)
+        .updateData([
+            "email": email
+        ])
+    }
+    
+    func updateDBUserPhotoUrl(userId:String,photoUrl:String) throws {
+        try userDocument(userId: userId)
+        .updateData([
+            "photoUrl": photoUrl
+        ])
+    }
+    
+    func updateDBUserProfileImagePath(userId:String,profileImagePath:String) throws {
+        try userDocument(userId: userId)
+        .updateData([
+            "profileImagePath": profileImagePath
+        ])
+    }
+    
+    func updateDBUserFirstName(userId:String,firstName:String) throws {
+        try userDocument(userId: userId)
+        .updateData([
+            "firstName": firstName
+        ])
+    }
+    
+    func updateDBUserLastName(userId:String,lastName:String) throws {
+        try userDocument(userId: userId)
+        .updateData([
+            "lastName": lastName
+        ])
+    }
+    
+    func updateDBUserBio(userId:String,bio:String) throws {
+        try userDocument(userId: userId)
+        .updateData([
+            "bio": bio
+        ])
+    }
+    
+    func updateDBUserExp(userId:String,exp:Int) throws {
+        try userDocument(userId: userId)
+        .updateData([
+            "exp": exp
+        ])
+    }
+    
+    func updateDBUserPhoneNumber(userId:String,phoneNumber:String) throws {
+        
+        try userDocument(userId: userId)
+        .updateData([
+            "phoneNumber": phoneNumber
+        ])
+    }
 }

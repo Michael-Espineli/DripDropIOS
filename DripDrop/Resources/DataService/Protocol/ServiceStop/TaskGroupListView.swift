@@ -50,6 +50,7 @@ struct TaskGroupListView: View {
                 icons
             }
         }
+        .navigationTitle("Task Groups")
         .task{
             if let currentCompany = masterDataManager.currentCompany {
                 VM.onLoad(companyId: currentCompany.id)
@@ -67,10 +68,9 @@ extension TaskGroupListView {
         VStack{
             ForEach(VM.taskGroupList){ group in
                 if UIDevice.isIPhone {
-//                    NavigationLink(value: Route.taskGroupDetail(dataService: dataService, taskGroup: group), label: {
+                    NavigationLink(value: Route.taskGroupDetail(dataService: dataService, taskGroup: group), label: {
                         TaskGroupCardView(taskGroup: group)
-                    
-//                    })
+                    })
                 } else {
                     Button(action: {
                         masterDataManager.selectedTaskGroup = group
@@ -110,11 +110,10 @@ extension TaskGroupListView {
                     Button(action: {
                         VM.showNewTaskGroup.toggle()
                     }, label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.largeTitle)
-                            .foregroundColor(Color.poolRed)
+                        Image(systemName: "plus")
+                            .modifier(PlusIconModifer())
                     })
-                    .fullScreenCover(isPresented: $VM.showNewTaskGroup, onDismiss: {
+                    .sheet(isPresented: $VM.showNewTaskGroup, onDismiss: {
                         if let currentCompany = masterDataManager.currentCompany {
                             VM.onLoad(companyId: currentCompany.id)
                         }
@@ -122,16 +121,6 @@ extension TaskGroupListView {
                         ZStack{
                             Color.listColor.ignoresSafeArea()
                             VStack{
-                                HStack{
-                                    Spacer()
-                                    Button(action: {
-                                        VM.showNewTaskGroup.toggle()
-                                    }, label: {
-                                        Image(systemName: "xmark")
-                                            .modifier(DismissButtonModifier())
-                                    })
-                                }
-                                .padding(8)
                                 AddNewTaskGroup(dataService: dataService)
                             }
                         }

@@ -27,129 +27,12 @@ struct SignInView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                    Spacer()
-                
-                VStack{
-                    Text("Sign In")
-                        .font(.title)
-                        .foregroundColor(Color.poolWhite)
-                    VStack{
-                        HStack{
-                            Text("Email")
-                                .foregroundColor(Color.poolWhite)
-                                .font(.headline)
-                            Spacer()
-                        }
-                        HStack{
-                                TextField(
-                                    "Email",
-                                    text: $email
-                                )
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .foregroundColor(.black)
-                                .padding(.vertical, 5)
-                                .padding(.horizontal, 20)
-                                .background(Color.poolWhite)
-                                .clipShape(Capsule())
-                                .focused($focusedField, equals: .userName)
-                                     .submitLabel(.next)
-                        }
-                        .foregroundColor(Color.white)
-                        //                    .cornerRadius(5)
-                        HStack{
-                            Text("Password")
-                                .foregroundColor(Color.poolWhite)
-                                .font(.headline)
-                            Spacer()
-                        }
-                        HStack{
-                                SecureField(
-                                    "Password",
-                                    text: $password
-                                )
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .foregroundColor(.black)
-                                .padding(.vertical, 5)
-                                .padding(.horizontal, 20)
-                                .background(Color.poolWhite)
-                                .clipShape(Capsule())
-                                .focused($focusedField, equals: .password)
-                                .submitLabel(.go)
-                        }
-                        .foregroundColor(Color.white)
-                    }
-                    .padding(.bottom,48)
-                    VStack{
-                        Button{
-                            Task{
-                                do{
-                                    print("Attempting Sign in")
-                                    
-                                    try await VM.signInWithEmail(email: email, password: password)
-                                    print("Signed in Successfully")
-                                    let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
-                                    let user = try await DBUserManager.shared.getCurrentUser(userId: authDataResult.uid)
-
-                                    masterDataManager.user = user
-                                    masterDataManager.showSignInView = false
-                                    
-                                } catch {
-                                    password = ""
-                                    try VM.signOut()
-                                    showAlertMessage = "Failed to login"
-                                    showAlert = true
-                                    print("Error >> \(error)")
-                                }
-                            }
-                        } label: {
-                            Text("Sign In")
-                                .frame(maxWidth: .infinity)
-                                .foregroundColor(Color.poolWhite)
-                                .padding(5)
-                                .background(Color.poolBlue)
-                                .clipShape(Capsule())
-                        }
-                        .padding(8)
-                        NavigationLink(destination: {
-                            SignUpTypePicker()
-                            
-                        }, label: {
-                            Text("Create Account")
-                                .frame(maxWidth: .infinity)
-                                .foregroundColor(Color.poolBlue)
-                                .padding(5)
-                                .background(Color.poolWhite)
-                                .clipShape(Capsule())
-                        })
-                        .padding(8)
-                    }
-                    .padding(.horizontal,40)
-                }
-                .padding(8)
-                .background(Color.darkGray.opacity(0.5))
-                .cornerRadius(8)
-                HStack{
-                    Button(action: {
-                        showForgotUserNameSheet.toggle()
-                    }, label: {
-                        Text("Forgot User Name")
-                
-                            .foregroundColor(Color.red)
-                    })
-                    .sheet(isPresented: $showForgotUserNameSheet, content: {
-                        Text("Build Recover User Name Sheet")
-                    })
-                    Spacer()
-                    Button(action: {
-                        showForgotPasswordSheet.toggle()
-                    }, label: {
-                        Text("Forgot Password")
-                            .foregroundColor(Color.red)
-                        
-                    })
-                    .sheet(isPresented: $showForgotPasswordSheet, content: {
-                        Text("Build Recover Password Sheet")
-                    })
+                Spacer()
+                if UIDevice.isIPhone {
+                    form
+                } else {
+                    form
+                    .padding(.horizontal, 32)
                 }
                 Spacer()
                 Text("© Espineli L.L.C.")
@@ -159,22 +42,18 @@ struct SignInView: View {
             .padding(.horizontal, 16)
             .onSubmit {
                    switch focusedField {
-      
                    case .userName:
                        focusedField = .password
                    case .password:
                        Task{
                            do{
                                print("Attempting Sign in")
-                               
                                try await VM.signInWithEmail(email: email, password: password)
                                print("Signed in Successfully")
                                let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
                                let user = try await DBUserManager.shared.getCurrentUser(userId: authDataResult.uid)
-
                                masterDataManager.user = user
                                masterDataManager.showSignInView = false
-                               
                            } catch {
                                password = ""
                                try VM.signOut()
@@ -189,7 +68,6 @@ struct SignInView: View {
                        focusedField = .password
                    }
                }
-
         }
         .alert(showAlertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
@@ -202,5 +80,137 @@ struct SignInView_Previews: PreviewProvider {
 
     static var previews: some View {
         SignInView(dataService:dataService)
+    }
+}
+extension SignInView {
+    var form: some View {
+        VStack{
+            VStack{
+                Text("Sign In")
+                    .font(.title)
+                    .foregroundColor(Color.poolWhite)
+                VStack{
+                    HStack{
+                        Text("Email")
+                            .foregroundColor(Color.poolWhite)
+                            .font(.headline)
+                        Spacer()
+                    }
+                    HStack{
+                        TextField(
+                            "Email",
+                            text: $email
+                        )
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .foregroundColor(.black)
+                        .padding(.vertical, 5)
+                        .padding(.horizontal, 20)
+                        .background(Color.poolWhite)
+                        .clipShape(Capsule())
+                        .focused($focusedField, equals: .userName)
+                        .submitLabel(.next)
+                    }
+                    .foregroundColor(Color.white)
+                        //                    .cornerRadius(5)
+                    HStack{
+                        Text("Password")
+                            .foregroundColor(Color.poolWhite)
+                            .font(.headline)
+                        Spacer()
+                    }
+                    HStack{
+                        SecureField(
+                            "Password",
+                            text: $password
+                        )
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .foregroundColor(.black)
+                        .padding(.vertical, 5)
+                        .padding(.horizontal, 20)
+                        .background(Color.poolWhite)
+                        .clipShape(Capsule())
+                        .focused($focusedField, equals: .password)
+                        .submitLabel(.go)
+                    }
+                    .foregroundColor(Color.white)
+                }
+                .padding(.bottom,48)
+                VStack{
+                    Button{
+                        Task{
+                            do{
+                                print("Attempting Sign in")
+                                
+                                try await VM.signInWithEmail(email: email, password: password)
+                                print("Signed in Successfully")
+                                let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
+                                let user = try await DBUserManager.shared.getCurrentUser(userId: authDataResult.uid)
+                                
+                                masterDataManager.user = user
+                                masterDataManager.showSignInView = false
+                                
+                            } catch {
+                                password = ""
+                                try VM.signOut()
+                                showAlertMessage = "Failed to login"
+                                showAlert = true
+                                print("Error >> \(error)")
+                            }
+                        }
+                    } label: {
+                        Text("Sign In")
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(Color.poolWhite)
+                            .padding(5)
+                            .background(Color.poolBlue)
+                            .clipShape(Capsule())
+                    }
+                    .padding(8)
+                    NavigationLink(destination: {
+                        //if company or tech
+                        //SignUpTypePicker()
+                        //Just Company
+                        //IndustryTypePicker(dataService: dataService)//DEVELOPER ADD PAY WALL
+                        //Just tech
+                        TechSignUpPicker()
+                    }, label: {
+                        Text("Create Account")
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(Color.poolBlue)
+                            .padding(5)
+                            .background(Color.poolWhite)
+                            .clipShape(Capsule())
+                    })
+                    .padding(8)
+                }
+                .padding(.horizontal,40)
+            }
+            .padding(8)
+            .background(Color.darkGray.opacity(0.5))
+            .cornerRadius(8)
+            HStack{
+                Button(action: {
+                    showForgotUserNameSheet.toggle()
+                }, label: {
+                    Text("Forgot User Name")
+                        .underline(true)
+                        .foregroundColor(Color.red)
+                })
+                .sheet(isPresented: $showForgotUserNameSheet, content: {
+                    Text("Build Recover User Name Sheet")
+                })
+                Spacer()
+                Button(action: {
+                    showForgotPasswordSheet.toggle()
+                }, label: {
+                    Text("Forgot Password")
+                        .underline(true)
+                        .foregroundColor(Color.red)
+                })
+                .sheet(isPresented: $showForgotPasswordSheet, content: {
+                    Text("Build Recover Password Sheet")
+                })
+            }
+        }
     }
 }
