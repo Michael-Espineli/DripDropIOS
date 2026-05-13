@@ -22,12 +22,12 @@ final class RecurringLaborContractInvoiceCardViewModel:ObservableObject{
     @Published private(set) var lastBilled: Date = Date()
     func onLoad(companyId:String, contractId:String) async throws {
         var total: Int = 0
-        var recurringWork = try await dataService.getLaborContractRecurringWorkList(companyId: companyId, laborContractId: contractId)
+        let recurringWork = try await dataService.getLaborContractRecurringWorkList(companyId: companyId, laborContractId: contractId)
         print("recurringWork \(recurringWork.count) for \(companyId) -  \(contractId)")
         for work in recurringWork {
             //Get Service Stops Since Last Billed
             if work.isActive {
-                //Developer Maybe a better Way to do this
+#warning("Maybe a better Way to do this")
                 self.lastBilled = work.lastBilled
                 for rssIds in work.recurringServiceStopIdList {
                     let serviceStops = try await dataService.getServiceStopsByRecurringsServiceStopBetweenDates(
@@ -39,7 +39,9 @@ final class RecurringLaborContractInvoiceCardViewModel:ObservableObject{
                     print("received serviceStops for \(rssIds.id) - \(serviceStops.count)")
                     for stop in serviceStops {
                         if !stop.isInvoiced {
-                            // if stop.operationStatus == .finished {}//DEVELOPER MAYBE ADD COMPANY SETTING REQUIRE FINISH
+#warning("MAYBE ADD COMPANY SETTING REQUIRE FINISH")
+
+                            // if stop.operationStatus == .finished {}
                             total += Int(work.rate)
                             //Update Service Stop once Sent
                         }
@@ -51,7 +53,7 @@ final class RecurringLaborContractInvoiceCardViewModel:ObservableObject{
             }
         }
         //This is Estimate
-        let weeksBetween = numberOfWeeksBetween(lastBilled, Date())
+        _ = numberOfWeeksBetween(lastBilled, Date())
         self.total = total
     }
 }

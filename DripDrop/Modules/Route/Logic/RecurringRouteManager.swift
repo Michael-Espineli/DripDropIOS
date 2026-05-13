@@ -26,6 +26,7 @@ struct ServiceStopOrder:Identifiable,Equatable, Codable,Hashable{
     var id:String
     var order:Int
     var serviceStopId:String
+    var recurringServiceStopId:String
 }
 /*
 final class RecurringRouteManager {

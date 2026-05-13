@@ -38,127 +38,90 @@ struct ProfileView: View {
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
-            ScrollView{
-                LazyVStack(alignment: .center, pinnedViews: [.sectionHeaders], content: {
-                    Section(content: {
-                        ZStack{
-                            VStack(spacing: 10){
-                                Divider()
-                                recentActivity
-                                    //----------------------------------------
-                                    //Add Back in During Roll out of Phase 2
-                                    //----------------------------------------
-//                                rateSheet
-//                                sendInvoice
-//                                chartStuff
-                                Spacer()
-                            }
-                            .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-                        }
-                        .foregroundColor(Color.white)
-                    }, header: {
-                        toolBar
-                        profile
-                            .padding(8)
-                            .background(Color.poolBlue)
-                    })
-                })
-            }
-            Text("")
-                .sheet(isPresented: $showEditUser, content: {
-                    if let user = masterDataManager.user {
-                        
-                        EditProfileView(tech: user)
-                    }
-                })
-        }
-        .navigationTitle("\(masterDataManager.user?.firstName ?? "") \(masterDataManager.user?.lastName ?? "")")
-//        .navigationBarBackground()
-        .toolbar{
-            ToolbarItem{
-                if let user = masterDataManager.user {
-                    if UIDevice.isIPhone {
-                        NavigationLink(value: Route.userSettings(dataService: dataService), label: {
-                            Image(systemName: "gear")
-                        })
-                    } else {
-                        Button(action: {
-                            showUserSettings.toggle()
-                        }, label: {
-                            Image(systemName: "gear")
-                        })
-                    }
-                }
-            }
-            ToolbarItem{
-                if let user = masterDataManager.user {
-                    if UIDevice.isIPhone {
-                        NavigationLink(value: Route.editUser(user: user,dataService: dataService), label: {
-                            Image(systemName: "square.and.pencil")
+            ScrollView {
+                LazyVStack(alignment: .center, pinnedViews: [.sectionHeaders]) {
+                    Section {
+                        VStack(spacing: 12) {
+                            Divider().opacity(0)
+                                // ----------------------------------------
+                                // Add Back in During Roll out of Phase 2
+                                // ----------------------------------------
                             
-                        })
-                    } else {
-                        Button(action: {
-                            showEditUser.toggle()
-                        }, label: {
-                            Image(systemName: "square.and.pencil")
-                        })
+//                              recentActivity
+                                // rateSheet
+                                // sendInvoice
+                                // chartStuff
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 16)
+                        .foregroundStyle(.poolBlack)
+                    } header: {
+                        VStack(spacing: 12) {
+//                            toolBar
+                            profile
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal)
                     }
-                   
                 }
+                .background(Color.listColor.ignoresSafeArea())
             }
         }
-        .task{
+        .navigationTitle("\(masterDataManager.user?.firstName ?? "First Name") \(masterDataManager.user?.lastName ?? "Last Name")")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
             if let user = masterDataManager.user {
-                
                 print("Arrived at Profile Page")
                 do {
                     try await profileVM.loadCurrentUser()
-          
                 } catch {
                     print(error)
                 }
                 do {
                     try await userAccessVM.getAllUserAvailableCompanies(userId: user.id)
-    
                 } catch {
                     print(error)
                 }
                 print("Calculating Exp")
-                    let thing = calculateLevel(exp:user.exp)
-                    level = thing.level
-                    percentage = thing.percentage
-                    expToNext = thing.expToNextlevel
+                let thing = calculateLevel(exp: user.exp)
+                level = thing.level
+                percentage = thing.percentage
+                expToNext = thing.expToNextlevel
             }
         }
-        .onChange(of: selectedPhoto, perform: { newValue in
-            if let user = masterDataManager.user {
-                
-                if let newValue {
-                    Task{
-                        print("Save Profile Image")
-                        profileVM.saveProfileImage(user: user, item: newValue)
-                    }
+        .onChange(of: selectedPhoto) { newValue in
+            if let user = masterDataManager.user, let newValue {
+                Task {
+                    print("Save Profile Image")
+                    profileVM.saveProfileImage(user: user, item: newValue)
                 }
             }
-        })
+        }
     }
 }
 
-struct ProfileView_Previews: PreviewProvider {
-    static let dataService = MockDataService()
-    static var previews: some View {
-        ProfileView(dataService:dataService)
-    }
+#Preview {
+    ProfileView(dataService: MockDataService())
+        .environmentObject(NavigationStateManager())
+        .environmentObject(MasterDataManager(dataService: ProductionDataService()))
+        .environmentObject(ProductionDataService())
 }
+
 extension ProfileView {
     var toolBar: some View {
-        HStack{
-            Spacer()
+        HStack {
+            Spacer(minLength: 0)
             if let user = masterDataManager.user {
-                NavigationLink(value: Route.editUser(user: user,dataService: dataService), label: {
-                    Image(systemName: "square.and.pencil")
-                })
+                NavigationLink(value: Route.editUser(user: user, dataService: dataService)) {
+                    Label("Edit", systemImage: "pencil")
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.white.opacity(0.12))
+                .foregroundStyle(.black)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .accessibilityLabel("Edit Profile")
             }
         }
     }
@@ -234,131 +197,146 @@ extension ProfileView {
         }
     }
     var image: some View {
-        ZStack{
-            Circle()
-                .fill(Color.black)
-                .frame(maxWidth:100 ,maxHeight:100)
-            if let urlString = profileVM.imageUrlString,let url = URL(string: urlString){
-                AsyncImage(url: url){ image in
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .foregroundColor(Color.white)
-                        .frame(maxWidth:90 ,maxHeight:90)
-                        .cornerRadius(75)
-                } placeholder: {
-                    Image(systemName:"person.circle")
-                        .resizable()
-                        .scaledToFill()
-                        .foregroundColor(Color.white)
-                        .frame(maxWidth:90 ,maxHeight:90)
-                        .cornerRadius(75)
-                }
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Spacer()
-                    PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared(), label: {
-                        ZStack{
-                            Circle()
-                                .fill(.blue)
-                                .frame(maxWidth:30 ,maxHeight:30)
-                            
-                            Image(systemName: "photo.on.rectangle.angled")
+        ZStack(alignment: .bottomTrailing) {
+            ZStack {
+                Circle()
+                    .fill(Color.black.opacity(0.2))
+                    .frame(width: 100, height: 100)
+
+                if let urlString = profileVM.imageUrlString, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: 100, height: 100)
+                        case .success(let image):
+                            image
                                 .resizable()
-                                .foregroundColor(Color.white)
-                                .frame(maxWidth:20 ,maxHeight:20)
-                        }
-                    })
-                }
-            }
-        }
-        .frame(maxWidth: 150,maxHeight:150)
-        .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 10))
-    }
-    var profile: some View {
-        ZStack{
-            Color.poolBlue
-            if let user = masterDataManager.user {
-                VStack{
-                    HStack{
-                        image
-                        
-                        VStack{
-                            VStack{
-                                HStack{
-                                    Spacer()
-                                    ZStack{
-                                        Circle()
-                                            .fill(.white)
-                                            .frame(maxWidth:50 ,maxHeight:50)
-                                        
-                                        Text("\(calculateLevel(exp:user.exp).level)")
-                                            .bold(true)
-                                            .foregroundColor(Color.black)
-                                            .frame(maxWidth:50 ,maxHeight:50)
-                                            .cornerRadius(85)
-                                        Circle()
-                                            .stroke(Color.reverseFontText,style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                                            .frame(maxWidth:50,maxHeight:50)
-                                        Circle()
-                                            .trim(from: 0, to: calculateLevel(exp:user.exp).percentage)
-                                            .stroke(Color.poolGreen,style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                                            .frame(maxWidth:50,maxHeight:50)
-                                            .rotationEffect(.degrees(-90))
-                                        
-                                    }
-                                }
-                                
-                            }
-                            
+                                .scaledToFill()
+                                .frame(width: 100, height: 100)
+                                .clipShape(Circle())
+                        case .failure:
+                            Image(systemName: "person.circle")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 100, height: 100)
+                                .foregroundColor(.white.opacity(0.7))
+                        @unknown default:
+                            EmptyView()
                         }
                     }
+                } else {
+                    Image(systemName: "person.circle")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+
+            PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.black)
+                    .padding(6)
+                    .background(.black.opacity(0.6), in: Circle())
+            }
+            .padding(4)
+            .accessibilityLabel("Change profile photo")
+        }
+        .frame(width: 120, height: 120)
+        .padding(.top, 8)
+    }
+    var profile: some View {
+        VStack(spacing: 12) {
+            if let user = masterDataManager.user {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack{
+                        Text("\(user.firstName) \(user.lastName)")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(.black)
+                        if let user = masterDataManager.user {
+                            NavigationLink(value: Route.editUser(user: user, dataService: dataService)) {
+                                Label("Edit", systemImage: "pencil")
+                                    .labelStyle(.titleAndIcon)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.white.opacity(0.12))
+                            .foregroundStyle(.black)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .accessibilityLabel("Edit Profile")
+                        }
+                    }
+                    HStack(alignment: .center, spacing: 16) {
+                        image
+
+                        // Level ring
+                        ZStack {
+                            Circle()
+                                .stroke(Color.reverseFontText.opacity(0.4), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                .frame(width: 56, height: 56)
+                            Circle()
+                                .trim(from: 0, to: calculateLevel(exp: user.exp).percentage)
+                                .stroke(Color.poolGreen, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: 56, height: 56)
+                            Text("\(calculateLevel(exp: user.exp).level)")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(.black)
+                                .frame(width: 56, height: 56)
+                                .background(Circle().fill(.white))
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Level \(calculateLevel(exp: user.exp).level)")
+                    }
+
                     bio
                 }
-                .foregroundColor(Color.white)
-
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.background)
+                        .shadow(color: Color.darkGray.opacity(0.06), radius: 12, x: 0, y: 4)
+                )
             }
         }
     }
     var bio: some View {
-        ZStack{
+        Group {
             if let user = masterDataManager.user {
-                
-                VStack{
-                    HStack{
-                        Text("Email: ")
-                            .bold()
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Email:").bold()
                         Spacer()
-                        Text("\(user.email)")
+                        Text(user.email)
+                            .foregroundStyle(.black)
+                            .textSelection(.enabled)
                     }
-                    HStack{
-                        Text("Phone Number: ")
-                            .bold()
+                    HStack {
+                        Text("Phone Number:").bold()
                         Spacer()
-                        if let phoneNumber = user.phoneNumber {
-                            Text("\(phoneNumber)")
-                        }else{
-                            Text("Not Set")
-                        }
+                        Text(user.phoneNumber ?? "Not Set")
+                            .foregroundStyle(.black)
                     }
-                    HStack{
-                        Text("Date Created: ")
-                            .bold()
+                    HStack {
+                        Text("Date Created:").bold()
                         Spacer()
-                        Text("\(fullDate(date:user.dateCreated))")
-                        
+                        Text(fullDate(date: user.dateCreated))
+                            .foregroundStyle(.black)
                     }
-                    HStack{
-                        Text("Bio: ")
-                            .bold()
-                        Spacer()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Bio:").bold()
+                        Text(user.bio ?? "")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color.white.opacity(0.08))
+                            )
                     }
-                    
-                    Text("\(user.bio ?? "")")
-                        .modifier(PlainTextFieldModifier())
                 }
+                .foregroundStyle(Color.black)
             }
         }
     }

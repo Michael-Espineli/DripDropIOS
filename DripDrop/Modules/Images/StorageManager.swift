@@ -67,21 +67,21 @@ final class StorageManager {
     func saveImage(user:DBUser,data:Data) async throws ->(path:String, name:String) {
         
         let path = "\(UUID().uuidString).jpeg"
-        print("path >> \(path)")
+        print("[StorageManager][saveImage] path >> \(path)")
         
         let meta = StorageMetadata()
         meta.contentType = "image/jpeg"
-        print("meta >> \(meta)")
+        print("[StorageManager][saveImage] meta >> \(meta)")
         
-            let returnedMetaData = try await userReference(user: user).child(path)
-            .putDataAsync(data,metadata: meta)
-        print("returnedMetaData >> \(returnedMetaData)")
+        let returnedMetaData = try await userReference(user: user).child(path)
+        .putDataAsync(data,metadata: meta)
+        print("[StorageManager][saveImage] returnedMetaData >> \(returnedMetaData)")
         
         guard let returnedPath = returnedMetaData.path, let returnedName = returnedMetaData.name else {
             throw URLError(.badServerResponse)
         }
         
-        print("SUCCESS 1")
+        print("[StorageManager][saveImage] SUCCESS 1")
         return (returnedPath,returnedName)
     }
     

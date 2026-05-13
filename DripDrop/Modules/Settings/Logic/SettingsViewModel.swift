@@ -34,7 +34,14 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var loadingText: String? = nil
     @Published private(set) var loadingTotal: Int? = nil
     @Published private(set) var loadingCurrent: Int? = nil
+    @Published var amountInput: String = ""
 
+    @Published private(set) var alertMessage: String = ""
+    @Published  var showAlert: Bool = false
+
+    
+    //General Functions
+    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                                      Uploading Recordings
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -75,7 +82,39 @@ final class SettingsViewModel: ObservableObject {
     func AddDosageAmount(companyId: String,dosageTemplate:DosageTemplate,amount:String) async throws {
         try? await SettingsManager.shared.uploadDosageTemplateAmountArray(companyId: companyId, dosageTemplateId: dosageTemplate.id, amount: amount)
     }
+    func updateReadingAmount(companyId: String,readingTemplate:SavedReadingsTemplate,amountList:[String],newAmount:String) async throws {
+        if !newAmount.isNumber{
+            //Throw Error For not Number
+            self.alertMessage = "Amount Not Number"
+            self.showAlert.toggle()
+            return
+        }
+        var newAmountList = amountList
+        newAmountList.append(String(newAmount).trimmingCharacters(in: .whitespacesAndNewlines))
+        //Reorder
+        let sortedAmountArray = newAmountList.sorted {
+            (Int($0) ?? 0) < (Int($1) ?? 0)
+        }
+        //Publish
+        try? await dataService.updateSavedReadingAmount(companyId: companyId, readingTemplateId: readingTemplate.id, newArray: sortedAmountArray)
+    }
     
+    func updateDosageAmount(companyId: String,dosageTemplate:SavedDosageTemplate,amountList:[String],newAmount:String) async throws {
+        if !newAmount.isNumber{
+            //Throw Error For not Number
+            self.alertMessage = "Amount Not Number"
+            self.showAlert.toggle()
+            return
+        }
+        var newAmountList = amountList
+        newAmountList.append(String(newAmount).trimmingCharacters(in: .whitespacesAndNewlines))
+        //Reorder
+        let sortedAmountArray = newAmountList.sorted {
+            (Int($0) ?? 0) < (Int($1) ?? 0)
+        }
+        //Publish
+        try? await dataService.updateSavedDosageAmount(companyId: companyId, dosageTemplateId: dosageTemplate.id, newArray: sortedAmountArray)
+    }
     func CreateGenericHistoryForOneCustomer(companyId: String, customer: Customer) async throws {
         
 //        let serviceLocationList = try await Firestore.firestore().collection("companies/\(companyId: companyId)/customers/" + customer.id + "/serviceLocations").getDocuments(as:ServiceableLocation.self)
@@ -152,7 +191,6 @@ final class SettingsViewModel: ObservableObject {
     func DeleteReadingAmount(companyId:String,readingTemplate:ReadingsTemplate,amount:String) async throws {
         try? await SettingsManager.shared.removingReadingTemplateAmountArray(companyId: companyId, readingTemplateId: readingTemplate.id, amount: amount)
     }
-
     func DeleteDosageAmount(companyId:String,dosageTemplate:DosageTemplate,amount:String) async throws {
         try? await SettingsManager.shared.removingDosageTemplateAmountArray(companyId: companyId, dosageTemplateId: dosageTemplate.id, amount: amount)
     }

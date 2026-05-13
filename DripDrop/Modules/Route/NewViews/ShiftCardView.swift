@@ -36,11 +36,11 @@ final class ShiftCardViewModel:ObservableObject{
         print("Duration: \(updatedMin/60) Hour")
 
         self.timeMin = updatedMin
-        let dayOfWeek = weekDay(date: workShift.date)
+        _ = weekDay(date: workShift.date)
         self.activeRoute = try? await dataService.getAllActiveRoutesBasedOnDate(companyId: companyId, date: workShift.date, tech: user).first
         if let activeRoute, let endMilage = activeRoute.endMilage, let startMilage = activeRoute.startMilage {
             let duration = endMilage - startMilage
-            self.milage = duration
+            self.milage = Int(duration)
         }
     }
 }

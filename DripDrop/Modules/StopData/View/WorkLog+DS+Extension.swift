@@ -110,6 +110,61 @@ struct WorkLog:Identifiable, Codable,Hashable{
         lhs.startTime == rhs.startTime
     }
 }
+struct ActiveRouteLocation:Identifiable, Codable,Hashable{
+    
+    var id:String = UUID().uuidString
+    var activeRouteId:String
+
+    var time:Date
+    var latitude:Double
+    var longitude:Double
+    
+    var userId:String
+    var userName:String
+
+    init(
+        id: String,
+        activeRouteId: String,
+        
+        time :Date,
+        latitude :Double,
+        longitude :Double,
+        
+        userId: String,
+        userName: String,
+        
+    ){
+        self.id = id
+        self.activeRouteId = activeRouteId
+
+        self.time = time
+        self.latitude = latitude
+        self.longitude = longitude
+        
+        self.userId = userId
+        self.userName = userName
+
+    }
+    enum CodingKeys:String, CodingKey {
+        case id = "id"
+        case activeRouteId = "activeRouteId"
+
+        case time = "time"
+        case latitude = "latitude"
+        case longitude = "longitude"
+  
+        case userId = "userId"
+        case userName = "userName"
+    }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(time)
+    }
+    static func == (lhs: ActiveRouteLocation, rhs: ActiveRouteLocation) -> Bool {
+        return lhs.id == rhs.id &&
+        lhs.time == rhs.time
+    }
+}
 
 extension ProductionDataService {
     func WorkLogCollection(companyId:String) -> CollectionReference{

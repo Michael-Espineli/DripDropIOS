@@ -31,6 +31,9 @@ final class JobDetailViewModel:ObservableObject{
     @Published var isPresentLaborContract: Bool = false
     @Published var showEstimate: Bool = false
 
+    @Published var editShoppingItem: ShoppingListItem? = nil
+    @Published var editTaskItem: JobTask? = nil
+
     @Published var taskGroupItems : [JobTaskGroupItem] = []
     @Published var description: String = "Tasks"
 
@@ -124,7 +127,7 @@ final class JobDetailViewModel:ObservableObject{
                 var total = 0
                 var price = 0
                 for item in shoppingItemList {
-                    if let id = item.dbItemId, let quantiyStr = item.quantiy, let quantiy = Int(quantiyStr) {
+                    if let id = item.dbItemId, let quantiyStr = item.quantity, let quantiy = Int(quantiyStr) {
                         let dbItem = try await dataService.getDataBaseItem(companyId: senderId, dataBaseItemId: id)
                         let subtotal = Int(dbItem.rate) * quantiy
                         total = total + subtotal
@@ -146,7 +149,7 @@ final class JobDetailViewModel:ObservableObject{
             var total = 0
             var price = 0
             for item in shoppingItemList {
-                if let id = item.dbItemId, let quantiyStr = item.quantiy, let quantiy = Int(quantiyStr) {
+                if let id = item.dbItemId, let quantiyStr = item.quantity, let quantiy = Int(quantiyStr) {
                     let dbItem = try await dataService.getDataBaseItem(companyId: companyId, dataBaseItemId: id)
                     let subtotal = Int(dbItem.rate) * quantiy
                     total = total + subtotal
@@ -353,7 +356,28 @@ final class JobDetailViewModel:ObservableObject{
         if serviceLocations.count != 0 {
             self.serviceLocation = serviceLocations.first!
         } else {
-            self.serviceLocation = ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: "", preText: false)
+            self.serviceLocation = ServiceLocation(
+                id: "",
+                nickName: "",
+                address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+                gateCode: "",
+                mainContact: Contact(
+                    id: "",
+                    name: "",
+                    phoneNumber: "",
+                    email: ""
+                ),
+                bodiesOfWaterId: [],
+                rateType: "",
+                laborType: "",
+                chemicalCost: "",
+                laborCost: "",
+                rate: "",
+                customerId: "",
+                customerName: "",
+                preText: false,
+                isActive: true
+            )
         }
     }
     
@@ -364,7 +388,16 @@ final class JobDetailViewModel:ObservableObject{
         if bodiesOfWater.count != 0 {
             self.bodyOfWater = bodiesOfWater.first!
         } else {
-            self.bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
+            self.bodyOfWater = BodyOfWater(
+                id: "",
+                name: "",
+                gallons: "",
+                material: "",
+                customerId: "",
+                serviceLocationId: "",
+                lastFilled: Date(),
+                isActive: true
+            )
         }
     }
     
@@ -378,9 +411,12 @@ final class JobDetailViewModel:ObservableObject{
             equipment = Equipment(
                 id: "",
                 name: "",
-                category: .filter,
+                type: .filter,
+                typeId: "",
                 make: "",
+                makeId: "",
                 model: "",
+                modelId: "",
                 dateInstalled: Date(),
                 status: .operational,
                 needsService: true,
@@ -491,7 +527,7 @@ final class JobDetailViewModel:ObservableObject{
         jobTemplate:JobTemplate,
         operationStatus:JobOperationStatus,
         billingStatus:JobBillingStatus,
-        rate:String,
+        rate:Int,
         laborCost:String,
         description:String
     ) async throws{
@@ -510,7 +546,7 @@ final class JobDetailViewModel:ObservableObject{
                 print("Change in Billing Status")
                 try await dataService.updateJobBillingStatus(companyId: companyId, jobId: updatingJob.id, billingStatus: billingStatus)
             }
-            if String(updatingJob.rate) != rate {
+            if updatingJob.rate != rate {
                 print("Change in Rate")
                 try await dataService.updateJobRate(companyId: companyId, jobId: updatingJob.id, rate: rate)
             }
@@ -580,8 +616,8 @@ final class JobDetailViewModel:ObservableObject{
                 let customerName = customer.firstName + " " + customer.lastName
                 var equipmentType:EquipmentCategory = .autoChlorinator
                 var equipmentNeedsService:Bool = false
-                var serviceFrequency:String = ""
-                var serviceFrequencyInternval:String = ""
+                var serviceFrequency: Int = 0
+                var serviceFrequencyInternval: EquipmentFrequency = .monthly
                 if DBItem.category == .equipment {
                     switch DBItem.subCategory {
                     case .pipe, .glue, .primer, .pipeExtender, .fittingExtender, .insideCoupler, .sweep, .street, .valve, .bushing, .tee, .elbow, .elbow45, .coupler, .union, .maleAdaptor, .nipple, .wire, .misc, .na:
@@ -591,8 +627,8 @@ final class JobDetailViewModel:ObservableObject{
                     case .filter:
                         equipmentType = .filter
                         equipmentNeedsService = true
-                        serviceFrequency = "6"
-                        serviceFrequencyInternval = "Month"
+                        serviceFrequency = 6
+                        serviceFrequencyInternval = .monthly
                     case .pump:
                         equipmentType = .pump
                     case .cleaner:
@@ -600,8 +636,8 @@ final class JobDetailViewModel:ObservableObject{
                     case .saltCell:
                         equipmentType = .saltCell
                         equipmentNeedsService = true
-                        serviceFrequency = "6"
-                        serviceFrequencyInternval = "Month"
+                        serviceFrequency = 6
+                        serviceFrequencyInternval = .monthly
                     case .light:
                         equipmentType = .light
                     case .controlSystem:
@@ -613,9 +649,12 @@ final class JobDetailViewModel:ObservableObject{
                 let equipment = Equipment(
                     id: "comp_equ_" + UUID().uuidString,
                     name: DBItem.name,
-                    category: equipmentType,
-                    make: "", //DEVELOPER AFter Updating PA-97
-                    model: "", //DEVELOPER AFter Updating PA-97
+                    type: equipmentType,
+                    typeId: "",
+                    make: "",
+                    makeId: "",
+                    model: "",
+                    modelId: "",
                     dateInstalled: Date(),
                     status: .operational,
                     needsService: equipmentNeedsService,
@@ -657,8 +696,8 @@ final class JobDetailViewModel:ObservableObject{
                 let customerName = customer.firstName + " " + customer.lastName
                 var equipmentType:EquipmentCategory = .autoChlorinator
                 var equipmentNeedsService:Bool = false
-                var serviceFrequency:String = ""
-                var serviceFrequencyInternval:String = ""
+                var serviceFrequency: Int = 6
+                var serviceFrequencyInternval: EquipmentFrequency = .monthly
                 if DBItem.category == .equipment {
                     switch DBItem.subCategory {
                     case .pipe, .glue, .primer, .pipeExtender, .fittingExtender, .insideCoupler, .sweep, .street, .valve, .bushing, .tee, .elbow, .elbow45, .coupler, .union, .maleAdaptor, .nipple, .wire, .misc, .na:
@@ -668,8 +707,8 @@ final class JobDetailViewModel:ObservableObject{
                     case .filter:
                         equipmentType = .filter
                         equipmentNeedsService = true
-                        serviceFrequency = "6"
-                        serviceFrequencyInternval = "Month"
+                        serviceFrequency = 6
+                        serviceFrequencyInternval = .monthly
                     case .pump:
                         equipmentType = .pump
                     case .cleaner:
@@ -677,8 +716,8 @@ final class JobDetailViewModel:ObservableObject{
                     case .saltCell:
                         equipmentType = .saltCell
                         equipmentNeedsService = true
-                        serviceFrequency = "6"
-                        serviceFrequencyInternval = "Month"
+                        serviceFrequency = 6
+                        serviceFrequencyInternval = .monthly
                     case .light:
                         equipmentType = .light
                     case .controlSystem:
@@ -690,9 +729,12 @@ final class JobDetailViewModel:ObservableObject{
                 let equipment = Equipment(
                     id: "comp_equ_" + UUID().uuidString,
                     name: DBItem.name,
-                    category: equipmentType,
-                    make: "", //DEVELOPER AFter Updating PA-97
-                    model: "", //DEVELOPER AFter Updating PA-97
+                    type: equipmentType,
+                    typeId: "",
+                    make: "",
+                    makeId: "",
+                    model: "",
+                    modelId: "",
                     dateInstalled: Date(),
                     status: .operational,
                     needsService: equipmentNeedsService,
@@ -810,7 +852,6 @@ final class JobDetailViewModel:ObservableObject{
         //Check To make sure if is sender company
         if job.otherCompany {
             if job.senderId == companyId {
-                
                 //Check if already accepted
                 if let dateAccepted = newJob.dateEstimateAccepted {
                     //Reset Invoice Info
@@ -823,14 +864,14 @@ final class JobDetailViewModel:ObservableObject{
                     
                     self.billingStatus = .inProgress
                 } else {
-                    
-                        self.alertMessage = "Not Invoiced "
-                        self.showAlert.toggle()
-                        throw FireBaseRead.unableToRead
+                    self.alertMessage = "Not Invoiced "
+                    self.showAlert.toggle()
+                    throw FireBaseRead.unableToRead
                 }
             }
         }
     }
+    
     func markEstimateAsAccepted(companyId:String,job:Job) async throws {
         let newJob = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: job.id)
         //Check To make sure if is sender company
@@ -853,10 +894,28 @@ final class JobDetailViewModel:ObservableObject{
         }
     }
     
-    func onDismissAddTaskSheet(companyId:String,serviceLocationId:String,jobId:String) async throws {
-        self.jobTaskList = try await dataService.getJobTasks(companyId: companyId, jobId: jobId)
-        print("jobTaskList")
-        print(jobTaskList)
+    func onDismissAddTaskSheet(companyId:String,serviceLocationId:String,jobId:String) {
+        Task{
+            do {
+                self.jobTaskList = try await dataService.getJobTasks(companyId: companyId, jobId: jobId)
+                print("[][onDismissAddTaskSheet]jobTaskList")
+                print(jobTaskList)
+            } catch {
+                print("[][] Error \(error)")
+            }
+        }
+    }
+    
+    func onDismissAddShoppingListItem(companyId:String,serviceLocationId:String,jobId:String){
+        Task{
+            do {
+                self.shoppingItemList = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: jobId, category: "Job")
+                print("[][onDismissAddShoppingListItem]shoppingItemList")
+                print(shoppingItemList)
+            } catch {
+                print("[][] Error \(error)")
+            }
+        }
     }
     
     func delete(
@@ -873,10 +932,29 @@ final class JobDetailViewModel:ObservableObject{
 //            try await dataService.deleteServiceStopById(companyId: companyId, serviceStopId: stopId)
         }
         try await dataService.deleteJob(companyId: companyId, jobId: jobId)
-
+        //Delete Items
+        
+        //Tasks get deleted with job
         
     }
-    func deleteJobTaskItem(companyId:String,jobId:String,task:JobTask) async throws {
-        
+    
+    func deleteJobTaskItem(companyId:String,jobId:String,task:JobTask) {
+        Task{
+            do {
+                try await dataService.deleteJobTaskItem(companyId: companyId, jobId: jobId, taskId: task.id)
+            } catch {
+                print("[][deleteJobTaskItem] Error \(error)")
+            }
+        }
+    }
+    
+    func deleteShoppingListItem(companyId:String, jobId:String, item:ShoppingListItem) {
+        Task{
+            do {
+                try await dataService.deleteShoppingListItem(companyId: companyId, shoppingListItemId: item.id)
+            } catch {
+                print("[][deleteShoppingListItem] Error \(error)")
+            }
+        }
     }
 }

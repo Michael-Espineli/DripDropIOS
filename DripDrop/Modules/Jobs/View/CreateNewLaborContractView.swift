@@ -41,7 +41,7 @@ final class CreateNewLaborContractViewModel:ObservableObject{
     @Published var selectTermsTemplate:Bool = false
     @Published var seeTermsList:Bool = false
 
-    @Published var selectedTermsTemplate:TermsTemplate = TermsTemplate(id: "", name: "")
+    @Published var selectedTermsTemplate:TermsTemplate = TermsTemplate(id: "", name: "", description: "")
     @Published var selectedTermList:[ContractTerms] = []
 
     func onLoad(companyId:String, description:String, jobTaskList: [JobTask]) async throws {

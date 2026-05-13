@@ -20,8 +20,12 @@ struct StopDataReadingInputView: View {
     var serviceDate:Date
     var customerId:String
     var serviceLocationId:String
-    
+    @FocusState var chemicalInput:Bool
+
+
     var body: some View {
+        /*
+         //Old View
         ZStack{
             HStack{
                 if input == "" {
@@ -46,26 +50,23 @@ struct StopDataReadingInputView: View {
                     }
                     ScrollView(.horizontal,showsIndicators: false){
                         HStack(spacing: 8){
-
                             TextField("Input", text: $input)
+                                .focused($chemicalInput)
                                 .modifier(TextFieldModifier())
                                 .modifier(OutLineButtonModifier())
                             ForEach(template.amount,id:\.self){ amount in
                                 Button(action: {
                                     input = amount
                                 }, label: {
-                                    if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                    if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                         if reading.amount == amount {
                                             Text("\(amount)")
                                                 .modifier(SubmitButtonModifier())
                                         } else {
-                                            
                                             Text("\(amount)")
                                                 .modifier(ListButtonModifier())
-
                                         }
                                     } else {
-                                        
                                         Text("\(amount)")
                                             .modifier(ListButtonModifier())
                                     }
@@ -77,7 +78,7 @@ struct StopDataReadingInputView: View {
                     if input == "" {
                         HStack{
                             Text(template.name)
-                            if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                 Text(" - \(reading.amount ?? "")")
                             }
                         }
@@ -85,7 +86,7 @@ struct StopDataReadingInputView: View {
                     } else {
                         HStack{
                             Text(template.name)
-                            if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                 Text(" - \(reading.amount ?? "")")
                             }
                         }
@@ -96,68 +97,200 @@ struct StopDataReadingInputView: View {
             }
             .padding(EdgeInsets(top: 0, leading: 28, bottom: 5, trailing: 0))
         }
+         */
+        ZStack {
+
+            // MARK: - Left Status Indicator
+            HStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(input == "" ? Color.gray.opacity(0.25) : Color.poolGreen)
+                    .frame(width: 6)
+                Spacer()
+            }
+            .padding(.leading, 12)
+
+            VStack {
+
+                if selectedId == template.readingsTemplateId {
+
+                    HStack {
+                        Text(template.name)
+                            .font(.footnote.weight(.semibold))
+                        Spacer()
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(template.amount, id: \.self) { amount in
+                                Button(action: {
+                                    input = amount
+                                }, label: {
+                                    if let reading = stopData.readings.first(where: {
+                                        $0.universalTemplateId == template.readingsTemplateId &&
+                                        $0.bodyOfWaterId == bodyOfWaterId
+                                    }) {
+                                        if reading.amount == amount {
+                                            Text("\(amount)")
+                                                .modifier(SubmitButtonModifier())
+                                        } else {
+                                            Text("\(amount)")
+                                                .modifier(ListButtonModifier())
+                                        }
+                                    } else {
+                                        Text("\(amount)")
+                                            .modifier(ListButtonModifier())
+                                    }
+                                })
+                            }
+                            TextField("Input", text: $input)
+                                .focused($chemicalInput)
+                                .modifier(TextFieldModifier())
+                                .modifier(OutLineButtonModifier())
+                        }
+                    }
+
+                } else {
+                    if input == "" {
+                        HStack {
+                            Text(template.name)
+                                .font(.footnote.weight(.medium))
+
+                            if let reading = stopData.readings.first(where: {
+                                $0.universalTemplateId == template.readingsTemplateId &&
+                                $0.bodyOfWaterId == bodyOfWaterId
+                            }) {
+                                Text("• \(reading.amount ?? "")")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .modifier(ListButtonModifier())
+
+                    } else {
+
+                        HStack {
+                            Text(template.name)
+                                .font(.footnote.weight(.medium))
+
+                            if let reading = stopData.readings.first(where: {
+                                $0.universalTemplateId == template.readingsTemplateId &&
+                                $0.bodyOfWaterId == bodyOfWaterId
+                            }) {
+                                Text("• \(reading.amount ?? "")")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .modifier(AddButtonModifier())
+                    }
+                }
+            }
+            .padding(.leading, 30)
+            .padding(.vertical, 10)
+        }
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.listColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.black.opacity(0.05))
+        )
+        .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+
         .onChange(of: stopData, perform: { datum in
-            if let reading = datum.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+            if let reading = datum.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                 input = reading.amount ?? ""
             } else {
                 input = ""
             }
         })
         .onAppear(perform: {
-                    if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                        input = reading.amount ?? ""
-                    } else {
-                        input = ""
-                    }
-            
+            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                input = reading.amount ?? ""
+            } else {
+                input = ""
+            }
         })
         .onChange(of: bodyOfWaterId, perform: { id in
-                    if let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                        input = reading.amount ?? ""
-                    } else {
-                        input = ""
-                    }
+            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                input = reading.amount ?? ""
+            } else {
+                input = ""
+            }
             
         })
         .onTapGesture {
             selectedId = template.readingsTemplateId
         }
+        .onChange(of: selectedId, perform: { change in
+            chemicalInput = false
+        })
         .onChange(of: input, perform: { change in
-            if let dosage = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId}) {
-                if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                    let totalIndex = selectedIdList.count - 1
-                    if index == totalIndex {
-                        selectedId = ""
-                    } else {
-                        let newIndex = index + 1
-                        selectedId = selectedIdList[newIndex]
+            if !chemicalInput {
+                if let dosage = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId}) {
+                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
+                        let totalIndex = selectedIdList.count - 1
+                        if index == totalIndex {
+                            selectedId = ""
+                        } else {
+                            let newIndex = index + 1
+                            selectedId = selectedIdList[newIndex]
+                        }
                     }
-                }
-                stopData.readings.removeAll(where: {$0.templateId == template.readingsTemplateId})
-                stopData.readings.append(Reading(id: UUID().uuidString,
-                                                 templateId: template.readingsTemplateId,
-                                                 dosageType: template.chemType,
-                                                 name: template.name,
-                                                 amount: change,
-                                                 UOM: template.UOM,
-                                                 bodyOfWaterId: bodyOfWaterId))
-            } else {
-                if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                    let totalIndex = selectedIdList.count - 1
-                    if index == totalIndex {
-                        selectedId = ""
-                    } else {
-                        let newIndex = index + 1
-                        selectedId = selectedIdList[newIndex]
+                    stopData.readings.removeAll(where: {$0.universalTemplateId == template.readingsTemplateId})
+                    stopData.readings.append(Reading(id: UUID().uuidString,
+                                                     templateId: template.id,
+                                                     universalTemplateId: template.readingsTemplateId,
+                                                     dosageType: template.chemType,
+                                                     name: template.name,
+                                                     amount: change,
+                                                     UOM: template.UOM,
+                                                     bodyOfWaterId: bodyOfWaterId))
+                } else {
+                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
+                        let totalIndex = selectedIdList.count - 1
+                        if index == totalIndex {
+                            selectedId = ""
+                        } else {
+                            let newIndex = index + 1
+                            selectedId = selectedIdList[newIndex]
+                        }
                     }
+                    stopData.readings.append(Reading(id: UUID().uuidString,
+                                                     templateId: template.id,
+                                                     universalTemplateId: template.readingsTemplateId,
+                                                     dosageType: template.chemType,
+                                                     name: template.name,
+                                                     amount: change,
+                                                     UOM: template.UOM,
+                                                     bodyOfWaterId: bodyOfWaterId))
                 }
-                stopData.readings.append(Reading(id: UUID().uuidString,
-                                                 templateId: template.readingsTemplateId,
-                                                 dosageType: template.chemType,
-                                                 name: template.name,
-                                                 amount: change,
-                                                 UOM: template.UOM,
-                                                 bodyOfWaterId: bodyOfWaterId))
+            }
+        })
+        .onChange(of: chemicalInput, perform: { change in
+            if !change {
+                if let dosage = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId}) {
+                    stopData.readings.removeAll(where: {$0.universalTemplateId == template.readingsTemplateId})
+                    stopData.readings.append(Reading(id: UUID().uuidString,
+                                                     templateId: template.id,
+                                                     universalTemplateId: template.readingsTemplateId,
+                                                     dosageType: template.chemType,
+                                                     name: template.name,
+                                                     amount: input,
+                                                     UOM: template.UOM,
+                                                     bodyOfWaterId: bodyOfWaterId))
+                } else {
+                    stopData.readings.append(Reading(id: UUID().uuidString,
+                                                     templateId: template.id,
+                                                     universalTemplateId: template.readingsTemplateId,
+                                                     dosageType: template.chemType,
+                                                     name: template.name,
+                                                     amount: input,
+                                                     UOM: template.UOM,
+                                                     bodyOfWaterId: bodyOfWaterId))
+                }
             }
         })
     }

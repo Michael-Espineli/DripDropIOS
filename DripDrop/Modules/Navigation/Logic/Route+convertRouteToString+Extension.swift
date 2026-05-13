@@ -254,15 +254,21 @@ func convertRouteToString(route:Route) -> RouteString {
         return .managementTables  // Developer fix
     case .editCompanySubscription(dataService: _):
         return .managementTables  // Developer fix
-    case .inviteDetailView(dataService: let dataService, invite: let invite):
+    case .inviteDetailView:
         return .managementTables  // Developer fix
-    case .techInviteList(dataService: let dataService):
+    case .techInviteList:
         return .managementTables  // Developer fix
-    case .browseCompanies(dataService: let dataService):
+    case .browseCompanies:
         return .managementTables  // Developer fix
-    case .createCompanyView(dataService: let dataService):
+    case .createCompanyView:
         return .managementTables  // Developer fix
-    case .initiateChat(dataService: let dataService, userId: let userId):
+    case .initiateChat:
+        return .managementTables  // Developer fix
+    case .manageTermsTemplates:
+        return .managementTables  // Developer fix
+    case .userRoleDetailView:
+        return .managementTables  // Developer fix
+    case .termsTemplateDetailView:
         return .managementTables  // Developer fix
     }
 }

@@ -25,18 +25,23 @@ struct VehicalDetailView: View {
         @Environment(\.locale) private var locale
 
     //Init
-    init(dataService:any ProductionDataServiceProtocol,vehical:Vehical){
-        _vehical = State(initialValue: vehical)
+    init(dataService:any ProductionDataServiceProtocol,vehicalId:String){
+        _vehicalId = State(initialValue: vehicalId)
         _VM = StateObject(wrappedValue: VehicalDetailViewModel(dataService: dataService))
     }
     
     //Enviromental
     @EnvironmentObject var masterDataManager: MasterDataManager
+    @EnvironmentObject var fleetVM: FleetViewModel
+
     @EnvironmentObject var dataService : ProductionDataService
     @StateObject var VM : VehicalDetailViewModel
 
     //Received
-    @State var vehical : Vehical? = nil
+    @State var vehicalId : String
+    private var vehical: Vehical? {
+        fleetVM.listOfVehicals.first { $0.id == vehicalId }
+    }
     //Variables
     @State var showSheet:Bool = false
     var body: some View {
@@ -66,9 +71,6 @@ struct VehicalDetailView: View {
                 }
             }
         }
-        .onChange(of: masterDataManager.selectedVehical, perform: { datum in
-            vehical = datum
-        })
         .toolbar{
             ToolbarItem(content: {
                 Button(action: {
@@ -96,15 +98,7 @@ extension VehicalDetailView {
                     Spacer()
                 }
                 HStack{
-                    Text("\(vehical.color)")
-                    Spacer()
-                }
-                HStack{
-                    Text("Make: \(vehical.make)")
-                    Spacer()
-                }
-                HStack{
-                    Text("Model: \(vehical.model)")
+                    Text("\(vehical.color) \(vehical.make) \(vehical.model)")
                     Spacer()
                 }
                 HStack{
@@ -112,7 +106,7 @@ extension VehicalDetailView {
                     Spacer()
                 }
                 HStack{
-                    Text("Date Purchased\(fullDate(date:vehical.datePurchased))")
+                    Text("Date Purchased: \(fullDate(date:vehical.datePurchased))")
                     Spacer()
                 }
             }

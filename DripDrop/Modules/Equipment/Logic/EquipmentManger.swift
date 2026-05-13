@@ -96,8 +96,8 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
         try await EquipmentManager.shared.uploadEquipment(companyId: companyId, equipment: equipment)
-        print("\(equipment.category)")
-        switch equipment.category {
+        print("\(equipment.type.rawValue)")
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -227,7 +227,7 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
         }
     }
     func addPartsToEquipment(companyId: String,equipment:Equipment) async throws {
-        switch equipment.category {
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -515,9 +515,9 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
-        equipmentRef.updateData([
+        try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.category.stringValue:equipment.category,
+            Equipment.CodingKeys.type.stringValue:equipment.type,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.model.stringValue:equipment.model,
             Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
@@ -526,26 +526,14 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,
             Equipment.CodingKeys.bodyOfWaterId.stringValue:equipment.bodyOfWaterId,
-        ]) { err in
-            if let err = err {
-                print("Error updating Equipment: \(err)")
-            } else {
-                print("Equipment successfully updated")
-            }
-        }
+        ])
         if equipment.needsService {
-            equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate,
-            ]) { err in
-                if let err = err {
-                    print("Error updating equipment: \(err)")
-                } else {
-                    print("Equipment successfully updated")
-                }
-            }
+            try await equipmentRef.updateData([
+                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
+                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
+                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
+                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
+            ])
         }
     }
     func addListenerForAllEquipment(companyId: String,amount:Int, completion: @escaping ([Equipment]) -> Void) {
@@ -618,8 +606,8 @@ final class EquipmentManager:EquipmentManagerProtocol {
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
         try await EquipmentManager.shared.uploadEquipment(companyId: companyId, equipment: equipment)
-        print("\(equipment.category)")
-        switch equipment.category {
+        print("\(equipment.type.rawValue)")
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -750,7 +738,7 @@ final class EquipmentManager:EquipmentManagerProtocol {
         }
     }
     func addPartsToEquipment(companyId: String,equipment:Equipment) async throws {
-        switch equipment.category {
+        switch equipment.type {
         case .filter:
             let filterPartList:[EquipmentPart] = [
                 EquipmentPart(
@@ -1038,9 +1026,9 @@ final class EquipmentManager:EquipmentManagerProtocol {
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
-        equipmentRef.updateData([
+        try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.category.stringValue:equipment.category,
+            Equipment.CodingKeys.type.stringValue:equipment.type,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.model.stringValue:equipment.model,
             Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
@@ -1049,26 +1037,14 @@ final class EquipmentManager:EquipmentManagerProtocol {
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,
             Equipment.CodingKeys.bodyOfWaterId.stringValue:equipment.bodyOfWaterId,
-        ]) { err in
-            if let err = err {
-                print("Error updating Equipment: \(err)")
-            } else {
-                print("Equipment successfully updated")
-            }
-        }
+        ])
         if equipment.needsService {
-            equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate,
-            ]) { err in
-                if let err = err {
-                    print("Error updating equipment: \(err)")
-                } else {
-                    print("Equipment successfully updated")
-                }
-            }
+            try await equipmentRef.updateData([
+                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
+                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
+                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
+                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
+            ])
         }
     }
     func updateEquipmentCustomer(companyId:String,equipment:Equipment) async throws {

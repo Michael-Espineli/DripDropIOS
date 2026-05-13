@@ -9,6 +9,8 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
+
+
 struct StopData:Identifiable, Codable,Equatable{
     var id: String
     var date: Date
@@ -20,6 +22,7 @@ struct StopData:Identifiable, Codable,Equatable{
     var customerId: String
     var serviceLocationId: String
     var userId: String
+    var equipmentMeasurements: [EquipmentMeasurements]
 }
 
 protocol StopDataManagerProtocol {
@@ -43,244 +46,243 @@ final class MockStopDataManager:StopDataManagerProtocol {
     let mockStopData:[StopData] = [
         StopData(id: "1", date: Date(), serviceStopId: "1",
                  readings: [
-                    Reading(id: "1", templateId: "1", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "1")
+                    Reading(id: "1", templateId: "1",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "1")
                  ],
                  dosages: [
-                    Dosage(id: "1", templateId: "1", name: "1", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "1")
+                    Dosage(id: "1", templateId: "1",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "1", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "1")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "2", date: Date(), serviceStopId: "2",
                  readings: [
-                    Reading(id: "2", templateId: "2", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "2")
+                    Reading(id: "2", templateId: "2",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "2")
                  ],
                  dosages: [
-                    Dosage(id: "2", templateId: "2", name: "2", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "2")
+                    Dosage(id: "2", templateId: "2",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "2", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "2")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "3", date: Date(), serviceStopId: "3",
                  readings: [
-                    Reading(id: "3", templateId: "3", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "3")
+                    Reading(id: "3", templateId: "3",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "3")
                  ],
                  dosages: [
-                    Dosage(id: "3", templateId: "3", name: "3", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "3")
+                    Dosage(id: "3", templateId: "3",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "3", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "3")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
-        StopData(id: "4", date: Date(), serviceStopId: "4",
+        StopData(
+            id: "4",
+            date: Date(),
+            serviceStopId: "4",
+             readings: [
+                Reading(id: "4", templateId: "4",
+                        universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "4")
+             ],
+             dosages: [
+                Dosage(id: "4", templateId: "4",
+                       universalTemplateId: "dev_id_in_need_of_a_real_one", name: "4", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "4")
+             ],
+             observation: [
+             ],
+             bodyOfWaterId: "1",
+             customerId: "1",
+             serviceLocationId:"1",
+             userId: "",
+             equipmentMeasurements: []
+             
+            ),
+        StopData(
+            id: "5",
+            date: Date(),
+            serviceStopId: "5",
                  readings: [
-                    Reading(id: "4", templateId: "4", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "4")
+                    Reading(id: "5", templateId: "5",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "5")
                  ],
                  dosages: [
-                    Dosage(id: "4", templateId: "4", name: "4", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "4")
+                    Dosage(id: "5", templateId: "5",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "5", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "5")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
-                 
-                ),
-        StopData(id: "5", date: Date(), serviceStopId: "5",
-                 readings: [
-                    Reading(id: "5", templateId: "5", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "5")
-                 ],
-                 dosages: [
-                    Dosage(id: "5", templateId: "5", name: "5", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "5")
-                 ],
-                 observation: [
-                 ],
-                 bodyOfWaterId: "1",
-                 customerId: "1",
-                 serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+            equipmentMeasurements: []
                  
                 ),
         StopData(id: "6", date: Date(), serviceStopId: "6",
                  readings: [
-                    Reading(id: "6", templateId: "6", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "6")
+                    Reading(id: "6", templateId: "6",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "6")
                  ],
                  dosages: [
-                    Dosage(id: "6", templateId: "6", name: "6", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "6")
+                    Dosage(id: "6", templateId: "6",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "6", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "6")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "7", date: Date(), serviceStopId: "7",
                  readings: [
-                    Reading(id: "7", templateId: "7", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "7")
+                    Reading(id: "7", templateId: "7",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "7")
                  ],
                  dosages: [
-                    Dosage(id: "7", templateId: "7", name: "7", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "7")
+                    Dosage(id: "7", templateId: "7",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "7", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "7")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "8", date: Date(), serviceStopId: "8",
                  readings: [
-                    Reading(id: "8", templateId: "8", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "8")
+                    Reading(id: "8", templateId: "8",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "8")
                  ],
                  dosages: [
-                    Dosage(id: "8", templateId: "8", name: "8", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "8")
+                    Dosage(id: "8", templateId: "8",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "8", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "8")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "9", date: Date(), serviceStopId: "9",
                  readings: [
-                    Reading(id: "9", templateId: "9", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "9")
+                    Reading(id: "9", templateId: "9",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "9")
                  ],
                  dosages: [
-                    Dosage(id: "9", templateId: "9", name: "9", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "9")
+                    Dosage(id: "9", templateId: "9",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "9", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "9")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "10", date: Date(), serviceStopId: "10",
                  readings: [
-                    Reading(id: "10", templateId: "10", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "10")
+                    Reading(id: "10", templateId: "10",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "10")
                  ],
                  dosages: [
-                    Dosage(id: "10", templateId: "10", name: "10", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "10")
+                    Dosage(id: "10", templateId: "10",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "10", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "10")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "11", date: Date(), serviceStopId: "11",
                  readings: [
-                    Reading(id: "11", templateId: "11", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "11")
+                    Reading(id: "11", templateId: "11",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "11")
                  ],
                  dosages: [
-                    Dosage(id: "11", templateId: "11", name: "11", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "11")
+                    Dosage(id: "11", templateId: "11",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "11", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "11")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "12", date: Date(), serviceStopId: "12",
                  readings: [
-                    Reading(id: "12", templateId: "12", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "12")
+                    Reading(id: "12", templateId: "12",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "12")
                  ],
                  dosages: [
-                    Dosage(id: "12", templateId: "12", name: "12", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "12")
+                    Dosage(id: "12", templateId: "12",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "12", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "12")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
+                 userId: "",
+                 equipmentMeasurements: []
                  
                 ),
         StopData(id: "13", date: Date(), serviceStopId: "13",
                  readings: [
-                    Reading(id: "13", templateId: "13", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "13")
+                    Reading(id: "13", templateId: "13",
+                            universalTemplateId: "dev_id_in_need_of_a_real_one", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "13")
                  ],
                  dosages: [
-                    Dosage(id: "13", templateId: "13", name: "13", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "13")
+                    Dosage(id: "13", templateId: "13",
+                           universalTemplateId: "dev_id_in_need_of_a_real_one", name: "13", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "13")
                  ],
                  observation: [
                  ],
                  bodyOfWaterId: "1",
                  customerId: "1",
                  serviceLocationId:"1",
-                 userId: ""
-                 
-                ),
-        StopData(id: "14", date: Date(), serviceStopId: "14",
-                 readings: [
-                    Reading(id: "14", templateId: "14", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "14")
-                 ],
-                 dosages: [
-                    Dosage(id: "14", templateId: "14", name: "14", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "14")
-                 ],
-                 observation: [
-                 ],
-                 bodyOfWaterId: "1",
-                 customerId: "1",
-                 serviceLocationId:"1",
-                 userId: ""
-                 
-                ),
-        StopData(id: "15", date: Date(), serviceStopId: "15",
-                 readings: [
-                    Reading(id: "15", templateId: "15", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "15")
-                 ],
-                 dosages: [
-                    Dosage(id: "15", templateId: "15", name: "15", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "15")
-                 ],
-                 observation: [
-                 ],
-                 bodyOfWaterId: "1",
-                 customerId: "1",
-                 serviceLocationId:"1",
-                 userId: ""
-                
-                ),
-        StopData(id: "16", date: Date(), serviceStopId: "16",
-                 readings: [
-                    Reading(id: "16", templateId: "16", dosageType: "", name: "", amount: "", UOM: "", bodyOfWaterId: "16")
-                 ],
-                 dosages: [
-                    Dosage(id: "16", templateId: "16", name: "16", amount: "", UOM: "", rate: "", linkedItem: "", bodyOfWaterId: "16")
-                 ],
-                 observation: [
-                 ],
-                 bodyOfWaterId: "1",
-                 customerId: "1",
-                 serviceLocationId:"1",
-                 userId: ""
-                 
-                ),
+                 userId: "",
+                 equipmentMeasurements: []
+                )
         
     ]
     //----------------------------------------------------

@@ -39,6 +39,9 @@ final class EditBodyOfWaterViewModel:ObservableObject{
     @Published var showTreeSheet:Bool = false
     @Published var showBushSheet:Bool = false
     @Published var showOtherSheet:Bool = false
+    
+    @Published var deleteConfirmationMessage:String = ""
+    @Published var showDeleteConfirmation:Bool = false
     func onLoad(companyId:String,bodyOfWater:BodyOfWater) async throws {
         
     }
@@ -86,10 +89,18 @@ final class EditBodyOfWaterViewModel:ObservableObject{
 //            try  await dataService.editBodyOfWaterWidth(companyId: companyId, bodyOfWater: bodyOfWater, width: width)
 //        }
     }
-    func delete(companyId:String,bodyOfWaterId:String) async throws {
-        try await dataService.deleteBodyOfWater(companyId: companyId, bodyOfWaterId: bodyOfWaterId)
-        self.alertMessage = "Successfully Deleted"
-        self.showAlert.toggle()
+    func delete(companyId:String?,bodyOfWaterId:String){
+        guard let companyId else {return}
+        Task{
+            do {
+                try await dataService.deleteBodyOfWater(companyId: companyId, bodyOfWaterId: bodyOfWaterId)
+                self.alertMessage = "Successfully Deleted"
+                self.showAlert.toggle()
+                
+            } catch {
+                print("    [EditBodyOfWaterViewModel][delete]")
+            }
+        }
     }
 }
 struct EditBodyOfWaterView: View {
@@ -110,32 +121,24 @@ struct EditBodyOfWaterView: View {
 
     var body: some View {
         ScrollView{
-            HStack{
-                Button(action: {
-                    Task{
-                        if let currentCompany = masterDataManager.currentCompany {
-                            do {
-                                try await VM.delete(companyId: currentCompany.id, bodyOfWaterId: bodyOfWater.id)
-                                dismiss()
-                            } catch {
-                                print(error)
-                            }
-                        }
-                    }
-                }, label: {
-                    Image(systemName: "trash")
-                        .foregroundColor(Color.red)
-                        .font(.title)
-                })
-                Spacer()
-                submitButton
-            }
+            buttons
+            Divider()
             bodyOfWaterView
-            submitButton
         }
-        .padding(8)
+        .padding()
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .alert(isPresented:$VM.showDeleteConfirmation) {
+            Alert(
+                title: Text("Alert"),
+                message: Text("\(VM.deleteConfirmationMessage)"),
+                primaryButton: .destructive(Text("Delete")) {
+                    VM.delete(companyId: masterDataManager.currentCompany?.id, bodyOfWaterId: bodyOfWater.id)
+                    
+                },
+                secondaryButton: .cancel()
+            )
         }
         .task {
             VM.name = bodyOfWater.name
@@ -177,11 +180,38 @@ struct EditBodyOfWaterView: View {
 }
 
 extension EditBodyOfWaterView {
+    var buttons: some View {
+        HStack{
+//            Button(action: {
+//                Task{
+//                    if let currentCompany = masterDataManager.currentCompany {
+//                        do {
+//                            try await VM.delete(companyId: currentCompany.id, bodyOfWaterId: bodyOfWater.id)
+//                            dismiss()
+//                        } catch {
+//                            print(error)
+//                        }
+//                    }
+//                }
+//            }, label: {
+//                Image(systemName: "trash")
+//                    .foregroundColor(Color.red)
+//                    .font(.title)
+//            })
+            Button(action: {
+                dismiss()
+            }, label: {
+                Text("Cancel")
+                    .modifier(DeleteButtonModifier())
+            })
+            Spacer()
+            Text("Edit Body of Water")
+            Spacer()
+            submitButton
+        }
+    }
     var bodyOfWaterView: some View {
         VStack{
-            HStack{
-                Text("Edit")
-            }
             VStack{
                 HStack{
                     Text("Name")
@@ -307,6 +337,14 @@ extension EditBodyOfWaterView {
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
                 }
+                Button(action: {
+                    VM.deleteConfirmationMessage = "Please, Confirm you want to delete this Body Of Water+?"
+                    VM.showDeleteConfirmation.toggle()
+                }, label: {
+                    Text("Delete")
+                        .frame(maxWidth: .infinity)
+                        .modifier(DeleteButtonModifier())
+                })
             }
 
         }

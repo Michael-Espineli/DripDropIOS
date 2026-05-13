@@ -14,7 +14,25 @@ struct MiddleSidebarView: View {
     @State var layoutExperience: LayoutExperienceSetting = .threeColumn
     //Get Ride of this Later I just dont wanna deal with the errors
     @State var user:DBUser = DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: "")
-    @State var company:Company = Company(id: "", ownerId: "", ownerName: "", name: "", photoUrl: "", dateCreated: Date(), email: "", phoneNumber: "", verified: false, serviceZipCodes: [], services: [])
+    @State var company:Company = Company(
+        id: "",
+        ownerId: "",
+        ownerName: "",
+        name: "",
+        photoUrl: "",
+        dateCreated: Date(),
+        email: "",
+        phoneNumber: "",
+        verified: false,
+        serviceZipCodes: [],
+        services: [],
+        accountType: .free,
+        paidUntil: Date(),
+        status: .free,
+        stripeConnectAccountStatus: .notStarted,
+        yelpURL : "",
+        websiteURL : ""
+    )
     @State var showSignInView:Bool = false
 
 
@@ -76,7 +94,7 @@ struct MiddleSidebarView: View {
                 case .fleet:
                     FleetListView(dataService: dataService)
                 case .readingsAndDosages:
-                    ReadingsAndDosagesList()
+                    ReadingsAndDosagesList(dataService: dataService)
                 case .genericItems:
                     GenericItemList(dataService: dataService)
                 case .dashBoard:
@@ -142,6 +160,14 @@ struct MiddleSidebarView: View {
                         }
                         .modifier(ListButtonModifier())
                     }
+                case .emailConfirguration:
+                    EmailConfigurationView(dataService: dataService)
+                case .companyInfo:
+                    CompanyInfoListView( dataService: dataService)
+                case .manageSubscriptions:
+                    MangeStripeSubscriptionsView(dataService: dataService)
+                case .stripeConfiguration:
+                    StripeConnectedAccountConfigView(dataService: dataService)
                 }
             } else {
                 Text("Select Category")

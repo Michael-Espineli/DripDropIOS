@@ -48,7 +48,7 @@ struct TermsTemplatePicker: View {
                         }
                     }
                 }, content: {
-                    AddNewTermsTemplate(dataService: dataService)
+                    Text("Terms Template")
                 })
         }
         .task {
@@ -100,7 +100,7 @@ extension TermsTemplatePicker {
                 HStack{
                     Button(action: {
                         if selectedTemplate == template {
-                            selectedTemplate = TermsTemplate(id: "", name: "")
+                            selectedTemplate = TermsTemplate(id: "", name: "", description: "")
                             
                         } else {
                             selectedTemplate = template
@@ -129,7 +129,7 @@ extension TermsTemplatePicker {
         .sheet(item: $detailTemplates, onDismiss: {
             print("On Dismiss")
         }, content: { template in
-            TermsTemplateDetailView(dataService: dataService, termsTemplate: template)
+            TermsTemplateDetailView(dataService: dataService, termsTemplateId: template.id)
         })
     }
 }

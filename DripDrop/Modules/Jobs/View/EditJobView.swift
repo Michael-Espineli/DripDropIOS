@@ -92,7 +92,8 @@ struct EditJobView: View {
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     
     @State var bodyOfWaterList:[BodyOfWater] = []
@@ -103,16 +104,20 @@ struct EditJobView: View {
         material: "",
         customerId: "",
         serviceLocationId: "",
-        lastFilled: Date()
+        lastFilled: Date(),
+        isActive: true
     )
     
     @State var equipmentList:[Equipment] = []
     @State var equipment:Equipment = Equipment(
         id: "",
         name: "",
-        category: .filter,
+        type: .filter,
+        typeId: "",
         make: "",
+        makeId: "",
         model: "",
+        modelId: "",
         dateInstalled: Date(),
         status: .operational,
         needsService: true,
@@ -299,17 +304,35 @@ struct EditJobView: View {
         .onChange(of: jobTemplate, perform: { template in
             rate = template.rate ?? "0"
         })
-        .onChange(of: customer, perform: { cus in
-            Task{
-                do {
-                    if let company = masterDataManager.currentCompany {
-                        if cus.id != "" {
-                            try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: customer.id)
-                            serviceLocations = serviceLocationVM.serviceLocations
-                            if serviceLocations.count != 0 {
-                                serviceLocation = serviceLocations.first!
-                            } else {
-                                serviceLocation = ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: "",preText:false)
+        .onChange(
+            of: customer,
+            perform: { cus in
+                Task{
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            if cus.id != "" {
+                                try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: customer.id)
+                                serviceLocations = serviceLocationVM.serviceLocations
+                                if serviceLocations.count != 0 {
+                                    serviceLocation = serviceLocations.first!
+                                } else {
+                                    serviceLocation = ServiceLocation(
+                                        id: "",
+                                        nickName: "",
+                                        address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+                                        gateCode: "",
+                                        mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
+                                        bodiesOfWaterId: [],
+                                        rateType: "",
+                                        laborType: "",
+                                        chemicalCost: "",
+                                        laborCost: "",
+                                        rate: "",
+                                        customerId: "",
+                                        customerName: "",
+                                        preText:false,
+                                        isActive: true
+                                    )
                             }
                         }
                     }
@@ -319,18 +342,29 @@ struct EditJobView: View {
             }
         })
 
-        .onChange(of: serviceLocation, perform: { loc in
-            Task{
-                do {
-                    if let company = masterDataManager.currentCompany {
-                        if loc.id != "" {
-                            try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
-                            bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
-                            
-                            if bodyOfWaterList.count != 0 {
-                                bodyOfWater = bodyOfWaterList.first!
-                            } else {
-                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
+        .onChange(
+            of: serviceLocation,
+            perform: { loc in
+                Task{
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            if loc.id != "" {
+                                try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
+                                bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
+                                
+                                if bodyOfWaterList.count != 0 {
+                                    bodyOfWater = bodyOfWaterList.first!
+                                } else {
+                                    bodyOfWater = BodyOfWater(
+                                        id: "",
+                                        name: "",
+                                        gallons: "",
+                                        material: "",
+                                        customerId: "",
+                                        serviceLocationId: "",
+                                        lastFilled: Date(),
+                                        isActive: true
+                                    )
                             }
                         }
                     }
@@ -355,9 +389,12 @@ struct EditJobView: View {
                                 equipment = Equipment(
                                     id: "",
                                     name: "",
-                                    category: .filter,
+                                    type: .filter,
+                                    typeId: "",
                                     make: "",
+                                    makeId: "",
                                     model: "",
+                                    modelId: "",
                                     dateInstalled: Date(),
                                     status: .operational,
                                     needsService: true,
@@ -409,7 +446,7 @@ extension EditJobView {
                 Text("Review")
                     .font(.headline)
                 HStack{
-                    Text("Admin: \(admin.firstName ?? "") \(admin.lastName ?? "")")
+                    Text("Admin: \(admin.firstName) \(admin.lastName)")
                     Spacer()
                     Button(action: {
                         view = "Info"
@@ -515,7 +552,7 @@ extension EditJobView {
                 Picker("Tech", selection: $tech) {
                     Text("Pick Tech").tag(DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
-                        let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
+                        let fullName = (template.firstName) + " " + (template.lastName)
                         Text(fullName).tag(template)
                     }
                 }
@@ -545,7 +582,7 @@ extension EditJobView {
                     do {
                         if let company = masterDataManager.currentCompany {
                             let customerFullName = customer.firstName + " " + customer.lastName
-                            let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
+                            let techFullName = (tech.firstName) + " " + (tech.lastName)
                             //Developer Keep and Fix
 //                            try await servicestopVM.addNewServiceStopWithValidation(companyId: company.id,
 //                                                                                    typeId: jobTemplate.id,
@@ -577,7 +614,7 @@ extension EditJobView {
                             showAlert = true
                         }
                     } catch {
-                        
+                        print("[EditJobView][Button Add Service Stop]\(error)")
                     }
                 }
             }, label: {
@@ -832,7 +869,7 @@ extension EditJobView {
                     Picker("Admin", selection: $admin) {
                         Text("Pick Admin").tag(DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                         ForEach(techVM.techList){ template in
-                            let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
+                            let fullName = (template.firstName) + " " + (template.lastName)
                             Text(fullName).tag(template)
                         }
                     }
@@ -929,7 +966,7 @@ extension EditJobView {
                                 return
                             }
                             let customerFullName = customer.firstName + " " + customer.lastName
-                            let adminFullName = (admin.firstName ?? "") + " " + (admin.lastName ?? "")
+                            let adminFullName = admin.firstName + " " + admin.lastName
                             
                             try await jobVM.addNewJobWithValidation(companyId: company.id,
                                                                     jobId: jobId,

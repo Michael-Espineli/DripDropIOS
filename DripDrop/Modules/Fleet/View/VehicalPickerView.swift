@@ -7,7 +7,7 @@ final class VehicalPickerViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
-    @Published private (set) var vehicals:[Vehical] = []
+    @Published private(set) var vehicals:[Vehical] = []
     func onLoad(companyId:String) async throws {
         self.vehicals = try await dataService.getAllVehicals(companyId: companyId)
     }

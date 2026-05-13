@@ -11,7 +11,15 @@ import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
 
-
+/*
+ //JobComment Struct with these variables
+- id: string
+- userId: string
+- userName: string
+- date: Timestamp
+- comment: string
+- resolved: boolean
+*/
 struct Job:Identifiable, Codable, Hashable{
     //work Order info
     var id :String
@@ -286,15 +294,15 @@ final class MockJobManager:JobManagerProtocol {
     }
     func updateInstallationPartsListOfWorkOrder(companyId: String,workOrder:Job,installationPart:WODBItem) throws{
         workOrderCollection(companyId: companyId).document(workOrder.id).updateData([
-            "installationParts": FieldValue.arrayUnion([[
-                
-                "id": installationPart.id,
-                "name": installationPart.name,
-                "quantity": installationPart.quantity,
-                "cost": installationPart.cost,
-                "genericItemId": installationPart.genericItemId,
-                
-            ] as [String : Any]])
+            "installationParts": FieldValue.arrayUnion([
+                [
+                    "id": installationPart.id,
+                    "name": installationPart.name,
+                    "quantity": installationPart.quantity,
+                    "cost": installationPart.cost,
+                    "genericItemId": installationPart.genericItemId,
+                    
+                ] as [String : Any]])
             
         ]) { err in
             if let err = err {
@@ -309,7 +317,6 @@ final class MockJobManager:JobManagerProtocol {
         workOrderCollection(companyId: companyId).document(workOrderId).updateData([
             "pvcParts": [
                 [
-                    
                     "id": pvcPart.id,
                     "name": pvcPart.name,
                     "quantity": pvcPart.quantity,

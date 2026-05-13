@@ -17,7 +17,9 @@ final class JobNavigationLinkViewModel:ObservableObject{
     @Published private(set) var otherCompany : Company? = nil
 
     func onLoad(companyId:String,jobId:String) async throws {
-        self.workOrder = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
+        if jobId != "" {
+            self.workOrder = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
+        }
 //        if let serviceStop {
 //            print(serviceStop)
 //            if serviceStop.otherCompany  {
@@ -60,16 +62,18 @@ struct JobNavigationLink: View {
         ZStack{
             if let job = VM.workOrder {
                 NavigationLink(value: Route.job(job: job, dataService: dataService), label: {
-                    HStack{
-                        Text("\(jobId) - ")
-                        Text("Created: \(fullDate(date:job.dateCreated))")
-                        Spacer()
-                        Text("Stops: \(job.serviceStopIds.count)")
+                    VStack{
+                        HStack{
+                            Text("\(job.internalId) - ")
+                            Text("Created: \(shortDate(date:job.dateCreated))")
+                        }
+                        HStack{
+                            Spacer()
+                            Text("Stops: \(job.serviceStopIds.count)")
+                        }
+                        .font(.footnote)
                     }
-                    .foregroundColor(Color.basicFontText)
-                    .padding(8)
-                    .background(Color.poolBlue)
-                    .cornerRadius(3)
+                    .modifier(ListButtonModifier())
                 })
             }
         }

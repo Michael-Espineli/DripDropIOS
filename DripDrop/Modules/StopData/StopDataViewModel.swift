@@ -38,7 +38,8 @@ final class StopDataViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                 customerId: "",
                 serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         StopData(id: UUID().uuidString,
                  date: Calendar.current.date(byAdding: .day, value: -14, to: Date())!,
                  serviceStopId: "serviceStop",
@@ -51,7 +52,8 @@ final class StopDataViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         
         StopData(id: UUID().uuidString,
                  date: Calendar.current.date(byAdding: .day, value: -21, to: Date())!,
@@ -65,7 +67,8 @@ final class StopDataViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         
         StopData(id: UUID().uuidString,
                  date: Calendar.current.date(byAdding: .day, value: -28, to: Date())!,
@@ -79,7 +82,8 @@ final class StopDataViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         
     ]
     //Create

@@ -138,21 +138,22 @@ extension NewRecurringServiceStopFromLaborContract {
         VStack{
             ScrollView(.horizontal,showsIndicators: false) {
                 HStack{
-                    ForEach(VM.days,id:\.self){ day in
+                    ForEach(DaysOfWeek.allCases,id:\.self){ day in
                         Button(action: {
-                            if VM.selectedDays.contains(day) {
-                                VM.selectedDays.remove(day)
-
-                            } else {
-                                if recurringWork.timesPerFrequency > VM.selectedDays.count {
-                                    VM.selectedDays.append(day)
+                            if let selectedDay = VM.selectedDay {
+                                if selectedDay == day {
+                                    VM.selectedDay = nil
+                                } else {
+                                    VM.selectedDay = day
                                 }
+                            } else {
+                                VM.selectedDay = day
                             }
                         }, label: {
-                            Text(day)
+                            Text(day.rawValue)
                                 .padding(4)
                                 .padding(.horizontal,2)
-                                .background(VM.selectedDays.contains(day) ? Color.poolBlue : Color.gray)
+                                .background(VM.selectedDay == day ? Color.poolBlue : Color.gray)
                                 .foregroundColor(Color.white)
                                 .cornerRadius(4)
                                 .padding(.horizontal,4)
@@ -192,24 +193,27 @@ extension NewRecurringServiceStopFromLaborContract {
         VStack{
             ScrollView(.horizontal,showsIndicators: false){
                 HStack{
-                    ForEach(VM.days,id:\.self){ day in
+                    
+                    ForEach(DaysOfWeek.allCases,id:\.self){ day in
                         Button(action: {
-                            if VM.selectedDays.contains(day) {
-                                VM.selectedDays.removeAll(where: {$0 == day})
-                                print(VM.selectedDays)
+                            if let selectedDay = VM.selectedDay {
+                                if selectedDay == day {
+                                    VM.selectedDay = nil
+                                } else {
+                                    VM.selectedDay = day
+                                }
                             } else {
-                                VM.selectedDays.append(day)
-                                print(VM.selectedDays)
+                                VM.selectedDay = day
                             }
                         }, label: {
-                            if VM.selectedDays.contains(day) {
-                                Text("\(day)")
+                            if VM.selectedDay == day {
+                                Text(day.rawValue)
                                     .padding(5)
                                     .background(Color.green)
                                     .cornerRadius(5)
                                     .foregroundColor(Color.white)
                             } else {
-                                Text("\(day)")
+                                Text(day.rawValue)
                                     .padding(5)
                                     .background(Color.blue)
                                     .cornerRadius(5)

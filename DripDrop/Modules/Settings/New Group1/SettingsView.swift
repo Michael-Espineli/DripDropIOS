@@ -27,20 +27,50 @@ struct SettingsView: View {
     @StateObject private var customerVM : CustomerViewModel
     @StateObject var roleVM = RoleViewModel()
 
-    @State var company:Company = Company(id: "", ownerId: "", ownerName: "", name: "", photoUrl: "", dateCreated: Date(), email: "", phoneNumber: "", verified: false, serviceZipCodes: [], services: [])
+    @State var company:Company = Company(
+        id: "",
+        ownerId: "",
+        ownerName: "",
+        name: "",
+        photoUrl: "",
+        dateCreated: Date(),
+        email: "",
+        phoneNumber: "",
+        verified: false,
+        serviceZipCodes: [],
+        services: [],
+        accountType: .free,
+        paidUntil: Date(),
+        status: .free,
+        stripeConnectAccountStatus: .notStarted,
+        yelpURL : "",
+        websiteURL : ""
+    )
     @State var companyIdList:[Company] = []
     @State var showChangeEmailScreen:Bool = false
     @State var isLoading = false
-    @State var showReedemInviteCode = false
+    @State var showRedeemInviteCode = false
 
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
-                Text("Settings View")
-                    .fontWeight(.bold)
-                Rectangle()
-                    .frame(height: 2)
+            VStack(spacing: 8) {
+                if let user = masterDataManager.user {
+                    Text("Settings")
+                        .font(.headline)
+                        .bold()
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                    
+                }
+                Text("Change Companies and edit your settings!")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
 //                companySettings
                 UserSettings(dataService: dataService)
 
@@ -128,12 +158,12 @@ extension SettingsView {
                 .frame(height: 1)
             HStack{
                 Button(action: {
-                    showReedemInviteCode.toggle()
+                    showRedeemInviteCode.toggle()
                 }, label: {
-                    Text("Reedem Invite Code")
+                    Text("Redeem Invite Code")
                         .modifier(ListButtonModifier())
                 })
-                .sheet(isPresented: $showReedemInviteCode, content: {
+                .sheet(isPresented: $showRedeemInviteCode, content: {
                     RedeemInviteCode(dataService: dataService)
                 })
                 Spacer()

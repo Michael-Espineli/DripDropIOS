@@ -27,11 +27,16 @@ struct StopDataTableView: View {
         }
         .onChange(of: stopData, perform: { datum in
             print("")
-            print(" Change Stop Data Count - \(datum.count)")
+            print("Change Stop Data Count - \(datum.count)")
             
         })
         .onAppear(perform: {
-            print("Arrived StopDataTableView \(stopData.count)")
+            print("")
+            print("[StopDataTableView][OnAppear] Stop Data Count:\(stopData.count)")
+            print("")
+            print("[StopDataTableView][OnAppear] Stop Data Count:\(stopData)")
+            print("")
+
             
             for template in readingTemplates {
                 readingTemplateCounter[template.readingsTemplateId] = 0
@@ -40,31 +45,30 @@ struct StopDataTableView: View {
                 dosageTemplateCounter[template.dosageTemplateId] = 0
             }
           
-            print(" Stop Data Count - \(stopData.count)")
             for data in stopData {
-                print(" Data \(data.serviceStopId)")
+                print("[StopDataTableView][OnAppear] Data \(data.serviceStopId)")
                 for reading in data.readings {
-                    print(" - \(reading.name)")
+                    print("[StopDataTableView][OnAppear] Reading Name: \(reading.name!)")
                     var total:Int = readingTemplateCounter[reading.templateId] ?? 0
                     total += 1
-                    print(" - \(total)")
+                    print("[StopDataTableView][OnAppear] Total: \(total)")
                     readingTemplateCounter[reading.templateId] = total
                 }
                 for dosage in data.dosages {
-                    print(" - \(dosage.name)")
+                    print("[StopDataTableView][OnAppear] Dosage Name: \(dosage.name)")
                     var total:Int = dosageTemplateCounter[dosage.templateId] ?? 0
                     total += 1
-                    print(" - \(total)")
+                    print("[StopDataTableView][OnAppear] Total: \(total)")
                     dosageTemplateCounter[dosage.templateId] = total
                 }
             }
-            print("Reading Template Counter \(readingTemplateCounter.count)")
+            print("[StopDataTableView][OnAppear] Reading Template Counter \(readingTemplateCounter.count)")
             for temp in readingTemplateCounter {
-                print(" - \(temp)")
+                print("[StopDataTableView][OnAppear] readingTemplateCounter: \(temp)")
             }
-            print("Dosage Template Counter \(dosageTemplateCounter.count)")
+            print("[StopDataTableView][OnAppear] Dosage Template Counter \(dosageTemplateCounter.count)")
             for temp in dosageTemplateCounter {
-                print(" - \(temp)")
+                print("[StopDataTableView][OnAppear] dosageTemplateCounter: \(temp)")
             }
             print("")
         })
@@ -104,7 +108,7 @@ extension StopDataTableView {
                     HStack{
                         ForEach(readingTemplates){ template in
                             if readingTemplateCounter[template.id] != 0 {
-                                if let reading:Reading = data.readings.first(where: {$0.templateId == template.readingsTemplateId}) {
+                                if let reading:Reading = data.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId}) {
                                     let amount:String = reading.amount ?? "0"
                                     if ((Double(amount) ?? 0) >= (template.highWarning ?? 0)) || ((Double(amount) ?? 0) <= (template.lowWarning ?? 0)) {
                                         Text("\(longestWord(str: template.name))")
@@ -148,7 +152,7 @@ extension StopDataTableView {
                         ForEach(dosageTemplates){ dosage in
                             if dosageTemplateCounter[dosage.id] != 0 {
                                 let name:String = dosage.name ?? ""
-                                if let dosage:Dosage = data.dosages.first(where: {$0.templateId == dosage.dosageTemplateId}) {
+                                if let dosage:Dosage = data.dosages.first(where: {$0.universalTemplateId == dosage.dosageTemplateId}) {
                                     Text("\(longestWord(str: name))")
                                         .lineLimit(nil)
                                         .fixedSize(horizontal: false, vertical: true)

@@ -17,10 +17,12 @@ struct AddNewRepairRequest: View {
     @StateObject var settingsVM = SettingsViewModel(dataService: ProductionDataService())
     @StateObject var VM : AddRepairRequestViewModel
     
-    @Binding var isPresented:Bool
-    init(dataService:any ProductionDataServiceProtocol,isPresented:Binding<Bool>){
+    @Binding var isPresented: Bool
+    @State var customer: Customer?
+    init(dataService:any ProductionDataServiceProtocol,isPresented:Binding<Bool>,customer: Customer?){
         _VM = StateObject(wrappedValue: AddRepairRequestViewModel(dataService: dataService))
         _isPresented = isPresented
+        _customer = State(wrappedValue: customer)
     }
     @FocusState var descriptionField:Bool
 
@@ -39,12 +41,65 @@ struct AddNewRepairRequest: View {
                 VStack{
                     Spacer()
                     HStack{
-                        Spacer()
                         Button(action: {
                             descriptionField.toggle()
                         }, label: {
                             Text("Dismiss")
                             .modifier(DismissButtonModifier())
+                        })
+                        Spacer()
+                        Button(action: {
+                            Task{
+                                VM.screenLoading = true
+                                do{
+                                    if let company = masterDataManager.currentCompany {
+                                        if let user = masterDataManager.user {
+                                            let userFullName = (user.firstName) + " " + (user.lastName)
+                                            
+                                            try await VM.uploadRepairRequestWithValidation(
+                                                companyId: company.id,
+                                                requesterId: user.id,
+                                                requesterName: userFullName
+                                            )
+                                            VM.alertMessage = "Successfully"
+                                            print(VM.alertMessage)
+                                            VM.showAlert = true
+                                            dismiss()
+                                        }
+                                    }
+                                    
+                                } catch RepairRequestError.invalidCustomer {
+                                    VM.alertMessage = "Add Request Error Invalid Customer"
+                                    print(VM.alertMessage)
+                                    VM.showAlert = true
+                                } catch RepairRequestError.invalidUser {
+                                    VM.alertMessage = "Add Request Error Invalid User"
+                                    print(VM.alertMessage)
+                                    VM.showAlert = true
+                                } catch RepairRequestError.invalidStatus {
+                                    VM.alertMessage = "Add Request Error Invalid Status"
+                                    print(VM.alertMessage)
+                                    VM.showAlert = true
+                                } catch RepairRequestError.noDescription {
+                                    VM.alertMessage = "Add Request Error No Description"
+                                    print(VM.alertMessage)
+                                    VM.showAlert = true
+                                } catch RepairRequestError.imagesNotLoaded {
+                                    VM.alertMessage = "Add Request Error images Not Loaded"
+                                    
+                                    print(VM.alertMessage)
+                                    VM.showAlert = true
+                                } catch {
+                                    VM.alertMessage = "Add Request Error Other"
+                                    print(VM.alertMessage)
+                                    VM.showAlert = true
+                                }
+                                VM.screenLoading = false
+                            }
+                        },
+                        label: {
+                            Text("Submit")
+                                .modifier(SubmitButtonModifier())
                         })
                     }
                     .padding(8)
@@ -71,24 +126,24 @@ struct AddNewRepairRequest: View {
                 await model.loadThumbnail()
             do {
                 if let company = masterDataManager.currentCompany {
-                    try await VM.onLoad(companyId: company.id, customer: masterDataManager.selectedCustomer)
+                    try await VM.onLoad(companyId: company.id, customer: customer)
                 }
             } catch {
                 print("Error - onLoad - [AddNewRepairRequest]")
             }
         }
         .onChange(of: VM.selectedCustomer, perform: { cus in
+            if cus.id == "" {return}
             Task{
                 do {
                     if let company = masterDataManager.currentCompany {
                         try await VM.onChangeCustomer(companyId: company.id, cus)
                     }
                 } catch {
-                    print("Error")
+                    print("[AddNewRepairRequest][onChange(of: VM.selectedCustomer]Error \(error)")
                 }
             }
         })
-
         .onChange(of: VM.selectedLocation, perform: { loc in
             Task{
                 do {
@@ -96,7 +151,7 @@ struct AddNewRepairRequest: View {
                         try await VM.onChangeLocation(companyId: company.id, loc)
                     }
                 } catch {
-                    print("Error")
+                    print("[AddNewRepairRequest][onChange(of: VM.selectedLocation]Error \(error)")
                 }
             }
         })
@@ -107,19 +162,18 @@ struct AddNewRepairRequest: View {
 extension AddNewRepairRequest{
     var info: some View {
         VStack{
+            Text("Add New Repair Request")
+            Rectangle()
+                .frame(height: 1)
             customerView
-            Rectangle()
-                .frame(height: 1)
             PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
-            Rectangle()
-                .frame(height: 1)
             VStack{
                 HStack{
                     Text("Description")
                     Spacer()
                 }
                 TextField(
-                    "Description",
+                    "Description:",
                     text: $VM.description,
                     axis: .vertical
                 )
@@ -253,6 +307,7 @@ extension AddNewRepairRequest{
                     VM.showAlert = true
                 }
                 VM.screenLoading = false
+                dismiss()
             }
         },
         label: {

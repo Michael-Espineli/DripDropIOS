@@ -29,7 +29,7 @@ struct MangeStripeSubscriptionsDetailView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
-                Text("MangeStripeSubscriptionsView")
+                Text("MangeStripeSubscriptionsDetailView ")
             }
         }
     }

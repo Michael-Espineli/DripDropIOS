@@ -72,7 +72,7 @@ extension EquipmentPickerByServiceLocationId {
                 }, label: {
                     HStack{
                         Spacer()
-                        Text("\(datum.name) - \(datum.category.rawValue)")
+                        Text("\(datum.name) - \(datum.type.rawValue)")
                         Spacer()
                         if equipment == datum {
                             Image(systemName: "checkmark.cirlce.fill")

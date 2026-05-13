@@ -45,10 +45,11 @@ struct ServiceStopListView: View{
     
     var body: some View{
         ZStack{
+            Color.listColor.ignoresSafeArea()
             list
             icons
         }
-        
+        .navigationTitle("Service Stops")
         .task {
             //Add Subscriber
             do {
@@ -58,19 +59,13 @@ struct ServiceStopListView: View{
                     serviceStops = serviceStopVM.serviceStops
                 }
             } catch {
+                print("[ServiceStopListView][task]\(error)")
                 alertMessage = "Unable to get Service Stops"
                 showAlert = true
             }
         }
-        .alert(isPresented:$showAlert) {
-            Alert(
-                title: Text("Alert"),
-                message: Text("\(alertMessage)"),
-                primaryButton: .destructive(Text("Delete")) {
-                    print("Deleting...")
-                },
-                secondaryButton: .cancel()
-            )
+        .alert(alertMessage, isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
         }
         .onChange(of: searchTerm){ term in
             if term == "" {
@@ -93,7 +88,7 @@ extension ServiceStopListView {
                         showSearch.toggle()
                     }
             }
-            VStack{
+            VStack(spacing:0){
                 Spacer()
                 HStack{
                     Spacer()
@@ -101,19 +96,8 @@ extension ServiceStopListView {
                         Button(action: {
                             showFilters.toggle()
                         }, label: {
-                            ZStack{
-                                Circle()
-                                    .fill(Color.orange)
-                                    .frame(width: 50, height: 50)
-                                    .overlay(
-                                        Image(systemName: "slider.horizontal.3")
-                                            .resizable()
-                                            .frame(width: 25, height: 25)
-                                            .foregroundColor(Color.white)
-                                    )
-                            }
-                            
-                            
+                            Image(systemName: "slider.horizontal.3")
+                                .modifier(FilterIconModifer())
                         })
                         .padding(10)
                         .sheet(isPresented: $showFilters, onDismiss: {
@@ -124,7 +108,8 @@ extension ServiceStopListView {
                                         serviceStops = serviceStopVM.serviceStops
                                     }
                                 } catch {
-                                    alertMessage = "Unable to get Customers"
+                                    print("[ServiceStopListView][ondismissFilter]\(error)")
+                                    alertMessage = "Unable to get Service Stops"
                                     showAlert = true
                                 }
                             }
@@ -158,15 +143,8 @@ extension ServiceStopListView {
                         Button(action: {
                             showAddNew.toggle()
                         }, label: {
-                            ZStack{
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 50, height: 50)
-                                Image(systemName: "plus.circle.fill")
-                                    .resizable()
-                                    .frame(width: 50, height: 50)
-                                    .foregroundColor(Color.poolGreen)
-                            }
+                            Image(systemName: "plus")
+                                .modifier(PlusIconModifer())
                         })
                         .sheet(isPresented: $showAddNew, content: {
                             AddNewServiceStop(dataService: dataService)
@@ -175,18 +153,10 @@ extension ServiceStopListView {
                         Button(action: {
                             showSearch.toggle()
                         }, label: {
-                            ZStack{
-                                Circle()
-                                    .fill(Color.white)
-                                    .frame(width: 50, height: 50)
-                                Image(systemName: "magnifyingglass.circle.fill")
-                                    .resizable()
-                                    .frame(width: 50, height: 50)
-                                    .foregroundColor(Color.blue)
-                            }
+                            Image(systemName: "magnifyingglass")
+                                .modifier(SearchIconModifer())
                         })
-                        .padding()
-                        
+                        .padding(10)
                     }
                 }
                 if showSearch {
@@ -221,8 +191,8 @@ extension ServiceStopListView {
                 if UIDevice.isIPhone {
                     ForEach(serviceStops){ serviceStop in
                         NavigationLink(value: Route.serviceStop(serviceStop: serviceStop,dataService: dataService), label: {
-                                ServiceStopCardViewSmall(serviceStop: serviceStop)
-                            
+                            ServiceStopCardViewSmall(serviceStop: serviceStop)
+                                .modifier(ListButtonModifier())
                         })
                     }
                 } else {
@@ -232,11 +202,11 @@ extension ServiceStopListView {
                             masterDataManager.selectedServiceStops = serviceStop
                         }, label: {
                             ServiceStopCardViewLarge(serviceStop: serviceStop)
-
                         })
                     }
                 }
             }
         }
+        .padding(8)
     }
 }

@@ -8,33 +8,29 @@
 
 import SwiftUI
 
-struct ParticipantInfo {
-    let id: String
-    let name: String
-    let imageURL: String?
-    let type: ParticipantType
 
-    enum ParticipantType {
-        case user
-        case company
-    }
-}
 
 struct ChatInitiationView: View {
+    init(dataService:any ProductionDataServiceProtocol,otherParticipantId:String){
+        self._otherParticipantId = State(initialValue: otherParticipantId)
+    }
     // Inputs
-    let participantId: String
+    @State var otherParticipantId: String
     // Provide a navigation callback so this view stays generic
-    let onNavigateToChat: (String) -> Void
-    let onBack: () -> Void
+//    let onNavigateToChat: (String) -> Void
+//    let onBack: () -> Void
 
     // Environment dependencies you can swap to your own managers
+    @EnvironmentObject var dataService : ProductionDataService
     @EnvironmentObject var masterDataManager: MasterDataManager
+    @EnvironmentObject var navigationManager: NavigationStateManager
+    
     // If you have an Auth manager, inject it here as well
     // @EnvironmentObject var authManager: AuthManager
 
     // UI State
     @State private var newMessage: String = ""
-    @State private var participantInfo: ParticipantInfo?
+    @State private var participantInfo: BasicUserInfo?
     @State private var isLoading: Bool = true
     @State private var errorText: String?
 
@@ -52,7 +48,7 @@ struct ChatInitiationView: View {
                             VStack {
                                 Text("You are starting a new conversation with ")
                                     .foregroundColor(.secondary)
-                                    + Text(participantInfo?.name ?? "New Chat")
+                                    + Text(participantInfo?.userName ?? "New Chat")
                                         .bold()
                             }
                             .frame(maxWidth: .infinity)
@@ -102,19 +98,8 @@ struct ChatInitiationView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button {
-                onBack()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.left")
-                    Text("Back")
-                }
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            }
-
-            Text("New Message to \(participantInfo?.name ?? "...")")
-                .font(.largeTitle).bold()
+            Text("New Message to \(participantInfo?.userName ?? "...")")
+                .font(.title).bold()
                 .foregroundColor(.primary)
         }
     }
@@ -124,25 +109,36 @@ struct ChatInitiationView: View {
     private func findOrCreateChat() async {
         // TODO: Replace with your auth current user id
         // For example, from an AuthManager or FirebaseAuth: currentUserId
-        guard let currentCompanyId = masterDataManager.currentCompany?.id else {
+        
+        guard let user = masterDataManager.user else {
             // If you’re using user auth, swap to your user id
             errorText = "Missing current user/company context."
             isLoading = false
             return
         }
-
+        print("[findOrCreateChat] user \(user)")
         do {
             // 1) Check if chat exists between current and participant (both orders).
             // TODO: Query your backend (Firestore) for an existing chat where
             // participantIds == [currentCompanyId, participantId] or [participantId, currentCompanyId]
-            if let existingChatId = try await findExistingChatId(currentId: currentCompanyId, participantId: participantId) {
-                onNavigateToChat(existingChatId)
+            
+            if let existingChat = try await dataService.getChatBySenderAndReceiver(senderId: user.id, receiverId: otherParticipantId) {
+                print("[findOrCreateChat] existingChat \(existingChat)")
+                print("")
+                print("[findOrCreateChat] Trying to navigate forward")
+
+//                navigationManager.goBack()
+//                navigationManager.push(to: Route.chat(chat: existingChat, dataService: dataService))
+//                navigationManager.replaceLast(new: Route.chat(chat: existingChat, dataService: dataService))
+                navigationManager.replace(stack: [Route.chat(chat: existingChat, dataService: dataService)])
                 return
             }
-
+            
             // 2) Load participant info (user or company)
-            participantInfo = try await loadParticipantInfo(participantId: participantId)
-
+            participantInfo = try await loadParticipantInfo(participantId: otherParticipantId)
+            
+            print("[findOrCreateChat] participantInfo \(String(describing: participantInfo))")
+            
             isLoading = false
         } catch {
             errorText = "Failed to prepare chat: \(error.localizedDescription)"
@@ -151,25 +147,36 @@ struct ChatInitiationView: View {
     }
 
     private func handleSendFirstMessage() async {
-        guard let participantInfo else { return }
+        guard let participantInfo else {
+            errorText = "Missing participant Info"
+            print(errorText as Any)
+            return
+        }
         // TODO: Replace with your auth current user details
-        guard let currentCompany = masterDataManager.currentCompany else {
+        guard let user = masterDataManager.user else {
             errorText = "Missing current user/company context."
+            print(errorText as Any)
             return
         }
 
         let trimmed = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else {
+            errorText = "First Message Is Empty"
+            print(errorText as Any)
+            return
+        }
 
         do {
+            print("Trying to Create First Chat")
             // 3) Create chat document and first message in your backend.
             // Return the chatId so we can navigate.
-            let chatId = try await createChatAndFirstMessage(
-                currentCompany: currentCompany,
+            let chat = try await createChatAndFirstMessage(
+                currentUser: user,
                 participant: participantInfo,
                 firstMessage: trimmed
             )
-            onNavigateToChat(chatId)
+            print("Created First Chat: \(chat.id)")
+            navigationManager.replaceLast(new: Route.chat(chat: chat, dataService: dataService))
         } catch {
             errorText = "Failed to start chat: \(error.localizedDescription)"
         }
@@ -177,27 +184,49 @@ struct ChatInitiationView: View {
 
     // MARK: - Backend Stubs (Replace with your Firestore logic)
 
-    private func findExistingChatId(currentId: String, participantId: String) async throws -> String? {
-        // TODO: Firestore query:
-        // chats where participantIds in [[currentId, participantId], [participantId, currentId]]
-        // If found, return the first chat id
-        return nil
-    }
-
-    private func loadParticipantInfo(participantId: String) async throws -> ParticipantInfo {
+        
+    private func loadParticipantInfo(participantId: String) async throws -> BasicUserInfo {
         // TODO:
         // 1) Try users collection for participantId
-        // 2) If not exists, try companies collection for participantId
-        // 3) If found, return ParticipantInfo; else throw an error
-        // For now, return a placeholder:
-        return ParticipantInfo(id: participantId, name: "Participant", imageURL: nil, type: .company)
+        let user = try await dataService.getOneUser(userId: participantId)
+        let fullName = user.firstName + " " + user.lastName
+        print("[loadParticipantInfo] fullName: \(fullName)")
+
+        return BasicUserInfo(id: UUID().uuidString, userId: participantId, userName: fullName, userImage: user.profileImagePath ?? "")
     }
 
-    private func createChatAndFirstMessage(currentCompany: Company, participant: ParticipantInfo, firstMessage: String) async throws -> String {
+    private func createChatAndFirstMessage(currentUser: DBUser, participant: BasicUserInfo, firstMessage: String) async throws -> Chat {
         // TODO:
+        let chatId = "chat_" + UUID().uuidString
+        let currentUserInfo = BasicUserInfo(
+            id: UUID().uuidString,
+            userId: currentUser.id,
+            userName: currentUser.firstName + " " + currentUser.lastName,
+            userImage: currentUser.profileImagePath ?? ""
+        )
+        print("[createChatAndFirstMessage] currentUserInfo: \(currentUserInfo)")
+        let chat = Chat(
+            id: chatId,
+            participantIds: [participant.userId, currentUserInfo.userId],
+            participants: [participant,currentUserInfo],
+            companyId: "",
+            mostRecentChat: Date(),
+            userWhoHaveNotRead: [participant.userId],
+            lastMessage: firstMessage
+        )
+        print("[createChatAndFirstMessage] chat: \(chat)")
+        
+        let message = Message(id: "msg_" + UUID().uuidString, senderName: currentUserInfo.userName, senderId: currentUserInfo.userId, message: firstMessage, read: false, dateSent: Date(), chatId: chatId)
+        print("[createChatAndFirstMessage] message: \(message)")
+
         // 1) Create chat doc with id = chat_<uuid>
+        try await dataService.uploadChat(chat: chat)
+        
         // 2) Create first message doc with id = msg_<uuid>
+        try await dataService.sendMessage(message: message)
         // 3) Write both (batch or sequential), then return chatId
-        return "chat_placeholder_id"
+        print("[createChatAndFirstMessage] Success")
+
+        return chat
     }
 }

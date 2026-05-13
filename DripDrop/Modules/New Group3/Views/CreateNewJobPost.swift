@@ -24,8 +24,8 @@ final class CreateNewJobPostViewModel:ObservableObject{
     func postNewJobToBoard(currentCompany:Company,user:DBUser,boardId:String) async throws {
         let userName = user.firstName + " " + user.lastName
         if let rateInt = Double(rate){
-            var rateDouble = rateInt*100
-            var rateCents = Int(floor(rateDouble))
+            let rateDouble = rateInt*100
+            let rateCents = Int(floor(rateDouble))
             
             let jobPost = JobPost(
                 boardId: boardId,

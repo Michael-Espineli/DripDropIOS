@@ -20,12 +20,13 @@ struct MiniMapView: View {
             MapMarker(coordinate: location.coordinate,tint: Color.poolBlue)
 
         })
+        .frame(height: 300)
             .onAppear(perform: {
-                region = MKCoordinateRegion(center: coordinates, span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005))
+                region = MKCoordinateRegion(center: coordinates, span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05))
                 mapPinLocations = [MapLocation(customerId: UUID().uuidString, name: "Name", latitude: coordinates.latitude, longitude: coordinates.longitude, address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), color: "red")]
             })
             .onChange(of: coordinates, perform: { coord in
-                region = MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005))
+                region = MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05))
                 mapPinLocations = [MapLocation(customerId: UUID().uuidString, name: "Name", latitude: coord.latitude, longitude: coord.longitude, address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), color: "red")]
             })
             

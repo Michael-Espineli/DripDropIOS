@@ -164,7 +164,7 @@ extension ShoppingListItemDetailView {
                     .cornerRadius(5)
                     .padding(5)
                 }
-                if let quantiy = shoppingListItem.quantiy {
+                if let quantiy = shoppingListItem.quantity {
                     Text("Qunatity: \(quantiy)")
                 }
 

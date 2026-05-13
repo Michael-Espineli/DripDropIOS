@@ -13,17 +13,17 @@ final class CreateLaborContractInvoiceViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
-    @Published private (set) var tasks: [LaborContractTask] = []
-    @Published private (set) var jobs: [Job] = []
-    @Published private (set) var jobIds: [IdInfo] = []
+    @Published private(set) var tasks: [LaborContractTask] = []
+    @Published private(set) var jobs: [Job] = []
+    @Published private(set) var jobIds: [IdInfo] = []
     
     @Published var showInvoiceInfo: Bool = false
 
-    @Published private (set) var isInvoiced: Bool = false
-    @Published private (set) var invoiceRef: IdInfo? = nil
+    @Published private(set) var isInvoiced: Bool = false
+    @Published private(set) var invoiceRef: IdInfo? = nil
     @Published var terms: AcountingTermsTypes = .net15
 
-    @Published private (set) var invoice: StripeInvoice =  StripeInvoice(
+    @Published private(set)var invoice: StripeInvoice =  StripeInvoice(
         id: UUID().uuidString,
         internalIdenifier: "",
         
@@ -96,7 +96,8 @@ final class CreateLaborContractInvoiceViewModel:ObservableObject{
         try await dataService.updateLaborContractInvoiceRef(companyId: companyId, contractId: laborContract.id, invoiceInfo: invoiceRef)
         print("Successfully Sent Invoice")
         
-        //Developer either create call function on send email reminder
+#warning("Developer either create call function on send email reminder")
+
     }
 }
 

@@ -39,8 +39,32 @@ final class AddRepairRequestViewModel:ObservableObject{
         billingNotes: "",
         linkedInviteId: UUID().uuidString
     )
-    @Published var selectedLocation: ServiceLocation = ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: "")
-    @Published var selectedBodyOfWater: BodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled:Date())
+    @Published var selectedLocation: ServiceLocation = ServiceLocation(
+        id: "",
+        nickName: "",
+        address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+        gateCode: "",
+        mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
+        bodiesOfWaterId: [],
+        rateType: "",
+        laborType: "",
+        chemicalCost: "",
+        laborCost: "",
+        rate: "",
+        customerId: "",
+        customerName: "",
+        isActive: true
+    )
+    @Published var selectedBodyOfWater: BodyOfWater = BodyOfWater(
+        id: "",
+        name: "",
+        gallons: "",
+        material: "",
+        customerId: "",
+        serviceLocationId: "",
+        lastFilled:Date(),
+        isActive: true
+    )
 
     @Published var customerList: [Customer] = []
     @Published var serviceLocationList: [ServiceLocation] = []
@@ -58,8 +82,8 @@ final class AddRepairRequestViewModel:ObservableObject{
     @Published var showBodyOfWaterSelector:Bool = false
 
     @Published var showAddPhoto:Bool = false
-    @Published var pickerType:photoPickerType? = nil
-    @Published var selectedNewPicker:photoPickerType? = nil
+//    @Published var pickerType:photoPickerType? = nil
+//    @Published var selectedNewPicker:photoPickerType? = nil
     @Published var selectedImage:UIImage? = nil
     @Published var showAlert:Bool = false
     @Published var alertMessage:String = ""
@@ -68,8 +92,6 @@ final class AddRepairRequestViewModel:ObservableObject{
     
     func onLoad(companyId:String,customer: Customer?) async throws {
         let customerList = try await dataService.getCustomersActiveAndLastName(companyId: companyId, active: true, lastNameHigh: false)
-        let count = try await dataService.getRepairRequestCount(companyId: companyId)
-        let repairRequestId = "RR" + String(count)
         if let customer {
             if let firstCustomer = customerList.first(where: {$0.id == customer.id}) {
                 self.selectedCustomer = firstCustomer
@@ -109,6 +131,7 @@ final class AddRepairRequestViewModel:ObservableObject{
 //        bodyOfWaterId:String?,
 //        equipmentId:String?
     ) async throws {
+        self.repairRequestId = "com_rr_" + UUID().uuidString
         var photoUrls:[DripDropStoredImage] = []
         var status = RepairRequestStatus.unresolved
         if status == .inprogress || status == .unresolved || status == .inprogress {
@@ -181,6 +204,7 @@ final class AddRepairRequestViewModel:ObservableObject{
                 equipmentId: ""
             )
         )
+        self.repairRequestId = ""
     }
     
 }

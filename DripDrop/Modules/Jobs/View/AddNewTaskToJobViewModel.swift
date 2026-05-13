@@ -41,16 +41,20 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         material: "",
         customerId: "",
         serviceLocationId: "",
-        lastFilled: Date()
+        lastFilled: Date(),
+        isActive: true
     )
     
     @Published private(set) var equipmentList : [Equipment] = []
     @Published var selectedEquipment: Equipment = Equipment(
         id: "",
         name: "",
-        category: .autoChlorinator,
+        type: .autoChlorinator,
+        typeId: "",
         make: "",
+        makeId: "",
         model: "",
+        modelId: "",
         dateInstalled: Date(),
         status: .needsMaintenance,
         needsService: false,
@@ -198,12 +202,13 @@ final class AddNewTaskToJobViewModel:ObservableObject{
                 name: dataBaseItem.name,
                 description: dataBaseItem.description,
                 datePurchased: nil,
-                quantiy: quantityString,
+                quantity: quantityString,
                 jobId: jobId,
                 customerId: "",
                 customerName: "",
                 userId: nil,
-                userName: nil
+                userName: nil,
+                invoiced: true
             )
             try await dataService.addNewShoppingListItem(companyId: companyId, shoppingListItem: shoppingListItem)
         }
@@ -325,12 +330,13 @@ final class AddNewTaskToJobViewModel:ObservableObject{
                 name: dataBaseItem.name,
                 description: dataBaseItem.description,
                 datePurchased: nil,
-                quantiy: quantityString,
+                quantity: quantityString,
                 jobId: jobId,
                 customerId: "",
                 customerName: "",
                 userId: nil,
-                userName: nil
+                userName: nil,
+                invoiced: true
             )
         }
         

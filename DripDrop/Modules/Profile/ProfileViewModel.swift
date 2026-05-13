@@ -46,19 +46,23 @@ final class ProfileViewModel: ObservableObject{
 #if os(iOS)
 
         Task{
-            guard let data = try await item.loadTransferable(type: Data.self) else{
-                print("Error Converting Photo Picker Item to Data")
-                return
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self) else{
+                    print("Error Converting Photo Picker Item to Data")
+                    return
+                }
+                print("Converted Photo Picker Item to Data")
+                let (path,name) = try await StorageManager.shared.saveImage(user: user, data: data)
+                print("SUCCESS 2")
+                print("[ProfileViewModel][saveProfileImage] Path \(path)")
+                print("[ProfileViewModel][saveProfileImage] Name \(name)")
+                let url  = try await StorageManager.shared.getUrlForImage(path: path)
+                try UserManager.shared.updateUserImagePath(updatingUser: user, path: url.absoluteString)
+                self.iamgeUrl = url
+                self.imageUrlString = url.absoluteString
+            } catch {
+                print("[ProfileViewModel][saveProfileImage] Error: \(error)")
             }
-            print("Converted Photo Picker Item to Data")
-            let (path,name) = try await StorageManager.shared.saveImage(user: user, data: data)
-            print("SUCCESS 2")
-            print("Path \(path)")
-            print("Name \(name)")
-            let url  = try await StorageManager.shared.getUrlForImage(path: path)
-            try UserManager.shared.updateUserImagePath(updatingUser: user, path: url.absoluteString)
-            self.iamgeUrl = url
-            self.imageUrlString = url.absoluteString
         }
         #endif
     }

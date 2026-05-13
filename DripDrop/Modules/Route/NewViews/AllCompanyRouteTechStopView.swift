@@ -12,10 +12,12 @@ final class AllCompanyRouteTechStopViewModel:ObservableObject{
 
     @Published var isContractedOut:Bool = false
     @Published private(set) var isSameCompany:Bool = true
+    @Published var selectedRSS:RecurringServiceStop? = nil
+    @Published var selectedRoute:RecurringRoute? = nil
 
     @Published private(set) var companyName:String = ""
 
-    func onLoad (companyId:String,companyList: [Company],stops:[RecurringServiceStop],day : String,techId:String){
+    func onLoad (companyId: String, companyList: [Company], stops: [RecurringServiceStop], day: DaysOfWeek, techId:String){
         
         //Make This Better
         var companyName = ""
@@ -75,7 +77,7 @@ struct AllCompanyRouteTechStopView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject var VM = AllCompanyRouteTechStopViewModel()
     @Binding var showDialog: Bool
-    @Binding var selectedDay: String
+    @Binding var selectedDay: DaysOfWeek
     @Binding var selectedTechId: String
     
     //Maybe Make these enviromental Variables
@@ -83,10 +85,9 @@ struct AllCompanyRouteTechStopView: View {
     let recurringServiceStops : [RecurringServiceStop]
     let basicTechnicanInfo : [BasicTechnicanInfo]
     let techId :String
-    let day : String
+    let day : DaysOfWeek
     var body: some View {
         VStack{
-
             //Tech Info
             if let technician = basicTechnicanInfo.first(where: {$0.id == techId}) {
                 if let company = masterDataManager.currentCompany {
@@ -97,6 +98,9 @@ struct AllCompanyRouteTechStopView: View {
                             companyName: VM.companyName,
                             showDialogConfirmation: $showDialog
                         )
+                        .onTapGesture {
+                            print("[][] Get Recurring Route Information")
+                        }
                     } else {
                         TechnicianRouteSummaryCardView(
                             technicianName: technician.techName,
@@ -114,7 +118,7 @@ struct AllCompanyRouteTechStopView: View {
                     VStack{
                         HStack{
                                 //                                            Image(systemName: "\(String(order.order)).square.fill")
-                            Image(systemName: "\(String(1)).square.fill")
+                            Image(systemName: "1)")
                             Spacer()
                             VStack{
                                 HStack{
@@ -142,19 +146,15 @@ struct AllCompanyRouteTechStopView: View {
                                 HStack{
                                     Text("\(fullDate(date:rss.startDate))")
                                         .font(.footnote)
-                                    
                                     Text(" - ")
                                         .font(.footnote)
-                                    
                                     if rss.noEndDate {
                                         Text("No End Date")
                                             .font(.footnote)
-                                        
                                     } else {
                                         if let endDate = rss.endDate {
                                             Text("\(fullDate(date:endDate))")
                                                 .font(.footnote)
-                                            
                                         } else  {
                                             Text("No End Date")
                                                 .font(.footnote)
@@ -165,6 +165,7 @@ struct AllCompanyRouteTechStopView: View {
                             }
                             Spacer()
                             Button(action: {
+                                VM.selectedRSS = rss
                             }, label: {
                                 Image(systemName: "pencil")
                                 
@@ -211,6 +212,18 @@ struct AllCompanyRouteTechStopView: View {
                     })
                 }
             }
+            Text("")
+                .sheet(item: $VM.selectedRSS, onDismiss: {
+                    print("[AllCompanyRouteTechStopView][On Dismiss of $VM.selectedRSS] ")
+                }) { rss in
+                    Text("Edit RSS \(rss.id)")
+                }
+            Text("")
+                .sheet(item: $VM.selectedRoute, onDismiss: {
+                    print("[AllCompanyRouteTechStopView][On Dismiss of $VM.selectedRoute] ")
+                }) { route in
+                    Text("Edit selectedRoute \(route.id)")
+                }
         }
         .onAppear(perform: {
             if let currentCompany = masterDataManager.currentCompany {

@@ -30,16 +30,10 @@ struct UserRouteOverView: View {
                     .frame(height: 1)
                     ScrollView(showsIndicators: false){
                         ForEach(VM.activeRoutes){ activeRoute in
-                            //                UserRouteCardView(tech: tech, activeRoute: ActiveRoute(id: "", name: "", date: Date(), serviceStopsIds: [], startTime: Date(), techId: "", durationSeconds: 420, distanceMiles: 69))
-                            //                    .padding()
                             UserRouteCardView2(activeRoute: activeRoute)
                                 .padding(.horizontal,8)
                         }
                     }
-                Text("External Routes")
-                Rectangle()
-                    .frame(height: 1)
-                Text("create way to keep up to date on routes that are contracted out.")
                 if isLoading {
                     ProgressView()
                     Spacer()

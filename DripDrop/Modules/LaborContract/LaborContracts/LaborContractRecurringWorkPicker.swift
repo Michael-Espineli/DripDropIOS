@@ -42,7 +42,22 @@ struct LaborContractRecurringWorkPicker: View {
         billingNotes: "",
         linkedInviteId: UUID().uuidString
     )
-    @State var serviceLocation:ServiceLocation = ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: "")
+    @State var serviceLocation:ServiceLocation = ServiceLocation(
+        id: "",
+        nickName: "",
+        address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+        gateCode: "",
+        mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
+        bodiesOfWaterId: [],
+        rateType: "",
+        laborType: "",
+        chemicalCost: "",
+        laborCost: "",
+        rate: "",
+        customerId: "",
+        customerName: "",
+        isActive: true
+    )
     
     @State var rateStr:String = "0"
     @State var perFrequencyTime:String = "1"
@@ -364,7 +379,8 @@ extension LaborContractRecurringWorkPicker {
                     laborCost: "",
                     rate: "",
                     customerId: "",
-                    customerName: ""
+                    customerName: "",
+                    isActive: true
                 )
                 
                 VM.selectedJobTemplate = VM.weeklyCleaning

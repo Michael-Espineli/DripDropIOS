@@ -79,7 +79,7 @@ struct DetailView: View {
                     case .customers:
                         
                         if let validatedCustomer = masterDataManager.selectedCustomer {
-                            CustomerDetailView(customer: validatedCustomer)
+                            CustomerDetailView(customerId: validatedCustomer.id)
                             
                         } else {
                             if masterDataManager.selectedID != nil {
@@ -97,7 +97,7 @@ struct DetailView: View {
                     case .serviceStops:
                         if let serviceStop = masterDataManager.selectedServiceStops {
                             //                    ServiceStopDetails(serviceStop: serviceStop, showDetailsView: $showSignInView)
-                            ServiceStopInfoView(serviceStop: serviceStop,dataService: dataService)
+                            ServiceStopInfoView(dataService: dataService,serviceStopId: serviceStop.id)
                             //                    ServiceStopDetailView(serviceStop: serviceStop)
                         } else {
                             if masterDataManager.selectedID != nil {
@@ -254,7 +254,7 @@ struct DetailView: View {
                         ReportDetailView(dataService: dataService)
                     case .userRoles:
                         if let role = masterDataManager.selectedRole {
-                            CompanyRoleDetailView(role:role)
+                            CompanyRoleDetailView(dataService: dataService, role:role)
                         } else {
                             Text("Please Select A Role To View")
                         }
@@ -267,27 +267,27 @@ struct DetailView: View {
                         //                        Text("Please Select A User To View")
                         //                    }
                         if let user = masterDataManager.selectedCompanyUser {
-                            CompanyUserDetailView(dataService: dataService, companyUser: user)
+                            CompanyUserDetailView(dataService: dataService, companyUserId: user.id)
                         } else {
                             Text("Please Select A User To View")
                         }
                     case .companyUser:
                         if let user = masterDataManager.selectedCompanyUser {
-                            CompanyUserDetailView(dataService: dataService, companyUser: user)
+                            CompanyUserDetailView(dataService: dataService, companyUserId: user.id)
                         } else {
                             Text("Please Select A Company User To View")
                         }
                     case .fleet:
                         if let vehical = masterDataManager.selectedVehical {
-                            VehicalDetailView(dataService:dataService,vehical:vehical)
+                            VehicalDetailView(dataService:dataService,vehicalId: vehical.id)
                         } else {
                             Text("Please Select A Vehical")
                         }
                     case .readingsAndDosages:
                         if masterDataManager.selectedReadingsTemplate != nil  {
-                            ReadingsDetail()
+                            ReadingsDetail(dataService: dataService, readingTempalte: masterDataManager.selectedReadingsTemplate)
                         } else if masterDataManager.selectedDosageTemplate != nil {
-                            DosageDetail()
+                            DosageDetail(dataService: dataService, dosageTemplate: masterDataManager.selectedDosageTemplate)
                         } else {
                             Text("Select Reading Or Dosage")
                         }
@@ -361,8 +361,21 @@ struct DetailView: View {
                     case .externalRoutesOverview:
                         Text("DEVELOPER Need to Build Out")
                     case .managementTables:
-//                        Text("Please Stop Fucking About")
-                        ManagementTablesView(dataService: dataService)
+                        Text("Please Stop Messing About")
+//                        ManagementTablesView(dataService: dataService)
+                        
+                    case .emailConfirguration:
+                        EmailConfigurationView(dataService: dataService)
+                    case .companyInfo:
+                        if masterDataManager.seePublicCompanyView {
+                            CompanyInfoView( dataService: dataService)
+                        } else {
+                            SimpleCompanyInfoView(dataService: dataService)
+                        }
+                    case .manageSubscriptions:
+                        MangeStripeSubscriptionsDetailView(dataService: dataService)
+                    case .stripeConfiguration:
+                        StripeConnectedAccountConfigDetailView(dataService: dataService)
                     }
                 } else {
                     Text("Select a Category")

@@ -10,10 +10,9 @@ import SwiftUI
 struct FleetListView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var fleetVM : FleetViewModel
+    @EnvironmentObject var fleetVM : FleetViewModel
 
     init(dataService:ProductionDataService){
-        _fleetVM = StateObject(wrappedValue: FleetViewModel(dataService: dataService))
     }
     @State var showSearch:Bool = false
     @State var searchTerm:String = ""
@@ -40,28 +39,22 @@ struct FleetListView: View {
                     AddNewVehical(dataService: dataService)
                 })
         }
-        .task {
-            if let company = masterDataManager.currentCompany {
-                do {
-                    try await fleetVM.getFleetList(companyId: company.id)
-                } catch {
-                    print("Fleet Error")
-                    print(error)
-                }
-            }
-        }
-        .toolbar{
-            ToolbarItem(content: {
-                Button(action: {
-                    showAddVehical.toggle()
-                }, label: {
-                    Text("Add")
-                        .foregroundColor(.poolWhite)
-                        .fontDesign(.monospaced)
-                        .padding(3)
-                })
-            })
-        }
+        .onAppear(perform: {
+            fleetVM.onLoadVehicalList(companyId: masterDataManager.currentCompany?.id)
+        })
+        .onDisappear(perform: {
+            fleetVM.stop()
+        })
+//        .task {
+//            if let company = masterDataManager.currentCompany {
+//                do {
+//                    try await fleetVM.getFleetList(companyId: company.id)
+//                } catch {
+//                    print("Fleet Error")
+//                    print(error)
+//                }
+//            }
+//        }
     }
 }
 
@@ -80,7 +73,7 @@ extension FleetListView {
                     Button(action: {
                         showAddVehical.toggle()
                     }, label: {
-                        Text("Add First Vehical")
+                        Text("Add First Vehicle")
                             .modifier(AddButtonModifier())
                     })
                     Spacer()
@@ -116,48 +109,23 @@ extension FleetListView {
                     Button(action: {
 
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.orange)
-                                .frame(width: 50, height: 50)
-                                .overlay(
-                            Image(systemName: "slider.horizontal.3")
-                                .resizable()
-                                .frame(width: 25, height: 25)
-                                .foregroundColor(Color.white)
-                            )
-                        }
-                        
-                       
+                        Image(systemName: "slider.horizontal.3")
+                            .modifier(FilterIconModifer())
                     })
                     .padding(10)
     
-                            Button(action: {
-
-                            }, label: {
-                                ZStack{
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 50, height: 50)
-                                    Image(systemName: "plus.circle.fill")
-                                        .resizable()
-                                        .frame(width: 50, height: 50)
-                                        .foregroundColor(Color.green)
-                                }
-                            })
+                    Button(action: {
+                        showAddVehical.toggle()
+                    }, label: {
+                        Image(systemName: "plus")
+                            .modifier(PlusIconModifer())
+                    })
 
                     Button(action: {
                         showSearch.toggle()
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 50, height: 50)
-                            Image(systemName: "magnifyingglass.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(Color.blue)
-                        }
+                        Image(systemName: "magnifyingglass")
+                            .modifier(SearchIconModifer())
                     })
                     .padding(10)
 

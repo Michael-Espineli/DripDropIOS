@@ -18,7 +18,7 @@ struct ExternalRouteStop:Identifiable, Codable, Hashable{
     var customerId:String
     var customerName:String
     var recurringServicestopId:String
-    var day:String
+    var day:DaysOfWeek
     var techId:String
     var techName:String
 }
@@ -31,8 +31,8 @@ final class ExternalRouteListViewModel:ObservableObject{
     @Published private(set) var recurringWork:[LaborContractRecurringWork] = []
     @Published private(set) var laborContractList:[ReccuringLaborContract] = []
     @Published private(set) var externalRouteDisplayList:[ExternalRouteStop] = []
-    @Published private(set) var externalRouteDisplayDayList:[String:[ExternalRouteStop]] = [:]
-    @Published private(set) var days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+    @Published private(set) var externalRouteDisplayDayList:[DaysOfWeek:[ExternalRouteStop]] = [:]
+
     func onLoad(companyId:String)async throws {
         
         //Get All Open Labor Contracts for Company
@@ -52,7 +52,7 @@ final class ExternalRouteListViewModel:ObservableObject{
                             customerId: work.customerId,
                             customerName: work.customerName,
                             recurringServicestopId: RSSID.id,
-                            day: recurringServiceStop.daysOfWeek,
+                            day: recurringServiceStop.day,
                             techId: recurringServiceStop.techId,
                             techName: recurringServiceStop.tech
                         )
@@ -60,7 +60,7 @@ final class ExternalRouteListViewModel:ObservableObject{
                 }
             }
         }
-        for day in self.days {
+        for day in DaysOfWeek.allCases {
             let list = self.externalRouteDisplayList.filter({$0.day == day})
             self.externalRouteDisplayDayList[day] = list
         }

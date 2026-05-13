@@ -11,7 +11,7 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 struct CompanyEmailConfiguration:Identifiable,Codable {
     var id : String = UUID().uuidString
-    var emailIsOn:Bool
+    var emailIsOn: Bool
     var emailBody : String
     var requirePhoto : Bool
 }
@@ -99,17 +99,21 @@ final class EmailConfigurationViewModel: ObservableObject {
         print("Check Changes")
         if let emailConfig = self.emailConfig {
             if emailConfig.emailIsOn != self.emailIsOn {
+                print("Has Changes 1")
                 self.hasChanges = true
             } else {
+                print("Does Not Have Changes 1")
                 self.hasChanges = false
             }
             if emailConfig.emailBody != self.emailBody {
+                print("Has Changes 2")
                 self.hasChanges = true
             } else {
                 self.hasChanges = false
+                print("Does Not Have Changes 2")
             }
         } else {
-            print("Email Config is false")
+            print("Email Config DNE")
         }
     }
     func resetChanges(){

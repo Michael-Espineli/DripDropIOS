@@ -107,7 +107,7 @@ struct ContractorDailyDashboard: View {
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                 do {
                     
-                    try await VM.initalLoad(companyId: company.id, user: user, date:selectedDate)
+//                    try await VM.initalLoad(companyId: company.id, user: user, date:selectedDate)
                     startTime = VM.activeRoute?.startTime ?? Date()
                     startMilage = String(VM.activeRoute?.startMilage ?? 0)
                     masterDataManager.selectedActiveRoute = VM.activeRoute
@@ -121,7 +121,7 @@ struct ContractorDailyDashboard: View {
             Task{
                 if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                     do {
-                        try await VM.initalLoad(companyId: company.id, user: user,date:date)
+//                        try await VM.initalLoad(companyId: company.id, user: user,date:date)
                         startTime = VM.startTime ?? Date()
                     } catch {
                         print("\(error)")
@@ -231,7 +231,7 @@ extension ContractorDailyDashboard {
                     Image(systemName: "chevron.left")
                         .modifier(BlueButtonModifier())
                 })
-//                Text("C")
+                Text("C")
                 Text("\(weekDay(date: selectedDate))")
                     .foregroundColor(Color.basicFontText)
                     .padding(.leading,8)
@@ -600,27 +600,4 @@ extension ContractorDailyDashboard {
     }
     
 }
-struct MyDropDelegate : DropDelegate {
 
-    let item : ServiceStop
-    @Binding var items : [ServiceStop]
-    @Binding var draggedItem : ServiceStop?
-
-    func performDrop(info: DropInfo) -> Bool {
-        return true
-    }
-
-    func dropEntered(info: DropInfo) {
-        guard let draggedItem = self.draggedItem else {
-            return
-        }
-
-        if draggedItem != item {
-            let from = items.firstIndex(of: draggedItem)!
-            let to = items.firstIndex(of: item)!
-            withAnimation(.default) {
-                self.items.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
-            }
-        }
-    }
-}

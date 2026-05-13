@@ -17,14 +17,9 @@ struct TechnicianRouteSameCompanyCard: View {
             HStack{
                 Text(technicianName)
                 Spacer()
+                Image(systemName: "line.3.horizontal")
+                    .padding(4)
                 
-                Button(action: {
-                    showDialogConfirmation.toggle()
-                    
-                }, label: {
-                    Image(systemName: "line.3.horizontal")
-                        .padding(4)
-                })
             }
             if companyName != ""{
                 if isContractedOut {

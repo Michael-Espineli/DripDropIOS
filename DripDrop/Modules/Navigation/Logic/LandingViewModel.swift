@@ -27,7 +27,7 @@ final class LandingViewModel: ObservableObject{
             throw FireBaseRead.unableToRead
         }
             let accessList = try await UserAccessManager.shared.getAllUserAvailableCompanies(userId: user.id)
-            print("Received List of \(accessList.count) Companies available to Access")
+            print("  [LandingViewModel][initalLoad] Received List of \(accessList.count) Companies available to Access")
             var listOfCompanies:[Company] = []
             for access in accessList{
                 let company = try await CompanyManager.shared.getCompany(companyId: access.id)// access id is company id

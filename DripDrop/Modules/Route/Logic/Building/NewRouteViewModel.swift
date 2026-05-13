@@ -20,6 +20,7 @@ final class NewRouteViewModel:ObservableObject{
     }
     // View Based Variables
     @Published var listOfRecurringStops:[RecurringServiceStop] = []
+    
     @Published var jobType:JobTemplate = JobTemplate(id: "",
                                                  name: "Job Template",
                                                  type: "",
@@ -27,6 +28,7 @@ final class NewRouteViewModel:ObservableObject{
                                                  dateCreated: Date(),
                                                  rate: "",
                                                  color: "")
+    
     @Published var customer:Customer = Customer(
         id: "",
         firstName: "",
@@ -46,26 +48,32 @@ final class NewRouteViewModel:ObservableObject{
         billingNotes: "",
         linkedInviteId: UUID().uuidString
     )
+    @Published var location:ServiceLocation = ServiceLocation(
+        id: "",
+        nickName: "Location",
+        address: Address(streetAddress: "",
+                         city: "",
+                         state: "",
+                         zip: "0",
+                         latitude: 0,
+                         longitude: 0),
+        gateCode: "",
+        mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
+        bodiesOfWaterId: [],
+        rateType: "",
+        laborType: "",
+        chemicalCost: "",
+        laborCost: "",
+        rate: "",
+        customerId: "",
+        customerName: "",
+        preText: false,
+        isActive: true
+    )
     @Published var customerSearch:String = ""
     @Published var listOfCustomers:[Customer] = []
     
-    @Published var location:ServiceLocation = ServiceLocation(id: "", nickName: "Location",
-                                                                  address: Address(streetAddress: "",
-                                                                                   city: "",
-                                                                                   state: "",
-                                                                                   zip: "0",
-                                                                                   latitude: 0,
-                                                                                   longitude: 0),
-                                                                  gateCode: "",
-                                                                  mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
-                                                                  bodiesOfWaterId: [],
-                                                                  rateType: "", laborType: "",
-                                                                  chemicalCost: "",
-                                                                  laborCost: "",
-                                                                  rate: "",
-                                                                  customerId: "",
-                                                                  customerName: "",
-                                                          preText: false)
+
     
     @Published var techEntity:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor)
     
@@ -85,7 +93,7 @@ final class NewRouteViewModel:ObservableObject{
 
     @Published var description:String = "description"
     @Published var estimatedTime:String = "15"
-    @Published var selectedDay:String = ""
+    @Published var selectedDay: DaysOfWeek = .monday
     //errors
     @Published var showAlert:Bool = false
     @Published var alertMessage:String = "Error"
@@ -274,18 +282,21 @@ final class NewRouteViewModel:ObservableObject{
             }
         }
     }
-    func modifyRecurringRouteWithVerification(companyId: String,
-                                       tech:CompanyUser,
-                                       noEndDate:Bool,
-                                       day:String,
-                                       frequency:LaborContractFrequency,
-                                       perTimes:Int,
-                                       transitionDate:Date,
-                                       newEndDate:Date,
-                                        description:String,
-                                        jobTemplate:JobTemplate,
-                                        recurringStopList:[RecurringServiceStop],
-                                        currentRecurringRoute:RecurringRoute) async throws {
+    
+    func modifyRecurringRouteWithVerification(
+        companyId: String,
+        tech: CompanyUser,
+        noEndDate: Bool,
+        day: DaysOfWeek,
+        frequency: LaborContractFrequency,
+        perTimes: Int,
+        transitionDate: Date,
+        newEndDate: Date,
+        description: String,
+        jobTemplate: JobTemplate,
+        recurringStopList: [RecurringServiceStop],
+        currentRecurringRoute:RecurringRoute
+    ) async throws {
         
         //DEVELOPER I COULD TRY AND UPDATE RATHER THAN DELETE AND CREATE NEW
         //Maybe I needed to use a different recurring route id because I cant have more than one exisiting at the same time
@@ -318,7 +329,7 @@ final class NewRouteViewModel:ObservableObject{
         job:JobTemplate,
         noEndDate:Bool,
         description:String,
-        day:String,
+        day: DaysOfWeek,
         standardFrequencyType:LaborContractFrequency,
         customFrequencyType:Int,
         startDate:Date,
@@ -376,11 +387,11 @@ final class NewRouteViewModel:ObservableObject{
                         endDate:endDate,
                         noEndDate: noEndDate,
                         frequency: standardFrequencyType,
-                        daysOfWeek: day,
+                        day: day,
                         description: description,
                         lastCreated: Date(),
                         serviceLocationId: RSS.serviceLocationId,
-                        estimatedTime: "",
+                        estimatedTime: 15,
                         otherCompany: false,
                         laborContractId: "",
                         contractedCompanyId: ""
@@ -406,16 +417,21 @@ final class NewRouteViewModel:ObservableObject{
         }
     }
     func onDismissOfCustomerPicker() {
-        if jobType.id == "" {
-            return
-        }
+//        print("[NewRouteViewModel][onDismissOfCustomerPicker] jobType.id \(jobType.id)")
+//        if jobType.id == "" {
+//            return
+//        }
+        print("[NewRouteViewModel][onDismissOfCustomerPicker] location.id: \(location.id)")
         if location.id == "" {
             return
         }
+        print("[NewRouteViewModel][onDismissOfCustomerPicker] customer.id: \(customer.id )")
         if customer.id == "" {
             return
         }
         let techFullName = (techEntity.userName)
+        print("[NewRouteViewModel][onDismissOfCustomerPicker] techFullName: \(techFullName)")
+
         listOfRecurringStops.append(RecurringServiceStop(id: UUID().uuidString,
                                                          internalId: "", //DEVELOPER
                                                          type: jobType.name,
@@ -431,14 +447,16 @@ final class NewRouteViewModel:ObservableObject{
                                                          endDate: endDate,
                                                          noEndDate: noEndDate,
                                                          frequency: standardFrequencyType,
-                                                         daysOfWeek: selectedDay,
+                                                         day: selectedDay,
                                                          description: description,
                                                          lastCreated: Date(),
                                                          serviceLocationId: location.id,
-                                                         estimatedTime: "15",
+                                                         estimatedTime: 15,
                                                         otherCompany: false,
                                                         laborContractId: "",
                                                         contractedCompanyId: ""))
+        print("[NewRouteViewModel][onDismissOfCustomerPicker] listOfRecurringStops: \(listOfRecurringStops).count")
+
         customer.id = ""
         location.id = ""
     }

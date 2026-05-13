@@ -10,23 +10,21 @@ struct RouteDayView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService: ProductionDataService
-    @StateObject var VM : RouteManagmentViewModel
+    @EnvironmentObject var VM: RouteBoardViewModel
     @StateObject var companyVM = CompanyUserViewModel()
     
-    init( dataService:any ProductionDataServiceProtocol,day:String){
-        _VM = StateObject(wrappedValue: RouteManagmentViewModel(dataService: dataService))
-        _day = State(wrappedValue: day)
-    }
+
     
-    @State var day:String
+    @State var day: DaysOfWeek
     @State var showAddNewRoute:Bool = false
     var body: some View {
         ZStack{
             ScrollView{
-                VStack(spacing: 0){
-                    HStack{
-                        Text("\(day)")
-                        Spacer()
+                HStack{
+                    Text(day.rawValue)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    Spacer()
                         Button(action: {
                             if UIDevice.isIPhone {
                                 showAddNewRoute.toggle()
@@ -39,27 +37,28 @@ struct RouteDayView: View {
                             }
                         }, label: {
                             Image(systemName: "plus")
+                                .font(.subheadline)
+                                .padding(8)
+                                .background(Color.gray.opacity(0.12))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
                         })
-                        .sheet(isPresented: $showAddNewRoute, content: {
-                            //DEVLOPER PLEASE FIX
-                            NewRouteView(dataService: dataService, tech: CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor), day: day)
-                        })
-                    }
-                    .modifier(ListButtonModifier())
-                    ForEach(VM.companyUsers){ tech in
-                        RouteTechView(dataService: dataService, day: day, tech: tech)
-                    }
+                    
+                    .sheet(isPresented: $showAddNewRoute, content: {
+                        //DEVLOPER PLEASE FIX
+                        NewRouteView(dataService: dataService, tech: CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor), day: day)
+                    })
                 }
-            }
-        }
-        .task {
-            if let company = masterDataManager.currentCompany {
-                do {
-//                    print(day)
-                    try await VM.firstLoad(companyId: company.id)
-                } catch {
-                    print(error)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemBackground))
+                )
+                
+                ForEach(VM.companyUsers){ tech in
+                    RouteTechView2(tech: tech, day: day)
                 }
+                .padding(.leading, 8)
             }
         }
     }

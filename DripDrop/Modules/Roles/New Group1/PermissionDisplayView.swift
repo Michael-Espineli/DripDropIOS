@@ -9,20 +9,20 @@ import SwiftUI
 
 struct PermissionDisplayView: View {
     var permission:PermissionModel
-    @Binding var listOfPermissions:[String]
+//    @Binding var listOfPermissions:[String]
+    @State var listOfPermissions:[String]
     @State var selected:Bool = false
-    @State var loading:Bool = true
 
     var body: some View {
         VStack{
             HStack{
-                Text(permission.id)
+                Text("\(permission.id))")
                 Text(permission.name)
                 Spacer()
-                Image(systemName: selected ? "checkmark.square":"square")
+                Image(systemName: selected ? "checkmark.square.fill":"square")
                     .padding(5)
-                    .background(selected ? Color.green : Color.clear)
-                    .foregroundColor(Color.white)
+                    .background(selected ? Color.listColor : Color.clear)
+                    .foregroundColor(selected ? Color.green : Color.white)
                     .cornerRadius(5)
             }
             .padding(8)
@@ -38,18 +38,14 @@ struct PermissionDisplayView: View {
 
             }
         })
-        .onChange(of: selected, perform: { select in
-            if !loading {
-                if select {
-                    listOfPermissions.append(permission.id)
-                    
-                } else {
-                    listOfPermissions.removeAll(where: {$0 == permission.id})
-                }
-                print(listOfPermissions)
-            } else {
-                loading = false
-            }
-        })
+//        .onChange(of: selected, perform: { select in
+//            if select {
+//                listOfPermissions.append(permission.id)
+//
+//            } else {
+//                listOfPermissions.removeAll(where: {$0 == permission.id})
+//            }
+//            print(listOfPermissions)
+//        })
     }
 }

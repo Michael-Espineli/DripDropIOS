@@ -27,7 +27,7 @@ struct ShoppingListItem:Identifiable, Codable,Hashable{
     var name:String
     var description:String
     var datePurchased:Date?
-    var quantiy:String? //I SPElled QUANTITY WRONG
+    var quantity:String?
     
     //Job
     var jobId:String?
@@ -41,6 +41,8 @@ struct ShoppingListItem:Identifiable, Codable,Hashable{
     
     //DataBaseItem
     var dbItemId: String?
+    var purchasedItem:String?
+    var invoiced:Bool
 }
 
 protocol ShoppingListManagerProtocol {
@@ -64,7 +66,18 @@ final class MockShoppingListtManager:ShoppingListManagerProtocol {
 
     }
     func getSpecificShoppingListItem(companyId: String, shoppingListItemId: String) async throws -> ShoppingListItem {
-        return ShoppingListItem(id: "", category: .customer, subCategory: .chemical, status: .needToPurchase, purchaserId: "", purchaserName: "", genericItemId: "", name: "",description:"")
+        return ShoppingListItem(
+            id: "",
+            category: .customer,
+            subCategory: .chemical,
+            status: .needToPurchase,
+            purchaserId: "",
+            purchaserName: "",
+            genericItemId: "",
+            name: "",
+            description:"",
+            invoiced: true
+        )
     }
     func getAllShoppingListItemsByCompany(companyId: String) async throws -> [ShoppingListItem] {
         print("Successfully getAllShoppingListItemsByCompany")

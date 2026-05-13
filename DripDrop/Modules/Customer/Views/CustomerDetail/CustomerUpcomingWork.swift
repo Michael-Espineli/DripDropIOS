@@ -1,296 +1,327 @@
-//
-//  CustomerUpcomingWork.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 12/22/23.
-//
+    //
+    //  CustomerUpcomingWork.swift
+    //  ThePoolApp
+    //
+    //  Aesthetic-only refresh:
+    //  - system grouped background
+    //  - “page header” feel
+    //  - section cards with soft shadow + rounded corners
+    //  - consistent header controls (icon buttons)
+    //  - better spacing + typography
+    //
 
-import SwiftUI
+    import SwiftUI
 
-struct CustomerUpcomingWork: View {
-    @EnvironmentObject var masterDataManager : MasterDataManager
-    @EnvironmentObject var dataService : ProductionDataService
+    struct CustomerUpcomingWork: View {
+        @EnvironmentObject var masterDataManager: MasterDataManager
+        @EnvironmentObject var dataService: ProductionDataService
 
-    @StateObject var VM : CustomerProfileViewModel
+        @EnvironmentObject var VM: CustomerProfileViewModel
+        @EnvironmentObject var customerListVM: CustomerListViewModel
 
-    @State var customer:Customer
-    init(dataService:any ProductionDataServiceProtocol,customer:Customer) {
-        _VM = StateObject(wrappedValue: CustomerProfileViewModel(dataService: dataService))
-        _customer = State(wrappedValue: customer)
-    }
-    @State var editRSS:Bool = false
-    @State var addRSS:Bool = false
-    
-    @State var addRepairRequest:Bool = false
-    
-    @State var addJob:Bool = false
-    
-    @State var addItem:Bool = false
-
-    @State var alertMessage:String = ""
-    @State var showAlert:Bool = false
-    @State var showDeleteConfirmation:Bool = false
-    @State var rssID:String = ""
-    @State var selectedJob:Job? = nil
-
-    var body: some View {
-        ZStack{
-            Color.listColor.ignoresSafeArea()
-            ScrollView{
-                repairRequests
-                Rectangle()
-                    .frame(height: 4)
-                    .cornerRadius(4)
-                jobs
-                Rectangle()
-                    .frame(height: 4)
-                    .cornerRadius(4)
-                recurringServiceStops
-                Rectangle()
-                    .frame(height: 4)
-                    .cornerRadius(4)
-                items
-            }
-            .padding(.horizontal,8)
+        private var customer: Customer? {
+            customerListVM.customers.first { $0.id == customerId }
         }
-        .task{
-            if let company = masterDataManager.currentCompany {
 
-                do {
-                    try await VM.onLoad(companyId: company.id, customerId: customer.id)
-                } catch {
-                    print(error)
+        @State var customerId: String
+
+        init(dataService: any ProductionDataServiceProtocol, customerId: String) {
+            _customerId = State(wrappedValue: customerId)
+        }
+
+        @State var editRSS: Bool = false
+        @State var addRSS: Bool = false
+        @State var addRepairRequest: Bool = false
+        @State var addJob: Bool = false
+        @State var addItem: Bool = false
+        @State var addServiceStop: Bool = false
+
+        @State var alertMessage: String = ""
+        @State var showAlert: Bool = false
+        @State var showDeleteConfirmation: Bool = false
+        @State var rssID: String = ""
+        @State var selectedJob: Job? = nil
+
+        var body: some View {
+            ZStack {
+                Color(.systemGroupedBackground).ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        pageHeader
+
+                        repairRequests
+                        jobs
+                        recurringServiceStops
+                        serviceStops
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: 900)
+                    .frame(maxWidth: .infinity)
                 }
             }
-        }
-        .alert(isPresented:$showDeleteConfirmation) {
-            Alert(
-                title: Text("Alert"),
-                message: Text("\(alertMessage)"),
-                primaryButton: .destructive(Text("Delete")) {
-                    if rssID != "" {
-                        Task{
-                            if let company = masterDataManager.currentCompany {
-                                do {
-                                    try await VM.deleteRecurringServiceStop(companyId: company.id, RecurringServiceStopId: rssID)
-                                    rssID = ""
-                                } catch {
-                                    print(error)
+            .task {
+                if let company = masterDataManager.currentCompany {
+                    do {
+                        try await VM.onLoad(companyId: company.id, customerId: customerId)
+                    } catch {
+                        print(error)
+                    }
+                }
+            }
+            .alert(isPresented: $showDeleteConfirmation) {
+                Alert(
+                    title: Text("Alert"),
+                    message: Text("\(alertMessage)"),
+                    primaryButton: .destructive(Text("Delete")) {
+                        if rssID != "" {
+                            Task {
+                                if let company = masterDataManager.currentCompany {
+                                    do {
+                                        try await VM.deleteRecurringServiceStop(companyId: company.id, RecurringServiceStopId: rssID)
+                                        rssID = ""
+                                    } catch {
+                                        print(error)
+                                    }
                                 }
                             }
                         }
-                    }
-                },
-                secondaryButton: .cancel()
-            )
-        }
-        .alert(alertMessage, isPresented: $showAlert) {
-            Button("OK", role: .cancel) { }
+                    },
+                    secondaryButton: .cancel()
+                )
+            }
+            .alert(alertMessage, isPresented: $showAlert) {
+                Button("OK", role: .cancel) { }
+            }
         }
     }
-}
 
-extension CustomerUpcomingWork {
-    var recurringServiceStops: some View {
-        VStack{
-            HStack{
-                Button(action: {
-                    self.editRSS.toggle()
-                }, label: {
-                    Image(systemName: "square.and.pencil")
-                        .modifier(BasicButtonModifier())
-                })
-                Spacer()
-                Text("Recurring Service Stops")
-                    .font(.headline)
-                Spacer()
-                Button(action: {
-                    self.addRSS.toggle()
+    // MARK: - Header
 
-                }, label: {
-                    Image(systemName: "plus")
-                        .modifier(BasicButtonModifier())
-                })
-                .sheet(isPresented: $addRSS,onDismiss: {
-                    Task{
-                        if let company = masterDataManager.currentCompany {
-                            do {
-                                try await VM.reloadRecurringServiceStops(companyId: company.id, customerId: customer.id)
-                                print("Sucessfully Reloaded")
+    extension CustomerUpcomingWork {
+        private var pageHeader: some View {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Upcoming Work")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.primary)
 
-                            } catch {
-                                print(error)
-                            }
-                        }
-                    }
-                },  content: {
-                    NewSingleRecurringServiceStop(dataService: dataService, customerId: customer.id)
-                })
-          
+                Text("Repairs, jobs, recurring stops, and scheduled service stops.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
-            ForEach(VM.recurringServiceStops) { RSS in
-                Divider()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 2)
+        }
+    }
 
-                HStack{
-                    NavigationLink(value: Route.recurringServiceStopDetail(dataService: dataService, recurringServiceStop: RSS), label: {
-                        RecurringServiceStopSmallCardView(recurringServiceStop: RSS)
-                    })
-                    Button(action: {
-                        rssID = RSS.id
-                        if rssID != "" {
-                            self.showDeleteConfirmation.toggle()
+    // MARK: - Sections
+
+    extension CustomerUpcomingWork {
+
+        var recurringServiceStops: some View {
+            SectionCard(
+                title: "Recurring Service Stops",
+                leadingButton: SectionIconButton(systemName: "square.and.pencil") { self.editRSS.toggle() },
+                trailingButton: SectionIconButton(systemName: "plus") { self.addRSS.toggle() }
+            ) {
+                VStack(spacing: 12) {
+                    ForEach(VM.recurringServiceStops) { RSS in
+                        NavigationLink(value: Route.recurringServiceStopDetail(dataService: dataService, recurringServiceStop: RSS)) {
+                            RecurringServiceStopSmallCardView(recurringServiceStop: RSS)
                         }
-                    }, label: {
-                        Image(systemName: "trash.fill")
-                            .modifier(DismissButtonModifier())
-                    })
+                        .buttonStyle(.plain)
+                    }
                 }
             }
+            .sheet(isPresented: $addRSS, onDismiss: {
+                Task {
+                    if let company = masterDataManager.currentCompany {
+                        do {
+                            try await VM.reloadRecurringServiceStops(companyId: company.id, customerId: customerId)
+                        } catch { print(error) }
+                    }
+                }
+            }) {
+                NewSingleRecurringServiceStop(dataService: dataService, customerId: customerId)
+            }
+        }
+
+        var repairRequests: some View {
+            SectionCard(
+                title: "Repair Requests",
+                trailingButton: SectionIconButton(systemName: "plus") { self.addRepairRequest.toggle() }
+            ) {
+                VStack(spacing: 12) {
+                    ForEach(VM.repairRequest) { repair in
+                        if UIDevice.isIPhone {
+                            NavigationLink(value: Route.repairRequest(repairRequest: repair, dataService: dataService)) {
+                                RepairRequestCardView(repairRequest: repair)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Button(action: {
+                                masterDataManager.selectedCategory = .jobs
+                                masterDataManager.selectedRepairRequest = repair
+                            }) {
+                                RepairRequestCardView(repairRequest: repair)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $addRepairRequest, onDismiss: {
+                Task {
+                    if let company = masterDataManager.currentCompany {
+                        do {
+                            try await VM.reloadRepairRequests(companyId: company.id, customerId: customerId)
+                        } catch { print(error) }
+                    }
+                }
+            }) {
+                AddNewRepairRequest(dataService: dataService, isPresented: $addRepairRequest, customer: customer)
+            }
+        }
+
+        var jobs: some View {
+            SectionCard(
+                title: "Jobs",
+                trailingButton: SectionIconButton(systemName: "plus") { self.addJob.toggle() }
+            ) {
+                VStack(spacing: 12) {
+                    ForEach(VM.jobs) { job in
+                        if UIDevice.isIPhone {
+                            NavigationLink(value: Route.job(job: job, dataService: dataService)) {
+                                JobCardView(job: job)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Button(action: {
+                                masterDataManager.selectedCategory = .jobs
+                                masterDataManager.selectedJob = job
+                            }) {
+                                JobCardView(job: job)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $addJob, onDismiss: {
+                Task {
+                    if let company = masterDataManager.currentCompany {
+                        do {
+                            try await VM.reloadJobs(companyId: company.id, customerId: customerId)
+                        } catch { print(error) }
+                    }
+                }
+            }) {
+                AddNewJobView(dataService: dataService, customerId: customerId)
+            }
+        }
+
+        var serviceStops: some View {
+            SectionCard(
+                title: "Service Stops",
+                trailingButton: SectionIconButton(systemName: "plus") { self.addServiceStop.toggle() }
+            ) {
+                VStack(spacing: 12) {
+                    ForEach(VM.serviceStops) { ss in
+                        NavigationLink(value: Route.serviceStop(serviceStop: ss, dataService: dataService)) {
+                            ServiceStopCardViewLarge(serviceStop: ss)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .sheet(isPresented: $addServiceStop, onDismiss: {
+                Task {
+                    if let company = masterDataManager.currentCompany {
+                        do {
+                            try await VM.reloadShoppingListItem(companyId: company.id, customerId: customerId)
+                        } catch { print(error) }
+                    }
+                }
+            }) {
+                AddNewServiceStop(dataService: dataService)
+            }
         }
     }
 
-    var repairRequests: some View {
-        VStack{
-            HStack{
-                Spacer()
-                Text("Repair Requests")
-                    .font(.headline)
-                Spacer()
-                Button(action: {
-                    self.addRepairRequest.toggle()
-                }, label: {
-                    Image(systemName: "plus")
-                        .modifier(BasicButtonModifier())
-                })
-                .sheet(isPresented: $addRepairRequest,onDismiss: {
-                    Task{
-                        if let company = masterDataManager.currentCompany {
-                            do {
-                                try await VM.reloadRepairRequests(companyId: company.id, customerId: customer.id)
-                                print("Sucessfully Reloaded")
+    // MARK: - Reusable UI (Aesthetic helpers)
 
-                            } catch {
-                                print(error)
-                            }
-                        }
-                    }
-                },  content: {
-                    AddNewRepairRequest(dataService: dataService, isPresented: $addRepairRequest)
-                })
-            }
-            ForEach(VM.repairRequest) { repair in
-                Divider()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.repairRequest(repairRequest: repair, dataService: dataService), label: {
-                        RepairRequestCardView(repairRequest: repair)
-                    })
+    private struct SectionCard<Content: View>: View {
+        let title: String
+        var leadingButton: AnyView? = nil
+        var trailingButton: AnyView? = nil
+        let content: Content
+
+        init(
+            title: String,
+            leadingButton: AnyView? = nil,
+            trailingButton: AnyView? = nil,
+            @ViewBuilder content: () -> Content
+        ) {
+            self.title = title
+            self.leadingButton = leadingButton
+            self.trailingButton = trailingButton
+            self.content = content()
+        }
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+
+                if isEmptyContent {
+                    Text("No records found.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 6)
                 } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .jobs
-                        masterDataManager.selectedRepairRequest = repair
-                    }, label: {
-                        RepairRequestCardView(repairRequest: repair)
-                    })
+                    content
                 }
             }
+            .padding(16)
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: Color.black.opacity(0.06), radius: 14, x: 0, y: 8)
         }
-    }
-    var jobs: some View {
-        VStack{
-            HStack{
-                Spacer()
-                Text("Jobs")
+
+        private var header: some View {
+            HStack(spacing: 10) {
+                if let leadingButton { leadingButton }
+
+                Text(title)
                     .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+
                 Spacer()
-                Button(action: {
-                    self.addJob.toggle()
 
-                }, label: {
-                    Image(systemName: "plus")
-                        .modifier(BasicButtonModifier())
-                })
-                .sheet(isPresented: $addJob,onDismiss: {
-                    Task{
-                        if let company = masterDataManager.currentCompany {
-                            do {
-                                try await VM.reloadJobs(companyId: company.id, customerId: customer.id)
-                                print("Sucessfully Reloaded")
-
-                            } catch {
-                                print(error)
-                            }
-                        }
-                    }
-                },  content: {
-                    AddNewJobView(dataService: dataService)
-                })
+                if let trailingButton { trailingButton }
             }
+            .padding(.bottom, 2)
+        }
 
-            ForEach(VM.jobs) { job in
-                Divider()
-
-                HStack{
-                    if UIDevice.isIPhone{
-                        NavigationLink(value: Route.job(job: job, dataService: dataService), label: {
-                            JobCardView(job: job)
-                        })
-                    } else {
-                        Button(action: {
-                            masterDataManager.selectedCategory = .jobs
-                            masterDataManager.selectedJob = job
-                        }, label: {
-                            JobCardView(job: job)
-                        })
-                    }
-                
-                }
-            }
+        // A tiny heuristic: if Content is EmptyView, show empty state.
+        // (If your section always has content, this will just remain false.)
+        private var isEmptyContent: Bool {
+            content is EmptyView
         }
     }
-    var items: some View {
-        VStack{
-            HStack{
-                Spacer()
-                Text("Items")
-                    .font(.headline)
-                Spacer()
-                Button(action: {
-                    self.addItem.toggle()
 
-                }, label: {
-                    Image(systemName: "plus")
-                        .modifier(BasicButtonModifier())
-                })
-                .sheet(isPresented: $addItem,onDismiss: {
-                    Task{
-                        if let company = masterDataManager.currentCompany {
-                            do {
-                                try await VM.reloadShoppingListItem(companyId: company.id, customerId: customer.id)
-                                print("Sucessfully Reloaded")
-                            } catch {
-                                print(error)
-                            }
-                        }
-                    }
-                }, content: {
-                    AddNewItemToShoppingList(dataService: dataService)
-                })
+    private func SectionIconButton(systemName: String, action: @escaping () -> Void) -> AnyView {
+        AnyView(
+            Button(action: action) {
+                Image(systemName: systemName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.blue)
+                    .frame(width: 36, height: 36)
+                    .background(Color.blue.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            ForEach(VM.shoppingListItems) { item in
-                Divider()
-                if UIDevice.isIPhone{
-                    NavigationLink(value: Route.shoppingListDetail(item:item,dataService: dataService), label: {
-                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .shoppingList
-                        masterDataManager.selectedShoppingListItem = item
-                    }, label: {
-                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
-                    })
-                }
-            }
-        }
+            .buttonStyle(.plain)
+        )
     }
-}

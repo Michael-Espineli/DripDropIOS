@@ -331,7 +331,7 @@ final class JobViewModel:ObservableObject{
         //Delete From shopping List
         let items = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: jobId, category: category)//This is a really bad way to do this. Just put the shopping List id into the WODBItem for the JOB
         for item in items {
-            if item.genericItemId == part.genericItemId && item.name == part.name && item.quantiy == String(part.quantity) {
+            if item.genericItemId == part.genericItemId && item.name == part.name && item.quantity == String(part.quantity) {
                 try await dataService.deleteShoppingListItem(companyId: companyId, shoppingListItemId: item.id)
             }
         }
@@ -381,7 +381,7 @@ final class JobViewModel:ObservableObject{
             //Check Which Parts Need Updating
             if admin.id != updatingJob.adminId || admin.firstName != updatingJob.adminName{
                 print("Change in Admin")
-                let name:String = admin.firstName ?? ""  //DEVELOPER THINK ABOUT CHANGING THIS TO BOTH THE FIRST AND THE LAST NAME
+                let name:String = admin.firstName  //DEVELOPER THINK ABOUT CHANGING THIS TO BOTH THE FIRST AND THE LAST NAME
                 try await dataService.updateJobAdmin(companyId: companyId, jobId: updatingJob.id, adminName: name, adminId: admin.id)
             }
      
@@ -394,8 +394,10 @@ final class JobViewModel:ObservableObject{
                 try await dataService.updateJobBillingStatus(companyId: companyId, jobId: updatingJob.id, billingStatus: billingStatus)
             }
             if String(updatingJob.rate) != rate {
-                print("Change in Rate")
-                try await dataService.updateJobRate(companyId: companyId, jobId: updatingJob.id, rate: rate)
+                if let rate = Int(rate) {
+                    print("Change in Rate")
+                    try await dataService.updateJobRate(companyId: companyId, jobId: updatingJob.id, rate: rate)
+                }
             }
             if laborCost != String(updatingJob.laborCost) {
                 print("Change in Labor Cost")
@@ -432,12 +434,13 @@ final class JobViewModel:ObservableObject{
                     name: pvc.name,
                     description: "",
                     datePurchased: nil,
-                    quantiy: String(pvc.quantity),
+                    quantity: String(pvc.quantity),
                     jobId: jobId,
                     customerId: nil,
                     customerName: nil,
                     userId: nil,
-                    userName: nil
+                    userName: nil,
+                    invoiced: true
                 )
             )
         }
@@ -460,12 +463,13 @@ final class JobViewModel:ObservableObject{
                     name: electical.name,
                     description: "",
                     datePurchased: nil,
-                    quantiy: String(electical.quantity),
+                    quantity: String(electical.quantity),
                     jobId: jobId,
                     customerId: nil,
                     customerName: nil,
                     userId: nil,
-                    userName: nil
+                    userName: nil,
+                    invoiced: true
                 )
             )
 
@@ -489,12 +493,13 @@ final class JobViewModel:ObservableObject{
                     name: chemical.name,
                     description: "",
                     datePurchased: nil,
-                    quantiy: String(chemical.quantity),
+                    quantity: String(chemical.quantity),
                     jobId: jobId,
                     customerId: nil,
                     customerName: nil,
                     userId: nil,
-                    userName: nil
+                    userName: nil,
+                    invoiced: true
                 )
             )
 
@@ -518,12 +523,13 @@ final class JobViewModel:ObservableObject{
                     name: misc.name,
                     description: "",
                     datePurchased: nil,
-                    quantiy: String(misc.quantity),
+                    quantity: String(misc.quantity),
                     jobId: jobId,
                     customerId: nil,
                     customerName: nil,
                     userId: nil,
-                    userName: nil
+                    userName: nil,
+                    invoiced: true
                 )
             )
 

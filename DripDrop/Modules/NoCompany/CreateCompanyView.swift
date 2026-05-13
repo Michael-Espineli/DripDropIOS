@@ -9,8 +9,14 @@
 import SwiftUI
 
 struct CreateCompanyView: View {
-    @StateObject private var vm = CreateCompanyViewModel()
+    init(dataService: any ProductionDataServiceProtocol) {
+        _vm = StateObject(wrappedValue: CreateCompanyViewModel(dataService: dataService))
+    }
+    @StateObject private var vm : CreateCompanyViewModel
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var navigationManger : NavigationStateManager
+    @EnvironmentObject var dataService : ProductionDataService
+    @EnvironmentObject var masterDataManager : MasterDataManager
 
     // If you support navigation to a dashboard, inject a callback or use a NavigationStack
     var onSuccessNavigate: ((String) -> Void)?
@@ -25,6 +31,7 @@ struct CreateCompanyView: View {
     ]
 
     @State private var showServicesPicker = false
+    @State private var addressQuery = ""
 
     var body: some View {
         ScrollView {
@@ -55,12 +62,14 @@ struct CreateCompanyView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
 
                     // Replace AddressAutocompleteView with your component
-                    AddressAutocompleteView(selectedAddress: $vm.address)
-                        .frame(height: 48)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
-
-                    TextField("Phone Number", text: $vm.phoneNumber)
-                        .keyboardType(.phonePad)
+                    AddressAutocompleteView(
+//                        text: $vm.addressQuery,
+                        text: $addressQuery,
+                        selectedAddress: $vm.address
+                    )
+//                        .frame(height: 48)
+//                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
+                    PhoneNumberField("Phone Number", text: $vm.phoneNumber, showsValidation: true)
                         .padding()
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray.opacity(0.3)))
 
@@ -150,7 +159,7 @@ struct CreateCompanyView: View {
                 }
 
                 Button {
-                    Task { await vm.submit() }
+                    Task { await vm.submit(dbUser: masterDataManager.user) }
                 } label: {
                     Text(vm.isLoading ? "Creating Company..." : "Create Company")
                         .frame(maxWidth: .infinity)
@@ -170,33 +179,25 @@ struct CreateCompanyView: View {
                 selected: $vm.selectedServices
             )
         }
-        .onChange(of: vm.didSucceed) { _, success in
+        .onChange(of: vm.didSucceed, perform: { success in
+            
             guard success, let id = vm.recentlySelectedCompanyId else { return }
             // Navigate or dismiss + callback
             onSuccessNavigate?(id)
-        }
+            if let user = masterDataManager.user {
+                vm.updateRecentlySelectedCompany(user: user,companyId: id)
+                masterDataManager.currentCompany = vm.newCompany
+            }
+        })
+//        .onChange(of: vm.didSucceed) { _, success in
+//            guard success, let id = vm.recentlySelectedCompanyId else { return }
+//            // Navigate or dismiss + callback
+//            onSuccessNavigate?(id)
+//        }
     }
 }
 
 // Replace this with your own address autocomplete implementation
-struct AddressAutocompleteView: View {
-    @Binding var selectedAddress: Address?
-
-    var body: some View {
-        // Placeholder UI
-        HStack {
-            Text(selectedAddress?.line1 ?? "Company Address")
-                .foregroundColor(selectedAddress == nil ? .secondary : .primary)
-            Spacer()
-            Image(systemName: "mappin.and.ellipse")
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            // Present your real autocomplete UI and assign to selectedAddress
-        }
-        .padding(.horizontal)
-    }
-}
 
 struct MultiSelectServicesView: View {
     let allOptions: [ServiceOption]

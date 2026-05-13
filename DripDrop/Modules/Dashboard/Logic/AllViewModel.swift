@@ -95,25 +95,30 @@ final class AllViewModel:ObservableObject{
     }
     func loadCompanyWorkPreview(companyId:String,user:DBUser) async throws {
             //Get RecurringRoute
-        print("")
-        print("Load Company Work Preview")
-
-        print("Company Id : \(companyId)")
-        
+//        print("")
+//        print("[AllViewModel][loadCompanyWorkPreview] Company Id : \(companyId)")
+        print("[loadCompanyWorkPreview] 0")
         let userAccess = try await dataService.getUserAccessCompanies(userId: user.id, companyId: companyId)
-        print("User Access: \(userAccess)")
+//        print("")
+//        print("[AllViewModel][loadCompanyWorkPreview] User Access: \(userAccess)")
+        print("[loadCompanyWorkPreview] 1")
         
         let companyUsers = try await dataService.getAllCompanyUsers(companyId: companyId)
-        print("Company Users: \(companyUsers.count)")
+//        print("")
+//        print("[AllViewModel][loadCompanyWorkPreview]Company Users: \(companyUsers.count)")
         
         self.companyUser = companyUsers.first(where: {$0.userId == user.id})
+        print("[loadCompanyWorkPreview] 2")
         self.role = try await dataService.getSpecificRole(companyId: companyId, roleId: userAccess.roleId)
+        print("[loadCompanyWorkPreview] 3")
         
-        print("Role: \(String(describing: role))")
-        
+//        print("")
+//        print("[AllViewModel][loadCompanyWorkPreview] Role: \(String(describing: role))")
+        /*
             //Developer I amay need to change how  I get this ID
         let recurringRoute = try? await dataService.getSingleRouteFromTechIdAndDay(companyId: companyId, techId: user.id, day: weekDay(date: Date()))
-        print("Successfully Got Recurring Route from  - \(String(describing: recurringRoute))")
+        print("")
+        print("[AllViewModel][loadCompanyWorkPreview] Successfully Got Recurring Route from  - \(String(describing: recurringRoute))")
         
         if recurringRoute == nil {
                 //checks for one off Service stops not on Route.
@@ -334,6 +339,7 @@ final class AllViewModel:ObservableObject{
             }
             
         }
+         */
     }
     func startShift(company:Company,user:DBUser) {
         Task{

@@ -178,20 +178,15 @@ final class SettingsManager {
         var recurringServiceStopCount = 0
         let doc = try await SettingsCollection(companyId: companyId).document("recurringServiceStops").getDocument(as: Increment.self)
         recurringServiceStopCount = doc.increment
-        sleep(1)
+        print("[SettingsManager][getRecurringServiceStopCount] recurringServiceStopCount:\(recurringServiceStopCount)")
         let updatedRecurringServiceStopCount = recurringServiceStopCount + 1
+        print("[SettingsManager][getRecurringServiceStopCount] updatedRecurringServiceStopCount:\(updatedRecurringServiceStopCount)")
         
-         SettingsCollection(companyId: companyId).document("recurringServiceStops")
+         try await SettingsCollection(companyId: companyId).document("recurringServiceStops")
            .updateData([
                "increment": updatedRecurringServiceStopCount
-       ]) { err in
-           if let err = err {
-               print("Error updating document: \(err)")
-           } else {
-               print("Document successfully updated")
-           }
-       }
-        print(" - Recurring Service Stop Count " + String(updatedRecurringServiceStopCount))
+           ])
+        print("[SettingsManager][getRecurringServiceStopCount]  Recurring Service Stop Count " + String(updatedRecurringServiceStopCount))
         return updatedRecurringServiceStopCount
 //        return 2
 
@@ -244,13 +239,13 @@ final class SettingsManager {
     func uploadReadingTemplateAmountArray(companyId:String,readingTemplateId : String,amount:String) async throws {
 
         try await  ReadingsTemplateDocument(readingTemplateId: readingTemplateId,companyId: companyId).updateData(["amount":FieldValue.arrayUnion([amount])
-                                                                                             ])
+                                                                                                                  ])
     }
     func removingReadingTemplateAmountArray(companyId:String,readingTemplateId : String,amount:String) async throws {
 
         try await  ReadingsTemplateDocument(readingTemplateId: readingTemplateId, companyId: companyId).updateData([
             "amount":FieldValue.arrayRemove([amount])
-                                                                                             ])
+        ])
     }
 
     
@@ -372,7 +367,18 @@ final class SettingsManager {
         let saltId = UUID().uuidString
 
         let InitialDosageTemplates:[DosageTemplate] = [
-            DosageTemplate(id: chlorineDosageID, name: "Liquid Chlorine", amount: ["0","0.25","0.50","0.75","1.00","1.25","1.50","1.75","2.00","2.25","2.50","2.75","3.00","4.00","5.00","6.00","7.00","8.00","9.00","10.00","11.00","12.00","16.00"], UOM: "gallon", rate: "5.00", linkedItemId: nil, strength: 0.13, editable: false,chemType: "Liquid Chlorine",order: 1),
+            DosageTemplate(
+                id: chlorineDosageID,
+                name: "Liquid Chlorine",
+                amount: ["0","0.25","0.50","0.75","1.00","1.25","1.50","1.75","2.00","2.25","2.50","2.75","3.00","4.00","5.00","6.00","7.00","8.00","9.00","10.00","11.00","12.00","16.00"],
+                UOM: "gallon",
+                rate: "5.00",
+                linkedItemId: nil,
+                strength: 0.13,
+                editable: false,
+                chemType: "Liquid Chlorine",
+                order: 1
+            ),
             
             DosageTemplate(id: tabsID, name: "Tabs", amount: ["0","1","2","3","4","5","6","7"], UOM: "3 in Tabs", rate: "5.00", linkedItemId: nil, strength: 1, editable: false,chemType: "Tabs",order: 2),
 
@@ -393,7 +399,18 @@ final class SettingsManager {
         
         let InitialReadingsTemplates:[ReadingsTemplate] = [
             
-            ReadingsTemplate(id: UUID().uuidString, name: "Total Disolved Solids", amount: ["100","150","200","250","300","350","400","450"], UOM: "ppm", chemType: "Total Disolved Solids", linkedDosage: "0", editable: false,order: 1,highWarning: 0, lowWarning: 0),
+            ReadingsTemplate(
+                id: UUID().uuidString,
+                name: "Total Disolved Solids",
+                amount: ["100","150","200","250","300","350","400","450"],
+                UOM: "ppm",
+                chemType: "Total Disolved Solids",
+                linkedDosage: "0",
+                editable: false,
+                order: 1,
+                highWarning: 0,
+                lowWarning: 0
+            ),
             
             ReadingsTemplate(id: UUID().uuidString, name: "Free Chlorine", amount: ["0","1","2","3","4","5","6","7"], UOM: "ppm", chemType: "Free Chlorine", linkedDosage: chlorineDosageID, editable: false,order: 3 ,highWarning: 0, lowWarning: 0),
 

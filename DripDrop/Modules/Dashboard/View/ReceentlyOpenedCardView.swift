@@ -152,6 +152,14 @@ struct ReceentlyOpenedCardView: View {
                         case .externalRoutesOverview:
                             print("externalRoutesOverviewd  Not Built Out Yet")
 
+                        case .emailConfirguration:
+                            print("emailConfirguration  Not Built Out Yet")
+                        case .companyInfo:
+                            print("companyInfo  Not Built Out Yet")
+                        case .manageSubscriptions:
+                            print("manageSubscriptions  Not Built Out Yet")
+                        case .stripeConfiguration:
+                            print("stripeConfiguration  Not Built Out Yet")
                         }
                     }
                     print("Category - \(recentActivity.category)")

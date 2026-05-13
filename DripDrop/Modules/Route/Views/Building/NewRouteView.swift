@@ -8,246 +8,291 @@
 import SwiftUI
 
 struct NewRouteView: View {
-    init(dataService:any ProductionDataServiceProtocol,tech:CompanyUser,day:String){
-        _VM = StateObject(wrappedValue: NewRouteViewModel(dataService: dataService))
+    init(dataService:any ProductionDataServiceProtocol,tech: CompanyUser,day: DaysOfWeek){
+//        _VM = StateObject(wrappedValue: NewRouteViewModel(dataService: dataService))
         _tech = State(wrappedValue: tech)
         _day = State(wrappedValue: day)
     }
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService: ProductionDataService
-    @StateObject var VM : NewRouteViewModel
+    @EnvironmentObject var routeBoardVM: RouteBoardViewModel
+
+//    @StateObject var VM : NewRouteViewModel
     
-    @State var tech:CompanyUser
-    @State var day:String
+    @State var tech: CompanyUser
+    @State var day: DaysOfWeek
     
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            VStack{
-                Text("New Route")
-                ScrollView{
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("New Route")
+                                .font(.title3.weight(.semibold))
+                            Text("\(day.rawValue)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+
                     form
+
+                    // Add some space so the bottom button bar doesn’t cover content
+                    Color.clear.frame(height: 70)
                 }
+                .padding(12)
+            }
+
+            VStack {
+                Spacer()
                 button
             }
-            .padding(8)
-            if VM.isLoading {
-                VStack{
-                    Text("Loading ...")
-                    ProgressView()
-                }
-                .padding(8)
-                .background(Color.gray.opacity(0.5))
-                .cornerRadius(8)
+
+            if routeBoardVM.isLoading {
+                loadingOverlay
             }
         }
         .foregroundColor(Color.basicFontText)
-        .fontDesign(.monospaced)
         
-        .alert(VM.alertMessage, isPresented: $VM.showAlert) {
+        .alert(routeBoardVM.alertMessage, isPresented: $routeBoardVM.showAlert) {
             Button("OK", role: .cancel) { }
         }
-        .task {
-            print("arrived")
-            if let company = masterDataManager.currentCompany {
-                VM.selectedDay = day
-                VM.techEntity = tech
-                do {
-                    try await VM.onLoad(companyId: company.id)
-                    
-                } catch {
-                    print("")
-                    print("New Route View Error >>")
-                    print(error)
-                    print("")
-                }
-            }
-            
-        }
-        .onChange(of: VM.companyUser, perform: { tech in
+        .onAppear(perform: {
+            print("[NewRouteView][onAppear]")
+            routeBoardVM.onLoad(day: day)
+        })
+        .onChange(of: routeBoardVM.selectedTech, perform: { tech in
+            print("[NewRouteView][onChange][routeBoardVM.selectedTech]")
             if let tech {
-                VM.techEntity = tech
+                routeBoardVM.checkForRouteOnDayAndTech(techId: tech.userId, day: day)
             }
         })
-        .onChange(of: VM.selectedDay, perform: { datum in
-            Task{
-                if let company = masterDataManager.currentCompany {
-                    do {
-                        VM.selectedDay = datum
-                        try await VM.onLoad(companyId: company.id)
-                    } catch {
-                        print(error)
-                    }
-                }
+        .onChange(of: routeBoardVM.selectedDay, perform: { datum in
+            print("[NewRouteView][onChange][routeBoardVM.selectedDay]")
+            if let tech = routeBoardVM.selectedTech, let datum {
+                routeBoardVM.checkForRouteOnDayAndTech(techId: tech.userId, day: datum)
+                
             }
-            
-        })
-        .onChange(of: VM.techEntity, perform: { tech in
-            Task{
-                if let company = masterDataManager.currentCompany {
-                    VM.techEntity = tech
-                    do {
-                        try await VM.onLoad(companyId: company.id)
-                    } catch {
-                        print(error)
-                    }
-                } else {
-                    print("Error")
-                }
-            }
-            
         })
     }
 }
 
 
 extension NewRouteView {
+    var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.12).ignoresSafeArea()
+            VStack(spacing: 10) {
+                ProgressView()
+                Text("Loading…")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .ddCard()
+            .padding(24)
+        }
+    }
+
     var button: some View {
-        VStack{
+        HStack {
             Button(action: {
-                Task{
-                    if let currentCompany = masterDataManager.currentCompany {
-                        do {
-                            try await VM.submitOrUpdateRoute(companyId:currentCompany.id)
-                            VM.listOfCustomers = []
-                            masterDataManager.selectedRouteBuilderTech = nil
-                            masterDataManager.selectedRouteBuilderDay = nil
-                            masterDataManager.reloadBuilderView = true
-                            dismiss()
-                        } catch {
-                            print("Error")
-                            print(error)
-                        }
-                    }
-                }
-            },label: {
-                HStack{
-                    Text(VM.recurringRoute == nil ? "Submit" : "Update")
-                }
-                .frame(maxWidth: .infinity)
-                .modifier(SubmitButtonModifier())
+                routeBoardVM.submitOrUpdateRoute(companyId: masterDataManager.currentCompany?.id)
+            }, label: {
+                Text((routeBoardVM.currentSelectedRoute == nil && routeBoardVM.currentRouteRecurringStops.isEmpty) ? "Submit" : "Update")
+                    .frame(maxWidth: .infinity)
+                    .modifier(SubmitButtonModifier())
             })
-            .disabled(VM.isLoading)
-            .opacity(VM.isLoading ? 0.6 : 1)
+            .disabled(routeBoardVM.isLoading)
+            .opacity(routeBoardVM.isLoading ? 0.6 : 1)
         }
+        .ddBottomBar()
     }
+
     var form: some View {
-        VStack{
-            //            Text("Change Recurring Service stop Id to be not based on day and tech ID")
-            technical
-            info
+        VStack(spacing: 12) {
+            technical.ddCard()
+            info.ddCard()
         }
-        .padding(.horizontal,16)
-        
     }
-    
+
     var info: some View {
-        VStack{
-            
-            HStack{
-                Button(action: {
-                    VM.showCustomerPicker.toggle()
-                }, label: {
-                    Text(VM.listOfRecurringStops.isEmpty ? "Add First Customer":"Add Another")
-                        .padding(8)
-                        .background(Color.poolBlue)
-                        .foregroundColor(Color.basicFontText)
-                        .cornerRadius(8)
-                })
-                .sheet(isPresented: $VM.showCustomerPicker, onDismiss: {
-                    VM.onDismissOfCustomerPicker()
-                }, content: {
-                    CustomerAndLocationPicker(dataService: dataService, customer: $VM.customer,location: $VM.location)
-                })
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Recurring Stops").ddSectionHeader()
                 Spacer()
-                if !VM.listOfRecurringStops.isEmpty {
+                if !routeBoardVM.newRouteRecurringStops.isEmpty {
+                    Text("\(routeBoardVM.newRouteRecurringStops.count)")
+                        .font(.caption.weight(.semibold))
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .background(Capsule().fill(Color.primary.opacity(0.08)))
+                }
+            }
+
+            HStack(spacing: 10) {
+                Button(action: {
+                    routeBoardVM.showCustomerPicker.toggle()
+                }, label: {
+                    Text(routeBoardVM.newRouteRecurringStops.isEmpty ? "Add First Customer" : "Add Another")
+                        .modifier(BlueButtonModifier())
+                })
+                .sheet(isPresented: $routeBoardVM.showCustomerPicker, onDismiss: {
+                    routeBoardVM.onDismissOfCustomerPicker()
+                }, content: {
+                    CustomerAndLocationPicker(dataService: dataService, customer: $routeBoardVM.customer, location: $routeBoardVM.location)
+                })
+
+                if !routeBoardVM.newRouteRecurringStops.isEmpty {
                     Button(action: {
-                        VM.showCustomerSheet.toggle()
+                        routeBoardVM.showCustomerSheet.toggle()
                     }, label: {
-                        Text("Customers - \(VM.listOfRecurringStops.count)")
-                            .padding(8)
-                            .background(Color.poolBlue)
-                            .foregroundColor(Color.basicFontText)
-                            .cornerRadius(8)
+                        Text("View List")
+                            .modifier(BlueButtonModifier())
                     })
-                    .disabled(VM.listOfRecurringStops.count == 0)
-                    .sheet(isPresented: $VM.showCustomerSheet, content: {
-                        VStack{
-                            List{
-                                ForEach(VM.listOfRecurringStops){ location in
-                                    HStack{
-                                        VStack{
+                    .sheet(isPresented: $routeBoardVM.showCustomerSheet) {
+                        VStack {
+                            HStack {
+                                Text("Customers")
+                                    .font(.headline.weight(.semibold))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+
+                            List {
+                                ForEach(routeBoardVM.newRouteRecurringStops) { location in
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 4) {
                                             Text("\(location.customerName)")
+                                                .font(.subheadline.weight(.semibold))
                                             Text("\(location.address.streetAddress)")
-                                                .font(.footnote)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
                                         }
+                                        Spacer()
                                         Text(location.frequency.rawValue)
-                                        if !UIDevice.isIPhone {
-                                            Button(action: {
-                                                VM.listOfRecurringStops.removeAll(where: {$0.id == location.id})
-                                            }, label: {
-                                                Image(systemName: "trash")
-                                            })
-                                        }
+                                            .font(.caption.weight(.semibold))
+                                            .padding(.vertical, 6)
+                                            .padding(.horizontal, 10)
+                                            .background(Capsule().fill(Color.primary.opacity(0.08)))
                                     }
+                                    .padding(.vertical, 4)
                                 }
-                                .onDelete(perform: VM.removeRecurringstops)
+                                .onDelete(perform: routeBoardVM.removeRecurringstops)
                             }
                         }
-                    })
+                        .presentationDetents([.medium, .large])
+                    }
                 }
+
+                Spacer()
+            }
+
+            if routeBoardVM.newRouteRecurringStops.isEmpty {
+                Text("Add at least one customer/location to build the route.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
     }
+
     var technical: some View {
-        VStack{
-            DatePicker(selection: $VM.startDate, displayedComponents: .date) {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Route Settings").ddSectionHeader()
+
+            DatePicker(selection: $routeBoardVM.startDate, displayedComponents: .date) {
                 Text("Start Date")
+                    .foregroundStyle(.secondary)
             }
-            Toggle("Never Ends", isOn: $VM.noEndDate)
-            if !VM.noEndDate {
-                DatePicker(selection: $VM.endDate, displayedComponents: .date) {
+
+            Toggle("Never Ends", isOn: $routeBoardVM.noEndDate)
+
+            if !routeBoardVM.noEndDate {
+                DatePicker(selection: $routeBoardVM.endDate, displayedComponents: .date) {
                     Text("End Date")
+                        .foregroundStyle(.secondary)
                 }
             }
-            TextField(
-                "Description",
-                text: $VM.description
-            )
-            .modifier(TextFieldModifier())
 
-            TextField(
-                "Estimated Time",
-                text: $VM.estimatedTime
-            )
-            .modifier(TextFieldModifier())
-            HStack{
-                Picker("Tech", selection: $VM.techEntity) {
-                    Text("Tech").tag(CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor))
-                    ForEach(VM.companyUsers){ tech in
+            Text("Description")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField("Description", text: $routeBoardVM.description)
+                .modifier(TextFieldModifier())
+
+            Divider().opacity(0.15)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Assignment").ddSectionHeader()
+
+                Picker("Tech", selection: $routeBoardVM.newSelectedTech) {
+                    Text("Tech")
+                        .tag(CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .contractor))
+                    ForEach(routeBoardVM.companyUsers) { tech in
                         Text("\(tech.userName)").tag(tech)
                     }
                 }
-                Spacer()
-            }
-            HStack{
-                Picker("Day", selection: $VM.selectedDay) {
-                    Text("Day").tag("")
-                    ForEach(VM.days,id:\.self){ day in
-                        Text("\(day)").tag(day)
-                    }
-                }
-                Spacer()
-            }
-            HStack{
-                Picker("Frequency", selection: $VM.standardFrequencyType) {
-                    ForEach(LaborContractFrequency.allCases,id:\.self){
+                .pickerStyle(.menu)
+
+                Picker("Day", selection: $routeBoardVM.newSelectedDay) {
+                    ForEach(DaysOfWeek.allCases, id: \.self) {
                         Text($0.rawValue).tag($0)
                     }
                 }
-                Spacer()
+                .pickerStyle(.menu)
+
+                Picker("Frequency", selection: $routeBoardVM.standardFrequencyType) {
+                    ForEach(LaborContractFrequency.allCases, id: \.self) {
+                        Text($0.rawValue).tag($0)
+                    }
+                }
+                .pickerStyle(.menu)
             }
         }
+    }
+
+    
+}
+
+private extension View {
+    func ddCard() -> some View {
+        self
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
+    }
+
+    func ddSectionHeader() -> some View {
+        self
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+
+    func ddBottomBar() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    Color.black.opacity(0.02)
+                }
+                .ignoresSafeArea(edges: .bottom)
+            )
+            .overlay(Divider().opacity(0.12), alignment: .top)
     }
 }

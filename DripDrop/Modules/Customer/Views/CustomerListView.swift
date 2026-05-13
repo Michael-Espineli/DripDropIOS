@@ -115,10 +115,9 @@ struct CustomerListView: View{
     
     @EnvironmentObject var dataService: ProductionDataService
     
-    @StateObject private var VM : CustomerListViewModel
+    @EnvironmentObject var VM : CustomerListViewModel
 
     init(dataService:any ProductionDataServiceProtocol){
-        _VM = StateObject(wrappedValue: CustomerListViewModel(dataService: dataService))
     }
     func createNew(){
             //DEVELOEPR FIX ROUTE
@@ -223,7 +222,7 @@ extension CustomerListView {
         VStack{
             if VM.displayCustomers.count == 0 {
                 if let role = masterDataManager.role {
-                    if role.permissionIdList.contains("3") {
+                    if role.permissionIdList.contains("12") {
                         Button(action: {
                             VM.showCustomerPicker = true
                         }, label: {
@@ -623,7 +622,7 @@ extension CustomerListView {
             }
             if VM.displayCustomers.count == 0 {
                 if let role = masterDataManager.role {
-                    if role.permissionIdList.contains("3") {
+                    if role.permissionIdList.contains("12") {
                         Button(action: {
                             VM.showAddNew.toggle()
                         }, label: {
@@ -971,88 +970,89 @@ extension CustomerListView {
     }
     var icons: some View{
         ZStack{
-            VStack{
-                Spacer()
-                HStack{
+            if let role = masterDataManager.role {
+                VStack{
                     Spacer()
-                    Text("")
-                        .sheet(isPresented: $VM.showCustomerUploadScreen,onDismiss: {
-                            VM.selectedDocumentUrl = nil
-                        }, content: {
-                            if let doc = VM.selectedDocumentUrl {
-                                UploadXLSXFileForCustomer(selectedDocumentUrl: doc)
-                            } else {
-                                DocumentPicker(filePath: self.$VM.selectedDocumentUrl)
-                            }
-                        })
-                    
-                    VStack{
-                        Button(action: {
-                            VM.showFilters.toggle()
-                        }, label: {
-                            Image(systemName: "slider.horizontal.3")
-                                .modifier(FilterIconModifer())
-                        })
-                        .padding(8)
-                        .sheet(isPresented: $VM.showFilters, onDismiss: {
-                            Task{
-                                if let company = masterDataManager.currentCompany {
-                                    do {
-                                        VM.removeListener()
-                                        try await VM.changeSortOrFilter(companyId: company.id)
-                                    } catch {
-                                        print(error)
-                                    }
+                    HStack{
+                        Spacer()
+                        Text("")
+                            .sheet(isPresented: $VM.showCustomerUploadScreen,onDismiss: {
+                                VM.selectedDocumentUrl = nil
+                            }, content: {
+                                if let doc = VM.selectedDocumentUrl {
+                                    UploadXLSXFileForCustomer(selectedDocumentUrl: doc)
+                                } else {
+                                    DocumentPicker(filePath: self.$VM.selectedDocumentUrl)
                                 }
-                            }
-                        }, content: {
-                            ZStack{
-                                Color.listColor.ignoresSafeArea()
-                                VStack{
-                                    HStack{
-                                        Text("Sort & Filter")
-                                            .font(.title)
-                                    }
-                                    Rectangle()
-                                        .frame(height: 1)
-                                    HStack{
-                                        Text("Sort")
-                                        Spacer()
-                                        Picker("Sort: ", selection: $VM.customerSortOption) {
-                                            ForEach(CustomerSortOptions.allCases,id:\.self) {
-                                                Text($0.display()).tag($0)
-                                            }
+                            })
+                        
+                        VStack{
+                            Button(action: {
+                                VM.showFilters.toggle()
+                            }, label: {
+                                Image(systemName: "slider.horizontal.3")
+                                    .modifier(FilterIconModifer())
+                            })
+                            .padding(8)
+                            .sheet(isPresented: $VM.showFilters, onDismiss: {
+                                Task{
+                                    if let company = masterDataManager.currentCompany {
+                                        do {
+                                            VM.removeListener()
+                                            try await VM.changeSortOrFilter(companyId: company.id)
+                                        } catch {
+                                            print(error)
                                         }
                                     }
-                                    HStack{
-                                        Text("Filter")
-                                        Spacer()
-                                        Picker("Filter:", selection: $VM.customerFilterOption) {
-                                            ForEach(CustomerFilterOptions.allCases,id:\.self) {
-                                                Text($0.display()).tag($0)
+                                }
+                            }, content: {
+                                ZStack{
+                                    Color.listColor.ignoresSafeArea()
+                                    VStack{
+                                        HStack{
+                                            Text("Sort & Filter")
+                                                .font(.title)
+                                        }
+                                        Rectangle()
+                                            .frame(height: 1)
+                                        HStack{
+                                            Text("Sort")
+                                            Spacer()
+                                            Picker("Sort: ", selection: $VM.customerSortOption) {
+                                                ForEach(CustomerSortOptions.allCases,id:\.self) {
+                                                    Text($0.display()).tag($0)
+                                                }
                                             }
                                         }
+                                        HStack{
+                                            Text("Filter")
+                                            Spacer()
+                                            Picker("Filter:", selection: $VM.customerFilterOption) {
+                                                ForEach(CustomerFilterOptions.allCases,id:\.self) {
+                                                    Text($0.display()).tag($0)
+                                                }
+                                            }
+                                        }
+                                            //----------------------------------------
+                                            //Add Back in During Roll out of Phase 2
+                                            //----------------------------------------
+                                            //                                    HStack{
+                                            //                                        Text("Tags")
+                                            //                                        Spacer()
+                                            //                                        Picker("Tags:", selection: $VM.tag) {
+                                            //                                            Text("Tag")
+                                            //                                            ForEach(VM.tags,id:\.self) {
+                                            //                                                Text($0).tag($0)
+                                            //                                            }
+                                            //                                        }
+                                            //                                    }
+                                        Spacer()
                                     }
-                                        //----------------------------------------
-                                        //Add Back in During Roll out of Phase 2
-                                        //----------------------------------------
-//                                    HStack{
-//                                        Text("Tags")
-//                                        Spacer()
-//                                        Picker("Tags:", selection: $VM.tag) {
-//                                            Text("Tag")
-//                                            ForEach(VM.tags,id:\.self) {
-//                                                Text($0).tag($0)
-//                                            }
-//                                        }
-//                                    }
-                                    Spacer()
+                                    .padding(16)
                                 }
-                            }
-                            .presentationDetents([.fraction(0.3), .medium])
-                        })
-                        if let role = masterDataManager.role {
-                            if role.permissionIdList.contains("3") {
+                                .presentationDetents([.fraction(0.3), .medium])
+                            })
+                            if role.permissionIdList.contains("12") {
                                 Button(action: {
                                     Task{
                                         VM.showCustomerPicker = true
@@ -1128,7 +1128,6 @@ extension CustomerListView {
                                     VM.showConfirmationSheet = true
                                 }, content: {
                                     ContactPicker(selectedContact: self.$VM.selectedContact)
-
                                 })
                                 .sheet(isPresented: $VM.showConfirmationSheet,onDismiss: {
                                     VM.selectedContact = nil
@@ -1140,33 +1139,34 @@ extension CustomerListView {
                                     }
                                 })
                             }
+                            
                         }
+                        
                     }
-                    
-                }
-                if VM.showSearch && UIDevice.isIPhone{
-                    HStack{
+                    if VM.showSearch && UIDevice.isIPhone{
                         HStack{
-                            TextField(
-                                "Search",
-                                text: $VM.searchTerm
-                            )
-                            .focused($searchField, equals: true)
-                            .submitLabel(.search)
-                            .onSubmit {
-                                VM.filterCustomerList()
+                            HStack{
+                                TextField(
+                                    "Search",
+                                    text: $VM.searchTerm
+                                )
+                                .focused($searchField, equals: true)
+                                .submitLabel(.search)
+                                .onSubmit {
+                                    VM.filterCustomerList()
+                                }
+                                Spacer()
+                                Button(action: {
+                                    VM.searchTerm = ""
+                                }, label: {
+                                    Image(systemName: "xmark")
+                                })
                             }
-                            Spacer()
-                            Button(action: {
-                                VM.searchTerm = ""
-                            }, label: {
-                                Image(systemName: "xmark")
-                            })
+                            .modifier(SearchTextFieldModifier())
+                            .padding(8)
                         }
-                        .modifier(SearchTextFieldModifier())
-                        .padding(8)
+                        .background(Color.listColor)
                     }
-                    .background(Color.listColor)
                 }
             }
         }

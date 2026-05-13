@@ -68,10 +68,14 @@ final class RecurringServiceStopDetailViewModel:ObservableObject{
                 for task in taskItems {
                     let recurringTask = RecurringServiceStopTask(
                         name: task.name,
+                        description:"",
                         type: task.type,
                         contractedRate: task.contractedRate,
                         estimatedTime: task.estimatedTime,
-                        status: .unassigned
+                        status: .unassigned,
+                        isTaskGroup:false,
+                        taskGroupId:"",
+                        taskGroupTaskId: ""
                     )
                     RSSTasks.append(recurringTask)
                     try await dataService.uploadRecurringServiceStopTask(companyId: companyId, recurringServiceStopId: recurringServiceStopId, task: recurringTask)
@@ -189,7 +193,7 @@ extension RecurringServiceStopDetailView {
             }
             HStack{
                 Text("")
-                Text(RSS.daysOfWeek)
+                Text(RSS.day.rawValue)
                 Spacer()
             }
             HStack{
@@ -199,7 +203,7 @@ extension RecurringServiceStopDetailView {
             }
             HStack{
                 Text("")
-                Text(RSS.estimatedTime)
+                Text(displayMinAsMinAndHour(min: RSS.estimatedTime))
                 
                 Spacer()
             }

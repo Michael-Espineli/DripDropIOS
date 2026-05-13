@@ -20,7 +20,6 @@ struct PhotoStoredContent: View {
     var body: some View {
         VStack {
             imageScroll
-            
             VStack {
                 pickerButtons
                     .sheet(isPresented: $vm.showPicker, onDismiss: {
@@ -69,8 +68,9 @@ extension PhotoStoredContent {
     var imageScroll: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
+#warning("work on display current Photos")
+
                 /*
-                 Developer work on display current Photos
                 ForEach(curentPhotos) { photo in
                     VStack {
                         Button(action: {

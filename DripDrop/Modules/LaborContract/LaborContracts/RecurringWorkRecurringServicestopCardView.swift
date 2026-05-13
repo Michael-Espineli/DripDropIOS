@@ -19,7 +19,7 @@ struct RecurringWorkRecurringServicestopCardView: View {
     var body: some View {
         HStack{
             if let recurringServiceStop = VM.recurringServiceStop {
-                Text("\(recurringServiceStop.daysOfWeek.first!)")
+                Text("\(recurringServiceStop.day.rawValue)")
                     .bold()
                 Text(" - ")
                 Text("\(recurringServiceStop.tech)")

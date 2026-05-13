@@ -1,9 +1,9 @@
-    //
-    //  AddNewTaskGroup.swift
-    //  DripDrop
-    //
-    //  Created by Michael Espineli on 12/8/24.
-    //
+//
+//  AddNewTaskGroup.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 12/8/24.
+//
 
 import SwiftUI
 @MainActor
@@ -29,11 +29,7 @@ final class AddNewTaskGroupViewModel:ObservableObject{
     
     func onLoad(companyId:String){
         Task{
-            do {
-                self.typeList = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
-            } catch {
-                print(error)
-            }
+            self.typeList = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
         }
     }
     func submitNewTaskGroup(companyId:String){
@@ -62,165 +58,231 @@ final class AddNewTaskGroupViewModel:ObservableObject{
         }
     }
 }
+
 struct AddNewTaskGroup: View {
     @EnvironmentObject var dataService : ProductionDataService
     @EnvironmentObject var masterDataManager : MasterDataManager
-    
+    @Environment(\.dismiss) private var dismiss
 
     @StateObject var VM : AddNewTaskGroupViewModel
+
     init(dataService: any ProductionDataServiceProtocol){
         _VM = StateObject(wrappedValue: AddNewTaskGroupViewModel(dataService: dataService))
     }
+
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            VStack {
-                ScrollView {
-                    form
-                    Rectangle()
-                        .frame(height: 1)
-                    itemList
+
+            VStack(spacing: 16) {
+
+                // MARK: Header
+                HStack {
+                    Text("New Task Group")
+                        .font(.title3.weight(.semibold))
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .modifier(DismissButtonModifier())
+                    }
                 }
+                .padding(.horizontal)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        form
+                        itemList
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                }
+
                 button
+                    .padding(.horizontal)
             }
-            .padding(8)
+            .padding(.top)
         }
         .task{
             if let currentCompany = masterDataManager.currentCompany {
                 VM.onLoad(companyId: currentCompany.id)
             }
         }
-        .onChange(of: VM.itemRate, perform: { rateStr in
+        .onChange(of: VM.itemRate) { rateStr in
             if rateStr != "" {
-                if let rate = Double(rateStr) {
-                    print(rate)
-                } else {
+                if Double(rateStr) == nil {
                     VM.itemRate = String(rateStr.dropLast())
                 }
             }
-        })
-        .onChange(of: VM.itemEstimatedTime, perform: { timeStr in
+        }
+        .onChange(of: VM.itemEstimatedTime) { timeStr in
             if timeStr != "" {
-                if let rate = Int(timeStr) {
-                    print(rate)
-                } else {
+                if Int(timeStr) == nil {
                     VM.itemEstimatedTime = String(timeStr.dropLast())
                 }
             }
-        })
+        }
     }
 }
+
 
 #Preview {
     AddNewTaskGroup(dataService: MockDataService())
 }
+// ✅ FORM SECTION (Card Based)
 extension AddNewTaskGroup {
+    
     var form: some View {
-        VStack{
-            HStack{
-                Text("Name : ")
-                TextField(
-                    "Name",
-                    text: $VM.name
-                )
-                .modifier(TextFieldModifier())
+        VStack(alignment: .leading, spacing: 12) {
+
+            Text("Details")
+                .font(.headline)
+
+            VStack(spacing: 12) {
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Name")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Task Group Name", text: $VM.name)
+                        .modifier(PlainTextFieldModifier())
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Description")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Description", text: $VM.description)
+                        .modifier(PlainTextFieldModifier())
+                }
             }
-            HStack{
-                Text("Description : ")
-                TextField(
-                    "Description",
-                    text: $VM.description
-                )
-                .modifier(TextFieldModifier())
+            .padding(14)
+            .background(Color.darkGray.opacity(0.35))
+            .cornerRadius(14)
+        }
+    }
+}
+// ✅ ITEM LIST SECTION (Cleaner Card List)
+extension AddNewTaskGroup {
+
+    var itemList: some View {
+        VStack(alignment: .leading, spacing: 12) {
+
+            Text("Tasks")
+                .font(.headline)
+
+            VStack(spacing: 12) {
+
+                ForEach(VM.taskItemList) { item in
+                    VStack(alignment: .leading, spacing: 6) {
+
+                        HStack {
+                            Text(item.name)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                        }
+
+                        if !item.description.isEmpty {
+                            Text(item.description)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack(spacing: 12) {
+                            Label("\(item.estimatedTime) min", systemImage: "clock")
+                            Spacer()
+                            Text(
+                                Double(item.contractedRate)/100,
+                                format: .currency(code: "USD")
+                            )
+                        }
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(14)
+                    .background(Color.darkGray.opacity(0.35))
+                    .cornerRadius(14)
+                }
+
+                newItemSection
             }
         }
     }
-    var itemList: some View {
-        VStack{
-            ForEach(VM.taskItemList){ item in
-                VStack{
-                    HStack{
-                        Text(item.name)
-                        Spacer()
-                    }
-                    Text(item.description)
-                        .font(.footnote)
-                    HStack{
-                        Text("Estimated Time: \(String(item.estimatedTime))")
-                        Text("\(Double(item.contractedRate)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                    }
-                    .font(.footnote)
-                }
-                .modifier(ListButtonModifier())
-            }
-            Divider()
+}
+//  ✅ NEW ITEM ENTRY (Much Cleaner Layout)
+extension AddNewTaskGroup {
+
+    var newItemSection: some View {
+        VStack(spacing: 12) {
+
             if VM.addNewItem {
-                HStack{
-                    Text("Name : ")
-                    TextField(
-                        "Name",
-                        text: $VM.itemName
-                    )
-                    .modifier(TextFieldModifier())
-                }
-                
-                HStack{
-                    Text("Type : ")
+
+                VStack(alignment: .leading, spacing: 12) {
+
+                    Text("New Task")
+                        .font(.subheadline.weight(.semibold))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Task Name")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("Task Name", text: $VM.itemName)
+                            .modifier(PlainTextFieldModifier())
+                    }
+
                     Picker("Type", selection: $VM.itemType) {
-                        ForEach(VM.typeList, id:\.self){ datum in
-                            Text(datum).tag(datum)
+                        ForEach(JobTaskType.allCases, id:\.self) {
+                            Text($0.rawValue).tag($0)
                         }
                     }
-                    Spacer()
-                }
-                HStack{
-                    Text("Description : ")
-                    TextField(
-                        "Description",
-                        text: $VM.itemDescription
-                    )
-                    .modifier(TextFieldModifier())
-                }
-                HStack{
-                    Text("Contract Rate : ")
-                    HStack{
-                        Text("$")
-                        TextField(
-                            "Item Rate",
-                            text: $VM.itemRate
-                        )
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Description")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextField("Description", text: $VM.itemDescription)
+                            .modifier(PlainTextFieldModifier())
                     }
-                    .modifier(TextFieldModifier())
-                }
-                HStack{
-                    Text("Estimated Time : ")
-                    TextField(
-                        "Min",
-                        text: $VM.itemEstimatedTime
-                    )
-                    .modifier(TextFieldModifier())
-                }
-                HStack{
-                    Button(action: {
-                        VM.addNewItem.toggle()
-                        
-                        VM.itemEstimatedTime = "0"
-                        VM.itemRate = "0"
-                        VM.itemName = ""
-                        VM.itemType = .basic
-                        VM.itemDescription = ""
-                        
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("Clear")
-                            Spacer()
+
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Rate")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            HStack {
+                                Text("$")
+                                TextField("0", text: $VM.itemRate)
+                            }
+                            .modifier(PlainTextFieldModifier())
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Est. Time")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("Min", text: $VM.itemEstimatedTime)
+                                .modifier(PlainTextFieldModifier())
+                        }
+                    }
+
+                    HStack(spacing: 12) {
+                        Button("Clear") {
+                            VM.addNewItem.toggle()
+                            VM.itemEstimatedTime = "0"
+                            VM.itemRate = "0"
+                            VM.itemName = ""
+                            VM.itemType = .basic
+                            VM.itemDescription = ""
                         }
                         .modifier(DismissButtonModifier())
-                    })
-                    Button(action: {
-                        if let time = Int(VM.itemEstimatedTime) {
-                            if let rate = Int(VM.itemRate) {
+
+                        Button("Add To List") {
+                            if let time = Int(VM.itemEstimatedTime),
+                               let rate = Int(VM.itemRate) {
+
                                 let item = JobTaskGroupItem(
                                     id: UUID().uuidString,
                                     name: VM.itemName,
@@ -229,55 +291,54 @@ extension AddNewTaskGroup {
                                     contractedRate: rate*100,
                                     estimatedTime: time
                                 )
+
                                 VM.taskItemList.append(item)
-                                
+
                                 VM.itemEstimatedTime = "0"
                                 VM.itemRate = "0"
                                 VM.itemName = ""
                                 VM.itemType = .basic
                                 VM.itemDescription = ""
-                                
                             }
                         }
-                    },
-                           label: {
-                        HStack{
-                            Spacer()
-                            Text("Add To List")
-                            Spacer()
-                        }
                         .modifier(SubmitButtonModifier())
-                    })
+                    }
                 }
+                .padding(14)
+                .background(Color.darkGray.opacity(0.35))
+                .cornerRadius(14)
+
             } else {
-                Button(action: {
+
+                Button {
                     VM.addNewItem.toggle()
-                }, label: {
-                    HStack{
+                } label: {
+                    HStack {
                         Spacer()
                         Text("Add New Item")
                         Spacer()
                     }
                     .modifier(SubmitButtonModifier())
-                })
+                }
             }
         }
     }
-    var button: some View {
-        VStack{
-            Button(action: {
-                if let currentCompany = masterDataManager.currentCompany {
-                    VM.submitNewTaskGroup(companyId: currentCompany.id)
-                }
-            }, label: {
-                HStack{
-                    Spacer()
-                    Text("Submit")
-                    Spacer()
-                }
-                .modifier(SubmitButtonModifier())
+}
+//  ✅ Submit Button (Cleaner)
+extension AddNewTaskGroup {
 
-            })
+    var button: some View {
+        Button {
+            if let currentCompany = masterDataManager.currentCompany {
+                VM.submitNewTaskGroup(companyId: currentCompany.id)
+            }
+        } label: {
+            HStack {
+                Spacer()
+                Text("Submit")
+                Spacer()
+            }
+            .modifier(SubmitButtonModifier())
         }
     }
 }

@@ -4,30 +4,26 @@
 //
 //  Created by Michael Espineli on 2/3/26.
 //
+// For Route
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct ServiceStopDetailView2: View {
     init(dataService:any ProductionDataServiceProtocol,serviceStopId:String) {
         _VM = StateObject(wrappedValue: ServiceStopDetailViewModel(dataService: dataService))
-        _activeRouteVM = StateObject(wrappedValue: ActiveRouteViewModel(dataService: dataService))
         _serviceStopId = State(wrappedValue: serviceStopId)
     }
-    
-    @StateObject private var VM : ServiceStopDetailViewModel
-    @StateObject var activeRouteVM : ActiveRouteViewModel
-    
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject private var dataService: ProductionDataService
     @EnvironmentObject private var navigationManager : NavigationStateManager
-
     @EnvironmentObject private var vm: MobileDailyRouteDisplayViewModel
-    @State var serviceStopId: String
-
-    @State var opStatus:ServiceStopOperationStatus?
-
-    @State private var isSaving = false
     
+    @StateObject private var VM : ServiceStopDetailViewModel
+    
+
+    @State var serviceStopId: String
+    @State var opStatus:ServiceStopOperationStatus?
+    @State private var isSaving = false
     @State var showSkipReason:Bool = false
     @State var skipReason:String = ""
     @State var expandScreenSelector:Bool = false
@@ -48,9 +44,7 @@ struct ServiceStopDetailView2: View {
     @State var dropDropImages:[DripDropImage] = []
     @State var title:String = ""
 
-    private var serviceStop: ServiceStop? {
-        vm.serviceStopList.first { $0.id == serviceStopId }
-    }
+ 
 //Recap Variables
     @State var showPhotoSelectionOptions:Bool = false
     @State var pickerType:photoPickerType? = nil
@@ -58,27 +52,30 @@ struct ServiceStopDetailView2: View {
     @State var selectedImage:UIImage? = nil
     @State var images:[UIImage] = []
     @State private var selectedTab = "Water"
-
+    
+    private var serviceStop: ServiceStop? {
+        vm.serviceStopList.first { $0.id == serviceStopId }
+    }
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack(spacing: 0){
                 if let stop = serviceStop {
                     TabView(selection: $selectedTab) {
-                        ServiceStopInfoView( serviceStop: stop, dataService: dataService)
+                        ServiceStopInfoView(dataService: dataService, serviceStopId: serviceStopId)
                              .tabItem {
                                  Image(systemName: "info.circle")
                                  Text("Info")
                              }
                              .tag("Info")
-                        ServiceStopTaskView(dataService: dataService,taskList:$VM.taskList, serviceStop: stop)
+                        ServiceStopTaskView(dataService: dataService,taskList:$VM.taskList, serviceStopId: serviceStopId)
                              .tabItem {
                                  Image(systemName: "chart.bar.doc.horizontal")
                                  Text("Tasks")
                              }
                              .tag("Tasks")
 
-                        ServiceStopUtilityView(serviceStop:stop,stopData: $stopData)
+                        ServiceStopUtilityView(stopData: $stopData,serviceStopId:serviceStopId)
                              .tabItem {
                                  Image(systemName: "spigot.fill")
                                  Text("Water")
@@ -111,32 +108,42 @@ struct ServiceStopDetailView2: View {
             }
         }
         .task {
-            
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user, let serviceStop {
                 title = serviceStop.customerName
-
                 do {
-    
                     try await VM.onInitalLoad(companyId: company.id,  serviceStop: serviceStop, userId: user.id)
-
-                    if let receivedStopData = VM.stopData {
-                        stopData = receivedStopData
+                    if let bodyOfWater = VM.selectedBOW {
+                        stopData = VM.serviceLocationStopData.first(where: { $0.serviceLocationId == serviceStop.serviceLocationId }) ?? StopData(
+                            id: UUID().uuidString,
+                            date: serviceStop.serviceDate,
+                            serviceStopId: serviceStop.id,
+                            readings: [],
+                            dosages: [],
+                            observation: [],
+                            bodyOfWaterId: bodyOfWater.id,
+                            customerId: serviceStop.customerId,
+                            serviceLocationId: serviceStop.serviceLocationId,
+                            userId: user.id,
+                            equipmentMeasurements: []
+                        )
+                    } else {
+                        print("[ServiceStopDetailView][task] No Bodies Of Water")
                     }
                 } catch {
-                    print("Error Getting Service stop")
+                    print("[ServiceStopDetailView][task]Error Getting Service stop")
                     print(error)
                 }
             }
         }
         .onChange(of: stopData, perform: { datum in
             Task{
-                print("Change in Stop Data")
+                print("[ServiceStopDetailView][onChange:stopData]Change in Stop Data")
                 if let comapny = masterDataManager.currentCompany, let serviceStop {
                     do {
                         try await VM.updateStopData(companyId: comapny.id,serviceStop: serviceStop, stopData: stopData)
                         print("[ServiceStopDetailView][onChange:stopData] Updated")
                     } catch {
-                        print("Failed to update Stop Data")
+                        print("[ServiceStopDetailView][onChange:stopData] Failed to update Stop Data")
                         print(error)
                     }
                 }
@@ -144,12 +151,13 @@ struct ServiceStopDetailView2: View {
         })
         .onChange(of: VM.selectedDripDropPhotos, perform: { photo in
             if let currentCompany = masterDataManager.currentCompany, let serviceStop {
-                if serviceStop.otherCompany && serviceStop.contractedCompanyId != "" {
-                    VM.updatePhotoUrl(companyId: serviceStop.contractedCompanyId, serviceStopId: serviceStop.id)
-                }
+//                if serviceStop.otherCompany && serviceStop.contractedCompanyId != "" {
+//                    VM.updatePhotoUrl(companyId: serviceStop.contractedCompanyId, serviceStopId: serviceStop.id)
+//                }
                 VM.updatePhotoUrl(companyId: currentCompany.id, serviceStopId: serviceStop.id)
 
             }
+            
         })
         .alert("Provide skip reason", isPresented: $showSkipReason) {
             TextField("reason", text: $skipReason)
@@ -500,8 +508,46 @@ extension ServiceStopDetailView2 {
                 .padding(.horizontal,16)
                 .background(Color.darkGray.opacity(0.5))
             }
+            .disabled(vm.activeRoute?.status != .inProgress)
+            .disabled(serviceStop?.startTime == nil)
+            if let activeRoute = vm.activeRoute {
+                if activeRoute.status == .didNotStart || activeRoute.status == .onBreak || activeRoute.status == .traveling || activeRoute.status == .finished {
+                    Button(action: {
+                        vm.startActiveRoute(companyId: masterDataManager.currentCompany?.id, companyName: masterDataManager.currentCompany?.name, user: masterDataManager.user)
+                    }, label: {
+                        Text("Start Route to Continue")
+                            .font(.caption2)
+                            .bold()
+                            .padding(6)
+                            .background(Color.orange.opacity(0.8))
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
+                            .padding()
+                            .accessibilityHidden(true)
+                        
+                    })
+                } else {
+                    if let serviceStop {
+                        if serviceStop.startTime == nil {
+                            Button(action: {
+                                vm.startServiceStop(companyId: masterDataManager.currentCompany?.id, serviceStopId:serviceStopId)
+                            }, label: {
+                                Text("Start Service Stop To Continue")
+                                    .font(.caption2)
+                                    .bold()
+                                    .padding(6)
+                                    .background(Color.orange.opacity(0.5))
+                                    .foregroundColor(.white)
+                                    .clipShape(Capsule())
+                                    .padding()
+                                    .accessibilityHidden(true)
+                                
+                            })
+                        }
+                    }
+                }
+            }
         }
-
     }
     var finalButtons: some View {
         HStack{
@@ -653,12 +699,6 @@ extension ServiceStopDetailView2 {
                                 .font(.headline)
                                 .frame(width: 60)
                             ChemDosageRecap(dataService: dataService, templates: VM.dosageTemplates, BOW: BOW)
-                        }
-                        Divider()
-                        VStack{
-                            ForEach(VM.BOWEquipmentDick[BOW] ?? []){ equipment in
-                                EquipmentRecapCardView(equipment: equipment, equipmentMeasurments: VM.EquipmentReadings[equipment])
-                            }
                         }
                         Divider()
                     }

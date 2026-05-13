@@ -25,7 +25,7 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
         id: "",
         tech: "",
         techId: "",
-        day: "",
+        day: .monday,
         order: [],
         description: ""
     )
@@ -33,7 +33,7 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
     @Published  var customerSearch:String = ""
     @Published var showAlert:Bool = false
     @Published var alertMessage:String = "Error"
-    @Published var selectedDay:String = ""
+    @Published var selectedDay:DaysOfWeek = .monday
     @Published var startDate:Date = Date()
     @Published var endDate:Date = Date()
     @Published var customEvery:Int = 1
@@ -113,7 +113,8 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     //Arrays
     @Published var listOfRecurringStops:[RecurringServiceStop] = []
@@ -157,7 +158,7 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
                     companyId: companyId,
                     recurringServiceStopId: RSS.recurringServiceStopId
                 )
-                print("Received Recurring Service Stop For \(recurringServiceStop.customerName) on \(recurringServiceStop.daysOfWeek)")
+                print("Received Recurring Service Stop For \(recurringServiceStop.customerName) on \(recurringServiceStop.day)")
 
                 listOfRSS.append(recurringServiceStop)
             }
@@ -207,11 +208,11 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
                                                          endDate: endDate,
                                                          noEndDate: noEndDate,
                                                          frequency: frequency,
-                                                         daysOfWeek: selectedDay,
+                                                         day: selectedDay,
                                                          description: description,
                                                          lastCreated: Date(),
                                                          serviceLocationId: selectedLocation.id,
-                                                         estimatedTime: "15",
+                                                         estimatedTime: selectedLocation.estimatedTime ?? 0,
                                                         otherCompany: false,
                                                         laborContractId: "",
                                                         contractedCompanyId: ""))
@@ -323,9 +324,9 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
                     recurringServiceStop: RecurringServiceStop(
                         id: UUID().uuidString,
                         internalId: RSS.internalId,
-                        type: selectedJobTemplate.name,
-                        typeId: selectedJobTemplate.id,
-                        typeImage: selectedJobTemplate.typeImage ?? "bubbles.and.sparkles.fill",
+                        type: "",
+                        typeId: "",
+                        typeImage: "bubbles.and.sparkles.fill",
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,
@@ -336,11 +337,11 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
                         endDate:endDate,
                         noEndDate: noEndDate,
                         frequency: self.frequency,
-                        daysOfWeek: self.selectedDay,
+                        day: self.selectedDay,
                         description: self.description,
                         lastCreated: Date(),
                         serviceLocationId: RSS.serviceLocationId,
-                        estimatedTime: "",
+                        estimatedTime: 15,
                         otherCompany: false,
                         laborContractId: "",
                         contractedCompanyId: ""
@@ -356,7 +357,7 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
                 let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
                 binder.append(page)
             }
-            let recurringRouteId = self.selectedDay + self.selectedCompanyUser.id
+            let recurringRouteId = "com_rr_" + UUID().uuidString
             print("Uploading Recurring Route Id >> \(recurringRouteId)")
             let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: self.selectedCompanyUser.id, day: self.selectedDay, order: binder, description: "")
             try await dataService.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)

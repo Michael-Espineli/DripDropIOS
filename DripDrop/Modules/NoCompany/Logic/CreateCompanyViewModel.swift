@@ -15,9 +15,15 @@ import FirebaseFirestore
 
 @MainActor
 final class CreateCompanyViewModel: ObservableObject {
+    let dataService: any ProductionDataServiceProtocol
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
+    }
     // Inputs
     @Published var name: String = ""
     @Published var address: Address? = nil // Replace Address with your concrete type
+    @Published var addressQuery: String = ""
+
     @Published var phoneNumber: String = ""
     @Published var email: String = ""
     @Published var websiteURL: String = ""
@@ -30,6 +36,8 @@ final class CreateCompanyViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var didSucceed: Bool = false
     @Published var recentlySelectedCompanyId: String? = nil
+    
+    @Published var newCompany: Company? = nil // Replace Address with your concrete type
 
     // If you already have a “current user” mechanism, you can inject user id/email instead.
     private var auth: Auth { Auth.auth() }
@@ -56,9 +64,17 @@ final class CreateCompanyViewModel: ObservableObject {
         #endif
     }
 
-    func submit() async {
-        guard !name.isEmpty, address != nil else {
-            errorMessage = "Company Name and Address are required."
+    func submit(dbUser:DBUser?) async {
+        guard let dbUser else {
+            errorMessage = "Company Name is required."
+            return
+        }
+        guard !name.isEmpty else {
+            errorMessage = "Company Name is required."
+            return
+        }
+        guard address != nil else {
+            errorMessage = "Address is required."
             return
         }
         guard let user = auth.currentUser else {
@@ -71,10 +87,11 @@ final class CreateCompanyViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
+            
             // Prepare payload similar to React code
             let payload: [String: Any] = [
                 "ownerId": user.uid,
-                "ownerName": user.displayName ?? "N/A",
+                "ownerName": dbUser.firstName + " " + dbUser.lastName,
                 "companyName": name,
                 "address": addressDictionary(address), // helper below
                 "email": email,
@@ -92,13 +109,13 @@ final class CreateCompanyViewModel: ObservableObject {
                   !companyId.isEmpty else {
                 throw NSError(domain: "CreateCompany", code: -1, userInfo: [NSLocalizedDescriptionKey: "Company ID not returned from function."])
             }
-
+            self.errorMessage = "Successfully Created Company"
             // Update user doc with recentlySelectedCompany
             let userDocRef = db.collection("users").document(user.uid)
             try await userDocRef.updateData(["recentlySelectedCompany": companyId])
-
             self.recentlySelectedCompanyId = companyId
             self.didSucceed = true
+            
         } catch {
             self.errorMessage = "Failed to create company. Please try again."
             print("Function call error: \(error)")
@@ -110,12 +127,10 @@ final class CreateCompanyViewModel: ObservableObject {
         guard let address else { return [:] }
         // Replace with your actual fields
         return [
-            "line1": address.line1,
-            "line2": address.line2 ?? "",
+            "line1": address.streetAddress,
             "city": address.city,
             "state": address.state,
-            "postalCode": address.postalCode,
-            "country": address.country
+            "postalCode": address.zip,
         ]
     }
 
@@ -123,6 +138,18 @@ final class CreateCompanyViewModel: ObservableObject {
         input.split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+    }
+    func updateRecentlySelectedCompany(user:DBUser,companyId:String){
+        Task{
+            do {
+                print("  [CreateNewCompanyViewModel][updateRecentlySelectedCompany] updateRecentlySelectedCompany")
+                try await dataService.updateUserRecentlySelectedCompany(user: user, recentlySelectedCompanyId: companyId)
+                self.newCompany = try await dataService.getCompany(companyId: companyId)
+                
+            } catch {
+                print("  [CreateNewCompanyViewModel][updateRecentlySelectedCompany] Error \(error)")
+            }
+        }
     }
 }
 

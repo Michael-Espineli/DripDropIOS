@@ -120,14 +120,14 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     
     @Published var description:String = "description"
     @Published var estimatedTime:String = "15"
     @Published var frequency:LaborContractFrequency = .daily
-    @Published var days:[String] = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-    @Published var selectedDays:[String] = []
+    @Published var selectedDay:DaysOfWeek? = nil
     @Published var jobType:JobTemplate = JobTemplate(id: "",
                                                  name: "Job Template",
                                                  type: "",
@@ -178,35 +178,28 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
             return
         }
         if self.selectedRecurringWork.timesPerFrequency == selectedRecurringWork.timesPerFrequencySetUp {
-            print("selectedRecurringWork timesPerFrequency Equals timesPerFrequencySetUp")
+            print("  [GenerateRouteFromLaborContractViewModel][generateRecurringStopFromRecurringWork] selectedRecurringWork timesPerFrequency Equals timesPerFrequencySetUp")
 
             return
         }
          let index = self.laborContractRecurringWorkList.firstIndex(where: {$0.id == self.selectedRecurringWork.id})
         if let index {
-            let times = selectedRecurringWork.timesPerFrequencySetUp + self.selectedDays.count
-            var routeSetUp = false
-            if times == selectedRecurringWork.timesPerFrequency {
-                routeSetUp = true
-            }
-            print("timesPerFrequency \(selectedRecurringWork.timesPerFrequency)")
-            print("timesPerFrequencySetUp \(selectedRecurringWork.timesPerFrequencySetUp)")
-
-            print("times \(times)")
-            //Update Labor Contract
-            print("timesPerFrequencySetUp \(self.selectedRecurringWork)")
-
-            var recurrignServiceStopIdList:[IdInfo] = []
-            for day in self.selectedDays {
+            if let selectedDay {
+                print("  [GenerateRouteFromLaborContractViewModel][generateRecurringStopFromRecurringWork] timesPerFrequency \(selectedRecurringWork.timesPerFrequency)")
+                print("  [GenerateRouteFromLaborContractViewModel][generateRecurringStopFromRecurringWork] timesPerFrequencySetUp \(selectedRecurringWork.timesPerFrequencySetUp)")
+                print("  [GenerateRouteFromLaborContractViewModel][generateRecurringStopFromRecurringWork] timesPerFrequencySetUp \(self.selectedRecurringWork)")
+                
+                var recurrignServiceStopIdList:[IdInfo] = []
                 if self.selectedRecurringWork.customerId != "" || self.selectedRecurringWork.serviceLocationId != "" || self.selectedLaborContract.senderId != ""{
                     self.location = try await dataService.getServiceLocationById(companyId: self.selectedLaborContract.senderId, locationId: self.selectedRecurringWork.serviceLocationId)
                 } else {
-                    print("self.selectedRecurringWork.customerId \(self.selectedRecurringWork.customerId)")
-                    print("self.selectedRecurringWork.serviceLocationId \(self.selectedRecurringWork.serviceLocationId)")
-                    print("self.selectedLaborContract.senderId \(self.selectedLaborContract.senderId)")
-
+                    print("  [GenerateRouteFromLaborContractViewModel][generateRecurringStopFromRecurringWork] self.selectedRecurringWork.customerId \(self.selectedRecurringWork.customerId)")
+                    print("  [GenerateRouteFromLaborContractViewModel][generateRecurringStopFromRecurringWork] self.selectedRecurringWork.serviceLocationId \(self.selectedRecurringWork.serviceLocationId)")
+                    print("  [GenerateRouteFromLaborContractViewModel][generateRecurringStopFromRecurringWork] self.selectedLaborContract.senderId \(self.selectedLaborContract.senderId)")
+                    
                 }
-                //Add Recurring Service Stop to Receiving Company
+                    //Add Recurring Service Stop to Receiving Company
+                guard let estimatedTimeInt = Int(estimatedTime) else {return }
                 let rssCount = try await dataService.getRecurringServiceStopCount(companyId: companyId)
                 let internalRSSID = "RSS" + String(rssCount)
                 let RSSID = try await addNewRecurringServiceStopFromLaborContractHelper(
@@ -227,11 +220,11 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
                         endDate: self.endDate,
                         noEndDate: self.noEndDate,
                         frequency: self.selectedRecurringWork.frequency,
-                        daysOfWeek: day,
+                        day: selectedDay,
                         description: self.description,
                         lastCreated: Date(),
                         serviceLocationId: self.selectedRecurringWork.serviceLocationId,
-                        estimatedTime: self.estimatedTime,
+                        estimatedTime: estimatedTimeInt,
                         otherCompany: true,
                         laborContractId: self.selectedLaborContract.id,
                         contractedCompanyId: self.selectedLaborContract.senderId,
@@ -245,34 +238,35 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
             }
             
             //Create New Labor Contract Recurring Work
-            let newWorkReceivingCompany = LaborContractRecurringWork(
-                id: selectedRecurringWork.id,
-                customerId: selectedRecurringWork.customerId,
-                customerName: selectedRecurringWork.customerName,
-                serviceLocationId: selectedRecurringWork.serviceLocationId,
-                serviceLocationName: selectedRecurringWork.serviceLocationName,
-                jobTemplateId: selectedRecurringWork.jobTemplateId,
-                jobTemplateName: selectedRecurringWork.jobTemplateName,
-                rate: selectedRecurringWork.rate,
-                laborType: selectedRecurringWork.laborType,
-                frequency: selectedRecurringWork.frequency,
-                timesPerFrequency: selectedRecurringWork.timesPerFrequency,
-                timesPerFrequencySetUp: times,
-                routeSetUp: routeSetUp,
-                recurringServiceStopIdList: recurrignServiceStopIdList,
-                isActive: true,
-                lastBilled: Date()
-            )
-            try await dataService.updateLaborContractIsActive(contractId: selectedLaborContract.id, isActive: true)
-            //Upload to Receiver database
-            try await dataService.addLaborContractRecurringWork(companyId: companyId, laborContractId: self.selectedLaborContract.id, laborContractRecurringWork: newWorkReceivingCompany)
-            
-            //Upload to Sender database
-            try await dataService.addLaborContractRecurringWork(companyId: self.selectedLaborContract.senderId, laborContractId: self.selectedLaborContract.id, laborContractRecurringWork: newWorkReceivingCompany)
-
-            self.laborContractRecurringWorkList[index] = newWorkReceivingCompany
-            
-            self.selectedRecurringWork = newWorkReceivingCompany
+            #warning("Fix this, if you want to using Labor Contract Recurring Work")
+//            let newWorkReceivingCompany = LaborContractRecurringWork(
+//                id: selectedRecurringWork.id,
+//                customerId: selectedRecurringWork.customerId,
+//                customerName: selectedRecurringWork.customerName,
+//                serviceLocationId: selectedRecurringWork.serviceLocationId,
+//                serviceLocationName: selectedRecurringWork.serviceLocationName,
+//                jobTemplateId: selectedRecurringWork.jobTemplateId,
+//                jobTemplateName: selectedRecurringWork.jobTemplateName,
+//                rate: selectedRecurringWork.rate,
+//                laborType: selectedRecurringWork.laborType,
+//                frequency: selectedRecurringWork.frequency,
+//                timesPerFrequency: selectedRecurringWork.timesPerFrequency,
+//                timesPerFrequencySetUp: 1,
+//                routeSetUp: routeSetUp,
+//                recurringServiceStopIdList: recurrignServiceStopIdList,
+//                isActive: true,
+//                lastBilled: Date()
+//            )
+//            try await dataService.updateLaborContractIsActive(contractId: selectedLaborContract.id, isActive: true)
+//            //Upload to Receiver database
+//            try await dataService.addLaborContractRecurringWork(companyId: companyId, laborContractId: self.selectedLaborContract.id, laborContractRecurringWork: newWorkReceivingCompany)
+//            
+//            //Upload to Sender database
+//            try await dataService.addLaborContractRecurringWork(companyId: self.selectedLaborContract.senderId, laborContractId: self.selectedLaborContract.id, laborContractRecurringWork: newWorkReceivingCompany)
+//
+//            self.laborContractRecurringWorkList[index] = newWorkReceivingCompany
+//            
+//            self.selectedRecurringWork = newWorkReceivingCompany
         }
     }
     func addNewRecurringServiceStopFromLaborContractHelper(companyId:String,recurringServiceStop:RecurringServiceStop,laborContract:ReccuringLaborContract) async throws ->(String?) {        print("addNewRecurringServiceStop - [DataService]")
@@ -361,7 +355,7 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
             }
             let daysBetween = Calendar.current.dateComponents([.day], from: functionalStartDate, to: functionalEndDate).day!
             print("Creating standard Recurring service stop on ")
-            print("Day \(recurringServiceStop.daysOfWeek)")
+            print("Day \(recurringServiceStop.day.rawValue)")
             print("\(daysBetween) Days Between")
             
             while counter < daysBetween {
@@ -370,53 +364,16 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
                 
                 print("\(counter) / \(daysBetween)")
                 var pushDate = Date()
-                let startDayOfWeek = String(dateDisplayFornmatter.string(from:startDate))
+                let startDayOfWeek = DaysOfWeek(rawValue:String(dateDisplayFornmatter.string(from:startDate)))
                 //Check if the start day is the day of the week you would like to be adding.
-                if recurringServiceStop.daysOfWeek.contains(startDayOfWeek) {
+                if recurringServiceStop.day == startDayOfWeek {
                     pushDate = Calendar.current.date(byAdding: .day, value: counter, to: startDate)!
                 } else {
                     //Get the actual start Day
                         
-                        var serviceDayOfWeekAsNumber = 0
-                        switch recurringServiceStop.daysOfWeek {
-                        case "Sunday":
-                            serviceDayOfWeekAsNumber = 1
-                        case "Monday":
-                            serviceDayOfWeekAsNumber = 2
-                        case "Tuesday":
-                            serviceDayOfWeekAsNumber = 3
-                        case "Wednesday":
-                            serviceDayOfWeekAsNumber = 4
-                        case "Thursday":
-                            serviceDayOfWeekAsNumber = 5
-                        case "Friday":
-                            serviceDayOfWeekAsNumber = 6
-                        case "Saturday":
-                            serviceDayOfWeekAsNumber = 7
-                        default:
-                            print("Error No days of Week Selected")
-                            throw FireBasePublish.unableToPublish
-                        }
-                        var startDayOfWeekAsNumber = 0  //This ONly Works For Monday
-                        switch dateFormatter.string(from:startDate) {
-                        case "Sunday":
-                            startDayOfWeekAsNumber = 1
-                        case "Monday":
-                            startDayOfWeekAsNumber = 2
-                        case "Tuesday":
-                            startDayOfWeekAsNumber = 3
-                        case "Wednesday":
-                            startDayOfWeekAsNumber = 4
-                        case "Thursday":
-                            startDayOfWeekAsNumber = 5
-                        case "Friday":
-                            startDayOfWeekAsNumber = 6
-                        case "Saturday":
-                            startDayOfWeekAsNumber = 7
-                        default:
-                            print("Error No days of Week Selected For Start Date")
-                            throw FireBasePublish.unableToPublish
-                        }
+                    var serviceDayOfWeekAsNumber = recurringServiceStop.day.numberValue
+                    var startDayOfWeekAsNumber = DaysOfWeek(rawValue: dateFormatter.string(from:startDate))?.numberValue
+                    if let startDayOfWeekAsNumber {
                         let difference = serviceDayOfWeekAsNumber - startDayOfWeekAsNumber
                         print("startDayOfWeekAsNumber \(startDayOfWeekAsNumber)")
                         print("serviceDayOfWeekAsNumber \(serviceDayOfWeekAsNumber)")
@@ -428,8 +385,11 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
                         } else {
                             pushDate = Calendar.current.date(byAdding: .day, value: difference + counter + 7, to: startDate)!
                         }
+                    } else {
+                        print("    [GenerateRecurringRouteFromLaborContractViewModel][helpCreateWeeklyRecurringRoute] Should Not Be thrown")
+                    }
                 }
-                print("Create Stops on \(fullDate(date: pushDate)) - \(dateFormatter.string(from:pushDate)) - days Of Week \(recurringServiceStop.daysOfWeek)")
+                print("Create Stops on \(fullDate(date: pushDate)) - \(dateFormatter.string(from:pushDate)) - days Of Week \(recurringServiceStop.day.rawValue)")
                 
                 let senderSSId = try await SettingsManager.shared.getServiceOrderCount(companyId: senderCompanyId)
                 
@@ -574,7 +534,7 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
     func filterCustomerList() {
         //very facncy Search Bar
         if self.customerSearch != "" {
-            var filteredListOfCustomers = BasicFunctions.shared.filterCustomerList(searchTerm: self.customerSearch, customers: self.customersList)
+            let filteredListOfCustomers = BasicFunctions.shared.filterCustomerList(searchTerm: self.customerSearch, customers: self.customersList)
             self.displayCustomerList = filteredListOfCustomers
         } else {
             self.displayCustomerList = self.customersList

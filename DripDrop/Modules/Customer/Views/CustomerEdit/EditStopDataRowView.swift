@@ -73,6 +73,7 @@ struct ReadingCell: View {
                     stopData.readings.removeAll(where: {$0.templateId == readingTemplate.id})
                     stopData.readings.append(Reading(id: UUID().uuidString,
                                                      templateId: readingTemplate.id,
+                                                     universalTemplateId: "1",
                                                      dosageType: "",
                                                      name: readingTemplate.name,
                                                      amount: read,
@@ -81,6 +82,7 @@ struct ReadingCell: View {
                 } else {
                     stopData.readings.append(Reading(id: UUID().uuidString,
                                                      templateId: readingTemplate.id,
+                                                     universalTemplateId: "1",
                                                      dosageType: "",
                                                      name: readingTemplate.name,
                                                      amount: read,
@@ -120,6 +122,7 @@ struct DosageCell: View {
                     stopData.dosages.removeAll(where: {$0.templateId == dosageTemplate.id})
                     stopData.dosages.append(Dosage(id: UUID().uuidString,
                                                    templateId: dosageTemplate.id,
+                                                   universalTemplateId: "dev_id_in_need_of_a_real_one",
                                                    name: dosageTemplate.name,
                                                    amount: dose,
                                                    UOM: dosageTemplate.UOM,
@@ -129,6 +132,7 @@ struct DosageCell: View {
                 } else {
                     stopData.dosages.append(Dosage(id: UUID().uuidString,
                                                    templateId: dosageTemplate.id,
+                                                   universalTemplateId: "dev_id_in_need_of_a_real_one",
                                                    name: dosageTemplate.name,
                                                    amount: dose,
                                                    UOM: dosageTemplate.UOM,

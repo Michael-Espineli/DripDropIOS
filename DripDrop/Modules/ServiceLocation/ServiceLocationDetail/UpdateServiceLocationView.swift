@@ -55,8 +55,6 @@ struct EditServiceLocationView: View {
     @State var requiresPreText:Bool = false
     
         //Alerts
-    @State var showAlert:Bool = false
-    @State var alertMessage:String = ""
     @State var showBodyOfWaterSheet:Bool = false
     
     @State var showTreeSheet:Bool = false
@@ -69,10 +67,12 @@ struct EditServiceLocationView: View {
     @State var showChangeContact:Bool = false
     
     var body: some View {
-        VStack{
-            ScrollView{
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            ScrollView(showsIndicators: false){
+                buttons
+                Divider()
                 serviceLocationView
-                submitButton
             }
             .padding()
         }
@@ -101,8 +101,19 @@ struct EditServiceLocationView: View {
                 print("default")
             }
         }
-        .alert(alertMessage, isPresented: $showAlert) {
+        .alert(serviceLocationVM.alertMessage, isPresented: $serviceLocationVM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .alert(isPresented: $serviceLocationVM.showDeleteConfirmation) {
+            Alert(
+                title: Text("Alert"),
+                message: Text("\(serviceLocationVM.deleteConfirmationMessage)"),
+                primaryButton: .destructive(Text("Delete")) {
+                    serviceLocationVM.deleteLocation(companyId: masterDataManager.currentCompany?.id, locationId: serviceLocation.id)
+
+                },
+                secondaryButton: .cancel()
+            )
         }
         .task{
             
@@ -211,7 +222,7 @@ extension EditServiceLocationView {
                             )
                         }
                     },
-                           label: {
+                   label: {
                         Text("Recalculate")
                     })
                     .modifier(SubmitButtonModifier())
@@ -244,9 +255,6 @@ extension EditServiceLocationView {
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
                 }
-                Toggle(isOn: $preText, label: {
-                    Text("Requires Pre Text")
-                })
             }
             VStack{
                 HStack{
@@ -309,6 +317,15 @@ extension EditServiceLocationView {
                     Text("Requires Pre Text")
                         .bold(true)
                 })
+                Button(action: {
+                    serviceLocationVM.deleteConfirmationMessage = "Please, Confirm you want to delete this Equipment?"
+                    serviceLocationVM.showDeleteConfirmation.toggle()
+                }, label: {
+                    Text("Delete")
+                        .frame(maxWidth: .infinity)
+                        .modifier(DeleteButtonModifier())
+                })
+                /*
                 HStack{
                     Text("Tree")
                         .bold(true)
@@ -399,12 +416,22 @@ extension EditServiceLocationView {
                         }
                     })
                 }
+                 */
             }
             
         }
     }
-    var submitButton: some View {
-        VStack{
+    var buttons: some View {
+        HStack{
+            Button(action: {
+                dismiss()
+            }, label: {
+                Text("Cancel")
+                    .modifier(DeleteButtonModifier())
+            })
+            Spacer()
+            Text("Edit Location")
+            Spacer()
             Button(action: {
                 Task{
                     do {
@@ -461,78 +488,79 @@ extension EditServiceLocationView {
                                 backYardTree: serviceLocation.backYardTree,
                                 backYardBushes: serviceLocation.backYardBushes,
                                 backYardOther: serviceLocation.backYardOther,
-                                preText: preText
+                                preText: preText,
+                                isActive: true
                             ),
                             originalServiceLocation: serviceLocation
                         )
-                        alertMessage = "Successfully Updated"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Successfully Updated"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                         dismiss()
                     } catch ServiceLocationError.invalidCustomerId{
-                        alertMessage = "Invalid Customer Selected"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Customer Selected"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidCustomerName{
-                        alertMessage = "Invalid Customer Selected"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Customer Selected"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidNickName{
-                        alertMessage = "Please Add Nick Name"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Please Add Nick Name"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidStreetAddress{
-                        alertMessage = "Invalid Street Address"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Street Address"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidCity{
-                        alertMessage = "Invalid City"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid City"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidState{
-                        alertMessage = "Invalid State"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid State"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidZip{
-                        alertMessage = "Invalid Zip"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Zip"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidLatitude {
-                        alertMessage = "Latitude is not a Number"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Latitude is not a Number"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidLongitude {
-                        alertMessage = "Latitude is not a Number"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Latitude is not a Number"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     }catch ServiceLocationError.invalidContactName{
-                        alertMessage = "Invalid Contact Name"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Contact Name"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidContactPhoneNumber{
-                        alertMessage = "Invalid Phone Number"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Phone Number"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidContactEmail{
-                        alertMessage = "Invalid Contact Email "
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Contact Email "
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidContactNotes{
-                        alertMessage = "Invalid Contact NToes"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Contact Notes"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidGateCode{
-                        alertMessage = "Invalid Gate Code"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Gate Code"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch ServiceLocationError.invalidTime{
-                        alertMessage = "Invalid Time"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Invalid Time"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     } catch {
-                        alertMessage = "Error"
-                        print(alertMessage)
-                        showAlert = true
+                        serviceLocationVM.alertMessage = "Error"
+                        print(serviceLocationVM.alertMessage)
+                        serviceLocationVM.showAlert = true
                     }
                 }
             },

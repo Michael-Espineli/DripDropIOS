@@ -240,12 +240,10 @@ extension IndividualRepairRequestList{
                                         .foregroundColor(Color.white)
                                 )
                         }
-                        
-                        
                     })
                     .padding(10)
                     .sheet(isPresented: $showAddNewRequest, content: {
-                        AddNewRepairRequest(dataService: dataService,isPresented: $showAddNewRequest)
+                        AddNewRepairRequest(dataService: dataService,isPresented: $showAddNewRequest, customer: nil)
                     })
                     Button(action: {
                         showSearch.toggle()

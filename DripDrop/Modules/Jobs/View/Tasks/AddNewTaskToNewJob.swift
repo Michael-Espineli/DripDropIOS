@@ -123,10 +123,11 @@ extension AddNewTaskToNewJob {
                     VM.showTaskTypePicker.toggle()
                 }, label: {
                     Text(VM.selectedTaskType.rawValue)
-                        .modifier(SubmitButtonModifier())
+                        .modifier(BlueButtonModifier())
                 })
                 .sheet(isPresented: $VM.showTaskTypePicker, content: {
                     JobTaskTypePicker(taskType: $VM.selectedTaskType)
+                        .presentationDetents([.large, .medium])
                 })
             }
 

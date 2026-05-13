@@ -34,7 +34,23 @@ final class ShoppingListViewModel:ObservableObject{
 
         let id = UUID().uuidString
         //, Purchased, Installed
-        let shoppingListItem = ShoppingListItem(id: id, category: category, subCategory: subCategory, status: .needToPurchase, purchaserId: purchaserId, purchaserName: purchaserName ?? "", genericItemId: "", name: name, description: description, datePurchased: datePurchased, quantiy: quantiy, jobId: jobId,customerId: customerId ?? "",customerName: customerName ?? "")
+        let shoppingListItem = ShoppingListItem(
+            id: id,
+            category: category,
+            subCategory: subCategory,
+            status: .needToPurchase,
+            purchaserId: purchaserId,
+            purchaserName: purchaserName ?? "",
+            genericItemId: "",
+            name: name,
+            description: description,
+            datePurchased: datePurchased,
+            quantity: quantiy,
+            jobId: jobId,
+            customerId: customerId ?? "",
+            customerName: customerName ?? "",
+            invoiced: true
+        )
         try await dataService.addNewShoppingListItem(companyId: companyId, shoppingListItem: shoppingListItem)
     }
     //Read

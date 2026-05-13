@@ -149,7 +149,20 @@ final class RepairRequestViewModel:ObservableObject{
     }
     func updateRepairRequestPhotoUrls(companyId:String,repairReuqestId:String,photoUrl:String) async throws {
         try await dataService.updateRepairRequestPhotoUrl(companyId: companyId, repairRequestId: repairReuqestId, photoUrl: photoUrl)
-    }    //----------------------------------------------------
+    }
+    func updateRepairRequestNotes(companyId:String,repairRequestId:String,notes:String) {
+        Task{
+            do {
+                try await dataService.updateRepairRequestDescription(companyId: companyId, repairRequestId: repairRequestId, description: notes)
+                
+                print("[RepairRequestViewModel][updateRepairRequestNotes] Updated Notes")
+            } catch {
+                print("[RepairRequestViewModel][updateRepairRequestNotes] Error \(error)")
+            }
+        }
+//        try await dataService.updateRepairRequestPhotoUrl(companyId: companyId, repairRequestId: repairReuqestId, photoUrl: photoUrl)
+    }
+        //----------------------------------------------------
     //                    DELETE
     //----------------------------------------------------
     func deleteRepairRequest(companyId:String,repairRequestId:String) async throws{

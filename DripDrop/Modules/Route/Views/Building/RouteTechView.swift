@@ -18,7 +18,7 @@ struct RouteTechView: View {
     @StateObject var routeVM : RecurringRouteViewModel
     @StateObject var recurringStopVM : RecurringStopViewModel
     
-    init( dataService:any ProductionDataServiceProtocol,day:String,tech:CompanyUser){
+    init( dataService:any ProductionDataServiceProtocol,day: DaysOfWeek,tech: CompanyUser){
         _VM = StateObject(wrappedValue: RouteManagmentViewModel(dataService: dataService))
         _recurringStopVM = StateObject(wrappedValue: RecurringStopViewModel(dataService: dataService))
         _routeVM = StateObject(wrappedValue: RecurringRouteViewModel(dataService: dataService))
@@ -26,16 +26,16 @@ struct RouteTechView: View {
         _tech = State(wrappedValue: tech)
     }
     
-    @State var tech:CompanyUser
-    @State var day:String
-    @State var rss:RecurringRoute = RecurringRoute(id: "", tech: "", techId: "", day: "", order: [], description: "")
-    @State var showStops:Bool = false
-    @State var showRouteModifier:Bool = false
-    @State var showDelete:Bool = false
-    @State var showNewRoute:Bool = false
-    @State var showReassignRoute:Bool = false
-    @State var showAlert:Bool = false
-    @State var alertMessage:String = ""
+    @State var tech: CompanyUser
+    @State var day: DaysOfWeek
+    @State var rss: RecurringRoute = RecurringRoute(id: "", tech: "", techId: "", day: .monday, order: [], description: "")
+    @State var showStops: Bool = false
+    @State var showRouteModifier: Bool = false
+    @State var showDelete: Bool = false
+    @State var showNewRoute: Bool = false
+    @State var showReassignRoute: Bool = false
+    @State var showAlert: Bool = false
+    @State var alertMessage: String = ""
     var body: some View {
         ZStack{
             ScrollView{
@@ -104,7 +104,7 @@ struct RecurringStopDayView_Previews: PreviewProvider {
     static let dataService = MockDataService()
     static var previews: some View {
         @State var showSignInView: Bool = false
-        RouteTechView(dataService:dataService,day: "Sunday", tech: CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor))
+        RouteTechView(dataService:dataService,day: .monday, tech: CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor))
         
     }
 }
@@ -217,9 +217,9 @@ struct RecurringRouteStopView: View {
     @StateObject var recurringStopVM : RecurringStopViewModel
     init(
         dataService: any ProductionDataServiceProtocol,
-        order:recurringRouteOrder,
-        day:String,
-        tech:CompanyUser
+        order: recurringRouteOrder,
+        day: DaysOfWeek,
+        tech: CompanyUser
     ){
         _recurringStopVM = StateObject(wrappedValue: RecurringStopViewModel(dataService: dataService))
         _order = State(wrappedValue: order)
@@ -227,13 +227,13 @@ struct RecurringRouteStopView: View {
         _tech = State(wrappedValue: tech)
         
     }
-    @State var order:recurringRouteOrder
-    @State var day:String
-    @State var tech:CompanyUser
-    @State var showRecurringStopModifier:Bool = false
+    @State var order: recurringRouteOrder
+    @State var day: DaysOfWeek
+    @State var tech: CompanyUser
+    @State var showRecurringStopModifier: Bool = false
     @State var editRecurringServiceStop : Bool = false
     
-    @State var showNewRoute : Bool = false
+    @State var showNewRoute: Bool = false
     var body: some View {
         HStack{
             Image(systemName: "\(String(order.order)).square.fill")
@@ -330,7 +330,7 @@ struct RecurringRouteStopView: View {
             do {
                 try await recurringStopVM.getReucrringServiceStopById(companyId: masterDataManager.currentCompany!.id, recurringServiceStopId: order.recurringServiceStopId)
             } catch {
-                
+                print("Error \(error)")
             }
         }
     }

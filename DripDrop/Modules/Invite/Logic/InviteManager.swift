@@ -19,8 +19,8 @@ struct Invite:Identifiable,Codable,Equatable,Hashable{
     var companyId : String
     var roleId : String
     var roleName : String
-    var status : String
-    var workerType : WorkerTypeEnum
+    var status : String //accepting pending rejected
+    var workerType : WorkerTypeEnum //Employee Independent Contractor
     var currentUser : Bool
 //Date Created
 

@@ -516,7 +516,7 @@ final class ActiveRouteViewModel:ObservableObject{
         } else {
             print("Did not update startTime, it is the same")
         }
-        if let milage = Int(startMilage ?? "0") {
+        if let milage = Double(startMilage ?? "0") {
             
             if activeRoute.startMilage != milage {
                 print("Updaing Start Milage")
@@ -537,7 +537,7 @@ final class ActiveRouteViewModel:ObservableObject{
         } else {
             print("Did not update endTime, it is the same")
         }
-        if let milage = Int(endMilage ?? "0") {
+        if let milage = Double(endMilage ?? "0") {
             print("Updating End Milage")
 
             if activeRoute.endMilage != milage {

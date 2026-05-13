@@ -14,7 +14,8 @@ import Darwin
 struct Reading:Identifiable, Codable,Hashable{
     
     let id :String
-    let templateId :String //Universal Template Id
+    let templateId :String //Local Company
+    let universalTemplateId: String //Universal Template Id
     let dosageType :String
 //    let itemId :String
     let name: String?
@@ -41,7 +42,7 @@ struct ReadingsTemplate:Identifiable, Codable,Hashable{
 struct SavedReadingsTemplate:Identifiable, Codable,Hashable{ // Same as ReadingTemplate, but it universallized the Readings Themplates
     
     let id :String
-    let readingsTemplateId: String
+    let readingsTemplateId: String //Universal Template Id
     let name: String
     let amount : [String]
     let UOM : String
@@ -507,7 +508,7 @@ final class ReadingsManager {
                         let dataBaseServiceStopCount = try await SettingsManager.shared.getServiceOrderCount()
                         let id = "S" + String(dataBaseServiceStopCount)
     
-                        var serviceStop = ServiceStop(id: id, typeId: weeklyCleaningTemplate?.id ?? "1", finished: true, customerName: customerFullName, customerId: customer.id, address: customer.billingAddress, dateCreated: date, serviceDate: date, duration: 15, rate: 15, tech: user.displayName, techId: user.id, invoiced: false, description: "NA", serviceLocationId: location.id, type: weeklyCleaningTemplate?.type ?? "Weekly Cleaning")//It might get fuckie without a real serviceLocationId
+                        var serviceStop = ServiceStop(id: id, typeId: weeklyCleaningTemplate?.id ?? "1", finished: true, customerName: customerFullName, customerId: customer.id, address: customer.billingAddress, dateCreated: date, serviceDate: date, duration: 15, rate: 15, tech: user.displayName, techId: user.id, invoiced: false, description: "NA", serviceLocationId: location.id, type: weeklyCleaningTemplate?.type ?? "Weekly Cleaning")//It might get Messy without a real serviceLocationId
     
                         try await dataService.uploadServiceStop(serviceStop: serviceStop)
     

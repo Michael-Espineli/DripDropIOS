@@ -362,7 +362,7 @@ extension SideBarView {
                             Spacer()
 
                             if let user = masterDataManager.user {
-                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                Text("\(user.firstName) \(user.lastName)")
                                     .foregroundColor(Color.basicFontText)
                             }
                         }
@@ -398,7 +398,7 @@ extension SideBarView {
                             Spacer()
 
                             if let user = masterDataManager.user {
-                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                Text("\(user.firstName) \(user.lastName)")
                                     .foregroundColor(Color.basicFontText)
                             }
                         }
@@ -435,7 +435,7 @@ extension SideBarView {
                             Spacer()
 
                             if let user = masterDataManager.user {
-                                Text("\(user.firstName ?? "NA") \(user.lastName ?? "NA")")
+                                Text("\(user.firstName) \(user.lastName)")
                                     .foregroundColor(Color.basicFontText)
                                     .font(.title)
                             }

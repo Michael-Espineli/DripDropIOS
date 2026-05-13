@@ -313,7 +313,7 @@ extension SentLaborContractDetailView{
                     Spacer()
                     Button(action: {
                         //                            Task{
-                        if let currentCompany = masterDataManager.currentCompany {
+//                        if let currentCompany = masterDataManager.currentCompany {
                             
                             //                                do {
                             //                                    try await VM.sendRevisedLaborContractFromSender(companyId: company.id, laborContract: laborContract)
@@ -321,7 +321,7 @@ extension SentLaborContractDetailView{
                             //                                    print("error")
                             //                                    print(error)
                             //                                }
-                        }
+//                        }
                         //                            }
                         VM.showEditLaborContract.toggle()
                     }, label: {

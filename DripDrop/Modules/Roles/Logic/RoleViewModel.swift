@@ -39,6 +39,7 @@ final class RoleViewModel:ObservableObject{
     // CRUD           UPDATE
     //----------------------------------------------------
     func updateRole(companyId:String,role:Role) async throws {
-        try? await RoleManager.shared.updateRole(companyId: companyId, role: role)
+        try await RoleManager.shared.updateRole(companyId: companyId, role: role)
+        print("[RoleViewModel][updateRole] Updated Successfully")
     }
 }

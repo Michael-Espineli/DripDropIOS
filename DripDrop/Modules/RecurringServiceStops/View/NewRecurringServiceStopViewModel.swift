@@ -29,8 +29,7 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
     @Published var customerSearch:String = ""
     @Published var showAlert:Bool = false
     @Published var alertMessage:String = "Error"
-    @Published var days:[String] = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-    @Published var selectedDays:String = ""
+    @Published var selectedDays:DaysOfWeek = .monday
     
     @Published var customer: Customer = Customer(
         id: "",
@@ -77,7 +76,8 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     @Published var techEntity:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .employee)
     @Published var jobType:JobTemplate = JobTemplate(id: "",
@@ -210,22 +210,17 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
        
         let techFullName = techEntity.userName
         let techId = techEntity.userId
-        var pushSelectedDays = selectedDays
-
-        if selectedDays.isEmpty {
-            pushSelectedDays = "Friday"
-        }
-
+        let pushSelectedDays = selectedDays
         let pushEndDate = noEndDate
         let pushFrequency = frequency
-        let pushTimesPerFrequency = timesPerFrequency
         let pushDescription = description
-        let pushEstimatedTime = estimatedTime
-        let daysOfWeek = pushSelectedDays
+        
+        guard let pushEstimatedTime = Int(estimatedTime) else {return}
         let rssCount = try await dataService.getRecurringServiceStopCount(companyId: companyId)
-        let recurringServiceStop = try await dataService.addNewRecurringServiceStop(companyId: companyId, recurringServiceStop: RecurringServiceStop(
+        
+        _ = try await dataService.addNewRecurringServiceStop(companyId: companyId, recurringServiceStop: RecurringServiceStop(
             id: UUID().uuidString,
-            internalId: "RSS" + String(rssCount),
+            internalId: "RSS_" + String(rssCount),
             type: jobName,
             typeId: jobId ,
             typeImage: jobImage ?? "",
@@ -239,7 +234,7 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
             endDate: nil,
             noEndDate: pushEndDate,
             frequency: pushFrequency,
-            daysOfWeek: pushSelectedDays,
+            day: pushSelectedDays,
             description: pushDescription,
             lastCreated: Date(),
             serviceLocationId:locationId,

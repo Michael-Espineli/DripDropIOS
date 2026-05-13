@@ -16,12 +16,13 @@ struct PermissionSelectorView: View {
     var body: some View {
         VStack{
             HStack{
+                Text("\(permission.id))")
                 Text(permission.name)
                 Spacer()
                 Toggle("", isOn: $selected)
                 
             }
-            .padding()
+            .padding(8)
             if permission.id == "2" {
                 Text("List of Users To Manage?")
             }
@@ -39,9 +40,10 @@ struct PermissionSelectorView: View {
         .onChange(of: selected, perform: { select in
             if !loading {
                 if select {
-                    listOfPermissions.append(permission.id)
-                    print("Added Permission: \(permission.id)")
-                    
+                    if !listOfPermissions.contains(permission.id) {
+                        listOfPermissions.append(permission.id)
+                        print("Added Permission: \(permission.id)")
+                    }
                 } else {
                     listOfPermissions.removeAll(where: {$0 == permission.id})
                     print("Removed Permission: \(permission.id)")
@@ -57,7 +59,6 @@ struct PermissionSelectorView: View {
 struct PermissionSelectorView_Previews: PreviewProvider {
     static var previews: some View {
         @State var listOfPermissions:[String] = []
-
         PermissionSelectorView(permission: PermissionModel(id: "1", name: "ADD USERS", description: "",category: "User"), listOfPermissions: $listOfPermissions)
     }
 }

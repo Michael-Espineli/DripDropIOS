@@ -11,7 +11,11 @@ enum EmailConfigLabel {
 case name
 }
 struct EmailConfigurationView: View {
-    @StateObject var viewModel = EmailConfigurationViewModel(dataService: ProductionDataService())
+    init(dataService:any ProductionDataServiceProtocol){
+        _viewModel = StateObject(wrappedValue: EmailConfigurationViewModel(dataService: dataService))
+    }
+    @StateObject private var viewModel : EmailConfigurationViewModel
+
     @EnvironmentObject private var masterDataManager : MasterDataManager
     @FocusState var emailLabel:EmailConfigLabel?
 
@@ -40,6 +44,8 @@ struct EmailConfigurationView: View {
                 do {
                     try await viewModel.onLoad(companyId: currentCompany.id)
                 } catch {
+                    print("Error On Load Email Configuration")
+                    viewModel.isLoading = false
                     print(error)
                 }
             }
@@ -51,12 +57,12 @@ struct EmailConfigurationView: View {
 }
 
 #Preview {
-    EmailConfigurationView()
+    EmailConfigurationView(dataService: MockDataService())
 }
 extension EmailConfigurationView {
     var header: some View {
         VStack{
-            
+            Text("")
         }
     }
     var content: some View {

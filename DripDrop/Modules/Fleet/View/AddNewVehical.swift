@@ -9,7 +9,7 @@ import SwiftUI
 
 struct AddNewVehical: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
-
+    @Environment(\.dismiss) private var dismiss
     @StateObject var VM : FleetViewModel
 
     init(dataService:ProductionDataService){
@@ -52,6 +52,9 @@ struct AddNewVehical: View {
 extension AddNewVehical {
     var form: some View {
         VStack{
+            Text("Add New Vehicle")
+                .bold(true)
+                .padding(.top,20)
             HStack{
                 Text("Nick Name:")
                 TextField(
@@ -225,6 +228,8 @@ extension AddNewVehical {
                         plate = ""
                         miles = "0"
                         datePurchased = Date()
+                        
+                        dismiss()
                     } catch {
                         alertMessage = "Failed"
                         print(alertMessage)

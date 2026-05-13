@@ -14,34 +14,35 @@ final class UserSettingsViewModel:ObservableObject{
         self.dataService = dataService
     }
     @Published private(set) var listOfCompanies: [Company] = []
-    @Published var company:Company = Company(id: "", ownerId: "", ownerName: "", name: "", photoUrl: "", dateCreated: Date(), email: "", phoneNumber: "", verified: false, serviceZipCodes: [], services: [])
+    @Published var company:Company? = nil
     @Published var showChangeCompanyScreen:Bool = false
+    @Published var showDeleteAccountConfirmation:Bool = false
 
     func onLoad(user:DBUser,selectedCompany:Company?) async throws {
         
         let accessList = try await UserAccessManager.shared.getAllUserAvailableCompanies(userId: user.id)
-        print("Received List of \(accessList.count) Companies available to Access")
+        print("  [UserSettingsViewModel][onLoad] Received List of \(accessList.count) Companies available to Access")
         var listOfCompanies:[Company] = []
         for access in accessList{
             let company = try await CompanyManager.shared.getCompany(companyId: access.id)// access id is company id
             listOfCompanies.append(company)
         }
         self.listOfCompanies = listOfCompanies
-        if let selectedCompany {
-            company = selectedCompany
-        } else {
-            if !listOfCompanies.isEmpty {
-                company = listOfCompanies.first!
-            }
-        }
+//        if let selectedCompany {
+//            company = selectedCompany
+//        } else {
+//            if !listOfCompanies.isEmpty {
+//                company = listOfCompanies.first!
+//            }
+//        }
     }
     func updateRecentlySelectedCompanyWithCompanyId(user:DBUser,companyId:String) async throws {
         print("update Recently Selected Company")
-        try await dataService.updateUserRecentlySelectedCompany(user: user, recentlySelectedCompanyId: company.id)
+        try await dataService.updateUserRecentlySelectedCompany(user: user, recentlySelectedCompanyId: companyId)
     }
-    func updateRecentlySelectedCompany(user:DBUser) async throws {
+    func updateRecentlySelectedCompany(user:DBUser,companyId:String) async throws {
         print("updateRecentlySelectedCompany")
-        try await dataService.updateUserRecentlySelectedCompany(user: user, recentlySelectedCompanyId: company.id)
+        try await dataService.updateUserRecentlySelectedCompany(user: user, recentlySelectedCompanyId: companyId)
     }
     func resetPassword() throws {
         let user = try AuthenticationManager.shared.getAuthenticatedUser()
@@ -66,10 +67,13 @@ struct UserSettings: View {
     @StateObject private var customerVM : CustomerViewModel
     @EnvironmentObject var dataService : ProductionDataService
     @StateObject private var VM : UserSettingsViewModel
+    @StateObject private var authVM : AuthenticationViewModel
 
     init(dataService:any ProductionDataServiceProtocol){
         _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
         _VM = StateObject(wrappedValue: UserSettingsViewModel(dataService: dataService))
+        _authVM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
+
     }
     //    @StateObject private var trainingVM = TrainingViewModel()
     @StateObject private var companyVM = CompanyViewModel()
@@ -85,8 +89,6 @@ struct UserSettings: View {
             Color.listColor.ignoresSafeArea()
             ScrollView{
                 companySettings
-                Rectangle()
-                    .frame(height: 1)
                     //----------------------------------------
                     //Add Back in During Roll out of Phase 2
                     //----------------------------------------
@@ -113,21 +115,6 @@ struct UserSettings: View {
                 print("Failed to get User Access List - Page: Settings View")
             }
         }
-        .onChange(of: VM.company, perform: { changedCompany in
-            Task{
-                do {
-                    if let selectedCompany = masterDataManager.currentCompany, let user = masterDataManager.user {
-                        if changedCompany.id != "" && selectedCompany.id != changedCompany.id{
-                            masterDataManager.currentCompany = changedCompany
-                            try await VM.updateRecentlySelectedCompany(user: user)
-                        }
-                    }
-                    
-                } catch {
-                    print(error)
-                }
-            }
-        })
     }
 }
 
@@ -152,7 +139,27 @@ extension UserSettings {
                                 .modifier(ListButtonModifier())
                         }
                     })
-                    .sheet(isPresented: $VM.showChangeCompanyScreen, content: {
+                    .sheet(isPresented: $VM.showChangeCompanyScreen, onDismiss: {
+                        Task{
+                            do {
+                                if  let user = masterDataManager.user {
+                                    print("User Good")
+                                    if let changedCompany = VM.company {
+                                        print("Comapny Not Nill")
+                                        masterDataManager.currentCompany = changedCompany
+                                        try await VM.updateRecentlySelectedCompany(user: user,companyId: changedCompany.id)
+                                    } else {
+                                        print("Comapny Nill")
+                                        masterDataManager.currentCompany = nil
+                                        try await VM.updateRecentlySelectedCompany(user: user, companyId: "")
+                                        
+                                    }
+                                }
+                            } catch {
+                                print(error)
+                            }
+                        }
+                    }, content: {
                         MyCompanyPickerView(dataService: dataService, company: $VM.company)
                     })
                 }
@@ -166,6 +173,13 @@ extension UserSettings {
 //                Spacer()
 //            }
         }
+        
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.background)
+                .shadow(color: Color.darkGray.opacity(0.06), radius: 12, x: 0, y: 4)
+        )
     }
     var systemSettings: some View {
         VStack{
@@ -199,46 +213,79 @@ extension UserSettings {
     }
     var userSettings: some View {
         VStack{
-            HStack{
-                Spacer()
-                Text("User Settings")
-                    .font(.headline)
-                Spacer()
-            }
-            Button(action: {
-                print("Change Password")
-                Task{
-                    do {
-                        try VM.resetPassword()
-                    } catch {
-                        print("Error Reseting Password")
-                    }
-                }
-            }, label: {
-                HStack{
-                    Text("Reset Password")
-                }
-                .frame(maxWidth: .infinity)
-
-            })
-            
-           Divider()
-                Spacer()
+            VStack{
                 Button(action: {
-                    print("Send Password Reset Email")
-                    showChangeEmailScreen.toggle()
+                    print("Change Password")
+                    Task{
+                        do {
+                            try VM.resetPassword()
+                        } catch {
+                            print("Error Reseting Password")
+                        }
+                    }
                 }, label: {
                     HStack{
-                        
-                        Text("Change Email")
+                        Text("Reset Password")
                     }
-                        .frame(maxWidth: .infinity)
-
+                    .frame(maxWidth: .infinity)
                 })
-            .sheet(isPresented: $showChangeEmailScreen, content: {
-                ChangeUserEmailView(dataService: dataService)
-            })
-            Divider()
+                Divider()
+                
+                HStack{
+                    Text("Delete Account:")
+                    Spacer()
+                    HStack{
+                        Text("")
+                            .bold(true)
+                        Button(action: {
+                            VM.showDeleteAccountConfirmation.toggle()
+                        }, label: {
+                            Text("Confirm Delete")
+                                .foregroundColor(Color.white)
+                                .modifier(DismissButtonModifier())
+                            
+                        })
+                        .sheet(isPresented: $VM.showDeleteAccountConfirmation, onDismiss: {
+                            Task{
+                                print("Checking if User Exists")
+                                do {
+                                    print("[User Settings][On Dismiss Show Delete Account Confirmation]")
+                                    try await authVM.onInitialLoad()
+                                } catch {
+                                    print("Error Root View")
+                                    print(error)
+                                    masterDataManager.showSignInView = true
+                                }
+                            }
+                        }, content: {
+                            DeleteUserConfirmation(dataService: dataService)
+                        })
+                    }
+                }
+                    //Maybe Add later
+                    //                Spacer()
+                    //                Button(action: {
+                    //                    print("Send Password Reset Email")
+                    //                    showChangeEmailScreen.toggle()
+                    //                }, label: {
+                    //                    HStack{
+                    //
+                    //                        Text("Change Email")
+                    //                    }
+                    //                        .frame(maxWidth: .infinity)
+                    //
+                    //                })
+                    //            .sheet(isPresented: $showChangeEmailScreen, content: {
+                    //                ChangeUserEmailView(dataService: dataService)
+                    //            })
+                    //            Divider()
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.background)
+                    .shadow(color: Color.darkGray.opacity(0.06), radius: 12, x: 0, y: 4)
+            )
             Button(action: {
                 Task{
                     do {
@@ -259,7 +306,7 @@ extension UserSettings {
                 .frame(maxWidth: .infinity)
                 .modifier(DismissButtonModifier())
             })
-            .padding(.horizontal,16)
+            .padding(.vertical,16)
         }
     }
 }

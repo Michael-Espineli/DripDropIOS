@@ -35,9 +35,10 @@ struct RepairRequestListView: View {
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
-        list
+            list
             icons
         }
+        .navigationTitle("Repair Requests")
         .task {
             if let company = masterDataManager.currentCompany {
                 do {
@@ -47,15 +48,11 @@ struct RepairRequestListView: View {
                     for companyUser in companyUserVM.companyUsers {
                         techIds.append(companyUser.userId)
                     }
+                    startDate = Calendar.current.date(byAdding: .day, value: -60, to: Date())!
+                    repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
                     
                 } catch {
-                    print("Error Getting Users By status")
-                }
-            do {
-                startDate = Calendar.current.date(byAdding: .day, value: -60, to: Date())!
-                repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
-                } catch {
-                    print("Failed")
+                    print("[RepairRequestListView][task] Error: \(error)")
                 }
             }
         }
@@ -77,28 +74,28 @@ extension RepairRequestListView{
                 }, label: {
                     Text("Add First Request")
                         .modifier(AddButtonModifier())
-
                 })
             } else {
-                List(selection:$masterDataManager.selectedID){
-                ForEach(repairRequestVM.listOfContrats){ repair in
-                    if UIDevice.isIPhone {
-                        NavigationLink(value: Route.repairRequest(repairRequest: repair,dataService:dataService), label: {
-                            RepairRequestCardView(repairRequest: repair)
+                ScrollView{
+                    ForEach(repairRequestVM.listOfContrats){ repair in
+                        if UIDevice.isIPhone {
+                            NavigationLink(value: Route.repairRequest(repairRequest: repair,dataService:dataService), label: {
+                                RepairRequestCardView(repairRequest: repair)
 
-                        })
-                    } else {
-                        Button(action: {
-                            masterDataManager.selectedRepairRequest = repair
-                            navigationManager.routes.append(Route.repairRequest(repairRequest: repair,dataService:dataService))
-                        }, label: {
-                            RepairRequestCardView(repairRequest: repair)
-                        })
+                            })
+                        } else {
+                            Button(action: {
+                                masterDataManager.selectedRepairRequest = repair
+                                navigationManager.routes.append(Route.repairRequest(repairRequest: repair,dataService:dataService))
+                            }, label: {
+                                RepairRequestCardView(repairRequest: repair)
+                            })
+                        }
                     }
                 }
             }
-            }
         }
+        .padding(8)
     }
 var icons: some View{
     VStack{
@@ -109,19 +106,8 @@ var icons: some View{
                 Button(action: {
                     showFilters.toggle()
                 }, label: {
-                    ZStack{
-                        Circle()
-                            .fill(Color.orange)
-                            .frame(width: 50, height: 50)
-                            .overlay(
-                        Image(systemName: "slider.horizontal.3")
-                            .resizable()
-                            .frame(width: 25, height: 25)
-                            .foregroundColor(Color.white)
-                        )
-                    }
-                    
-                   
+                    Image(systemName: "slider.horizontal.3")
+                        .modifier(FilterIconModifer())
                 })
                 .padding(10)
                 .sheet(isPresented: $showFilters, onDismiss: {
@@ -230,36 +216,24 @@ var icons: some View{
                 Button(action: {
                     showAddNewRequest.toggle()
                 }, label: {
-                    ZStack{
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 50, height: 50)
-                            .overlay(
-                        Image(systemName: "plus")
-                            .resizable()
-                            .frame(width: 25, height: 25)
-                            .foregroundColor(Color.white)
-                        )
-                    }
-                    
-                   
+                    Image(systemName: "plus")
+                        .modifier(PlusIconModifer())
                 })
-                .padding(10)
-                .sheet(isPresented: $showAddNewRequest, content: {
-                        AddNewRepairRequest(dataService: dataService,isPresented: $showAddNewRequest)
+                .padding(8)
+                .sheet(isPresented: $showAddNewRequest,onDismiss: {
+                    if let company = masterDataManager.currentCompany {
+                        repairRequestVM.removeListenerForRepairRequest()
+                        repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
+                    }
+                }, content: {
+                    AddNewRepairRequest(dataService: dataService,isPresented: $showAddNewRequest, customer: nil)
+                        .presentationDetents([.large,.medium])
                 })
                 Button(action: {
                     showSearch.toggle()
                 }, label: {
-                    ZStack{
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 50, height: 50)
-                        Image(systemName: "magnifyingglass.circle.fill")
-                            .resizable()
-                            .frame(width: 50, height: 50)
-                            .foregroundColor(Color.blue)
-                    }
+                    Image(systemName: "magnifyingglass")
+                        .modifier(SearchIconModifer())
                 })
                 .padding(10)
             }

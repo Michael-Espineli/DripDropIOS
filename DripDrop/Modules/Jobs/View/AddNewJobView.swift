@@ -72,6 +72,7 @@ final class AddNewJobViewModel:ObservableObject{
     @Published var showAlert:Bool = false
     @Published var alertMessage:String = ""
     @Published var showBodyOfWaterSheet:Bool = false
+
     @Published var admin:CompanyUser = CompanyUser(
         id: "",
         userId: "",
@@ -130,7 +131,8 @@ final class AddNewJobViewModel:ObservableObject{
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     @Published var bodyOfWater:BodyOfWater = BodyOfWater(
         id: "",
@@ -139,14 +141,18 @@ final class AddNewJobViewModel:ObservableObject{
         material: "",
         customerId: "",
         serviceLocationId: "",
-        lastFilled: Date()
+        lastFilled: Date(),
+        isActive: true
     )
     @Published var equipment:Equipment = Equipment(
         id : "",
         name: "",
-        category: .filter,
+        type: .filter,
+        typeId: "",
         make: "",
+        makeId: "",
         model: "",
+        modelId: "",
         dateInstalled: Date(),
         status: .operational,
         needsService: true,
@@ -154,7 +160,8 @@ final class AddNewJobViewModel:ObservableObject{
         customerName: "",
         customerId: "",
         serviceLocationId: "",
-        bodyOfWaterId: "", isActive: true
+        bodyOfWaterId: "",
+        isActive: true
     )
     @Published var jobTemplate:JobTemplate = JobTemplate(id: "", name: "")
     @Published var serviceStopTemplate:ServiceStopTemplate = ServiceStopTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), color: "")
@@ -199,7 +206,7 @@ final class AddNewJobViewModel:ObservableObject{
     
     
     
-    func onLoad(companyId:String) async throws {
+    func onLoad(companyId:String,customerId:String?) async throws {
         let workOrderCount = try await dataService.getWorkOrderCount(companyId: companyId)
         self.jobId = "comp_wo_" + UUID().uuidString
         self.jobInternalId = "J" + String(workOrderCount)
@@ -220,6 +227,9 @@ final class AddNewJobViewModel:ObservableObject{
         
         self.serviceStopIds.remove("")
         self.laborContractIds.remove("")
+        if let customerId{
+            self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: customerId)
+        }
     }
     func onChangeOfCustomer(companyId:String)async throws {
         if customer.id != "" {
@@ -444,10 +454,12 @@ struct AddNewJobView: View {
 
     @StateObject var VM : AddNewJobViewModel
 
-    init(dataService:any ProductionDataServiceProtocol){
+    init(dataService:any ProductionDataServiceProtocol, customerId:String?){
         _VM = StateObject(wrappedValue: AddNewJobViewModel(dataService: dataService))
-
+        _customerId = State(wrappedValue: customerId)
     }
+    @State var customerId: String?
+
     @FocusState private var focusedField: String?
 
     var body: some View {
@@ -518,8 +530,8 @@ struct AddNewJobView: View {
                     simpleJobView
                 }
             }
-            .padding(4)
-            .padding(.horizontal,4)
+            .padding(8)
+            .padding(.vertical,4)
         }
         .navigationTitle("ID : \(VM.jobInternalId)")
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
@@ -545,12 +557,9 @@ struct AddNewJobView: View {
         .task {
             do {
                 if let company = masterDataManager.currentCompany {
-                    try await VM.onLoad(companyId: company.id)
+                    try await VM.onLoad(companyId: company.id, customerId: customerId)
                 } else {
                     print("No Companies")
-                }
-                if let selectedCustomer = masterDataManager.selectedCustomer {
-                    VM.customer = selectedCustomer
                 }
             } catch {
                 print("Error")
@@ -798,7 +807,7 @@ extension AddNewJobView {
                             .sheet(isPresented: $VM.isAddTask, onDismiss: {
                             }, content: {
                                 AddNewTaskToNewJob(dataService: dataService, jobId: VM.jobId, taskTypes: VM.taskTypes, customerId: VM.customer.id, serviceLocationId: VM.serviceLocation.id, tasks: $VM.jobTaskList,shoppingList: $VM.shoppingItemList)
-                                    .presentationDetents([.medium])
+                                    .presentationDetents([.large, .medium])
                             })
                             Spacer()
                         } else {

@@ -33,9 +33,9 @@ final class RecurringStopViewModel:ObservableObject{
     func getAllRecurringServiceStops(companyId: String) async throws{
         self.recurringServiceStops = try await dataService.getAllRecurringServiceStop(companyId: companyId)
     }
-    func getAllRecurringServiceStopsByDay(companyId:String,days:[String]) async throws{
+    func getAllRecurringServiceStopsByDay(companyId:String) async throws {
         var recurringServiceStopsList:[RecurringServiceStop] = []
-        for day in days {
+        for day in DaysOfWeek.allCases {
             let stops = try await dataService.getRecurringServiceStopsByDays(companyId: companyId, day: day)
             for stop in stops {
                 recurringServiceStopsList.append(stop)
@@ -43,9 +43,9 @@ final class RecurringStopViewModel:ObservableObject{
         }
         self.recurringServiceStops = recurringServiceStopsList
     }
-    func getAllRecurringServiceStopsByDayAndTech(companyId:String,techId:String,days:[String]) async throws{
+    func getAllRecurringServiceStopsByDayAndTech(companyId:String,techId:String) async throws{
         var recurringServiceStopsList:[RecurringServiceStop] = []
-        for day in days {
+        for day in DaysOfWeek.allCases {
             let stops = try await dataService.getRecurringServiceStopsByDayAndTech(companyId: companyId,techId: techId, day: day)
             for stop in stops {
                 recurringServiceStopsList.append(stop)

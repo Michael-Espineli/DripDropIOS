@@ -119,7 +119,7 @@ final class LaborContractViewModel:ObservableObject{
             }
         }
         self.associatedBusiness = try? await dataService.getAssociatedBusinessByCompanyId(companyId: companyId, businessCompanyId: laborContract.senderId)
-        print("Associated Business: \(associatedBusiness)")
+        print("[][]Associated Business:")
         if let invoiceRef = laborContract.invoiceRef {
             self.invoice = try await dataService.getAccountsReceivableInvoice(companyId: companyId, invoiceId: invoiceRef.id)
         }
@@ -145,7 +145,7 @@ final class LaborContractViewModel:ObservableObject{
         //Create Job
         let id = "comp_wo_" + UUID().uuidString
         let internalCount = try await dataService.getWorkOrderCount(companyId: laborContract.receiverId)
-        let internalId = "J" + String(internalCount)
+        let internalId = "WO" + String(internalCount)
         let job = Job(
             id: id,
             internalId: internalId,

@@ -30,7 +30,7 @@ struct ChemDosageRecap: View {
         VStack{
                 ForEach(templates) { template in
                     HStack{
-                        if let stopData = VM.currentStopData[BOW], let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId}) {
+                        if let stopData = VM.serviceLocationStopData.first(where: {$0.bodyOfWaterId == self.BOW.id}), let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId}) {
                             Text("\(reading.amount ?? "-")")
                             
                         } else {
@@ -40,17 +40,6 @@ struct ChemDosageRecap: View {
                 }
             
         }
-//        .task{
-//            do {
-//                if let company = masterDataManager.selectedCompany, let stop = masterDataManager.selectedServiceStops{
-//                    try await stopDataVM.getStopDataByServiceStopIdAndBodyOfWater(companyId: company.id, serviceStopId: stop.id,bodyOfWaterId: BOW.id)
-//                        print("Successfully Got Reading And Dosage Templates")
-//                }
-//            } catch {
-//                print("Throw Error")
-//            }
-//        }
-
     }
 }
 
@@ -58,7 +47,20 @@ struct ChemDosageRecap_Previews: PreviewProvider {
     static let dataService = ProductionDataService()
 
     static var previews: some View {
-        ChemDosageRecap(dataService: dataService,  templates: [], BOW: BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date()))
+        ChemDosageRecap(
+            dataService: dataService,
+            templates: [],
+            BOW: BodyOfWater(
+                id: "",
+                name: "",
+                gallons: "",
+                material: "",
+                customerId: "",
+                serviceLocationId: "",
+                lastFilled: Date(),
+                isActive: true
+            )
+        )
     }
 }
 

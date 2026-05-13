@@ -9,20 +9,21 @@ import SwiftUI
 
 struct TermsTemplateDetailView: View {
     //Init
-    init(dataService:any ProductionDataServiceProtocol,termsTemplate:TermsTemplate){
-        _VM = StateObject(wrappedValue: RecurringLaborContractViewModel(dataService: dataService))
-        _termsTemplate = State(wrappedValue: termsTemplate)
+    init(dataService:any ProductionDataServiceProtocol,termsTemplateId:String){
+        _termsTemplateId = State(wrappedValue: termsTemplateId)
     }
     
     //Objects
     @EnvironmentObject var masterDataManager: MasterDataManager
     @EnvironmentObject var dataService: ProductionDataService
-
-    @StateObject var VM : RecurringLaborContractViewModel
+    @EnvironmentObject var VM : TermsTemplateListViewModel
 
     //Variables
-    @State var termsTemplate:TermsTemplate
+    @State var termsTemplateId:String
     @State var showEditTermsTemplate:Bool = false
+    private var termsTemplate: TermsTemplate? {
+        VM.termsTemplateList.first { $0.id == termsTemplateId }
+    }
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -35,7 +36,7 @@ struct TermsTemplateDetailView: View {
         .task{
             if let selectedCompany = masterDataManager.currentCompany {
                 do {
-                    try await VM.getContractTermsForTermsTemplate(companyId: selectedCompany.id, termsTemplateId: termsTemplate.id)
+                    try await VM.getContractTermsForTermsTemplate(companyId: selectedCompany.id, termsTemplateId: termsTemplateId)
                 } catch {
                     print("Error")
                     print(error)
@@ -51,20 +52,22 @@ struct TermsTemplateDetailView: View {
 extension TermsTemplateDetailView {
     var header: some View {
         HStack{
-            Text("\(termsTemplate.name)")
-                .fontWeight(.bold)
-            Spacer()
-            Button(action: {
-                showEditTermsTemplate.toggle()
-            }, label: {
-                Text("Edit")
-                    .modifier(AddButtonModifier())
-            })
-            .sheet(isPresented: $showEditTermsTemplate, onDismiss: {
-                
-            }, content: {
-                EditTermsTemplate(dataService: dataService, termsTemplate: termsTemplate)
-            })
+            if let termsTemplate {
+                Text("\(termsTemplate.name)")
+                    .fontWeight(.bold)
+                Spacer()
+                Button(action: {
+                    showEditTermsTemplate.toggle()
+                }, label: {
+                    Text("Edit")
+                        .modifier(AddButtonModifier())
+                })
+                .sheet(isPresented: $showEditTermsTemplate, onDismiss: {
+                    
+                }, content: {
+                    EditTermsTemplate(dataService: dataService, termsTemplate: termsTemplate)
+                })
+            }
         }
     }
     var details: some View {
@@ -81,7 +84,6 @@ extension TermsTemplateDetailView {
                             .modifier(DismissButtonModifier())
                     })
                 }
-                
             }
         }
     }

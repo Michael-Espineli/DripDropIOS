@@ -65,6 +65,11 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable,Codable{
     case businesses
     case companyUser
     case taskGroups
+    case emailConfirguration
+    
+    case companyInfo
+    case manageSubscriptions
+    case stripeConfiguration
 
     var id: String{
         return self.rawValue
@@ -190,6 +195,14 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable,Codable{
             return "Task Groups"
         case .sentLaborContracts:
             return "Sent Labor Contracts"
+        case .emailConfirguration:
+            return "Email Confirguration"
+        case .companyInfo:
+            return "Company Info"
+        case .manageSubscriptions:
+            return "Manage Subscriptions"
+        case .stripeConfiguration:
+            return "Stripe Configuration"
         }
     }
     func imageName() -> String{
@@ -316,6 +329,14 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable,Codable{
         case .taskGroups:
             return "archivebox"
         case .sentLaborContracts:
+            return "archivebox"
+        case .emailConfirguration:
+            return "archivebox"
+        case .companyInfo:
+            return "archivebox"
+        case .manageSubscriptions:
+            return "archivebox"
+        case .stripeConfiguration:
             return "archivebox"
         }
     }

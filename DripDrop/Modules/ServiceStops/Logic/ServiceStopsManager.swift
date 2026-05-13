@@ -53,6 +53,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     
     let mainCompanyId : String? //Actually Optional
     let isInvoiced : Bool
+    
     init(
         id: String,
         internalId: String,

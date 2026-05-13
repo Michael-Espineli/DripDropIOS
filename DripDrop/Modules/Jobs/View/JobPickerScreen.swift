@@ -22,11 +22,15 @@ struct JobPickerScreen: View {
     
     @State var jobs:[Job] = []
     var body: some View {
-        VStack{
-            jobList
-            searchBar
+        ZStack{
+            Color.listColor.ignoresSafeArea()
+            VStack{
+                Text("Select Job")
+                jobList
+                searchBar
+            }
+            .padding()
         }
-        .padding()
         .task {
             do {
                 if let company = masterDataManager.currentCompany {
@@ -80,8 +84,6 @@ extension JobPickerScreen {
     }
     var jobList: some View {
         ScrollView{
-            Divider()
-            
             ForEach(jobs){ datum in
                 Button(action: {
                     job = datum
@@ -90,7 +92,7 @@ extension JobPickerScreen {
                     HStack{
                         Spacer()
                         
-                        Text("\(datum.id) - \(datum.customerName) - \(fullDate(date:datum.dateCreated))")
+                        Text("\(datum.internalId) - \(datum.customerName) - \(fullDate(date:datum.dateCreated))")
                         
                         Spacer()
                         if datum == job {
@@ -98,14 +100,8 @@ extension JobPickerScreen {
                                 .foregroundColor(Color.poolGreen)
                         }
                     }
-                    .padding(.horizontal,8)
-                    .padding(.vertical,3)
-                    .background(datum == job ? Color.poolBlue : Color.clear)
-                    .foregroundColor(datum == job ? Color.white : Color.black)
-                    .cornerRadius(8)
+                    .modifier(ListButtonModifier())
                 })
-                
-                Divider()
             }
         }
     }

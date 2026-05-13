@@ -41,7 +41,7 @@ extension ProductionDataService {
         repairRequestCollection(companyId: companyId).document(repairRequestId)
     }
     func RepairRequestImageRefrence(id:String)->StorageReference {
-        storage.child("repairRequest").child(id)
+        storage.child("repair-request").child(id)
     }
         //Create
     func uploadRepairRequest(companyId:String,repairRequest:RepairRequest) async throws {
@@ -99,12 +99,23 @@ extension ProductionDataService {
     func updateRepairRequestPhotoUrl(companyId:String,repairRequestId:String,photoUrl:String) async throws {
         let ref = repairRequestDocument(companyId: companyId, repairRequestId: repairRequestId)
         try await ref.updateData([
-            "photoUrls": FieldValue.arrayUnion([photoUrl])
-            
+            "photoUrls": FieldValue.arrayUnion([
+                [
+                    "id": UUID().uuidString,
+                    "description":"",
+                    "imageURL":photoUrl
+                ] as [String : Any]])
         ])
     }
     func updateRepairRequestPhotoURLs(companyId: String, repairRequest: String, photoUrls: [DripDropStoredImage]) async throws {
     }
+    func updateRepairRequestDescription(companyId:String,repairRequestId:String,description:String) async throws {
+        let ref = repairRequestDocument(companyId: companyId, repairRequestId: repairRequestId)
+        try await ref.updateData([
+            "description": description
+        ])
+    }
+
     func uploadRepairRequestImage(companyId: String,requestId:String, image: DripDropImage) async throws ->(path:String, name:String){
         guard let data = image.image.jpegData(compressionQuality: 1) else {
             throw URLError(.badURL)
@@ -116,7 +127,7 @@ extension ProductionDataService {
         meta.contentType = "image/jpeg"
         print("meta >> \(meta)")
         
-        let returnedMetaData = try await EquipmentImageRefrence(id: requestId).child(path)
+        let returnedMetaData = try await RepairRequestImageRefrence(id: requestId).child(path)
             .putDataAsync(data,metadata: meta)
         print("returnedMetaData >> \(returnedMetaData)")
         

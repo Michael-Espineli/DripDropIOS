@@ -62,9 +62,9 @@ struct RouteStopLabel_Previews: PreviewProvider {
 extension RouteStopLabel {
     var message: some View {
         VStack{
-                    Image(systemName: "message.circle.fill")
-                        .font(.title)
-                        .foregroundColor(Color.gray)
+            Image(systemName: "message.circle.fill")
+                .font(.title)
+                .foregroundColor(Color.gray)
         }
     }
     var icon: some View {

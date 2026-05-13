@@ -25,28 +25,34 @@ final class ServiceStopInfoViewModel:ObservableObject{
     }
 }
 struct ServiceStopInfoView: View{
-    @State var serviceStop: ServiceStop
+    init(dataService:any ProductionDataServiceProtocol,serviceStopId:String) {
+        _VM = StateObject(wrappedValue: ServiceStopInfoViewModel(dataService: dataService))
+        _serviceStopId = State(wrappedValue: serviceStopId )
+    }
     @EnvironmentObject var navigationManager : NavigationStateManager
-    
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService: ProductionDataService
-    
+    @EnvironmentObject private var vm: MobileDailyRouteDisplayViewModel
+
     @StateObject var VM : ServiceStopInfoViewModel
     
-    init(serviceStop:ServiceStop,dataService:any ProductionDataServiceProtocol) {
-        _serviceStop = State(wrappedValue: serviceStop )
-        _VM = StateObject(wrappedValue: ServiceStopInfoViewModel(dataService: dataService))
-    }
+    @State var serviceStopId: String
     @State var taskList : [ServiceStopTask] = []
     @State var showSheet:Bool = false
+    private var serviceStop: ServiceStop? {
+        vm.serviceStopList.first { $0.id == serviceStopId }
+    }
     var body: some View{
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
                 VStack(spacing: 8){ // Spacing was 8
                     siteInfo
-                    Rectangle()
-                        .frame(height: 1)
+                    Divider()
+                    if let serviceStop {
+                        ServiceLocationContactInfo(dataService: dataService, locationId: serviceStop.serviceLocationId)
+                    }
+                    Divider()
                     stopInfo
                 }
             }
@@ -54,7 +60,7 @@ struct ServiceStopInfoView: View{
         }
         .textSelection(.enabled)
         .task{
-            if let company = masterDataManager.currentCompany {
+            if let company = masterDataManager.currentCompany, let serviceStop {
                     //Check to see if job id is empty, Other wise do not try to find.
                 if serviceStop.jobId != "" {
                     do {
@@ -85,108 +91,103 @@ extension ServiceStopInfoView {
         }
     }
     var stopInfo: some View {
- 
         VStack(alignment:.leading){
-            HStack{
-                Spacer()
-                Text("Service Stop Information")
-                    .font(.title3)
-                Spacer()
-            }
-            
-            Text(fullDateAndDay(date:serviceStop.serviceDate))
-            HStack{
-                Text("Service Stop Id: ")
-                    .bold()
-                Spacer()
-                Text(serviceStop.internalId)
-                    .textSelection(.enabled)
-                    .modifier(BlueButtonModifier())
-            }
-            jobPageLink
-            
-            HStack{
-                Text("Tech: ")
-                    .bold()
-                Spacer()
-                Text("\(serviceStop.tech)")
-            }
-            HStack{
-                Text("Type: ")
-                    .bold()
-                Spacer()
-                Text(serviceStop.type)
-            }
-            HStack{
-                Text("Estimated Duration: ")
-                    .bold()
-                Spacer()
-                Text(displayMinAsMinAndHour(min: serviceStop.estimatedDuration))
-            }
-            HStack{
-                Text("Start Time: ")
-                    .bold()
-                Spacer()
-                if let startTime = serviceStop.startTime {
-                    Text(shortDateAndTime(date:startTime))
-
-                } else {
-                    Text("Not Started Yet")
+            if let serviceStop {
+                HStack{
+                    Spacer()
+                    Text("Service Stop Information")
+                        .font(.title3)
+                    Spacer()
                 }
-                
-            }
-            HStack{
-                Text("End Time: ")
-                    .bold()
-                Spacer()
-                if let endTime = serviceStop.endTime {
-                    Text(shortDateAndTime(date:endTime))
-
-                } else {
-                    Text("Not Started Yet")
+                Text(fullDateAndDay(date:serviceStop.serviceDate))
+                HStack{
+                    Text("Service Stop Id: ")
+                        .bold()
+                    Spacer()
+                    Text(serviceStop.internalId)
+                        .textSelection(.enabled)
+                        .modifier(BlueButtonModifier())
                 }
-                
-            }
-            HStack{
-                Text("Duration: ")
-                    .bold()
-                Spacer()
-                Text(displayMinAsMinAndHour(min: serviceStop.duration))
-                
-            }
-            HStack{
-                Text("Description: ")
-                    .bold()
-                Spacer()
+                jobPageLink
+                HStack{
+                    Text("Tech: ")
+                        .bold()
+                    Spacer()
+                    Text("\(serviceStop.tech)")
+                }
+                HStack{
+                    Text("Type: ")
+                        .bold()
+                    Spacer()
+                    Text(serviceStop.type)
+                }
+                HStack{
+                    Text("Estimated Duration: ")
+                        .bold()
+                    Spacer()
+                    Text(displayMinAsMinAndHour(min: serviceStop.estimatedDuration))
+                }
+                HStack{
+                    Text("Start Time: ")
+                        .bold()
+                    Spacer()
+                    if let startTime = serviceStop.startTime {
+                        Text(shortDateAndTime(date:startTime))
+                        if serviceStop.operationStatus != .finished {
+                            Button(action: {
+                                vm.startServiceStop(companyId: masterDataManager.currentCompany?.id, serviceStopId: serviceStop.id)
+                            }, label: {
+                                Text("Restart Time")
+                                    .modifier(BlueButtonModifier())
+                            })
+                            
+                        }
+                    } else {
+                        Text("Not Started Yet")
+                    }
+                }
+                HStack{
+                    Text("End Time: ")
+                        .bold()
+                    Spacer()
+                    if let endTime = serviceStop.endTime {
+                        Text(shortDateAndTime(date:endTime))
+                    } else {
+                        Text("Not Finished Yet")
+                    }
+                }
+                HStack{
+                    Text("Duration: ")
+                        .bold()
+                    Spacer()
+                    Text(displayMinAsMinAndHour(min: serviceStop.duration))
+                }
+                HStack{
+                    Text("Description: ")
+                        .bold()
+                    Spacer()
+                }
                 Text(serviceStop.description)
+                    .frame(maxWidth: .infinity)
+                    .modifier(PlainTextFieldModifier())
             }
-
-            Button(action: {
-                showSheet.toggle()
-            }, label: {
-                Text("Show me the money")
-                    .modifier(BlueButtonModifier())
-            })
-            .sheet(isPresented: $showSheet, content: {
-                Text("I am the Money")
-            })
         }
-        
     }
     var jobPageLink: some View {
         HStack{
-            if UIDevice.isIPhone {
-                if let job = VM.workOrder {
-                    Text("Job Id: ")
-                        .bold()
-                    Spacer()
-                    NavigationLink(value: Route.job(job: job, dataService: dataService), label: {
-                        Text("\(job.internalId)")
-                        .padding(5)
-                        .foregroundColor(Color.basicFontText)
-                        .background(Color.poolBlue)
-                        .cornerRadius(5)
-                        
+            if let serviceStop {
+                if UIDevice.isIPhone {
+                    if let job = VM.workOrder {
+                        Text("Job Id: ")
+                            .bold()
+                        Spacer()
+                        NavigationLink(value: Route.job(job: job, dataService: dataService), label: {
+                            Text("\(job.internalId)")
+                                .padding(5)
+                                .foregroundColor(Color.basicFontText)
+                                .background(Color.poolBlue)
+                                .cornerRadius(5)
+                            
                         })
                     } else {
                         Text("\(serviceStop.jobId)")
@@ -204,34 +205,24 @@ extension ServiceStopInfoView {
                             .padding(5)
                     })
                 }
+            }
         }
         
     }
     var customerPageLink: some View {
-        ZStack{
-            HStack{
-                if UIDevice.isIPhone {
-                    CustomerPageLink(
-                        serviceStop: serviceStop,
-                        job: nil
-                    )
-                } else {
-                    Button(action: {
-                        Task{
-                            if let company = masterDataManager.currentCompany {
-                                try await VM.getCustomer(companyId: company.id, customerId: serviceStop.customerId)
-                          
-                                    masterDataManager.selectedCustomer = VM.customer
-                                    masterDataManager.selectedCategory = .customers
-                                    masterDataManager.selectedID = serviceStop.customerId
-                                
-                            }
-                        }
+        HStack{
+            if let serviceStop {
+                if let role = masterDataManager.role {
+                    if role.permissionIdList.contains("10") {
+                        CustomerPageLink(
+                            serviceStop: serviceStop,
+                            job: nil
+                        )
                         
-                    }, label: {
+                    } else {
                         Text("\(serviceStop.customerName)")
-                            .modifier(BlueButtonModifier())
-                    })
+                            .modifier(ListButtonModifier())
+                    }
                 }
                 Spacer()
             }
@@ -240,30 +231,78 @@ extension ServiceStopInfoView {
     
     var addressNavigationLink : some View {
         ZStack{
-            VStack(alignment: .leading, spacing: 2){
-                Button(action: {
-                    
-                    let address = "\(serviceStop.address.streetAddress) \(serviceStop.address.city) \(serviceStop.address.state) \(serviceStop.address.zip)"
-                    
-                    let urlText = address.replacingOccurrences(of: " ", with: "?")
-                    
-                    let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
-                    
-                    if UIApplication.shared.canOpenURL(url!) {
-                        UIApplication.shared.open(url!, options: [:], completionHandler: nil)
-                    }
-                }, label: {
-                    VStack{
-                        Text("\(serviceStop.address.streetAddress)")
-                        HStack{
-                            Text("\(serviceStop.address.city)")
-                            Text("\(serviceStop.address.state)")
-                            Text("\(serviceStop.address.zip)")
+            if let serviceStop {
+                VStack(alignment: .leading, spacing: 2){
+                    Button(action: {
+                        
+                        let address = "\(serviceStop.address.streetAddress) \(serviceStop.address.city) \(serviceStop.address.state) \(serviceStop.address.zip)"
+                        
+                        let urlText = address.replacingOccurrences(of: " ", with: "?")
+                        
+                        let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
+                        
+                        if UIApplication.shared.canOpenURL(url!) {
+                            UIApplication.shared.open(url!, options: [:], completionHandler: nil)
                         }
-                    }
-                    .modifier(BlueButtonModifier())
-                })
+                    }, label: {
+                        VStack{
+                            Text("\(serviceStop.address.streetAddress)")
+                            HStack{
+                                Text("\(serviceStop.address.city)")
+                                Text("\(serviceStop.address.state)")
+                                Text("\(serviceStop.address.zip)")
+                            }
+                        }
+                        .modifier(BlueButtonModifier())
+                    })
+                }
             }
         }
+    }
+}
+@MainActor
+final class ServiceLocationContactInfoViewModel:ObservableObject{
+    let dataService:any ProductionDataServiceProtocol
+    let locationId:String
+    init(dataService:any ProductionDataServiceProtocol, locationId:String){
+        self.dataService = dataService
+        self.locationId = locationId
+    }
+    @Published private(set) var serviceLocation: ServiceLocation?
+    func onLoad(companyId:String?){
+        guard let companyId else {return}
+        Task{
+            do {
+                self.serviceLocation = try await dataService.getServiceLocationById(companyId: companyId, locationId: locationId)
+            } catch {
+                print("[ServiceLocationContactInfoViewModel][onLoad] Error \(error)")
+            }
+        }
+    }
+}
+struct ServiceLocationContactInfo: View{
+    @EnvironmentObject var navigationManager : NavigationStateManager
+    
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @EnvironmentObject var dataService: ProductionDataService
+    
+    @StateObject var VM : ServiceLocationContactInfoViewModel
+    
+    init(dataService:any ProductionDataServiceProtocol, locationId:String) {
+        _VM = StateObject(wrappedValue: ServiceLocationContactInfoViewModel(dataService: dataService, locationId: locationId))
+        _locationId = State(wrappedValue: locationId )
+    }
+    @State var locationId: String
+    @State var taskList : [ServiceStopTask] = []
+    @State var showSheet:Bool = false
+    var body: some View{
+        ZStack{
+            if let location = VM.serviceLocation {
+                ContactInfo(contact: location.mainContact)
+            }
+        }
+        .onAppear(perform: {
+            VM.onLoad(companyId: masterDataManager.currentCompany?.id)
+        })
     }
 }

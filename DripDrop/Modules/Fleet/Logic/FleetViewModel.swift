@@ -19,7 +19,16 @@ final class FleetViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
-    
+    func onLoadVehicalList(companyId:String?){
+        guard let companyId else {return}
+        dataService.addlistenerVehicals(companyId: companyId, status: "Does not do anything right now",
+        ) { [weak self] route in
+            self?.listOfVehicals = route
+        }
+    }
+    func stop() {
+        dataService.removeVehicalListener()
+    }
     //CREATE
     func createGenericItemWithValidation(companyId:String,commonName:String,specificName:String,category:String,description:String, dateUpdated:Date, sku:String, rate:Double,UOM:String,storeItems:[String],storItemIds:[String]) async throws{
     }

@@ -52,11 +52,13 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
             name: name,
             description: description,
             datePurchased: datePurchased,
-            quantiy: quantiy,
+            quantity: quantiy,
             jobId: jobId,
             customerId: customerId ?? "",
             customerName: customerName ?? "",
-            dbItemId: itemId
+            dbItemId: itemId,
+            invoiced: true
+
         )
         try await dataService.addNewShoppingListItem(companyId: companyId, shoppingListItem: shoppingListItem)
     }
@@ -89,11 +91,12 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
             name: name,
             description: description,
             datePurchased: datePurchased,
-            quantiy: quantiy,
+            quantity: quantiy,
             jobId: jobId,
             customerId: customerId ?? "",
             customerName: customerName ?? "",
-            dbItemId: itemId
+            dbItemId: itemId,
+            invoiced: true
         )
         return shoppingListItem
     }
@@ -172,11 +175,43 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
 
      @State var companyUser:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .employee)
      var body: some View {
-         VStack{
-             ScrollView{
-                 form
-                 Rectangle()
-                     .frame(height: 1)
+         ZStack {
+             Color.listColor.ignoresSafeArea()
+
+             ScrollView(showsIndicators: false) {
+                 VStack(alignment: .leading, spacing: 12) {
+
+                     // Header card
+                     HStack {
+                         VStack(alignment: .leading, spacing: 4) {
+                             Text("Add Item To Job")
+                                 .font(.title3.weight(.semibold))
+                             Text(job.internalId)
+                                 .font(.caption)
+                                 .foregroundStyle(.secondary)
+                         }
+                         Spacer()
+                         Text(fullDate(date: Date()))
+                             .font(.caption.weight(.semibold))
+                             .foregroundStyle(.secondary)
+                             .padding(.vertical, 6)
+                             .padding(.horizontal, 10)
+                             .background(Capsule().fill(Color.primary.opacity(0.08)))
+                     }
+                     .ddCard()
+
+                     // Main form card
+                     form
+                         .ddCard()
+
+                     // spacer so bottom bar doesn’t cover content
+                     Color.clear.frame(height: 80)
+                 }
+                 .padding(12)
+             }
+
+             VStack {
+                 Spacer()
                  submitButton
              }
          }
@@ -219,12 +254,11 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
 
  extension AddNewShoppingListItemToJob{
      var form: some View {
-         VStack{
-             HStack{
-                 Text(fullDate(date: Date()))
-                 Spacer()
-                 Text(job.internalId)
-             }
+         VStack(alignment: .leading, spacing: 12) {
+
+             Text("Item Details")
+                 .font(.headline.weight(.semibold))
+
              CreateShoppingListItemView(
                  itemType: $itemType,
                  name: $name,
@@ -232,46 +266,91 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
                  addNewItem: $addNewItem,
                  dataBaseItem: $dataBaseItem
              )
+
+             // If you plan to use `description` later, this keeps style consistent without changing behavior
+             // (Remove if you intentionally don’t want it on this screen.)
+             if description != "" {
+                 Divider().opacity(0.15)
+                 Text("Notes")
+                     .font(.subheadline.weight(.semibold))
+                     .foregroundStyle(.secondary)
+                 Text(description)
+                     .font(.subheadline)
+                     .foregroundStyle(.secondary)
+             }
          }
      }
 
+
      var submitButton: some View {
-         Button(action: {
-             Task{
-                 if let company = masterDataManager.currentCompany,let user = masterDataManager.user {
-                     
-                     do {
-                         let purchaserName = (user.firstName) + " " + (user.lastName)
-                         try await VM.addNewShoppingListItemWithValidation(companyId: company.id,
-                                                                                   datePurchased: Date(),
-                                                                                   category: type,
-                                                                                   subCategory: itemType,
-                                                                                   purchaserId: user.id,
-                                                                                   itemId: dataBaseItem.id,
-                                                                                   quantiy: quantity,
-                                                                                   description: description,
-                                                                                   jobId: job.id,
-                                                                                   customerId: job.customerId,
-                                                                                   customerName: job.customerName,
-                                                                                   purchaserName: purchaserName,
-                                                                                   name: name)
-                         print("Sucessfully Added")
-                         dismiss()
-                         
-                     } catch {
-                         print("Error Uploading New shopping List Item")
-                         print(error)
+         HStack {
+             Button(action: {
+                 Task {
+                     if let company = masterDataManager.currentCompany,
+                        let user = masterDataManager.user {
+
+                         do {
+                             let purchaserName = (user.firstName) + " " + (user.lastName)
+                             try await VM.addNewShoppingListItemWithValidation(
+                                 companyId: company.id,
+                                 datePurchased: Date(),
+                                 category: type,
+                                 subCategory: itemType,
+                                 purchaserId: user.id,
+                                 itemId: dataBaseItem.id,
+                                 quantiy: quantity,
+                                 description: description,
+                                 jobId: job.id,
+                                 customerId: job.customerId,
+                                 customerName: job.customerName,
+                                 purchaserName: purchaserName,
+                                 name: name
+                             )
+                             print("Sucessfully Added")
+                             dismiss()
+                         } catch {
+                             print("Error Uploading New shopping List Item")
+                             print(error)
+                         }
                      }
                  }
-             }
-         }, label: {
-             Text("Submit")
-                 .frame(maxWidth: .infinity)
-                 .modifier(SubmitButtonModifier())
-             
-         })
-         .padding(.horizontal,8)
+             }, label: {
+                 Text("Submit")
+                     .frame(maxWidth: .infinity)
+                     .modifier(SubmitButtonModifier())
+             })
+         }
+         .ddBottomBar()
      }
 
  }
 
+private extension View {
+    func ddCard() -> some View {
+        self
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
+    }
+
+    func ddBottomBar() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    Color.black.opacity(0.02)
+                }
+                .ignoresSafeArea(edges: .bottom)
+            )
+            .overlay(Divider().opacity(0.12), alignment: .top)
+    }
+}

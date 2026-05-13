@@ -182,8 +182,8 @@ final class CreateBulkInvoiceViewModel:ObservableObject{
         print("recurring Contracts \(recurringContracts.count)")
         print("contracts \(contracts.count)")
         for contract in recurringContracts {
-            var weeklyTotal: Int = 0
-            var recurringWork = try await dataService.getLaborContractRecurringWorkList(companyId: companyId, laborContractId: contract.id)
+            let weeklyTotal: Int = 0
+            let recurringWork = try await dataService.getLaborContractRecurringWorkList(companyId: companyId, laborContractId: contract.id)
             print("Received recurringWork for \(contract.id) - \(recurringWork.count)")
             for work in recurringWork {
                 //Get Service Stops Since Last Billed
@@ -198,7 +198,9 @@ final class CreateBulkInvoiceViewModel:ObservableObject{
                         print("received serviceStops for \(rssIds.id) - \(serviceStops.count)")
                         for stop in serviceStops {
                             if !stop.isInvoiced {
-                                // if stop.operationStatus == .finished {}//DEVELOPER MAYBE ADD COMPANY SETTING REQUIRE FINISH
+#warning("DEVELOPER MAYBE ADD COMPANY SETTING REQUIRE FINISH")
+
+                                // if stop.operationStatus == .finished {}
                                 total += Int(work.rate)
                                 //Update Service Stop once Sent
                             }
@@ -230,8 +232,8 @@ final class CreateBulkInvoiceViewModel:ObservableObject{
         
         var invoiceLineItems:[StripeInvoiceLineItems] = []
         for contract in selectedRecurringLaborContracts {
-            var weeklyTotal: Int = 0
-            var recurringWork = try await dataService.getLaborContractRecurringWorkList(companyId: company.id, laborContractId: contract.id)
+            let weeklyTotal: Int = 0
+            let recurringWork = try await dataService.getLaborContractRecurringWorkList(companyId: company.id, laborContractId: contract.id)
 
             for work in recurringWork {
                 //Get Service Stops Since Last Billed
@@ -246,7 +248,9 @@ final class CreateBulkInvoiceViewModel:ObservableObject{
                         var serviceStopToal = 0
                         for stop in serviceStops {
                             if !stop.isInvoiced {
-                                // if stop.operationStatus == .finished {}//DEVELOPER MAYBE ADD COMPANY SETTING REQUIRE FINISH
+#warning(" MAYBE ADD COMPANY SETTING REQUIRE FINISH")
+
+                                // if stop.operationStatus == .finished {}//
                                 total += Int(work.rate)
                                 serviceStopToal += Int(work.rate)
                                 //Update Service Stop once Sent
@@ -273,7 +277,9 @@ final class CreateBulkInvoiceViewModel:ObservableObject{
             total += contract.rate
                 //Update Billing Rate
                 //Update Labor Contract As Billed
-            //DEVELOPER MAYBE Create Individual Line Items for each Task
+            //
+#warning(" MAYBE Create Individual Line Items for each Task")
+
             let lineItem = StripeInvoiceLineItems(id: "inv_li_" + UUID().uuidString, itemId: "", description: description, induvidualCost: contract.rate, total: contract.rate)
             invoiceLineItems.append(lineItem)
             try await dataService.updateLaborContractIsInvoiced(companyId: company.id, contractId: contract.id, isInvoiced: true)
@@ -304,9 +310,10 @@ final class CreateBulkInvoiceViewModel:ObservableObject{
         
        let data = [
             "companyId" : company.id,
-           "invoiceId" : "inv_E3988AC7-4A73-41EB-915F-F59FEEA19029", //Developer Fix Later add id
+           "invoiceId" : "inv_E3988AC7-4A73-41EB-915F-F59FEEA19029",
        ]
-        
+#warning("Fix Later add id")
+
        let result = try await Functions.functions().httpsCallable("sendInvoiceEmail").call(data)
        guard let json = result.data as? [String: Any] else {
            print("json")

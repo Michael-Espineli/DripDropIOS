@@ -35,7 +35,7 @@ struct RouteManagmentView: View {
                 .padding(EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 10))
             }
         }
-        .navigationTitle("Internal Routes")
+        .navigationTitle("Routes")
         .toolbar{
             ToolbarItem{
                 Button(action: {
@@ -91,8 +91,8 @@ struct RouteManagmentView_Previews: PreviewProvider {
 extension RouteManagmentView {
     var dayThenTech: some View {
         VStack{
-            ForEach(days,id:\.self){ day in
-                RouteDayView(dataService:dataService,day: day)
+            ForEach(DaysOfWeek.allCases, id: \.self){ day in
+                RouteDayView(dataService:_dataService,day: day)
             }
         }
     }

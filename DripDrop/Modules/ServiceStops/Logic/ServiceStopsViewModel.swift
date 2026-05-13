@@ -75,6 +75,7 @@ final class ServiceStopsViewModel:ObservableObject{
                  readings: [
                     Reading(id: UUID().uuidString,
                             templateId: "275B1B22-9B5B-41CE-A824-56904C985ED8",
+                            universalTemplateId: "1",
                             dosageType: "pH",
                             name: "pH",
                             amount: "7.4",
@@ -82,6 +83,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "2A2C5C31-A3B2-4DED-9D9F-ACBCAA746642",
+                            universalTemplateId: "1",
                             dosageType: "Free Chlorine",
                             name: "Free Chlorine",
                             amount: "3",
@@ -89,6 +91,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "B7A23F7F-35D6-4182-8600-F7063EB0E4F8",
+                            universalTemplateId: "1",
                             dosageType: "Total Chlorine",
                             name: "Total Chlorine",
                             amount: "3",
@@ -98,6 +101,7 @@ final class ServiceStopsViewModel:ObservableObject{
                  dosages: [
                     Dosage(id: UUID().uuidString,
                            templateId: "C0E676E5-E9A9-4FB2-ADE3-EB1614CFAEC5",
+                           universalTemplateId: "1",
                            name: "Liquid Chlorine",
                            amount: "3",
                            UOM: nil,
@@ -109,13 +113,15 @@ final class ServiceStopsViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         StopData(id: UUID().uuidString,
                  date: Calendar.current.date(byAdding: .day, value: -14, to: Date())!,
                  serviceStopId: "serviceStop",
                  readings: [
                     Reading(id: UUID().uuidString,
                             templateId: "275B1B22-9B5B-41CE-A824-56904C985ED8",
+                            universalTemplateId: "1",
                             dosageType: "pH",
                             name: "pH",
                             amount: "7.4",
@@ -123,6 +129,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "2A2C5C31-A3B2-4DED-9D9F-ACBCAA746642",
+                            universalTemplateId: "1",
                             dosageType: "Free Chlorine",
                             name: "Free Chlorine",
                             amount: "3",
@@ -130,6 +137,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "B7A23F7F-35D6-4182-8600-F7063EB0E4F8",
+                            universalTemplateId: "1",
                             dosageType: "Total Chlorine",
                             name: "Total Chlorine",
                             amount: "3",
@@ -139,6 +147,7 @@ final class ServiceStopsViewModel:ObservableObject{
                  dosages: [
                     Dosage(id: UUID().uuidString,
                            templateId: "C0E676E5-E9A9-4FB2-ADE3-EB1614CFAEC5",
+                           universalTemplateId: "1",
                            name: "Liquid Chlorine",
                            amount: "3",
                            UOM: nil,
@@ -150,7 +159,8 @@ final class ServiceStopsViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         
         StopData(id: UUID().uuidString,
                  date: Calendar.current.date(byAdding: .day, value: -21, to: Date())!,
@@ -158,6 +168,7 @@ final class ServiceStopsViewModel:ObservableObject{
                  readings: [
                     Reading(id: UUID().uuidString,
                             templateId: "275B1B22-9B5B-41CE-A824-56904C985ED8",
+                            universalTemplateId: "1",
                             dosageType: "pH",
                             name: "pH",
                             amount: "7.4",
@@ -165,6 +176,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "2A2C5C31-A3B2-4DED-9D9F-ACBCAA746642",
+                            universalTemplateId: "1",
                             dosageType: "Free Chlorine",
                             name: "Free Chlorine",
                             amount: "3",
@@ -172,6 +184,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "B7A23F7F-35D6-4182-8600-F7063EB0E4F8",
+                            universalTemplateId: "1",
                             dosageType: "Total Chlorine",
                             name: "Total Chlorine",
                             amount: "3",
@@ -181,6 +194,7 @@ final class ServiceStopsViewModel:ObservableObject{
                  dosages: [
                     Dosage(id: UUID().uuidString,
                            templateId: "C0E676E5-E9A9-4FB2-ADE3-EB1614CFAEC5",
+                           universalTemplateId: "1",
                            name: "Liquid Chlorine",
                            amount: "3",
                            UOM: nil,
@@ -192,7 +206,8 @@ final class ServiceStopsViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         
         StopData(id: UUID().uuidString,
                  date: Calendar.current.date(byAdding: .day, value: -28, to: Date())!,
@@ -200,6 +215,7 @@ final class ServiceStopsViewModel:ObservableObject{
                  readings: [
                     Reading(id: UUID().uuidString,
                             templateId: "275B1B22-9B5B-41CE-A824-56904C985ED8",
+                            universalTemplateId: "1",
                             dosageType: "pH",
                             name: "pH",
                             amount: "7.4",
@@ -207,6 +223,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "2A2C5C31-A3B2-4DED-9D9F-ACBCAA746642",
+                            universalTemplateId: "1",
                             dosageType: "Free Chlorine",
                             name: "Free Chlorine",
                             amount: "3",
@@ -214,6 +231,7 @@ final class ServiceStopsViewModel:ObservableObject{
                             bodyOfWaterId: "bodyOfWater"),
                     Reading(id: UUID().uuidString,
                             templateId: "B7A23F7F-35D6-4182-8600-F7063EB0E4F8",
+                            universalTemplateId: "1",
                             dosageType: "Total Chlorine",
                             name: "Total Chlorine",
                             amount: "3",
@@ -223,6 +241,7 @@ final class ServiceStopsViewModel:ObservableObject{
                  dosages: [
                     Dosage(id: UUID().uuidString,
                            templateId: "C0E676E5-E9A9-4FB2-ADE3-EB1614CFAEC5",
+                           universalTemplateId: "1",
                            name: "Liquid Chlorine",
                            amount: "3",
                            UOM: nil,
@@ -234,7 +253,8 @@ final class ServiceStopsViewModel:ObservableObject{
                  bodyOfWaterId: "bodyOfWater",
                  customerId: "",
                  serviceLocationId: "",
-                 userId: ""),
+                 userId: "",
+                 equipmentMeasurements: []),
         
     ]
 
@@ -705,7 +725,7 @@ final class ServiceStopsViewModel:ObservableObject{
             
             if typesAndAmount[stop.type] == nil {
                 //Does Not have type Yet
-                print("Type Not In Dict")
+                print("  [ServiceStopsViewModel][getServiceStopSnapShot] Type Not In Dict")
                 typesAndAmount[stop.type] = 1
             } else {
 //Un wraps amount
@@ -732,7 +752,7 @@ final class ServiceStopsViewModel:ObservableObject{
     
     func updateServiceStopOperationStatus(companyId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
         
-        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: stop, operationStatus: operationStatus)
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
     }
     func updateServiceStopBillingStatus(companyId:String,stop:ServiceStop,billingStatus:ServiceStopBillingStatus) async throws {
         
@@ -1048,15 +1068,15 @@ final class ServiceStopsViewModel:ObservableObject{
         
     }
     func finishServiceStop(companyId:String,serviceStop:ServiceStop) async throws{
-        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: serviceStop, operationStatus: .finished)
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: serviceStop.id, operationStatus: .finished)
         
     }
     func skipServiceStop(companyId:String,serviceStop:ServiceStop) async throws{
-        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: serviceStop, operationStatus: .skipped)
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: serviceStop.id, operationStatus: .skipped)
 
     }
     func unfinishServiceSerop(companyId:String,serviceStop:ServiceStop) async throws{
-        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStop: serviceStop, operationStatus: .notFinished)
+        try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: serviceStop.id, operationStatus: .notFinished)
     }
     func getAllHistoryByCustomer(companyId:String,customer: Customer)async throws{
         print("Trying to get all History By Customer")
@@ -1237,7 +1257,7 @@ final class ServiceStopsViewModel:ObservableObject{
         var filteredListOfServiceStops:[ServiceStop] = []
         for ss in serviceStoplist {
             
-            let tech = ss.tech ?? "tech"
+            let tech = ss.tech
             let rSS = ss.recurringServiceStopId
             let StreetAddress = ss.address.streetAddress
             let City = ss.address.city

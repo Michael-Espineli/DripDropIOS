@@ -10,8 +10,8 @@ import SwiftUI
 struct CreateBulkInvoice: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
-    @EnvironmentObject var navigationStateManager : NavigationStateManager
-
+    @EnvironmentObject var navigationManager : NavigationStateManager
+    
     @StateObject var VM : CreateBulkInvoiceViewModel
 
     init(dataService:any ProductionDataServiceProtocol,associatedBusiness:AssociatedBusiness){
@@ -91,19 +91,19 @@ struct CreateBulkInvoice: View {
     }
 }
 
-#Preview {
-    @StateObject var masterDataManager : MasterDataManager = MasterDataManager()
-    @StateObject var dataService : ProductionDataService = ProductionDataService()
-    @StateObject var navigationStateManager : NavigationStateManager = NavigationStateManager()
-
-    CreateBulkInvoice(
-        dataService: MockDataService(),
-        associatedBusiness: MockDataService.mockAssociatedBusiness
-    )
-    .environmentObject(masterDataManager)
-    .environmentObject(dataService)
-    .environmentObject(navigationStateManager)
-}
+//#Preview {
+//    @StateObject var masterDataManager : MasterDataManager = MasterDataManager(dataService: ProductionDataService())
+//    @StateObject var dataService : ProductionDataService = ProductionDataService()
+//    @StateObject var navigationStateManager : NavigationStateManager = NavigationStateManager()
+//
+//    CreateBulkInvoice(
+//        dataService: MockDataService(),
+//        associatedBusiness: MockDataService.mockAssociatedBusiness
+//    )
+//    .environmentObject(masterDataManager)
+//    .environmentObject(dataService)
+//    .environmentObject(navigationStateManager)
+//}
 extension CreateBulkInvoice {
     var header: some View {
         VStack{
@@ -111,7 +111,7 @@ extension CreateBulkInvoice {
                 Text(associatedBusiness.companyName)
                 Spacer()
             }
- 
+
         }
         .padding(8)
         .foregroundColor(Color.poolWhite)
@@ -287,7 +287,7 @@ extension CreateBulkInvoice {
                                 
                                 try await VM.onLoad(companyId: currentCompany.id,associatedBusiness:associatedBusiness)
                                 if let invoice = VM.invoice {
-                                    navigationStateManager.push(to: Route.accountsReceivableDetail(invoice: invoice, dataService: dataService))
+                                    navigationManager.push(to: Route.accountsReceivableDetail(invoice: invoice, dataService: dataService))
                                 }
                             } catch {
                                 print(error)

@@ -41,23 +41,20 @@ final class ReassignRouteViewModel:ObservableObject{
         status: .active,
         workerType: .contractor
     )
-    @Published var selectedDay:String = ""
-    @Published var receivedDay:String = ""
+    @Published var selectedDay: DaysOfWeek = .monday
+    @Published var receivedDay: DaysOfWeek = .monday
 
     @Published var transitionDate:Date = Date()
     @Published var endDate:Date = Date()
     
     @Published var noEndDate:Bool = true
-    @Published var standardFrequencyType:String = "Weekly"
+    @Published var standardFrequencyType:EquipmentFrequency = .weekly
     
-    @Published var customMeasurmentsOfTime:String = "Daily"
+    @Published var customMeasurmentsOfTime:DripDropFrequency = .daily
     @Published var customEvery:Int = 1
     @Published var showCustomSheet:Bool = false
     @Published var showCustomerSheet:Bool = false
     @Published var showAddNewCustomer:Bool = false
-
-    @Published var days:[String] = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
-    @Published var measurementsOfTime:[String] = ["Daily","WeekDay","Weekly","Bi-Weekly","Monthly","Custom"]
 
     @Published var description:String = "description"
     @Published var estimatedTime:String = "15"
@@ -92,10 +89,7 @@ final class ReassignRouteViewModel:ObservableObject{
     func onLoad(companyId:String) async throws {
         
         self.isLoading = true
-        
-        //Get The Route based on day and companyUserId. I wonder how that will work with other Companies Contracted Work.
-        let recurringRouteId = selectedDay + receivedTechEntity.id
-        
+                
         //Recurring Route may come back optional because thye might not have a route set up yet or something of the like. The Recurring Routes are stored using the day and the DBUser ID / CompanyUser userID
         self.serviceLocations = []
         self.recurringRoute = try await dataService.getSingleRouteFromTechIdAndDay(companyId: companyId, techId: self.receivedTechEntity.userId, day: self.selectedDay)

@@ -23,13 +23,32 @@ struct MobileHome: View {
     @EnvironmentObject private var navigationManager: NavigationStateManager
     @EnvironmentObject private var masterDataManager : MasterDataManager
     @EnvironmentObject private var dataService: ProductionDataService
+    @EnvironmentObject private var masterRoleManager: MasterRoleManager
+
     @StateObject private var VM : MobileHomeViewModel
     @Environment(\.scenePhase) private var phase
+    @StateObject var termsTemplateVM : TermsTemplateListViewModel
+    @StateObject var mobileRouteVM: MobileDailyRouteDisplayViewModel
+    @StateObject var fleetVM : FleetViewModel
+    @StateObject var techListVM : TechListViewModel
+    @StateObject var routeBoardVM: RouteBoardViewModel
+    @StateObject var customerVM: CustomerListViewModel
+    @StateObject var customerProfileVM: CustomerProfileViewModel
+
     
+
     init(dataService:any ProductionDataServiceProtocol) {
         _VM = StateObject(wrappedValue: MobileHomeViewModel(dataService: dataService))
+        _mobileRouteVM = StateObject(wrappedValue: MobileDailyRouteDisplayViewModel(dataService: dataService))
+        _fleetVM = StateObject(wrappedValue: FleetViewModel(dataService: dataService))
+        _termsTemplateVM = StateObject(wrappedValue: TermsTemplateListViewModel(dataService: dataService))
+        _techListVM = StateObject(wrappedValue: TechListViewModel(dataService: dataService))
+        _routeBoardVM = StateObject(wrappedValue: RouteBoardViewModel(dataService: dataService))
+        _customerVM = StateObject(wrappedValue: CustomerListViewModel(dataService: dataService))
+        _customerProfileVM = StateObject(wrappedValue: CustomerProfileViewModel(dataService: dataService))
+
     }
-    
+
     @StateObject private var roleVM = RoleViewModel()
     @StateObject private var userVM = UserViewModel()
     @StateObject private var userAccessVM = UserAccessViewModel()
@@ -64,12 +83,19 @@ struct MobileHome: View {
                             .tabItem {
                                 Label("Settings", systemImage: "gear")
                             }
-                            .tag("Settings")
+                            .tag("Prefrences")
                     }
                 }
                 .navigationDestination(for: Route.self) { $0 }
             })
-        
+            .environmentObject(mobileRouteVM)
+            .environmentObject(fleetVM)
+            .environmentObject(termsTemplateVM)
+            .environmentObject(techListVM)
+            .environmentObject(routeBoardVM)
+            .environmentObject(customerVM)
+            .environmentObject(customerVM)
+            .environmentObject(customerProfileVM)
         .toolbar{
             ToolbarItem{
                 Button(action: {
@@ -84,11 +110,14 @@ struct MobileHome: View {
 //        .toolbarBackground(.blue)
 
         .task {
+            #warning("Please add listeners to get user access and role")
+//            masterRoleManager.start(companyId: masterDataManager.currentCompany?.id, userId: masterDataManager.user?.id)
+            
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                 do{
                     try await userAccessVM.getUserAccessCompanies(userId: user.id, companyId: company.id)
                     if let access = userAccessVM.userAccess{
-                        print("Mobile Home Access >> \(access)")
+                        print("[MobileHome][task] \(access)")
                         try await roleVM.getSpecificRole(companyId: company.id, roleId: access.roleId)
                         if let role = roleVM.role {
                             masterDataManager.role = role
@@ -99,7 +128,7 @@ struct MobileHome: View {
                         masterDataManager.showSignInView = true
                     }
                 } catch {
-                    print("Error 1 Mobile Home")
+                    print("[MobileHome][task]Error 1 Mobile Home")
                     print(error)
                     
                 }
@@ -113,7 +142,16 @@ struct MobileHome: View {
                     print(error)
                 }
             }
+             
         }
+        
+        .onChange(of: masterRoleManager.role) { role in
+            masterDataManager.role = role
+            
+        }
+        .onDisappear(perform: {
+            masterRoleManager.stop()
+        })
         .onChange(of: phase) { newPhase in
             switch newPhase {
             case .background: background()
@@ -173,53 +211,25 @@ extension MobileHome {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                header
-                ScrollView{
-                    screens
+                if masterDataManager.currentCompany == nil {
+                    NoCompanySelectedView(dataService:dataService)
+                } else {
+                    header
+                    ScrollView{
+                        screens
+                    }
+                    Spacer()
                 }
-                Spacer()
             }
         }
     }
     var header: some View {
         ZStack{
             if let role = masterDataManager.role {
-                
-                ScrollView(.vertical, showsIndicators: false){
                     HStack(spacing: 10){
-//                        NavigationLink(value: Route.profile(dataService:dataService), label: {
-//                            ZStack{
-//                                Circle()
-//                                    .fill(Color.gray)
-//                                    .frame(width:40 ,height:40)
-//                                    .overlay(
-//                                        ZStack{
-//                                            if let user = masterDataManager.user,let urlString = user.photoUrl,let url = URL(string: urlString){
-//                                                AsyncImage(url: url){ image in
-//                                                    image
-//                                                        .resizable()
-//                                                        .scaledToFill()
-//                                                        .foregroundColor(Color.basicFontText)
-//                                                        .frame(width:40 ,height:40)
-//                                                        .clipShape(Circle())
-//                                                } placeholder: {
-//                                                    Image(systemName:"person.circle")
-//                                                        .resizable()
-//                                                        .scaledToFill()
-//                                                        .foregroundColor(Color.basicFontText)
-//                                                        .frame(width:40 ,height:40)
-//                                                        .clipShape(Circle())
-//                                                }
-//                                            }
-//                                        }
-//                                    )
-//                                
-//                            }
-//                        })
                         VStack{
                             HStack{
                                 if let selectedCompany = masterDataManager.currentCompany{
-                                    
                                     Text("\(selectedCompany.name)")
                                         .bold()
                                         .fontDesign(.monospaced)
@@ -228,6 +238,8 @@ extension MobileHome {
                             }
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack{
+                                    /*
+                                     Roll Out In Update 3.1
                                     Button(action: {
                                         masterDataManager.mobileHomeScreen = .all
                                     }, label: {
@@ -235,7 +247,7 @@ extension MobileHome {
                                             HStack{
                                                 Text("Dashboard")
                                             }
-                                            .frame(minWidth: 50,maxHeight: 30)
+                                     .frame(minWidth: 50)
                                             .modifier(BlueButtonModifier())
                                             .bold()
                                         } else {
@@ -243,10 +255,11 @@ extension MobileHome {
                                                 Text("Dashboard")
                                             }
                                             
-                                            .frame(minWidth: 50,maxHeight: 30)
+                                     .frame(minWidth: 50)
                                             .modifier(ListButtonModifier())
                                         }
                                     })
+                                     */
                                     Button(action: {
                                         masterDataManager.mobileHomeScreen = .routing
                                     }, label: {
@@ -254,19 +267,17 @@ extension MobileHome {
                                             HStack{
                                                 Text("Route")
                                             }
-                                            .frame(minWidth: 50,maxHeight: 30)
-                                            .modifier(BlueButtonModifier())
+                                            .modifier(EditButtonModifier())
                                             .bold()
                                         } else {
                                             HStack{
                                                 Text("Route")
                                             }
-                                            .frame(minWidth: 50,maxHeight: 30)
                                             .modifier(ListButtonModifier())
+                                            .bold()
                                         }
                                     })
-                                    if role.permissionIdList.contains("11") {
-                                        
+                                    if role.permissionIdList.contains("0") {
                                         Button(action: {
                                             masterDataManager.mobileHomeScreen = .operations
                                         }, label: {
@@ -274,20 +285,18 @@ extension MobileHome {
                                                 HStack{
                                                     Text("Operations")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
-                                                .modifier(BlueButtonModifier())
+                                                .modifier(EditButtonModifier())
                                                 .bold()
                                             } else {
                                                 HStack{
                                                     Text("Operations")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
                                                 .modifier(ListButtonModifier())
+                                                .bold()
                                             }
                                         })
                                     }
-                                    if role.permissionIdList.contains("13") {
-                                        
+                                    if role.permissionIdList.contains("400") {
                                         Button(action: {
                                             masterDataManager.mobileHomeScreen = .sales
                                         }, label: {
@@ -295,17 +304,17 @@ extension MobileHome {
                                                 HStack{
                                                     Text("Sales")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
-                                                .modifier(BlueButtonModifier())
+                                                .modifier(EditButtonModifier())
                                                 .bold()
                                             } else {
                                                 HStack{
                                                     Text("Sales")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
                                                 .modifier(ListButtonModifier())
+                                                .bold()
                                             }
                                         })
+                                        /* Update 2.1
                                         Button(action: {
                                             masterDataManager.mobileHomeScreen = .finance
                                         }, label: {
@@ -324,28 +333,29 @@ extension MobileHome {
                                                 .modifier(ListButtonModifier())
                                             }
                                         })
+                                         */
                                     }
-                                    if role.permissionIdList.contains("7") {
+                                    if role.permissionIdList.contains("200") {
                                         Button(action: {
                                             masterDataManager.mobileHomeScreen = .managment
                                         }, label: {
                                             if masterDataManager.mobileHomeScreen == .managment {
                                                 HStack{
-                                                    Text("Manegment")
+                                                    Text("Manegement")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
-                                                .modifier(BlueButtonModifier())
+                                                .modifier(EditButtonModifier())
                                                 .bold()
                                             } else {
                                                 HStack{
-                                                    Text("Manegment")
+                                                    Text("Manegement")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
                                                 .modifier(ListButtonModifier())
+                                                .bold()
                                             }
                                         })
                                     }
-                                    if role.permissionIdList.contains("6") {
+                                    
+                                    if role.permissionIdList.contains("800") {
                                         Button(action: {
                                             masterDataManager.mobileHomeScreen = .settings
                                         }, label: {
@@ -353,20 +363,18 @@ extension MobileHome {
                                                 HStack{
                                                     Text("Company Settings")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
-                                                .modifier(BlueButtonModifier())
+                                                .modifier(EditButtonModifier())
                                                 .bold()
                                             } else {
                                                 HStack{
                                                     Text("Company Settings")
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
                                                 .modifier(ListButtonModifier())
                                             }
                                         })
                                     }
                                 
-                                    
+                                    // Also At Marketing Things
                                     
                                     //----------------------------------------
                                     //Add Back in During Roll out of Phase 2
@@ -397,9 +405,9 @@ extension MobileHome {
                                     //                                .padding(.leading,5)
                                 
                                 }
-                                .font(.footnote)
+//                                .font(.footnote)
                                 .lineLimit(1)
-                                .padding(EdgeInsets(top: 5, leading: 5, bottom: 5, trailing: 0))
+//                                .padding(EdgeInsets(top: 5, leading: 5, bottom: 5, trailing: 0))
                             }
                             .overlay(
                                 HStack{
@@ -408,17 +416,19 @@ extension MobileHome {
                                         Color.listColor.opacity(0.5),
                                         Color.clear
                                     ],
-                                                   startPoint: .leading,
-                                                   endPoint: .trailing)
-                                    .frame(width: 20)
+                                       startPoint: .leading,
+                                       endPoint: .trailing)
+                                    .frame(width: 10)
                                     Spacer()
                                 }
                             )
                         }
                     }
                     .padding(EdgeInsets(top: 0, leading: 5, bottom: 0, trailing: 0))
-                    
-                }
+                
+            }
+            else {
+                Text("No Role Selected")
             }
         }
         .frame(height: 100)
@@ -443,6 +453,9 @@ extension MobileHome {
             case .operations :
                 Operations(dataService: dataService)
                 
+            case .sales:
+                OwesMoneyView(dataService: dataService)
+                
             case .finance :
                 Finance(dataService: dataService)
                 
@@ -457,9 +470,6 @@ extension MobileHome {
                 
             case .settings:
                 CompanySettings(dataService: dataService)
-                
-            case .sales:
-                OwesMoneyView(dataService: dataService)
             }
         }
     }

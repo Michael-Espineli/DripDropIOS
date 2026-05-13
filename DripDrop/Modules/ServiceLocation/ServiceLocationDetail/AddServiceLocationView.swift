@@ -282,183 +282,201 @@ extension AddServiceLocationView {
                         .foregroundColor(Color.white)
                         .cornerRadius(8)
                 })
-                .sheet(isPresented: $addFirstBodyOfWater, content: {
-                    ZStack{
-                        Color.listColor.ignoresSafeArea()
-                        VStack{
+                .sheet(
+                    isPresented: $addFirstBodyOfWater,
+                    content: {
+                        ZStack{
+                            Color.listColor.ignoresSafeArea()
                             VStack{
-                                HStack{
-                                    Text("Name")
-                                        .bold(true)
-                                    Spacer()
-                                    TextField(
-                                        "Name",
-                                        text: $name
-                                    )
-                                    .padding(3)
-                                    .background(Color.gray.opacity(0.3))
-                                    .cornerRadius(3)
-                                }
-                                HStack{
-                                    Text("gallons")
-                                        .bold(true)
-                                    TextField(
-                                        "gallons",
-                                        text: $gallons
-                                    )
-                                    .keyboardType(.decimalPad)
-                                    .padding(3)
-                                    .background(Color.gray.opacity(0.3))
-                                    .cornerRadius(3)
-                                }
-                                HStack{
-                                    Text("Material")
-                                    Spacer()
-                                    Picker("Material", selection: $material) {
-                                        Text("Plaster").tag("Plaster")
-                                        Text("Vinyl").tag("Vinyl")
-                                        Text("Pebble").tag("Pebble")
+                                VStack{
+                                    HStack{
+                                        Text("Name")
+                                            .bold(true)
+                                        Spacer()
+                                        TextField(
+                                            "Name",
+                                            text: $name
+                                        )
+                                        .padding(3)
+                                        .background(Color.gray.opacity(0.3))
+                                        .cornerRadius(3)
+                                    }
+                                    HStack{
+                                        Text("gallons")
+                                            .bold(true)
+                                        TextField(
+                                            "gallons",
+                                            text: $gallons
+                                        )
+                                        .keyboardType(.decimalPad)
+                                        .padding(3)
+                                        .background(Color.gray.opacity(0.3))
+                                        .cornerRadius(3)
+                                    }
+                                    HStack{
+                                        Text("Material")
+                                        Spacer()
+                                        Picker("Material", selection: $material) {
+                                            Text("Plaster").tag("Plaster")
+                                            Text("Vinyl").tag("Vinyl")
+                                            Text("Pebble").tag("Pebble")
+                                        }
+                                    }
+                                    DatePicker("Last Filled", selection: $lastFilled, in: ...Date(),displayedComponents: .date)
+                                    
+                                    HStack{
+                                        Text("Shape")
+                                        Spacer()
+                                        Picker("Shape", selection: $shape) {
+                                            Text("Square").tag("Square")
+                                            Text("Rectangle").tag("Rectangle")
+                                            Text("Circle").tag("Circle")
+                                            Text("Roman").tag("Roman")
+                                        }
+                                    }
+                                    HStack{
+                                        Spacer()
+                                        Button(action: {
+                                            showCustomMeasurments.toggle()
+                                        }, label: {
+                                            Text("Measurments")
+                                                .padding(8)
+                                                .background(Color.poolBlue)
+                                                .cornerRadius(8)
+                                                .foregroundColor(Color.white)
+                                        })
+                                    }
+                                    if showCustomMeasurments {
+                                        VStack{
+                                            HStack{
+                                                Text("length 1")
+                                                    .bold(true)
+                                                TextField(
+                                                    "length 1",
+                                                    text: $length1
+                                                )
+                                                .padding(3)
+                                                .background(Color.gray.opacity(0.3))
+                                                .cornerRadius(3)
+                                            }
+                                            HStack{
+                                                Text("length 2")
+                                                    .bold(true)
+                                                TextField(
+                                                    "length 2",
+                                                    text: $length2
+                                                )
+                                                .padding(3)
+                                                .background(Color.gray.opacity(0.3))
+                                                .cornerRadius(3)
+                                            }
+                                            HStack{
+                                                Text("depth 1")
+                                                    .bold(true)
+                                                TextField(
+                                                    "depth 1",
+                                                    text: $depth1
+                                                )
+                                                .padding(3)
+                                                .background(Color.gray.opacity(0.3))
+                                                .cornerRadius(3)
+                                            }
+                                            HStack{
+                                                Text("depth 2")
+                                                    .bold(true)
+                                                TextField(
+                                                    "depth 2",
+                                                    text: $depth2
+                                                )
+                                                .padding(3)
+                                                .background(Color.gray.opacity(0.3))
+                                                .cornerRadius(3)
+                                            }
+                                            HStack{
+                                                Text("width 1")
+                                                    .bold(true)
+                                                TextField(
+                                                    "width 1",
+                                                    text: $width1
+                                                )
+                                                .padding(3)
+                                                .background(Color.gray.opacity(0.3))
+                                                .cornerRadius(3)
+                                            }
+                                            HStack{
+                                                Text("width 2")
+                                                    .bold(true)
+                                                TextField(
+                                                    "width 2",
+                                                    text: $width2
+                                                )
+                                                .padding(3)
+                                                .background(Color.gray.opacity(0.3))
+                                                .cornerRadius(3)
+                                            }
+                                            
+                                        }
+                                    }
+                                    HStack{
+                                        Text("notes")
+                                            .bold(true)
+                                        TextField(
+                                            "notes",
+                                            text: $notes
+                                        )
+                                        .padding(3)
+                                        .background(Color.gray.opacity(0.3))
+                                        .cornerRadius(3)
                                     }
                                 }
-                                DatePicker("Last Filled", selection: $lastFilled, in: ...Date(),displayedComponents: .date)
-
-                                HStack{
-                                    Text("Shape")
-                                    Spacer()
-                                    Picker("Shape", selection: $shape) {
-                                        Text("Square").tag("Square")
-                                        Text("Rectangle").tag("Rectangle")
-                                        Text("Circle").tag("Circle")
-                                        Text("Roman").tag("Roman")
-                                    }
-                                }
-                                HStack{
-                                    Spacer()
-                                    Button(action: {
-                                        showCustomMeasurments.toggle()
-                                    }, label: {
-                                        Text("Measurments")
-                                            .padding(8)
-                                            .background(Color.poolBlue)
-                                            .cornerRadius(8)
-                                            .foregroundColor(Color.white)
-                                    })
-                                }
-                                if showCustomMeasurments {
-                                    VStack{
-                                        HStack{
-                                            Text("length 1")
-                                                .bold(true)
-                                            TextField(
-                                                "length 1",
-                                                text: $length1
+                                VStack{
+                                    Button(
+                                        action: {
+                                            var id = UUID().uuidString
+                                                //Add Some Valid Dation
+                                            let bodyOfWater = BodyOfWater(
+                                                id: id,
+                                                name: name,
+                                                gallons: gallons,
+                                                material: material,
+                                                customerId: customer.id,
+                                                serviceLocationId: serviceLocationId,
+                                                notes: notes,
+                                                shape: shape,
+                                                length: [length1,length2],
+                                                depth: [depth1,depth2],
+                                                width: [width1,width2],
+                                                lastFilled: lastFilled,
+                                                isActive: true
                                             )
-                                            .padding(3)
-                                            .background(Color.gray.opacity(0.3))
-                                            .cornerRadius(3)
-                                        }
-                                        HStack{
-                                            Text("length 2")
-                                                .bold(true)
-                                            TextField(
-                                                "length 2",
-                                                text: $length2
-                                            )
-                                            .padding(3)
-                                            .background(Color.gray.opacity(0.3))
-                                            .cornerRadius(3)
-                                        }
-                                        HStack{
-                                            Text("depth 1")
-                                                .bold(true)
-                                            TextField(
-                                                "depth 1",
-                                                text: $depth1
-                                            )
-                                            .padding(3)
-                                            .background(Color.gray.opacity(0.3))
-                                            .cornerRadius(3)
-                                        }
-                                        HStack{
-                                            Text("depth 2")
-                                                .bold(true)
-                                            TextField(
-                                                "depth 2",
-                                                text: $depth2
-                                            )
-                                            .padding(3)
-                                            .background(Color.gray.opacity(0.3))
-                                            .cornerRadius(3)
-                                        }
-                                        HStack{
-                                            Text("width 1")
-                                                .bold(true)
-                                            TextField(
-                                                "width 1",
-                                                text: $width1
-                                            )
-                                            .padding(3)
-                                            .background(Color.gray.opacity(0.3))
-                                            .cornerRadius(3)
-                                        }
-                                        HStack{
-                                            Text("width 2")
-                                                .bold(true)
-                                            TextField(
-                                                "width 2",
-                                                text: $width2
-                                            )
-                                            .padding(3)
-                                            .background(Color.gray.opacity(0.3))
-                                            .cornerRadius(3)
-                                        }
-                                        
-                                    }
-                                }
-                                HStack{
-                                    Text("notes")
-                                        .bold(true)
-                                    TextField(
-                                        "notes",
-                                        text: $notes
-                                    )
-                                    .padding(3)
-                                    .background(Color.gray.opacity(0.3))
-                                    .cornerRadius(3)
-                                }
-                            }
-                            VStack{
-                                Button(action: {
-                                    var id = UUID().uuidString
-                                    //Add Some Valid Dation
-                                    let bodyOfWater = BodyOfWater(id: id, name: name, gallons: gallons, material: material, customerId: customer.id, serviceLocationId: serviceLocationId, notes: notes, shape: shape, length: [length1,length2], depth: [depth1,depth2], width: [width1,width2], lastFilled: lastFilled)
-                                    bodyOfWaterList.append(bodyOfWater)
-                                    id = UUID().uuidString
-                                    
-                                    name = "Body " + String(bodyOfWaterList.count + 1)
-                                    gallons = ""
-                                    material = ""
-                                    notes = ""
-                                    shape = ""
-                                    
-                                    length1 = ""
-                                    length2 = ""
-                                    
-                                    depth1 = ""
-                                    depth2 = ""
-                                    
-                                    width1 = ""
-                                    width2 = ""
-                                    
-                                    trees = []
-                                    tree = ""
-                                    
-                                    bushes = []
-                                    bush = ""
-                                    
-                                    others = []
-                                    other = ""
-                                }, label: {
+                                            bodyOfWaterList.append(bodyOfWater)
+                                            id = UUID().uuidString
+                                            
+                                            name = "Body " + String(bodyOfWaterList.count + 1)
+                                            gallons = ""
+                                            material = ""
+                                            notes = ""
+                                            shape = ""
+                                            
+                                            length1 = ""
+                                            length2 = ""
+                                            
+                                            depth1 = ""
+                                            depth2 = ""
+                                            
+                                            width1 = ""
+                                            width2 = ""
+                                            
+                                            trees = []
+                                            tree = ""
+                                            
+                                            bushes = []
+                                            bush = ""
+                                            
+                                            others = []
+                                            other = ""
+                                        },
+                                        label: {
                                     Text("Add Body Of Water")
                                 })
                             }

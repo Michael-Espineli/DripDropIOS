@@ -22,7 +22,6 @@ struct Operations: View {
         _VM = StateObject(wrappedValue: MyCompanyViewModel(dataService: dataService))
     }
 
-
     @State var showOperations:Bool = false //DEVELOPER LATER MAKE THIS TRUE
     @State var showFinace:Bool = false //DEVELOPER LATER MAKE THIS TRUE
     @State var showManagement:Bool = false //DEVELOPER LATER MAKE THIS TRUE
@@ -36,7 +35,7 @@ struct Operations: View {
             ScrollView(showsIndicators: false){
                 if let role = masterDataManager.role {
                     VStack(alignment: .leading,spacing: 20){
-                        if role.permissionIdList.contains("11") {
+                        if role.permissionIdList.contains("0") {
                             
                             //----------------------------------------
                             //Add Back in During Roll out of Phase 2
@@ -122,27 +121,37 @@ extension Operations{
                 Spacer()
             }
             .modifier(HeaderModifier())
-            
-            customers
-            Divider()
-                //----------------------------------------
-                //Add Back in During Roll out of Phase 2
-                //----------------------------------------
-
-//            otherCustomers
-//            Divider()
-            jobs
-            Divider()
-            shoppingListItems
-            Divider()
-            repairRequests
-            Divider()
-            equipment
-            Divider()
-            
-
-            serviceStops
-            
+            if let role = masterDataManager.role {
+                if role.permissionIdList.contains("10") {
+                    customers
+                    Divider()
+                }
+                if role.permissionIdList.contains("60") {
+                    equipment
+                    Divider()
+                }
+                    //----------------------------------------
+                    //Add Back in During Roll out of Phase 2.1
+                    //----------------------------------------
+                
+                    //            otherCustomers
+                    //            Divider()
+                if role.permissionIdList.contains("20") {
+                    jobs
+                    Divider()
+                }
+                    //                Update 2.1
+                    //            shoppingListItems
+                    //            Divider()
+                if role.permissionIdList.contains("30") {
+                    repairRequests
+                    Divider()
+                }
+                if role.permissionIdList.contains("240") {
+                    serviceStops
+                    Divider()
+                }
+            }
         }
     }
     var customers: some View {
@@ -670,14 +679,6 @@ extension Operations{
                         .foregroundColor(Color.poolRed)
                     })
                 }
-            }
-            
-            HStack{
-                VStack{
-                    Divider()
-                        .frame(width: 200)
-                }
-                Spacer()
             }
             if masterDataManager.mainScreenDisplayType == .fullPreview{
                 

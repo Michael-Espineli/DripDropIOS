@@ -11,12 +11,15 @@ import SwiftUI
 
 struct ServiceStopUtilityView: View {
     @EnvironmentObject private var masterDataManager : MasterDataManager
+    @EnvironmentObject private var navigationManager: NavigationStateManager
     
     @EnvironmentObject private var dataService: ProductionDataService
     @EnvironmentObject private var VM: ServiceStopDetailViewModel
+    @EnvironmentObject private var vm: MobileDailyRouteDisplayViewModel
     
-    @State var serviceStop: ServiceStop
     @Binding var stopData : StopData
+    @State var serviceStopId: String
+    
     @State var finished:Bool = false
     @State var skipped:Bool = false
     @State var showSkipReason:Bool = false
@@ -32,67 +35,125 @@ struct ServiceStopUtilityView: View {
     @State var selectedInputId:String = ""
     @State var selectedInputIdList:[String] = []
     
-    @State var showObservations:Bool = true
+    @State var showObservations:Bool = false
     @State var showTasks:Bool = true
     
     @State var showReadings:Bool = true
     @State var showDosages:Bool = true
+    @FocusState var chemicalInput:Bool
+
+    @State var bodyOfWater:BodyOfWater = BodyOfWater(
+        id: "",
+        name: "",
+        gallons: "",
+        material: "",
+        customerId: "",
+        serviceLocationId: "",
+        lastFilled: Date(),
+        isActive: true
+    )
     
-    @State var bodyOfWater:BodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "",
-                                                     lastFilled: Date())
+    private var serviceStop: ServiceStop? {
+        vm.serviceStopList.first { $0.id == serviceStopId }
+    }
     var body: some View {
-        ZStack{
-            VStack(spacing:0){
-                    //DEVELOPER BUILD IN EXPANDING AND CONTRACTING SECTIONS THAT AUTO CLOSE WHEN YOU FINISH THE AREA.
-                    //info
-                bodyOfWaterPicker
-                ScrollView(showsIndicators:false){
-                    if let bodyOfWater = VM.selectedBOW {
-                        if bodyOfWater.id ==  "" {
-                            Text("No Body Of Water")
-                        } else {
-                                //Replace with the version of stopData in the customer service history Page
-                            previousStopData
-                            
-                            observations
-                            
-                            if serviceStop.includeReadings {
-                                readingInput
-                            }
-                            if serviceStop.includeDosages {
-                                dosageInput
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+            if let serviceStop {
+                VStack(spacing:0){
+                    bodyOfWaterPicker
+                    ScrollView(showsIndicators:false){
+                        if let bodyOfWater = VM.selectedBOW {
+                            if bodyOfWater.id ==  "" {
+                                Text("No Bodies of Water")
+                                    .foregroundColor(.secondary)
+                            } else {
+                                    //Replace with the version of stopData in the customer service history Page
+                                previousStopData
+                                
+                                observations(serviceStop)
+                                
+                                if serviceStop.includeReadings {
+                                    readingInput(serviceStop)
+                                }
+                                if serviceStop.includeDosages {
+                                    dosageInput(serviceStop)
+                                }
                             }
                         }
                     }
+                    .padding(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
                 }
-                .padding(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+                .background(Color.black.opacity(0.02))
+                .cornerRadius(12)
+                .disabled(vm.activeRoute?.status != .inProgress)
+                .disabled(serviceStop.startTime == nil)
+                .animation(.easeInOut(duration: 0.2), value: VM.selectedBOW?.id)
+                .onChange(of: VM.selectedBOW, perform: { BOW in
+                    Task{
+                        if let bodyOfWater = BOW, let user = masterDataManager.user {
+                            print("Body Of Water Change \(bodyOfWater.id)")
+                            await VM.onChangeOfBodyOfWater(bodyOfWater: bodyOfWater)
+                            stopData = VM.serviceLocationStopData.first(where: { $0.serviceLocationId == serviceStop.serviceLocationId }) ?? StopData(
+                                id: UUID().uuidString,
+                                date: serviceStop.serviceDate,
+                                serviceStopId: serviceStop.id,
+                                readings: [],
+                                dosages: [],
+                                observation: [],
+                                bodyOfWaterId: bodyOfWater.id,
+                                customerId: serviceStop.customerId,
+                                serviceLocationId: serviceStop.serviceLocationId,
+                                userId: user.id,
+                                equipmentMeasurements: []
+                            )
+                        }
+                    }
+                })
+                .onChange(of: serviceStop, perform: { stop in
+                    print("Service Stop Change From Utility View")
+                })
+                
+                if let activeRoute = vm.activeRoute {
+                    if activeRoute.status == .didNotStart || activeRoute.status == .onBreak || activeRoute.status == .traveling || activeRoute.status == .finished {
+                        Button(action: {
+                            vm.startActiveRoute(companyId: masterDataManager.currentCompany?.id, companyName: masterDataManager.currentCompany?.name, user: masterDataManager.user)
+                        }, label: {
+                            Text("Start Route to Continue")
+                                .font(.caption2)
+                                .bold()
+                                .padding(6)
+                                .background(Color.orange.opacity(0.8))
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                                .padding()
+                                .accessibilityHidden(true)
+                            
+                        })
+                    } else {
+                        if serviceStop.startTime == nil {
+                            Button(action: {
+                                vm.startServiceStop(companyId: masterDataManager.currentCompany?.id, serviceStopId:serviceStop.id)
+                            }, label: {
+                                Text("Start Service Stop To Continue")
+                                    .font(.caption2)
+                                    .bold()
+                                    .padding(6)
+                                    .background(Color.orange.opacity(0.9))
+                                    .foregroundColor(.white)
+                                    .clipShape(Capsule())
+                                    .padding()
+                                    .accessibilityHidden(true)
+                                
+                            })
+                        }
+                        
+                    }
+                }
+            
             }
         }
-        .onChange(of: VM.selectedBOW, perform: { BOW in
-            Task{
-                if let bodyOfWater = BOW, let user = masterDataManager.user {
-                    print("Body Of Water Change \(bodyOfWater.id)")
-                    await VM.onChangeOfBodyOfWater(bodyOfWater: bodyOfWater)
-                    stopData = VM.stopData ?? StopData(
-                        id: UUID().uuidString,
-                        date: serviceStop.serviceDate,
-                        serviceStopId: serviceStop.id,
-                        readings: [],
-                        dosages: [],
-                        observation: [],
-                        bodyOfWaterId: bodyOfWater.id,
-                        customerId: serviceStop.customerId,
-                        serviceLocationId: serviceStop.serviceLocationId,
-                        userId: user.id
-                    )
-                }
-            }
-        })
-        .onChange(of: serviceStop, perform: { stop in
-            print("Service Stop Change From Utility View")
-        })
     }
-    
 }
 
 extension ServiceStopUtilityView {
@@ -139,23 +200,35 @@ extension ServiceStopUtilityView {
     }
     var bodyOfWaterPicker: some View {
         HStack(spacing: 0){
-            icon
             ScrollView(.horizontal,showsIndicators: false){
                 HStack{
                     if VM.bodiesOfWater.isEmpty {
-                        Text("no bodies of water")
+                        Text("No Bodies of Water")
                     } else {
                         ForEach(VM.bodiesOfWater) { BOW in
                             Button(action: {
                                 VM.selectedBOW = BOW
                             }, label: {
-                                if VM.selectedBOW == BOW {
+                                HStack(spacing: 6) {
+                                    Image(systemName: VM.selectedBOW == BOW ? "drop.fill" : "drop")
                                     Text("\(BOW.name)")
-                                        .modifier(AddButtonModifier())
-                                } else {
-                                    Text("\(BOW.name)")
-                                        .modifier(ListButtonModifier())
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.8)
                                 }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Group {
+                                        if VM.selectedBOW == BOW {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(Color.poolGreen)
+                                        } else {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .stroke(Color.gray.opacity(0.4))
+                                        }
+                                    }
+                                )
+                                .foregroundStyle(VM.selectedBOW == BOW ? Color.white : Color.primary)
                             })
                             .padding(.horizontal,4)
                         }
@@ -163,9 +236,11 @@ extension ServiceStopUtilityView {
                 }
                 .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
             }
-            .padding(.vertical,8)
+            .padding(8)
         }
-        .background(Color.darkGray.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+        .padding(8)
     }
 
     var previousStopData: some View {
@@ -176,7 +251,15 @@ extension ServiceStopUtilityView {
                         HStack{
                             Spacer()
                             NavigationLink(value: Route.customerStopDataDetailView(dataService: dataService, customerId: first.customerId), label: {
-                                Text("See Details")
+                                HStack(spacing: 6) {
+                                    Image(systemName: "chevron.right.circle.fill")
+                                    Text("See Details")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolGreen.opacity(0.15)))
+                                .foregroundStyle(Color.poolGreen)
                             })
                             
                         }
@@ -190,6 +273,9 @@ extension ServiceStopUtilityView {
                 }
             }
             .padding(.horizontal,8)
+            .padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.secondarySystemBackground)))
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
             
         }
         
@@ -234,59 +320,61 @@ extension ServiceStopUtilityView {
                     if skipped {
                         ZStack{
                             ZStack{
-                                Rectangle()
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(Color.realYellow)
-                                    .frame(height: 5)
+                                    .frame(height: 6)
                                 HStack{
                                     Circle()
                                         .fill(Color.realYellow)
-                                        .frame(width: 30)
+                                        .frame(width: 28, height: 28)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                     Spacer()
                                 }
                             }
-                            Text("Tasks")
-                                .foregroundColor(Color.basicFontText)
-                                .padding(5)
-                                .background(Color.realYellow)
-                                .cornerRadius(5)
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                Text("Tasks")
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.realYellow))
+                            .foregroundStyle(Color.basicFontText)
                         }
                     } else {
                         ZStack{
                             ZStack{
-                                Rectangle()
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(finished ? Color.poolGreen.opacity(0.25) : Color.gray.opacity(0.25))
-                                    .frame(height: 5)
+                                    .frame(height: 6)
                                 HStack{
                                     Circle()
                                         .fill(finished ? Color.poolGreen : Color.gray)
-                                        .frame(width: 30)
+                                        .frame(width: 28, height: 28)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                     Spacer()
                                     Button(action: {
                                         showObservations.toggle()
                                     }, label: {
-                                        ZStack{
-                                            Circle()
-                                                .fill(finished ? Color.poolGreen : Color.gray)
-                                                .frame(width: 30)
-                                            if showObservations {
-                                                Image(systemName: "arrow.up.circle")
-                                                    .foregroundColor(Color.white)
-                                                    .frame(width: 30)
-                                            } else {
-                                                Image(systemName: "arrow.down.circle")
-                                                    .foregroundColor(Color.white)
-                                                    .frame(width: 30)
-                                            }
+                                        ZStack {
+                                            Circle().fill(finished ? Color.poolGreen : Color.gray)
+                                            Image(systemName: showObservations ? "chevron.up" : "chevron.down")
+                                                .foregroundColor(.white)
+                                                .font(.system(size: 14, weight: .semibold))
                                         }
+                                        .frame(width: 28, height: 28)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                     })
                                     
                                 }
                             }
-                            Text("Tasks")
-                                .foregroundColor(Color.white)
-                                .padding(5)
-                                .background(finished ? Color.poolGreen : Color.gray)
-                                .cornerRadius(5)
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.seal.fill")
+                                Text("Tasks")
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill((finished ? Color.poolGreen : Color.gray)))
+                            .foregroundStyle(Color.white)
                         }
                     }
                     
@@ -297,12 +385,17 @@ extension ServiceStopUtilityView {
                     }
                 }
             }
-            .padding(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.secondarySystemBackground)))
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
             
         }
     }
     
-    var observations: some View {
+    private func observations(_ serviceStop: ServiceStop) -> some View {
+
         ZStack{
                 //            sideBar
             VStack(spacing:0){
@@ -310,38 +403,51 @@ extension ServiceStopUtilityView {
                     if skipped {
                         ZStack{
                             ZStack{
-                                Rectangle()
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(Color.realYellow)
-                                    .frame(height: 5)
+                                    .frame(height: 6)
                                 HStack{
                                     Circle()
                                         .fill(Color.realYellow)
-                                        .frame(width: 30)
+                                        .frame(width: 28, height: 28)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                     Spacer()
                                 }
                             }
-                            Text("Observations")
-                                .modifier(YellowButtonModifier())
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                Text("Observations")
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.realYellow))
+                            .foregroundStyle(Color.basicFontText)
                         }
                     } else {
                         ZStack{
                             ZStack{
-                                Rectangle()
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(finished ? Color.poolGreen.opacity(0.25) : Color.gray.opacity(0.25))
-                                    .frame(height: 5)
+                                    .frame(height: 6)
                                 HStack{
                                     Circle()
                                         .fill(finished ? Color.poolGreen : Color.gray)
-                                        .frame(width: 30)
+                                        .frame(width: 28, height: 28)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                     Spacer()
                                     Button(action: {
                                         stopData.observation = []
                                         selectedInputId = ""
                                         showDosages = true
-                                        
                                     }, label: {
-                                        Text("Reset")
-                                            .modifier(ListButtonModifier())
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "arrow.counterclockwise")
+                                            Text("Reset")
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolBlue))
+                                        .foregroundColor(Color.poolWhite)
                                     })
                                     
                                 }
@@ -349,13 +455,14 @@ extension ServiceStopUtilityView {
                             Button(action: {
                                 showObservations.toggle()
                             }, label: {
-                                if finished {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.seal.fill")
                                     Text("Observations")
-                                        .modifier(SubmitButtonModifier())
-                                } else {
-                                    Text("Observations")
-                                        .modifier(ListButtonModifier())
                                 }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill((finished ? Color.poolGreen : Color.gray)))
+                                .foregroundStyle(Color.poolWhite)
                             })
                         }
                     }
@@ -365,11 +472,15 @@ extension ServiceStopUtilityView {
                     StopDataObservationsView(stop: serviceStop, selectedObservations: $selectedObservations, stopData: $stopData)
                 }
             }
-            .padding(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.secondarySystemBackground)))
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
             
         }
     }
-    var readingInput: some View {
+    private func readingInput(_ serviceStop: ServiceStop) -> some View {
         ZStack{
                 //            sideBar
             VStack(spacing:0){
@@ -377,13 +488,14 @@ extension ServiceStopUtilityView {
                     if skipped {
                         ZStack{
                             ZStack{
-                                Rectangle()
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(Color.realYellow)
-                                    .frame(height: 5)
+                                    .frame(height: 6)
                                 HStack{
                                     Circle()
                                         .fill(Color.realYellow)
-                                        .frame(width: 30)
+                                        .frame(width: 28, height: 28)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                     Spacer()
                                     Button(action: {
                                         selectedInputId = ""
@@ -391,8 +503,14 @@ extension ServiceStopUtilityView {
                                         showReadings = true
                                         
                                     }, label: {
-                                        Text("Reset")
-                                            .modifier(ListButtonModifier())
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "arrow.counterclockwise")
+                                            Text("Reset")
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolBlue))
+                                        .foregroundColor(Color.poolWhite)
                                     })
                                     
                                 }
@@ -400,8 +518,14 @@ extension ServiceStopUtilityView {
                             Button(action: {
                                 showReadings.toggle()
                             }, label: {
-                                Text("Readings")
-                                    .modifier(YellowButtonModifier())
+                                HStack(spacing: 6) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                    Text("Readings")
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.realYellow))
+                                .foregroundStyle(Color.basicFontText)
                             })
                             
                         }
@@ -410,13 +534,14 @@ extension ServiceStopUtilityView {
                             
                             ZStack{
                                 ZStack{
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                                         .fill(Color.poolGreen.opacity(0.5))
-                                        .frame(height: 5)
+                                        .frame(height: 6)
                                     HStack{
                                         Circle()
                                             .fill(Color.poolGreen)
-                                            .frame(width: 30)
+                                            .frame(width: 28, height: 28)
+                                            .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                         Spacer()
                                         Button(action: {
                                             stopData.readings = []
@@ -429,8 +554,14 @@ extension ServiceStopUtilityView {
                                             showDosages = true
                                             
                                         }, label: {
-                                            Text("Reset")
-                                                .modifier(SubmitButtonModifier())
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "arrow.counterclockwise")
+                                                Text("Reset")
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolBlue))
+                                            .foregroundColor(Color.poolWhite)
                                         })
                                         
                                     }
@@ -438,21 +569,28 @@ extension ServiceStopUtilityView {
                                 Button(action: {
                                     showReadings.toggle()
                                 }, label: {
-                                    Text("Readings")
-                                        .modifier(SubmitButtonModifier())
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.seal.fill")
+                                        Text("Readings")
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolGreen))
+                                    .foregroundStyle(Color.white)
                                 })
                             }
                         } else {
                             
                             ZStack{
                                 ZStack{
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                                         .fill(Color.gray.opacity(0.5))
-                                        .frame(height: 5)
+                                        .frame(height: 6)
                                     HStack{
                                         Circle()
                                             .fill(Color.gray)
-                                            .frame(width: 30)
+                                            .frame(width: 28, height: 28)
+                                            .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                         Spacer()
                                         Button(action: {
                                                 //DEVELOPER I Wonder if this will actually update
@@ -465,8 +603,14 @@ extension ServiceStopUtilityView {
                                             showDosages = true
                                             
                                         }, label: {
-                                            Text("Reset")
-                                                .modifier(ListButtonModifier())
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "arrow.counterclockwise")
+                                                Text("Reset")
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolBlue))
+                                            .foregroundStyle(Color.poolWhite)
                                         })
                                         
                                     }
@@ -474,8 +618,14 @@ extension ServiceStopUtilityView {
                                 Button(action: {
                                     showReadings.toggle()
                                 }, label: {
-                                    Text("Readings")
-                                        .modifier(ListButtonModifier())
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.seal.fill")
+                                        Text("Readings")
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.gray))
+                                    .foregroundStyle(Color.white)
                                 })
                             }
                         }
@@ -501,11 +651,14 @@ extension ServiceStopUtilityView {
                     .padding(.top,15)
                 }
             }
-            .padding(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.secondarySystemBackground)))
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
         }
     }
-    
-    var dosageInput: some View {
+    private func dosageInput(_ serviceStop: ServiceStop) -> some View {
         ZStack{
                 //            sideBar
             VStack(spacing:0){
@@ -513,13 +666,14 @@ extension ServiceStopUtilityView {
                     if skipped {
                         ZStack{
                             ZStack{
-                                Rectangle()
+                                RoundedRectangle(cornerRadius: 3, style: .continuous)
                                     .fill(Color.realYellow)
-                                    .frame(height: 5)
+                                    .frame(height: 6)
                                 HStack{
                                     Circle()
                                         .fill(Color.realYellow)
-                                        .frame(width: 30)
+                                        .frame(width: 28, height: 28)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                     Spacer()
                                     Button(action: {
                                         stopData.readings = []
@@ -527,8 +681,14 @@ extension ServiceStopUtilityView {
                                         showDosages = true
                                         
                                     }, label: {
-                                        Text("Reset")
-                                            .modifier(YellowButtonModifier())
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "arrow.counterclockwise")
+                                            Text("Reset")
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolBlue))
+                                        .foregroundStyle(Color.poolWhite)
                                     })
                                     
                                 }
@@ -536,21 +696,28 @@ extension ServiceStopUtilityView {
                             Button(action: {
                                 showDosages.toggle()
                             }, label: {
-                                Text("Dosages")
-                                    .modifier(YellowButtonModifier())
+                                HStack(spacing: 6) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                    Text("Dosages")
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.realYellow))
+                                .foregroundStyle(Color.basicFontText)
                             })
                         }
                     } else {
                         if showDosages {
                             ZStack{
                                 ZStack{
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                                         .fill(Color.poolGreen.opacity(0.5))
-                                        .frame(height: 5)
+                                        .frame(height: 6)
                                     HStack{
                                         Circle()
                                             .fill(Color.poolGreen)
-                                            .frame(width: 30)
+                                            .frame(width: 28, height: 28)
+                                            .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                         Spacer()
                                         Button(action: {
                                             stopData.dosages = []
@@ -558,29 +725,42 @@ extension ServiceStopUtilityView {
                                             showDosages = true
                                             
                                         }, label: {
-                                            Text("Reset")
-                                                .modifier(ListButtonModifier())
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "arrow.counterclockwise")
+                                                Text("Reset")
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolBlue))
+                                            .foregroundStyle(Color.poolWhite)
                                         })
                                     }
                                 }
                                 Button(action: {
                                     showDosages.toggle()
                                 }, label: {
-                                    Text("Dosages")
-                                        .modifier(ListButtonModifier())
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.seal.fill")
+                                        Text("Dosages")
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolGreen))
+                                    .foregroundStyle(Color.white)
                                 })
                             }
                             
                         } else {
                             ZStack{
                                 ZStack{
-                                    Rectangle()
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
                                         .fill(Color.gray.opacity(0.5))
-                                        .frame(height: 5)
+                                        .frame(height: 6)
                                     HStack{
                                         Circle()
                                             .fill(Color.gray)
-                                            .frame(width: 30)
+                                            .frame(width: 28, height: 28)
+                                            .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
                                         Spacer()
                                         Button(action: {
                                             stopData.dosages = []
@@ -588,16 +768,28 @@ extension ServiceStopUtilityView {
                                             showDosages = true
                                             
                                         }, label: {
-                                            Text("Reset")
-                                                .modifier(ListButtonModifier())
+                                            HStack(spacing: 6) {
+                                                Image(systemName: "arrow.counterclockwise")
+                                                Text("Reset")
+                                            }
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.poolBlue))
+                                            .foregroundStyle(Color.poolWhite)
                                         })
                                     }
                                 }
                                 Button(action: {
                                     showDosages.toggle()
                                 }, label: {
-                                    Text("Dosages")
-                                        .modifier(ListButtonModifier())
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.seal.fill")
+                                        Text("Dosages")
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.gray))
+                                    .foregroundStyle(Color.white)
                                 })
                             }
                         }
@@ -625,7 +817,11 @@ extension ServiceStopUtilityView {
                     .padding(.top,15)
                 }
             }
-            .padding(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.secondarySystemBackground)))
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
             
         }
     }
@@ -634,95 +830,38 @@ extension ServiceStopUtilityView {
         ZStack{
             if let stop = masterDataManager.selectedServiceStops {
                 
-                if skipped {
-                    Button(action: {
+                Button(action: {
 #if os(iOS)
-                        
-                        let address = "\(stop.address.streetAddress) \(stop.address.city) \(stop.address.state) \(stop.address.zip)"
-                        
-                        let urlText = address.replacingOccurrences(of: " ", with: "?")
-                        
-                        let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
-                        
-                        if UIApplication.shared.canOpenURL(url!) {
-                            UIApplication.shared.open(url!, options: [:], completionHandler: nil)
-                        }
+                    
+                    let address = "\(stop.address.streetAddress) \(stop.address.city) \(stop.address.state) \(stop.address.zip)"
+                    
+                    let urlText = address.replacingOccurrences(of: " ", with: "?")
+                    
+                    let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
+                    
+                    if UIApplication.shared.canOpenURL(url!) {
+                        UIApplication.shared.open(url!, options: [:], completionHandler: nil)
+                    }
 #endif
-                    }, label: {
-                        HStack{
-                            Image(systemName: "house.fill")
-                            Text("\(stop.address.streetAddress)")
-                        }
-                        .frame(width: 200)
-                        .padding(5)
-                        .background(Color.realYellow)
-                        .foregroundColor(Color.basicFontText)
-                        .cornerRadius(10)
-                        .font(.footnote)
-                    })
-                    
-                    
-                } else {
-                    Button(action: {
-#if os(iOS)
-                        
-                        let address = "\(stop.address.streetAddress) \(stop.address.city) \(stop.address.state) \(stop.address.zip)"
-                        
-                        let urlText = address.replacingOccurrences(of: " ", with: "?")
-                        
-                        let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
-                        
-                        if UIApplication.shared.canOpenURL(url!) {
-                            UIApplication.shared.open(url!, options: [:], completionHandler: nil)
-                        }
-#endif
-                    }, label: {
-                        HStack{
-                            Image(systemName: "house.fill")
-                            Text("\(stop.address.streetAddress)")
-                        }
-                        .frame(width: 200)
-                        .padding(5)
-                        .background(finished ? Color.poolGreen: Color.gray)
-                        .foregroundColor(Color.white)
-                        .cornerRadius(10)
-                    })
-                    
-                }
+                }, label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "house.fill")
+                        Text("\(stop.address.streetAddress)")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(skipped ? Color.realYellow : (finished ? Color.poolGreen : Color.gray))
+                    )
+                    .foregroundStyle(skipped ? Color.basicFontText : Color.white)
+                    .shadow(color: Color.black.opacity(0.08), radius: 6, x: 0, y: 2)
+                })
+                
                 
             }
-        }
-    }
-    var icon: some View {
-        ZStack{
-                
-                if skipped {
-                    ZStack{
-                        ZStack{
-                            Circle()
-                                .fill(Color.realYellow)
-                                .frame(width: 30)
-                            Image(systemName: serviceStop.typeImage)
-                                .frame(width: 20)
-                                .foregroundColor(Color.basicFontText)
-                        }
-                    }
-                    .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-                } else {
-                    ZStack{
-                        
-                        ZStack{
-                            Circle()
-                                .fill(finished ? Color.poolGreen : Color.gray)
-                                .frame(width: 30)
-                            Image(systemName: getJobIcon(jobTypeId: serviceStop.typeId))
-                                .frame(width: 20)
-                                .foregroundColor(Color.white)
-                        }
-                    }
-                    .padding(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 10))
-                }
-            
         }
     }
 }

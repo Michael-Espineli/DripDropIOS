@@ -11,12 +11,12 @@ import SwiftUI
 import FirebaseFirestore
 import MapKit
 struct ExternalRoute:Identifiable, Codable, Hashable{
-    var id:String = UUID().uuidString
-    var companyId:String
-    var companyName:String
-    var day:String
-    var techId:String
-    var techName:String
+    var id:String = "com_er_" + UUID().uuidString
+    var companyId: String
+    var companyName: String
+    var day: DaysOfWeek
+    var techId: String
+    var techName: String
 }
 @MainActor
 final class ExternalRouteDayViewModel:ObservableObject{

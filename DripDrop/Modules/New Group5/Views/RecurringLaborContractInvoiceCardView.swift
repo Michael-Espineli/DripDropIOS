@@ -47,12 +47,12 @@ struct RecurringLaborContractInvoiceCardView: View {
     }
 }
 
-#Preview {
-    @StateObject var masterDataManager : MasterDataManager = MasterDataManager()
-    RecurringLaborContractInvoiceCardView(
-        dataService: MockDataService(),
-        recurringContract: MockDataService.mockRecurringLaborContracts[0]
-    )
-    .environmentObject(masterDataManager)
-
-}
+//#Preview {
+//    @StateObject var masterDataManager : MasterDataManager = MasterDataManager(dataService: ProductionDataService())
+//    RecurringLaborContractInvoiceCardView(
+//        dataService: MockDataService(),
+//        recurringContract: MockDataService.mockRecurringLaborContracts[0]
+//    )
+//    .environmentObject(masterDataManager)
+//
+//}

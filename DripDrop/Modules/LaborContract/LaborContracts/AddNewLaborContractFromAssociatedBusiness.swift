@@ -61,7 +61,7 @@ final class AddNewLaborContractFromAssociatedBusinessViewModel:ObservableObject{
     @Published var termList:[ContractTerms] = []
     @Published var contractLengthInMonthsStr:String = ""
     
-    @Published var selectedTermsTemplate:TermsTemplate = TermsTemplate(id: "", name: "")
+    @Published var selectedTermsTemplate:TermsTemplate = TermsTemplate(id: "", name: "", description: "")
     @Published var selectedTermList:[ContractTerms] = []
     
         //Alert
@@ -143,7 +143,7 @@ final class AddNewLaborContractFromAssociatedBusinessViewModel:ObservableObject{
         self.atWill = false
         self.termList = []
         self.contractLengthInMonthsStr = ""
-        self.selectedTermsTemplate = TermsTemplate(id: "", name: "")
+        self.selectedTermsTemplate = TermsTemplate(id: "", name: "", description: "")
         self.selectedTermList = []
         
     }

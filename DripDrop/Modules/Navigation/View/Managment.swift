@@ -38,7 +38,7 @@ struct Managment: View {
                     if let role = masterDataManager.role {
                         VStack(alignment: .leading,spacing: 20){
                     
-                            if role.permissionIdList.contains("7") {
+                            if role.permissionIdList.contains("200") {
                                 
                                 //----------------------------------------
                                 //Add Back in During Roll out of Phase 2
@@ -125,34 +125,44 @@ extension Managment{
                         Spacer()
                     }
                     .modifier(HeaderModifier())
-                    users
-                    Divider()
-                    if let role = masterDataManager.role {
-                        if role.permissionIdList.contains("12") {
-                            routeBuilder
-                            Divider()
-                        }
+                if let role = masterDataManager.role {
+//                    if role.permissionIdList.contains("220") {
+//                        routeBuilder
+//                        Divider()
+//                    }
+                    
+                    if role.permissionIdList.contains("210") {
+                        internalRoutes
+                        Divider()
                     }
-                    routeOverView
-                    Divider()
-                    internalRoutes
-                    Divider()
-                    externalRoutes
-                    Divider()
-                    businesses
-                    Divider()
-                    fleet
-                    Divider()
-                    payRoll
-                    Divider()
-                    venders
-                    Divider()
-                //----------------------------------------
-                //Add Back in During Roll out of Phase 2
-                //----------------------------------------
-//                    routeSandBox
-//                    Divider()
-                
+                    
+                    if role.permissionIdList.contains("260") {
+                        users
+                        Divider()
+                    }
+                    
+                    if role.permissionIdList.contains("290") {
+                        fleet
+                        Divider()
+                    }
+                    /* Upate 3.1
+                     routeOverView
+                     Divider()
+                     externalRoutes
+                     Divider()
+                     businesses
+                     Divider()
+                     payRoll
+                     Divider()
+                     routeSandBox
+                     Divider()
+                     */
+                    /* Upate 2.1
+                     
+                     Divider()
+                     venders
+                     */
+                }
             }
         }
     }
@@ -350,7 +360,7 @@ extension Managment{
     var users: some View {
         VStack{
             HStack{
-                Text("Techs")
+                Text("Directory")
                     .font(.headline)
                     .fontDesign(.monospaced)
                     .foregroundColor(Color.basicFontText)
@@ -448,12 +458,10 @@ extension Managment{
     var routeBuilder: some View {
         VStack{
             HStack{
-                Text("Live Route Managment")
+                Text("Live Route Management")
                     .font(.headline)
                     .fontDesign(.monospaced)
                     .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-
                 Spacer()
                 
                 
@@ -573,7 +581,9 @@ extension Managment{
                 Spacer()
                 
                 if UIDevice.isIPhone {
-                    NavigationLink(value:Route.internalRouteOverView(dataService:dataService), label: {
+//                    NavigationLink(value:Route.internalRouteOverView(dataService:dataService), label: {
+                    NavigationLink(value:Route.routes(dataService:dataService), label: {
+
                         HStack{
                             Text("See More")
                             Image(systemName: "arrow.right")

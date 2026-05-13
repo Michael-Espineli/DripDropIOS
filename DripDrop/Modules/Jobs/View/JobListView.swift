@@ -128,7 +128,7 @@ extension JobListView {
         VStack{
             if jobVM.workOrders.count == 0 {
                 if let role = masterDataManager.role {
-                    if role.permissionIdList.contains("3") {
+                    if role.permissionIdList.contains("22") {
                         Button(action: {
                             showAddNew.toggle()
                         }, label: {
@@ -159,7 +159,7 @@ extension JobListView {
                             }
                         }, content: {
                             VStack{
-                                AddNewJobView(dataService: dataService)
+                                AddNewJobView(dataService: dataService, customerId: nil)
                             }
                         })
                     }}
@@ -207,17 +207,8 @@ extension JobListView {
                     Button(action: {			
                         showFilters.toggle()
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.orange)
-                                .frame(width: 50, height: 50)
-                                .overlay(
-                                    Image(systemName: "slider.horizontal.3")
-                                        .resizable()
-                                        .frame(width: 25, height: 25)
-                                        .foregroundColor(Color.white)
-                                )
-                        }
+                        Image(systemName: "slider.horizontal.3")
+                            .modifier(FilterIconModifer())
                     })
                     .padding(10)
                     .sheet(isPresented: $showFilters,onDismiss: {
@@ -325,25 +316,18 @@ extension JobListView {
                         .presentationDetents([.fraction(0.4)])
                     })
                     if let role = masterDataManager.role {
-                        if role.permissionIdList.contains("3") {
+                        if role.permissionIdList.contains("22") {
                             Button(action: {
                                 showCustomerPicker.toggle()
                             }, label: {
-                                ZStack{
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 50, height: 50)
-                                    Image(systemName: "plus.circle.fill")
-                                        .resizable()
-                                        .frame(width: 50, height: 50)
-                                        .foregroundColor(Color.green)
-                                }
+                                Image(systemName: "plus")
+                                    .modifier(PlusIconModifer())
                             })
                             .padding(10)
                             .sheet(isPresented: $showCustomerPicker, content: {
                                 VStack{
                                     
-                                    AddNewJobView(dataService: dataService)
+                                    AddNewJobView(dataService: dataService, customerId: nil)
                                 }
                             })
                         }
@@ -351,15 +335,8 @@ extension JobListView {
                     Button(action: {
                         showSearch.toggle()
                     }, label: {
-                        ZStack{
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 50, height: 50)
-                            Image(systemName: "magnifyingglass.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(Color.blue)
-                        }
+                        Image(systemName: "magnifyingglass")
+                            .modifier(SearchIconModifer())
                     })
                     .padding(10)
                 }

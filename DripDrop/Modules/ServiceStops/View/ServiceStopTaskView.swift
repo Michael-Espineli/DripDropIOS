@@ -64,23 +64,30 @@ final class ServiceStopTaskViewModel:ObservableObject{
         //Call Send Finish Email
     }
 }
-struct ServiceStopTaskView: View {
-    @EnvironmentObject var dataService : ProductionDataService
-    @EnvironmentObject var masterDataService : MasterDataManager
-    @StateObject var VM : ServiceStopTaskViewModel
 
-    init(dataService:any ProductionDataServiceProtocol,taskList:Binding<[ServiceStopTask]>,serviceStop:ServiceStop) {
+struct ServiceStopTaskView: View {
+    init(dataService:any ProductionDataServiceProtocol,taskList:Binding<[ServiceStopTask]>,serviceStopId:String) {
         _VM = StateObject(wrappedValue: ServiceStopTaskViewModel(dataService: dataService))
         self._taskList = taskList
-        _serviceStop = State(wrappedValue: serviceStop)
+        _serviceStopId = State(wrappedValue: serviceStopId)
     }
+    @EnvironmentObject var dataService : ProductionDataService
+    @EnvironmentObject var masterDataService : MasterDataManager
+    @EnvironmentObject var navigationManager : NavigationStateManager
+
+    @EnvironmentObject private var vm: MobileDailyRouteDisplayViewModel
     
-    @State var serviceStop: ServiceStop
+    @StateObject var VM : ServiceStopTaskViewModel
+
+    @State var serviceStopId: String
     @Binding var taskList: [ServiceStopTask]
-    
+    private var serviceStop: ServiceStop? {
+        vm.serviceStopList.first { $0.id == serviceStopId }
+    }
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
+            if let serviceStop {
             VStack(spacing:0){
                 HStack{
                     Spacer()
@@ -141,6 +148,45 @@ struct ServiceStopTaskView: View {
                 }
                 .listStyle(.plain)
                 .padding(.horizontal,8)
+            }
+            .disabled(vm.activeRoute?.status != .inProgress)
+            .disabled(serviceStop.startTime == nil)
+                if let activeRoute = vm.activeRoute {
+                    if activeRoute.status == .didNotStart || activeRoute.status == .onBreak || activeRoute.status == .traveling || activeRoute.status == .finished {
+                        Button(action: {
+                            vm.startActiveRoute(companyId: masterDataService.currentCompany?.id, companyName: masterDataService.currentCompany?.name, user: masterDataService.user)
+                        }, label: {
+                            Text("Start Route to Continue")
+                                .font(.caption2)
+                                .bold()
+                                .padding(6)
+                                .background(Color.orange.opacity(0.9))
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                                .padding()
+                                .accessibilityHidden(true)
+                            
+                        })
+                    } else {
+                        if serviceStop.startTime == nil {
+                            Button(action: {
+                                vm.startServiceStop(companyId: masterDataService.currentCompany?.id, serviceStopId:serviceStop.id)
+                            }, label: {
+                                Text("Start Service Stop To Continue")
+                                    .font(.caption2)
+                                    .bold()
+                                    .padding(6)
+                                    .background(Color.orange.opacity(0.9))
+                                    .foregroundColor(.white)
+                                    .clipShape(Capsule())
+                                    .padding()
+                                    .accessibilityHidden(true)
+                                
+                            })
+                            
+                        }
+                    }
+                }
             }
         }
     }

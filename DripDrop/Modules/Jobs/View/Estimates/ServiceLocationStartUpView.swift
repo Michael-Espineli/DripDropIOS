@@ -34,7 +34,8 @@ struct ServiceLocationStartUpView: View {
         length: [],
         depth: [],
         width: [],
-        lastFilled: Date()
+        lastFilled: Date(),
+        isActive: true
     )
     @State var bodyOfWaterList:[BodyOfWater] = []
     
@@ -90,17 +91,20 @@ struct ServiceLocationStartUpView: View {
                     Equipment(
                         id: UUID().uuidString,
                         name: "Main Pump",
-                        category: .pump,
+                        type: .pump,
+                        typeId: "",
                         make: "",
+                        makeId: "",
                         model: "",
+                        modelId: "",
                         dateInstalled: Date(),
                         status: .operational,
                         needsService: false,
                         cleanFilterPressure: 15,
                         currentPressure: 20,
                         lastServiceDate: Date(),
-                        serviceFrequency: "",
-                        serviceFrequencyEvery: "",
+                        serviceFrequency: 6,
+                        serviceFrequencyEvery: .monthly,
                         nextServiceDate: Date(),
                         notes: "",
                         customerName: serviceLocation.customerName,
@@ -112,17 +116,20 @@ struct ServiceLocationStartUpView: View {
                     Equipment(
                         id: UUID().uuidString,
                         name: "Main Filter",
-                        category: .filter,
+                        type: .filter,
+                        typeId: "",
                         make: "",
+                        makeId: "",
                         model: "",
+                        modelId: "",
                         dateInstalled: Date(),
                         status: .operational,
                         needsService: false,
                         cleanFilterPressure: 15,
                         currentPressure: 20,
                         lastServiceDate: Date(),
-                        serviceFrequency: "",
-                        serviceFrequencyEvery: "",
+                        serviceFrequency: 6,
+                        serviceFrequencyEvery: .monthly,
                         nextServiceDate: Date(),
                         notes: "",
                         customerName: serviceLocation.customerName,
@@ -218,7 +225,8 @@ extension ServiceLocationStartUpView {
                                 length: [],
                                 depth: [],
                                 width: [], 
-                                lastFilled: Date()
+                                lastFilled: Date(),
+                                isActive: true
                             ))
                         selectedBOW = bodyOfWaterList.first(where: {$0.id == id})! //DEVELOPER, I know i explicitly unwrapped but it should never fail.
                         equipmentList.append(
@@ -226,17 +234,20 @@ extension ServiceLocationStartUpView {
                                 Equipment(
                                     id: UUID().uuidString,
                                     name: "Main Pump",
-                                    category: .pump,
+                                    type: .pump,
+                                    typeId: "",
                                     make: "",
+                                    makeId: "",
                                     model: "",
+                                    modelId: "",
                                     dateInstalled: Date(),
                                     status: .operational,
                                     needsService: false,
                                     cleanFilterPressure: 15,
                                     currentPressure: 20,
                                     lastServiceDate: Date(),
-                                    serviceFrequency: "",
-                                    serviceFrequencyEvery: "",
+                                    serviceFrequency: 6,
+                                    serviceFrequencyEvery: .monthly,
                                     nextServiceDate: Date(),
                                     notes: "",
                                     customerName: serviceLocation.customerName,
@@ -248,17 +259,20 @@ extension ServiceLocationStartUpView {
                                 Equipment(
                                     id: UUID().uuidString,
                                     name: "Main Filter",
-                                    category: .filter,
+                                    type: .filter,
+                                    typeId: "",
                                     make: "",
+                                    makeId: "",
                                     model: "",
+                                    modelId: "",
                                     dateInstalled: Date(),
                                     status: .operational,
                                     needsService: false,
                                     cleanFilterPressure: 15,
                                     currentPressure: 20,
                                     lastServiceDate: Date(),
-                                    serviceFrequency: "",
-                                    serviceFrequencyEvery: "",
+                                    serviceFrequency: 6,
+                                    serviceFrequencyEvery: .monthly,
                                     nextServiceDate: Date(),
                                     notes: "",
                                     customerName: serviceLocation.customerName,
@@ -280,7 +294,7 @@ extension ServiceLocationStartUpView {
                         Button(action: {
                             selectedBOW = BOW
                             
-                            if let selectedEquipmentCategory, let first = equipmentList.filter({$0.id == BOW.id}).filter({$0.category == selectedEquipmentCategory}).first{
+                            if let selectedEquipmentCategory, let first = equipmentList.filter({$0.id == BOW.id}).filter({$0.type == selectedEquipmentCategory}).first{
                                 selectedEquipmentId = first.id
                                 print("Selected Equipment Id true")
                             } else {
@@ -343,14 +357,17 @@ extension ServiceLocationStartUpView {
                                 Button(action: {
                                     selectedEquipmentId = ""
                                     let newId = UUID().uuidString
-                                    let name = category.rawValue + " " + String(equipmentList.filter({$0.bodyOfWaterId == selectedBOW.id}).filter({$0.category == category}).count + 1)
+                                    let name = category.rawValue + " " + String(equipmentList.filter({$0.bodyOfWaterId == selectedBOW.id}).filter({$0.type == category}).count + 1)
                                     equipmentList.append(
                                         Equipment(
                                             id: newId,
                                             name: name,
-                                            category: category,
+                                            type: category,
+                                            typeId: "",
                                             make: "",
+                                            makeId: "",
                                             model: "",
+                                            modelId: "",
                                             dateInstalled: Date(),
                                             status: .operational,
                                             needsService: false,
@@ -371,7 +388,7 @@ extension ServiceLocationStartUpView {
                                         .background(Color.poolBlue)
                                         .cornerRadius(8)
                                 })
-                                ForEach(equipmentList.filter({$0.bodyOfWaterId == selectedBOW.id}).filter({$0.category == category})) { equipment in
+                                ForEach(equipmentList.filter({$0.bodyOfWaterId == selectedBOW.id}).filter({$0.type == category})) { equipment in
                                     Button(action: {
                                         if selectedEquipmentId == equipment.id {
                                             selectedEquipmentId = ""

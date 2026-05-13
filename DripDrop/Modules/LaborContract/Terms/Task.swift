@@ -113,9 +113,13 @@ struct RecurringServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
     var id : String = "comp_rss_task_" + UUID().uuidString
     
     var name : String
+    var description : String
     var type : JobTaskType
     var contractedRate : Int // Cents
     var estimatedTime : Int // Min
     var status : JobTaskStatus
+    var isTaskGroup : Bool
+    var taskGroupId : String
+    var taskGroupTaskId : String
 
 }

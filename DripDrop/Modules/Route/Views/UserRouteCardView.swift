@@ -32,7 +32,7 @@ struct UserRouteCardView: View {
     var body: some View {
         VStack{
             HStack{
-                Text("\(tech.firstName ?? "") \(tech.lastName ?? "")")
+                Text("\(tech.firstName) \(tech.lastName)")
                 Text("3 /\(activeRoute.serviceStopsIds.count)")
 
             }

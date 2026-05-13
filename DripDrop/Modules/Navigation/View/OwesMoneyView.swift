@@ -37,7 +37,7 @@ struct OwesMoneyView: View {
             ScrollView(showsIndicators: false){
                 VStack(alignment: .leading,spacing: 20){
                 if let role = masterDataManager.role {
-                        if role.permissionIdList.contains("13") {
+                        if role.permissionIdList.contains("400") {
                             
                             //----------------------------------------
                             //Add Back in During Roll out of Phase 2
@@ -95,7 +95,7 @@ extension OwesMoneyView{
         ZStack{
             if let role = masterDataManager.role {
                 VStack(alignment: .leading,spacing: 20){
-                    if role.permissionIdList.contains("13") {
+                    if role.permissionIdList.contains("400") {
                         snapshot
                         finace
                     }
@@ -142,10 +142,12 @@ extension OwesMoneyView{
                 Spacer()
             }
             .modifier(HeaderModifier())
-            Text("Need to figure out Invoice to and from clients and buisnesses")
-                .background(Color.pink)
-            finishedJobs
-            Divider()
+            if let role = masterDataManager.role {
+                if role.permissionIdList.contains("410") {
+                    finishedJobs
+                    Divider()
+                }
+            /* Update 2.1
             contracts
             Divider()
             recurringContracts
@@ -158,6 +160,9 @@ extension OwesMoneyView{
             Divider()
             receivedRecurringLaborContract
             Divider()
+             */
+                
+            }
         }
     }
         

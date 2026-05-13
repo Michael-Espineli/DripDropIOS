@@ -59,23 +59,28 @@ struct NewReucrringStopView: View {
     @State var customerSearch:String = ""
     @State var listOfCustomers:[Customer] = []
     
-    @State var location:ServiceLocation = ServiceLocation(id: "", nickName: "Location",
-                                                                  address: Address(streetAddress: "",
-                                                                                   city: "",
-                                                                                   state: "",
-                                                                                   zip: "0",
-                                                                                   latitude: 0,
-                                                                                   longitude: 0),
-                                                                  gateCode: "",
-                                                                  mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
-                                                                  bodiesOfWaterId: [],
-                                                                  rateType: "", laborType: "",
-                                                                  chemicalCost: "",
-                                                                  laborCost: "",
-                                                                  rate: "",
-                                                                  customerId: "",
-                                                                  customerName: "",
-                                                          preText: false)
+    @State var location:ServiceLocation = ServiceLocation(
+        id: "",
+        nickName: "Location",
+        address: Address(streetAddress: "",
+                         city: "",
+                         state: "",
+                         zip: "0",
+                         latitude: 0,
+                         longitude: 0),
+        gateCode: "",
+        mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
+        bodiesOfWaterId: [],
+        rateType: "",
+        laborType: "",
+        chemicalCost: "",
+        laborCost: "",
+        rate: "",
+        customerId: "",
+        customerName: "",
+        preText: false,
+        isActive: true
+    )
     
     @State var techEntity:DBUser = DBUser(id: "", email: "",firstName: "Michael",lastName: "Espineli", exp: 0,recentlySelectedCompany: "")
     @State var startDate:Date = Date()
@@ -203,7 +208,7 @@ extension NewReucrringStopView {
                         return
                     }
                    
-                    let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
+                    let techFullName = tech.firstName + " " + tech.lastName
                     let techId = tech.id
                     var pushSelectedDays = selectedDays
 
@@ -302,7 +307,7 @@ extension NewReucrringStopView {
             Picker("?", selection: $techEntity) {
                 Text("Pick Tech")
                 ForEach(techVM.techList){ tech in
-                    Text("\(tech.firstName ?? "") \(tech.lastName ?? "")").tag(tech)
+                    Text("\(tech.firstName) \(tech.lastName)").tag(tech)
                 }
             }
         }

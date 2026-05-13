@@ -332,7 +332,8 @@ final class CustomerFileManager:ObservableObject{
                     DBCustomer.lastName
                 )
             ),
-            preText: false
+            preText: false,
+            isActive: true
         )
         
         try await ServiceLocationManager.shared.uploadCustomerServiceLocations(companyId: companyId,
@@ -349,7 +350,8 @@ final class CustomerFileManager:ObservableObject{
             material: "Plaster",
             customerId: DBCustomer.id,
             serviceLocationId: serviceLocation.id, 
-            lastFilled: Date()
+            lastFilled: Date(),
+            isActive: true
         )
         try await BodyOfWaterManager.shared.uploadBodyOfWaterByServiceLocation(
             companyId: companyId,
@@ -362,9 +364,12 @@ final class CustomerFileManager:ObservableObject{
         let pump = Equipment(
             id: UUID().uuidString,
             name:"Pump 1",
-            category: .pump,
+            type: .pump,
+            typeId: "",
             make: "",
+            makeId: "",
             model: "",
+            modelId: "",
             dateInstalled: Date(),
             status: .operational,
             needsService: false,
@@ -380,25 +385,28 @@ final class CustomerFileManager:ObservableObject{
             equipment: pump
         )
         print(
-            "Sucessfully uploading \(pump.category) for \(DBCustomer.firstName) \(DBCustomer.lastName)"
+            "Sucessfully uploading \(pump.type.rawValue) for \(DBCustomer.firstName) \(DBCustomer.lastName)"
         )
         
         let filter = Equipment(
             id: UUID().uuidString,
             name:"Filter 1",
-            category: .filter,
+            type: .filter,
+            typeId: "",
             make: "",
+            makeId: "",
             model: "",
+            modelId: "",
             dateInstalled: Date(),
             status: .operational,
             needsService: true,
             lastServiceDate: Date(),
-            serviceFrequency: "Month",
-            serviceFrequencyEvery: "6",
+            serviceFrequency: 6,
+            serviceFrequencyEvery: .monthly,
             nextServiceDate: getNextServiceDate(
                 lastServiceDate: Date(),
-                every: "6",
-                frequency: "Month"
+                frequency: 6,
+                every: .monthly
             ),
             notes: "",
             customerName: fullName,
@@ -412,7 +420,7 @@ final class CustomerFileManager:ObservableObject{
             equipment: filter
         )
         print(
-            "Sucessfully uploading \(filter.category) for \(DBCustomer.firstName) \(DBCustomer.lastName)"
+            "Sucessfully uploading \(filter.type.rawValue) for \(DBCustomer.firstName) \(DBCustomer.lastName)"
         )
         
         print(

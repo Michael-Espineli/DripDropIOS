@@ -39,6 +39,7 @@ struct Contract:Identifiable, Codable, Hashable{
     var terms:[ContractTerms]
     var notes:String
     var rate:Double
+    var jobId:String
 }
 
 //subcollection
@@ -235,14 +236,16 @@ struct LaborContract:Identifiable, Codable, Hashable{
 //ReccuringLabor Contract exists in seperate Manager
 //struct ReccuringLaborContract:Identifiable, Codable, Hashable{
 
-//Contract and Job Probably Have some Overlay
+//Contract and Job Probably Have some Overlap
 
 struct TermsTemplate:Identifiable, Codable, Hashable{
     var id:String = UUID().uuidString
     var name:String
+    var description:String
 }
 
 struct ContractTerms:Identifiable, Codable, Hashable{
     var id:String = UUID().uuidString
+    
     var description:String
 }

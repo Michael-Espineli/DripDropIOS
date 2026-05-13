@@ -13,8 +13,8 @@ final class ShoppingListItemCardViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
-    @Published private (set) var dataBaseItem: DataBaseItem? = nil
-    @Published private (set) var job: Job? = nil
+    @Published private(set) var dataBaseItem: DataBaseItem? = nil
+    @Published private(set) var job: Job? = nil
     func onLoad(companyId:String,shoppingListItem:ShoppingListItem) async throws {
         switch shoppingListItem.category {
         case .personal:
@@ -66,7 +66,7 @@ struct ShoppingListItemCardView: View {
                         HStack{
                             details
                             Spacer()
-                            Text(shoppingListItem.quantiy ?? "")
+                            Text(shoppingListItem.quantity ?? "")
                         }
 //                        cat
                     }

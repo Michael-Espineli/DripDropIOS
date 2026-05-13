@@ -8,10 +8,14 @@
 import Foundation
 import Combine
 import SwiftUI
+
+@MainActor
 class MasterDataManager: ObservableObject {
+    let dataService:any ProductionDataServiceProtocol
+
     @Published var selectedCategory: MacCategories? = .businesses //DEVELOPER
     @Published var selectedMobileCategory: MobileCategories? = nil
-    @Published var mobileHomeScreen: MobileHomeScreenCategories = .all
+    @Published var mobileHomeScreen: MobileHomeScreenCategories = .routing
 
     //Login Flow
     @Published var showSignInView:Bool = true
@@ -21,6 +25,9 @@ class MasterDataManager: ObservableObject {
     @Published var reassignRoute:Bool = true
     @Published var reloadBuilderView:Bool? = nil
 
+    //Payment and subscriptions
+    @Published var activeSubscription:CompanySubscription? = nil
+    
     //Formatting
     @Published var detailViewWidthMax: Int = 3000
     @Published var detailViewWidthideal: Int = 100
@@ -39,8 +46,11 @@ class MasterDataManager: ObservableObject {
     @Published var currentCompany: Company? = nil
 
     
+    //Company Profile
+    
+    @Published var seePublicCompanyView: Bool = false
     //For Details and List Flow
-
+    
     //Selected Items
     
     //A
@@ -102,9 +112,10 @@ class MasterDataManager: ObservableObject {
     @Published var selectedReceipt: Receipt? = nil
     @Published var selectedRepairRequest: RepairRequest? = nil
     @Published var selectedReadingsTemplate: SavedReadingsTemplate? = nil
-    @Published var selectedRouteBuilderDay:String? = nil
+    @Published var selectedRouteBuilderDay:DaysOfWeek? = nil
     @Published var selectedRouteBuilderTech:CompanyUser? = nil
     @Published var selectedRecurringRoute:RecurringRoute? = nil
+    
     //S
     @Published var selectedShoppingListItem:ShoppingListItem? = nil
     @Published var selectedServiceLocation: ServiceLocation? = nil
@@ -131,7 +142,8 @@ class MasterDataManager: ObservableObject {
     @Published var selectedID: String? = nil
     
     var subscriptions = Set<AnyCancellable>()
-    init() {
+    init(dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
         // clear selection when category changes
         $currentCompany.sink { [weak self] _ in
             //A
@@ -211,16 +223,27 @@ class MasterDataManager: ObservableObject {
             self?.selectedVehical = nil
         }
         .store(in: &subscriptions)
-         
     }
     func goToSettings() {
         
     }
-  
+  func checkForSubscriptionStatus() {
+      Task{
+          do {
+              if let currentCompany {
+                  self.activeSubscription = try await dataService.getCompanySubscription(companyId: currentCompany.id)
+              }
+          } catch {
+              print(error)
+          }
+      }
+    }
+    func roleListener(){
+        
+    }
 }
 enum MainScreenDisplayType:String, CaseIterable {
     case compactList = "Compact"
     case preview = "Preview"
     case fullPreview = "Full Preview"
-
 }

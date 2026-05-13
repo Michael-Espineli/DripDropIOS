@@ -90,6 +90,8 @@ final class RoleManager {
     func updateRole(companyId:String,role : Role) async throws {
         try roleDoc(companyId: companyId, roleId: role.id)
             .setData(from:role, merge: true)
+        
+        print("[RoleManager][updateRole] Updated Successfully")
     }
     //----------------------------------------------------
     // CRUD           DELETE

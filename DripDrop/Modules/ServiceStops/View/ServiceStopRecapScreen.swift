@@ -8,6 +8,12 @@
 
 import SwiftUI
 import PhotosUI
+
+enum photoPickerType:Identifiable {
+    var id: Self { self }
+    case album
+    case camera
+}
 struct ServiceStopRecapScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
@@ -219,7 +225,8 @@ struct ServiceStopRecapScreen_Previews: PreviewProvider {
             bodyOfWaterId: "",
             customerId: "",
             serviceLocationId: "",
-            userId: ""
+            userId: "",
+            equipmentMeasurements: []
         )
         @State var dripDropImages:[DripDropImage] = []
         ServiceStopRecapScreen(serviceStop: MockDataService().mockServiceStops.first!, stopData: $stopData, tasks: [])
@@ -378,12 +385,6 @@ extension ServiceStopRecapScreen {
                             ChemDosageRecap(dataService: dataService, templates: VM.dosageTemplates, BOW: BOW)
                         }
                         Divider()
-                        VStack{
-                            ForEach(VM.BOWEquipmentDick[BOW] ?? []){ equipment in
-                                EquipmentRecapCardView(equipment: equipment, equipmentMeasurments: VM.EquipmentReadings[equipment])
-                            }
-                        }
-                        Divider()
                     }
                     Divider()
                 }
@@ -392,18 +393,10 @@ extension ServiceStopRecapScreen {
     }
     var photos: some View {
         VStack{
+            
+            DripDropStoredImageRow(images:VM.loadedImages)
             PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
-            if !VM.selectedDripDropPhotos.isEmpty {
-                HStack{
-                    Text("Loading Images...")
-                    ProgressView()
-                }
-            }
-            if VM.loadedImages.isEmpty {
-                Text("No Images")
-            } else {
-                DripDropStoredImageRow(images: VM.loadedImages)
-            }
+
         }
     }
     var taskRecap: some View {
@@ -448,7 +441,7 @@ struct EquipmentRecapCardView: View {
     var body: some View {
         VStack{
             if let measurements = equipmentMeasurments {
-                switch equipment.category {
+                switch equipment.type {
                 case .cleaner:
                     Text("Cleaner")
                         .bold(true)
@@ -460,7 +453,7 @@ struct EquipmentRecapCardView: View {
                     Text("Filter")
                         .bold(true)
                     Text("\(measurements.status)")
-                    if let PSI = measurements.psi {
+                    if let PSI = measurements.poundForcePerSquareInch {
                         Text("\(String(PSI))")
                     } else {
                         Text("-")

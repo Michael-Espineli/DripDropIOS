@@ -51,22 +51,14 @@ struct CustomerPickerScreen: View {
                             customers = customerVM.customers
                         }
                     } catch {
-                        print("Error")
-                        
+                        print("[][] Error: \(error)")
                     }
                 }
             } else {
-                Task{
-                    do {
-                        if let company = masterDataManager.currentCompany {
-                            try await customerVM.filterCustomerList(filterTerm: term, customers: customerVM.customers)
-                            customers = customerVM.filteredCustomers
-                            print("Received \(customers.count) Customers")
-                            
-                        }
-                    } catch {
-                        print("Error")
-                    }
+                if let company = masterDataManager.currentCompany {
+                    customerVM.filterCustomerList(filterTerm: term, customers: customerVM.customers)
+                    customers = customerVM.filteredCustomers
+                    print("Received \(customers.count) Customers")
                 }
             }
         })

@@ -23,8 +23,8 @@ struct AllCompanyRegularRoutes: View {
     
     //New Variables 5/18/25
     @State var showDialogConfirmation : Bool = false
-    @State var selectedDay : String = ""
-    @State var selectedTechId : String = ""
+    @State var selectedDay: DaysOfWeek = .monday
+    @State var selectedTechId: String = ""
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -98,11 +98,11 @@ struct AllCompanyRegularRoutes_Previews: PreviewProvider {
 extension AllCompanyRegularRoutes {
     var dayThenTech: some View {
         VStack{
-            ForEach(VM.daysOfWeekList,id:\.self){ day in
+            ForEach(DaysOfWeek.allCases,id:\.self){ day in
                 VStack(spacing: 10){
                     //Day
                     HStack{
-                        Text("\(day)")
+                        Text(day.rawValue)
                         Spacer()
                         Button(action: {
                             if UIDevice.isIPhone {
@@ -126,7 +126,6 @@ extension AllCompanyRegularRoutes {
                     if let techniciansAndStops = VM.technicianStopsOrderedByDay[day] {
                         ForEach(Array(techniciansAndStops.keys) ,id:\.self){ techId in
                             if let recurringServiceStops = techniciansAndStops[techId] {
-
                                 AllCompanyRouteTechStopView(
                                     showDialog: $showDialogConfirmation,
                                     selectedDay: $selectedDay,

@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ModifyRecurringRoute: View {
-    init(dataService:any ProductionDataServiceProtocol,tech:CompanyUser,day:String,recurringRoute:RecurringRoute){
+    init(dataService:any ProductionDataServiceProtocol,tech:CompanyUser,day: DaysOfWeek,recurringRoute:RecurringRoute){
         _VM = StateObject(wrappedValue: ModifyRecurringRouteViewModel(dataService: dataService))
         _day = State(wrappedValue: day)
         _tech = State(wrappedValue: tech)
@@ -20,33 +20,18 @@ struct ModifyRecurringRoute: View {
     @EnvironmentObject var dataService: ProductionDataService
     @StateObject private var VM : ModifyRecurringRouteViewModel
 
-    @State var tech:CompanyUser
-    @State var day:String
-    @State var recurringRoute:RecurringRoute
+    @State var tech: CompanyUser
+    @State var day: DaysOfWeek
+    @State var recurringRoute: RecurringRoute
 
     var body: some View {
         ZStack{
             VStack{
-                Text("Modify")
-                    .font(.footnote)
-                ScrollView{
-                    if UIDevice.isIPad{
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                masterDataManager.selectedRouteBuilderTech = nil
-                                masterDataManager.selectedRouteBuilderDay = nil
-                                dismiss()
-                            }, label: {
-                                Image(systemName: "xmark")
-                            })
-                        }
-                    }
-                    form
-                    button
-                }
-                .padding(8)
+                form
+                button
             }
+            .padding(8)
+            
             if VM.isLoading {
                 ProgressView()
             }
@@ -173,6 +158,7 @@ extension ModifyRecurringRoute {
             })
             .disabled(VM.isLoading)
             .opacity(VM.isLoading ? 0.75 : 1)
+            Spacer()
             Button(action: {
                 dismiss()
             }, label: {
@@ -183,12 +169,34 @@ extension ModifyRecurringRoute {
     }
     var form: some View {
         ScrollView{
-            Text("Modify Recurring Route")
+            routeInfo
             technical
             info
         }
     }
- 
+    var routeInfo: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack{
+                Text("Modify Recurring Route")
+                HStack {
+                    Text("\(tech.userName)")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Text("\(day)")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+        )
+        .padding(.top)
+    }
     var info: some View {
         VStack{
             Text(VM.selectedJobTemplate.name)

@@ -76,7 +76,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [], 
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -111,7 +112,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -146,7 +148,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -181,7 +184,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -216,7 +220,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -251,7 +256,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -286,7 +292,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -321,7 +328,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -356,7 +364,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -391,7 +400,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         ),
         
         ServiceLocation(
@@ -426,7 +436,8 @@ final class MockServiceLocationManager:ServiceLocationManagerProtocol {
             backYardTree: [],
             backYardBushes: [],
             backYardOther: [],
-            preText: false
+            preText: false,
+            isActive: true
         )
     ]
 

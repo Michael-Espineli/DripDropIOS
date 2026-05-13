@@ -26,6 +26,8 @@ final class ScheduleServiceStopViewModel:ObservableObject{
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
     
+    @Published var showCompanyUserSelector: Bool = false
+
     @Published var isLoading: Bool = false
     @Published var showRouteSnapShot: Bool = false
     @Published var serviceDate: Date = Date()
@@ -426,6 +428,7 @@ final class ScheduleServiceStopViewModel:ObservableObject{
 
 struct ScheduleServiceStopView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var dataService : ProductionDataService
 
     @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject var VM : ScheduleServiceStopViewModel
@@ -439,7 +442,7 @@ struct ScheduleServiceStopView: View {
     
     init(
         dataService:any ProductionDataServiceProtocol,
-        job:Job,
+    job:Job,
         customerId:String,
         customerName:String,
         serviceLocationId:String,
@@ -458,18 +461,35 @@ struct ScheduleServiceStopView: View {
     }
     
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            formView
-                .padding(8)
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    headerCard
+                    detailsCard
+                    routeSnapshotCard
+                    tasksCard
+
+                    Color.clear.frame(height: 90)
+                }
+                .padding(12)
+            }
+
+            VStack {
+                Spacer()
+                scheduleButtonBar
+            }
+
             if VM.isLoading {
-                VStack{
+                VStack(spacing: 10) {
                     ProgressView()
                     Text("Loading...")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
-                .padding(8)
-                .background(Color.gray)
-                .cornerRadius(8)
+                .padding(14)
+                .ddCard()
             }
         }
         .task {
@@ -519,29 +539,75 @@ struct ScheduleServiceStopView: View {
     //}
 
 extension ScheduleServiceStopView {
+    var scheduleButtonBar: some View {
+        HStack {
+            Button(action: {
+                Task {
+                    if let currentCompany = masterDataManager.currentCompany {
+                        do {
+                            if job.otherCompany {
+                                try await VM.scheduleNewServiceStopOtherCompany(
+                                    companyId: currentCompany.id,
+                                    job: job,
+                                    customerId: customerId,
+                                    customerName: customerName,
+                                    serviceLocationId: serviceLocationId
+                                )
+                            } else {
+                                try await VM.scheduleNewServiceStop(
+                                    companyId: currentCompany.id,
+                                    jobId: job.id,
+                                    customerId: customerId,
+                                    customerName: customerName,
+                                    serviceLocationId: serviceLocationId
+                                )
+                            }
+                            dismiss()
+                        } catch {
+                            print(error)
+                        }
+                    }
+                }
+            }, label: {
+                Text("Schedule New Service Stop")
+                    .frame(maxWidth: .infinity)
+                    .modifier(SubmitButtonModifier())
+            })
+            .disabled(VM.isLoading)
+            .opacity(VM.isLoading ? 0.75 : 1)
+        }
+        .ddBottomBar()
+    }
+
     var formView : some View {
         ScrollView{
             
-            HStack{
-                Text("Employee : ")
-                    .bold(true)
-                Picker("Employee", selection: $VM.selectedUser) {
-                    Text("Select User").tag(CompanyUser(
-                        id : "",
-                        userId : "",
-                        userName : "",
-                        roleId : "",
-                        roleName : "",
-                        dateCreated :Date(),
-                        status : .active,
-                        workerType : .notAssigned
-                    ))
-                    ForEach(VM.companyUserList){ type in
-                        Text("\(type.userName) \(type.roleName)").tag(type)
-                        
-                    }
+
+            Button(action: {
+                VM.showCompanyUserSelector.toggle()
+            }, label: {
+                HStack {
+                    Text(VM.selectedUser.userName)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.primary.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                )
+            })
+            .sheet(isPresented: $VM.showCompanyUserSelector) {
+                CompanyUserPicker(dataService: dataService, companyUser: $VM.selectedUser)
+
             }
             DatePicker("Service Date", selection: $VM.serviceDate, in: Date()...,displayedComponents: .date)
                 .bold()
@@ -704,4 +770,234 @@ extension ScheduleServiceStopView {
             .opacity(VM.isLoading ? 0.75 : 1)
         }
     }
+    
+    var tasksCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Select Tasks")
+                .font(.headline.weight(.semibold))
+
+            VStack(spacing: 8) {
+                ForEach(VM.jobTaskList) { task in
+                    let locked = !(task.status == .unassigned || task.status == .rejected || task.status == .draft)
+                    let selected = VM.selectedJobTaskList.contains(where: { $0.id == task.id })
+
+                    Button(action: {
+                        if locked { return }
+                        if selected {
+                            VM.selectedJobTaskList.removeAll(where: { $0.id == task.id })
+                        } else {
+                            VM.selectedJobTaskList.append(task)
+                        }
+                    }, label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: locked ? "lock.fill" : (selected ? "checkmark.square.fill" : "square"))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(locked ? .secondary : (selected ? .primary : .secondary))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(task.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .lineLimit(1)
+                                Text("\(task.type) • \(task.status.rawValue)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color.primary.opacity(selected ? 0.10 : 0.06))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.primary.opacity(selected ? 0.18 : 0.10), lineWidth: 1)
+                        )
+                        .opacity(locked ? 0.55 : 1)
+                    })
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .ddCard()
+    }
+
+    var headerCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Schedule Service Stop")
+                    .font(.title3.weight(.semibold))
+                Text("\(customerName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(fullDate(date: VM.serviceDate))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Capsule().fill(Color.primary.opacity(0.08)))
+        }
+        .ddCard()
+    }
+
+    var detailsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Details")
+                .font(.headline.weight(.semibold))
+
+            // Employee picker (same binding)
+            Picker("Employee", selection: $VM.selectedUser) {
+                Text("Select User").tag(CompanyUser(
+                    id: "",
+                    userId: "",
+                    userName: "",
+                    roleId: "",
+                    roleName: "",
+                    dateCreated: Date(),
+                    status: .active,
+                    workerType: .notAssigned
+                ))
+                ForEach(VM.companyUserList) { user in
+                    Text("\(user.userName) \(user.roleName)").tag(user)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(ddPickerRow(title: "Employee", value: VM.selectedUser.userName == "" ? "Select" : VM.selectedUser.userName))
+            .labelsHidden()
+
+            DatePicker("Service Date", selection: $VM.serviceDate, in: Date()..., displayedComponents: .date)
+                .datePickerStyle(.compact)
+
+            Divider().opacity(0.15)
+
+            Text("Description")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField("Description", text: $VM.description, axis: .vertical)
+                .lineLimit(3, reservesSpace: true)
+                .modifier(PlainTextFieldModifier())
+
+            DDFieldRow(title: "Estimated Time", value: displayMinAsMinAndHour(min: VM.estimatedTime))
+        }
+        .ddCard()
+    }
+
+    var routeSnapshotCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Route Snapshot")
+                    .font(.headline.weight(.semibold))
+                Spacer()
+                Button(action: { VM.showRouteSnapShot.toggle() }) {
+                    HStack(spacing: 6) {
+                        Text(VM.showRouteSnapShot ? "Hide" : "Show")
+                        Image(systemName: VM.showRouteSnapShot ? "chevron.up" : "chevron.down")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(Capsule().fill(Color.primary.opacity(0.08)))
+                }
+                .sheet(isPresented: $VM.showRouteSnapShot) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Route Snapshot")
+                            .font(.headline.weight(.semibold))
+                        Divider().opacity(0.15)
+
+                        DDFieldRow(title: "Stops", value: "\(VM.finishedStops)/\(VM.totalStops)")
+                        DDFieldRow(title: "Status", value: VM.routeStatus)
+                        DDFieldRow(title: "Estimated Time", value: "\(displayMinAsMinAndHour(min: VM.estimatedTimeMin))")
+                        DDFieldRow(title: "Estimated Mileage", value: "\(VM.estimatedTimeMiles) mi")
+
+                        Spacer()
+                    }
+                    .padding(12)
+                    .presentationDetents([.fraction(0.4)])
+                }
+            }
+
+            Text("Preview route impact for selected employee and day.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .ddCard()
+    }
+
+}
+
+private extension View {
+    func ddCard() -> some View {
+        self
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
+    }
+
+    func ddBottomBar() -> some View {
+        self
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    Color.black.opacity(0.02)
+                }
+                .ignoresSafeArea(edges: .bottom)
+            )
+            .overlay(Divider().opacity(0.12), alignment: .top)
+    }
+}
+
+private struct DDFieldRow: View {
+    let title: String
+    let value: String
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+private func ddPickerRow(title: String, value: String) -> some View {
+    HStack {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+        Spacer()
+        Text(value)
+            .font(.subheadline.weight(.semibold))
+        Image(systemName: "chevron.down")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+    }
+    .padding(.vertical, 10)
+    .padding(.horizontal, 12)
+    .background(
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(Color.primary.opacity(0.06))
+    )
+    .overlay(
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+    )
 }

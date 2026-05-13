@@ -21,6 +21,7 @@ struct ServiceStopDetailView: View {
         
         _serviceStop = State(wrappedValue: serviceStop)
     }
+    
     @State var serviceStop:ServiceStop
     @State var usableServiceStop:ServiceStop = ServiceStop(
         id: "",
@@ -73,7 +74,8 @@ struct ServiceStopDetailView: View {
         bodyOfWaterId: "",
         customerId: "",
         serviceLocationId: "",
-        userId: ""
+        userId: "",
+        equipmentMeasurements: []
     )
     @State var dropDropImages:[DripDropImage] = []
     @State var title:String = ""
@@ -81,35 +83,27 @@ struct ServiceStopDetailView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
                 //                screenSelector
-            VStack(spacing: 0){
-                toolbar
-                switch selectedScreen {
-                case .info:
-                    ServiceStopInfoView( serviceStop: usableServiceStop, dataService: dataService)
-                    
-                case .tasks:
-                    ServiceStopTaskView(dataService: dataService,taskList:$VM.taskList, serviceStop: usableServiceStop)
-                    
-                case .waterDetails:
-                    ServiceStopUtilityView(serviceStop:usableServiceStop,stopData: $stopData)
-                    
-                case .equipmentDetails:
-                    ServiceStopEquipmentView(serviceStop:usableServiceStop)
-                    
-                case .photoSelection:
-                    ServiceStopPhotoSelection()
-                    
-                case .recap:
-                    ServiceStopRecapScreen(serviceStop:usableServiceStop, stopData: $stopData,tasks:VM.taskList)
-                    
-                case .locationStartUp:
-                    ServiceLocationStartUpViewInField(dataService: dataService, customerId: usableServiceStop.customerId,serviceLocationId:usableServiceStop.serviceLocationId, serviceStop: usableServiceStop)
-                    
-                case .checkList:
-                    ServiceStopCheckListView(serviceStop: usableServiceStop, dataService: dataService)
-                    
-                }
-            }
+//            VStack(spacing: 0){
+//                toolbar
+//                switch selectedScreen {
+//                case .info:
+//                    ServiceStopInfoView( serviceStop: usableServiceStop, dataService: dataService)
+//                case .tasks:
+//                    ServiceStopTaskView(dataService: dataService,taskList:$VM.taskList, serviceStop: usableServiceStop)
+//                case .waterDetails:
+//                    ServiceStopUtilityView(serviceStop:usableServiceStop,stopData: $stopData)
+//                case .equipmentDetails:
+//                    ServiceStopEquipmentView(serviceStop:usableServiceStop, stopData: $stopData)
+//                case .photoSelection:
+//                    ServiceStopPhotoSelection()
+//                case .recap:
+//                    ServiceStopRecapScreen(serviceStop:usableServiceStop, stopData: $stopData,tasks:VM.taskList)
+//                case .locationStartUp:
+//                    ServiceLocationStartUpViewInField(dataService: dataService, customerId: usableServiceStop.customerId,serviceLocationId:usableServiceStop.serviceLocationId, serviceStop: usableServiceStop)
+//                case .checkList:
+//                    ServiceStopCheckListView(serviceStop: usableServiceStop, dataService: dataService)
+//                }
+//            }
             
             if expandScreenSelector {
                 VStack{
@@ -134,14 +128,6 @@ struct ServiceStopDetailView: View {
         .navigationBarBackButtonHidden(true)
         .task {
             title = serviceStop.customerName
-                //                if servicestop.typeId == "1" { //Developer Change Before Release
-            if serviceStop.typeId == "0E398067-1E3D-487A-BC21-1CC3A54933D5" {
-                selectedScreen = .waterDetails
-            } else if serviceStop.typeId == "2"{
-                selectedScreen  = .locationStartUp
-            } else {
-                selectedScreen = .tasks
-            }
             if let company = masterDataManager.currentCompany,let user = masterDataManager.user {
                 do {
                     usableServiceStop = serviceStop
@@ -194,7 +180,7 @@ struct ServiceStopDetailView: View {
                 if let comapny = masterDataManager.currentCompany{
                     do {
                         try await VM.updateStopData(companyId: comapny.id,serviceStop: serviceStop, stopData: stopData)
-                        print("Done")
+                        print("[ServiceStopDetailView][onChange:stopData] Updated")
                     } catch {
                         print("Failed to update Stop Data")
                         print(error)
@@ -272,7 +258,7 @@ extension ServiceStopDetailView {
                            Image(systemName: "chart.bar.doc.horizontal")
                        }
                    }
-                   .font(.title)
+                   .font(.headline)
                    .foregroundColor(Color.white)
                    .modifier(BlueButtonModifier())
                    .modifier(OutLineButtonModifier())
@@ -301,23 +287,23 @@ extension ServiceStopDetailView {
                             .modifier(OutLineButtonModifier())
                     })
                 }
-                if selectedScreen == .tasks {
-                    Button(action: {
-                        selectedScreen = .tasks
-                    }, label: {
-                        Text(serviceStopScreen.tasks.title())
-                            .modifier(SubmitButtonModifier())
-                            .modifier(OutLineButtonModifier())
-                    })
-                } else {
-                    Button(action: {
-                        selectedScreen = .tasks
-                    }, label: {
-                        Text(serviceStopScreen.tasks.title())
-                            .modifier(ListButtonModifier())
-                            .modifier(OutLineButtonModifier())
-                    })
-                }
+//                if selectedScreen == .tasks {
+//                    Button(action: {
+//                        selectedScreen = .tasks
+//                    }, label: {
+//                        Text(serviceStopScreen.tasks.title())
+//                            .modifier(SubmitButtonModifier())
+//                            .modifier(OutLineButtonModifier())
+//                    })
+//                } else {
+//                    Button(action: {
+//                        selectedScreen = .tasks
+//                    }, label: {
+//                        Text(serviceStopScreen.tasks.title())
+//                            .modifier(ListButtonModifier())
+//                            .modifier(OutLineButtonModifier())
+//                    })
+//                }
                 if  selectedScreen == .waterDetails {
                     Button(action: {
                         selectedScreen = .waterDetails
@@ -364,7 +350,7 @@ extension ServiceStopDetailView {
                     Button(action: {
                         selectedScreen = .recap
                     }, label: {
-                        Text(serviceStopScreen.recap.title())                            
+                        Text(serviceStopScreen.recap.title())
                             .modifier(ListButtonModifier())
                             .modifier(OutLineButtonModifier())
 
@@ -376,6 +362,7 @@ extension ServiceStopDetailView {
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial)
     }
+    
     var verticalScreenSelector: some View {
         HStack(alignment:.top){
             VStack(alignment: .trailing, spacing: 16) {

@@ -1,36 +1,65 @@
+//
+//  BrowseCompaniesView.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 1/27/26.
+//
+
+
 import SwiftUI
 import FirebaseAuth
 
 struct BrowseCompaniesView: View {
-    @StateObject private var vm = BrowseCompaniesViewModel()
-    @State private var userId: String? = Auth.auth().currentUser?.uid
+    init( dataService:any ProductionDataServiceProtocol){
+        _vm = StateObject(wrappedValue: BrowseCompaniesViewModel(dataService: dataService))
+
+    }
+    @EnvironmentObject var masterDataManager : MasterDataManager
+    @EnvironmentObject var dataService : ProductionDataService
+    @StateObject private var vm : BrowseCompaniesViewModel
+    
+    @State private var showingFilters: Bool = false
+    @State private var selectedService: String = ""
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    header
-                    searchBarCard
+        ScrollView {
+            VStack(spacing: 16) {
+                header
+                searchBarCard
 
-                    if vm.loading {
-                        skeletonGrid
-                    } else {
-                        companiesGrid
-                    }
+                if vm.loading {
+                    skeletonGrid
+                } else {
+                    companiesGrid
                 }
-                .padding(.horizontal)
-                .padding(.top, 16)
             }
-            .navigationTitle("Find Your Next Opportunity")
-            .onAppear { vm.onAppear(userId: userId) }
-            .onDisappear { vm.onDisappear() }
+            .padding(.horizontal)
+            .padding(.top, 16)
         }
+        .onAppear { vm.onAppear(userId: masterDataManager.user?.id) }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingFilters = true
+                } label: {
+                    Label("Filters", systemImage: "line.3.horizontal.decrease.circle")
+                }
+            }
+        }
+        .sheet(isPresented: $showingFilters) {
+            FilterSheet(selectedService: $selectedService, availableServices: Array(Set(vm.companies.flatMap { $0.services })).sorted()) {
+                showingFilters = false
+            } applyAction: {
+                showingFilters = false
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .onDisappear { vm.onDisappear() }
     }
-
     private var header: some View {
         VStack(spacing: 6) {
             Text("Find Your Next Opportunity")
-                .font(.largeTitle).bold()
+                .font(.title).bold()
                 .foregroundStyle(.primary)
             Text("Search and connect with companies that match your criteria.")
                 .font(.subheadline)
@@ -59,27 +88,34 @@ struct BrowseCompaniesView: View {
                     .fill(Color.gray.opacity(0.15))
                     .frame(height: 120)
                     .redacted(reason: .placeholder)
-                    .shimmering() // If you have a shimmering modifier; otherwise remove
             }
         }
     }
 
     private var companiesGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            ForEach(vm.filteredCompanies) { company in
-                CompanyCard(
-                    company: company,
-                    isSaved: vm.savedCompanyIds.contains(company.id),
-                    onSaveTapped: {
-                        vm.toggleSaveCompany(userId: userId, company: company)
-                    }
-                )
-                .onTapGesture {
-                    // Navigate to detail
-                    // Push to your CompanyDetailView
-                    // Example:
-                    // navigationPath.append(NavigationDestination.company(company.id))
-                }
+            ForEach(vm.filteredCompanies.filter { selectedService.isEmpty || $0.services.contains(selectedService) }) { company in
+                NavigationLink(value: Route.companyPublicProfile(company: company, dataService: dataService), label: {
+                    CompanyCard(
+                        company: company,
+                        isSaved: vm.savedCompanyIds.contains(company.id),
+                        onSaveTapped: {
+                            Task {
+                                if vm.savedCompanyIds.contains(company.id) {
+                                    if let userId = masterDataManager.user?.id {
+                                        do {
+                                            try await vm.deleteSavedCompany(userId: userId, businessId: company.id)
+                                        } catch {
+                                            print("Failed to unsave: \(error)")
+                                        }
+                                    }
+                                } else {
+                                    vm.toggleSaveCompany(userId: masterDataManager.user?.id, company: company)
+                                }
+                            }
+                        }
+                    )
+                })
             }
         }
     }
@@ -93,27 +129,34 @@ private struct CompanyCard: View {
     var body: some View {
         VStack {
             HStack(alignment: .top) {
-                HStack(spacing: 12) {
-                    avatar
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(company.name)
-                            .font(.headline)
+                VStack{
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(company.name)
+                                .font(.headline)
+                        }
+                        
+                        Spacer()
+                        Button(action: onSaveTapped) {
+                            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                                .imageScale(.large)
+                                .foregroundStyle(isSaved ? .blue : .gray)
+                                .padding(6)
+                                .background(
+                                    Circle().fill(Color.gray.opacity(0.1))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        avatar
                         Text(company.services.first ?? "No industry specified")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        
                     }
                 }
-                Spacer()
-                Button(action: onSaveTapped) {
-                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                        .imageScale(.large)
-                        .foregroundStyle(isSaved ? .blue : .gray)
-                        .padding(6)
-                        .background(
-                            Circle().fill(Color.gray.opacity(0.1))
-                        )
-                }
-                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -155,3 +198,41 @@ private struct CompanyCard: View {
         .clipShape(Circle())
     }
 }
+private struct FilterSheet: View {
+    @Binding var selectedService: String
+    let availableServices: [String]
+    let cancelAction: () -> Void
+    let applyAction: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Service")) {
+                    Picker("Service", selection: $selectedService) {
+                        Text("Any").tag("")
+                        ForEach(availableServices, id: \.self) { svc in
+                            Text(svc).tag(svc)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filters")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: cancelAction)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply", action: applyAction)
+                }
+            }
+        }
+    }
+}
+
+extension BrowseCompaniesViewModel {
+    func deleteSavedCompany(userId: String, businessId: String) async throws {
+        try await dataService.deleteSavedCompany(userId: userId, businessId: businessId)
+        self.savedCompanyIds.remove(businessId)
+    }
+}
+

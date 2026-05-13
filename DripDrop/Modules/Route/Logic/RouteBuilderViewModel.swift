@@ -24,7 +24,7 @@ final class RouteBuilderViewModel:ObservableObject{
     @Published var jobType:JobTemplate? = nil
     @Published var recurringRoute:RecurringRoute? = nil
 
-    func initialLoad(companyId:String,tech:CompanyUser?,day:String) async throws {
+    func initialLoad(companyId: String, tech: CompanyUser?, day: DaysOfWeek) async throws {
         print("Inital Load")
         //Get CompanyUsers
         var workingTech:CompanyUser? = nil
@@ -41,7 +41,7 @@ final class RouteBuilderViewModel:ObservableObject{
         }
         //Check if A recurring Route Already Exists
         var recurringRoute:RecurringRoute? = nil
-        print(" Getting Recurring Service Stop For \(day) \(tech.userId)")
+        print(" Getting Recurring Service Stop For \(day.rawValue) \(tech.userId)")
         let listOfRecurringRoutes = try await dataService.getRecurringRouteByDayAndTech(companyId: companyId, day: day, techId: tech.userId)
         if listOfRecurringRoutes.count == 1 {
             recurringRoute = listOfRecurringRoutes.first!
@@ -82,7 +82,7 @@ final class RouteBuilderViewModel:ObservableObject{
             print("No Jobs")
         }
     }
-    func reLoad(companyId:String,tech:CompanyUser,day:String) async throws {
+    func reLoad(companyId: String, tech: CompanyUser, day: DaysOfWeek) async throws {
         print("Reload")
 
         if tech.userId == "" {
@@ -113,17 +113,17 @@ final class RouteBuilderViewModel:ObservableObject{
     }
     func createAndUploadRecurringRouteWithVerification(
         companyId: String,
-        tech:CompanyUser,
-        recurringStopsList:[RecurringServiceStop],
-        job:JobTemplate,
-        noEndDate:Bool,
-        description:String,
-        day:String,
-        standardFrequencyType:LaborContractFrequency,
-        customFrequencyType:Int,
-        startDate:Date,
-        endDate:Date,
-        currentRecurringRoute:RecurringRoute?
+        tech: CompanyUser,
+        recurringStopsList: [RecurringServiceStop],
+        job: JobTemplate,
+        noEndDate: Bool,
+        description: String,
+        day: DaysOfWeek,
+        standardFrequencyType: LaborContractFrequency,
+        customFrequencyType: Int,
+        startDate: Date,
+        endDate: Date,
+        currentRecurringRoute: RecurringRoute?
     ) async throws {
         print("")
 
@@ -175,11 +175,11 @@ final class RouteBuilderViewModel:ObservableObject{
                         endDate:endDate,
                         noEndDate: noEndDate,
                         frequency: standardFrequencyType,
-                        daysOfWeek: day,
+                        day: day,
                         description: description,
                         lastCreated: Date(),
                         serviceLocationId: RSS.serviceLocationId,
-                        estimatedTime: "",
+                        estimatedTime: RSS.estimatedTime,
                         otherCompany: false,
                         laborContractId: "",
                         contractedCompanyId: ""
@@ -196,7 +196,7 @@ final class RouteBuilderViewModel:ObservableObject{
                 let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
                 binder.append(page)
             }
-            let recurringRouteId = day + tech.userId
+            let recurringRouteId = "com_rr_" + UUID().uuidString
             print("Uploading Recurring Route Id >> \(recurringRouteId)")
             let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: tech.userId, day: day, order: binder, description: "")
             try await dataService.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)

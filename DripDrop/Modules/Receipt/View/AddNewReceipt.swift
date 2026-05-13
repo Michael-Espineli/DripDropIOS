@@ -172,7 +172,7 @@ final class AddNewReceiptViewModel:ObservableObject{
                 //get the info from the database about the item ID
             let dbItem = try await DatabaseManager.shared.getDataBaseItem(companyId:companyId,dataBaseItemId: item.itemId)
             let purchaseItemId = UUID().uuidString
-            var pushItem = PurchasedItem(id: purchaseItemId,
+            let pushItem = PurchasedItem(id: purchaseItemId,
                                          receiptId: receiptId,
                                          invoiceNum: invoiceNum,
                                          venderId: store.id,

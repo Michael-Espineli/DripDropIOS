@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Foundation
 import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
@@ -17,11 +16,21 @@ import MapKit
 //Associated Business
 extension ProductionDataService {
     //Refrences
+    
     func businessesCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/business")
     }
+    
     func businessesDocument(companyId:String,businessId:String)-> DocumentReference{
         businessesCollection(companyId: companyId).document(businessId)
+    }
+    
+    func savedCompaniesCollection(userId:String) -> CollectionReference{
+        db.collection("users/\(userId)/savedCompanies")
+    }
+    
+    func savedCompanyDocument(userId:String,businessId:String)-> DocumentReference{
+        savedCompaniesCollection(userId: userId).document(businessId)
     }
 
     //Create
@@ -29,6 +38,11 @@ extension ProductionDataService {
         try businessesDocument(companyId: companyId, businessId: business.id)
             .setData(from:business, merge: false)
     }
+    func saveAssociatedBusinessToUser(userId:String,business:AssociatedBusiness) async throws {
+            try savedCompanyDocument(userId: userId, businessId: business.id)
+                .setData(from:business, merge: false)
+    }
+
     //Read
     func getAssociatedBusinesses(companyId:String) async throws -> [AssociatedBusiness] {
         return try await businessesCollection(companyId: companyId)
@@ -38,6 +52,16 @@ extension ProductionDataService {
         return try await businessesDocument(companyId: companyId, businessId: businessId)
             .getDocument(as: AssociatedBusiness.self)
     }
+    
+    func getUserSavedBusinessList(userId:String) async throws -> [AssociatedBusiness]{
+        return try await savedCompaniesCollection(userId: userId)
+            .getDocuments(as:AssociatedBusiness.self)
+    }
+    func getUserSavedBusiness(userId:String,businessId:String) async throws -> AssociatedBusiness{
+        return try await savedCompanyDocument(userId: userId, businessId: businessId)
+            .getDocument(as: AssociatedBusiness.self)
+    }
+    
     func getAssociatedBusinessByCompanyId(companyId:String,businessCompanyId:String) async throws -> AssociatedBusiness {
         let businessList = try await businessesCollection(companyId: companyId)
             .whereField("companyId", isEqualTo: businessCompanyId)
@@ -52,6 +76,10 @@ extension ProductionDataService {
     //Delete
     func deleteAssociatedBusinessToCompany(companyId:String,businessId:String) async throws {
         try await businessesDocument(companyId: companyId, businessId: businessId)
+            .delete()
+    }
+    func deleteSavedCompany(userId:String,businessId:String) async throws {
+        try await savedCompanyDocument(userId: userId, businessId: businessId)
             .delete()
     }
 }

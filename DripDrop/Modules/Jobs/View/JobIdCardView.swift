@@ -14,7 +14,7 @@ final class JobIdCardViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
-    @Published private (set) var job: Job? = nil
+    @Published private(set) var job: Job? = nil
     func onLoad(companyId:String,jobId:String) async throws {
         self.job = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
     }

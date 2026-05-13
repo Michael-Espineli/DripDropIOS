@@ -95,7 +95,8 @@ struct AddNewJobFromRepairRequest: View {
         rate: "",
         customerId: "",
         customerName: "",
-        preText: false
+        preText: false,
+        isActive: true
     )
     
     @State var bodyOfWaterList:[BodyOfWater] = []
@@ -106,16 +107,20 @@ struct AddNewJobFromRepairRequest: View {
         material: "",
         customerId: "",
         serviceLocationId: "",
-        lastFilled: Date()
+        lastFilled: Date(),
+        isActive: true
     )
     
     @State var equipmentList:[Equipment] = []
     @State var equipment:Equipment = Equipment(
         id: "",
         name: "",
-        category: .filter,
+        type: .filter,
+        typeId: "",
         make: "",
+        makeId: "",
         model: "",
+        modelId: "",
         dateInstalled: Date(),
         status: .operational,
         needsService: true,
@@ -305,17 +310,34 @@ struct AddNewJobFromRepairRequest: View {
         .onChange(of: admin, perform: { admin in
             tech = admin
         })
-        .onChange(of: customerEntity, perform: { cus in
-            Task{
-                do {
-                    if let company = masterDataManager.currentCompany {
-                        if cus.id != "" {
-                            try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: cus.id)
-                            serviceLocations = serviceLocationVM.serviceLocations
-                            if serviceLocations.count != 0 {
-                                serviceLocation = serviceLocations.first!
-                            } else {
-                                serviceLocation = ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: "")
+        .onChange(
+            of: customerEntity,
+            perform: { cus in
+                Task{
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            if cus.id != "" {
+                                try await serviceLocationVM.getAllCustomerServiceLocationsById(companyId: company.id, customerId: cus.id)
+                                serviceLocations = serviceLocationVM.serviceLocations
+                                if serviceLocations.count != 0 {
+                                    serviceLocation = serviceLocations.first!
+                                } else {
+                                    serviceLocation = ServiceLocation(
+                                        id: "",
+                                        nickName: "",
+                                        address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+                                        gateCode: "",
+                                        mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""),
+                                        bodiesOfWaterId: [],
+                                        rateType: "",
+                                        laborType: "",
+                                        chemicalCost: "",
+                                        laborCost: "",
+                                        rate: "",
+                                        customerId: "",
+                                        customerName: "",
+                                        isActive: true
+                                    )
                             }
                         }
                     }
@@ -325,18 +347,29 @@ struct AddNewJobFromRepairRequest: View {
             }
         })
         
-        .onChange(of: serviceLocation, perform: { loc in
-            Task{
-                do {
-                    if let company = masterDataManager.currentCompany {
-                        if loc.id != "" {
-                            try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
-                            bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
-                            
-                            if bodyOfWaterList.count != 0 {
-                                bodyOfWater = bodyOfWaterList.first!
-                            } else {
-                                bodyOfWater = BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date())
+        .onChange(
+            of: serviceLocation,
+            perform: { loc in
+                Task{
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            if loc.id != "" {
+                                try await bodyOfWaterVM.getAllBodiesOfWaterByServiceLocation(companyId: company.id, serviceLocation: loc)
+                                bodyOfWaterList = bodyOfWaterVM.bodiesOfWater
+                                
+                                if bodyOfWaterList.count != 0 {
+                                    bodyOfWater = bodyOfWaterList.first!
+                                } else {
+                                    bodyOfWater = BodyOfWater(
+                                        id: "",
+                                        name: "",
+                                        gallons: "",
+                                        material: "",
+                                        customerId: "",
+                                        serviceLocationId: "",
+                                        lastFilled: Date(),
+                                        isActive: true
+                                    )
                             }
                         }
                     }
@@ -361,9 +394,12 @@ struct AddNewJobFromRepairRequest: View {
                                 equipment = Equipment(
                                     id: "",
                                     name: "",
-                                    category: .filter,
+                                    type: .filter,
+                                    typeId: "",
                                     make: "",
+                                    makeId: "",
                                     model: "",
+                                    modelId: "",
                                     dateInstalled: Date(),
                                     status: .operational,
                                     needsService: true,
@@ -415,7 +451,7 @@ extension AddNewJobFromRepairRequest {
                 Text("Review")
                     .font(.headline)
                 HStack{
-                    Text("Admin : \(admin.firstName ?? "") \(admin.lastName ?? "")")
+                    Text("Admin : \(admin.firstName) \(admin.lastName)")
                     Spacer()
                     Button(action: {
                         view = "Info"
@@ -521,7 +557,7 @@ extension AddNewJobFromRepairRequest {
                 Picker("Tech", selection: $tech) {
                     Text("Pick Tech").tag( DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
-                        let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
+                        let fullName = (template.firstName) + " " + (template.lastName)
                         Text(fullName).tag(template)
                     }
                 }
@@ -559,7 +595,7 @@ extension AddNewJobFromRepairRequest {
                     do {
                         if let company = masterDataManager.currentCompany {
                             let customerFullName = customerEntity.firstName + " " + customerEntity.lastName
-                            let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
+                            let techFullName = (tech.firstName) + " " + (tech.lastName)
                             try await servicestopVM.addNewServiceStopWithValidation(
                                 companyId: company.id,
                                 typeId: jobTemplate.id,
@@ -755,7 +791,7 @@ extension AddNewJobFromRepairRequest {
                 Picker("Tech", selection: $admin) {
                     Text("Pick Tech").tag( DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
-                        let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
+                        let fullName = (template.firstName) + " " + (template.lastName)
                         Text(fullName).tag(template)
                     }
                 }
@@ -789,7 +825,29 @@ extension AddNewJobFromRepairRequest {
                     .bold(true)
                 Spacer()
                 Picker("Location", selection: $serviceLocation) {
-                    Text("Pick Location").tag(ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: ""))
+                    Text("Pick Location").tag(
+                        ServiceLocation(
+                            id: "",
+                            nickName: "",
+                            address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+                            gateCode: "",
+                            mainContact: Contact(
+                                id: "",
+                                name: "",
+                                phoneNumber: "",
+                                email: ""
+                            ),
+                            bodiesOfWaterId: [],
+                            rateType: "",
+                            laborType: "",
+                            chemicalCost: "",
+                            laborCost: "",
+                            rate: "",
+                            customerId: "",
+                            customerName: "",
+                            isActive: true
+                        )
+                    )
                     ForEach(serviceLocations){ template in
                         Text(template.address.streetAddress).tag(template)
                     }
@@ -893,7 +951,29 @@ extension AddNewJobFromRepairRequest {
                     Text("Service Location")
                         .bold(true)
                     Picker("Location", selection: $serviceLocation) {
-                        Text("Pick Location").tag(ServiceLocation(id: "", nickName: "", address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0), gateCode: "", mainContact: Contact(id: "", name: "", phoneNumber: "", email: ""), bodiesOfWaterId: [], rateType: "", laborType: "", chemicalCost: "", laborCost: "", rate: "", customerId: "", customerName: ""))
+                        Text("Pick Location").tag(
+                            ServiceLocation(
+                                id: "",
+                                nickName: "",
+                                address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+                                gateCode: "",
+                                mainContact: Contact(
+                                    id: "",
+                                    name: "",
+                                    phoneNumber: "",
+                                    email: ""
+                                ),
+                                bodiesOfWaterId: [],
+                                rateType: "",
+                                laborType: "",
+                                chemicalCost: "",
+                                laborCost: "",
+                                rate: "",
+                                customerId: "",
+                                customerName: "",
+                                isActive: true
+                            )
+                        )
                         ForEach(serviceLocations){ template in
                             Text(template.address.streetAddress).tag(template)
                         }
@@ -903,7 +983,18 @@ extension AddNewJobFromRepairRequest {
                     Text("Body Of Water")
                         .bold(true)
                     Picker("BOW", selection: $bodyOfWater) {
-                        Text("Pick Location").tag(BodyOfWater(id: "", name: "", gallons: "", material: "", customerId: "", serviceLocationId: "", lastFilled: Date()))
+                        Text("Pick Location").tag(
+                            BodyOfWater(
+                                id: "",
+                                name: "",
+                                gallons: "",
+                                material: "",
+                                customerId: "",
+                                serviceLocationId: "",
+                                lastFilled: Date(),
+                                isActive: true
+                            )
+                        )
                         ForEach(bodyOfWaterList){ BOW in
                             Text(BOW.name).tag(BOW)
                         }
@@ -917,9 +1008,12 @@ extension AddNewJobFromRepairRequest {
                             Equipment(
                                 id: "",
                                 name: "",
-                                category: .filter,
+                                type: .filter,
+                                typeId: "",
                                 make: "",
+                                makeId: "",
                                 model: "",
+                                modelId: "",
                                 dateInstalled: Date(),
                                 status: .operational,
                                 needsService: true,
@@ -963,7 +1057,7 @@ extension AddNewJobFromRepairRequest {
                 Picker("Admin", selection: $admin) {
                     Text("Pick Admin").tag( DBUser(id: "",email:"",firstName: "",lastName: "", exp: 0,recentlySelectedCompany: ""))
                     ForEach(techVM.techList){ template in
-                        let fullName = (template.firstName ?? "") + " " + (template.lastName ?? "")
+                        let fullName = (template.firstName) + " " + (template.lastName)
                         Text(fullName).tag(template)
                     }
                 }
@@ -1057,7 +1151,7 @@ extension AddNewJobFromRepairRequest {
                                 return
                             }
                             let customerFullName = customerEntity.firstName + " " + customerEntity.lastName
-                            let adminFullName = (admin.firstName ?? "") + " " + (admin.lastName ?? "")
+                            let adminFullName = (admin.firstName) + " " + (admin.lastName)
                             
                             try await jobVM.addNewJobWithValidation(companyId: company.id,
                                                                     jobId: jobId,
@@ -1138,8 +1232,8 @@ extension AddNewJobFromRepairRequest {
                                 return
                             }
                             let customerFullName = customerEntity.firstName + " " + customerEntity.lastName
-                            let adminFullName = (admin.firstName ?? "") + " " + (admin.lastName ?? "")
-                            let techFullName = (tech.firstName ?? "") + " " + (tech.lastName ?? "")
+                            let adminFullName = (admin.firstName) + " " + (admin.lastName)
+                            let techFullName = (tech.firstName) + " " + (tech.lastName)
                             let SSID = try await servicestopVM.addNewServiceStopWithValidation(
                                 companyId: company.id,
                                 typeId: jobTemplate.id,

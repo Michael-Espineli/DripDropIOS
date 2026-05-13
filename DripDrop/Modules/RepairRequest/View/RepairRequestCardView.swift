@@ -8,73 +8,80 @@
 import SwiftUI
 
 struct RepairRequestCardView: View {
-    @EnvironmentObject var masterDataManager : MasterDataManager
+    
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    let repairRequest: RepairRequest
 
-    let repairRequest:RepairRequest
     var body: some View {
-        HStack{
-            VStack(alignment: .leading){
-                switch masterDataManager.mainScreenDisplayType {
-                case .compactList:
-                    compact
-                case .preview:
-                    info
-                case .fullPreview:
-                    status
-                    info
+        
+        HStack(spacing: 0) {
+            
+            // Status color bar
+            Rectangle()
+                .fill(getColor(status: repairRequest.status))
+                .frame(width: 5)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+            
+            HStack(spacing: 14) {
+                
+                // Icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(getColor(status: repairRequest.status).opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "wrench.and.screwdriver")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(getColor(status: repairRequest.status))
                 }
-             
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    
+                    // Top row
+                    HStack {
+                        Text(repairRequest.customerName)
+                            .font(.headline)
+                            .lineLimit(2)
+                        
+                        Spacer()
+                        
+                        statusChip
+                    }
+                    
+                    // Meta row
+                    HStack(spacing: 10) {
+                        Text("Tech: \(repairRequest.requesterName)")
+                        Text("•")
+                        Text(fullDate(date: repairRequest.date))
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    
+                    // Description
+                    Text(repairRequest.description)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                
+                Spacer()
             }
-            .frame(maxWidth: .infinity)
+            .padding(14)
         }
-        .modifier(ListButtonModifier())
-        .fontDesign(.monospaced)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
+        )
+        .padding(.horizontal, 12)
     }
-}
-extension RepairRequestCardView {
-    var compact: some View {
-        HStack{
-            Text("\(repairRequest.id)")
-            Text("\(repairRequest.customerName)")
-                .lineLimit(2, reservesSpace: true)
-            Text("\(repairRequest.status.rawValue)")
-                .padding(5)
-                .background(getColor(status:repairRequest.status))
-                .foregroundColor(getForgroundColor(status: repairRequest.status))
-                .cornerRadius(5)
-                .lineLimit(2, reservesSpace: true)
-            Spacer()
-        }
-    }
-    var status: some View {
-        HStack{
-            Text("\(repairRequest.id)")
-            Spacer()
-            Text("\(repairRequest.status.rawValue)")
-                .lineLimit(2, reservesSpace: true)
-                .padding(5)
-                .background(getColor(status:repairRequest.status))
-                .foregroundColor(getForgroundColor(status: repairRequest.status))
-                .cornerRadius(5)
-        }
-    }
-    var info: some View {
-        VStack{
-            Text("\(repairRequest.customerName)")
-                .lineLimit(2, reservesSpace: true)
-
-            HStack{
-                Text("Tech: \(repairRequest.requesterName)")
-                Text("Date: \(fullDate(date:repairRequest.date))")
-            }
-        }
-    }
+    
     func getColor(status:RepairRequestStatus)->Color {
         var color:Color = Color.gray
         switch status {
         case .resolved:
             color = Color.poolGreen
-        case .unresolved:
+        case .unresolved, .cancelled:
             color = Color.poolRed
         case .inprogress:
             color = Color.yellow
@@ -84,7 +91,7 @@ extension RepairRequestCardView {
     func getForgroundColor(status:RepairRequestStatus)->Color {
         var color:Color = Color.gray
         switch status {
-        case .resolved:
+        case .resolved, .cancelled:
             color = Color.white
         case .unresolved:
             color = Color.white
@@ -93,4 +100,14 @@ extension RepairRequestCardView {
         }
         return color
     }
+    private var statusChip: some View {
+        Text(repairRequest.status.rawValue)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(getColor(status: repairRequest.status).opacity(0.15))
+            .foregroundStyle(getColor(status: repairRequest.status))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
 }

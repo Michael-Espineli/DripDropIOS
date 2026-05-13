@@ -49,26 +49,30 @@ struct ThreeColumnMenuView: View {
                 } detail: {
                     
                     NavigationStack(path: $navigationManager.routes) {
-                        DetailView(dataService:dataService)
-                            .navigationDestination(for: Route.self) { $0 }
-                            .toolbar{
-                                ToolbarItem(placement: .topBarLeading, content: {
-                                    Button(action: {
-                                        switch columnVisibility{
-                                        case .all:
-                                            columnVisibility = .detailOnly
-                                        case .doubleColumn:
-                                            columnVisibility = .detailOnly
-                                        case .detailOnly:
-                                            columnVisibility = .detailOnly
-                                        default:
-                                            columnVisibility = .detailOnly
-                                        }
-                                    }, label: {
-                                        Image(systemName: columnVisibility == .detailOnly ? "" : "square.leftthird.inset.filled")
+                        if masterDataManager.activeSubscription == nil {
+                            SubscriptionPicker(dataService:dataService)
+                        } else {
+                            DetailView(dataService:dataService)
+                                .navigationDestination(for: Route.self) { $0 }
+                                .toolbar{
+                                    ToolbarItem(placement: .topBarLeading, content: {
+                                        Button(action: {
+                                            switch columnVisibility{
+                                            case .all:
+                                                columnVisibility = .detailOnly
+                                            case .doubleColumn:
+                                                columnVisibility = .detailOnly
+                                            case .detailOnly:
+                                                columnVisibility = .detailOnly
+                                            default:
+                                                columnVisibility = .detailOnly
+                                            }
+                                        }, label: {
+                                            Image(systemName: columnVisibility == .detailOnly ? "" : "square.leftthird.inset.filled")
+                                        })
                                     })
-                                })
-                            }
+                                }
+                        }
                     }
                 }
                 .navigationBarBackground()

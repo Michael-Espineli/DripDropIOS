@@ -1,4 +1,4 @@
-//
+
 //  JobCardView.swift
 //  ThePoolApp
 //
@@ -8,94 +8,136 @@
 import SwiftUI
 
 struct JobCardView: View {
-    @EnvironmentObject var masterDataManager : MasterDataManager
-    
-    let job:Job
+
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    let job: Job
+
     var body: some View {
-        VStack(alignment: .leading){
-            switch masterDataManager.mainScreenDisplayType {
-            case .compactList:
-                compact
-            case .preview:
-                status
-                info
-            case .fullPreview:
-                status
-                info
-                monies
-            }
-        }
-        .frame(maxWidth: .infinity )
-        .modifier(ListButtonModifier())
-        .padding(.horizontal,8)
-        .padding(.vertical,4)
-    }
-    
-}
-extension JobCardView {
-    var compact: some View {
-        
-        
-        VStack{
-            HStack{
-                Text("\(job.internalId)")
-                Text("\(job.customerName)")
-                    .lineLimit(1)
-            }
-            HStack{
-                Text("Ops:")
-                Text("\(job.operationStatus.rawValue)")
-                    .lineLimit(1)
-                    .padding(5)
-                    .background(getColorOperation(status:job.operationStatus))
-                    .foregroundColor(getForgroundColorOperation(status: job.operationStatus))
-                    .cornerRadius(5)
+
+        HStack(spacing: 0) {
+
+            // Status color bar (match RepairRequestCardView)
+            Rectangle()
+                .fill(getColorOperation(status: job.operationStatus))
+                .frame(width: 5)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+
+            HStack(spacing: 14) {
+
+                // Icon (match RepairRequestCardView)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(getColorOperation(status: job.operationStatus).opacity(0.15))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(getColorOperation(status: job.operationStatus))
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+
+                    // Top row
+                    HStack {
+                        Text(job.customerName)
+                            .font(.headline)
+                            .lineLimit(2)
+
+                        Spacer()
+
+                        // Right-side status chips
+                        VStack(spacing: 8) {
+                            StatusChip(
+                                text: job.operationStatus.rawValue,
+                                color: getColorOperation(status: job.operationStatus)
+                            )
+                            StatusChip(
+                                text: job.billingStatus.rawValue,
+                                color: getColorBilling(status: job.billingStatus)
+                            )
+                        }
+                    }
+
+                    // Meta row
+                    HStack(spacing: 10) {
+                        Text("\(job.internalId)")
+                        Text("•")
+                        Text(shortDate(date: job.dateCreated))
+                        Text("•")
+                        Text(job.type)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                    // Conditional rows (keep same functionality)
+                    switch masterDataManager.mainScreenDisplayType {
+                    case .compactList:
+                        EmptyView()
+
+                    case .preview:
+                        infoRow
+                            .padding(.top, 2)
+
+                    case .fullPreview:
+                        infoRow
+                            .padding(.top, 2)
+                        moneyRow
+                    }
+                }
+
                 Spacer()
-                Text("Billing:")
-                Text("\(job.billingStatus.rawValue)")
-                    .lineLimit(1)
-                    .padding(5)
-                    .background(getColorOperation(status:job.operationStatus))
-                    .foregroundColor(getForgroundColorOperation(status: job.operationStatus))
-                    .cornerRadius(5)
             }
-            .font(.footnote)
+            .padding(14)
         }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
+        )
+        .padding(.horizontal, 12)
     }
-    var status: some View {
-        HStack{
-            Text("\(job.internalId )")
+}
+
+extension JobCardView {
+
+    var infoRow: some View {
+        HStack(spacing: 12) {
+            Label(shortDate(date: job.dateCreated), systemImage: "calendar")
             Spacer()
-            HStack{
-                Text("\(job.operationStatus.rawValue)")
-                    .padding(5)
-                    .background(getColorOperation(status:job.operationStatus))
-                    .foregroundColor(getForgroundColorOperation(status: job.operationStatus))
-                    .cornerRadius(5)
-                Text("\(job.billingStatus.rawValue)")
-                    .padding(5)
-                    .background(getColorBilling(status:job.billingStatus))
-                    .foregroundColor(getForgroundColorBilling(status:job.billingStatus))
-                    .cornerRadius(5)
-            }
         }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
     }
-    var info: some View {
-        HStack{
-            Text("\(job.customerName)")
-            Text("\(job.type)")
+
+    var moneyRow: some View {
+        HStack {
+            Text("Rate \(job.rate, format: .currency(code: "USD").precision(.fractionLength(0)))")
+            Spacer()
+            Text("Profit \(job.profit, format: .currency(code: "USD").precision(.fractionLength(0)))")
         }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
     }
-    var monies: some View {
-        HStack{
-            Text("Rate: \(job.rate, format: .currency(code: "USD").precision(.fractionLength(0)))")
-            Text("Profit: \(job.profit, format: .currency(code: "USD").precision(.fractionLength(0)))")
-            Text("\(shortDate(date:job.dateCreated))")
-        }
+}
+
+struct StatusChip: View {
+    let text: String
+    let color: Color
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.15))
+            .foregroundStyle(color)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
-    
-    func getColorOperation(status:JobOperationStatus)->Color {
-        var color:Color = Color.gray
+}
+
+extension JobCardView {
+    func getColorOperation(status: JobOperationStatus) -> Color {
+        var color: Color = Color.gray
         switch status {
         case .estimatePending:
             color = Color.poolRed
@@ -110,8 +152,9 @@ extension JobCardView {
         }
         return color
     }
-    func getForgroundColorOperation(status:JobOperationStatus)->Color {
-        var color:Color = Color.gray
+
+    func getForgroundColorOperation(status: JobOperationStatus) -> Color {
+        var color: Color = Color.gray
         switch status {
         case .estimatePending:
             color = Color.poolWhite
@@ -126,8 +169,9 @@ extension JobCardView {
         }
         return color
     }
-    func getColorBilling(status:JobBillingStatus)->Color {
-        var color:Color = Color.gray
+
+    func getColorBilling(status: JobBillingStatus) -> Color {
+        var color: Color = Color.gray
         switch status {
         case .draft:
             color = Color.poolRed
@@ -144,8 +188,9 @@ extension JobCardView {
         }
         return color
     }
-    func getForgroundColorBilling(status:JobBillingStatus)->Color {
-        var color:Color = Color.gray
+
+    func getForgroundColorBilling(status: JobBillingStatus) -> Color {
+        var color: Color = Color.gray
         switch status {
         case .draft:
             color = Color.poolWhite

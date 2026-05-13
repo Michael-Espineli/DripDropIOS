@@ -37,8 +37,7 @@ final class AllCompanyRegularRoutesViewModel:ObservableObject{
     @Published private(set) var companyList : [Company] = []
 
     @Published private(set) var rss : [String] = []
-    @Published private(set) var technicianStopsOrderedByDay : [String:[String:[RecurringServiceStop]]] = [:]
-    @Published var daysOfWeekList : [String] = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+    @Published private(set) var technicianStopsOrderedByDay : [DaysOfWeek:[String:[RecurringServiceStop]]] = [:]
 
     func loadTechs(companyId:String) async throws{
         
@@ -96,7 +95,7 @@ final class AllCompanyRegularRoutesViewModel:ObservableObject{
                         endDate: recurringServiceStop.endDate,
                         noEndDate: recurringServiceStop.noEndDate,
                         frequency: recurringServiceStop.frequency,
-                        daysOfWeek: recurringServiceStop.daysOfWeek,
+                        day: recurringServiceStop.day,
                         description: recurringServiceStop.description,
                         lastCreated: recurringServiceStop.lastCreated,
                         serviceLocationId: recurringServiceStop.serviceLocationId,
@@ -116,13 +115,13 @@ final class AllCompanyRegularRoutesViewModel:ObservableObject{
         
         //Sort into day
         //Build in for each and get a day // [Day : TechnicianId : [List of all Recurring Service Stops]]
-        var technicianStopsOrderedByDay : [String:[String:[RecurringServiceStop]]] = [:]
+        var technicianStopsOrderedByDay : [DaysOfWeek:[String:[RecurringServiceStop]]] = [:]
         var basicTechnicanInfo : [BasicTechnicanInfo] = []
         var companyList : [Company] = []
 
-        for dayOfWeek in daysOfWeekList {
+        for dayOfWeek in DaysOfWeek.allCases {
 
-            var sundayRecurringServiceStopList = allActiveRecurringServiceStops.filter({$0.daysOfWeek == dayOfWeek})
+            var sundayRecurringServiceStopList = allActiveRecurringServiceStops.filter({$0.day == dayOfWeek})
             var techIdList : [String] = []
             var techDictionary : [String:[RecurringServiceStop]] = [:]
             for recurringServiceStop in sundayRecurringServiceStopList {
@@ -217,7 +216,7 @@ final class AllCompanyRegularRoutesViewModel:ObservableObject{
         try await dataService.deleteRecurringRoute(companyId: companyId, recurringRouteId: recurringRoute.id)
         //Delete Reuccing Route
     }
-    func getRouteForRecurringStopDay(companyId:String,day:String,techId:String,techName:String) async throws {
+    func getRouteForRecurringStopDay(companyId: String, day: DaysOfWeek, techId: String, techName: String) async throws {
 //        print("     Attempting to Get Recurring Route For Day \(day) and \(techId)")
         let recurringRoutes = try await dataService.getRecurringRouteByDayAndTech(companyId: companyId, day: day, techId: techId)
         

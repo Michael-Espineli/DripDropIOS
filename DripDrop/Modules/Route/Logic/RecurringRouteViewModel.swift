@@ -40,18 +40,18 @@ final class RecurringRouteViewModel:ObservableObject{
     
     func createAndUploadRecurringRouteWithOutAddingNewServiceStops(
         companyId: String,
-        tech:CompanyUser,
-        recurringStopsList:[RecurringServiceStop],
-        job:JobTemplate,
-        noEndDate:Bool,
-        description:String,
-        day:String,
-        standardFrequencyType:LaborContractFrequency,
-        timesPerFrequency:Int,
-        startDate:Date,
-        endDate:Date,
-        currentRecurringRoute:RecurringRoute?,
-        serviceStopsListDic:[RecurringServiceStop:[ServiceStop]]
+        tech: CompanyUser,
+        recurringStopsList: [RecurringServiceStop],
+        job: JobTemplate,
+        noEndDate: Bool,
+        description: String,
+        day: DaysOfWeek,
+        standardFrequencyType: LaborContractFrequency,
+        timesPerFrequency: Int,
+        startDate: Date,
+        endDate: Date,
+        currentRecurringRoute: RecurringRoute?,
+        serviceStopsListDic: [RecurringServiceStop:[ServiceStop]]
     ) async throws {
         var workingStopDick = serviceStopsListDic
         if let recurringRoute = currentRecurringRoute {
@@ -96,11 +96,11 @@ final class RecurringRouteViewModel:ObservableObject{
                                         endDate:endDate,
                                         noEndDate: noEndDate,
                                         frequency: standardFrequencyType,
-                                        daysOfWeek: day,
+                                        day: day,
                                         description: description,
                                         lastCreated: Date(),
                                         serviceLocationId: RSS.serviceLocationId,
-                                        estimatedTime: "",
+                                        estimatedTime: 15,
                                         otherCompany: false,
                                         laborContractId: nil,
                                         contractedCompanyId: nil
@@ -109,7 +109,7 @@ final class RecurringRouteViewModel:ObservableObject{
                                     CustomFrequency: String(
                                         timesPerFrequency
                                     ),
-                                    daysOfWeek: [day],
+                                    daysOfWeek: [day.rawValue],
                                     oldRss:stopDick.key,
                                     old:stopDick.value
                                 )
@@ -138,11 +138,11 @@ final class RecurringRouteViewModel:ObservableObject{
                             endDate:endDate,
                             noEndDate: noEndDate,
                             frequency: standardFrequencyType,
-                            daysOfWeek: day,
+                            day: day,
                             description: description,
                             lastCreated: Date(),
                             serviceLocationId: RSS.serviceLocationId,
-                            estimatedTime: "",
+                            estimatedTime: 15,
                             otherCompany: false,
                             laborContractId: "",
                             contractedCompanyId: ""
@@ -162,8 +162,7 @@ final class RecurringRouteViewModel:ObservableObject{
                 let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
                 binder.append(page)
             }
-            let recurringRouteId = day + tech.id
-            print("Uploading Recurring Route Id >> \(recurringRouteId)")
+            let recurringRouteId = "com_rr_" + UUID().uuidString
             let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: tech.id, day: day, order: binder, description: "")
             try await dataService.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)
 
@@ -182,7 +181,7 @@ final class RecurringRouteViewModel:ObservableObject{
                                        job:JobTemplate,
                                        noEndDate:Bool,
                                        description:String,
-                                       day:String,
+                                       day:DaysOfWeek,
                                        standardFrequencyType:LaborContractFrequency,
                                        timesPerFrequency:Int,
                                        startDate:Date,
@@ -223,11 +222,11 @@ final class RecurringRouteViewModel:ObservableObject{
                         endDate:endDate,
                         noEndDate: noEndDate,
                         frequency: standardFrequencyType,
-                        daysOfWeek: day,
+                        day: day,
                         description: description,
                         lastCreated: Date(),
                         serviceLocationId: RSS.serviceLocationId,
-                        estimatedTime: "",
+                        estimatedTime: 15,
                         otherCompany: false,
                         laborContractId: "",
                         contractedCompanyId: ""
@@ -243,8 +242,8 @@ final class RecurringRouteViewModel:ObservableObject{
                 let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
                 binder.append(page)
             }
-            let recurringRouteId = day + tech.id
-            print("Uploading Recurring Route Id >> \(recurringRouteId)")
+            let recurringRouteId = "com_rr_" + UUID().uuidString
+            print("  [][]Uploading Recurring Route Id >> \(recurringRouteId)")
             let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: tech.id, day: day, order: binder, description: "")
             try await dataService.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)
         }
@@ -252,17 +251,17 @@ final class RecurringRouteViewModel:ObservableObject{
     
     func createAndUploadRecurringRouteWithVerification(
         companyId: String,
-        tech:CompanyUser,
-        recurringStopsList:[RecurringServiceStop],
-        job:JobTemplate,
-        noEndDate:Bool,
-        description:String,
-        day:String,
-        standardFrequencyType:LaborContractFrequency,
-        timesPerFrequency:Int,
-        startDate:Date,
-        endDate:Date,
-        currentRecurringRoute:RecurringRoute?
+        tech: CompanyUser,
+        recurringStopsList: [RecurringServiceStop],
+        job: JobTemplate,
+        noEndDate: Bool,
+        description: String,
+        day: DaysOfWeek,
+        standardFrequencyType: LaborContractFrequency,
+        timesPerFrequency: Int,
+        startDate: Date,
+        endDate: Date,
+        currentRecurringRoute: RecurringRoute?
     ) async throws {
         print("")
 
@@ -314,11 +313,11 @@ final class RecurringRouteViewModel:ObservableObject{
                         endDate:endDate,
                         noEndDate: noEndDate,
                         frequency: standardFrequencyType,
-                        daysOfWeek: day,
+                        day: day,
                         description: description,
                         lastCreated: Date(),
                         serviceLocationId: RSS.serviceLocationId,
-                        estimatedTime: "",
+                        estimatedTime: 15,
                         otherCompany: false,
                         laborContractId: "",
                         contractedCompanyId: ""
@@ -335,8 +334,8 @@ final class RecurringRouteViewModel:ObservableObject{
                 let page = recurringRouteOrder(id: UUID().uuidString, order: order, recurringServiceStopId: rssId!,customerId: RSS.customerId,customerName: RSS.customerName, locationId: RSS.serviceLocationId)
                 binder.append(page)
             }
-            let recurringRouteId = day + tech.id
-            print("Uploading Recurring Route Id >> \(recurringRouteId)")
+            let recurringRouteId = "com_rr_" + UUID().uuidString
+            print("  [][]Uploading Recurring Route Id >> \(recurringRouteId)")
             let recurringRoute:RecurringRoute = RecurringRoute(id: recurringRouteId, tech: techFullName, techId: tech.userId, day: day, order: binder, description: "")
             try await dataService.uploadRoute(companyId: companyId, recurringRoute: recurringRoute)
 
@@ -344,18 +343,20 @@ final class RecurringRouteViewModel:ObservableObject{
         }
     }
     
-    func modifyRecurringRouteWithVerification(companyId: String,
-                                       tech:CompanyUser,
-                                       noEndDate:Bool,
-                                       day:String,
-                                        standardFrequencyType:LaborContractFrequency,
-                                        timesPerFrequency:Int,
-                                       transitionDate:Date,
-                                       newEndDate:Date,
-                                        description:String,
-                                        jobTemplate:JobTemplate,
-                                        recurringStopList:[RecurringServiceStop],
-                                        currentRecurringRoute:RecurringRoute) async throws {
+    func modifyRecurringRouteWithVerification(
+        companyId: String,
+        tech: CompanyUser,
+        noEndDate: Bool,
+        day: DaysOfWeek,
+        standardFrequencyType: LaborContractFrequency,
+        timesPerFrequency: Int,
+        transitionDate: Date,
+        newEndDate: Date,
+        description: String,
+        jobTemplate: JobTemplate,
+        recurringStopList: [RecurringServiceStop],
+        currentRecurringRoute: RecurringRoute
+    ) async throws {
         //DEVELOPER I COULD TRY AND UPDATE RATHER THAN DELETE AND CREATE NEW
         //Maybe I needed to use a different recurring route id because I cant have more than one exisiting at the same time
         print("End Recurring Route")
@@ -391,18 +392,20 @@ final class RecurringRouteViewModel:ObservableObject{
             currentRecurringRoute: nil
         )
     }
-        func reassigndRecurringRouteWithVerification(companyId: String,
-                                           tech:CompanyUser,
-                                           noEndDate:Bool,
-                                           day:String,
-                                        standardFrequencyType:LaborContractFrequency,
-                                            timesPerFrequency:Int,
-                                           transitionDate:Date,
-                                           newEndDate:Date,
-                                                     description:String,
-                                                     jobTemplate:JobTemplate,
-                                                     recurringStopList:[RecurringServiceStop],
-                                           currentRecurringRoute:RecurringRoute) async throws {
+    func reassigndRecurringRouteWithVerification(
+        companyId: String,
+        tech:CompanyUser,
+        noEndDate:Bool,
+        day: DaysOfWeek,
+        standardFrequencyType:LaborContractFrequency,
+        timesPerFrequency:Int,
+        transitionDate:Date,
+        newEndDate:Date,
+        description:String,
+        jobTemplate:JobTemplate,
+        recurringStopList:[RecurringServiceStop],
+        currentRecurringRoute:RecurringRoute
+    ) async throws {
             //DEVELOPER I COULD TRY AND UPDATE RATHER THAN DELETE AND CREATE NEW
             print("End Recurring Route")
             try await dataService.endRecurringRoute(companyId: companyId, recurringRouteId: currentRecurringRoute.id, endDate: transitionDate)
@@ -457,13 +460,13 @@ final class RecurringRouteViewModel:ObservableObject{
         print("* getSingleRoute in RecurringRouteViewModel *")
         self.recurringRoute = try await dataService.getSingleRoute(companyId: companyId, recurringRouteId: recurringRouteId)
     }
-    func getRecurringRouteByDayAndTech(companyId:String,day:String,techId:String) async throws {
+    func getRecurringRouteByDayAndTech(companyId: String,day: DaysOfWeek,techId: String) async throws {
         let recurringServiceStops = try await dataService.getRecurringRouteByDayAndTech(companyId: companyId, day: day, techId: techId)
         if recurringServiceStops.count != 0 {
             self.recurringRoute = recurringServiceStops.first
         }
     }
-    func getRecurringRouteByDay(companyId:String,day:String) async throws {
+    func getRecurringRouteByDay(companyId: String, day: DaysOfWeek) async throws {
         let recurringRoutes = try await dataService.getRecurringRouteByDay(companyId: companyId, day: day)
         if recurringRoutes.count != 0 {
             self.recurringRoute = recurringRoutes.first

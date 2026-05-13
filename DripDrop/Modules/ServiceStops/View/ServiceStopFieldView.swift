@@ -89,11 +89,7 @@ struct ServiceStopFieldView: View {
     }
 }
 
-//struct ServiceStopTaskView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        ServiceStopTaskView(serviceStop: MockDataService.mockServicestop, taskList: [])
-//    }
-//}
+
 extension ServiceStopFieldView {
     private func completeAction() -> some View {
            Button {

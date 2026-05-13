@@ -268,7 +268,7 @@ extension AddNewItemToShoppingList{
                         if customer.firstName != "" || customer.lastName != ""{
                             customerName = customer.firstName + " " + customer.lastName
                         }
-                        let purchaserName = (user.firstName ?? "") + " " + (user.lastName ?? "")
+                        let purchaserName = user.firstName + " " + user.lastName
                         try await shoppingVM.addNewShoppingListItemWithValidation(companyId: company.id,
                                                                                   datePurchased: Date(),
                                                                                   category: type,

@@ -72,248 +72,305 @@ final class TaskGroupDetailViewViewModel:ObservableObject{
 struct TaskGroupDetailView: View {
     @EnvironmentObject var dataService : ProductionDataService
     @EnvironmentObject var masterDataManager : MasterDataManager
-    
+
     @StateObject var VM : TaskGroupDetailViewViewModel
-    
     @State var taskGroup : JobTaskGroup
 
     init(dataService : any ProductionDataServiceProtocol, taskGroup : JobTaskGroup){
-        
         _VM = StateObject(wrappedValue: TaskGroupDetailViewViewModel(dataService: dataService))
-        
         _taskGroup = State(wrappedValue: taskGroup)
-        
     }
-    
+
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            VStack {
-                HStack{
+
+            VStack(spacing: 16) {
+
+                // MARK: Header
+                HStack {
+                    Text("Task Group Details")
+                        .font(.title3.weight(.semibold))
+
                     Spacer()
-                    Button(action: {
+
+                    Button("Delete") {
                         if let currentCompany = masterDataManager.currentCompany {
-                            VM.deleteTaskGroup(companyId: currentCompany.id, taskGroupId: taskGroup.id)
+                            VM.deleteTaskGroup(
+                                companyId: currentCompany.id,
+                                taskGroupId: taskGroup.id
+                            )
                         }
-                    }, label: {
-                        Text("Delete")
-                            .modifier(DismissButtonModifier())
-                    })
+                    }
+                    .modifier(DismissButtonModifier())
                 }
-                ScrollView {
-                    form
-                    Rectangle()
-                        .frame(height: 1)
-                    itemList
+                .padding(.horizontal)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        form
+                        itemList
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
                 }
+
                 button
+                    .padding(.horizontal)
             }
-            .padding(8)
+            .padding(.top)
         }
         .task{
             if let currentCompany = masterDataManager.currentCompany {
                 VM.onLoad(companyId: currentCompany.id, taskGroup: taskGroup)
             }
         }
-        .onChange(of: VM.itemRate, perform: { rateStr in
-            if rateStr != "" {
-                if let rate = Double(rateStr) {
-                    print(rate)
-                } else {
-                    VM.itemRate = String(rateStr.dropLast())
-                }
+        .onChange(of: VM.itemRate) { rateStr in
+            if rateStr != "", Double(rateStr) == nil {
+                VM.itemRate = String(rateStr.dropLast())
             }
-        })
-        .onChange(of: VM.itemEstimatedTime, perform: { timeStr in
-            if timeStr != "" {
-                if let rate = Int(timeStr) {
-                    print(rate)
-                } else {
-                    VM.itemEstimatedTime = String(timeStr.dropLast())
-                }
+        }
+        .onChange(of: VM.itemEstimatedTime) { timeStr in
+            if timeStr != "", Int(timeStr) == nil {
+                VM.itemEstimatedTime = String(timeStr.dropLast())
             }
-        })
+        }
     }
 }
 
 #Preview {
     AddNewTaskGroup(dataService: MockDataService())
 }
+// ✅ FORM SECTION (Card Style)
 extension TaskGroupDetailView {
-    
+
     var form: some View {
-        VStack{
-            HStack{
-                Text("Name : ")
-                TextField(
-                    "Name",
-                    text: $VM.name
-                )
-                .modifier(TextFieldModifier())
+        VStack(alignment: .leading, spacing: 12) {
+
+            Text("Details")
+                .font(.headline)
+
+            VStack(spacing: 12) {
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Name")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Name", text: $VM.name)
+                        .modifier(TextFieldModifier())
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Description")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Description", text: $VM.description)
+                        .modifier(TextFieldModifier())
+                }
             }
-            HStack{
-                Text("Description : ")
-                TextField(
-                    "Description",
-                    text: $VM.description
-                )
-                .modifier(TextFieldModifier())
+            .padding(14)
+            .background(Color.darkGray.opacity(0.35))
+            .cornerRadius(14)
+        }
+    }
+}
+//✅ ITEM LIST SECTION (Modern Card Layout)
+extension TaskGroupDetailView {
+
+    var itemList: some View {
+        VStack(alignment: .leading, spacing: 12) {
+
+            Text("Tasks")
+                .font(.headline)
+
+            VStack(spacing: 12) {
+
+                ForEach(VM.taskItemList) { item in
+                    VStack(alignment: .leading, spacing: 8) {
+
+                        HStack {
+                            Text(item.name)
+                                .font(.subheadline.weight(.semibold))
+
+                            Spacer()
+
+                            Button("Delete") {
+                                VM.taskItemList.removeAll(where: {$0.id == item.id})
+                                if let currentCompany = masterDataManager.currentCompany {
+                                    VM.deleteTask(
+                                        companyId: currentCompany.id,
+                                        taskGroupId: taskGroup.id,
+                                        taskId: item.id
+                                    )
+                                }
+                            }
+                            .modifier(DismissButtonModifier())
+                        }
+
+                        if !item.description.isEmpty {
+                            Text(item.description)
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
+
+                        HStack {
+                            Label("\(item.estimatedTime) min", systemImage: "clock")
+                            Spacer()
+                            Text(
+                                Double(item.contractedRate)/100,
+                                format: .currency(code: "USD")
+                            )
+                        }
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(14)
+                    .background(Color.darkGray.opacity(0.35))
+                    .cornerRadius(14)
+                }
+
+                newItemSection
             }
         }
     }
-    var itemList: some View {
-        VStack{
-            ForEach(VM.taskItemList){ item in
-                VStack{
-                    HStack{
-                        Text(item.name)
-                        Spacer()
-                        Button(action: {
-                            VM.taskItemList.removeAll(where: {$0.id == item.id})
-                            if let currentCompany = masterDataManager.currentCompany {
-                                VM.deleteTask(companyId: currentCompany.id, taskGroupId: taskGroup.id, taskId: item.id)
-                            }
-                        }, label: {
-                            Text("Delete")
-                                .modifier(DismissButtonModifier())
-                        })
-                    }
-                    Text(item.description)
-                        .font(.footnote)
-                    HStack{
-                        Text("Estimated Time: \(String(item.estimatedTime))")
-                        Spacer()
-                        Text("Contracted Rate : \(Double(item.contractedRate)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                    }
-                    .font(.footnote)
-                }
-                .modifier(ListButtonModifier())
-            }
-            Divider()
+}
+//✅ NEW ITEM ENTRY (Cleaner + Structured)
+extension TaskGroupDetailView {
+
+    var newItemSection: some View {
+        VStack(spacing: 12) {
+
             if VM.addNewItem {
-                HStack{
-                    Text("Name : ")
-                    TextField(
-                        "Name",
-                        text: $VM.itemName
-                    )
-                    .modifier(TextFieldModifier())
-                }
-                Picker("Type", selection: $VM.itemType) {
-                    ForEach(JobTaskType.allCases){ BOW in
-                        Text(BOW.rawValue).tag(BOW)
+
+                VStack(alignment: .leading, spacing: 12) {
+
+                    Text("New Task")
+                        .font(.subheadline.weight(.semibold))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Name")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        TextField("Task Name", text: $VM.itemName)
+                            .modifier(TextFieldModifier())
                     }
-                }
-                HStack{
-                    Text("Description : ")
-                    TextField(
-                        "Description",
-                        text: $VM.itemDescription
-                    )
-                    .modifier(TextFieldModifier())
-                }
-                HStack{
-                    Text("Item Rate : ")
-                    TextField(
-                        "Item Rate",
-                        text: $VM.itemRate
-                    )
-                    .modifier(TextFieldModifier())
-                }
-                HStack{
-                    Text("Estimated Time : ")
-                    TextField(
-                        "Estimated Time",
-                        text: $VM.itemEstimatedTime
-                    )
-                    .modifier(TextFieldModifier())
-                }
-                HStack{
-                    Button(action: {
-                        VM.addNewItem.toggle()
-                        
-                        VM.itemEstimatedTime = ""
-                        VM.itemRate = ""
-                        VM.itemName = ""
-                        VM.itemType = .basic
-                        VM.itemDescription = ""
-                        
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("Clear")
-                            Spacer()
+
+                    Picker("Type", selection: $VM.itemType) {
+                        ForEach(JobTaskType.allCases) {
+                            Text($0.rawValue).tag($0)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Description")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        TextField("Description", text: $VM.itemDescription)
+                            .modifier(TextFieldModifier())
+                    }
+
+                    HStack(spacing: 12) {
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Rate")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            TextField("0", text: $VM.itemRate)
+                                .modifier(TextFieldModifier())
+                        }
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Estimated Time")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            TextField("Min", text: $VM.itemEstimatedTime)
+                                .modifier(TextFieldModifier())
+                        }
+                    }
+
+                    HStack(spacing: 12) {
+
+                        Button("Clear") {
+                            VM.addNewItem.toggle()
+                            VM.itemEstimatedTime = ""
+                            VM.itemRate = ""
+                            VM.itemName = ""
+                            VM.itemType = .basic
+                            VM.itemDescription = ""
                         }
                         .modifier(DismissButtonModifier())
-                    })
-                    Button(action: {
-                        if let currentCompany = masterDataManager.currentCompany {
-                            if let time = Int(VM.itemEstimatedTime) {
-                                if let rate = Int(VM.itemRate) {
-                                    let item = JobTaskGroupItem(
-                                        id: UUID().uuidString,
-                                        name: VM.itemName,
-                                        type: VM.itemType,
-                                        description: VM.itemDescription,
-                                        contractedRate: rate*100,
-                                        estimatedTime: time
-                                    )
-                                    VM.uploadTaskItem(companyId: currentCompany.id, taskGroupId: taskGroup.id, task: item)
-                                    VM.itemEstimatedTime = ""
-                                    VM.itemRate = ""
-                                    VM.itemName = ""
-                                    VM.itemType = .basic
-                                    VM.itemDescription = ""
-                                    
-                                }
+
+                        Button("Add To List") {
+                            if let currentCompany = masterDataManager.currentCompany,
+                               let time = Int(VM.itemEstimatedTime),
+                               let rate = Int(VM.itemRate) {
+
+                                let item = JobTaskGroupItem(
+                                    id: UUID().uuidString,
+                                    name: VM.itemName,
+                                    type: VM.itemType,
+                                    description: VM.itemDescription,
+                                    contractedRate: rate*100,
+                                    estimatedTime: time
+                                )
+
+                                VM.uploadTaskItem(
+                                    companyId: currentCompany.id,
+                                    taskGroupId: taskGroup.id,
+                                    task: item
+                                )
+
+                                VM.itemEstimatedTime = ""
+                                VM.itemRate = ""
+                                VM.itemName = ""
+                                VM.itemType = .basic
+                                VM.itemDescription = ""
                             }
                         }
-                    },
-                           label: {
-                        HStack{
-                            Spacer()
-                            Text("Add To List")
-                            Spacer()
-                        }
                         .modifier(SubmitButtonModifier())
-                    })
+                    }
                 }
+                .padding(14)
+                .background(Color.darkGray.opacity(0.35))
+                .cornerRadius(14)
+
             } else {
-                Button(action: {
+
+                Button {
                     VM.addNewItem.toggle()
-                }, label: {
-                    HStack{
+                } label: {
+                    HStack {
                         Spacer()
                         Text("Add New Item")
                         Spacer()
                     }
                     .modifier(SubmitButtonModifier())
-                })
+                }
             }
         }
     }
+}
+//✅ Bottom Buttons (Balanced + Cleaner)
+extension TaskGroupDetailView {
+
     var button: some View {
-        HStack{
-            Button(action: {
-                
-            }, label: {
-                HStack{
-                    Spacer()
-                    Text("Discard")
-                    Spacer()
-                }
-                .modifier(DismissButtonModifier())
-            })
-            Button(action: {
-                
-            }, label: {
-                HStack{
-                    Spacer()
-                    Text("Save")
-                    Spacer()
-                }
-                .modifier(SubmitButtonModifier())
-            })
+        HStack(spacing: 12) {
+
+            Button("Discard") {
+
+            }
+            .modifier(DismissButtonModifier())
+
+            Button("Save") {
+
+            }
+            .modifier(SubmitButtonModifier())
         }
     }
 }

@@ -65,7 +65,7 @@ final class RouteManagmentViewModel:ObservableObject{
         try await dataService.deleteRecurringRoute(companyId: companyId, recurringRouteId: recurringRoute.id)
         //Delete Reuccing Route
     }
-    func getRouteForRecurringStopDay(companyId:String,day:String,techId:String,techName:String) async throws {
+    func getRouteForRecurringStopDay(companyId: String,day: DaysOfWeek,techId: String,techName: String) async throws {
 //        print("     Attempting to Get Recurring Route For Day \(day) and \(techId)")
         let recurringRoutes = try await dataService.getRecurringRouteByDayAndTech(companyId: companyId, day: day, techId: techId)
         

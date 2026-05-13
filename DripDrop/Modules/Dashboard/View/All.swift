@@ -467,7 +467,7 @@ extension All {
         .fontDesign(.monospaced)
     }
 
-    
+//    Roll out During update 2.1
     var alerts: some View {
         VStack{
             HStack{
@@ -802,7 +802,7 @@ extension All {
         .font(.headline)
         
     }
-    
+        //    Roll out During update 2.1
     var chatView: some View {
         VStack{
             if let user = masterDataManager.user {

@@ -20,6 +20,11 @@ final class ServiceLocationViewModel:ObservableObject{
     //                    VARIABLES
     //----------------------------------------------------
     
+    @Published var alertMessage:String = ""
+    @Published var showAlert:Bool = false
+    @Published var deleteConfirmationMessage:String = ""
+    @Published var showDeleteConfirmation:Bool = false
+    
     //SINGLES
     @Published private(set) var serviceLocation: ServiceLocation? = nil
     @Published private(set) var totalRate: Double? = nil
@@ -120,10 +125,12 @@ final class ServiceLocationViewModel:ObservableObject{
                 equipment: Equipment(
                     id: UUID().uuidString,
                     name: "Pump 1",
-                    
-                    category: .pump,
+                    type: .pump,
+                    typeId: "",
                     make: "",
+                    makeId: "",
                     model: "",
+                    modelId: "",
                     dateInstalled: Date(),
                     status: .operational,
                     needsService: false,
@@ -141,20 +148,23 @@ final class ServiceLocationViewModel:ObservableObject{
                     id: UUID().uuidString,
                     name: "Filter 1",
                     
-                    category: .filter,
+                    type: .filter,
+                    typeId: "",
                     make: "",
+                    makeId: "",
                     model: "",
+                    modelId: "",
                     dateInstalled: Date(),
                     status: .operational,
                     needsService: true,
                     lastServiceDate: Date(),
                     
-                    serviceFrequency: "Month",
-                    serviceFrequencyEvery: "6",
+                    serviceFrequency: 6,
+                    serviceFrequencyEvery: .monthly,
                     nextServiceDate: getNextServiceDate(
                         lastServiceDate: Date(),
-                        every: "6",
-                        frequency: "Month"
+                        frequency: 6,
+                        every: .monthly
                     ),
                     
                     notes: "",
@@ -189,7 +199,9 @@ final class ServiceLocationViewModel:ObservableObject{
             backYardTree: trees,
             backYardBushes: bushes,
             backYardOther: other,
-            preText:preText
+            preText:preText,
+            isActive: true
+
         )
         
         try await dataService.uploadCustomerServiceLocations(
@@ -233,6 +245,8 @@ final class ServiceLocationViewModel:ObservableObject{
         companyId: String,
         customerId:String
     ) async throws {
+        print("")
+        print("[ServiceLocationViewModel][getAllCustomerServiceLocationsById] companyId: \(companyId) customerId: \(customerId)")
         self.serviceLocations = try await dataService.getAllCustomerServiceLocationsId(
             companyId: companyId,
             customerId: customerId
@@ -354,7 +368,16 @@ final class ServiceLocationViewModel:ObservableObject{
     //----------------------------------------------------
     //                    DELETE
     //----------------------------------------------------
-    
+    func deleteLocation(companyId: String?, locationId:String) {
+        guard let companyId else {return}
+        Task{
+            do {
+                try await dataService.deleteLocation(companyId: companyId, serviceLocationId: locationId)
+            } catch {
+                print("    [ServiceLocationViewModel][deleteLocation]")
+            }
+        }
+    }
     //----------------------------------------------------
     //                    FUNCTIONS
     //----------------------------------------------------

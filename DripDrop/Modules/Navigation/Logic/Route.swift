@@ -16,6 +16,7 @@ enum Route {
     case finace(dataService:any ProductionDataServiceProtocol)
     case managment(dataService:any ProductionDataServiceProtocol)
     case dashBoard(dataService:any ProductionDataServiceProtocol)
+    
     //DEVELOPER MAYBE DELETE LATER ?? MOSTLY FOR MY VISUALIZATION
     case lifeCycles(dataService:any ProductionDataServiceProtocol)
 
@@ -63,6 +64,8 @@ enum Route {
         //settings
     case users(dataService:any ProductionDataServiceProtocol)
     case userRoles(dataService:any ProductionDataServiceProtocol)
+    case userRoleDetailView(dataService: any ProductionDataServiceProtocol,role: Role)
+
     case readingsAndDosages(dataService:any ProductionDataServiceProtocol)
     case emailConfiguration(dataService:any ProductionDataServiceProtocol)
     
@@ -117,7 +120,10 @@ enum Route {
 
     // Detail Views - Pages
 
-    
+    case companyInfo(dataService:any ProductionDataServiceProtocol)
+    case manageSubscriptions(dataService:any ProductionDataServiceProtocol)
+    case stripeConfiguration(dataService:any ProductionDataServiceProtocol)
+
     case workLogDetail(
         dataService:any ProductionDataServiceProtocol,
         workLog : WorkLog
@@ -285,6 +291,10 @@ enum Route {
         dataService:any ProductionDataServiceProtocol,
         termsList:[ContractTerms]
     )
+    case termsTemplateDetailView(
+        dataService:any ProductionDataServiceProtocol,
+        termsTemplate:TermsTemplate
+    )
     case createLaborContractInvoice(
         dataService:any ProductionDataServiceProtocol,
         laborContract : LaborContract
@@ -297,13 +307,34 @@ enum Route {
         dataService:any ProductionDataServiceProtocol,
         associatedBusiness : AssociatedBusiness
     )
+    case editCompanySubscription(
+        dataService:any ProductionDataServiceProtocol
+    )
+    case inviteDetailView(
+        dataService:any ProductionDataServiceProtocol,
+        invite : Invite
+    )
+    case techInviteList(
+        dataService:any ProductionDataServiceProtocol
+    )
+    case browseCompanies(
+        dataService:any ProductionDataServiceProtocol
+    )
+    case createCompanyView(
+        dataService:any ProductionDataServiceProtocol
+    )
+    case initiateChat(dataService:any ProductionDataServiceProtocol, userId:String)
+    
+    case manageTermsTemplates(
+        dataService:any ProductionDataServiceProtocol
+    )
 }
 
 extension Route:View {
     var body: some View {
         switch self {
         case .employeeMainDailyDisplayView(dataService: let dataService):
-            EmployeeDailyDashboard(dataService: dataService) //Developer Stable
+            EmployeeDailyDashboard() //Developer Stable
         case .jobs(dataService: let dataService):
             JobView(dataService: dataService)
         case .billingJobs(dataService: let dataService):
@@ -311,7 +342,8 @@ extension Route:View {
             
             
         case .managementTables(let dataService):
-            ManagementTablesView(dataService: dataService)
+            Text("Management Tables")
+//            ManagementTablesView(dataService: dataService)
         case .purchases(let dataService):
             PurchasesView(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
         case .operation(let dataService):
@@ -354,15 +386,14 @@ extension Route:View {
         case .allTechRouteOverview(route: let route, dataService:let dataService):
             UserRouteDetailViewAll(dataService:dataService, activeRoute: route)
         case .dailyDisplayStop(dataService: let dataService,serviceStop: let stop):
-            ServiceStopDetailView(dataService:dataService, serviceStop: stop)
+//            ServiceStopDetailView(dataService:dataService, serviceStop: stop)
+            ServiceStopDetailView2(dataService:dataService, serviceStopId: stop.id)
         case .reports(dataService: let dataService):
             ReportDetailView(dataService: dataService)
         case .fleet(dataService: let dataService):
             FleetListView(dataService: dataService as! ProductionDataService)
         case .mainDailyDisplayView(dataService: let dataService):
             ContractorDailyDashboard(dataService: dataService) //Developer Unstable
-            
-
         case .serviceStops(dataService: let dataService):
             ServiceStopMainView()
         case .receipts(dataService: let dataService):
@@ -378,10 +409,12 @@ extension Route:View {
             //Settings
         case .userRoles(dataService: let dataService):
             UserRoleView()
+        case .userRoleDetailView(dataService: let dataService,role: let role):
+            CompanyRoleDetailView(dataService: dataService, role: role)
         case .readingsAndDosages(dataService: let dataService):
-            ReadingsAndDosagesList()
+            ReadingsAndDosagesList(dataService: dataService)
         case .emailConfiguration(dataService: let dataService):
-            EmailConfigurationView()
+            EmailConfigurationView(dataService: dataService)
         case .marketPlace(dataService: let dataService):
             MarketPlaceView(dataService: dataService)
         case .jobPosting(dataService: let dataService):
@@ -395,7 +428,7 @@ extension Route:View {
         case .equipmentList(dataService: let dataService):
             EquipmentList(dataService: dataService)
         case .routes(dataService: let dataService):
-            RouteManagmentView(dataService: dataService)
+            RouteManagmentView2(dataService: dataService)
         case .settings(dataService: let dataService):
             SettingsView(dataService: dataService)
         case .jobTemplates(dataService: let dataService):
@@ -413,7 +446,7 @@ extension Route:View {
         case .job(job: let job, dataService: let dataService):
             JobDetailView(job: job,dataService:dataService)
         case .editUser(user: let user, dataService: let dataService):
-            EditProfileView(tech: user)
+            EditProfileView(dataService: dataService, tech: user)
         case .rateSheet(user: let user, dataService: let dataService):
             TechRateSheet(tech: user)
         case .chat(chat: let chat, dataService: let dataService):
@@ -421,18 +454,18 @@ extension Route:View {
         case .repairRequest(repairRequest: let repairRequest, dataService: let dataService):
             RepairRequestDetailView(dataService: dataService,repairRequest: repairRequest)
         case .customer(customer: let customer, dataService: let dataService):
-            CustomerDetailView(customer: customer)
+            CustomerDetailView(customerId: customer.id)
         case .serviceStop(serviceStop: let serviceStop, dataService: let dataService):
-            ServiceStopInfoView(serviceStop: serviceStop,dataService:dataService)
+            ServiceStopDetailView3(dataService: dataService, serviceStopId: serviceStop.id)
+//            ServiceStopInfoView(serviceStop: serviceStop,dataService:dataService)
         case .dataBaseItem(dataBaseItem: let dataBaseItem, dataService: let dataService):
             DataBaseItemView(dataService: dataService, dataBaseItem:dataBaseItem)
-
         case .genericItem(dataService: let dataService):
             GenericItemDetailView()
         case .readingTemplate(tempalte:let template,dataService: let dataService):
-            ReadingsDetail(readingTemplate:template)
+            ReadingsDetail(dataService: dataService, readingTempalte:template)
         case .dosageTemplate(template:let template,dataService: let dataService):
-            DosageDetail(dosageTemplate: template)
+            DosageDetail(dataService: dataService, dosageTemplate: template)
         case .recentActivity(dataService: let dataService):
             RecentActivity(dataService: dataService)
             //Company Profiles
@@ -444,15 +477,15 @@ extension Route:View {
         case .compileInvoice(dataService: let dataService):
             CompileInvoice(dataService: dataService)
         case .createNewJob(dataService: let dataService):
-            AddNewJobView(dataService: dataService)
+            AddNewJobView(dataService: dataService, customerId: nil)
         case .createRepairRequest(dataService: let dataService):
-            AddNewRepairRequest(dataService: dataService, isPresented: .constant(true))
+            AddNewRepairRequest(dataService: dataService, isPresented: .constant(true), customer: nil)
         case .createCustomer(dataService: let dataService):
             AddNewCustomerView(dataService: dataService)
         case .equipmentDetailView(let equipment, dataService: let dataService):
             EquipmentDetailView(dataService: dataService, equipment: equipment)
         case .vehicalDetailView(let vehical,dataService: let dataService):
-            VehicalDetailView(dataService: dataService, vehical:vehical)
+            VehicalDetailView(dataService: dataService, vehicalId:vehical.id)
         case .accountsPayableDetail(let invoice,dataService: let dataService):
             AccountsPayableDetail(invoice: invoice)
         case .accountsReceivableDetail(let invoice,dataService: let dataService):
@@ -468,45 +501,62 @@ extension Route:View {
         case .vender(vender: let vender, dataService: let dataService):
             StoreDetailView(store: vender)
         case .companyUserDetailView(user: let user, dataService: let dataService):
-            CompanyUserDetailView(dataService: dataService, companyUser: user)
+            CompanyUserDetailView(dataService: dataService, companyUserId: user.id)
         case .companyUserRateSheet(user: let user, dataService: let dataService):
             CompanyUserRateSheet(tech: user)
         case .receipt(receipt: let receipt, dataService: let dataService):
             ReceiptDetailView(receipt: receipt)
         case .alerts(dataService: let dataService):
             PersonalAlertView(dataService: dataService)
+            
         case .jobTemplate(jobTemplate: let jobTemplate, dataService: let dataService):
             JobTemplateDetailView(template: jobTemplate)
+            
         case .companyAlerts(dataService: let dataService):
             CompanyAlerts(dataService: dataService)
+            
         case .companyRouteOverView(dataService: let dataService):
             AllCompanyRegularRoutes(dataService: dataService)
+            
         case .internalRouteOverView(dataService: let dataService):
             RouteManagmentView(dataService: dataService)
+            
         case .externalRouteOverView(dataService: let dataService):
             ExternalRouteListView(dataService: dataService)
+            
         case .banks(dataService: let dataService):
             BankListView()
+            
         case .transactions(dataService: let dataService):
             TransactionListView()
+            
         case .bankDetailView(bank: let bank, dataService: let dataService):
             BankDetailView()
+            
         case .transactionDetailView(transaction: let transaction, dataService: let dataService):
             TransactionDetailView()
+            
         case .activeRouteOverView(dataService: let dataService):
             UserRouteOverView(dataService: dataService)
+            
         case .taskGroups(dataService: let dataService):
             TaskGroupListView(dataService: dataService)
+            
         case .taskGroupDetail(dataService: let dataService, taskGroup: let taskGroup):
             TaskGroupDetailView(dataService: dataService, taskGroup: taskGroup)
+            
         case .recurringServiceStopDetail(dataService: let dataService, recurringServiceStop: let recurringServiceStop):
             RecurringServiceStopDetailView(dataService: dataService, RSS: recurringServiceStop)
+            
         case .customerStopDataDetailView(dataService: let dataService, customerId: let customerId):
             CustomerStopDataDetailView(dataService: dataService, customerId: customerId)
+            
         case .workLogList(dataService: let dataService):
             WorkLogListView(dataService: dataService)
+            
         case .workLogDetail(dataService: let dataService, workLog: let workLog):
             WorkLogDetailView(dataService: dataService, workLog: workLog)
+            
         case .editRole(dataService: let dataService, role: let role):
             CompanyRoleEditView(dataService: dataService, role: role)
             
@@ -520,6 +570,7 @@ extension Route:View {
             //B to C
         case .contracts(dataService: let dataService):
             ContractListView(dataService: dataService)
+            
         case .recurringContracts(dataService: let dataService):
             RecurringContractListView()
             
@@ -529,20 +580,25 @@ extension Route:View {
             
         case .recurringLaborContracts(dataService: let dataService):
             RecurringLaborContractListView(dataService: dataService)
+            
         case .receivedRecurringLaborContracts(dataService: let dataService):
             ReceivedRecurringLaborContractListView(dataService: dataService)
+            
         case .sentRecurringLaborContracts(dataService: let dataService):
             SentRecurringLaborContractListView(dataService: dataService)
+            
         case .recurringLaborContractDetailView(contract: let contract, dataService: let dataService):
             RecurringLaborContractDetailView(dataService:dataService,laborContract: contract)
             
-            
         case .laborContracts(dataService: let dataService):
             LaborContractListView(dataService: dataService)
+            
         case .receivedLaborContracts(dataService: let dataService):
             ReceivedLaborContractListView(dataService: dataService)
+            
         case .sentLaborContracts(dataService: let dataService):
             SentLaborContractListView(dataService: dataService)
+            
         case .laborContractDetailView(dataService: let dataService, contract: let contract):
             SingleLaborContractDetailView(dataService: dataService, laborContract: contract)
             
@@ -553,18 +609,39 @@ extension Route:View {
         case .contractTermsList(dataService: let dataService, termsList: let termsList):
             ContractTermsList(contractTerms: termsList)
         
-            
         case .lifeCycles(dataService: let dataService):
             LifeCyclesView(dataService:dataService)
             
-            
         case .createLaborContractInvoice(dataService: let dataService, laborContract: let laborContract):
             CreateLaborContractInvoice(dataService: dataService, laborContract: laborContract)
+            
         case .createRecurringLaborContractInvoice(dataService: let dataService, recurringLaborContract: let recurringLaborContract):
             CreateRecurringContractInvoice(dataService: dataService, recurringLaborContract: recurringLaborContract)
+            
         case .createBulkInvoice(dataService: let dataService, associatedBusiness: let associatedBusiness):
             CreateBulkInvoice(dataService: dataService, associatedBusiness: associatedBusiness)
+        case .companyInfo(dataService: let dataService):
+            SimpleCompanyInfoView(dataService: dataService)
+        case .manageSubscriptions(dataService: let dataService):
+            MangeStripeSubscriptionsView(dataService: dataService)
+        case .stripeConfiguration(dataService: let dataService):
+            StripeConnectedAccountConfigView(dataService: dataService)
+        case .editCompanySubscription(dataService: let dataService):
+            EditSubscriptionView(dataService: dataService)
+        case .inviteDetailView(dataService: let dataService, invite: let invite):
+            InviteDetailView(dataService: dataService, invite: invite)
+        case .techInviteList(dataService: let dataService):
+            TechInviteListView(dataService: dataService)
+        case .browseCompanies(dataService: let dataService):
+            BrowseCompaniesView(dataService: dataService)
+        case .createCompanyView(dataService: let dataService):
+            CreateCompanyView(dataService: dataService)
+        case .initiateChat(dataService: let dataService, userId: let userId):
+            ChatInitiationView(dataService: dataService, otherParticipantId: userId)
+        case .manageTermsTemplates(dataService: let dataService):
+            TermsTemplateList(dataService: dataService)
+        case .termsTemplateDetailView(dataService: let dataService, termsTemplate: let termsTemplate):
+            TermsTemplateDetailView(dataService: dataService, termsTemplateId: termsTemplate.id)
         }
     }
 }
-

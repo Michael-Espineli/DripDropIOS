@@ -44,17 +44,16 @@ struct ExternalRouteListView: View {
 extension ExternalRouteListView {
     var list: some View {
         ScrollView{
-            ForEach(VM.days,id:\.self){ day in
-                if let externalRouteList = VM.externalRouteDisplayDayList[day] {
-                    ExternalRouteDayView(
-                        dataService: dataService,
-                        day: day,
-                        externalRouteStopList: externalRouteList
-                    )
-                    .padding(.vertical,10)
-                }
-            }
-       
+//            ForEach(VM.days,id:\.self){ day in
+//                if let externalRouteList = VM.externalRouteDisplayDayList[day] {
+//                    ExternalRouteDayView(
+//                        dataService: dataService,
+//                        day: day,
+//                        externalRouteStopList: externalRouteList
+//                    )
+//                    .padding(.vertical,10)
+//                }
+//            }
         }
     }
 }

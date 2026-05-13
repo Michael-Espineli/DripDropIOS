@@ -15,11 +15,15 @@ struct InviteCardView: View {
                 Text("\(invite.firstName) \(invite.lastName)")
                 Text("\(invite.status)")
                     .font(.footnote)
-                    .foregroundColor(invite.status == "Pending" ? Color.realYellow:Color.green)
+                    .padding(5)
+                    .background(invite.status == "Pending" ? Color.realYellow:Color.green)
+                    .cornerRadius(20)
+                
             }
             Spacer()
             Text("\(invite.roleName)")
         }
+        .modifier(ListButtonModifier())
         .padding(10)
     }
 }

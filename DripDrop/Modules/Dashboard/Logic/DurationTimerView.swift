@@ -49,10 +49,10 @@ public struct DurationTimerView: View {
             .monospacedDigit()
             .onAppear(perform: startTimerIfNeeded)
             .onDisappear(perform: stopTimer)
-            .onChange(of: end) { _, _ in
-                // If end becomes non-nil, stop the timer
-                if end != nil { stopTimer() }
-            }
+//            .onChange(of: end) { _, _ in
+//                // If end becomes non-nil, stop the timer
+//                if end != nil { stopTimer() }
+//            }
     }
 
     private func startTimerIfNeeded() {

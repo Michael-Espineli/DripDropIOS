@@ -90,6 +90,7 @@ final class StripeViewModel:ObservableObject{
 
         self.paymentSheet = PaymentSheet(paymentIntentClientSecret: paymentIntentClientSecret, configuration: configuration)
     }
+    
     func setUpPaymentIntent(stripeId:String) async throws{
         let data:[String:Any] = [
             "customerId":stripeId,

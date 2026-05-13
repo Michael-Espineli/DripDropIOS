@@ -52,7 +52,7 @@ struct CompanyRoleEditView: View {
                                                                                                              color: role.color,
                                                                                                              description: pushdescription))
                                         alertMessage = "Successfully Edited"
-                                        print(alertMessage)
+                                        print("[CompanyRoleEditView][Button Action] \(alertMessage)")
                                         showAlert = true
                                         dismiss()
                                     } catch {
@@ -96,7 +96,29 @@ struct CompanyRoleEditView: View {
                     VStack{
                         Text("Permissions")
                             .font(.title)
-                        ForEach(permissionVM.standrdPermissions){ permission in
+                        Rectangle()
+                            .frame(height: 1)
+                        Text("Operations")
+                            .font(.headline)
+                        ForEach(permissionVM.standrdPermissions.filter({$0.category == "Operations"})){ permission in
+                            PermissionSelectorView(permission: permission, listOfPermissions: $selectedPermissionList)
+                        }
+                        Divider()
+                        Text("Administration")
+                            .font(.headline)
+                        ForEach(permissionVM.standrdPermissions.filter({$0.category == "Administration"})){ permission in
+                            PermissionSelectorView(permission: permission, listOfPermissions: $selectedPermissionList)
+                        }
+                        Divider()
+                        Text("Finance")
+                            .font(.headline)
+                        ForEach(permissionVM.standrdPermissions.filter({$0.category == "Finance"})){ permission in
+                            PermissionSelectorView(permission: permission, listOfPermissions: $selectedPermissionList)
+                        }
+                        Divider()
+                        Text("User")
+                            .font(.headline)
+                        ForEach(permissionVM.standrdPermissions.filter({$0.category == "User"})){ permission in
                             PermissionSelectorView(permission: permission, listOfPermissions: $selectedPermissionList)
                         }
                     }

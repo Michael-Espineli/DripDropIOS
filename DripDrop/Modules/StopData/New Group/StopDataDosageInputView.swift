@@ -21,7 +21,11 @@ struct StopDataDosageInputView: View {
     let observations:[String]
     let gallons:Int
     @State var prediction:String = ""
+    @FocusState var chemicalInput:Bool
+
     var body: some View {
+        /*
+         // Old View
         ZStack{
             HStack{
                 if input == "" {
@@ -48,10 +52,10 @@ struct StopDataDosageInputView: View {
                         Text(prediction)
                         ScrollView(.horizontal,showsIndicators: false){
                             HStack(spacing: 0){
-                                
                                 TextField("Input", text: $input)
                                     .modifier(TextFieldModifier())
                                     .modifier(OutLineButtonModifier())
+                                    .focused($chemicalInput)
                                 ForEach(template.amount ?? [],id:\.self){ amount in
                            
                                     Button(action: {
@@ -61,7 +65,7 @@ struct StopDataDosageInputView: View {
                                         
                                         var endCharecter:String? = nil
                                         if suffix == ".00" {
-                                            if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))")
                                                         .modifier(SubmitButtonModifier())
@@ -76,7 +80,7 @@ struct StopDataDosageInputView: View {
                                             }
 
                                         } else if suffix == ".25" {
-                                            if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))¼")
                                                         .modifier(SubmitButtonModifier())
@@ -90,7 +94,7 @@ struct StopDataDosageInputView: View {
                                                     .modifier(ListButtonModifier())
                                             }
                                         } else if suffix == ".50" {
-                                            if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))½")
                                                         .modifier(SubmitButtonModifier())
@@ -103,7 +107,7 @@ struct StopDataDosageInputView: View {
                                                     .modifier(ListButtonModifier())
                                             }
                                         } else if suffix == ".75" {
-                                            if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(String(amount.dropLast(3)))¾")
                                                         .modifier(SubmitButtonModifier())
@@ -115,7 +119,7 @@ struct StopDataDosageInputView: View {
                                                 Text("\(String(amount.dropLast(3)))¾") .modifier(ListButtonModifier())
                                             }
                                         } else {
-                                            if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                                 if dosage.amount == amount {
                                                     Text("\(amount)")
                                                         .modifier(SubmitButtonModifier())
@@ -139,7 +143,7 @@ struct StopDataDosageInputView: View {
                     if input == "" {
                         HStack{
                             Text(template.name ?? "")
-                            if let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                            if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                 Text(" - \(reading.amount ?? "")")
                             }
                         }
@@ -147,7 +151,7 @@ struct StopDataDosageInputView: View {
                     } else {
                         HStack{
                             Text(template.name ?? "")
-                            if let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                            if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                                 Text(" - \(reading.amount ?? "")")
                             }
                         }
@@ -156,13 +160,180 @@ struct StopDataDosageInputView: View {
                 }
             }
             .padding(EdgeInsets(top: 0, leading: 28, bottom: 5, trailing: 0))
-            
-            
         }
+        */
+        ZStack {
+
+            // MARK: - Left Status Indicator
+            HStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(input == "" ? Color.gray.opacity(0.25) : Color.poolGreen)
+                    .frame(width: 6)
+                Spacer()
+            }
+            .padding(.leading, 12)
+
+            VStack {
+                if selectedId == template.dosageTemplateId {
+
+                    HStack {
+                        Text(template.name ?? "Template Name")
+                            .font(.footnote.weight(.semibold))
+                        Spacer()
+                    }
+
+                    VStack(spacing: 8) {
+
+                        Text(prediction)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(template.amount ?? [], id: \.self) { amount in
+
+                                    Button(action: {
+                                        input = amount
+                                    }, label: {
+
+                                        let suffix = amount.suffix(3)
+
+                                        if suffix == ".00" {
+
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                                if dosage.amount == amount {
+                                                    Text("\(String(amount.dropLast(3)))")
+                                                        .modifier(SubmitButtonModifier())
+                                                } else {
+                                                    Text("\(String(amount.dropLast(3)))")
+                                                        .modifier(ListButtonModifier())
+                                                }
+                                            } else {
+                                                Text("\(String(amount.dropLast(3)))")
+                                                    .modifier(ListButtonModifier())
+                                            }
+
+                                        } else if suffix == ".25" {
+
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                                if dosage.amount == amount {
+                                                    Text("\(String(amount.dropLast(3)))¼")
+                                                        .modifier(SubmitButtonModifier())
+                                                } else {
+                                                    Text("\(String(amount.dropLast(3)))¼")
+                                                        .modifier(ListButtonModifier())
+                                                }
+                                            } else {
+                                                Text("\(String(amount.dropLast(3)))¼")
+                                                    .modifier(ListButtonModifier())
+                                            }
+
+                                        } else if suffix == ".50" {
+
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                                if dosage.amount == amount {
+                                                    Text("\(String(amount.dropLast(3)))½")
+                                                        .modifier(SubmitButtonModifier())
+                                                } else {
+                                                    Text("\(String(amount.dropLast(3)))½")
+                                                        .modifier(ListButtonModifier())
+                                                }
+                                            } else {
+                                                Text("\(String(amount.dropLast(3)))½")
+                                                    .modifier(ListButtonModifier())
+                                            }
+
+                                        } else if suffix == ".75" {
+
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                                if dosage.amount == amount {
+                                                    Text("\(String(amount.dropLast(3)))¾")
+                                                        .modifier(SubmitButtonModifier())
+                                                } else {
+                                                    Text("\(String(amount.dropLast(3)))¾")
+                                                        .modifier(ListButtonModifier())
+                                                }
+                                            } else {
+                                                Text("\(String(amount.dropLast(3)))¾")
+                                                    .modifier(ListButtonModifier())
+                                            }
+
+                                        } else {
+
+                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                                if dosage.amount == amount {
+                                                    Text("\(amount)")
+                                                        .modifier(SubmitButtonModifier())
+                                                } else {
+                                                    Text("\(amount)")
+                                                        .modifier(ListButtonModifier())
+                                                }
+                                            } else {
+                                                Text("\(amount)")
+                                                    .modifier(ListButtonModifier())
+                                            }
+                                        }
+                                    })
+                                    .padding(.horizontal, 6)
+                                }
+                                TextField("Input", text: $input)
+                                    .modifier(TextFieldModifier())
+                                    .modifier(OutLineButtonModifier())
+                                    .focused($chemicalInput)
+
+                            }
+                        }
+                    }
+
+                } else {
+
+                    if input == "" {
+                        HStack {
+                            Text(template.name ?? "")
+                                .font(.footnote.weight(.medium))
+
+                            if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                Text("• \(reading.amount ?? "")")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .modifier(ListButtonModifier())
+
+                    } else {
+
+                        HStack {
+                            Text(template.name ?? "")
+                                .font(.footnote.weight(.medium))
+
+                            if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                                Text("• \(reading.amount ?? "")")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .modifier(AddButtonModifier())
+                    }
+                }
+            }
+            .padding(.leading, 30)
+            .padding(.vertical, 10)
+        }
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.listColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.black.opacity(0.05))
+        )
+        .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+
         .onAppear(perform: {
             if stopDataList.contains(where: {$0.bodyOfWaterId == bodyOfWaterId}){
                 stopData = stopDataList.first(where: {$0.bodyOfWaterId == bodyOfWaterId })!
-                if let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
+                if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                     input = reading.amount ?? ""
                 } else {
                     input = ""
@@ -179,7 +350,7 @@ struct StopDataDosageInputView: View {
         .onChange(of: bodyOfWaterId, perform: { id in
             if stopDataList.contains(where: {$0.bodyOfWaterId == id}){
                 stopData = stopDataList.first(where: {$0.bodyOfWaterId == id })!
-                if let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId && $0.bodyOfWaterId == id}) {
+                if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == id}) {
                     input = reading.amount ?? ""
                 } else {
                     input = ""
@@ -188,55 +359,86 @@ struct StopDataDosageInputView: View {
                
             }
         })
-        .onChange(of: input, perform: { change in
-            if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId}) {
-                if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                    let totalIndex = selectedIdList.count - 1
-                    if index == totalIndex {
-                        selectedId = ""
-                    } else {
-                        let newIndex = index + 1
-                        selectedId = selectedIdList[newIndex]
-                    }
-                }
-                stopData.dosages.removeAll(where: {$0.templateId == template.dosageTemplateId})
-                stopData.dosages.append(Dosage(id: UUID().uuidString,
-                                               templateId: template.dosageTemplateId,
-                                               name: template.name,
-                                               amount: change,
-                                               UOM: template.UOM,
-                                               rate: template.rate,
-                                               linkedItem: template.linkedItemId,
-                                               bodyOfWaterId: bodyOfWaterId))
-            } else {
-                if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                    let totalIndex = selectedIdList.count - 1
-                    if index == totalIndex {
-                        selectedId = ""
-                    } else {
-                        let newIndex = index + 1
-                        selectedId = selectedIdList[newIndex]
-                    }
-                }
-                stopData.dosages.append(Dosage(id: UUID().uuidString,
-                                               templateId: template.dosageTemplateId,
-                                               name: template.name,
-                                               amount: change,
-                                               UOM: template.UOM,
-                                               rate: template.rate,
-                                               linkedItem: template.linkedItemId,
-                                               bodyOfWaterId: bodyOfWaterId))
-            }
-            
-            
-        })
         .onChange(of: stopData.readings, perform: { change in
             prediction = getChemicalDosages(gallons:gallons,dosageTempalte: template, readings: change, observations: observations)
-
         })
-            .onChange(of: observations, perform: { change in
-                prediction = getChemicalDosages(gallons:gallons,dosageTempalte: template, readings: stopData.readings, observations: change)
-            })
+        .onChange(of: observations, perform: { change in
+            prediction = getChemicalDosages(gallons:gallons,dosageTempalte: template, readings: stopData.readings, observations: change)
+        })
+        .onChange(of: input, perform: { change in
+            if !chemicalInput {
+                if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId}) {
+                        //On Click of an amount moves it over to next dosage/Reading
+                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
+                        let totalIndex = selectedIdList.count - 1
+                        if index == totalIndex {
+                            selectedId = ""
+                        } else {
+                            let newIndex = index + 1
+                            selectedId = selectedIdList[newIndex]
+                        }
+                    }
+                    //Updates stopData for display Firestore is update in ServiceStopDetailVeiw
+                    stopData.dosages.removeAll(where: {$0.universalTemplateId == template.dosageTemplateId})
+                    stopData.dosages.append(Dosage(id: UUID().uuidString,
+                                                   templateId: template.id,
+                                                   universalTemplateId: template.dosageTemplateId,
+                                                   name: template.name,
+                                                   amount: change,
+                                                   UOM: template.UOM,
+                                                   rate: template.rate,
+                                                   linkedItem: template.linkedItemId,
+                                                   bodyOfWaterId: bodyOfWaterId))
+                } else {
+                    //On Click of an amount moves it over to next dosage/Reading
+                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
+                        let totalIndex = selectedIdList.count - 1
+                        if index == totalIndex {
+                            selectedId = ""
+                        } else {
+                            let newIndex = index + 1
+                            selectedId = selectedIdList[newIndex]
+                        }
+                    }
+                        //Updates stopData for display Firestore is update in ServiceStopDetailVeiw
+                    stopData.dosages.append(Dosage(id: UUID().uuidString,
+                                                   templateId: template.id,
+                                                   universalTemplateId: template.dosageTemplateId,
+                                                   name: template.name,
+                                                   amount: change,
+                                                   UOM: template.UOM,
+                                                   rate: template.rate,
+                                                   linkedItem: template.linkedItemId,
+                                                   bodyOfWaterId: bodyOfWaterId))
+                }
+            }
+        })
+        .onChange(of: chemicalInput, perform: { change in
+            if !change {
+                if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId}) {
+                    stopData.dosages.removeAll(where: {$0.templateId == template.dosageTemplateId})
+                    stopData.dosages.append(Dosage(id: UUID().uuidString,
+                                                   templateId: template.id,
+                                                   universalTemplateId: template.dosageTemplateId,
+                                                   name: template.name,
+                                                   amount: input,
+                                                   UOM: template.UOM,
+                                                   rate: template.rate,
+                                                   linkedItem: template.linkedItemId,
+                                                   bodyOfWaterId: bodyOfWaterId))
+                } else {
+                    stopData.dosages.append(Dosage(id: UUID().uuidString,
+                                                   templateId: template.id,
+                                                   universalTemplateId: template.dosageTemplateId,
+                                                   name: template.name,
+                                                   amount: input,
+                                                   UOM: template.UOM,
+                                                   rate: template.rate,
+                                                   linkedItem: template.linkedItemId,
+                                                   bodyOfWaterId: bodyOfWaterId))
+                }
+            }
+        })
     }
 }
 

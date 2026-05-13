@@ -21,6 +21,8 @@ final class EquipmentViewModel:ObservableObject{
     //----------------------------------------------------
     
     //SINGLES
+    @Published private(set) var showAddNewEquipment: Bool = false
+
     @Published private(set) var equipment: Equipment? = nil
     @Published private(set) var part: EquipmentPart? = nil
     private var lastDocument:DocumentSnapshot? = nil
@@ -47,9 +49,12 @@ final class EquipmentViewModel:ObservableObject{
                 let equipment = Equipment(
                     id: equipment.id,
                     name: equipment.name,
-                    category: equipment.category,
+                    type: equipment.type,
+                    typeId: "",
                     make: equipment.make,
+                    makeId: "",
                     model: equipment.model,
+                    modelId: "",
                     dateInstalled: equipment.dateInstalled,
                     status: equipment.status,
                     needsService: equipment.needsService,
@@ -102,9 +107,12 @@ final class EquipmentViewModel:ObservableObject{
                 equipment: Equipment(
                     id: UUID().uuidString,
                     name: "Pump 1",
-                    category: .pump,
+                    type: .pump,
+                    typeId: "",
                     make: "",
+                    makeId: "",
                     model: "",
+                    modelId: "",
                     dateInstalled: Date(),
                     status: .operational,
                     needsService: false,
@@ -121,19 +129,22 @@ final class EquipmentViewModel:ObservableObject{
                 equipment: Equipment(
                     id: UUID().uuidString,
                     name: "Filter 1",
-                    category: .filter,
+                    type: .filter,
+                    typeId: "",
                     make: "",
+                    makeId: "",
                     model: "",
+                    modelId: "",
                     dateInstalled: Date(),
                     status: .operational,
                     needsService: true,
                     lastServiceDate: Date(),
-                    serviceFrequency: "Month",
-                    serviceFrequencyEvery: "6",
+                    serviceFrequency: 6,
+                    serviceFrequencyEvery: .monthly,
                     nextServiceDate: getNextServiceDate(
                         lastServiceDate: Date(),
-                        every: "6",
-                        frequency: "Month"
+                        frequency: 6,
+                        every: .monthly
                     ),
                     notes: "",
                     customerName: fullName,
@@ -160,16 +171,19 @@ final class EquipmentViewModel:ObservableObject{
         name:String,
         needsService:Bool,
         lastServiceDate: Date?,
-        serviceFrequency: String?,
-        serviceFrequencyEvery: String?
+        serviceFrequency: Int?,
+        serviceFrequencyEvery: EquipmentFrequency?
     ) async throws {
         let id = UUID().uuidString
         let equipment = Equipment(
             id: id,
             name: name,
-            category: category,
+            type: category,
+            typeId: "",
             make: make,
+            makeId: "",
             model: model,
+            modelId: "",
             dateInstalled: dateInstalled,
             status: status,
             needsService: needsService,
@@ -178,8 +192,8 @@ final class EquipmentViewModel:ObservableObject{
             serviceFrequencyEvery: serviceFrequencyEvery,
             nextServiceDate: getNextServiceDate(
                 lastServiceDate: lastServiceDate,
-                every: serviceFrequencyEvery,
-                frequency: serviceFrequency
+                frequency: serviceFrequency,
+                every: serviceFrequencyEvery
             ),
             notes: notes,
             customerName: customerName,
@@ -254,8 +268,8 @@ final class EquipmentViewModel:ObservableObject{
         name:String,
         needsService:Bool,
         lastServiceDate: Date?,
-        serviceFrequency: String?,
-        serviceFrequencyEvery: String?
+        serviceFrequency: Int?,
+        serviceFrequencyEvery: EquipmentFrequency?
     ) async throws {
 
         if needsService {
@@ -268,16 +282,16 @@ final class EquipmentViewModel:ObservableObject{
             guard let validatedServiceFrequencyEvery = serviceFrequencyEvery else {
                 throw FireBasePublish.unableToPublish
             }
-            guard let validedNextDate = getNextServiceDate(lastServiceDate: lastServiceDate, every: serviceFrequencyEvery, frequency: serviceFrequency) else {
-                throw FireBasePublish.unableToPublish
-            }
         }
         let equipment = Equipment(
             id: equipmentId,
             name: name,
-            category: category,
+            type: category,
+            typeId: "",
             make: make,
+            makeId: "",
             model: model,
+            modelId: "",
             dateInstalled: dateInstalled,
             status: status,
             needsService: needsService,
@@ -286,8 +300,8 @@ final class EquipmentViewModel:ObservableObject{
             serviceFrequencyEvery: serviceFrequencyEvery,
             nextServiceDate: getNextServiceDate(
                 lastServiceDate: lastServiceDate,
-                every: serviceFrequencyEvery,
-                frequency: serviceFrequency
+                frequency: serviceFrequency,
+                every: serviceFrequencyEvery
             ),
             notes: notes,
             customerName: customerName,
