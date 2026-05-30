@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build output and local indexes
+Build/
+DerivedData/
+.derived-data-log-*
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager local state
+.build/
+.swiftpm/
+
+# Playgrounds and temporary files
+timeline.xctimeline
+playground.xcworkspace
+
+# Secrets and local environment files
+.env
+.env.*
+GoogleService-Info-*.plist

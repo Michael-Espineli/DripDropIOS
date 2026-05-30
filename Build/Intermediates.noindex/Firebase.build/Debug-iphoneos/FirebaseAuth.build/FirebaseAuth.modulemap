@@ -1,4 +1,0 @@
-module FirebaseAuth {
-umbrella header "/Users/michaelespineli/Desktop/DripDrop/DerivedData/DripDrop/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAuth/Sources/Public/FirebaseAuth/FirebaseAuth.h"
-export *
-}
