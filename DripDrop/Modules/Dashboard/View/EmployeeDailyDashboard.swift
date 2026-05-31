@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import MapKit
 
 struct EmployeeDailyDashboard: View {
 
@@ -38,6 +39,10 @@ struct EmployeeDailyDashboard: View {
 
     @State var startTime: Date = Date()
     @State var stopList: [ServiceStop] = []
+    @State private var showExpandedRouteMap: Bool = false
+    @State private var selectedMapStop: ServiceStop? = nil
+    @State private var routeMapCameraPosition: MapCameraPosition = .automatic
+    @State private var expandedRouteMapCameraPosition: MapCameraPosition = .automatic
 
 
 
@@ -65,6 +70,7 @@ struct EmployeeDailyDashboard: View {
                             noRouteCard
                         } else {
                             routeInfo
+                            routeMapCard
 
                             if VM.ArOrderIsDifferentThanRrORder {
                                 routeOrderDifferenceCard
@@ -111,11 +117,18 @@ struct EmployeeDailyDashboard: View {
                 duration = duration1
             }
         }
-        .onChange(of: VM.selectedDate) { _ in
+        .onChange(of: VM.selectedDate) { _, _ in
             if let company = masterDataManager.currentCompany,
                let user = masterDataManager.user {
                 VM.start(companyId: company.id, user: user, date: VM.selectedDate)
             }
+        }
+        .onChange(of: VM.serviceStopList) { _, _ in
+            updateRouteMapCamera()
+        }
+        .sheet(isPresented: $showExpandedRouteMap) {
+            expandedRouteMapSheet
+                .presentationDetents([.large])
         }
         .onDisappear {
             VM.selectedDate = Date()
@@ -1113,6 +1126,343 @@ extension EmployeeDailyDashboard {
         .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
+// MARK: - Route Map
+extension EmployeeDailyDashboard {
+    private var routeMapCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                sectionHeader(
+                    title: "Route Map",
+                    subtitle: routeMapSubtitle,
+                    systemImage: "map"
+                )
+
+                Spacer()
+
+                Button {
+                    expandedRouteMapCameraPosition = routeMapCameraPosition
+                    showExpandedRouteMap = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(routeMapPoints.isEmpty)
+                .opacity(routeMapPoints.isEmpty ? 0.45 : 1)
+            }
+
+            routeMapView(position: $routeMapCameraPosition, height: 240)
+
+            if let selectedMapStop {
+                selectedMapStopRow(selectedMapStop)
+            }
+
+            if missingCoordinateCount > 0 {
+                emptyStateRow(
+                    title: "\(missingCoordinateCount) stop\(missingCoordinateCount == 1 ? "" : "s") missing map location",
+                    message: "Add coordinates to the service stop address to show it on the route map.",
+                    systemImage: "location.slash"
+                )
+            }
+        }
+        .employeeDashCard()
+        .onAppear {
+            updateRouteMapCamera()
+        }
+    }
+
+    private var expandedRouteMapSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                VStack(spacing: 12) {
+                    routeMapView(position: $expandedRouteMapCameraPosition, height: 420)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 14)
+
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 10) {
+                            ForEach(routeMapPoints) { point in
+                                Button {
+                                    selectedMapStop = point.stop
+                                    expandedRouteMapCameraPosition = .region(
+                                        MKCoordinateRegion(
+                                            center: point.coordinate,
+                                            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                        )
+                                    )
+                                } label: {
+                                    routeMapStopRow(point)
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            Color.clear.frame(height: 18)
+                        }
+                        .padding(.horizontal, 14)
+                    }
+                }
+            }
+            .navigationTitle("Route Map")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        showExpandedRouteMap = false
+                    }
+                }
+            }
+            .onAppear {
+                expandedRouteMapCameraPosition = routeMapCameraPosition
+            }
+        }
+    }
+
+    private func routeMapView(
+        position: Binding<MapCameraPosition>,
+        height: CGFloat
+    ) -> some View {
+        ZStack {
+            if routeMapPoints.isEmpty {
+                emptyMapState
+            } else {
+                Map(position: position) {
+                    if routePolylineCoordinates.count > 1 {
+                        MapPolyline(coordinates: routePolylineCoordinates)
+                            .stroke(
+                                Color.poolBlue,
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+                            )
+                    }
+
+                    ForEach(routeMapPoints) { point in
+                        Annotation(point.title, coordinate: point.coordinate, anchor: .bottom) {
+                            Button {
+                                selectedMapStop = point.stop
+                            } label: {
+                                routeMapPin(point)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .mapControls {
+                    MapCompass()
+                    MapScaleView()
+                }
+            }
+        }
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private func routeMapPin(_ point: TechnicianRouteMapPoint) -> some View {
+        VStack(spacing: 0) {
+            Text("\(point.order)")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(routeMapPinColor(point.stop), in: Circle())
+                .overlay(
+                    Circle()
+                        .stroke(.white, lineWidth: selectedMapStop?.id == point.stop.id ? 3 : 2)
+                )
+
+            Image(systemName: "triangle.fill")
+                .font(.system(size: 9))
+                .foregroundStyle(routeMapPinColor(point.stop))
+                .rotationEffect(.degrees(180))
+                .offset(y: -2)
+        }
+        .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
+    }
+
+    private var emptyMapState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "map")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text("No mapped stops")
+                .font(.subheadline.weight(.semibold))
+
+            Text("Stops with saved latitude and longitude will appear here.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.primary.opacity(0.035))
+    }
+
+    private func selectedMapStopRow(_ stop: ServiceStop) -> some View {
+        Button {
+            navigationManager.push(to: Route.dailyDisplayStop(
+                dataService: dataService,
+                serviceStop: stop
+            ))
+            showExpandedRouteMap = false
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "mappin.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(routeMapPinColor(stop))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(stop.customerName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(stop.address.streetAddress)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func routeMapStopRow(_ point: TechnicianRouteMapPoint) -> some View {
+        HStack(spacing: 12) {
+            Text("\(point.order)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(routeMapPinColor(point.stop), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(point.stop.customerName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(point.stop.address.streetAddress)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Text(point.stop.operationStatus.rawValue)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(.thinMaterial, in: Capsule())
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var routeMapSubtitle: String {
+        let mappedCount = routeMapPoints.count
+        let totalCount = VM.serviceStopList.count
+        return "\(mappedCount) of \(totalCount) stops mapped"
+    }
+
+    private var routeMapPoints: [TechnicianRouteMapPoint] {
+        VM.serviceStopList.enumerated().compactMap { index, stop in
+            guard isValidRouteCoordinate(stop.address.coordinates) else { return nil }
+
+            return TechnicianRouteMapPoint(
+                stop: stop,
+                order: index + 1,
+                coordinate: stop.address.coordinates
+            )
+        }
+    }
+
+    private var routePolylineCoordinates: [CLLocationCoordinate2D] {
+        routeMapPoints.map(\.coordinate)
+    }
+
+    private var missingCoordinateCount: Int {
+        VM.serviceStopList.filter { !isValidRouteCoordinate($0.address.coordinates) }.count
+    }
+
+    private func routeMapPinColor(_ stop: ServiceStop) -> Color {
+        switch stop.operationStatus {
+        case .finished:
+            return .poolGreen
+        case .skipped:
+            return .orange
+        case .notFinished:
+            return .poolBlue
+        }
+    }
+
+    private func updateRouteMapCamera() {
+        guard let region = routeMapRegion(for: routeMapPoints.map(\.coordinate)) else {
+            routeMapCameraPosition = .automatic
+            expandedRouteMapCameraPosition = .automatic
+            return
+        }
+
+        routeMapCameraPosition = .region(region)
+        expandedRouteMapCameraPosition = .region(region)
+    }
+
+    private func routeMapRegion(for coordinates: [CLLocationCoordinate2D]) -> MKCoordinateRegion? {
+        guard !coordinates.isEmpty else { return nil }
+
+        if coordinates.count == 1, let coordinate = coordinates.first {
+            return MKCoordinateRegion(
+                center: coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+            )
+        }
+
+        let latitudes = coordinates.map(\.latitude)
+        let longitudes = coordinates.map(\.longitude)
+
+        guard let minLatitude = latitudes.min(),
+              let maxLatitude = latitudes.max(),
+              let minLongitude = longitudes.min(),
+              let maxLongitude = longitudes.max() else {
+            return nil
+        }
+
+        let latitudeDelta = max((maxLatitude - minLatitude) * 1.35, 0.02)
+        let longitudeDelta = max((maxLongitude - minLongitude) * 1.35, 0.02)
+
+        return MKCoordinateRegion(
+            center: CLLocationCoordinate2D(
+                latitude: (minLatitude + maxLatitude) / 2,
+                longitude: (minLongitude + maxLongitude) / 2
+            ),
+            span: MKCoordinateSpan(
+                latitudeDelta: latitudeDelta,
+                longitudeDelta: longitudeDelta
+            )
+        )
+    }
+
+    private func isValidRouteCoordinate(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        coordinate.latitude.isFinite &&
+        coordinate.longitude.isFinite &&
+        abs(coordinate.latitude) <= 90 &&
+        abs(coordinate.longitude) <= 180 &&
+        !(coordinate.latitude == 0 && coordinate.longitude == 0)
+    }
+}
+
 // MARK: - Mileage Sheet
 extension EmployeeDailyDashboard {
     
@@ -1132,7 +1482,8 @@ extension EmployeeDailyDashboard {
                 .sheet(isPresented: $VM.showVehicalPicker) {
                     VehicalPickerView(
                         dataService: dataService,
-                        vehical: $VM.selectedVehical
+                        vehical: $VM.selectedVehical,
+                        companyUser: VM.currentCompanyUser
                     )
                 }
 
@@ -1188,6 +1539,16 @@ struct MyDropDelegate : DropDelegate {
         return true
     }
 }
+
+private struct TechnicianRouteMapPoint: Identifiable {
+    let stop: ServiceStop
+    let order: Int
+    let coordinate: CLLocationCoordinate2D
+
+    var id: String { stop.id }
+    var title: String { "#\(order) \(stop.customerName)" }
+}
+
 private extension View {
     func employeeDashCard(material: Bool = false) -> some View {
         self

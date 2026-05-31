@@ -36,6 +36,14 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
     var finishedStops : Int
     
     var vehicalId: String
+    var vehicleSource: String?
+    var personalVehicleOwnerId: String?
+    var vehicleLabel: String?
+    var vehiclePlate: String?
+    var vehicleKind: String?
+    var vehicleMake: String?
+    var vehicleModel: String?
+    var personalVehicle: PersonalVehicle?
     init(
         id: String,
         name :String,
@@ -59,7 +67,15 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
         status: ActiveRouteStatus,
         totalStops: Int,
         finishedStops: Int,
-        vehicalId: String
+        vehicalId: String,
+        vehicleSource: String? = nil,
+        personalVehicleOwnerId: String? = nil,
+        vehicleLabel: String? = nil,
+        vehiclePlate: String? = nil,
+        vehicleKind: String? = nil,
+        vehicleMake: String? = nil,
+        vehicleModel: String? = nil,
+        personalVehicle: PersonalVehicle? = nil
     ){
         self.id = id
         self.name = name
@@ -83,6 +99,14 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
         self.finishedStops = finishedStops
         
         self.vehicalId = vehicalId
+        self.vehicleSource = vehicleSource
+        self.personalVehicleOwnerId = personalVehicleOwnerId
+        self.vehicleLabel = vehicleLabel
+        self.vehiclePlate = vehiclePlate
+        self.vehicleKind = vehicleKind
+        self.vehicleMake = vehicleMake
+        self.vehicleModel = vehicleModel
+        self.personalVehicle = personalVehicle
     }
         enum CodingKeys:String, CodingKey {
             case id = "id"
@@ -104,6 +128,14 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
             case finishedStops = "finishedStops"
             case totalStops = "totalStops"
             case vehicalId = "vehicalId"
+            case vehicleSource = "vehicleSource"
+            case personalVehicleOwnerId = "personalVehicleOwnerId"
+            case vehicleLabel = "vehicleLabel"
+            case vehiclePlate = "vehiclePlate"
+            case vehicleKind = "vehicleKind"
+            case vehicleMake = "vehicleMake"
+            case vehicleModel = "vehicleModel"
+            case personalVehicle = "personalVehicle"
         }
     static func == (lhs: ActiveRoute, rhs: ActiveRoute) -> Bool {
         return lhs.id == rhs.id &&
@@ -241,6 +273,14 @@ extension ProductionDataService {
             routeToSave.startMilage = existingRoute.startMilage
             routeToSave.endMilage = existingRoute.endMilage
             routeToSave.vehicalId = existingRoute.vehicalId
+            routeToSave.vehicleSource = existingRoute.vehicleSource
+            routeToSave.personalVehicleOwnerId = existingRoute.personalVehicleOwnerId
+            routeToSave.vehicleLabel = existingRoute.vehicleLabel
+            routeToSave.vehiclePlate = existingRoute.vehiclePlate
+            routeToSave.vehicleKind = existingRoute.vehicleKind
+            routeToSave.vehicleMake = existingRoute.vehicleMake
+            routeToSave.vehicleModel = existingRoute.vehicleModel
+            routeToSave.personalVehicle = existingRoute.personalVehicle
             routeToSave.status = routeStatus(
                 existingRoute: existingRoute,
                 totalStops: activeRoute.totalStops,
@@ -498,6 +538,60 @@ extension ProductionDataService {
                 print("Error updating document: \(err)")
             } else {
                 print("Document successfully updated")
+            }
+        }
+    }
+    
+    func updateActiveRouteCompanyFleetVehicle(companyId:String,activeRouteId:String,vehical:Vehical) {
+        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
+        let vehicleLabel = "\(vehical.nickName) \(vehical.plate)".trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        ref.updateData([
+            ActiveRoute.CodingKeys.vehicalId.rawValue: vehical.id,
+            ActiveRoute.CodingKeys.vehicleSource.rawValue: "Company Fleet",
+            ActiveRoute.CodingKeys.personalVehicleOwnerId.rawValue: "",
+            ActiveRoute.CodingKeys.vehicleLabel.rawValue: vehicleLabel,
+            ActiveRoute.CodingKeys.vehiclePlate.rawValue: vehical.plate,
+            ActiveRoute.CodingKeys.vehicleKind.rawValue: vehical.vehicalType.rawValue,
+            ActiveRoute.CodingKeys.vehicleMake.rawValue: vehical.make,
+            ActiveRoute.CodingKeys.vehicleModel.rawValue: vehical.model,
+            ActiveRoute.CodingKeys.personalVehicle.rawValue: FieldValue.delete()
+        ]) { err in
+            if let err = err {
+                print("Error updating active route company fleet vehicle: \(err)")
+            } else {
+                print("Document successfully updated active route company fleet vehicle")
+            }
+        }
+    }
+    
+    func updateActiveRoutePersonalVehicle(companyId:String,activeRouteId:String,ownerId:String,personalVehicle:PersonalVehicle) {
+        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
+        
+        ref.updateData([
+            ActiveRoute.CodingKeys.vehicalId.rawValue: "",
+            ActiveRoute.CodingKeys.vehicleSource.rawValue: "Personal",
+            ActiveRoute.CodingKeys.personalVehicleOwnerId.rawValue: ownerId,
+            ActiveRoute.CodingKeys.vehicleLabel.rawValue: personalVehicle.displayName,
+            ActiveRoute.CodingKeys.vehiclePlate.rawValue: personalVehicle.plate ?? "",
+            ActiveRoute.CodingKeys.vehicleKind.rawValue: personalVehicle.vehicalType ?? "",
+            ActiveRoute.CodingKeys.vehicleMake.rawValue: personalVehicle.make ?? "",
+            ActiveRoute.CodingKeys.vehicleModel.rawValue: personalVehicle.model ?? "",
+            ActiveRoute.CodingKeys.personalVehicle.rawValue: [
+                "nickName": personalVehicle.nickName ?? "",
+                "vehicalType": personalVehicle.vehicalType ?? "",
+                "year": personalVehicle.year ?? "",
+                "make": personalVehicle.make ?? "",
+                "model": personalVehicle.model ?? "",
+                "color": personalVehicle.color ?? "",
+                "plate": personalVehicle.plate ?? "",
+                "miles": personalVehicle.miles ?? 0
+            ]
+        ]) { err in
+            if let err = err {
+                print("Error updating active route personal vehicle: \(err)")
+            } else {
+                print("Document successfully updated active route personal vehicle")
             }
         }
     }

@@ -125,6 +125,7 @@
         @State var showRecordRepair: Bool = false
         @State var showScheduleRepairJob: Bool = false
 
+        @State var showAllHistory: Bool = false
         @State var showMaintenanceHistory: Bool = false
         @State var showRepairHistory: Bool = false
 
@@ -150,6 +151,7 @@
                                 VStack(spacing: 14) {
                                     info
                                     scheduledWorkSection
+                                    serviceHistoryOverviewSection
                                     maintenanceHistorySection
                                     repairHistorySection
                                     photos
@@ -165,6 +167,7 @@
                                     VStack(spacing: 14) {
                                         partsSection
                                         scheduledWorkSection
+                                        serviceHistoryOverviewSection
                                         maintenanceHistorySection
                                         repairHistorySection
                                     }
@@ -235,6 +238,13 @@
                         await loadEquipmentData()
                     }
                 }
+            }
+            .sheet(isPresented: $showAllHistory) {
+                historyListSheet(
+                    title: "Equipment Service History",
+                    systemImage: "clock.arrow.circlepath",
+                    items: VM.serviceHistory
+                )
             }
             .sheet(isPresented: $showMaintenanceHistory) {
                 historyListSheet(
@@ -456,6 +466,66 @@
                             serviceHistoryRow(item)
                         }
                     }
+                }
+            }
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        var serviceHistoryOverviewSection: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    sectionHeader("Service History", systemImage: "clock.arrow.circlepath")
+
+                    Spacer()
+
+                    Button {
+                        showAllHistory.toggle()
+                    } label: {
+                        Label("View All", systemImage: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(Color.accentColor.opacity(0.14), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 8) {
+                    historyCountPill(
+                        title: "All",
+                        count: VM.serviceHistory.count,
+                        systemImage: "list.bullet.rectangle"
+                    )
+                    historyCountPill(
+                        title: "Maintenance",
+                        count: VM.maintenanceHistory.count,
+                        systemImage: "wrench.and.screwdriver"
+                    )
+                    historyCountPill(
+                        title: "Repair",
+                        count: VM.repairHistory.count,
+                        systemImage: "cross.case"
+                    )
+                }
+
+                if VM.serviceHistory.isEmpty {
+                    emptyState(
+                        title: "No service history.",
+                        message: "Maintenance and repair records will appear here.",
+                        systemImage: "clock.arrow.circlepath"
+                    )
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(VM.serviceHistory.prefix(4)).indices, id: \.self) { index in
+                            historyTimelineRow(
+                                item: VM.serviceHistory[index],
+                                isLast: index == min(VM.serviceHistory.count, 4) - 1
+                            )
+                        }
+                    }
+                    .padding(12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
             }
             .padding(16)
@@ -905,6 +975,85 @@
             .buttonStyle(.plain)
         }
 
+        func historyCountPill(title: String, count: Int, systemImage: String) -> some View {
+            VStack(alignment: .leading, spacing: 6) {
+                Label(title, systemImage: systemImage)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Text("\(count)")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+
+        func historyTimelineRow(item: EquipmentServiceHistory, isLast: Bool) -> some View {
+            Button {
+                selectedServiceHistory = item
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(spacing: 0) {
+                        Image(systemName: item.type.rawValue.lowercased() == "repair" ? "cross.case.fill" : "wrench.and.screwdriver.fill")
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(item.type.rawValue.lowercased() == "repair" ? Color.red.opacity(0.85) : Color.green.opacity(0.85), in: Circle())
+
+                        if !isLast {
+                            Rectangle()
+                                .fill(Color.secondary.opacity(0.22))
+                                .frame(width: 2, height: 32)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(item.name.isEmpty ? item.type.rawValue : item.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+
+                            Spacer()
+
+                            Text(fullDate(date: item.date))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Text(item.description.isEmpty ? "No description provided." : item.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+
+                        HStack(spacing: 8) {
+                            Text(item.type.rawValue)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            if !item.techName.isEmpty {
+                                Text("•")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+
+                                Text(item.techName)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .padding(.bottom, isLast ? 0 : 10)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+
         func emptyState(title: String, message: String, systemImage: String) -> some View {
             VStack(spacing: 8) {
                 Image(systemName: systemImage)
@@ -971,6 +1120,7 @@ extension EquipmentDetailView {
                         Spacer()
                         
                         Button {
+                            showAllHistory = false
                             showMaintenanceHistory = false
                             showRepairHistory = false
                         } label: {

@@ -1208,7 +1208,8 @@ extension WorkPreviewBasedOnCompany {
             .sheet(isPresented: $mobileDailyVM.showVehicalPicker) {
                 VehicalPickerView(
                     dataService: dataService,
-                    vehical: $mobileDailyVM.selectedVehical
+                    vehical: $mobileDailyVM.selectedVehical,
+                    companyUser: mobileDailyVM.currentCompanyUser
                 )
             }
         }

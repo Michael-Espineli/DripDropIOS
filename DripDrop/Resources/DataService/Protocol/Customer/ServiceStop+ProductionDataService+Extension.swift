@@ -435,6 +435,42 @@ extension ProductionDataService {
             techName: companyUser.userName
         )
     }
+
+    func updateScheduledJobServiceStop(
+        companyId:String,
+        serviceStop:ServiceStop,
+        serviceDate:Date,
+        companyUser:CompanyUser,
+        description:String,
+        estimatedDuration:Int,
+        serviceStopTypeFields:ServiceStopTypeFields
+    ) async throws {
+        let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
+        try await ref.updateData([
+            ServiceStop.CodingKeys.serviceDate.rawValue: serviceDate,
+            ServiceStop.CodingKeys.techId.rawValue: companyUser.userId,
+            ServiceStop.CodingKeys.tech.rawValue: companyUser.userName,
+            ServiceStop.CodingKeys.description.rawValue: description,
+            ServiceStop.CodingKeys.estimatedDuration.rawValue: estimatedDuration,
+            ServiceStop.CodingKeys.typeId.rawValue: serviceStopTypeFields.typeId,
+            ServiceStop.CodingKeys.type.rawValue: serviceStopTypeFields.type,
+            ServiceStop.CodingKeys.typeImage.rawValue: serviceStopTypeFields.typeImage
+        ])
+
+        _ = try? await syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: serviceStop.serviceDate,
+            techId: serviceStop.techId,
+            techName: serviceStop.tech
+        )
+
+        _ = try? await syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: serviceDate,
+            techId: companyUser.userId,
+            techName: companyUser.userName
+        )
+    }
     func updateServiceStopIsInvoiced(companyId:String,serviceStopId:String,isInvoiced:Bool) async throws{
         let ref = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
         try await ref.updateData([
@@ -506,10 +542,27 @@ extension ProductionDataService {
 
     func deleteServiceStop(companyId:String,serviceStop:ServiceStop)async throws {
         try await serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).delete()
+        _ = try? await syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: serviceStop.serviceDate,
+            techId: serviceStop.techId,
+            techName: serviceStop.tech
+        )
 
     }
     func deleteServiceStopById(companyId:String,serviceStopId:String)async throws {
-        try await serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId).delete()
+        let ref = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+        let serviceStop = try? await ref.getDocument(as: ServiceStop.self)
+        try await ref.delete()
+
+        if let serviceStop {
+            _ = try? await syncActiveRouteForServiceStops(
+                companyId: companyId,
+                date: serviceStop.serviceDate,
+                techId: serviceStop.techId,
+                techName: serviceStop.tech
+            )
+        }
 
     }
 }

@@ -639,6 +639,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     
     func getJobTasks(companyId:String,jobId:String) async throws -> [JobTask]
     func getServiceStopTasks(companyId:String,serviceStopId:String) async throws -> [ServiceStopTask]
+    func deleteServiceStopTask(companyId:String,serviceStopId:String,taskId:String) async throws
     func getLaborContractTasks(companyId:String,laborContractId:String) async throws -> [LaborContractTask]
 
     
@@ -1078,6 +1079,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateActiveRouteFinishedStop(companyId:String,activeRouteId:String,finishedStops:Int)
     func updateActiveRouteTotalStop(companyId:String,activeRouteId:String,totalStops:Int)
     func updateActiveRouteVehicalId(companyId:String,activeRouteId:String,vehicalId:String)
+    func updateActiveRouteCompanyFleetVehicle(companyId:String,activeRouteId:String,vehical:Vehical)
+    func updateActiveRoutePersonalVehicle(companyId:String,activeRouteId:String,ownerId:String,personalVehicle:PersonalVehicle)
     @discardableResult
     func syncActiveRouteForServiceStops(companyId: String,date: Date,techId: String,techName: String) async throws -> ActiveRoute?
     func updateCustomerFirstName(companyId:String,customerId:String,firstName:String) async throws
@@ -1179,6 +1182,7 @@ protocol ProductionDataServiceProtocol: Equatable {
         //Service Stops
 
     func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws
+    func updateScheduledJobServiceStop(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser,description:String,estimatedDuration:Int,serviceStopTypeFields:ServiceStopTypeFields) async throws
     func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,newServiceStop:ServiceStop) async throws // Developer Break Out into Induvidual and Delete
     func updateServiceStopAddress(companyId:String,serviceStopId:String,address:Address) async throws
     func updateServicestopOperationStatus(companyId:String,serviceStopId:String,operationStatus:ServiceStopOperationStatus) async throws

@@ -24,11 +24,11 @@ final class FirebaseManager {
         }
 
         let plistName: String = {
-//            return "GoogleService-Info-prod"
-            switch AppEnvironment.current {
-            case .dev: return "GoogleService-Info-Dev"
-            case .prod: return "GoogleService-Info-prod"
-            }
+            return "GoogleService-Info-prod"
+//            switch AppEnvironment.current {
+//            case .dev: return "GoogleService-Info-Dev"
+//            case .prod: return "GoogleService-Info-prod"
+//            }
             
         }()
 

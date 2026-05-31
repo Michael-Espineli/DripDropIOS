@@ -257,7 +257,9 @@ final class AddNewJobViewModel:ObservableObject{
         self.jobId = "comp_wo_" + UUID().uuidString
         self.jobInternalId = "J" + String(workOrderCount)
         self.techList = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
-
+        if !techList.isEmpty {
+            self.admin = techList.first!
+        }
         /*self.jobTaskList = try await dataService.getJobTasks(companyId: companyId, jobId: jobId)*/
         //Get Task Types
         self.taskTypes = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
@@ -1148,6 +1150,7 @@ var schedule: some View {
                     serviceLocationId: VM.serviceLocation.id,
                     description: VM.description,
                     jobTaskList: VM.jobTaskList,
+                    plannedServiceStops: VM.plannedServiceStops,
                     serviceStops: $VM.serviceStops,
                     serviceStopTasks: $VM.serviceStopTasks
                 )

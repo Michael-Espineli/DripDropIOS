@@ -52,6 +52,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
     @Published private(set) var currentHistory: [StopData] = []
     @Published private(set) var listOfEquipment: [Equipment] = []
     @Published private(set) var selectedInputIdList: [String] = []
+    @Published private(set) var companyUsers: [CompanyUser] = []
     
     @Published private(set) var readingTemplates: [SavedReadingsTemplate] = []
     @Published private(set) var dosageTemplates: [SavedDosageTemplate] = []
@@ -71,16 +72,27 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
         self.loadedImages = serviceStop.photoUrls ?? []
         self.location = try await dataService.getServiceLocationById(companyId: companyId, locationId: serviceStop.serviceLocationId)
+        self.companyUsers = try await dataService.getAllCompanyUsersByStatus(
+            companyId: companyId,
+            status: CompanyUserStatus.active.rawValue
+        )
         
         //get Bodies Of Water
         let bodiesOfWater = try await dataService.getAllBodiesOfWaterByServiceLocationId(companyId: companyId, serviceLocationId: serviceStop.serviceLocationId)
         self.bodiesOfWater = bodiesOfWater
         print("  [ServiceStopDtailViewModel][onInitalLoad] Received \(bodiesOfWater.count) Bodies Of Water")
-        guard let firstBOW = bodiesOfWater.first else {
+        if let firstBOW = bodiesOfWater.first {
+            self.selectedBOW = firstBOW
+            self.currentHistory = try await dataService.getRecentServiceStopsByBodyOfWater(
+                companyId: companyId,
+                bodyOfWaterId: firstBOW.id,
+                amount: 4
+            )
+        } else {
             print("No Bodies of Water")
-            throw FireBasePublish.unableToPublish
+            self.selectedBOW = nil
+            self.currentHistory = []
         }
-        self.selectedBOW = firstBOW
         
 
         //Get Readings and Dosages DEVELOPER CONSIDER HAVE THIS GOTTEN ON FIRST LOAD of app
@@ -100,7 +112,6 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
         
         //get Four Most Recent StopData
-        self.currentHistory = try await dataService.getRecentServiceStopsByBodyOfWater(companyId: companyId, bodyOfWaterId: selectedBOW!.id , amount: 4)
         print("  [ServiceStopDtailViewModel][onInitalLoad] Current History \(currentHistory.count)")
         
         self.listOfEquipment = []
@@ -221,14 +232,12 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
         //Finish Service Stop
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
-        //Change Active Route Count
-        if operationStatus == .finished {
-            let count = activeRoute.finishedStops + 1
-            dataService.updateActiveRouteFinishedStop(companyId: companyId, activeRouteId: activeRoute.id, finishedStops: count)
-        } else {
-            let count = activeRoute.finishedStops + -1
-            dataService.updateActiveRouteFinishedStop(companyId: companyId, activeRouteId: activeRoute.id, finishedStops: count)
-        }
+        _ = try? await dataService.syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: stop.serviceDate,
+            techId: stop.techId,
+            techName: stop.tech
+        )
 
         // 2. Then update payroll based on the transition.
         let payrollCoordinator = ServiceStopPayrollCompletionCoordinator(

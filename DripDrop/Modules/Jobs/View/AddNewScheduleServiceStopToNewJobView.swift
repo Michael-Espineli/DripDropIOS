@@ -23,6 +23,7 @@ struct AddNewScheduleServiceStopToNewJobView: View {
     @State var serviceLocationId: String
     @State var description: String
     @State var jobTaskList: [JobTask]
+    @State var plannedServiceStops: [JobPlannedServiceStop]
 
     @Binding var serviceStops: [ServiceStop]
     @Binding var serviceStopTasks: [ServiceStop: [ServiceStopTask]]
@@ -37,6 +38,7 @@ struct AddNewScheduleServiceStopToNewJobView: View {
         serviceLocationId: String,
         description: String,
         jobTaskList: [JobTask],
+        plannedServiceStops: [JobPlannedServiceStop] = [],
         serviceStops: Binding<[ServiceStop]>,
         serviceStopTasks: Binding<[ServiceStop: [ServiceStopTask]]>
     ) {
@@ -47,6 +49,7 @@ struct AddNewScheduleServiceStopToNewJobView: View {
         _serviceLocationId = State(wrappedValue: serviceLocationId)
         _description = State(wrappedValue: description)
         _jobTaskList = State(wrappedValue: jobTaskList)
+        _plannedServiceStops = State(wrappedValue: plannedServiceStops)
         self._serviceStops = serviceStops
         self._serviceStopTasks = serviceStopTasks
     }
@@ -58,6 +61,7 @@ struct AddNewScheduleServiceStopToNewJobView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
                     headerCard
+                    plannedSourceCard
                     scheduleDetailsCard
                     routeSnapshotCard
                     taskSelectionCard
@@ -94,7 +98,8 @@ struct AddNewScheduleServiceStopToNewJobView: View {
                         companyId: currentCompany.id,
                         serviceLocationId: serviceLocationId,
                         description: description,
-                        jobTaskList: jobTaskList
+                        jobTaskList: jobTaskList,
+                        plannedServiceStops: plannedServiceStops
                     )
                 } catch {
                     print(error)
@@ -135,6 +140,77 @@ struct AddNewScheduleServiceStopToNewJobView: View {
 // MARK: - Main UI
 
 extension AddNewScheduleServiceStopToNewJobView {
+    private var resolvedServiceStopTypeFields: ServiceStopTypeFields {
+        if let plannedStop = VM.selectedPlannedServiceStop {
+            return ServiceStopTypeFields(
+                typeId: plannedStop.serviceStopTypeId,
+                type: plannedStop.serviceStopTypeName,
+                typeImage: plannedStop.serviceStopTypeImage
+            )
+        }
+
+        return ServiceStopTypeResolver.serviceStopTypeFields(
+            selectedType: nil,
+            useCase: .jobVisit
+        )
+    }
+
+    var plannedSourceCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionHeader("Planned Stop Source", systemImage: "calendar.badge.clock")
+
+                Spacer()
+
+                Text(VM.selectedPlannedServiceStop?.name ?? "Blank")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if plannedServiceStops.isEmpty {
+                JobScheduleEmptyMiniState(
+                    title: "No planned stops on this job.",
+                    message: "You can still schedule a blank service stop.",
+                    systemImage: "calendar"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                            VM.applyPlannedServiceStop(nil)
+                        }
+                    } label: {
+                        plannedStopSourceRow(
+                            title: "Blank service stop",
+                            subtitle: "Start without a planned stop template.",
+                            systemImage: "plus.circle",
+                            isSelected: VM.selectedPlannedServiceStop == nil
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(plannedServiceStops.sorted(by: { $0.sortOrder < $1.sortOrder })) { plannedStop in
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                                VM.applyPlannedServiceStop(plannedStop)
+                            }
+                        } label: {
+                            plannedStopSourceRow(
+                                title: plannedStop.name,
+                                subtitle: "\(plannedStop.serviceStopTypeName) • \(plannedStop.estimatedMinutes) min • \(plannedStop.taskIds.count) task(s)",
+                                systemImage: plannedStop.serviceStopTypeImage.isEmpty ? "calendar" : plannedStop.serviceStopTypeImage,
+                                isSelected: VM.selectedPlannedServiceStop?.id == plannedStop.id
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
 
     var headerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -363,7 +439,9 @@ extension AddNewScheduleServiceStopToNewJobView {
                         jobId: jobId,
                         customerId: customerId,
                         customerName: customerName,
-                        serviceLocationId: serviceLocationId
+                        serviceLocationId: serviceLocationId,
+                        estimatedDurationOverride: VM.selectedPlannedServiceStop?.estimatedMinutes,
+                        serviceStopTypeFields: resolvedServiceStopTypeFields
                     )
 
                     serviceStops.append(values.0)
@@ -391,8 +469,9 @@ extension AddNewScheduleServiceStopToNewJobView {
 extension AddNewScheduleServiceStopToNewJobView {
 
     func taskSelectionRow(_ task: JobTask) -> some View {
-        switch task.status {
-        case .accepted, .offered, .scheduled, .finished, .inProgress:
+        let isSelectable = VM.isTaskSelectable(task)
+
+        if !isSelectable {
             return AnyView(
                 HStack(spacing: 12) {
                     Image(systemName: "lock.fill")
@@ -420,7 +499,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                 .opacity(0.55)
             )
 
-        case .unassigned, .rejected, .draft:
+        } else {
             let isSelected = VM.selectedJobTaskList.contains(where: { $0.id == task.id })
 
             return AnyView(
@@ -467,6 +546,40 @@ extension AddNewScheduleServiceStopToNewJobView {
                 .buttonStyle(.plain)
             )
         }
+    }
+
+    func plannedStopSourceRow(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isSelected: Bool
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: isSelected ? "checkmark.circle.fill" : systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.poolGreen : .secondary)
+                .frame(width: 30, height: 30)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            isSelected ? Color.poolGreen.opacity(0.12) : Color.primary.opacity(0.035),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
     }
 
     func routeMetricRow(title: String, value: String, systemImage: String) -> some View {

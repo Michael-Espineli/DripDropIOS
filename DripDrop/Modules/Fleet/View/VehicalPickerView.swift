@@ -32,10 +32,16 @@ struct VehicalPickerView: View {
 
     @StateObject var VM: VehicalPickerViewModel
     @Binding var vehical: Vehical
+    let companyUser: CompanyUser?
 
-    init(dataService: any ProductionDataServiceProtocol, vehical: Binding<Vehical>) {
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        vehical: Binding<Vehical>,
+        companyUser: CompanyUser? = nil
+    ) {
         _VM = StateObject(wrappedValue: VehicalPickerViewModel(dataService: dataService))
         self._vehical = vehical
+        self.companyUser = companyUser
     }
 
     @State var addVehical: Bool = false
@@ -57,6 +63,38 @@ struct VehicalPickerView: View {
             datum.color.localizedCaseInsensitiveContains(trimmedSearch) ||
             datum.vehicalType.rawValue.localizedCaseInsensitiveContains(trimmedSearch)
         }
+    }
+    
+    private var personalVehical: Vehical? {
+        guard companyUser?.allowPersonalVehicle == true,
+              let companyUser,
+              let personalVehicle = companyUser.personalVehicle
+        else { return nil }
+        
+        return personalVehicle.asVehical(ownerId: companyUser.userId)
+    }
+    
+    private var filteredPersonalVehical: Vehical? {
+        guard let personalVehical else { return nil }
+        
+        let trimmedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSearch.isEmpty else {
+            return personalVehical
+        }
+        
+        let searchableValues = [
+            personalVehical.nickName,
+            personalVehical.make,
+            personalVehical.model,
+            personalVehical.plate,
+            personalVehical.color,
+            personalVehical.vehicalType.rawValue,
+            "personal"
+        ]
+        
+        return searchableValues.contains { value in
+            value.localizedCaseInsensitiveContains(trimmedSearch)
+        } ? personalVehical : nil
     }
 
     var body: some View {
@@ -106,7 +144,7 @@ extension VehicalPickerView {
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    Text("Choose a vehicle, then confirm your selection.")
+                    Text("Choose a company fleet or approved personal vehicle, then confirm your selection.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -173,10 +211,25 @@ extension VehicalPickerView {
 
             if VM.isLoading {
                 loadingState
-            } else if filteredVehicals.isEmpty {
+            } else if filteredVehicals.isEmpty && filteredPersonalVehical == nil {
                 emptyState
             } else {
                 VStack(spacing: 8) {
+                    if let filteredPersonalVehical {
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                                VM.selectedVehical = filteredPersonalVehical
+                            }
+
+                            #if os(iOS)
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            #endif
+                        } label: {
+                            vehicalRow(filteredPersonalVehical, sourceLabel: "Personal")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    
                     ForEach(filteredVehicals) { datum in
                         Button {
                             withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
@@ -187,7 +240,7 @@ extension VehicalPickerView {
                             UISelectionFeedbackGenerator().selectionChanged()
                             #endif
                         } label: {
-                            vehicalRow(datum)
+                            vehicalRow(datum, sourceLabel: "Company Fleet")
                         }
                         .buttonStyle(.plain)
                     }
@@ -198,7 +251,7 @@ extension VehicalPickerView {
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
-    func vehicalRow(_ datum: Vehical) -> some View {
+    func vehicalRow(_ datum: Vehical, sourceLabel: String? = nil) -> some View {
         HStack(spacing: 12) {
             Image(systemName: VM.selectedVehical == datum ? "checkmark.circle.fill" : "circle")
                 .font(.title3)
@@ -219,6 +272,12 @@ extension VehicalPickerView {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                
+                if let sourceLabel {
+                    Text(sourceLabel)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(sourceLabel == "Personal" ? Color.blue : Color.poolGreen)
+                }
             }
 
             Spacer()

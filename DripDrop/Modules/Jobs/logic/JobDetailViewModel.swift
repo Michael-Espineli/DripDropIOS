@@ -44,6 +44,9 @@ final class JobDetailViewModel:ObservableObject{
 
     @Published var isAddShoppingList: Bool = false
     @Published var isPresentServiceStop: Bool = false
+    @Published var scheduledServiceStopToEdit: ServiceStop?
+    @Published var scheduledServiceStopToDelete: ServiceStop?
+    @Published var showDeleteScheduledServiceStopConfirmation: Bool = false
     @Published var isPresentLaborContract: Bool = false
     @Published var showEstimate: Bool = false
 
@@ -1128,6 +1131,71 @@ final class JobDetailViewModel:ObservableObject{
                 print("[][deleteJobTaskItem] Error \(error)")
             }
         }
+    }
+
+    func deleteScheduledServiceStopFromJob(
+        companyId: String,
+        jobId: String,
+        serviceStop: ServiceStop
+    ) async throws {
+        guard serviceStop.operationStatus == .notFinished else {
+            alertMessage = "Only not-finished scheduled stops can be deleted from the job schedule."
+            showAlert = true
+            return
+        }
+
+        let serviceStopTasks = try await dataService.getServiceStopTasks(
+            companyId: companyId,
+            serviceStopId: serviceStop.id
+        )
+
+        for serviceStopTask in serviceStopTasks {
+            try await dataService.deleteServiceStopTask(
+                companyId: companyId,
+                serviceStopId: serviceStop.id,
+                taskId: serviceStopTask.id
+            )
+
+            guard !serviceStopTask.jobTaskId.isEmpty else {
+                continue
+            }
+
+            try dataService.updateJobTaskServiceStopId(
+                companyId: companyId,
+                jobId: jobId,
+                taskId: serviceStopTask.jobTaskId,
+                serviceStopId: IdInfo(id: "", internalId: "")
+            )
+            try dataService.updateJobTaskWorkerId(
+                companyId: companyId,
+                jobId: jobId,
+                taskId: serviceStopTask.jobTaskId,
+                workerId: ""
+            )
+            try dataService.updateJobTaskWorkerName(
+                companyId: companyId,
+                jobId: jobId,
+                taskId: serviceStopTask.jobTaskId,
+                workerName: ""
+            )
+            try dataService.updateJobTaskWorkerType(
+                companyId: companyId,
+                jobId: jobId,
+                taskId: serviceStopTask.jobTaskId,
+                workerType: .notAssigned
+            )
+            try dataService.updateJobTaskStatus(
+                companyId: companyId,
+                jobId: jobId,
+                taskId: serviceStopTask.jobTaskId,
+                status: .draft
+            )
+        }
+
+        try await dataService.deleteServiceStopById(
+            companyId: companyId,
+            serviceStopId: serviceStop.id
+        )
     }
     
     func deleteShoppingListItem(companyId:String, jobId:String, item:ShoppingListItem) {

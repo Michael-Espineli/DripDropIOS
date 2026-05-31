@@ -23,6 +23,8 @@ struct JobScheduleWorkCenterView: View {
     let dataService: any ProductionDataServiceProtocol
 
     let onScheduleServiceStop: () -> Void
+    let onEditServiceStop: (ServiceStop) -> Void
+    let onDeleteServiceStop: (ServiceStop) -> Void
     let onGoToOffers: () -> Void
     let onReload: () -> Void
 
@@ -240,15 +242,43 @@ struct JobScheduleWorkCenterView: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(serviceStops.sorted(by: { $0.serviceDate < $1.serviceDate })) { stop in
-                        NavigationLink(
-                            value: Route.serviceStop(
-                                serviceStop: stop,
-                                dataService: dataService
-                            )
-                        ) {
-                            JobScheduleServiceStopRow(serviceStop: stop)
+                        VStack(spacing: 8) {
+                            NavigationLink(
+                                value: Route.serviceStop(
+                                    serviceStop: stop,
+                                    dataService: dataService
+                                )
+                            ) {
+                                JobScheduleServiceStopRow(serviceStop: stop)
+                            }
+                            .buttonStyle(.plain)
+
+                            if stop.operationStatus == .notFinished {
+                                HStack(spacing: 8) {
+                                    Button {
+                                        onEditServiceStop(stop)
+                                    } label: {
+                                        Label("Edit", systemImage: "square.and.pencil")
+                                            .font(.caption.weight(.semibold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 9)
+                                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button(role: .destructive) {
+                                        onDeleteServiceStop(stop)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                            .font(.caption.weight(.semibold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 9)
+                                            .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }

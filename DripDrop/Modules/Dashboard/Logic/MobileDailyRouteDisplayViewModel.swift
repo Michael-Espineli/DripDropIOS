@@ -139,6 +139,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
 
     @Published private(set) var serviceStopCompanyList:[ServiceStop:Company] = [:]
     @Published private(set) var companyUsers:[CompanyUser] = []
+    @Published private(set) var currentCompanyUser: CompanyUser?
 
     @Published private(set) var duration: Int? = nil
     @Published private(set) var estimateDuration: Int? = nil
@@ -159,6 +160,10 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     @Published private(set) var endMilage: Double = 0
     @Published var inputStartMilage: String = ""
     @Published var inputEndMilage: String = ""
+    
+    var selectedVehicleIsPersonal: Bool {
+        selectedVehical.id.hasPrefix("personal:")
+    }
     
     // Cached context for background uploads
     private var cachedCompanyId: String?
@@ -302,7 +307,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             print("Did not update status, it is the same")
         }
         if vehical.id != activeRoute.vehicalId {
-            dataService.updateActiveRouteVehicalId(companyId: companyId, activeRouteId: activeRoute.id, vehicalId: vehical.id)
+            dataService.updateActiveRouteCompanyFleetVehicle(companyId: companyId, activeRouteId: activeRoute.id, vehical: vehical)
         }else {
             print("Did not update status, it is the same")
         }
@@ -322,6 +327,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         dataService.addCompanyUserListener(companyId: companyId, status: "Active",
         ) { [weak self] route in
             self?.companyUsers = route
+            self?.currentCompanyUser = route.first { $0.userId == user.id }
         }
         //For date change reset Variables so that No other variables carry over
         self.activeRoute = nil
@@ -335,6 +341,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             techId: user.id
         ) { [weak self] route in
             self?.activeRoute = route
+            if let route {
+                self?.loadSelectedVehicleForActiveRoute(companyId: companyId, activeRoute: route)
+            }
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Active Route Listener:", route?.id ?? "nil")
 //            self?.recompute(companyId: companyId,whoCalled: "AR", user: user, date: date)
@@ -405,9 +414,24 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         } else {
             if let activeRoute {
                 if whoCalled == "SS" {
-                        //This should trigger if there is an active route and there are no service stops and should delete the active route
-#warning("Should delete the active route")
-                    print("  [MobileDailyRouteDisplayViewModel][recompute] Should Delete the active Route")
+                    print("  [MobileDailyRouteDisplayViewModel][recompute] Sync active route with zero service stops")
+                    Task { [weak self] in
+                        guard let self else { return }
+
+                        do {
+                            let syncedRoute = try await dataService.syncActiveRouteForServiceStops(
+                                companyId: companyId,
+                                date: date,
+                                techId: activeRoute.techId,
+                                techName: activeRoute.techName
+                            )
+                            await MainActor.run {
+                                self.activeRoute = syncedRoute
+                            }
+                        } catch {
+                            print("  [MobileDailyRouteDisplayViewModel][recompute] Zero-stop sync error \(error)")
+                        }
+                    }
                 }
             }
         }
@@ -567,6 +591,39 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     func requestAlwaysLocation() {
         routeLocationManager.requestAlwaysAuthorization()
     }
+    
+    private func personalVehicleForCurrentUser(withMiles miles: Double? = nil) -> PersonalVehicle? {
+        guard var personalVehicle = currentCompanyUser?.personalVehicle else { return nil }
+        
+        if let miles {
+            personalVehicle.miles = miles
+        }
+        
+        return personalVehicle
+    }
+    
+    private func loadSelectedVehicleForActiveRoute(companyId: String, activeRoute: ActiveRoute) {
+        if activeRoute.vehicleSource == "Personal",
+           let personalVehicle = activeRoute.personalVehicle,
+           let ownerId = activeRoute.personalVehicleOwnerId ?? currentCompanyUser?.userId {
+            selectedVehical = personalVehicle.asVehical(ownerId: ownerId)
+            return
+        }
+        
+        guard !activeRoute.vehicalId.isEmpty else { return }
+        
+        Task {
+            do {
+                let vehicle = try await dataService.getVehical(companyId: companyId, vehicalId: activeRoute.vehicalId)
+                await MainActor.run {
+                    self.selectedVehical = vehicle
+                }
+            } catch {
+                print("[MobileDailyRouteDisplayViewModel][loadSelectedVehicleForActiveRoute] \(error)")
+            }
+        }
+    }
+    
     func updateRouteStartMilage(companyId: String?){
         print("  [MobileDailyRouteDisplayViewModel][updateRouteStartMilage]")
         guard let companyId else {return}
@@ -575,6 +632,25 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         if selectedVehical.id == "" {return}
         //Update Route
         dataService.updateActiveRouteStartMilage(companyId: companyId, activeRouteId: activeRoute.id, startMilage: milage)
+        
+        if selectedVehicleIsPersonal {
+            if let personalVehicle = personalVehicleForCurrentUser(withMiles: milage),
+               let ownerId = currentCompanyUser?.userId {
+                dataService.updateActiveRoutePersonalVehicle(
+                    companyId: companyId,
+                    activeRouteId: activeRoute.id,
+                    ownerId: ownerId,
+                    personalVehicle: personalVehicle
+                )
+            }
+            return
+        }
+        
+        dataService.updateActiveRouteCompanyFleetVehicle(
+            companyId: companyId,
+            activeRouteId: activeRoute.id,
+            vehical: selectedVehical
+        )
         
         // Update Vehicle
         Task{

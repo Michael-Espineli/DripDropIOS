@@ -47,4 +47,12 @@ extension ProductionDataService {
         }
     }
     //Delete
+    func deleteServiceStopTask(companyId:String,serviceStopId:String,taskId:String) async throws {
+        try await serviceStopTaskDocument(
+            serviceStopId: serviceStopId,
+            companyId: companyId,
+            taskId: taskId
+        )
+        .delete()
+    }
 }

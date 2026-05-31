@@ -1522,7 +1522,16 @@ extension JobDetailView {
                     serviceLocation: VM.serviceLocation,
                     dataService: dataService,
                     onScheduleServiceStop: {
+                        VM.scheduledServiceStopToEdit = nil
                         VM.isPresentServiceStop.toggle()
+                    },
+                    onEditServiceStop: { serviceStop in
+                        VM.scheduledServiceStopToEdit = serviceStop
+                        VM.isPresentServiceStop = true
+                    },
+                    onDeleteServiceStop: { serviceStop in
+                        VM.scheduledServiceStopToDelete = serviceStop
+                        VM.showDeleteScheduledServiceStopConfirmation = true
                     },
                     onGoToOffers: {
                         view = "Offers"
@@ -1568,6 +1577,8 @@ extension JobDetailView {
                         print(error)
                     }
                 }
+
+                VM.scheduledServiceStopToEdit = nil
             }
         },
                content: {
@@ -1581,6 +1592,8 @@ extension JobDetailView {
                     serviceLocationId: job.serviceLocationId,
                     description: job.description,
                     jobTaskList: VM.jobTaskList,
+                    plannedServiceStops: VM.plannedServiceStops,
+                    editingServiceStop: VM.scheduledServiceStopToEdit,
                     serviceStopTypeUseCase: .jobVisit
                 )
                 .presentationDetents([.medium, .large])
@@ -1589,6 +1602,42 @@ extension JobDetailView {
                     .presentationDetents([.medium])
             }
         })
+        .alert("Delete Scheduled Stop?", isPresented: $VM.showDeleteScheduledServiceStopConfirmation) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    guard let currentCompany = masterDataManager.currentCompany,
+                          let serviceStop = VM.scheduledServiceStopToDelete else {
+                        return
+                    }
+
+                    do {
+                        try await VM.deleteScheduledServiceStopFromJob(
+                            companyId: currentCompany.id,
+                            jobId: job.id,
+                            serviceStop: serviceStop
+                        )
+
+                        try await VM.onLoad(
+                            companyId: currentCompany.id,
+                            serviceLocationId: job.serviceLocationId,
+                            job: job
+                        )
+                    } catch {
+                        print("[][delete scheduled service stop] Error \(error)")
+                        VM.alertMessage = "Could not delete scheduled service stop."
+                        VM.showAlert = true
+                    }
+
+                    VM.scheduledServiceStopToDelete = nil
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                VM.scheduledServiceStopToDelete = nil
+            }
+        } message: {
+            Text("This deletes the scheduled stop and releases its selected job tasks back to Draft.")
+        }
         
         .safeAreaInset(edge: .bottom) {
             HStack {

@@ -56,6 +56,10 @@ final class ScheduleServiceStopViewModel: ObservableObject {
     @Published private(set) var companyUserList: [CompanyUser] = []
     @Published private(set) var jobTaskList: [JobTask] = []
     @Published var selectedJobTaskList: [JobTask] = []
+    @Published private(set) var plannedServiceStops: [JobPlannedServiceStop] = []
+    @Published var selectedPlannedServiceStop: JobPlannedServiceStop?
+    @Published private(set) var editingServiceStop: ServiceStop?
+    @Published private(set) var editingServiceStopTasks: [ServiceStopTask] = []
 
     @Published private(set) var taskTypes: [String] = []
 
@@ -63,10 +67,14 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         companyId: String,
         serviceLocationId: String,
         description: String,
-        jobTaskList: [JobTask]
+        jobTaskList: [JobTask],
+        plannedServiceStops: [JobPlannedServiceStop] = [],
+        editingServiceStop: ServiceStop? = nil
     ) async throws {
         self.description = description
         self.jobTaskList = jobTaskList
+        self.plannedServiceStops = plannedServiceStops
+        self.editingServiceStop = editingServiceStop
 
         self.taskTypes = [
             "Basic",
@@ -91,6 +99,24 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             self.selectedUser = companyUserList.first!
         }
 
+        if let editingServiceStop {
+            self.description = editingServiceStop.description
+            self.serviceDate = editingServiceStop.serviceDate
+
+            if let editingUser = companyUserList.first(where: { $0.userId == editingServiceStop.techId }) {
+                self.selectedUser = editingUser
+            }
+
+            let serviceStopTasks = try await dataService.getServiceStopTasks(
+                companyId: companyId,
+                serviceStopId: editingServiceStop.id
+            )
+            self.editingServiceStopTasks = serviceStopTasks
+            let editingJobTaskIds = Set(serviceStopTasks.map { $0.jobTaskId })
+            self.selectedJobTaskList = jobTaskList.filter { editingJobTaskIds.contains($0.id) }
+            estimateTime(tasks: selectedJobTaskList)
+        }
+
         setPlaceholderRouteSnapshot()
     }
 
@@ -107,6 +133,40 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         }
 
         estimateTime(tasks: selectedJobTaskList)
+    }
+
+    func applyPlannedServiceStop(_ plannedStop: JobPlannedServiceStop?) {
+        selectedPlannedServiceStop = plannedStop
+
+        guard let plannedStop else {
+            return
+        }
+
+        description = plannedStop.description
+
+        let plannedTaskIds = Set(plannedStop.taskIds)
+        selectedJobTaskList = jobTaskList.filter { task in
+            plannedTaskIds.contains(task.id) && isTaskSelectable(task)
+        }
+
+        if selectedJobTaskList.isEmpty {
+            estimatedTime = plannedStop.estimatedMinutes
+        } else {
+            estimateTime(tasks: selectedJobTaskList)
+        }
+    }
+
+    func isTaskSelectable(_ task: JobTask) -> Bool {
+        if editingServiceStopTasks.contains(where: { $0.jobTaskId == task.id }) {
+            return true
+        }
+
+        switch task.status {
+        case .unassigned, .rejected, .draft:
+            return true
+        case .accepted, .offered, .scheduled, .finished, .inProgress:
+            return false
+        }
     }
 
     func onChangeOfDayOrTech(companyId: String) async throws {
@@ -135,6 +195,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         customerId: String,
         customerName: String,
         serviceLocationId: String,
+        estimatedDurationOverride: Int? = nil,
         serviceStopTypeFields: ServiceStopTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
             selectedType: nil,
             useCase: .jobVisit
@@ -155,6 +216,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             for task in selectedJobTaskList {
                 durationMin = durationMin + task.estimatedTime
             }
+            durationMin = estimatedDurationOverride ?? durationMin
 
             let jobInternalId = try await dataService
                 .getWorkOrderById(companyId: companyId, workOrderId: jobId)
@@ -219,36 +281,15 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             print("----  Service Stop uploaded  -----")
 
             for task in selectedJobTaskList {
-                let serviceStopTask = ServiceStopTask(
-                    name: task.name,
-                    type: task.type,
-                    status: .scheduled,
-                    contractedRate: task.contractedRate,
-                    estimatedTime: task.estimatedTime,
-                    customerApproval: true,
-                    actualTime: 0,
-                    workerId: selectedUser.userId,
-                    workerType: selectedWorkerType,
-                    workerName: selectedUser.userName,
-                    laborContractId: "",
-                    serviceStopId: IdInfo(
-                        id: serviceStopId,
-                        internalId: internalId
-                    ),
-                    jobId: IdInfo(
-                        id: jobId,
-                        internalId: jobInternalId
-                    ),
-                    recurringServiceStopId: IdInfo(
-                        id: "",
-                        internalId: ""
-                    ),
-                    jobTaskId: task.id,
-                    recurringServiceStopTaskId: "",
-                    equipmentId: task.equipmentId,
-                    serviceLocationId: serviceLocationId,
-                    bodyOfWaterId: task.bodyOfWaterId,
-                    shoppingListItemId: task.dataBaseItemId
+                let serviceStopTask = makeServiceStopTask(
+                    from: task,
+                    taskId: nil,
+                    serviceStopId: serviceStopId,
+                    serviceStopInternalId: internalId,
+                    jobId: jobId,
+                    jobInternalId: jobInternalId,
+                    selectedWorkerType: selectedWorkerType,
+                    serviceLocationId: serviceLocationId
                 )
 
                 try await dataService.uploadServiceStopTask(
@@ -302,12 +343,197 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         }
     }
 
+    func updateScheduledServiceStop(
+        companyId: String,
+        jobId: String,
+        serviceStop: ServiceStop,
+        serviceLocationId: String,
+        estimatedDurationOverride: Int? = nil,
+        serviceStopTypeFields: ServiceStopTypeFields
+    ) async throws {
+        if !isLoading {
+            if selectedUser.id == "" {
+                throw FireBasePublish.unableToPublish
+            }
+
+            self.isLoading = true
+            defer { self.isLoading = false }
+
+            var durationMin = selectedJobTaskList.reduce(0) { $0 + $1.estimatedTime }
+            durationMin = estimatedDurationOverride ?? durationMin
+
+            let selectedWorkerType: WorkerTypeEnum = selectedUser.workerType == .notAssigned
+                ? .employee
+                : selectedUser.workerType
+
+            try await dataService.updateScheduledJobServiceStop(
+                companyId: companyId,
+                serviceStop: serviceStop,
+                serviceDate: serviceDate,
+                companyUser: selectedUser,
+                description: description,
+                estimatedDuration: durationMin,
+                serviceStopTypeFields: serviceStopTypeFields
+            )
+
+            let jobInternalId = try await dataService
+                .getWorkOrderById(companyId: companyId, workOrderId: jobId)
+                .internalId
+
+            let existingTasks = try await dataService.getServiceStopTasks(
+                companyId: companyId,
+                serviceStopId: serviceStop.id
+            )
+            let selectedTaskIds = Set(selectedJobTaskList.map { $0.id })
+
+            for existingTask in existingTasks where !selectedTaskIds.contains(existingTask.jobTaskId) {
+                try await dataService.deleteServiceStopTask(
+                    companyId: companyId,
+                    serviceStopId: serviceStop.id,
+                    taskId: existingTask.id
+                )
+
+                if !existingTask.jobTaskId.isEmpty {
+                    try dataService.updateJobTaskServiceStopId(
+                        companyId: companyId,
+                        jobId: jobId,
+                        taskId: existingTask.jobTaskId,
+                        serviceStopId: IdInfo(id: "", internalId: "")
+                    )
+                    try dataService.updateJobTaskWorkerId(
+                        companyId: companyId,
+                        jobId: jobId,
+                        taskId: existingTask.jobTaskId,
+                        workerId: ""
+                    )
+                    try dataService.updateJobTaskWorkerName(
+                        companyId: companyId,
+                        jobId: jobId,
+                        taskId: existingTask.jobTaskId,
+                        workerName: ""
+                    )
+                    try dataService.updateJobTaskWorkerType(
+                        companyId: companyId,
+                        jobId: jobId,
+                        taskId: existingTask.jobTaskId,
+                        workerType: .notAssigned
+                    )
+                    try dataService.updateJobTaskStatus(
+                        companyId: companyId,
+                        jobId: jobId,
+                        taskId: existingTask.jobTaskId,
+                        status: .draft
+                    )
+                }
+            }
+
+            for task in selectedJobTaskList {
+                let existingServiceStopTaskId = existingTasks.first(where: { $0.jobTaskId == task.id })?.id
+                let serviceStopTask = makeServiceStopTask(
+                    from: task,
+                    taskId: existingServiceStopTaskId,
+                    serviceStopId: serviceStop.id,
+                    serviceStopInternalId: serviceStop.internalId,
+                    jobId: jobId,
+                    jobInternalId: jobInternalId,
+                    selectedWorkerType: selectedWorkerType,
+                    serviceLocationId: serviceLocationId
+                )
+
+                try await dataService.uploadServiceStopTask(
+                    companyId: companyId,
+                    serviceStopId: serviceStop.id,
+                    task: serviceStopTask
+                )
+
+                try dataService.updateJobTaskWorkerId(
+                    companyId: companyId,
+                    jobId: jobId,
+                    taskId: task.id,
+                    workerId: selectedUser.userId
+                )
+                try dataService.updateJobTaskWorkerName(
+                    companyId: companyId,
+                    jobId: jobId,
+                    taskId: task.id,
+                    workerName: selectedUser.userName
+                )
+                try dataService.updateJobTaskWorkerType(
+                    companyId: companyId,
+                    jobId: jobId,
+                    taskId: task.id,
+                    workerType: selectedWorkerType
+                )
+                try dataService.updateJobTaskServiceStopId(
+                    companyId: companyId,
+                    jobId: jobId,
+                    taskId: task.id,
+                    serviceStopId: IdInfo(id: serviceStop.id, internalId: serviceStop.internalId)
+                )
+                try dataService.updateJobTaskStatus(
+                    companyId: companyId,
+                    jobId: jobId,
+                    taskId: task.id,
+                    status: .scheduled
+                )
+            }
+
+            self.alertMessage = "Successfully Updated"
+            self.showAlert = true
+        }
+    }
+
+    private func makeServiceStopTask(
+        from task: JobTask,
+        taskId: String?,
+        serviceStopId: String,
+        serviceStopInternalId: String,
+        jobId: String,
+        jobInternalId: String,
+        selectedWorkerType: WorkerTypeEnum,
+        serviceLocationId: String
+    ) -> ServiceStopTask {
+        ServiceStopTask(
+            id: taskId ?? "comp_ss_task_" + UUID().uuidString,
+            name: task.name,
+            type: task.type,
+            status: .scheduled,
+            contractedRate: task.contractedRate,
+            estimatedTime: task.estimatedTime,
+            customerApproval: true,
+            actualTime: 0,
+            workerId: selectedUser.userId,
+            workerType: selectedWorkerType,
+            workerName: selectedUser.userName,
+            laborContractId: "",
+            serviceStopId: IdInfo(
+                id: serviceStopId,
+                internalId: serviceStopInternalId
+            ),
+            jobId: IdInfo(
+                id: jobId,
+                internalId: jobInternalId
+            ),
+            recurringServiceStopId: IdInfo(
+                id: "",
+                internalId: ""
+            ),
+            jobTaskId: task.id,
+            recurringServiceStopTaskId: "",
+            equipmentId: task.equipmentId,
+            serviceLocationId: serviceLocationId,
+            bodyOfWaterId: task.bodyOfWaterId,
+            shoppingListItemId: task.dataBaseItemId
+        )
+    }
+
     func scheduleNewServiceStopNewJob(
         companyId: String,
         jobId: String,
         customerId: String,
         customerName: String,
         serviceLocationId: String,
+        estimatedDurationOverride: Int? = nil,
         serviceStopTypeFields: ServiceStopTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
             selectedType: nil,
             useCase: .jobVisit
@@ -328,6 +554,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             for task in selectedJobTaskList {
                 durationMin = durationMin + task.estimatedTime
             }
+            durationMin = estimatedDurationOverride ?? durationMin
 
             let jobInternalId = try await dataService
                 .getWorkOrderById(companyId: companyId, workOrderId: jobId)
@@ -388,36 +615,15 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             print("----  Service Stop uploaded  -----")
 
             for task in selectedJobTaskList {
-                let serviceStopTask = ServiceStopTask(
-                    name: task.name,
-                    type: task.type,
-                    status: .scheduled,
-                    contractedRate: task.contractedRate,
-                    estimatedTime: task.estimatedTime,
-                    customerApproval: true,
-                    actualTime: 0,
-                    workerId: selectedUser.userId,
-                    workerType: selectedWorkerType,
-                    workerName: selectedUser.userName,
-                    laborContractId: "",
-                    serviceStopId: IdInfo(
-                        id: serviceStopId,
-                        internalId: internalId
-                    ),
-                    jobId: IdInfo(
-                        id: jobId,
-                        internalId: jobInternalId
-                    ),
-                    recurringServiceStopId: IdInfo(
-                        id: "",
-                        internalId: ""
-                    ),
-                    jobTaskId: task.id,
-                    recurringServiceStopTaskId: "",
-                    equipmentId: task.equipmentId,
-                    serviceLocationId: serviceLocationId,
-                    bodyOfWaterId: task.bodyOfWaterId,
-                    shoppingListItemId: task.dataBaseItemId
+                let serviceStopTask = makeServiceStopTask(
+                    from: task,
+                    taskId: nil,
+                    serviceStopId: serviceStopId,
+                    serviceStopInternalId: internalId,
+                    jobId: jobId,
+                    jobInternalId: jobInternalId,
+                    selectedWorkerType: selectedWorkerType,
+                    serviceLocationId: serviceLocationId
                 )
 
                 tasks.append(serviceStopTask)
@@ -449,6 +655,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         customerId: String,
         customerName: String,
         serviceLocationId: String,
+        estimatedDurationOverride: Int? = nil,
         serviceStopTypeFields: ServiceStopTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
             selectedType: nil,
             useCase: .jobVisit
@@ -484,6 +691,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             for task in selectedJobTaskList {
                 durationSeconds = durationSeconds + task.estimatedTime
             }
+            durationSeconds = estimatedDurationOverride ?? durationSeconds
 
             let jobInternalId = try await dataService
                 .getWorkOrderById(companyId: companyId, workOrderId: job.id)
@@ -552,38 +760,15 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             print("----  Service Stop uploaded  -----")
 
             for task in selectedJobTaskList {
-                durationSeconds = durationSeconds + task.estimatedTime
-
-                let serviceStopTask = ServiceStopTask(
-                    name: task.name,
-                    type: task.type,
-                    status: .scheduled,
-                    contractedRate: task.contractedRate,
-                    estimatedTime: task.estimatedTime,
-                    customerApproval: true,
-                    actualTime: 0,
-                    workerId: selectedUser.userId,
-                    workerType: selectedWorkerType,
-                    workerName: selectedUser.userName,
-                    laborContractId: "",
-                    serviceStopId: IdInfo(
-                        id: serviceStopId,
-                        internalId: internalId
-                    ),
-                    jobId: IdInfo(
-                        id: job.id,
-                        internalId: jobInternalId
-                    ),
-                    recurringServiceStopId: IdInfo(
-                        id: "",
-                        internalId: ""
-                    ),
-                    jobTaskId: task.id,
-                    recurringServiceStopTaskId: "",
-                    equipmentId: task.equipmentId,
-                    serviceLocationId: serviceLocationId,
-                    bodyOfWaterId: task.bodyOfWaterId,
-                    shoppingListItemId: task.dataBaseItemId
+                let serviceStopTask = makeServiceStopTask(
+                    from: task,
+                    taskId: nil,
+                    serviceStopId: serviceStopId,
+                    serviceStopInternalId: internalId,
+                    jobId: job.id,
+                    jobInternalId: jobInternalId,
+                    selectedWorkerType: selectedWorkerType,
+                    serviceLocationId: serviceLocationId
                 )
 
                 try await dataService.uploadServiceStopTask(
@@ -680,6 +865,8 @@ struct ScheduleServiceStopView: View {
     @State var serviceLocationId: String
     @State var description: String
     @State var jobTaskList: [JobTask]
+    @State var plannedServiceStops: [JobPlannedServiceStop]
+    @State var editingServiceStop: ServiceStop?
 
     let companyId: String
     let serviceStopTypeUseCase: ServiceStopTypeUseCase
@@ -695,6 +882,8 @@ struct ScheduleServiceStopView: View {
         serviceLocationId: String,
         description: String,
         jobTaskList: [JobTask],
+        plannedServiceStops: [JobPlannedServiceStop] = [],
+        editingServiceStop: ServiceStop? = nil,
         serviceStopTypeUseCase: ServiceStopTypeUseCase = .jobVisit
     ) {
         _VM = StateObject(wrappedValue: ScheduleServiceStopViewModel(dataService: dataService))
@@ -704,6 +893,8 @@ struct ScheduleServiceStopView: View {
         _serviceLocationId = State(wrappedValue: serviceLocationId)
         _description = State(wrappedValue: description)
         _jobTaskList = State(wrappedValue: jobTaskList)
+        _plannedServiceStops = State(wrappedValue: plannedServiceStops)
+        _editingServiceStop = State(wrappedValue: editingServiceStop)
 
         self.companyId = companyId
         self.serviceStopTypeUseCase = serviceStopTypeUseCase
@@ -716,6 +907,7 @@ struct ScheduleServiceStopView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
                     headerCard
+                    plannedSourceCard
                     detailsCard
                     serviceStopTypeCard
                     routeSnapshotCard
@@ -776,7 +968,9 @@ struct ScheduleServiceStopView: View {
                         companyId: currentCompany.id,
                         serviceLocationId: serviceLocationId,
                         description: description,
-                        jobTaskList: jobTaskList
+                        jobTaskList: jobTaskList,
+                        plannedServiceStops: plannedServiceStops,
+                        editingServiceStop: editingServiceStop
                     )
                 } catch {
                     print(error)
@@ -811,12 +1005,108 @@ struct ScheduleServiceStopView: View {
         .onChange(of: VM.selectedJobTaskList) { tasks in
             VM.estimateTime(tasks: tasks)
         }
+        .onChange(of: VM.selectedPlannedServiceStop) { _ in
+            selectedCompanyServiceStopType = nil
+        }
     }
 }
 
 // MARK: - Main UI
 
 extension ScheduleServiceStopView {
+    private var isEditingScheduledStop: Bool {
+        editingServiceStop != nil
+    }
+
+    private var resolvedServiceStopTypeFields: ServiceStopTypeFields {
+        if let plannedStop = VM.selectedPlannedServiceStop {
+            return ServiceStopTypeFields(
+                typeId: plannedStop.serviceStopTypeId,
+                type: plannedStop.serviceStopTypeName,
+                typeImage: plannedStop.serviceStopTypeImage
+            )
+        }
+
+        if let selectedCompanyServiceStopType {
+            return ServiceStopTypeResolver.serviceStopTypeFields(
+                selectedType: selectedCompanyServiceStopType,
+                useCase: serviceStopTypeUseCase
+            )
+        }
+
+        if let editingServiceStop {
+            return ServiceStopTypeFields(
+                typeId: editingServiceStop.typeId,
+                type: editingServiceStop.type,
+                typeImage: editingServiceStop.typeImage
+            )
+        }
+
+        return ServiceStopTypeResolver.serviceStopTypeFields(
+            selectedType: nil,
+            useCase: serviceStopTypeUseCase
+        )
+    }
+
+    var plannedSourceCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionHeader("Planned Stop Source", systemImage: "calendar.badge.clock")
+
+                Spacer()
+
+                if let selected = VM.selectedPlannedServiceStop {
+                    Text(selected.name)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            if plannedServiceStops.isEmpty {
+                emptyState(
+                    title: "No planned stops on this job.",
+                    message: "You can still schedule a blank service stop.",
+                    systemImage: "calendar"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                            VM.applyPlannedServiceStop(nil)
+                        }
+                    } label: {
+                        plannedStopSourceRow(
+                            title: "Blank service stop",
+                            subtitle: "Start without a planned stop template.",
+                            systemImage: "plus.circle",
+                            isSelected: VM.selectedPlannedServiceStop == nil
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(plannedServiceStops.sorted(by: { $0.sortOrder < $1.sortOrder })) { plannedStop in
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                                VM.applyPlannedServiceStop(plannedStop)
+                            }
+                        } label: {
+                            plannedStopSourceRow(
+                                title: plannedStop.name,
+                                subtitle: "\(plannedStop.serviceStopTypeName) • \(plannedStop.estimatedMinutes) min • \(plannedStop.taskIds.count) task(s)",
+                                systemImage: plannedStop.serviceStopTypeImage.isEmpty ? "calendar" : plannedStop.serviceStopTypeImage,
+                                isSelected: VM.selectedPlannedServiceStop?.id == plannedStop.id
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
     var serviceStopTypeCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Stop Type", systemImage: "mappin.and.ellipse")
@@ -840,7 +1130,10 @@ extension ScheduleServiceStopView {
                     selectedType: $selectedCompanyServiceStopType,
                     useCase: serviceStopTypeUseCase,
                     title: "Service Stop Type",
-                    subtitle: "Payroll uses this type to decide which work type rates apply when this stop is finished."
+                    subtitle: VM.selectedPlannedServiceStop == nil
+                    ? "Payroll uses this type to decide which work type rates apply when this stop is finished."
+                    : "Using the service stop type from the selected planned stop.",
+                    preferredTypeId: VM.selectedPlannedServiceStop?.serviceStopTypeId
                 )
             }
         }
@@ -863,7 +1156,7 @@ extension ScheduleServiceStopView {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Schedule Service Stop")
+                    Text(isEditingScheduledStop ? "Edit Service Stop" : "Schedule Service Stop")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
 
@@ -913,18 +1206,6 @@ extension ScheduleServiceStopView {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
                         .background(.thinMaterial, in: Capsule())
-                    if let selectedCompanyServiceStopType {
-                        Label(
-                            selectedCompanyServiceStopType.name,
-                            systemImage: selectedCompanyServiceStopType.imageName ?? "mappin.and.ellipse"
-                        )
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(.thinMaterial, in: Capsule())
-                    }
                 }
                 Spacer()
             }
@@ -956,7 +1237,7 @@ extension ScheduleServiceStopView {
                 DatePicker(
                     "Service Date",
                     selection: $VM.serviceDate,
-                    in: Date()...,
+                    in: (isEditingScheduledStop ? Date.distantPast : Date())...,
                     displayedComponents: .date
                 )
                 .font(.subheadline.weight(.semibold))
@@ -1094,7 +1375,7 @@ extension ScheduleServiceStopView {
                 Button {
                     scheduleServiceStop()
                 } label: {
-                    Label("Schedule", systemImage: "checkmark")
+                    Label(isEditingScheduledStop ? "Update" : "Schedule", systemImage: "checkmark")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -1115,18 +1396,27 @@ extension ScheduleServiceStopView {
         Task {
             if let currentCompany = masterDataManager.currentCompany {
                 do {
-                    let typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
-                        selectedType: selectedCompanyServiceStopType,
-                        useCase: serviceStopTypeUseCase
-                    )
+                    let typeFields = resolvedServiceStopTypeFields
+                    let plannedEstimate = VM.selectedPlannedServiceStop?.estimatedMinutes
 
-                    if job.otherCompany {
+                    if let editingServiceStop {
+                        try await VM.updateScheduledServiceStop(
+                            companyId: currentCompany.id,
+                            jobId: job.id,
+                            serviceStop: editingServiceStop,
+                            serviceLocationId: serviceLocationId,
+                            estimatedDurationOverride: plannedEstimate,
+                            serviceStopTypeFields: typeFields
+                        )
+                    } else if job.otherCompany {
+
                         try await VM.scheduleNewServiceStopOtherCompany(
                             companyId: currentCompany.id,
                             job: job,
                             customerId: customerId,
                             customerName: customerName,
                             serviceLocationId: serviceLocationId,
+                            estimatedDurationOverride: plannedEstimate,
                             serviceStopTypeFields: typeFields
                         )
                     } else {
@@ -1136,6 +1426,7 @@ extension ScheduleServiceStopView {
                             customerId: customerId,
                             customerName: customerName,
                             serviceLocationId: serviceLocationId,
+                            estimatedDurationOverride: plannedEstimate,
                             serviceStopTypeFields: typeFields
                         )
                     }
@@ -1165,8 +1456,9 @@ extension ScheduleServiceStopView {
 extension ScheduleServiceStopView {
 
     func taskSelectionRow(_ task: JobTask) -> some View {
-        switch task.status {
-        case .accepted, .offered, .scheduled, .finished, .inProgress:
+        let isSelectable = VM.isTaskSelectable(task)
+
+        if !isSelectable {
             return AnyView(
                 HStack(spacing: 12) {
                     Image(systemName: "lock.fill")
@@ -1194,7 +1486,7 @@ extension ScheduleServiceStopView {
                 .opacity(0.55)
             )
 
-        case .unassigned, .rejected, .draft:
+        } else {
             let isSelected = VM.selectedJobTaskList.contains(where: { $0.id == task.id })
 
             return AnyView(
@@ -1241,6 +1533,40 @@ extension ScheduleServiceStopView {
                 .buttonStyle(.plain)
             )
         }
+    }
+
+    func plannedStopSourceRow(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isSelected: Bool
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: isSelected ? "checkmark.circle.fill" : systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.poolGreen : .secondary)
+                .frame(width: 30, height: 30)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            isSelected ? Color.poolGreen.opacity(0.12) : Color.primary.opacity(0.035),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
     }
 
     func routeMetricRow(title: String, value: String, systemImage: String) -> some View {

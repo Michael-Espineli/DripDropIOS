@@ -192,7 +192,6 @@ extension ServiceStopListView {
                     ForEach(serviceStops){ serviceStop in
                         NavigationLink(value: Route.serviceStop(serviceStop: serviceStop,dataService: dataService), label: {
                             ServiceStopCardViewSmall(serviceStop: serviceStop)
-                                .modifier(ListButtonModifier())
                         })
                     }
                 } else {

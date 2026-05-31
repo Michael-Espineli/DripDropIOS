@@ -1405,6 +1405,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateActiveRouteVehicalId(companyId:String,activeRouteId:String,vehicalId:String){
         
     }
+    func updateActiveRouteCompanyFleetVehicle(companyId:String,activeRouteId:String,vehical:Vehical){
+        
+    }
+    func updateActiveRoutePersonalVehicle(companyId:String,activeRouteId:String,ownerId:String,personalVehicle:PersonalVehicle){
+        
+    }
     func syncActiveRouteForServiceStops(companyId: String,date: Date,techId: String,techName: String) async throws -> ActiveRoute? {
         nil
     }
@@ -1542,6 +1548,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getServiceStopTasks(companyId:String,serviceStopId:String) async throws -> [ServiceStopTask] {
         return []
         
+    }
+    func deleteServiceStopTask(companyId:String,serviceStopId:String,taskId:String) async throws {
     }
     func getLaborContractTasks(companyId:String,laborContractId:String) async throws -> [LaborContractTask] {
         return []
@@ -6663,6 +6671,16 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
         
+    }
+    func updateScheduledJobServiceStop(
+        companyId:String,
+        serviceStop:ServiceStop,
+        serviceDate:Date,
+        companyUser:CompanyUser,
+        description:String,
+        estimatedDuration:Int,
+        serviceStopTypeFields:ServiceStopTypeFields
+    ) async throws {
     }
     func updateServiceStop(
         companyId:String,

@@ -458,7 +458,7 @@ extension Route:View {
         case .customer(customer: let customer, dataService: let dataService):
             CustomerDetailView(customerId: customer.id)
         case .serviceStop(serviceStop: let serviceStop, dataService: let dataService):
-            ServiceStopDetailView3(dataService: dataService, serviceStopId: serviceStop.id)
+            ServiceStopDetailView3(dataService: dataService, serviceStop: serviceStop)
 //            ServiceStopInfoView(serviceStop: serviceStop,dataService:dataService)
         case .dataBaseItem(dataBaseItem: let dataBaseItem, dataService: let dataService):
             DataBaseItemView(dataService: dataService, dataBaseItem:dataBaseItem)

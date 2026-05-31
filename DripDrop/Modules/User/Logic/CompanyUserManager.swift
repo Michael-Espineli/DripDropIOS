@@ -11,6 +11,46 @@ import FirebaseFirestoreSwift
 import Firebase
 import Darwin
 
+struct PersonalVehicle: Codable, Hashable {
+    var nickName: String?
+    var vehicalType: String?
+    var year: String?
+    var make: String?
+    var model: String?
+    var color: String?
+    var plate: String?
+    var miles: Double?
+    
+    var displayName: String {
+        let vehicleName = [year, make, model]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        
+        if let nickName, !nickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return nickName
+        }
+        
+        return vehicleName.isEmpty ? "Personal Vehicle" : vehicleName
+    }
+    
+    func asVehical(ownerId: String) -> Vehical {
+        Vehical(
+            id: "personal:\(ownerId)",
+            nickName: displayName,
+            vehicalType: VehicalType(rawValue: vehicalType ?? "") ?? .car,
+            year: year ?? "",
+            make: make ?? "",
+            model: model ?? "",
+            color: color ?? "",
+            plate: plate ?? "",
+            datePurchased: Date(),
+            miles: miles ?? 0,
+            status: .active
+        )
+    }
+}
+
 struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will Always be the same as the companyId
     var id :String
     var userId : String
@@ -22,6 +62,36 @@ struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will A
     var workerType : WorkerTypeEnum
     var linkedCompanyId : String?
     var linkedCompanyName : String?
+    var allowPersonalVehicle: Bool?
+    var personalVehicle: PersonalVehicle?
+    
+    init(
+        id: String,
+        userId: String,
+        userName: String,
+        roleId: String,
+        roleName: String,
+        dateCreated: Date,
+        status: CompanyUserStatus,
+        workerType: WorkerTypeEnum,
+        linkedCompanyId: String? = nil,
+        linkedCompanyName: String? = nil,
+        allowPersonalVehicle: Bool? = nil,
+        personalVehicle: PersonalVehicle? = nil
+    ) {
+        self.id = id
+        self.userId = userId
+        self.userName = userName
+        self.roleId = roleId
+        self.roleName = roleName
+        self.dateCreated = dateCreated
+        self.status = status
+        self.workerType = workerType
+        self.linkedCompanyId = linkedCompanyId
+        self.linkedCompanyName = linkedCompanyName
+        self.allowPersonalVehicle = allowPersonalVehicle
+        self.personalVehicle = personalVehicle
+    }
 }
 
 //struct RateSheet:Codable,Identifiable,Hashable{
