@@ -1,4 +1,12 @@
 //
+//  TechnicianWorkCenterTab.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 5/23/26.
+//
+
+
+//
 //  TechnicianWorkCenterView.swift
 //  DripDrop
 //
@@ -9,6 +17,7 @@ enum TechnicianWorkCenterTab: String, CaseIterable, Identifiable {
     case directOffers = "Offers"
     case workBoard = "Board"
     case accepted = "Accepted"
+    case scheduled = "Scheduled"
 
     var id: String { rawValue }
 }
@@ -16,6 +25,8 @@ enum TechnicianWorkCenterTab: String, CaseIterable, Identifiable {
 @MainActor
 final class TechnicianWorkCenterViewModel: ObservableObject {
 
+    @Published var scheduledServiceStops: [ServiceStop] = []
+    @Published var acceptedUserOffers: [WorkOffer] = []
     @Published var directOffers: [WorkOffer] = []
     @Published var boardOffers: [WorkOffer] = []
 
@@ -27,22 +38,33 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
 
-    let companyId: String
     let companyUser: CompanyUser
     let dataService: any ProductionDataServiceProtocol
 
     private var hasLoaded = false
 
     init(
-        companyId: String,
         companyUser: CompanyUser,
         dataService: any ProductionDataServiceProtocol
     ) {
-        self.companyId = companyId
         self.companyUser = companyUser
         self.dataService = dataService
     }
-
+    
+    var scheduledServiceStopCount: Int {
+        scheduledServiceStops.count
+    }
+    
+    var acceptedOffersReadyForSelfScheduling: [WorkOffer] {
+        acceptedOffers
+            .filter {
+                $0.status == .accepted &&
+                $0.serviceStopId.isEmpty &&
+                $0.allowsTechnicianSelfScheduling == true
+            }
+            .sorted { ($0.acceptedAt ?? $0.createdAt) > ($1.acceptedAt ?? $1.createdAt) }
+    }
+    
     var openDirectOffers: [WorkOffer] {
         directOffers
             .filter {
@@ -54,7 +76,7 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
     }
 
     var acceptedOffers: [WorkOffer] {
-        let allOffers = directOffers + boardOffers
+        let allOffers = directOffers + boardOffers + acceptedUserOffers
 
         return allOffers
             .filter {
@@ -92,7 +114,7 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
         acceptedOffers.count
     }
 
-    func load(forceRefresh: Bool = false) async {
+    func load(companyId:String, forceRefresh: Bool = false) async {
         guard forceRefresh || !hasLoaded else { return }
 
         isLoading = true
@@ -102,6 +124,10 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
         }
 
         do {
+            let now = Date()
+            let startDate = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+            let endDate = Calendar.current.date(byAdding: .day, value: 30, to: now) ?? now
+
             async let directTask = dataService.fetchWorkOffersForUser(
                 companyId: companyId,
                 userId: companyUser.userId
@@ -112,15 +138,30 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
                 workerType: companyUser.workerType
             )
 
+            async let stopsTask = dataService.fetchServiceStopsForTechnician(
+                companyId: companyId,
+                technicianId: companyUser.userId,
+                startDate: startDate,
+                endDate: endDate
+            )
+            async let acceptedTask = dataService.fetchAcceptedWorkOffersForUser(
+                companyId: companyId,
+                userId: companyUser.userId
+            )
+
             directOffers = try await directTask
             boardOffers = try await boardTask
+            acceptedUserOffers = try await acceptedTask
+
+            scheduledServiceStops = try await stopsTask
         } catch {
             alertMessage = "Could not load work offers. \(error.localizedDescription)"
             showAlert = true
         }
+        
     }
 
-    func acceptOffer(_ offer: WorkOffer) async {
+    func acceptOffer(companyId:String, _ offer: WorkOffer) async {
         guard !isSaving else { return }
 
         isSaving = true
@@ -137,7 +178,7 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
             alertMessage = "Work accepted."
             showAlert = true
 
-            await load(forceRefresh: true)
+            await load(companyId:companyId,forceRefresh: true)
         } catch {
             alertMessage = "Could not accept work. \(error.localizedDescription)"
             showAlert = true
@@ -145,6 +186,7 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
     }
 
     func rejectOffer(
+        companyId:String,
         _ offer: WorkOffer,
         reason: String
     ) async {
@@ -165,7 +207,7 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
             alertMessage = "Work offer rejected."
             showAlert = true
 
-            await load(forceRefresh: true)
+            await load(companyId: companyId, forceRefresh: true)
         } catch {
             alertMessage = "Could not reject work. \(error.localizedDescription)"
             showAlert = true
@@ -174,17 +216,15 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
 }
 
 struct TechnicianWorkCenterView: View {
-
+    @EnvironmentObject var masterDataManager: MasterDataManager
     @StateObject private var viewModel: TechnicianWorkCenterViewModel
 
     init(
-        companyId: String,
         companyUser: CompanyUser,
         dataService: any ProductionDataServiceProtocol
     ) {
         _viewModel = StateObject(
             wrappedValue: TechnicianWorkCenterViewModel(
-                companyId: companyId,
                 companyUser: companyUser,
                 dataService: dataService
             )
@@ -200,10 +240,14 @@ struct TechnicianWorkCenterView: View {
         .navigationTitle("My Work")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            await viewModel.load()
+            if let currentCompany = masterDataManager.currentCompany {
+                await viewModel.load(companyId: currentCompany.id)
+            }
         }
         .refreshable {
-            await viewModel.load(forceRefresh: true)
+            if let currentCompany = masterDataManager.currentCompany {
+                    await viewModel.load(companyId:currentCompany.id, forceRefresh: true)
+            }
         }
         .overlay {
             if viewModel.isLoading {
@@ -262,7 +306,7 @@ struct TechnicianWorkCenterView: View {
         Section {
             Picker("View", selection: $viewModel.selectedTab) {
                 ForEach(TechnicianWorkCenterTab.allCases) { tab in
-                    Text(tab.rawValue).tag(tab)
+                    Text(tabTitle(for: tab)).tag(tab)
                 }
             }
             .pickerStyle(.segmented)
@@ -280,6 +324,9 @@ struct TechnicianWorkCenterView: View {
 
         case .accepted:
             acceptedWorkSection
+
+        case .scheduled:
+            scheduledWorkSection
         }
     }
 
@@ -292,32 +339,35 @@ struct TechnicianWorkCenterView: View {
                     description: Text("Work offered directly to you will appear here.")
                 )
             } else {
-                ForEach(viewModel.openDirectOffers) { offer in
-                    NavigationLink {
-                        TechnicianWorkOfferDetailView(
-                            offer: offer,
-                            companyUser: viewModel.companyUser,
-                            canReject: true,
-                            canAccept: true,
-                            acceptAction: {
-                                Task {
-                                    await viewModel.acceptOffer(offer)
+                if let currentCompany = masterDataManager.currentCompany {
+                    ForEach(viewModel.openDirectOffers) { offer in
+                        NavigationLink {
+                            TechnicianWorkOfferDetailView(
+                                offer: offer,
+                                companyUser: viewModel.companyUser,
+                                canReject: true,
+                                canAccept: true,
+                                acceptAction: {
+                                    Task {
+                                        await viewModel.acceptOffer(companyId:currentCompany.id,offer)
+                                    }
+                                },
+                                rejectAction: { reason in
+                                    Task {
+                                        await viewModel.rejectOffer(
+                                            companyId:currentCompany.id,
+                                            offer,
+                                            reason: reason
+                                        )
+                                    }
                                 }
-                            },
-                            rejectAction: { reason in
-                                Task {
-                                    await viewModel.rejectOffer(
-                                        offer,
-                                        reason: reason
-                                    )
-                                }
-                            }
-                        )
-                    } label: {
-                        TechnicianWorkOfferRow(
-                            offer: offer,
-                            rowStyle: .directOffer
-                        )
+                            )
+                        } label: {
+                            TechnicianWorkOfferRow(
+                                offer: offer,
+                                rowStyle: .directOffer
+                            )
+                        }
                     }
                 }
             }
@@ -335,25 +385,28 @@ struct TechnicianWorkCenterView: View {
                     description: Text("Open internal board work will appear here when you are eligible.")
                 )
             } else {
-                ForEach(viewModel.openBoardOffers) { offer in
-                    NavigationLink {
-                        TechnicianWorkOfferDetailView(
-                            offer: offer,
-                            companyUser: viewModel.companyUser,
-                            canReject: false,
-                            canAccept: true,
-                            acceptAction: {
-                                Task {
-                                    await viewModel.acceptOffer(offer)
-                                }
-                            },
-                            rejectAction: { _ in }
-                        )
-                    } label: {
-                        TechnicianWorkOfferRow(
-                            offer: offer,
-                            rowStyle: .boardPost
-                        )
+                if let currentCompany = masterDataManager.currentCompany {
+
+                    ForEach(viewModel.openBoardOffers) { offer in
+                        NavigationLink {
+                            TechnicianWorkOfferDetailView(
+                                offer: offer,
+                                companyUser: viewModel.companyUser,
+                                canReject: false,
+                                canAccept: true,
+                                acceptAction: {
+                                    Task {
+                                        await viewModel.acceptOffer(companyId:currentCompany.id,offer)
+                                    }
+                                },
+                                rejectAction: { _ in }
+                            )
+                        } label: {
+                            TechnicianWorkOfferRow(
+                                offer: offer,
+                                rowStyle: .boardPost
+                            )
+                        }
                     }
                 }
             }
@@ -373,26 +426,112 @@ struct TechnicianWorkCenterView: View {
                     description: Text("Accepted, scheduled, and completed work will appear here.")
                 )
             } else {
-                ForEach(viewModel.acceptedOffers) { offer in
-                    NavigationLink {
-                        TechnicianWorkOfferDetailView(
-                            offer: offer,
-                            companyUser: viewModel.companyUser,
-                            canReject: false,
-                            canAccept: false,
-                            acceptAction: { },
-                            rejectAction: { _ in }
-                        )
-                    } label: {
-                        TechnicianWorkOfferRow(
-                            offer: offer,
-                            rowStyle: .accepted
-                        )
+                if !viewModel.acceptedOffersReadyForSelfScheduling.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Ready To Schedule")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        if let currentCompany = masterDataManager.currentCompany {
+                            ForEach(viewModel.acceptedOffersReadyForSelfScheduling) { offer in
+                                NavigationLink {
+                                    TechnicianSelfScheduleWorkOfferView(
+                                        companyId: currentCompany.id,
+                                        companyUser: viewModel.companyUser,
+                                        offer: offer,
+                                        dataService: viewModel.dataService,
+                                        onScheduled: {
+                                            Task {
+                                                await viewModel.load(
+                                                    companyId: currentCompany.id,
+                                                    forceRefresh: true
+                                                )
+                                            }
+                                        }
+                                    )
+                                } label: {
+                                    TechnicianWorkOfferRow(
+                                        offer: offer,
+                                        rowStyle: .accepted
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let otherAccepted = viewModel.acceptedOffers.filter { offer in
+                    !viewModel.acceptedOffersReadyForSelfScheduling.contains(where: { $0.id == offer.id })
+                }
+
+                if !otherAccepted.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Accepted / Scheduled")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        ForEach(otherAccepted) { offer in
+                            NavigationLink {
+                                TechnicianWorkOfferDetailView(
+                                    offer: offer,
+                                    companyUser: viewModel.companyUser,
+                                    canReject: false,
+                                    canAccept: false,
+                                    acceptAction: { },
+                                    rejectAction: { _ in }
+                                )
+                            } label: {
+                                TechnicianWorkOfferRow(
+                                    offer: offer,
+                                    rowStyle: .accepted
+                                )
+                            }
+                        }
                     }
                 }
             }
         } header: {
             Text("Accepted Work")
+        } footer: {
+            Text("Some accepted offers may allow you to schedule the service stop yourself.")
+        }
+    }
+    
+    private func tabTitle(for tab: TechnicianWorkCenterTab) -> String {
+        switch tab {
+        case .directOffers:
+            return "Offers \(viewModel.directOfferCount)"
+        case .workBoard:
+            return "Board \(viewModel.boardOfferCount)"
+        case .accepted:
+            return "Accepted \(viewModel.acceptedOfferCount)"
+        case .scheduled:
+            return "Scheduled \(viewModel.scheduledServiceStopCount)"
+        }
+    }
+    private var scheduledWorkSection: some View {
+        Section {
+            if viewModel.scheduledServiceStops.isEmpty {
+                ContentUnavailableView(
+                    "No Scheduled Work",
+                    systemImage: "calendar",
+                    description: Text("Service stops assigned to you will appear here.")
+                )
+            } else {
+                ForEach(viewModel.scheduledServiceStops.sorted(by: { $0.serviceDate < $1.serviceDate })) { stop in
+                    NavigationLink(
+                        value: Route.serviceStop(
+                            serviceStop: stop,
+                            dataService: viewModel.dataService
+                        )
+                    ) {
+                        TechnicianScheduledServiceStopRow(serviceStop: stop)
+                    }
+                }
+            }
+        } header: {
+            Text("Scheduled Service Stops")
+        } footer: {
+            Text("Payroll is generated after completed work is finished and processed.")
         }
     }
 }
@@ -511,6 +650,16 @@ struct TechnicianWorkOfferDetailView: View {
                     title: "Service Stop",
                     value: offer.serviceStopInternalId.isEmpty ? offer.serviceStopId : offer.serviceStopInternalId
                 )
+            } else if offer.status == .accepted {
+                if offer.allowsTechnicianSelfScheduling == true {
+                    Text("Accepted. You can schedule this work from the Accepted tab.")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                } else {
+                    Text("Accepted. Waiting for admin to schedule the service stop.")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
             } else {
                 Text("This offer is not linked to a scheduled service stop yet.")
                     .font(.caption)
@@ -518,7 +667,7 @@ struct TechnicianWorkOfferDetailView: View {
             }
         }
     }
-
+    
     @ViewBuilder
     private var notesSection: some View {
         if !offer.description.isEmpty ||
@@ -681,7 +830,37 @@ struct TechnicianWorkDetailRow: View {
         }
     }
 }
+struct TechnicianScheduledServiceStopRow: View {
+    var serviceStop: ServiceStop
 
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(serviceStop.internalId)
+                    .font(.subheadline.weight(.semibold))
+
+                Spacer()
+
+                Text(serviceStop.operationStatus.rawValue)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(serviceStop.type.isEmpty ? "Service Stop" : serviceStop.type)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Label(TechnicianWorkDateFormatter.shortDateTime(serviceStop.serviceDate), systemImage: "calendar")
+                Spacer()
+                Label("\(serviceStop.duration) min", systemImage: "clock")
+            }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 4)
+    }
+}
 struct TechnicianWorkNoteBlock: View {
     var title: String
     var value: String

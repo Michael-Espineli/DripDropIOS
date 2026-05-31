@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 import MapKit
-
+//MARK: View Model
 @MainActor
 final class CompanyActiveRouteOverviewViewModel: ObservableObject {
 
@@ -100,7 +100,7 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
     private func loadCompanyUsers(companyId: String) async throws {
         // If you already have a better async getter, use that here.
         // This intentionally avoids listener behavior for the manager overview.
-        let users = try await dataService.getCompanyUsers(companyId: companyId)
+        let users = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
         self.companyUsers = users.filter { $0.status == .active }
     }
 
@@ -278,6 +278,7 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
         }
     }
 }
+//MARK: CompanyActiveRouteOverviewView
 struct CompanyActiveRouteOverviewView: View {
 
     @EnvironmentObject var masterDataManager: MasterDataManager
@@ -387,8 +388,9 @@ struct CompanyActiveRouteOverviewView: View {
         await VM.load(companyId: companyId)
     }
 }
+//MARK: CompanyActiveRouteOverviewView Extension
 extension CompanyActiveRouteOverviewView {
-
+        //MARK: dateHeader
     private var dateHeader: some View {
         HStack(spacing: 10) {
             Button {
@@ -437,6 +439,7 @@ extension CompanyActiveRouteOverviewView {
         .background(.regularMaterial)
     }
 
+        //MARK: summaryGrid
     private var summaryGrid: some View {
         LazyVGrid(
             columns: [
@@ -474,7 +477,40 @@ extension CompanyActiveRouteOverviewView {
             )
         }
     }
+    
+        //MARK: summaryTile
+    private func summaryTile(
+        title: String,
+        value: String,
+        systemImage: String,
+        tint: Color
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 34, height: 34)
+                    .background(tint.opacity(0.12), in: Circle())
 
+                Spacer()
+            }
+
+            Text(value)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.primary)
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+    
+        //MARK: routeList
     private var routeList: some View {
         VStack(spacing: 12) {
             ForEach(VM.activeRoutes) { route in
@@ -488,6 +524,24 @@ extension CompanyActiveRouteOverviewView {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+    
+        //MARK: loadingOverlay
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.10)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView()
+
+                Text("Loading active routes...")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(22)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
     }
 
@@ -581,6 +635,108 @@ extension CompanyActiveRouteOverviewView {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
         .activeRouteCard()
+    }
+}
+
+//MARK: CompanyActiveRouteDetailSheet
+
+struct CompanyActiveRouteDetailSheet: View {
+
+    let route: ActiveRoute
+    let stops: [ServiceStop]
+    let logs: [ActiveRouteLog]
+    let locations: [ActiveRouteLocation]
+    let companyUsers: [CompanyUser]
+
+    @Binding var selectedStops: [ServiceStop]
+    @Binding var moveDate: Date
+    @Binding var selectedTech: CompanyUser
+
+    let isMoving: Bool
+
+    let onToggleStop: (ServiceStop) -> Void
+    let onMoveStops: () -> Void
+    let onOpenStop: (ServiceStop) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedTab: ActiveRouteDetailTab = .stops
+    @State private var mapCameraPosition: MapCameraPosition = .automatic
+    @State private var showExpandedMap: Bool = false
+    @State private var showStopOverlay: Bool = true
+    @State private var showTechTrailOverlay: Bool = true
+    @State private var showTimeAreaOverlay: Bool = true
+    @State private var plannedRoadRouteSegments: [[CLLocationCoordinate2D]] = []
+    @State private var isLoadingRoadRoute: Bool = false
+    @State private var roadRouteError: String?
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    tabBar
+
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 14) {
+                            summaryCard
+
+                            switch selectedTab {
+                            case .stops:
+                                stopsSection
+
+                            case .logs:
+                                logsSection
+
+                            case .locations:
+                                locationsSection
+
+                            case .manager:
+                                managerSection
+                            }
+
+                            Color.clear.frame(height: 24)
+                        }
+                        .padding(14)
+                    }
+                }
+            }
+            .navigationTitle(route.techName)
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showExpandedMap) {
+                expandedRouteMapSheet
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum ActiveRouteDetailTab: String, CaseIterable, Identifiable {
+    case stops = "Stops"
+    case logs = "Logs"
+    case locations = "Locations"
+    case manager = "Manager"
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .stops:
+            return "checklist"
+        case .logs:
+            return "clock.badge"
+        case .locations:
+            return "location"
+        case .manager:
+            return "slider.horizontal.3"
+        }
     }
 }
 extension CompanyActiveRouteDetailSheet {
@@ -687,12 +843,34 @@ extension CompanyActiveRouteDetailSheet {
 
     private var locationsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Locations", "\(locations.count) location breadcrumbs.", "location")
+            sectionHeader(
+                "Route Map",
+                routeMapSubtitle,
+                "map"
+            )
 
-            if locations.isEmpty {
-                emptyRow("No locations", "Location breadcrumbs will appear here while the route is active.", "location.slash")
+            if mapPoints.isEmpty {
+                emptyRow(
+                    "No map locations",
+                    "Service stops need address coordinates, and route breadcrumbs will appear while the route is active.",
+                    "location.slash"
+                )
             } else {
-                VStack(spacing: 10) {
+                routeLocationMap
+
+                mapLegend
+
+                areaEstimateSection
+
+                latestLocationCard
+
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionHeader(
+                        "Location Timeline",
+                        "Showing the most recent 20 breadcrumbs.",
+                        "list.bullet"
+                    )
+
                     ForEach(locations.suffix(20).reversed()) { location in
                         locationRow(location)
                     }
@@ -700,8 +878,599 @@ extension CompanyActiveRouteDetailSheet {
             }
         }
         .activeRouteCard()
+        .onAppear {
+            setInitialMapCamera()
+        }
+        .task(id: roadRouteTaskKey) {
+            await loadPlannedRoadRoute()
+        }
     }
 
+    private var routeLocationMap: some View {
+        VStack(spacing: 10) {
+            routeMapToolbar
+
+            routeMapCanvas(height: 340)
+        }
+    }
+
+    private var routeMapToolbar: some View {
+        HStack(spacing: 8) {
+            if isLoadingRoadRoute {
+                ProgressView()
+                    .scaleEffect(0.82)
+                    .frame(width: 34, height: 34)
+                    .background(.thinMaterial, in: Circle())
+            } else {
+                Image(systemName: roadRouteError == nil ? "point.topleft.down.curvedto.point.bottomright.up" : "point.topleft.down.to.point.bottomright.curvepath")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(roadRouteError == nil ? .blue : .orange)
+                    .frame(width: 34, height: 34)
+                    .background(.thinMaterial, in: Circle())
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(roadRouteError == nil ? "Planned route follows roads" : "Using direct stop path")
+                    .font(.caption.weight(.semibold))
+
+                Text(roadRouteError ?? "Based on ordered service stop addresses.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+                showExpandedMap = true
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 38, height: 38)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var mapOverlayControls: some View {
+        HStack(spacing: 8) {
+            overlayToggle(
+                "Stops",
+                color: .blue,
+                systemImage: "mappin.circle.fill",
+                isOn: $showStopOverlay
+            )
+
+            overlayToggle(
+                "Tech trail",
+                color: .orange,
+                systemImage: "location.fill",
+                isOn: $showTechTrailOverlay
+            )
+
+            overlayToggle(
+                "Time area",
+                color: .purple,
+                systemImage: "timer",
+                isOn: $showTimeAreaOverlay
+            )
+        }
+    }
+
+    private var expandedRouteMapSheet: some View {
+        NavigationStack {
+            VStack(spacing: 10) {
+                mapOverlayControls
+                    .padding(.horizontal, 14)
+                    .padding(.top, 10)
+
+                routeMapCanvas(height: nil)
+                    .ignoresSafeArea(edges: .bottom)
+            }
+            .background(Color.listColor.ignoresSafeArea())
+            .navigationTitle("Route Map")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        showExpandedMap = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func routeMapCanvas(height: CGFloat?) -> some View {
+        Map(position: $mapCameraPosition) {
+            if showStopOverlay {
+                if plannedRoadRouteSegments.isEmpty && serviceStopMapPoints.count > 1 {
+                    MapPolyline(coordinates: serviceStopMapPoints.map { $0.coordinate })
+                        .stroke(Color.blue.opacity(0.55), style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round, dash: [6, 5]))
+                } else {
+                    ForEach(Array(plannedRoadRouteSegments.enumerated()), id: \.offset) { _, segment in
+                        MapPolyline(coordinates: segment)
+                            .stroke(Color.blue, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                    }
+                }
+            }
+
+            if showTechTrailOverlay && technicianTrailPoints.count > 1 {
+                MapPolyline(coordinates: technicianTrailPoints.map { $0.coordinate })
+                    .stroke(Color.orange, lineWidth: 4)
+            }
+
+            ForEach(visibleMapPoints) { point in
+                Annotation(point.title, coordinate: point.coordinate) {
+                    VStack(spacing: 4) {
+                        ZStack {
+                            Circle()
+                                .fill(point.tint)
+                                .frame(width: point.pinSize, height: point.pinSize)
+                                .shadow(color: Color.black.opacity(0.20), radius: 5, x: 0, y: 3)
+
+                            if let badgeText = point.badgeText {
+                                Text(badgeText)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .minimumScaleFactor(0.62)
+                            } else if let number = point.number {
+                                Text("\(number)")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .minimumScaleFactor(0.7)
+                            } else {
+                                Image(systemName: point.systemImage)
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+
+                        Text(point.title)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(point.tint.opacity(0.85), in: Capsule())
+                    }
+                }
+            }
+        }
+        .frame(height: height)
+        .frame(maxHeight: height == nil ? .infinity : nil)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+    }
+
+    private var mapLegend: some View {
+        mapOverlayControls
+    }
+
+    private var areaEstimateSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if !showTimeAreaOverlay {
+                emptyRow(
+                    "Time areas hidden",
+                    "Turn on the Time area overlay to see where technicians spend time near stops.",
+                    "timer"
+                )
+            } else if dwellAreaEstimates.isEmpty {
+                emptyRow(
+                    "No time areas yet",
+                    "Once multiple technician breadcrumbs land near each other, estimated time in that area will appear here.",
+                    "timer"
+                )
+            } else {
+                sectionHeader(
+                    "Time In Area",
+                    "Areas are numbered in the order the technician moved through the day.",
+                    "timer"
+                )
+
+                ForEach(dwellAreaEstimates.prefix(5)) { estimate in
+                    areaEstimateRow(estimate)
+                }
+            }
+        }
+    }
+
+    private var latestLocationCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let latest = sortedLocations.last {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "location.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor.opacity(0.12), in: Circle())
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Latest Location")
+                            .font(.subheadline.weight(.semibold))
+
+                        Text(latest.userName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text(fullDateAndTime(date: latest.time))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+
+                        Text("\(latest.latitude), \(latest.longitude)")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        openInMaps(latest)
+                    } label: {
+                        Image(systemName: "map")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 36, height: 36)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+    private var sortedLocations: [ActiveRouteLocation] {
+        locations.sorted { $0.time < $1.time }
+    }
+
+    private var mapPoints: [ActiveRouteMapPoint] {
+        serviceStopMapPoints + areaMapPoints + technicianTrailPoints
+    }
+
+    private var visibleMapPoints: [ActiveRouteMapPoint] {
+        var points: [ActiveRouteMapPoint] = []
+
+        if showStopOverlay {
+            points.append(contentsOf: serviceStopMapPoints)
+        }
+
+        if showTimeAreaOverlay {
+            points.append(contentsOf: areaMapPoints)
+        }
+
+        if showTechTrailOverlay {
+            points.append(contentsOf: technicianCheckpointMapPoints)
+            points.append(contentsOf: latestLocationMapPoints)
+        }
+
+        return points
+    }
+
+    private var serviceStopMapPoints: [ActiveRouteMapPoint] {
+        stops.enumerated().compactMap { index, stop in
+            guard isValidCoordinate(stop.address.coordinates) else { return nil }
+
+            return ActiveRouteMapPoint(
+                id: "stop-\(stop.id)",
+                coordinate: stop.address.coordinates,
+                title: "\(index + 1)",
+                subtitle: stop.customerName,
+                systemImage: "mappin.circle.fill",
+                tint: statusTint(stop.operationStatus),
+                number: index + 1,
+                badgeText: nil,
+                pinSize: 32
+            )
+        }
+    }
+
+    private var technicianTrailPoints: [ActiveRouteMapPoint] {
+        sortedLocations.compactMap { location in
+            let coordinate = CLLocationCoordinate2D(
+                latitude: location.latitude,
+                longitude: location.longitude
+            )
+
+            guard isValidCoordinate(coordinate) else { return nil }
+
+            return ActiveRouteMapPoint(
+                id: "trail-\(location.id)",
+                coordinate: coordinate,
+                title: "",
+                subtitle: fullDateAndTime(date: location.time),
+                systemImage: "location.fill",
+                tint: .orange,
+                number: nil,
+                badgeText: nil,
+                pinSize: 14
+            )
+        }
+    }
+
+    private var areaMapPoints: [ActiveRouteMapPoint] {
+        chronologicalDwellAreaEstimates.enumerated().map { index, estimate in
+            ActiveRouteMapPoint(
+                id: "area-\(estimate.id)",
+                coordinate: estimate.coordinate,
+                title: estimate.durationText,
+                subtitle: estimate.subtitle,
+                systemImage: "timer",
+                tint: .purple,
+                number: nil,
+                badgeText: "\(index + 1)",
+                pinSize: 30
+            )
+        }
+    }
+
+    private var technicianCheckpointMapPoints: [ActiveRouteMapPoint] {
+        let trailPoints = Array(technicianTrailPoints.dropLast())
+        let indexes = checkpointIndexes(total: trailPoints.count, limit: 8)
+
+        return indexes.map { index in
+            let point = trailPoints[index]
+
+            return ActiveRouteMapPoint(
+                id: "checkpoint-\(point.id)",
+                coordinate: point.coordinate,
+                title: "GPS \(index + 1)",
+                subtitle: point.subtitle,
+                systemImage: "location.fill",
+                tint: .orange,
+                number: nil,
+                badgeText: "\(index + 1)",
+                pinSize: 24
+            )
+        }
+    }
+
+    private var latestLocationMapPoints: [ActiveRouteMapPoint] {
+        guard let latest = sortedLocations.last else { return [] }
+
+        let coordinate = CLLocationCoordinate2D(
+            latitude: latest.latitude,
+            longitude: latest.longitude
+        )
+
+        guard isValidCoordinate(coordinate) else { return [] }
+
+        return [
+            ActiveRouteMapPoint(
+                id: "latest-\(latest.id)",
+                coordinate: coordinate,
+                title: "Now",
+                subtitle: fullDateAndTime(date: latest.time),
+                systemImage: "location.fill",
+                tint: .orange,
+                number: nil,
+                badgeText: nil,
+                pinSize: 34
+            )
+        ]
+    }
+
+    private var chronologicalDwellAreaEstimates: [ActiveRouteAreaEstimate] {
+        buildAreaEstimates(from: sortedLocations)
+            .filter { $0.locationCount > 1 && $0.durationMinutes > 0 }
+    }
+
+    private var dwellAreaEstimates: [ActiveRouteAreaEstimate] {
+        chronologicalDwellAreaEstimates
+            .sorted { $0.startTime > $1.startTime }
+    }
+
+    private var routeMapSubtitle: String {
+        let stopCount = serviceStopMapPoints.count
+        let breadcrumbCount = technicianTrailPoints.count
+        let areaCount = dwellAreaEstimates.count
+
+        return "\(stopCount) stop pin\(stopCount == 1 ? "" : "s"), \(breadcrumbCount) breadcrumb\(breadcrumbCount == 1 ? "" : "s"), \(areaCount) time area\(areaCount == 1 ? "" : "s")."
+    }
+
+    private var roadRouteTaskKey: String {
+        serviceStopMapPoints
+            .map { "\($0.coordinate.latitude),\($0.coordinate.longitude)" }
+            .joined(separator: "|")
+    }
+
+    private func setInitialMapCamera() {
+        guard !mapPoints.isEmpty else {
+            mapCameraPosition = .automatic
+            return
+        }
+
+        let points = mapPoints.map { MKMapPoint($0.coordinate) }
+        let mapRect = points.reduce(MKMapRect.null) { partialResult, point in
+            partialResult.union(
+                MKMapRect(
+                    x: point.x,
+                    y: point.y,
+                    width: 1,
+                    height: 1
+                )
+            )
+        }
+
+        mapCameraPosition = .region(
+            MKCoordinateRegion(
+                mapRect.expanded(by: 0.22)
+            )
+        )
+    }
+
+    private func openInMaps(_ location: ActiveRouteLocation) {
+        let coordinate = CLLocationCoordinate2D(
+            latitude: location.latitude,
+            longitude: location.longitude
+        )
+
+        let placemark = MKPlacemark(coordinate: coordinate)
+        let mapItem = MKMapItem(placemark: placemark)
+        mapItem.name = "\(location.userName) Route Location"
+
+        mapItem.openInMaps(
+            launchOptions: [
+                MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving
+            ]
+        )
+    }
+
+    @MainActor
+    private func loadPlannedRoadRoute() async {
+        let coordinates = serviceStopMapPoints.map { $0.coordinate }
+
+        guard coordinates.count > 1 else {
+            plannedRoadRouteSegments = []
+            isLoadingRoadRoute = false
+            roadRouteError = nil
+            return
+        }
+
+        isLoadingRoadRoute = true
+        roadRouteError = nil
+
+        var segments: [[CLLocationCoordinate2D]] = []
+
+        for pair in zip(coordinates, coordinates.dropFirst()) {
+            do {
+                let segment = try await roadRouteSegment(from: pair.0, to: pair.1)
+
+                if !segment.isEmpty {
+                    segments.append(segment)
+                }
+            } catch {
+                roadRouteError = "Directions unavailable for one or more route legs."
+                plannedRoadRouteSegments = []
+                isLoadingRoadRoute = false
+                return
+            }
+        }
+
+        plannedRoadRouteSegments = segments
+        isLoadingRoadRoute = false
+    }
+
+    private func roadRouteSegment(
+        from sourceCoordinate: CLLocationCoordinate2D,
+        to destinationCoordinate: CLLocationCoordinate2D
+    ) async throws -> [CLLocationCoordinate2D] {
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: sourceCoordinate))
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destinationCoordinate))
+        request.transportType = .automobile
+
+        let response = try await MKDirections(request: request).calculate()
+
+        return response.routes.first?.polyline.coordinates ?? []
+    }
+
+    private func buildAreaEstimates(from locations: [ActiveRouteLocation]) -> [ActiveRouteAreaEstimate] {
+        let validLocations = locations.filter {
+            isValidCoordinate(
+                CLLocationCoordinate2D(
+                    latitude: $0.latitude,
+                    longitude: $0.longitude
+                )
+            )
+        }
+
+        guard !validLocations.isEmpty else { return [] }
+
+        var groups: [[ActiveRouteLocation]] = []
+        var currentGroup: [ActiveRouteLocation] = []
+
+        for location in validLocations {
+            guard let first = currentGroup.first else {
+                currentGroup = [location]
+                continue
+            }
+
+            if distanceMeters(from: first, to: location) <= 140 {
+                currentGroup.append(location)
+            } else {
+                groups.append(currentGroup)
+                currentGroup = [location]
+            }
+        }
+
+        if !currentGroup.isEmpty {
+            groups.append(currentGroup)
+        }
+
+        return groups.compactMap { group in
+            guard let first = group.first,
+                  let last = group.last else {
+                return nil
+            }
+
+            let coordinate = centerCoordinate(for: group)
+            let nearestStop = nearestServiceStop(to: coordinate)
+
+            return ActiveRouteAreaEstimate(
+                id: group.map { $0.id }.joined(separator: "-"),
+                coordinate: coordinate,
+                startTime: first.time,
+                endTime: last.time,
+                locationCount: group.count,
+                nearestStopName: nearestStop?.customerName,
+                nearestStopAddress: nearestStop?.address.streetAddress
+            )
+        }
+    }
+
+    private func centerCoordinate(for locations: [ActiveRouteLocation]) -> CLLocationCoordinate2D {
+        let latitude = locations.map { $0.latitude }.reduce(0, +) / Double(max(locations.count, 1))
+        let longitude = locations.map { $0.longitude }.reduce(0, +) / Double(max(locations.count, 1))
+
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    private func distanceMeters(from lhs: ActiveRouteLocation, to rhs: ActiveRouteLocation) -> CLLocationDistance {
+        let lhsLocation = CLLocation(latitude: lhs.latitude, longitude: lhs.longitude)
+        let rhsLocation = CLLocation(latitude: rhs.latitude, longitude: rhs.longitude)
+
+        return lhsLocation.distance(from: rhsLocation)
+    }
+
+    private func nearestServiceStop(to coordinate: CLLocationCoordinate2D) -> ServiceStop? {
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+
+        return stops
+            .filter { isValidCoordinate($0.address.coordinates) }
+            .min { lhs, rhs in
+                let lhsDistance = location.distance(
+                    from: CLLocation(
+                        latitude: lhs.address.latitude,
+                        longitude: lhs.address.longitude
+                    )
+                )
+                let rhsDistance = location.distance(
+                    from: CLLocation(
+                        latitude: rhs.address.latitude,
+                        longitude: rhs.address.longitude
+                    )
+                )
+
+                return lhsDistance < rhsDistance
+            }
+    }
+
+    private func checkpointIndexes(total: Int, limit: Int) -> [Int] {
+        guard total > 0 else { return [] }
+        guard total > limit else { return Array(0..<total) }
+        guard limit > 1 else { return [0] }
+
+        let step = Double(total - 1) / Double(limit - 1)
+        let indexes = (0..<limit).map { Int((Double($0) * step).rounded()) }
+
+        return Array(Set(indexes)).sorted()
+    }
+
+    //MARK: Manager Section
     private var managerSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Manager Actions", "Move unfinished stops to another day or technician.", "slider.horizontal.3")
@@ -852,7 +1621,88 @@ extension CompanyActiveRouteDetailSheet {
         .padding(12)
         .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
+
+    private func legendPill(
+        _ title: String,
+        color: Color,
+        systemImage: String
+    ) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(color)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(color.opacity(0.11), in: Capsule())
+    }
+
+    private func overlayToggle(
+        _ title: String,
+        color: Color,
+        systemImage: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        Button {
+            isOn.wrappedValue.toggle()
+        } label: {
+            Label(title, systemImage: isOn.wrappedValue ? systemImage : "eye.slash")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isOn.wrappedValue ? color : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    isOn.wrappedValue ? color.opacity(0.12) : Color.primary.opacity(0.07),
+                    in: Capsule()
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func areaEstimateRow(_ estimate: ActiveRouteAreaEstimate) -> some View {
+        let areaNumber = areaOrderNumber(for: estimate)
+
+        return HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "timer")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.purple)
+                .frame(width: 34, height: 34)
+                .background(Color.purple.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Area \(areaNumber) - \(estimate.durationText)")
+                    .font(.subheadline.weight(.semibold))
+
+                Text(estimate.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text("\(time(date: estimate.startTime)) - \(time(date: estimate.endTime)) - \(estimate.locationCount) breadcrumbs")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func areaOrderNumber(for estimate: ActiveRouteAreaEstimate) -> Int {
+        guard let index = chronologicalDwellAreaEstimates.firstIndex(where: { $0.id == estimate.id }) else {
+            return 0
+        }
+
+        return index + 1
+    }
 }
+
+private func isValidCoordinate(_ coordinate: CLLocationCoordinate2D) -> Bool {
+    coordinate.latitude.isFinite &&
+    coordinate.longitude.isFinite &&
+    abs(coordinate.latitude) <= 90 &&
+    abs(coordinate.longitude) <= 180 &&
+    !(coordinate.latitude == 0 && coordinate.longitude == 0)
+}
+
 private func routeProgressRing(_ route: ActiveRoute) -> some View {
     ZStack {
         Circle()
@@ -909,6 +1759,17 @@ private func statusBackground(_ status: ServiceStopOperationStatus) -> Color {
         return Color.orange.opacity(0.10)
     case .notFinished:
         return Color.primary.opacity(0.045)
+    }
+}
+
+private func statusTint(_ status: ServiceStopOperationStatus) -> Color {
+    switch status {
+    case .finished:
+        return .green
+    case .skipped:
+        return .orange
+    case .notFinished:
+        return .blue
     }
 }
 
@@ -1017,5 +1878,74 @@ private extension View {
         self
             .padding(16)
             .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+private extension MKMapRect {
+    func expanded(by percent: Double) -> MKMapRect {
+        guard !isNull else { return self }
+
+        let extraWidth = max(width * percent, 900)
+        let extraHeight = max(height * percent, 900)
+
+        return insetBy(dx: -extraWidth, dy: -extraHeight)
+    }
+}
+
+private extension MKPolyline {
+    var coordinates: [CLLocationCoordinate2D] {
+        var routeCoordinates = Array(
+            repeating: CLLocationCoordinate2D(),
+            count: pointCount
+        )
+
+        getCoordinates(
+            &routeCoordinates,
+            range: NSRange(location: 0, length: pointCount)
+        )
+
+        return routeCoordinates
+    }
+}
+
+struct ActiveRouteMapPoint: Identifiable {
+    let id: String
+    let coordinate: CLLocationCoordinate2D
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let tint: Color
+    let number: Int?
+    let badgeText: String?
+    let pinSize: CGFloat
+}
+
+struct ActiveRouteAreaEstimate: Identifiable {
+    let id: String
+    let coordinate: CLLocationCoordinate2D
+    let startTime: Date
+    let endTime: Date
+    let locationCount: Int
+    let nearestStopName: String?
+    let nearestStopAddress: String?
+
+    var durationMinutes: Int {
+        max(Int(endTime.timeIntervalSince(startTime) / 60), 0)
+    }
+
+    var durationText: String {
+        "\(durationMinutes) min"
+    }
+
+    var subtitle: String {
+        if let nearestStopName, !nearestStopName.isEmpty {
+            return "Near \(nearestStopName)"
+        }
+
+        if let nearestStopAddress, !nearestStopAddress.isEmpty {
+            return "Near \(nearestStopAddress)"
+        }
+
+        return "Technician stayed in this area"
     }
 }

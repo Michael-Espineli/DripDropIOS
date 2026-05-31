@@ -15,12 +15,390 @@ import MapKit
 
 protocol ProductionDataServiceProtocol: Equatable {
     var id:String { get }
+    func getActiveRoutesForDate(
+        companyId: String,
+        date: Date
+    ) async throws -> [ActiveRoute]
 
-    func getActiveSubscriptions(active:Bool) async throws -> [StripeSubscription] 
+    func getActiveRouteLogs(
+        companyId: String,
+        activeRouteId: String
+    ) async throws -> [ActiveRouteLog]
+
+    func getActiveRouteLocations(
+        companyId: String,
+        activeRouteId: String
+    ) async throws -> [ActiveRouteLocation]
+
+    func getServiceStopsByIds(
+        companyId: String,
+        serviceStopIds: [String]
+    ) async throws -> [ServiceStop]
+    func getNextPayStatementNumber(companyId: String) async throws -> Int
+    func getNextPayLineItemNumber(companyId: String) async throws -> Int
+    func getNextCompanyIncrement(
+        companyId: String,
+        category: String
+    ) async throws -> Int 
+    func getActiveRoutesNeedingReview(
+        companyId: String,
+        technicianId: String,
+        beforeDate: Date
+    ) async throws -> [ActiveRoute]
+
+    func getRecentActiveRoutes(
+        companyId: String,
+        technicianId: String,
+        limit: Int
+    ) async throws -> [ActiveRoute]
+    func updateShoppingListStatus(
+        companyId: String,
+        shoppingListItemId: String,
+        status: ShoppingListStatus,
+        needsAction: Bool
+    ) async throws
+    func getShoppingListItemsForPrepKeys(
+        companyId: String,
+        prepKeys: [String],
+        needsAction: Bool
+    ) async throws -> [ShoppingListItem]
+
+    func getOutstandingShoppingListItemsPage(
+        companyId: String,
+        limit: Int
+    ) async throws -> [ShoppingListItem]
+    // MARK: - Job Templates
+
+    func fetchJobTemplates(
+        companyId: String
+    ) async throws -> [JobTemplate]
+
+    func fetchJobTemplate(
+        companyId: String,
+        templateId: String
+    ) async throws -> JobTemplate
+
+    func saveJobTemplate(
+        _ template: JobTemplate
+    ) async throws
+
+    func saveJobTemplatePlannedServiceStops(
+        _ plannedStops: [JobTemplatePlannedServiceStop]
+    ) async throws
+
+    func saveJobTemplateTasks(
+        _ tasks: [JobTemplateTask]
+    ) async throws
+
+    func saveJobTemplateShoppingItems(
+        _ items: [JobTemplateShoppingItem]
+    ) async throws
+
+    func fetchJobTemplatePlannedServiceStops(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplatePlannedServiceStop]
+
+    func fetchJobTemplateTasks(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplateTask]
+
+    func fetchJobTemplateShoppingItems(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplateShoppingItem]
+    // MARK: - Job Copy Helpers
+
+    func saveJobPlannedServiceStops(
+        _ plannedStops: [JobPlannedServiceStop]
+    ) async throws
+
+    func saveJobTasks(
+        companyId: String,
+        jobId: String,
+        tasks: [JobTask]
+    ) async throws
+
+    func saveShoppingListItems(
+        companyId: String,
+        items: [ShoppingListItem]
+    ) async throws
+    // MARK: - Technician Scheduled Work
+    
+    func fetchServiceStopsForTechnician(
+        companyId: String,
+        technicianId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [ServiceStop]
+    // MARK: - Job Planned Service Stops
+
+    func fetchJobPlannedServiceStops(
+        companyId: String,
+        jobId: String
+    ) async throws -> [JobPlannedServiceStop]
+
+    func saveJobPlannedServiceStop(
+        _ plannedStop: JobPlannedServiceStop
+    ) async throws
+
+    func deleteJobPlannedServiceStop(
+        companyId: String,
+        jobId: String,
+        plannedServiceStopId: String
+    ) async throws
+    // MARK: - Work Offers
+
+    func fetchWorkOffers(
+        companyId: String,
+        jobId: String
+    ) async throws -> [WorkOffer]
+
+    func fetchWorkOffersForUser(
+        companyId: String,
+        userId: String
+    ) async throws -> [WorkOffer]
+
+    func fetchOpenBoardWorkOffers(
+        companyId: String,
+        workerType: WorkerTypeEnum
+    ) async throws -> [WorkOffer]
+
+    func saveWorkOffer(
+        _ workOffer: WorkOffer
+    ) async throws
+
+    func updateWorkOfferStatus(
+        companyId: String,
+        workOfferId: String,
+        status: WorkOfferStatus
+    ) async throws
+
+    func acceptWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        acceptedByUserId: String,
+        acceptedByUserName: String
+    ) async throws
+
+    func rejectWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        rejectedByUserId: String,
+        rejectedByUserName: String,
+        reason: String
+    ) async throws
+    
+    func fetchAcceptedWorkOffersForUser(
+        companyId: String,
+        userId: String
+    ) async throws -> [WorkOffer]
+    
+    func cancelWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        reason: String
+    ) async throws
+    func fetchCompanyServiceStopType(
+        companyId: String,
+        serviceStopTypeId: String
+    ) async throws -> CompanyServiceStopType
+    // MARK: - Work Offer Scheduling
+
+    func updateWorkOfferScheduledServiceStop(
+        companyId: String,
+        workOfferId: String,
+        serviceStopId: String,
+        serviceStopInternalId: String
+    ) async throws
+    
+    func appendServiceStopIdToJob(
+        companyId: String,
+        jobId: String,
+        serviceStopId: String
+    ) async throws
+    
+    
+    // MARK: - Updated Payrol methods
+    
+    // MARK: - Generating Payroll Settings
+    func ensureCompanyPaySettings(
+    companyId: String
+    ) async throws -> CompanyPaySettings
+
+    // MARK: - Company Users
+
+    func fetchCompanyUsers(
+        companyId: String
+    ) async throws -> [CompanyUser]
+
+    // MARK: - Service Stop Tasks
+
+    func fetchServiceStopTasks(
+        companyId: String,
+        serviceStopId: String
+    ) async throws -> [ServiceStopTask]
+
+    // MARK: - Pay Settings
+
+    func fetchCompanyPaySettings(
+        companyId: String
+    ) async throws -> CompanyPaySettings?
+
+    func saveCompanyPaySettings(
+        companyId:String,
+        _ settings: CompanyPaySettings
+    ) async throws
+
+    // MARK: - Service Stop Types
+
+    func fetchCompanyServiceStopTypes(
+        companyId: String
+    ) async throws -> [CompanyServiceStopType]
+
+    func saveCompanyServiceStopType(
+        _ serviceStopType: CompanyServiceStopType
+    ) async throws
+
+    // MARK: - Work Types
+
+    func fetchCompanyWorkTypes(
+        companyId: String
+    ) async throws -> [CompanyWorkType]
+
+    func saveCompanyWorkType(
+        _ workType: CompanyWorkType
+    ) async throws
+
+    // MARK: - Work Type Mappings
+
+    func fetchWorkTypeMappings(
+        companyId: String
+    ) async throws -> [WorkTypeMapping]
+
+    func saveWorkTypeMapping(
+        _ mapping: WorkTypeMapping
+    ) async throws
+    func deleteWorkTypeMapping(
+        companyId: String,
+        mappingId: String
+    ) async throws
+
+    // MARK: - Rate Plans / Technician Rates
+
+    func fetchCompanyRatePlans(
+        companyId: String
+    ) async throws -> [CompanyRatePlan]
+
+    func saveCompanyRatePlan(
+        _ ratePlan: CompanyRatePlan
+    ) async throws
+
+    func fetchTechnicianRates(
+        companyId: String
+    ) async throws -> [TechnicianRate]
+
+    func fetchTechnicianRates(
+        companyId: String,
+        technicianId: String
+    ) async throws -> [TechnicianRate]
+
+    func saveTechnicianRate(
+        _ rate: TechnicianRate
+    ) async throws
+
+    func saveTechnicianRateIncrease(
+        expiredOldRate: TechnicianRate,
+        newRate: TechnicianRate
+    ) async throws
+
+    // MARK: - Pay Line Items
+    func fetchTechnicianPayLineItems(
+        companyId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [TechnicianPayLineItem]
+    
+    func fetchTechnicianPayLineItems(
+        companyId: String,
+        serviceStopId: String
+    ) async throws -> [TechnicianPayLineItem]
+
+    func saveTechnicianPayLineItems(
+        _ lineItems: [TechnicianPayLineItem]
+    ) async throws
+
+    func updateTechnicianPayLineItem(
+        _ lineItem: TechnicianPayLineItem
+    ) async throws
+
+    // MARK: - Pay Statements
+
+    func fetchTechnicianPayStatements(
+        companyId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [TechnicianPayStatement]
+    
+    func fetchTechnicianPayLineItems(
+        companyId: String,
+        payStatementId: String
+    ) async throws -> [TechnicianPayLineItem]
+
+    func saveTechnicianPayStatement(
+        _ statement: TechnicianPayStatement
+    ) async throws
+    
+    //MARK: - End of payrol info
+    
+    func getActiveSubscriptions(active:Bool) async throws -> [StripeSubscription]
     func createSubscription(subscription:UserSubscription,user:DBUser,company:Company) async throws
     func createCompanySubscription(subscription:CompanySubscription,company:Company) async throws
     func getCompanySubscription(companyId:String) async throws -> CompanySubscription?
+    func getEquipmentServiceHistory(
+        companyId: String,
+        equipmentId: String
+    ) async throws -> [EquipmentServiceHistory]
+    func uploadEquipmentServiceHistory(
+        companyId: String,
+        equipmentId: String,
+        history: EquipmentServiceHistory
+    ) async throws 
+//    func getScheduledWorkForEquipment(
+//        companyId: String,
+//        equipmentId: String
+//    ) async throws -> [EquipmentScheduledWork]
+    func updateEquipmentServiceDates(
+        companyId: String,
+        equipmentId: String,
+        lastServiceDate: Date,
+        nextServiceDate: Date?
+    ) async throws
+    func getEquipmentScheduledWork(
+        companyId: String,
+        equipmentId: String
+    ) async throws -> [EquipmentScheduledWork]
 
+    func uploadEquipmentScheduledWork(
+        companyId: String,
+        equipmentId: String,
+        scheduledWork: EquipmentScheduledWork
+    ) async throws
+
+    func updateEquipmentScheduledWorkStatus(
+        companyId: String,
+        equipmentId: String,
+        scheduledWorkId: String,
+        status: EquipmentScheduledWorkStatus,
+        dateCompleted: Date?
+    ) async throws
+    func createEquipmentPartFromName(
+        companyId: String,
+        equipmentId: String,
+        name: String
+    ) async throws -> String
+    
     func getUserSubscription(userId:String) async throws -> UserSubscription?
 
     func updateRepairRequestPhotoURLs(companyId: String, repairRequest: String, photoUrls: [DripDropStoredImage]) async throws
@@ -238,11 +616,13 @@ protocol ProductionDataServiceProtocol: Equatable {
                                         daysOfWeek:[String])
     
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws
+    func addWorkOrderComment(companyId: String, workOrderId: String, comment: JobComment) async throws
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws
     func addPurchaseItemsToWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws
     func uploadStopData(companyId:String,stopData:StopData) async throws
     func uploadContact(companyId:String,contract:RecurringContract) async throws
-    func uploadRoute(companyId: String,activeRoute:ActiveRoute) async throws 
+    @discardableResult
+    func uploadRoute(companyId: String,activeRoute:ActiveRoute) async throws -> ActiveRoute
     
     func uploadBodyOfWaterImage(companyId:String,bodyOfWaterId:String,image:DripDropImage) async throws ->(path:String, name:String)
     func uploadEquipmentImage(companyId:String,equipmentId:String,image:DripDropImage) async throws ->(path:String, name:String)
@@ -483,6 +863,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getAllWorkOrdersByDayAndTech(companyId:String,date: Date,techId:String) async throws -> [Job]
     func getWorkOrdersBySomething(companyId:String,count:Int,lastDocument:DocumentSnapshot?) async throws -> (serviceStops:[Job],lastDocument:DocumentSnapshot?)
     func getWorkOrderById(companyId: String,workOrderId:String) async throws -> Job
+    func getWorkOrderComments(companyId: String, workOrderId: String) async throws -> [JobComment]
     func getAllPastJobsBasedOnCustomer(companyId: String, customer: Customer) async throws -> [Job]
     func getAllFutureJobsBasedOnCustomer(companyId: String, customer: Customer) async throws -> [Job]
     func getSingleRoute(companyId:String,recurringRouteId:String) async throws -> RecurringRoute
@@ -672,10 +1053,10 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateJobTaskServiceStopId(companyId:String,jobId:String,taskId:String,serviceStopId:IdInfo) throws
     func updateJobTaskLaborContractId(companyId:String,jobId:String,taskId:String,laborContractId:String) throws
     
-    func updateJobDateEstimateAccepted(companyId: String, jobId: String, date: Date) async throws
-    func updateJobEstiamteAcceptedById(companyId: String, jobId: String, id: String) async throws
-    func updateJobEstiamteAcceptedByType(companyId: String, jobId: String, type: JobEstiamteAcceptanceType) async throws
-    func updateJobEstimateAcceptedNotes(companyId: String, jobId: String, notes: String) async throws
+    func updateJobDateEstimateAccepted(companyId: String, jobId: String, date: Date) throws
+    func updateJobEstiamteAcceptedById(companyId: String, jobId: String, id: String) throws
+    func updateJobEstiamteAcceptedByType(companyId: String, jobId: String, type: JobEstiamteAcceptanceType)throws
+    func updateJobEstimateAcceptedNotes(companyId: String, jobId: String, notes: String) throws
     
     func updateJobInvoiceDate(companyId: String, jobId: String, date: Date) async throws
     func updateJobInvoiceRef(companyId: String, jobId: String, ref: String) async throws
@@ -697,6 +1078,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateActiveRouteFinishedStop(companyId:String,activeRouteId:String,finishedStops:Int)
     func updateActiveRouteTotalStop(companyId:String,activeRouteId:String,totalStops:Int)
     func updateActiveRouteVehicalId(companyId:String,activeRouteId:String,vehicalId:String)
+    @discardableResult
+    func syncActiveRouteForServiceStops(companyId: String,date: Date,techId: String,techName: String) async throws -> ActiveRoute?
     func updateCustomerFirstName(companyId:String,customerId:String,firstName:String) async throws
     func updateCustomerLastName(companyId:String,customerId:String,lastName:String) async throws
     func updateCustomerEmail(companyId:String,customerId:String,email:String) async throws
@@ -754,13 +1137,14 @@ protocol ProductionDataServiceProtocol: Equatable {
     
     //Fix later when I have more time
     func updateWorkOrder(originalJob:Job,newJob:Job) async throws
+    func updateWorkOrderCommentResolved(companyId: String, workOrderId: String, commentId: String, resolved: Bool) async throws
     func updateJobAdmin(companyId:String,jobId:String,adminName:String,adminId:String) async throws
     func updateJobTemplate(companyId:String,jobId:String,templateId:String,templateName:String) async throws
     func updateTermsTemplateName(companyId:String,templateId:String,templateName:String) async throws
     func updateTermsTemplateDescription(companyId:String,templateId:String,templateDescription:String) async throws
 
     func updateJobOperationStatus(companyId:String,jobId:String,operationStatus:JobOperationStatus) async throws
-    func updateJobBillingStatus(companyId:String,jobId:String,billingStatus:JobBillingStatus) async throws
+    func updateJobBillingStatus(companyId:String,jobId:String,billingStatus:JobBillingStatus) throws
     func updateJobRate(companyId:String,jobId:String,rate:Int) async throws
     func updateJobLaborCost(companyId:String,jobId:String,laborCost:String) async throws
     func updateJobDescription(companyId:String,jobId:String,description:String) async throws

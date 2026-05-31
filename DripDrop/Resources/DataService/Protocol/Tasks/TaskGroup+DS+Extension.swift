@@ -12,13 +12,25 @@ import SwiftUI
 import CoreLocation
 import MapKit
 
-struct JobTaskGroup:Identifiable, Codable, Equatable{
-    var id:String
-    var name:String
-    var description:String
-    var numberOfTasks:Int
+struct JobTaskGroup: Identifiable, Codable, Equatable, Hashable {
+    var id: String
+
+    var name: String
+    var description: String
+
+    var defaultServiceStopTypeId: String?
+    var defaultServiceStopTypeName: String?
+
+    var numberOfTasks: Int
+    var estimatedMinutes: Int
+    var estimatedLaborCents: Int
+
+    var isActive: Bool
+    var createdAt: Date
+    var createdByUserId: String
+
     static func == (lhs: JobTaskGroup, rhs: JobTaskGroup) -> Bool {
-        return lhs.id == rhs.id
+        lhs.id == rhs.id
     }
 }
 extension ProductionDataService {

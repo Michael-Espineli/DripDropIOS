@@ -98,6 +98,7 @@ enum JobTaskType:String, CaseIterable, Codable,Identifiable {
     case remove = "Remove"
     case replace = "Replace"
 }
+
 enum JobTaskStatus:String, CaseIterable, Codable {
     case draft = "Draft"
     case unassigned = "Unassigned"
@@ -108,12 +109,14 @@ enum JobTaskStatus:String, CaseIterable, Codable {
     case rejected = "Rejected"
     case finished = "Finished"
 }
+
 enum JobOperationStatus:String, CaseIterable, Codable {
     case estimatePending = "Estimate Pending"
     case unscheduled = "Unscheduled"
     case scheduled = "Scheduled"
     case inProgress = "In Progress"
     case finished = "Finished"
+    case waitingForParts = "Waiting for Parts"
 }
 enum JobEstiamteAcceptanceType:String, CaseIterable, Codable {
     case client = "Client"
@@ -130,13 +133,16 @@ enum JobBillingStatus:String, CaseIterable,Codable {
     case inProgress = "In Progress"
     case invoiced = "Invoiced"
     case paid = "Paid"
+    case expired = "Expired"
 }
+
 enum RepairRequestStatus:String,Codable, CaseIterable{
     case resolved = "Resolved"
     case unresolved = "Unresolved"
     case inprogress = "In Progress"
     case cancelled = "Cancelled"
 }
+
 enum RateSheetStatus:String ,Codable{
     case active = "Active"
     case inactive = "Inactive"
@@ -207,6 +213,8 @@ enum EquipmentServiceType:String,Codable,CaseIterable {
 enum ServicePerformaceType:String,Codable,CaseIterable {
     case customer = "Customer"
     case company = "Company"
+    case contractor = "Contractor"
+    case unknown = ""
 }
 enum ServiceRecordType:String,Codable,CaseIterable {
     case manual = "Manual"

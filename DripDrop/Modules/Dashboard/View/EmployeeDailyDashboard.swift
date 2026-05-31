@@ -54,48 +54,56 @@ struct EmployeeDailyDashboard: View {
         ZStack {
             Color.listColor.ignoresSafeArea()
 
-            VStack(spacing: 16) {
+            VStack(spacing: 0) {
                 toolBarView
-                ScrollView {
-                    dateSelectionView
-                    if VM.serviceStopList.isEmpty {
-                        Text("No Route")
-                            .foregroundColor(.secondary)
-                            .padding(.top, 40)
-                    } else {
-                        routeInfo
-                        if VM.ArOrderIsDifferentThanRrORder {
-                            HStack{
-                                Button(action: {
-                                    VM.resetOrderToMatchRecurringRoute(companyId: masterDataManager.currentCompany?.id)
-                                }, label: {
-                                    Text("Reset Order")
-                                        .modifier(OrangeButtonModifier())
-                                })
-                                Spacer()
-                                Button(action: {
-                                    VM.reorderServiceStopsPermanently(companyId: masterDataManager.currentCompany?.id)
-                                }, label: {
-                                    Text("Update Default")
-                                        .modifier(SubmitButtonModifier())
-                                })
-                            }
-                        }
-                        if enableReorder {
-                            reOrderListOfStops
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        dateSelectionView
+
+                        if VM.serviceStopList.isEmpty {
+                            noRouteCard
                         } else {
-                            listOfStops
+                            routeInfo
+
+                            if VM.ArOrderIsDifferentThanRrORder {
+                                routeOrderDifferenceCard
+                            }
+
+                            if enableReorder {
+                                modeBanner(
+                                    title: "Reorder Mode",
+                                    message: "Drag stops into the order you want, then save the route order.",
+                                    systemImage: "arrow.up.arrow.down"
+                                )
+
+                                reOrderListOfStops
+                            } else if VM.enableMove {
+                                modeBanner(
+                                    title: "Move Mode",
+                                    message: "Select one or more unfinished stops to move to another date or technician.",
+                                    systemImage: "arrowshape.turn.up.right"
+                                )
+
+                                listOfStops
+                            } else {
+                                listOfStops
+                            }
+
+                            Color.clear.frame(height: 18)
                         }
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
             }
-            .padding(.bottom, 24)
+
             if isLoading {
-                Color.black.opacity(0.2).ignoresSafeArea()
-                ProgressView()
-                    .scaleEffect(1.2)
+                loadingOverlay
             }
         }
+        .navigationTitle("Employee Dash")
         .navigationBarBackButtonHidden(true)
         .onReceive(timer) { _ in
             if var duration1 = VM.duration, duration1 > -1 {
@@ -103,34 +111,19 @@ struct EmployeeDailyDashboard: View {
                 duration = duration1
             }
         }
-//        .onAppear(perform: {
-//            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
-//                print("[WorkPreviewBasedOnCompany][onAppear] Calling start")
-//                VM.start(companyId: company.id, user: user, date: Date())
-//             }
-//        })
-        .onChange(of: VM.selectedDate) { date in
-            Task {
-                if let company = masterDataManager.currentCompany,
-                   let user = masterDataManager.user {
-                    //Updated Version with listeners
-                    VM.start(companyId: company.id, user: user, date: VM.selectedDate)
-                }
-            }
-        }
-        .onDisappear(perform: {
+        .onChange(of: VM.selectedDate) { _ in
             if let company = masterDataManager.currentCompany,
                let user = masterDataManager.user {
-                VM.selectedDate = Date()
-//                VM.start(companyId: company.id,  user: user, date: VM.selectedDate)
+                VM.start(companyId: company.id, user: user, date: VM.selectedDate)
             }
-        })
-
+        }
+        .onDisappear {
+            VM.selectedDate = Date()
+        }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
     }
-        
     // MARK: - Helpers
     func getColor(status: String) -> Color {
         switch status {
@@ -142,44 +135,138 @@ struct EmployeeDailyDashboard: View {
         default: return .gray
         }
     }
-}
+    private var selectedStopsPreviewCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "Selected Stops",
+                subtitle: "\(VM.selectedServiceStops.count) stop\(VM.selectedServiceStops.count == 1 ? "" : "s") selected.",
+                systemImage: "list.bullet"
+            )
 
+            if VM.selectedServiceStops.isEmpty {
+                emptyStateRow(
+                    title: "No stops selected",
+                    message: "Select stops from the route before confirming a move.",
+                    systemImage: "checklist"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(VM.selectedServiceStops, id: \.id) { stop in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(stop.customerName)
+                                    .font(.subheadline.weight(.semibold))
+                                
+                                Text(stop.address.streetAddress)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Text(stop.operationStatus.rawValue)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(.thinMaterial, in: Capsule())
+                        }
+                        .padding(12)
+                        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                }
+            }
+        }
+        .employeeDashCard()
+    }
+    private func modeBanner(
+        title: String,
+        message: String,
+        systemImage: String
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.accentColor.opacity(0.18), lineWidth: 1)
+        )
+    }
+}
 // MARK: - Toolbar
 extension EmployeeDailyDashboard {
-    var toolBarView: some View {
-        HStack(spacing: 12) {
 
+    var toolBarView: some View {
+        HStack(spacing: 10) {
             if UIDevice.isIPhone {
                 Button {
                     masterDataManager.selectedCategory = .dashBoard
-                    navigationManager.routes.removeLast()
+                    if !navigationManager.routes.isEmpty {
+                        navigationManager.routes.removeLast()
+                    }
                 } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.headline)
-                        
-                    Text("Back")
-                        .font(.headline)
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
+                    .background(.thinMaterial, in: Capsule())
                 }
+                .buttonStyle(.plain)
             }
-            Spacer()
-            NavigationLink(value: Route.createRepairRequest(dataService: dataService)) {
-                Image(systemName: "wrench.adjustable.fill")
-            }
-            /*
-             //Update 2.1
-            NavigationLink(value: Route.shoppingList(dataService: dataService)) {
-                shoppingListIcon
-            }
-*/
-            NavigationLink(value: Route.createNewJob(dataService: dataService)) {
-                Image(systemName: "plus")
-            }
-        }
-        .foregroundColor(.poolBlue)
-        .padding()
-        .background(.ultraThinMaterial)
-    }
 
+            Spacer()
+
+            NavigationLink(value: Route.createRepairRequest(dataService: dataService)) {
+                dashboardToolbarIcon(
+                    systemImage: "wrench.adjustable.fill",
+                    badgeCount: 0
+                )
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(value: Route.shoppingList(dataService: dataService)) {
+                dashboardToolbarIcon(
+                    systemImage: "cart",
+                    badgeCount: listOfShoppingListItems
+                )
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink(value: Route.createNewJob(dataService: dataService)) {
+                dashboardToolbarIcon(
+                    systemImage: "plus",
+                    badgeCount: 0
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
+    }
     var shoppingListIcon: some View {
         ZStack {
             Image(systemName: "list.clipboard.fill")
@@ -200,93 +287,102 @@ extension EmployeeDailyDashboard {
 // MARK: - Date Selector
 extension EmployeeDailyDashboard {
     var dateSelectionView: some View {
-        HStack(spacing: 0) {
-            Button {
-                VM.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: VM.selectedDate)!
-            } label: {
-                Image(systemName: "chevron.left")
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Route Date")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(weekDay(date: VM.selectedDate))
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
+
+                Spacer()
+
+                DatePicker("", selection: $VM.selectedDate, displayedComponents: .date)
+                    .labelsHidden()
             }
-            Spacer()
-            Text(weekDay(date: VM.selectedDate))
-                .font(.headline)
-            DatePicker("", selection: $VM.selectedDate, displayedComponents: .date)
-                .labelsHidden()
-            Spacer()
-            Button("Today") {
-                VM.selectedDate = Date()
-            }
-            Spacer()
-            Button {
-                VM.selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: VM.selectedDate)!
-            } label: {
-                Image(systemName: "chevron.right")
+
+            HStack(spacing: 10) {
+                Button {
+                    VM.selectedDate = Calendar.current.date(
+                        byAdding: .day,
+                        value: -1,
+                        to: VM.selectedDate
+                    ) ?? VM.selectedDate
+                } label: {
+                    Label("Previous", systemImage: "chevron.left")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    VM.selectedDate = Date()
+                } label: {
+                    Text("Today")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    VM.selectedDate = Calendar.current.date(
+                        byAdding: .day,
+                        value: 1,
+                        to: VM.selectedDate
+                    ) ?? VM.selectedDate
+                } label: {
+                    Label("Next", systemImage: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
             }
         }
-        .padding(.vertical,4)
-        .padding(.horizontal, 8)
-        .background(.ultraThinMaterial)
-        .cornerRadius(16)
-        .padding(.horizontal)
-    }
-}
+        .employeeDashCard(material: true)
+    }}
 
 // MARK: - Route Info
 extension EmployeeDailyDashboard {
     var routeInfo: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             if let activeRoute = VM.activeRoute {
-                
-                
-                ProgressView(
-                    "\(activeRoute.finishedStops) / \(activeRoute.totalStops)",
-                    value: Double(activeRoute.finishedStops),
-                    total: Double(activeRoute.totalStops)
-                )
-                
-                HStack {
-                    Text("Duration")
+                HStack(alignment: .top, spacing: 14) {
+                    routeProgressRing(activeRoute)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(activeRoute.name.isEmpty ? "Today’s Route" : activeRoute.name)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("\(activeRoute.finishedStops) of \(activeRoute.totalStops) stops complete")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        routeStatusBadge(activeRoute.status.rawValue)
+                    }
+
                     Spacer()
-                    if let startTime = activeRoute.startTime {
-                        DurationTimerView(start: startTime,end:activeRoute.endTime)
-                    }
                 }
-                
-                if let milage = activeRoute.startMilage {
-                    HStack {
-                        Text("Mileage")
-                        Spacer()
-                        Text(
-                            Measurement(value: Double(milage), unit: UnitLength.miles)
-                                .formatted(.measurement(width: .abbreviated))
-                        )
-                    }
-                }
-                
-                HStack {
-                    Text("Status")
-                    Spacer()
-                    Button {
-                        showMilage.toggle()
-                    } label: {
-                        Text(activeRoute.status.rawValue ?? "Loading")
-                            .font(.caption)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(getColor(status: activeRoute.status.rawValue ?? ""))
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                    }
-                }
-                
+
+                routeMetricGrid(activeRoute)
+
+                Divider().opacity(0.35)
+
                 routeActionButtons
             }
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .cornerRadius(20)
-        .padding(.horizontal)
+        .employeeDashCard()
     }
-
     private var routeActionButtons: some View {
         HStack {
 
@@ -416,99 +512,42 @@ extension EmployeeDailyDashboard {
 // MARK: - Stops List
 extension EmployeeDailyDashboard {
     var listOfStops: some View {
-        LazyVStack(spacing: 8) {
-            ForEach(VM.serviceStopList) { stop in
-                Group {
-                    if VM.enableMove {
-                            // For moving stops
-                        Button(action: {
-                            if VM.selectedServiceStops.contains(stop) {
-                                VM.selectedServiceStops.remove(stop)
-                            } else {
-                                VM.selectedServiceStops.append(stop)
-                            }
-                        }, label: {
-                            ZStack{
-                                Rectangle()
-                                    .padding(.horizontal,6)
-                                    .padding(.vertical,4)
-                                    .background(VM.selectedServiceStops.contains(stop) ? Color.poolBlue : Color.poolGray)
-                                    .cornerRadius(16)
-                                    .foregroundColor(Color.clear)
-                                    .fontDesign(.monospaced)
-                                    .opacity(0.5)
-                                RouteStopCardView(
-                                    dataService: dataService,
-                                    stop: stop,
-                                    index: VM.serviceStopList.firstIndex(of: stop) ?? 0
-                                )
-                                .disabled(true)
-                            }
-                            .opacity(VM.selectedServiceStops.contains(stop) ? 0.7 : 1)
-                        })
-                    } else {
-                            //Default View
-                        ZStack{
-                            switch stop.operationStatus {
-                            case .finished:
-                                Rectangle()
-                                    .padding(.horizontal,6)
-                                    .padding(.vertical,4)
-                                    .background(Color.poolGreen)
-                                    .cornerRadius(16)
-                                    .foregroundColor(Color.clear)
-                                    .fontDesign(.monospaced)
-                                    .opacity(0.5)
-                                    .onTapGesture {
-                                        navigationManager.push(to: Route.dailyDisplayStop(
-                                            dataService: dataService,
-                                            serviceStop: stop
-                                        ))
-                                    }
-                            case .notFinished:
-                                Rectangle()
-                                    .padding(.horizontal,6)
-                                    .padding(.vertical,4)
-                                    .background(Color.poolGray)
-                                    .cornerRadius(16)
-                                    .foregroundColor(Color.clear)
-                                    .fontDesign(.monospaced)
-                                    .opacity(0.5)
-                                    .onTapGesture {
-                                        navigationManager.push(to: Route.dailyDisplayStop(
-                                            dataService: dataService,
-                                            serviceStop: stop
-                                        ))
-                                    }
-                            case .skipped:
-                                Rectangle()
-                                    .padding(.horizontal,6)
-                                    .padding(.vertical,4)
-                                    .background(Color.realYellow)
-                                    .cornerRadius(16)
-                                    .foregroundColor(Color.clear)
-                                    .fontDesign(.monospaced)
-                                    .opacity(0.5)
-                                    .onTapGesture {
-                                        navigationManager.push(to: Route.dailyDisplayStop(
-                                            dataService: dataService,
-                                            serviceStop: stop
-                                        ))
-                                    }
-                            }
-                            
-                            RouteStopCardView(
-                                dataService: dataService,
-                                stop: stop,
-                                index: VM.serviceStopList.firstIndex(of: stop) ?? 0
-                            )
+        LazyVStack(spacing: 10) {
+            ForEach(Array(VM.serviceStopList.enumerated()), id: \.element.id) { index, stop in
+                if VM.enableMove {
+                    Button {
+                        if VM.selectedServiceStops.contains(stop) {
+                            VM.selectedServiceStops.removeAll { $0 == stop }
+                        } else {
+                            VM.selectedServiceStops.append(stop)
                         }
+                    } label: {
+                        stopCardWrapper(
+                            stop: stop,
+                            index: index,
+                            isSelected: VM.selectedServiceStops.contains(stop),
+                            isReorderMode: false
+                        )
                     }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        navigationManager.push(to: Route.dailyDisplayStop(
+                            dataService: dataService,
+                            serviceStop: stop
+                        ))
+                    } label: {
+                        stopCardWrapper(
+                            stop: stop,
+                            index: index,
+                            isSelected: false,
+                            isReorderMode: false
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(8)
             }
         }
-        .padding(.horizontal)
     }
     var reOrderListOfStops: some View {
         
@@ -543,10 +582,540 @@ extension EmployeeDailyDashboard {
             .padding(.horizontal)
         }
     }
-}
+    private var moveConfirmationSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
 
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            sectionHeader(
+                                title: "Move Stops",
+                                subtitle: "Choose whether this move is one-time or permanent.",
+                                systemImage: "arrowshape.turn.up.right"
+                            )
+
+                            Picker("Move Type", selection: $VM.moveType) {
+                                Text("One Time").tag("One Time")
+                                Text("Permanent").tag("Permanent")
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        .employeeDashCard(material: true)
+
+                        if VM.moveType == "One Time" {
+                            VStack(alignment: .leading, spacing: 12) {
+                                sectionHeader(
+                                    title: "One Time Move",
+                                    subtitle: "Move the selected stops to another date and technician.",
+                                    systemImage: "calendar"
+                                )
+
+                                DatePicker(
+                                    "Date Selected",
+                                    selection: $VM.moveDate,
+                                    in: Date()...,
+                                    displayedComponents: .date
+                                )
+
+                                employeePickerRow
+
+                                submitMoveButton {
+                                    VM.moveServiceStops(companyId: masterDataManager.currentCompany?.id)
+                                    confirmMove = false
+                                }
+                            }
+                            .employeeDashCard()
+                        } else {
+                            VStack(alignment: .leading, spacing: 12) {
+                                sectionHeader(
+                                    title: "Permanent Move",
+                                    subtitle: "Update the recurring route assignment going forward.",
+                                    systemImage: "repeat"
+                                )
+
+                                HStack {
+                                    Text("Day of Week")
+                                        .font(.subheadline.weight(.semibold))
+
+                                    Spacer()
+
+                                    Picker("Day Of Week", selection: $VM.newDay) {
+                                        ForEach(DaysOfWeek.allCases) { day in
+                                            Text(day.rawValue).tag(day)
+                                        }
+                                    }
+                                }
+
+                                Text("If the selected day has already passed this week, changes will apply next week.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                employeePickerRow
+
+                                submitMoveButton {
+                                    VM.moveServiceStopsPermanently(companyId: masterDataManager.currentCompany?.id)
+                                    confirmMove = false
+                                }
+                            }
+                            .employeeDashCard()
+                        }
+
+                        selectedStopsPreviewCard
+                    }
+                    .padding(14)
+                }
+            }
+            .navigationTitle("Confirm Move")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        confirmMove = false
+                    }
+                }
+            }
+        }
+    }
+    private var employeePickerRow: some View {
+        HStack {
+            Text("Employee")
+                .font(.subheadline.weight(.semibold))
+
+            Spacer()
+
+            Picker("Employee", selection: $VM.selectedTech) {
+                Text("Select User").tag(CompanyUser(
+                    id: "",
+                    userId: "",
+                    userName: "",
+                    roleId: "",
+                    roleName: "",
+                    dateCreated: Date(),
+                    status: .active,
+                    workerType: .notAssigned
+                ))
+
+                ForEach(VM.companyUsers) { user in
+                    Text(user.userName).tag(user)
+                }
+            }
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    
+    private func submitMoveButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label("Submit Move", systemImage: "checkmark.circle")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(VM.selectedTech.id.isEmpty || VM.selectedServiceStops.isEmpty)
+        .opacity(VM.selectedTech.id.isEmpty || VM.selectedServiceStops.isEmpty ? 0.55 : 1)
+    }
+}
+extension EmployeeDailyDashboard {
+
+    private func routeProgressRing(_ activeRoute: ActiveRoute) -> some View {
+        ZStack {
+            Circle()
+                .stroke(Color.primary.opacity(0.12), lineWidth: 8)
+                .frame(width: 76, height: 76)
+
+            Circle()
+                .trim(
+                    from: 0,
+                    to: Double(activeRoute.finishedStops) / Double(max(activeRoute.totalStops, 1))
+                )
+                .stroke(
+                    Color.poolGreen,
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .frame(width: 76, height: 76)
+
+            VStack(spacing: 1) {
+                Text("\(activeRoute.finishedStops)")
+                    .font(.headline.weight(.bold))
+
+                Text("of \(activeRoute.totalStops)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 82, height: 82)
+    }
+
+    private func routeMetricGrid(_ activeRoute: ActiveRoute) -> some View {
+        VStack(spacing: 8) {
+            if let startTime = activeRoute.startTime {
+                metricRow(
+                    title: "Time",
+                    value: timeRangeText(start: startTime, end: activeRoute.endTime),
+                    detail: timeDifferenceText(start: startTime, end: activeRoute.endTime),
+                    systemImage: "clock"
+                )
+            }
+
+            if let startMilage = activeRoute.startMilage {
+                metricRow(
+                    title: "Mileage",
+                    value: mileageRangeText(start: startMilage, end: activeRoute.endMilage),
+                    detail: mileageDifferenceText(start: startMilage, end: activeRoute.endMilage),
+                    systemImage: "gauge.with.dots.needle.bottom.50percent"
+                )
+            }
+
+            if activeRoute.durationMin > 0 {
+                metricRow(
+                    title: "Planned Duration",
+                    value: displayMinAsMinAndHour(min: activeRoute.durationMin),
+                    detail: nil,
+                    systemImage: "timer"
+                )
+            }
+
+            if activeRoute.distanceMiles > 0 {
+                metricRow(
+                    title: "Distance",
+                    value: Measurement(value: activeRoute.distanceMiles, unit: UnitLength.miles)
+                        .formatted(.measurement(width: .abbreviated, usage: .road).locale(locale)),
+                    detail: nil,
+                    systemImage: "road.lanes"
+                )
+            }
+        }
+    }
+
+    private func metricRow(
+        title: String,
+        value: String,
+        detail: String?,
+        systemImage: String
+    ) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                if let detail, !detail.isEmpty {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func mileageRangeText(start: Double, end: Double?) -> String {
+        let startText = Measurement(value: start, unit: UnitLength.miles)
+            .formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))
+
+        guard let end else {
+            return startText
+        }
+
+        let endText = Measurement(value: end, unit: UnitLength.miles)
+            .formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))
+
+        return "\(startText) → \(endText)"
+    }
+
+    private func mileageDifferenceText(start: Double, end: Double?) -> String? {
+        guard let end else { return nil }
+
+        return Measurement(value: end - start, unit: UnitLength.miles)
+            .formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))
+    }
+
+    private func timeRangeText(start: Date, end: Date?) -> String {
+        guard let end else {
+            return time(date: start)
+        }
+
+        return "\(time(date: start)) → \(time(date: end))"
+    }
+
+    private func timeDifferenceText(start: Date, end: Date?) -> String? {
+        guard let end else { return nil }
+
+        return displayMinAsMinAndHour(
+            min: minBetween(start: start, end: end)
+        )
+    }
+}
+extension EmployeeDailyDashboard {
+
+    private var noRouteCard: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "map")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text("No Route")
+                .font(.headline.weight(.semibold))
+
+            Text("There are no service stops assigned for this date.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+        .employeeDashCard()
+    }
+
+    private var routeOrderDifferenceCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "Route Order Changed",
+                subtitle: "This active route order does not match the recurring default route.",
+                systemImage: "arrow.triangle.branch"
+            )
+
+            HStack(spacing: 10) {
+                Button {
+                    VM.resetOrderToMatchRecurringRoute(companyId: masterDataManager.currentCompany?.id)
+                } label: {
+                    actionButton(
+                        title: "Reset Order",
+                        systemImage: "arrow.uturn.backward",
+                        tint: .orange
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    VM.reorderServiceStopsPermanently(companyId: masterDataManager.currentCompany?.id)
+                } label: {
+                    actionButton(
+                        title: "Update Default",
+                        systemImage: "checkmark.circle",
+                        tint: .green
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .employeeDashCard()
+    }
+
+    private func stopCardWrapper(
+        stop: ServiceStop,
+        index: Int,
+        isSelected: Bool,
+        isReorderMode: Bool
+    ) -> some View {
+        ZStack(alignment: .topTrailing) {
+            RouteStopCardView(
+                dataService: dataService,
+                stop: stop,
+                index: index
+            )
+            .disabled(isReorderMode || VM.enableMove)
+
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color.accentColor)
+                    .padding(10)
+            }
+
+            if isReorderMode {
+                Image(systemName: "line.3.horizontal")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(10)
+            }
+        }
+        .padding(6)
+        .background(
+            stopBackgroundColor(stop, isSelected: isSelected),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(
+                    isSelected ? Color.accentColor.opacity(0.35) : stopBorderColor(stop),
+                    lineWidth: 1
+                )
+        )
+    }
+
+    private func stopBackgroundColor(
+        _ stop: ServiceStop,
+        isSelected: Bool
+    ) -> Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.12)
+        }
+
+        switch stop.operationStatus {
+        case .finished:
+            return Color.green.opacity(0.10)
+
+        case .notFinished:
+            return Color.primary.opacity(0.035)
+
+        case .skipped:
+            return Color.orange.opacity(0.10)
+        }
+    }
+
+    private func stopBorderColor(_ stop: ServiceStop) -> Color {
+        switch stop.operationStatus {
+        case .finished:
+            return Color.green.opacity(0.22)
+
+        case .notFinished:
+            return Color.primary.opacity(0.06)
+
+        case .skipped:
+            return Color.orange.opacity(0.22)
+        }
+    }
+
+    private func sectionHeader(
+        title: String,
+        subtitle: String,
+        systemImage: String
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline.weight(.semibold))
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+    }
+
+    private func routeStatusBadge(_ status: String) -> some View {
+        Text(status)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(getColor(status: status), in: Capsule())
+    }
+
+    private func actionButton(
+        title: String,
+        systemImage: String,
+        tint: Color
+    ) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(tint == .accentColor ? .white : tint)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                tint == .accentColor ? tint : tint.opacity(0.13),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+    }
+
+    private func dashboardToolbarIcon(
+        systemImage: String,
+        badgeCount: Int
+    ) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 38, height: 38)
+                .background(.thinMaterial, in: Circle())
+
+            if badgeCount > 0 {
+                Text("\(badgeCount)")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(minWidth: 18, minHeight: 18)
+                    .padding(2)
+                    .background(Color.red, in: Circle())
+                    .offset(x: 5, y: -5)
+            }
+        }
+    }
+
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.10)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView()
+
+                Text("Loading route...")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(22)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+
+    private func emptyStateRow(
+        title: String,
+        message: String,
+        systemImage: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
 // MARK: - Mileage Sheet
 extension EmployeeDailyDashboard {
+    
     var startMilageView: some View {
         VStack {
             Spacer()
@@ -617,5 +1186,15 @@ struct MyDropDelegate : DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         draggedStop = nil
         return true
+    }
+}
+private extension View {
+    func employeeDashCard(material: Bool = false) -> some View {
+        self
+            .padding(16)
+            .background(
+                material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
     }
 }

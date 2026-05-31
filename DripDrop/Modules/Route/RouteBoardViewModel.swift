@@ -67,7 +67,7 @@ final class RouteBoardViewModel: ObservableObject {
     
     @Published var newSelectedDay: DaysOfWeek = .monday
 
-    @Published var description:String = "description"
+    @Published var description:String = ""
     @Published var startDate:Date = Date()
     @Published var endDate:Date = Date()
     
@@ -187,19 +187,50 @@ final class RouteBoardViewModel: ObservableObject {
         print("    [RouteBoardViewModel][reconcileRoutesWithStops] Current Route : \(recurringRoutes.count)")
         print("    [RouteBoardViewModel][reconcileRoutesWithStops] Current Recurring Service Stops: \(recurringStops.count)")
     }
-    func onLoad(day:DaysOfWeek) {
-        if !companyUsers.isEmpty {
-            self.newSelectedTech = companyUsers.first!
-            checkForRouteOnDayAndTech(techId: newSelectedTech.userId, day: day)
+    func onLoad(day:DaysOfWeek, techId:String?) {
+        if let techId {
+            checkForRouteOnDayAndTech(techId: techId, day: day)
+            if let first = companyUsers.first(where: {$0.id == techId}) {
+                self.newSelectedTech = first
+            } else {
+                if !companyUsers.isEmpty {
+                    self.newSelectedTech = companyUsers.first!
+                    checkForRouteOnDayAndTech(techId: newSelectedTech.id, day: day)
+                }
+            }
+        } else {
+            if !companyUsers.isEmpty {
+                self.newSelectedTech = companyUsers.first!
+                checkForRouteOnDayAndTech(techId: newSelectedTech.id, day: day)
+            }
         }
     }
     func checkForRouteOnDayAndTech(techId:String, day:DaysOfWeek){
         //Check to see if it exists
-        print("  [RouteBoardViewModel][checkForRouteOnDayAndTech] techId: \(techId), day \(day)")
+        print("  [RouteBoardViewModel][checkForRouteOnDayAndTech] techId: \(techId) & day: \(day.rawValue)")
         print("  [RouteBoardViewModel][checkForRouteOnDayAndTech] recurringStops: \(recurringStops.count)")
         print("  [RouteBoardViewModel][checkForRouteOnDayAndTech] recurringRoutes \(recurringRoutes.count)")
+        for stop in recurringStops {
+            print("\(stop.id) \(stop.day) \(stop.day.rawValue) \(stop.techId)")
+        }
         self.currentRouteRecurringStops = recurringStops.filter({$0.techId == techId && $0.day == day})
         self.currentSelectedRoute = recurringRoutes.first(where: {$0.techId == techId && $0.day == day})
+
+        print("")
+        print("  RouteBoardViewModel][checkForRouteOnDayAndTech]  recurringStops")
+        for stop in recurringStops {
+            print("-")
+            print(stop)
+            
+        }
+        print("")
+//        print(currentRouteRecurringStops)
+//        print("")
+//        print("  RouteBoardViewModel][checkForRouteOnDayAndTech]  recurringRoutes")
+//        print(recurringRoutes)
+//        print("")
+//        print(currentSelectedRoute)
+//        print("")
         print("  [RouteBoardViewModel][checkForRouteOnDayAndTech] currentRouteRecurringStops: \(currentRouteRecurringStops.count), currentSelectedRoute: \(currentSelectedRoute?.id ?? "nil")")
         //Update Modifyable varables
         self.newRouteRecurringStops = currentRouteRecurringStops
@@ -517,11 +548,12 @@ final class RouteBoardViewModel: ObservableObject {
             self.isLoading = true
             Task{
                 do {
-                    try await self.deleteRecurringServiceStop(
-                        companyId: companyId,
-                        transitionDate: Date(),
-                        rss: selectedRecurringServiceStop
-                    )
+//                    try await self.deleteRecurringServiceStop(
+//                        companyId: companyId,
+//                        transitionDate: Date(),
+//                        rss: selectedRecurringServiceStop
+//                    )
+                    try await FunctionsManager.shared.deleteRecurringServiceStop(companyId: companyId, stopId: selectedRecurringServiceStop.id)
                 } catch {
                     print("[][] Error \(error)")
                 }
@@ -582,5 +614,51 @@ final class RouteBoardViewModel: ObservableObject {
         }
         try await dataService.endRecurringServiceStop(companyId: companyId, recurringServiceStopId: rss.id, endDate: transitionDate)
   
+    }
+    func addRecurringStopSelectionToNewRoute(
+        selection: RouteRecurringStopSelection
+    ) {
+        print("  [RouteBoardViewModel][addRecurringStopSelectionToNewRoute] Adding Recurring Service Stop to New Route")
+        customer = selection.customer
+        location = selection.location
+        
+            print("  [RouteBoardViewModel][addRecurringStopSelectionToNewRoute] 1")
+        let recurringStop = RecurringServiceStop(
+            id: "comp_rss_" + UUID().uuidString,
+            internalId: "",
+            type: selection.typeFields.type,
+            typeId: selection.typeFields.typeId,
+            typeImage: selection.typeFields.typeImage,
+            customerName: resolvedCustomerName(selection.customer),
+            customerId: selection.customer.id,
+            address: selection.location.address,
+            tech: newSelectedTech.userName,
+            techId: newSelectedTech.userId,
+            dateCreated: Date(),
+            startDate: startDate,
+            endDate: noEndDate ? nil : endDate,
+            noEndDate: noEndDate,
+            frequency: standardFrequencyType,
+            day: newSelectedDay,
+            description: description,
+            lastCreated: Date(),
+            serviceLocationId: selection.location.id,
+            estimatedTime: selection.location.estimatedTime ?? 15,
+            otherCompany: false
+        )
+        
+        print("  [RouteBoardViewModel][addRecurringStopSelectionToNewRoute] before newRouteRecurringStops \(newRouteRecurringStops.count)")
+        self.newRouteRecurringStops.append(recurringStop)
+        print("  [RouteBoardViewModel][addRecurringStopSelectionToNewRoute] after newRouteRecurringStops \(newRouteRecurringStops.count)")
+        
+        print("  [RouteBoardViewModel][addRecurringStopSelectionToNewRoute] 3")
+ 
+    }
+    private func resolvedCustomerName(_ customer: Customer) -> String {
+        if customer.displayAsCompany {
+            return customer.company ?? "Company Name"
+        }
+
+        return "\(customer.firstName) \(customer.lastName)"
     }
 }

@@ -24,12 +24,24 @@ struct EquipmentMeasurements:Identifiable, Codable,Equatable,Hashable{
 @MainActor
 final class ServiceStopDetailViewModel:ObservableObject{
     private var dataService:any ProductionDataServiceProtocol
+    private let payrollCoordinator: ServiceStopPayrollCompletionCoordinator
+
+
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
+        self.payrollCoordinator = ServiceStopPayrollCompletionCoordinator(
+            dataService: dataService
+        )
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                             Variables
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //Payroll
+    @Published var isFinishing: Bool = false
+    @Published var generatedPayLines: [TechnicianPayLineItem] = []
+    @Published var errorMessage: String?
+// Normal
+    
     @Published var selectedBOW: BodyOfWater? = nil
     @Published var stopData: StopData? = nil
     @Published var location: ServiceLocation? = nil
@@ -104,68 +116,109 @@ final class ServiceStopDetailViewModel:ObservableObject{
         self.serviceLocationStopData = try await dataService.getStopDataByServiceStopIdAndLocationId(companyId: companyId, serviceStopId: serviceStop.id,locationId: serviceStop.serviceLocationId)
         
         //Get Weather
-        if let location {
-            self.currentWeather = try await WeatherManager.shared.fetchWeather(address: location.address)
-        }
-        
+//        if let location {
+//            self.currentWeather = try await WeatherManager.shared.fetchWeather(address: location.address)
+//        }
+        print("  [ServiceStopDetailView][onInitialLoad] Get Tasks")
         //Get Tasks
         let SSTasks = try await dataService.getServiceStopTasks(companyId: companyId, serviceStopId: serviceStop.id)
-        if serviceStop.recurringServiceStopId != "" {
-            print("")
-            print("[ServiceStopDtailViewModel][onInitalLoad] serviceStop recurringServiceStopId Not Empty")
-            let RSSTasks = try await dataService.getRecurringServiceStopTasks(companyId: companyId, recurringServiceStopId: serviceStop.recurringServiceStopId)
-            
-            var finalTasks:[ServiceStopTask] = []
-            for rssTask in RSSTasks {
-                if SSTasks.contains(where: {$0.recurringServiceStopTaskId == rssTask.id}) {
-                        //This Service Stop Already Contains this task
-                    if let task = SSTasks.first(where: {$0.recurringServiceStopTaskId == rssTask.id}) {
-                        finalTasks.append(task)
-                    }
-                } else {
-                        //This Service Stop Does not contain Task. Will Update Service Stop Task List To have recurring Service Stop Id
-                    let task = ServiceStopTask(
-                        name : rssTask.name,
-                        type : rssTask.type,
-                        status : .scheduled,
-                        contractedRate : rssTask.contractedRate,
-                        estimatedTime : rssTask.estimatedTime,
-                        customerApproval : false,
-                        actualTime : 0,
-                        workerId : serviceStop.techId,
-                        workerType : .employee,
-                        workerName : serviceStop.tech,
-                        laborContractId : "",
-                        serviceStopId : IdInfo(id: "", internalId: ""),
-                        jobId: IdInfo(id: "", internalId: ""),
-                        recurringServiceStopId : IdInfo(id: serviceStop.recurringServiceStopId, internalId: ""),
-                        jobTaskId : "",
-                        recurringServiceStopTaskId : rssTask.id,
-                        equipmentId : "",
-                        serviceLocationId : "",
-                        bodyOfWaterId : "",
-                        shoppingListItemId : ""
-                    )
-                    finalTasks.append(task)
-                        //Upload Task
-                    try await dataService.uploadServiceStopTask(companyId: companyId, serviceStopId: serviceStop.id, task: task)
-                }
-            }
-            self.taskList = finalTasks
-        } else {
-            print("")
-            print("[ServiceStopDtailViewModel][onInitalLoad] serviceStop recurringServiceStopId Empty")
-            self.taskList = try await dataService.getServiceStopTasks(companyId: companyId, serviceStopId: serviceStop.id)
-        }
+        
+        self.taskList = SSTasks
+        print("  [ServiceStopDetailView][onInitialLoad] got \(taskList.count) tasks")
+//        if serviceStop.recurringServiceStopId != "" {
+//            print("")
+//            print("[ServiceStopDtailViewModel][onInitalLoad] serviceStop recurringServiceStopId Not Empty")
+//            let RSSTasks = try await dataService.getRecurringServiceStopTasks(companyId: companyId, recurringServiceStopId: serviceStop.recurringServiceStopId)
+//            
+//            var finalTasks:[ServiceStopTask] = []
+//            for rssTask in RSSTasks {
+//                if SSTasks.contains(where: {$0.recurringServiceStopTaskId == rssTask.id}) {
+//                        //This Service Stop Already Contains this task
+//                    if let task = SSTasks.first(where: {$0.recurringServiceStopTaskId == rssTask.id}) {
+//                        finalTasks.append(task)
+//                    }
+//                } else {
+//                        //This Service Stop Does not contain Task. Will Update Service Stop Task List To have recurring Service Stop Id
+//                    let task = ServiceStopTask(
+//                        name : rssTask.name,
+//                        type : rssTask.type,
+//                        status : .scheduled,
+//                        contractedRate : rssTask.contractedRate,
+//                        estimatedTime : rssTask.estimatedTime,
+//                        customerApproval : false,
+//                        actualTime : 0,
+//                        workerId : serviceStop.techId,
+//                        workerType : .employee,
+//                        workerName : serviceStop.tech,
+//                        laborContractId : "",
+//                        serviceStopId : IdInfo(id: "", internalId: ""),
+//                        jobId: IdInfo(id: "", internalId: ""),
+//                        recurringServiceStopId : IdInfo(id: serviceStop.recurringServiceStopId, internalId: ""),
+//                        jobTaskId : "",
+//                        recurringServiceStopTaskId : rssTask.id,
+//                        equipmentId : "",
+//                        serviceLocationId : "",
+//                        bodyOfWaterId : "",
+//                        shoppingListItemId : ""
+//                    )
+//                    finalTasks.append(task)
+//                        //Upload Task
+//                    try await dataService.uploadServiceStopTask(companyId: companyId, serviceStopId: serviceStop.id, task: task)
+//                }
+//            }
+//            self.taskList = finalTasks
+//        } else {
+//            print("")
+//            print("[ServiceStopDtailViewModel][onInitalLoad] serviceStop recurringServiceStopId Empty")
+//            self.taskList = try await dataService.getServiceStopTasks(companyId: companyId, serviceStopId: serviceStop.id)
+//        }
         print("[ServiceStopDtailViewModel][onInitalLoad] got Tasks")
             
     }
     
-    func finishServiceStop(companyId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
+    func finishServiceStop(companyId:String,currentUserId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
+        print("  [ServiceStopDetailViewModel][finishServiceStop] - Finishing Service Stop 1")
+        let oldStop = stop
+
+        var updatedStop = stop
+        updatedStop.operationStatus = .finished
+        // 1. Update the service stop operation status in your backend.
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
+
+        // 2. Then update payroll based on the transition.
+        let payrollCoordinator = ServiceStopPayrollCompletionCoordinator(
+            dataService: dataService
+        )
+
+        let payrollResult = try await payrollCoordinator.handleServiceStopStatusChange(
+            oldStop: oldStop,
+            newStop: updatedStop,
+            changedByUserId: currentUserId
+        )
+
+        if payrollResult.didGeneratePay {
+            print("Generated \(payrollResult.generatedLineItems.count) payroll line item(s).")
+        }
+
+        if payrollResult.didVoidPay {
+            print("Voided \(payrollResult.voidedLineItems.count) payroll line item(s).")
+        }
+
+        if payrollResult.hasLockedItems {
+            print("\(payrollResult.lockedLineItems.count) approved/paid payroll item(s) need admin review.")
+        }
     }
     
-    func finishServiceStop(companyId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus,activeRoute:ActiveRoute) async throws {
+    func finishServiceStop(companyId:String,currentUserId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus,activeRoute:ActiveRoute) async throws {
+        print("  [ServiceStopDetailViewModel][finishServiceStop] - Finishing Service Stop 2")
+        
+        let oldStop = stop
+
+        var updatedStop = stop
+        updatedStop.operationStatus = .finished
+        
+        // 1. Update the service stop operation status in your backend.
+
         //Finish Service Stop
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
         //Change Active Route Count
@@ -176,17 +229,46 @@ final class ServiceStopDetailViewModel:ObservableObject{
             let count = activeRoute.finishedStops + -1
             dataService.updateActiveRouteFinishedStop(companyId: companyId, activeRouteId: activeRoute.id, finishedStops: count)
         }
+
+        // 2. Then update payroll based on the transition.
+        let payrollCoordinator = ServiceStopPayrollCompletionCoordinator(
+            dataService: dataService
+        )
+
+        let payrollResult = try await payrollCoordinator.handleServiceStopStatusChange(
+            oldStop: oldStop,
+            newStop: updatedStop,
+            changedByUserId: currentUserId
+        )
+
+        if payrollResult.didGeneratePay {
+            print("Generated \(payrollResult.generatedLineItems.count) payroll line item(s).")
+        }
+
+        if payrollResult.didVoidPay {
+            print("Voided \(payrollResult.voidedLineItems.count) payroll line item(s).")
+        }
+
+        if payrollResult.hasLockedItems {
+            print("\(payrollResult.lockedLineItems.count) approved/paid payroll item(s) need admin review.")
+        }
     }
     
     func onChangeOfBodyOfWater(bodyOfWater:BodyOfWater)async {
     }
     
-    func updateServicestopOperationStatus(companyId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
+    func updateServicestopOperationStatus(companyId:String,currentUserId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
+        let oldStop = stop
+
+        var updatedStop = stop
+        updatedStop.operationStatus = operationStatus
+        // 1. Update the service stop operation status in your backend.
+
         //Update Service Stop FB
         //Just update the current Service Stop but
         //let the function check if the service stop should be from another company
         //let the function finish the other service stop on the sender side
-        print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus]")
+        print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] - Finishing Service Stop")
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
         try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: stop.id, endTime: Date())
         if operationStatus == .finished {
@@ -194,6 +276,28 @@ final class ServiceStopDetailViewModel:ObservableObject{
             print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Sending Email")
         } else {
             print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Service Stop Not Finished")
+        }
+        // 2. Then update payroll based on the transition.
+        let payrollCoordinator = ServiceStopPayrollCompletionCoordinator(
+            dataService: dataService
+        )
+
+        let payrollResult = try await payrollCoordinator.handleServiceStopStatusChange(
+            oldStop: oldStop,
+            newStop: updatedStop,
+            changedByUserId: currentUserId
+        )
+
+        if payrollResult.didGeneratePay {
+            print("Generated \(payrollResult.generatedLineItems.count) payroll line item(s).")
+        }
+
+        if payrollResult.didVoidPay {
+            print("Voided \(payrollResult.voidedLineItems.count) payroll line item(s).")
+        }
+
+        if payrollResult.hasLockedItems {
+            print("\(payrollResult.lockedLineItems.count) approved/paid payroll item(s) need admin review.")
         }
     }
     

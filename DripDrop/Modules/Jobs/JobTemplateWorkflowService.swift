@@ -2,6 +2,8 @@
 //  JobTemplateWorkflowService.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
 
 import Foundation
 
@@ -99,11 +101,15 @@ final class JobTemplateWorkflowService {
                 sortOrder: index
             )
         }
-
+        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Start Saving")
         try await dataService.saveJobTemplate(template)
+        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Template saved")
         try await dataService.saveJobTemplateTasks(templateTasks)
+        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Template Tasks")
         try await dataService.saveJobTemplatePlannedServiceStops(templatePlannedStops)
+        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Template Planned Stops")
         try await dataService.saveJobTemplateShoppingItems(templateShoppingItems)
+        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Shopping items")
 
         return template
     }
@@ -198,11 +204,7 @@ final class JobTemplateWorkflowService {
             purchaserName: admin.userName
         )
 
-        try await dataService.addNewJob(
-            companyId: companyId,
-            job: newJob
-        )
-
+        try await dataService.uploadWorkOrder(companyId: companyId, workOrder: newJob)
         try await dataService.saveJobTasks(
             companyId: companyId,
             jobId: newJobId,
@@ -304,7 +306,7 @@ final class JobTemplateWorkflowService {
                 workerType: .notAssigned,
                 workerName: "",
                 laborContractId: "",
-                serviceStopId: IdInfo(id: "", name: ""),
+                serviceStopId: IdInfo(id: "", internalId: ""),
                 equipmentId: templateTask.equipmentId ?? "",
                 serviceLocationId: serviceLocationId,
                 bodyOfWaterId: templateTask.bodyOfWaterId ?? "",
@@ -363,11 +365,8 @@ final class JobTemplateWorkflowService {
             )
         }
 
-        try await dataService.addNewJob(
-            companyId: companyId,
-            job: newJob
-        )
-
+        try await dataService.uploadWorkOrder(companyId: companyId, workOrder: newJob)
+        
         try await dataService.saveJobTasks(
             companyId: companyId,
             jobId: newJobId,
@@ -407,7 +406,7 @@ final class JobTemplateWorkflowService {
                 workerType: .notAssigned,
                 workerName: "",
                 laborContractId: "",
-                serviceStopId: IdInfo(id: "", name: ""),
+                serviceStopId: IdInfo(id: "", internalId: ""),
                 equipmentId: task.equipmentId,
                 serviceLocationId: serviceLocationId,
                 bodyOfWaterId: task.bodyOfWaterId,

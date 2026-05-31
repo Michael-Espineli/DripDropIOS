@@ -35,14 +35,14 @@ struct CompanyRoutingView: View {
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
-            VStack{
-                ScrollView{
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
                     info
                 }
-
-
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
             }
-            .padding(8)
         }
     }
 }
@@ -52,9 +52,12 @@ struct CompanyRoutingView: View {
 //}
 extension CompanyRoutingView {
     var info: some View {
-        VStack{
+        VStack {
             if let currentCompany = masterDataManager.currentCompany {
-                WorkPreviewBasedOnCompany(dataService: dataService, company: currentCompany)
+                WorkPreviewBasedOnCompany(
+                    dataService: dataService,
+                    company: currentCompany
+                )
             } else {
                 Text("No Company Selected")
                     .modifier(MockButtonModifier())

@@ -366,6 +366,30 @@ extension Encodable {
     var dictionary: [String: Any] {
         return (try? JSONSerialization.jsonObject(with: JSON.encoder.encode(self))) as? [String: Any] ?? [:]
     }
+    
+    func asDictionary() throws -> [String: Any] {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
+
+        let data = try encoder.encode(self)
+
+        let object = try JSONSerialization.jsonObject(
+            with: data,
+            options: .allowFragments
+        )
+
+        guard let dictionary = object as? [String: Any] else {
+            throw EncodingError.invalidValue(
+                self,
+                EncodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Encoded object is not a dictionary."
+                )
+            )
+        }
+
+        return dictionary
+    }
 }
 extension Date {
     

@@ -1,4 +1,12 @@
 //
+//  RouteRecurringStopSelection.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 5/21/26.
+//
+
+
+//
 //  RouteRecurringStopPickerView.swift
 //  DripDrop
 //
@@ -67,6 +75,7 @@ struct RouteRecurringStopPickerView: View {
     )
 
     @State private var selectedCompanyServiceStopType: CompanyServiceStopType?
+    @State private var showLocationPicker: Bool = false
 
     init(
         dataService: any ProductionDataServiceProtocol,
@@ -83,16 +92,26 @@ struct RouteRecurringStopPickerView: View {
     var body: some View {
         NavigationStack {
             Form {
+                
                 Section {
-                    CustomerAndLocationPicker(
-                        dataService: dataService,
-                        customer: $customer,
-                        location: $location
-                    )
+                    pickerButtonRow(
+                        title: "Customer",
+                        value: location.id == "" ? "Select Location" : "\(customer.firstName) \(customer.lastName) \(location.address.streetAddress)",
+                        systemImage: "person.crop.circle",
+                        isSelected: location.id != ""
+                    ) {
+                        showLocationPicker.toggle()
+                    }
+                    .sheet(isPresented: $showLocationPicker) {
+                        CustomerAndLocationPicker(
+                            dataService: dataService,
+                            customer: $customer,
+                            location: $location
+                        )
+                    }
                 } header: {
                     Text("Customer / Location")
                 }
-
                 Section {
                     CompanyServiceStopTypePickerView(
                         companyId: companyId,
@@ -124,15 +143,22 @@ struct RouteRecurringStopPickerView: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add to Route") {
+                        submit()
+                    }
+                }
             }
         }
     }
 
     private func submit() {
+        print("  [RouteRecurringStopPickerView][submit] start")
         let typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
             selectedType: selectedCompanyServiceStopType,
             useCase: defaultUseCase
         )
+        print("  [RouteRecurringStopPickerView][submit] typeFields")
 
         let selection = RouteRecurringStopSelection(
             customer: customer,
@@ -140,8 +166,48 @@ struct RouteRecurringStopPickerView: View {
             serviceStopType: selectedCompanyServiceStopType,
             typeFields: typeFields
         )
-
+        
+        print("  [RouteRecurringStopPickerView][submit] selection")
         onSelect(selection)
         dismiss()
+    }
+}
+extension RouteRecurringStopPickerView {
+    func pickerButtonRow(
+        title: String,
+        value: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(value)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }

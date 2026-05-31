@@ -51,6 +51,7 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
     var bodyOfWaterId : String
     var dataBaseItemId : String
 }
+
 struct LaborContractTask: Identifiable, Codable, Hashable, TaskItem {
     var id : String = "lc_task" + UUID().uuidString
     
@@ -105,9 +106,6 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
     var bodyOfWaterId : String
     var shoppingListItemId : String
 }
-
-
-
 
 struct RecurringServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
     var id : String = "comp_rss_task_" + UUID().uuidString

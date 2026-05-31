@@ -41,26 +41,8 @@ final class RecurringLaborContractViewModel:ObservableObject{
     
     @Published var selectedRecurringWorkId:String = ""
 
-    @Published var selectedJobTemplate:JobTemplate = JobTemplate(
-        id: "",
-        name: "",
-        type: "",
-        typeImage: "",
-        dateCreated: Date(),
-        rate: "",
-        color: "",
-        locked: false
-    )
-    @Published var weeklyCleaning:JobTemplate = JobTemplate(
-        id: "",
-        name: "",
-        type: "",
-        typeImage: "",
-        dateCreated: Date(),
-        rate: "",
-        color: "",
-        locked: false
-    )
+    @Published var selectedJobTemplate:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
+    @Published var weeklyCleaning:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @Published var selectedRecurringWork:LaborContractRecurringWork = LaborContractRecurringWork(
         id: "",
         customerId: "",

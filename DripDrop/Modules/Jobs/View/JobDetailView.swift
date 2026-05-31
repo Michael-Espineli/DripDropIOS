@@ -1,11 +1,11 @@
-    //
-    //  JobDetailView.swift
-    //  ThePoolApp
-    //
-    //  Created by Michael Espineli on 12/30/23.
-    //
-    //
-    //DEVELOPER NOTES - I ADDED UPDATES TO THE FIRST PAGE (INFO) I NEED TO ADD UPDATES TO CUSTOMER, PARTS, SCHEDULE
+//
+//  JobDetailView.swift
+//  ThePoolApp
+//
+//  Created by Michael Espineli on 12/30/23.
+//
+//
+//DEVELOPER NOTES - I ADDED UPDATES TO THE FIRST PAGE (INFO) I NEED TO ADD UPDATES TO CUSTOMER, PARTS, SCHEDULE
 
 
 import SwiftUI
@@ -25,12 +25,20 @@ struct JobDetailView: View {
     @State var job:Job
 
     @State var view:String = "Info"
-    @State var viewList:[String] = ["Info","Customer","Tasks","Schedule"]
     @State var jobId:String = "J"
     
+    @State private var showAdminSelector: Bool = false
+    @State private var showOperationStatusSelector: Bool = false
+    @State private var showBillingStatusSelector: Bool = false
     
+    @State private var showSaveJobAsTemplateSheet: Bool = false
+    @State private var showDuplicateJobSheet: Bool = false
+    
+    @State private var showBillingActionsSheet: Bool = false
+
         //Body Of Water
-    @State var jobTemplate:JobTemplate = JobTemplate(id: "", name: "")
+    
+    @State var jobTemplate:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @State var serviceStopTemplate:ServiceStopTemplate = ServiceStopTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), color: "")
     
     @State var dateCreated:Date = Date()
@@ -129,21 +137,21 @@ struct JobDetailView: View {
     
     @State var serviceStopIds:[String] = []
     
-    @State var installationParts:[WODBItem] = []
-    @State var installationPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-    @State var showInstallationParts:Bool = false
-    @State var pvcParts:[WODBItem] = []
-    @State var pvcPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-    @State var showpvcParts:Bool = false
-    @State var electricalParts:[WODBItem] = []
-    @State var electricalPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-    @State var showelectricalParts:Bool = false
-    @State var chemicals:[WODBItem] = []
-    @State var chemical:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-    @State var showchemicals:Bool = false
-    @State var miscParts:[WODBItem] = []
-    @State var miscPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
-    @State var showmiscParts:Bool = false
+//    @State var installationParts:[WODBItem] = []
+//    @State var installationPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
+//    @State var showInstallationParts:Bool = false
+//    @State var pvcParts:[WODBItem] = []
+//    @State var pvcPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
+//    @State var showpvcParts:Bool = false
+//    @State var electricalParts:[WODBItem] = []
+//    @State var electricalPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
+//    @State var showelectricalParts:Bool = false
+//    @State var chemicals:[WODBItem] = []
+//    @State var chemical:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
+//    @State var showchemicals:Bool = false
+//    @State var miscParts:[WODBItem] = []
+//    @State var miscPart:WODBItem = WODBItem(id: "", name: "", quantity: 0, cost: 0, genericItemId: "")
+//    @State var showmiscParts:Bool = false
     
     
     @State var rate: Int = 0
@@ -157,6 +165,8 @@ struct JobDetailView: View {
     @State var showTreeSheet:Bool = false
     @State var showBushSheet:Bool = false
     @State var showDeleteConfirmation:Bool = false
+    @State private var pendingDeleteConfirmation: Bool = false
+
         //Service Stop
     @State var showAddNewServiceStop:Bool = false
     @State var serviceDate:Date = Date()
@@ -238,45 +248,57 @@ struct JobDetailView: View {
             }
 
                 switch view {
-                    case "Info":
-                        if VM.isEdit {
-                            editInfo
-                        } else {
-                            info
-                        }
-                        if VM.isEdit {
-                            Button(action: {
-                                VM.isEdit.toggle()
-                            }, label: {
-                                Text("Cancel")
-                            })
-                        }
-                    case "Tasks":
-                        if VM.isEdit {
-                            editTaskView
-                            
-                        } else {
-                            taskView
-                        }
-                    case "Shopping":
-                    
-                        if VM.isEdit {
-                            editShoppingListView
-                            
-                        } else {
-                            shoppingListView
-                        }
-                        
-                    case "Schedule":
-                        if VM.isEdit {
-                            editSchedule
-                        } else {
-                            schedule
-                        }
-                    default:
+                case "Info":
+                    if VM.isEdit {
+                        editInfo
+                    } else {
                         info
+                    }
+
+                    if VM.isEdit {
+                        Button(action: {
+                            VM.isEdit.toggle()
+                        }, label: {
+                            Text("Cancel")
+                        })
+                    }
+
+                case "Tasks":
+                    if VM.isEdit {
+                        editTaskView
+                    } else {
+                        taskView
+                    }
+
+                case "Offers":
+                    offersView
+                    
+
+                case "Schedule":
+                    if VM.isEdit {
+                        editSchedule
+                    } else {
+                        schedule
+                    }
+                    
+                case "Materials":
+                    if VM.isEdit {
+                        editShoppingListView
+                    } else {
+                        shoppingListView
+                    }
+
+                case "Actual":
+                    actualWorkView
+                    
+                case "Comments":
+                    commentsView
+                    
+                case "Billing":
+                    billingView
+                default:
+                    info
                 }
-                
             }
         }
 
@@ -353,31 +375,47 @@ struct JobDetailView: View {
             }
             
         })
-        .alert(isPresented:$showDeleteConfirmation) {
-            Alert(
-                title: Text("Alert"),
-                message: Text("\(VM.alertMessage)"),
-                primaryButton: .destructive(Text("Delete")) {
-                    Task{
-                        if let company = masterDataManager.currentCompany{
-                            do {
-                                try await VM.delete(
-                                    companyId: company.id,
-                                    jobId: job.id,
-                                    serviceStopIds: job.serviceStopIds,
-                                    laborContractIds: job.laborContractIds
-                                )
-                                VM.alertMessage = "Deleted"
-                                print(VM.alertMessage)
-                                VM.showAlert = true
-                            } catch {
-                                print(error)
-                            }
-                        }
+        .alert("Delete Job?", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    guard let company = masterDataManager.currentCompany else {
+                        VM.alertMessage = "Missing Company"
+                        VM.showAlert = true
+                        return
                     }
-                },
-                secondaryButton: .cancel()
-            )
+
+                    do {
+                        try await VM.delete(
+                            companyId: company.id,
+                            jobId: job.id,
+                            serviceStopIds: job.serviceStopIds,
+                            laborContractIds: job.laborContractIds
+                        )
+
+                        VM.alertMessage = "Deleted"
+                        VM.showAlert = true
+                        dismiss()
+                    } catch {
+                        print(error)
+                        VM.alertMessage = "Could not delete job."
+                        VM.showAlert = true
+                    }
+                }
+            }
+
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will delete this job and related records. This cannot be undone.")
+        }
+        .onChange(of: showBillingActionsSheet) { isShowing in
+            guard !isShowing, pendingDeleteConfirmation else { return }
+
+            pendingDeleteConfirmation = false
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                VM.alertMessage = "Are you sure you want to delete this job?"
+                showDeleteConfirmation = true
+            }
         }
         .onChange(of: customer, perform: { cus in
             Task{
@@ -448,775 +486,899 @@ struct JobDetailView: View {
 
 extension JobDetailView {
     
+    // MARK: info
     var info: some View {
-        ZStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 12) {
-
-                    if job.otherCompany {
-                        if let currentCompany = masterDataManager.currentCompany {
-                            if currentCompany.id == job.receiverId {
-                                HStack(alignment: .top) {
-                                    if let otherCompany = VM.senderCompany {
-                                        CompanyCardView(company: otherCompany)
-                                    }
-                                    Spacer()
-                                    if let laborContract = VM.laborContract {
-                                        NavigationLink(
-                                            value: Route.laborContractDetailView(dataService: dataService, contract: laborContract),
-                                            label: {
-                                                Text("Labor Contract Details")
-                                                    .modifier(RedLinkModifier())
-                                            }
-                                        )
-                                    }
-                                }
-                                .ddCard()
-                            }
+        JobDashboardView(
+            job: job,
+            summary: VM.dashboardSummary(for: job),
+            healthReport: VM.workflowHealthReport(for: job),
+            serviceLocation: VM.serviceLocation,
+            operationStatus: VM.operationStatus,
+            billingStatus: VM.billingStatus,
+            onNavigateToHealthIssue: { destination in
+                view = destination
+            },
+            onGoToPlan: {
+                view = "Tasks"
+            },
+            onGoToOffers: {
+                view = "Offers"
+            },
+            onGoToSchedule: {
+                view = "Schedule"
+            },
+            onGoToActual: {
+                view = "Actual"
+            },
+            onGoToMaterials: {
+                view = "Materials"
+            },
+            onGoToBilling: {
+                view = "Billing"
+            },
+            onEditInfo: {
+                VM.isEdit = true
+            },
+            onSendEstimate: {
+                Task {
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            try await VM.sendEstiamteToCustomer(
+                                companyId: company.id,
+                                job: job
+                            )
+                            
+                            VM.alertMessage = "Estimate Sent To Customer"
+                            VM.showAlert = true
                         }
+                    } catch {
+                        print("[][sendEstimate dashboard] Error \(error)")
                     }
-
-                    // Main Info Card
-                    VStack(alignment: .leading, spacing: 10) {
-                        DDFieldRow(title: "Date Created", value: fullDate(date: job.dateCreated))
-                        DDFieldRow(title: "Customer", value: "\(customer.firstName) \(customer.lastName)")
-
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("Admin")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(job.adminName)
-                                .font(.subheadline.weight(.semibold))
-
-                            Button(action: {
-                                VM.isEdit.toggle()
-                            }, label: {
-                                Image(systemName: "pencil")
-                                    .font(.subheadline.weight(.semibold))
-                                    .padding(8)
-                                    .background(Circle().fill(Color.primary.opacity(0.06)))
-                            })
-                        }
-
-                        DDFieldRow(title: "Operation", value: job.operationStatus.rawValue)
-                        DDFieldRow(title: "Billing", value: job.billingStatus.rawValue)
-
-                        HStack(alignment: .firstTextBaseline) {
-                            Text("Address")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            if let location = VM.serviceLocation {
-                                Text("\(location.address.streetAddress)")
-                                    .font(.subheadline.weight(.semibold))
-                                    .multilineTextAlignment(.trailing)
-                            }
-                        }
-
-                        Divider().opacity(0.15)
-
-                        Text("Description")
-                            .font(.headline.weight(.semibold))
-
-                        TextField("Description", text: $VM.description, axis: .vertical)
-                            .lineLimit(5, reservesSpace: true)
-                            .modifier(PlainTextFieldModifier())
-                    }
-                    .ddCard()
-
-                    // Estimate Breakdown Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("Estimate Breakdown")
-                                .font(.headline.weight(.semibold))
-                            Spacer()
-                            Button(action: {
-                                VM.showEstimate.toggle()
-                            }, label: {
-                                HStack(spacing: 6) {
-                                    Text(VM.showEstimate ? "Hide Estimate" : "Show Estimate")
-                                    Image(systemName: VM.showEstimate ? "chevron.up" : "chevron.down")
-                                }
-                                .modifier(RedLinkModifier())
-                            })
-                        }
-
-                        if VM.showEstimate {
-                            VStack(alignment: .leading, spacing: 10) {
-
-                                if let laborCost = Double(laborCost),
-                                   let shoppingListCost = VM.shoppingListCost,
-                                   let shoppingListPrice = VM.shoppingListPrice {
-
-                                    HStack {
-                                        Text("Ideal Rate")
-                                        Spacer()
-                                        Text("\(Double((2.4*laborCost) + shoppingListPrice)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                            .font(.subheadline.weight(.semibold))
-                                    }
-                                }
-
-                                Divider().opacity(0.15)
-
-                                if let updatedLaborCost = VM.updatedLaborCost {
-                                    HStack {
-                                        Button(action: {
-                                            VM.showLaborCostBreakDown.toggle()
-                                        }, label: {
-                                            Image(systemName: "chevron.down")
-                                                .padding(8)
-                                                .background(Circle().fill(Color.primary.opacity(0.06)))
-                                        })
-                                        .sheet(isPresented: $VM.showLaborCostBreakDown) {
-                                            VStack(alignment: .leading) {
-                                                ForEach(VM.jobTaskList) { item in
-                                                    HStack {
-                                                        Text("\(String(VM.jobTaskList.firstIndex(where: { $0 == item })! + 1)). \(item.name)")
-                                                        Spacer()
-                                                        Text("\(Double(item.contractedRate)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                                    }
-                                                }
-                                            }
-                                            .padding(12)
-                                            .presentationDetents([.medium])
-                                        }
-
-                                        Text("Labor Cost")
-                                        Spacer()
-                                        Text("\(updatedLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                            .font(.subheadline.weight(.semibold))
-                                    }
-                                }
-
-                                if let employeeLaborCost = VM.employeeLaborCost {
-                                    Text("\(displayMinAsMinAndHour(min: Int(VM.employeeHours*60))) x \(VM.employeeHourlyRate/100, format: .currency(code: "USD").precision(.fractionLength(2))) = \(employeeLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-
-                                if let shoppingListCost = VM.shoppingListCost {
-                                    HStack {
-                                        Button(action: {
-                                            VM.showMaterialCostBreakDown.toggle()
-                                        }, label: {
-                                            Image(systemName: "chevron.down")
-                                                .padding(8)
-                                                .background(Circle().fill(Color.primary.opacity(0.06)))
-                                        })
-                                        .sheet(isPresented: $VM.showMaterialCostBreakDown) {
-                                            VStack(alignment: .leading) {
-                                                ForEach(VM.shoppingItemList) { item in
-                                                    HStack {
-                                                        Text("\(String(VM.shoppingItemList.firstIndex(where: { $0 == item })! + 1)). \(item.name)")
-                                                        Spacer()
-                                                        Text("1")
-                                                    }
-                                                }
-                                            }
-                                            .padding(12)
-                                            .presentationDetents([.medium])
-                                        }
-
-                                        Text("Estimated Material Cost")
-                                        Spacer()
-                                        Text("\(shoppingListCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                            .font(.subheadline.weight(.semibold))
-                                    }
-                                }
-
-                                Divider().opacity(0.15)
-
-                                if let laborCost = Double(laborCost),
-                                   let shoppingListCost = VM.shoppingListCost,
-                                   let shoppingListPrice = VM.shoppingListPrice {
-                                    let idealRate = Double((2.4*laborCost) + shoppingListPrice)
-
-                                    HStack {
-                                        Text("Ideal Profit")
-                                        Spacer()
-                                        Text("\((idealRate-laborCost-shoppingListCost)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                            .font(.subheadline.weight(.semibold))
-                                    }
-                                }
-                            }
-                            .padding(.leading, 4)
-                        }
-                    }
-                    .ddCard()
-
-                    // Cost Review Card (your profit line left commented remains unchanged)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Cost Review")
-                            .font(.headline.weight(.semibold))
-
-                        HStack {
-                            Text("Rate")
-                            Spacer()
-                            Text("\(rate/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                .font(.subheadline.weight(.semibold))
-                        }
-
-                        if let updatedLaborCost = VM.updatedLaborCost {
-                            HStack {
-                                Text("Labor Cost")
-                                Spacer()
-                                Text("\(updatedLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                        }
-
-                        if let shoppingListCost = VM.shoppingListCost {
-                            HStack {
-                                Text("Estimated Material Cost")
-                                Spacer()
-                                Text("\(shoppingListCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                        }
-
-                        Divider().opacity(0.15)
-
-                        HStack {
-                            Text("Profit")
-                            Spacer()
-                            // your profit text is commented in original; leaving untouched
-                        }
-                    }
-                    .ddCard()
-
-                    // spacer so bottom bar doesn't cover content
-                    Color.clear.frame(height: 90)
                 }
-                .padding(12)
-            }
-            VStack {
-                Spacer()
-                    senderCompanyBillingInfo
-            }
-        }
-    }
-
-    
-    var senderCompanyBillingInfo: some View {
-        HStack(spacing: 10) {
-            Button(action: {
-                showInfoOptions.toggle()
-            }, label: {
-                Text("More")
-                    .modifier(ListButtonModifier())
-            })
-            .sheet(isPresented: $showInfoOptions) {
-                VStack {
-                    Button(action: {
-                        Task {
-                            do {
-                                if let company = masterDataManager.currentCompany {
-                                    try await VM.sendEstiamteToCustomer(companyId: company.id, job: job)
-                                    VM.alertMessage = "Estimate Sent To Customer"
-                                    VM.showAlert.toggle()
-                                }
-                            } catch {
-                                print("")
-                                print("Job - sendEstiamteToCustomer - [JobDetailView]")
-                                print(error)
-                                print("")
+            },
+            onMarkAccepted: {
+                VM.isPresentingMarkEstiamteAsAccepted = true
+            },
+            onMarkInvoiced: {
+                if VM.billingStatus == .invoiced {
+                    Task {
+                        do {
+                            if let company = masterDataManager.currentCompany,
+                               VM.invoiceType == .manual {
+                                try await VM.markJobAsNotInvoiced(
+                                    companyId: company.id,
+                                    job: job
+                                )
                             }
+                        } catch {
+                            print("[][mark not invoiced dashboard] Error \(error)")
                         }
-                    }, label: { Text("Send Estimate") })
-                    .modifier(ListButtonModifier())
-
-                    Button(action: {
-                        VM.isPresentingMarkEstiamteAsAccepted.toggle()
-                    }, label: { Text("Mark Estimate As Accepted") })
-                    .modifier(ListButtonModifier())
-                    .sheet(isPresented: $VM.isPresentingMarkEstiamteAsAccepted) { manualEstimateAcceptInfo }
-
-                    Button(action: {
-                        Task {
-                            if let company = masterDataManager.currentCompany {
-                                if VM.billingStatus == .invoiced {
-                                    if let type = VM.invoiceType, type == .manual {
-                                        try await VM.markJobAsNotInvoiced(companyId: company.id, job: job)
-                                        VM.alertMessage = "Invoiced"
-                                        VM.showAlert.toggle()
-                                    }
-                                } else {
-                                    VM.isPresentingMarkJobAsInvoiced.toggle()
-                                }
-                            }
-                        }
-                    }, label: {
-                        if VM.billingStatus == .invoiced {
-                            Text("Invoiced").modifier(SubmitButtonModifier())
-                        } else {
-                            Text("Mark As Invoiced").modifier(ListButtonModifier())
-                        }
-                    })
-                    .sheet(isPresented: $VM.isPresentingMarkJobAsInvoiced) { manualInvoicedInfo }
-
-                    Button(action: { VM.isEdit.toggle() }, label: {
-                        Text("Edit").modifier(BlueButtonModifier())
-                    })
-
-                    Button(action: { showDeleteConfirmation.toggle() }, label: {
-                        Text("Delete").modifier(DismissButtonModifier())
-                    })
-                }
-                .presentationDetents([.fraction(0.4), .large])
-            }
-
-            Spacer()
-
-            if VM.operationStatus == .finished {
-                Button(action: {
-                    print("Show Accepted Invoice Details")
-                }, label: {
-                    if VM.billingStatus == .invoiced {
-                        HStack {
-                            Text("Invoiced")
-                            Image(systemName: "checkmark.circle.fill")
-                        }
-                        .modifier(SubmitButtonModifier())
-                    } else {
-                        HStack {
-                            Text("Invoice")
-                            Image(systemName: "circle")
-                        }
-                        .modifier(ListButtonModifier())
                     }
-                })
-            }
-
-            Button(action: {
+                } else {
+                    VM.isPresentingMarkJobAsInvoiced = true
+                }
+            },
+            onToggleFinished: {
                 Task {
                     do {
                         if let company = masterDataManager.currentCompany {
                             if VM.operationStatus == .finished {
-                                try await VM.markJobAsUnFinished(companyId: company.id, job: job)
-                                VM.alertMessage = "Finished"
-                                VM.showAlert.toggle()
+                                try await VM.markJobAsUnFinished(
+                                    companyId: company.id,
+                                    job: job
+                                )
                             } else {
-                                try await VM.markJobAsFinished(companyId: company.id, job: job)
-                                VM.alertMessage = "Finished"
-                                VM.showAlert.toggle()
+                                try await VM.markJobAsFinished(
+                                    companyId: company.id,
+                                    job: job
+                                )
                             }
                         }
                     } catch {
-                        print("")
-                        print("Job - markJobAsFinished - [JobDetailView]")
-                        print(error)
-                        print("")
+                        print("[][toggle finished dashboard] Error \(error)")
                     }
                 }
-            }, label: {
-                if VM.operationStatus == .finished {
-                    HStack { Text("Finished"); Image(systemName: "checkmark.circle.fill") }
-                        .modifier(SubmitButtonModifier())
-                } else {
-                    HStack { Text("Finish"); Image(systemName: "circle") }
-                        .modifier(ListButtonModifier())
-                }
-            })
+            }
+        )
+        .sheet(isPresented: $VM.isPresentingMarkEstiamteAsAccepted) {
+            manualEstimateAcceptInfo
         }
-        .ddBottomBar()
+        .sheet(isPresented: $VM.isPresentingMarkJobAsInvoiced) {
+            manualInvoicedInfo
+        }
+        
+        .safeAreaInset(edge: .bottom) {
+            infoBottomBar
+        }
+    }
+    private var infoBottomBar: some View {
+        HStack(spacing: 12) {
+//            Button {
+//                showBillingActionsSheet = true
+//            } label: {
+//                Label("Actions", systemImage: "ellipsis.circle")
+//                    .font(.subheadline.weight(.semibold))
+//                    .frame(maxWidth: .infinity)
+//                    .padding(.vertical, 12)
+//                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+//            }
+//            .buttonStyle(.plain)
+
+            Button {
+                view = "Billing"
+            } label: {
+                Label("Billing", systemImage: "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
+//        .sheet(isPresented: $showBillingActionsSheet) {
+//            billingActionsSheet
+//                .presentationDetents([.medium, .large])
+//        }
     }
 
     var editInfo: some View {
-        ZStack{
-            ScrollView {
-                VStack(alignment: .leading,spacing: 8){
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    editInfoHeaderCard
+                    editInfoDetailsCard
+                    editInfoStatusCard
+                    editInfoPricingCard
+                    editInfoDescriptionCard
+                    
                     if job.otherCompany {
-                        if let currentCompany = masterDataManager.currentCompany {
-                            if currentCompany.id == job.receiverId {
-                                HStack{
-                                    if let otherCompany = VM.senderCompany {
-                                        CompanyCardView(company: otherCompany)
-                                    }
-                                    Spacer()
-                                    if let laborContract = VM.laborContract {
-                                        NavigationLink(value: Route.laborContractDetailView(dataService: dataService, contract: laborContract), label: {
-                                            Text("Labor Contract Details")
-                                                .modifier(RedLinkModifier())
-                                        })
-                                    }
-                                }
-                            }
-                        }
+                        editInfoExternalCompanyCard
                     }
-                    HStack{
-                        Text("Date Created: ")
-                            .bold(true)
-                        Spacer()
-                        Text(fullDate(date: job.dateCreated))
-                    }
-                    HStack{
-                        Text("Customer: ")
-                            .bold(true)
-                        Spacer()
-                        Text("\(customer.firstName) \(customer.lastName)")
-                    }
-                    HStack{
-                        Text("Admin: ")
-                            .bold(true)
-                        Spacer()
-                        
-                        Picker("Admin", selection: $admin) {
-                            Text("Pick Admin").tag( CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .contractor))
-                            ForEach(VM.techList){ user in
-                                Text(user.userName).tag(user)
-                            }
-                        }
-                    }
-                    HStack{
-                        Text("Operation: ")
-                            .bold(true)
-                        Spacer()
-                    }
-                    HStack{
-                        Picker("Operation", selection: $operationStatus) {
-                            ForEach(JobOperationStatus.allCases,id: \.self){ status in
-                                Text(status.rawValue).tag(status)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    HStack{
-                        Text("Billing: ")
-                            .bold(true)
-                        Spacer()
-                    }
-                    HStack{
-                        Picker("Billing", selection: $billingStatus) {
-                            ForEach(JobBillingStatus.allCases,id: \.self){ status in
-                                Text(status.rawValue).tag(status)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    HStack{
-                        Text("Address: ")
-                            .bold(true)
-                        Spacer()
-                        if let location = VM.serviceLocation {
-                            Text("\(location.address.streetAddress)")
-                        }
-                    }
-                    HStack{
-                        Text("Description:")
-                            .bold(true)
-                        Spacer()
-                    }
-                    TextField(
-                        "Description",
-                        text: $VM.description,
-                        axis:.vertical
-                    )
-                    .lineLimit(5, reservesSpace: true)
-                    .modifier(PlainTextFieldModifier())
-                    VStack(alignment: .leading){
-                        Rectangle()
-                            .frame(height: 2)
-                        VStack(alignment: .leading,spacing: 10){
-                            HStack{
-                                Text("Estimate Break down")
-                                    .font(.headline)
-                                Spacer()
-                                Button(action: {
-                                    VM.showEstimate.toggle()
-                                }, label: {
-                                    HStack{
-                                        if VM.showEstimate {
-                                            
-                                            Text("Hide Estiamte")
-                                            Image(systemName: "chevron.up")
-                                        } else {
-                                            Text("Show Estiamte")
-                                            Image(systemName: "chevron.down")
-                                        }
-                                    }
-                                    .modifier(RedLinkModifier())
-                                })
-                                
-                            }
-                            if VM.showEstimate {
-                                VStack(alignment:.leading){
-                                    HStack{
-                                        if let laborCost = Double(laborCost), let shoppingListCost = VM.shoppingListCost, let shoppingListPrice = VM.shoppingListPrice {
-                                            Text("Ideal Rate")
-                                            Spacer()
-                                            Text("\(Double((2.4*laborCost) + shoppingListPrice)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                        }
-                                    }
-                                    Divider()
-                                    HStack{
-                                        if let updatedLaborCost = VM.updatedLaborCost {
-                                            Button(action: {
-                                                VM.showLaborCostBreakDown.toggle()
-                                            }, label: {
-                                                Image(systemName: "chevron.down")
-                                            })
-                                            .sheet(isPresented: $VM.showLaborCostBreakDown, content: {
-                                                VStack(alignment:.leading){
-                                                    ForEach(VM.jobTaskList){ item in
-                                                        HStack{
-                                                            Text("\(String(VM.jobTaskList.firstIndex(where:{$0 == item})! + 1)). \(item.name) ")
-                                                            Spacer()
-                                                            Text("\(Double(item.contractedRate)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                                        }
-                                                    }
-                                                }
-                                                .padding(8)
-                                                .presentationDetents([.medium])
-                                            })
-                                            Text("Labor Cost: ")
-                                            Spacer()
-                                            Text("\(updatedLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                        }
-                                    }
-                                    .padding(8)
-                                    HStack{
-                                        if let employeeLaborCost = VM.employeeLaborCost {
-                                            Text("\(displayMinAsMinAndHour(min: Int(VM.employeeHours*60))) x \(VM.employeeHourlyRate/100, format: .currency(code: "USD").precision(.fractionLength(2))) = \(employeeLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                                .lineLimit(1)
-                                        }
-                                    }
-                                    .padding(.horizontal,16)
-                                    HStack{
-                                        if let shoppingListCost = VM.shoppingListCost {
-                                            Button(action: {
-                                                VM.showMaterialCostBreakDown.toggle()
-                                            }, label: {
-                                                Image(systemName: "chevron.down")
-                                            })
-                                            .sheet(isPresented: $VM.showMaterialCostBreakDown, content: {
-                                                VStack(alignment:.leading){
-                                                    ForEach(VM.shoppingItemList){ item in
-                                                        HStack{
-                                                            Text("\(String(VM.shoppingItemList.firstIndex(where:{$0 == item})! + 1 )). \(item.name)")
-                                                            Spacer()
-                                                            Text("1")
-                                                        }
-                                                    }
-                                                }
-                                                .padding(8)
-                                                .presentationDetents([.medium])
-                                            })
-                                            Text("Estimated Material Cost: ")
-                                            Spacer()
-                                            Text("\(shoppingListCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                        }
-                                    }
-                                    .padding(8)
-                                    Divider()
-                                    HStack{
-                                        if let laborCost = Double(laborCost), let shoppingListCost = VM.shoppingListCost, let shoppingListPrice = VM.shoppingListPrice {
-                                            Text("Ideal Profit: ")
-                                            Spacer()
-                                            let idealRate = Double((2.4*laborCost) + shoppingListPrice)
-                                            Text("\((idealRate-laborCost-shoppingListCost)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                        }
-                                    }
-                                }
-                                .padding(.leading,16)
-                            }
-                        }
-                        Rectangle()
-                            .frame(height: 2)
-                        VStack(alignment: .leading,spacing: 10){
-                            Text("Costs")
-                                .font(.headline)
-                            VStack{
-                                HStack{
-                                    Text("Rate")
-                                        .bold(true)
-                                    Spacer()
-                                    Button(action: {
-                                        
-                                        if let laborCost = Double(laborCost), let shoppingListCost = VM.shoppingListCost, let shoppingListPrice = VM.shoppingListPrice {
-                                            let idealRate = Double((2.4*laborCost) + shoppingListPrice)
-//                                            rate = idealRate-Int(laborCost)-Int(shoppingListCost)
-//                                            Here
-                                            
-                                        }
-                                    }, label: {
-                                        Text("Use Estimate")
-                                    })
-                                }
-                                MoneyTextField(cents: $rate)
-                                Divider()
-                                HStack{
-                                    if let updatedLaborCost = VM.updatedLaborCost {
-                                        Text("Labor Cost: ")
-                                        Spacer()
-                                        Text("\(updatedLaborCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                    }
-                                }
-                                HStack{
-                                    if let shoppingListCost = VM.shoppingListCost {
-                                        Text("Estimated Material Cost: ")
-                                        Spacer()
-                                        Text("\(shoppingListCost/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                    }
-                                }
-                                Divider()
-                                HStack{
-                                    if let laborCost = Double(laborCost),let shoppingListCost = VM.shoppingListCost {
-                                        Text("Profit: ")
-                                        Spacer()
-//                                        Text("\((rate-Int(laborCost)-Int(shoppingListCost))/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                        
-                                        //Here
-                                    }
-                                }
-                            }
-                            .padding(.leading,16)
-                        }
-                    }
-                    Text("s")
-                        .padding(16)
-                        .foregroundColor(Color.clear)
+                    
+                    Color.clear.frame(height: 96)
                 }
-                .padding(5)
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            editInfoBottomBar
+        }
+    }
+    
+    private var editInfoHeaderCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Edit Job Info")
+                        .font(.title3.weight(.semibold))
+                    
+                    Text("\(job.internalId) • \(job.customerName)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    if !job.type.isEmpty {
+                        Text(job.type)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                }
+                
+                Spacer()
+                
+                Button {
+                    resetEditInfoFields()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.body.weight(.semibold))
+                        .padding(9)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
             }
             
-            VStack{
-                Spacer()
-                HStack{
-                    Button(action: {
-                        print("Build in Save Changes")
-                        Task{
-                            if let company = masterDataManager.currentCompany{
-                                do {
-                                    if admin.id != job.adminId || admin.userName != job.adminName ||  jobTemplate.name != job.type || operationStatus != job.operationStatus || billingStatus != job.billingStatus  || job.rate != rate || laborCost != String(job.laborCost) || description != job.description{
-                                        try await VM.updateJobInfo(companyId:company.id,updatingJob: job,
-                                                                      admin: admin,
-                                                                      jobTemplate: jobTemplate,
-                                                                      operationStatus: operationStatus,
-                                                                      billingStatus: billingStatus,
-                                                                      rate: rate,
-                                                                      laborCost: laborCost,
-                                                                      description: description)
-                                        VM.isEdit.toggle()
-                                    } else {
-                                        VM.alertMessage = "No Change Made"
-                                        print(VM.alertMessage)
-                                        VM.showAlert = true
-                                    }
-                                } catch {
-                                    print("[][Error Updating Job] Error: \(error)")
-                                }
-                            }
-                        }
-                    }, label: {
-                        Text("Save Changes")
-                    })
-                    .modifier(SubmitButtonModifier())
-                    Spacer()
-                        //Check For Changes in Admin, jobTemplate, operationStatus, billingStatus, Rate, laborRate, and Description
-                    Button(action: {
-                        VM.isEdit = false
-                        admin.id = job.adminId
-                        admin.userName = job.adminName
-                        
-                        jobTemplate.name = job.type
-                        
-                        operationStatus = job.operationStatus
-                        billingStatus = job.billingStatus
-                        rate = job.rate
-                        laborCost = String(job.laborCost)
-                        description = job.description
-                    }, label: {
-                        Text("Cancel")
-                            .modifier(DeleteButtonModifier())
-                    })
-                }
-                .padding(.horizontal,8)
-            }
+            Text("Update the job owner, statuses, customer-facing price, planned labor snapshot, and description.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .ddBottomBar()
+        .basicCard()
     }
     
-    var taskView: some View {
-        ZStack{
-            ScrollView {
-                VStack(alignment: .center,spacing: 8){
+    private var editInfoDetailsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            JobEditSectionHeader(
+                title: "Job Details",
+                systemImage: "doc.text"
+            )
+            
+            JobEditInfoReadOnlyRow(
+                title: "Date Created",
+                value: fullDate(date: job.dateCreated),
+                systemImage: "calendar"
+            )
+            
+            JobEditInfoReadOnlyRow(
+                title: "Customer",
+                value: "\(customer.firstName) \(customer.lastName)",
+                systemImage: "person"
+            )
+            
+            if let location = VM.serviceLocation {
+                JobEditInfoReadOnlyRow(
+                    title: "Service Address",
+                    value: location.address.streetAddress,
+                    systemImage: "mappin.and.ellipse"
+                )
+            }
+            
+            pickerButtonRow(
+                title: "Admin / Owner",
+                value: admin.id == "" ? "Select Admin" : "\(admin.userName) \(admin.roleName)",
+                systemImage: "person.crop.circle",
+                isSelected: admin.id != ""
+            ) {
+                showAdminSelector.toggle()
+            }
+            .sheet(isPresented: $showAdminSelector) {
+                CompanyUserPicker(
+                    dataService: dataService,
+                    companyUser: $admin
+                )
+            }
+        }
+        .basicCard()
+    }
+    
+    private var editInfoStatusCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            JobEditSectionHeader(
+                title: "Workflow Status",
+                systemImage: "flag"
+            )
+
+            pickerButtonRow(
+                title: "Operation",
+                value: operationStatus.rawValue,
+                systemImage: operationStatusIcon(operationStatus),
+                isSelected: true
+            ) {
+                showOperationStatusSelector.toggle()
+            }
+            .sheet(isPresented: $showOperationStatusSelector) {
+                JobOperationStatusSelectorSheet(
+                    selectedStatus: $operationStatus,
+                    onSelect: { selectedStatus in
+                        operationStatus = selectedStatus
+                        applyBillingSuggestionForOperation(selectedStatus)
+                        showOperationStatusSelector = false
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
+
+            pickerButtonRow(
+                title: "Billing",
+                value: billingStatus.rawValue,
+                systemImage: billingStatusIcon(billingStatus),
+                isSelected: true
+            ) {
+                showBillingStatusSelector.toggle()
+            }
+            .sheet(isPresented: $showBillingStatusSelector) {
+                JobBillingStatusSelectorSheet(
+                    selectedStatus: $billingStatus,
+                    onSelect: { selectedStatus in
+                        billingStatus = selectedStatus
+                        applyOperationSuggestionForBilling(selectedStatus)
+                        showBillingStatusSelector = false
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
+
+            Text("Tap a status to choose from the full lifecycle. Selecting one status can suggest the matching status in the other workflow.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .basicCard()
+    }
+    
+    private var editInfoPricingCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                JobEditSectionHeader(
+                    title: "Pricing & Planned Cost",
+                    systemImage: "dollarsign.circle"
+                )
+                
+                Spacer()
+                
+                Button {
+                    useSuggestedEstimateRate()
+                } label: {
+                    Text("Use Estimate")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Customer Price")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                
+                MoneyTextField(cents: $rate)
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Planned Labor Cost")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                MoneyTextField(cents: laborCostCentsBinding)
+                
+                Button {
+                    laborCost = String(VM.plannedTotalLaborCents)
+                } label: {
+                    Label("Use Planned Labor Total", systemImage: "arrow.down.circle")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                
+                Text("This is the planned labor snapshot saved on the job. The Actual tab compares this against generated payroll.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            
+            Divider().opacity(0.18)
+            
+            VStack(spacing: 10) {
+                JobEditInfoMoneyRow(
+                    title: "Planned Stop Labor",
+                    cents: VM.plannedServiceStopLaborCents
+                )
+
+                JobEditInfoMoneyRow(
+                    title: "Planned Task Labor",
+                    cents: VM.plannedTaskLaborCents
+                )
+
+                JobEditInfoMoneyRow(
+                    title: "Planned Total Labor",
+                    cents: VM.plannedTotalLaborCents
+                )
+
+                JobEditInfoMoneyRow(
+                    title: "Planned Materials",
+                    cents: VM.plannedMaterialCostCents
+                )
+
+                JobEditInfoMoneyRow(
+                    title: "Actual Payroll",
+                    cents: VM.actualPayrollTotalCents
+                )
+
+                JobEditInfoMoneyRow(
+                    title: "Actual Materials",
+                    cents: VM.actualPurchasedMaterialCostCents
+                )
+
+                JobEditInfoMoneyRow(
+                    title: "Projected Profit",
+                    cents: projectedEditProfitCents,
+                    valueIsWarning: projectedEditProfitCents < 0
+                )
+            }
+        }
+        .basicCard()
+    }
+    
+    private var editInfoDescriptionCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            JobEditSectionHeader(
+                title: "Description",
+                systemImage: "text.alignleft"
+            )
+            
+            TextField(
+                "Describe the work, customer concern, or estimate notes...",
+                text: $description,
+                axis: .vertical
+            )
+            .lineLimit(6, reservesSpace: true)
+            .modifier(PlainTextFieldModifier())
+            
+            Text("Use this as the high-level job description. Task-level details should stay in the Tasks tab.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .basicCard()
+    }
+    
+    @ViewBuilder
+    private var editInfoExternalCompanyCard: some View {
+        if let currentCompany = masterDataManager.currentCompany,
+           currentCompany.id == job.receiverId {
+            VStack(alignment: .leading, spacing: 12) {
+                JobEditSectionHeader(
+                    title: "External Company",
+                    systemImage: "building.2"
+                )
+                
+                if let otherCompany = VM.senderCompany {
+                    CompanyCardView(company: otherCompany)
+                }
+                
+                if let laborContract = VM.laborContract {
+                    NavigationLink(
+                        value: Route.laborContractDetailView(
+                            dataService: dataService,
+                            contract: laborContract
+                        )
+                    ) {
+                        JobEditNavigationRow(
+                            title: "Labor Contract Details",
+                            subtitle: "View the original external work agreement.",
+                            systemImage: "doc.text"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .basicCard()
+        }
+    }
+    
+    private var editInfoBottomBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                Task {
+                    await saveEditInfoChanges()
+                }
+            } label: {
+                Label("Save Changes", systemImage: "checkmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            
+            Button {
+                resetEditInfoFields()
+                VM.isEdit = false
+            } label: {
+                Label("Cancel", systemImage: "xmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
+    }
+    
+    private func saveEditInfoChanges() async {
+        guard let company = masterDataManager.currentCompany else {
+            VM.alertMessage = "Missing Company"
+            VM.showAlert = true
+            return
+        }
+        
+        do {
+            let hasChanges =
+            admin.id != job.adminId ||
+            admin.userName != job.adminName ||
+            jobTemplate.name != job.type ||
+            operationStatus != job.operationStatus ||
+            billingStatus != job.billingStatus ||
+            job.rate != rate ||
+            laborCost != String(job.laborCost) ||
+            description != job.description
+            
+            guard hasChanges else {
+                VM.alertMessage = "No Change Made"
+                VM.showAlert = true
+                return
+            }
+            
+            try await VM.updateJobInfo(
+                companyId: company.id,
+                updatingJob: job,
+                admin: admin,
+                jobTemplate: jobTemplate,
+                operationStatus: operationStatus,
+                billingStatus: billingStatus,
+                rate: rate,
+                laborCost: laborCost,
+                description: description
+            )
+            
+            VM.isEdit = false
+            
+            try await VM.onLoad(
+                companyId: company.id,
+                serviceLocationId: job.serviceLocationId,
+                job: job
+            )
+        } catch {
+            print("[][Error Updating Job] Error: \(error)")
+            VM.alertMessage = "Could not update job info."
+            VM.showAlert = true
+        }
+    }
+    
+    private func resetEditInfoFields() {
+        admin.id = job.adminId
+        admin.userName = job.adminName
+        
+        jobTemplate.name = job.type
+        
+        operationStatus = job.operationStatus
+        billingStatus = job.billingStatus
+        rate = job.rate
+        laborCost = String(job.laborCost)
+        description = job.description
+    }
+    
+    private func useSuggestedEstimateRate() {
+        let plannedLabor = laborCostCentsBinding.wrappedValue > 0
+        ? laborCostCentsBinding.wrappedValue
+        : VM.plannedTotalLaborCents
+
+        let plannedMaterialsPrice = VM.plannedMaterialPriceCents
+
+        let suggested = Int((Double(plannedLabor) * 2.4).rounded()) + plannedMaterialsPrice
+
+        rate = max(0, suggested)
+    }
+    
+    var taskHeaderCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text("Task List")
-                        .font(.headline)
-                    ForEach(VM.jobTaskList){ task in
-                        HStack{
-                            JobTaskCardView(dataService: dataService, jobId: job.id, jobTask: task)
-                        }
-                    }
-                    HStack{
-                        Button(action: {
-                            VM.isAddTask.toggle()
-                        }, label: {
-                            HStack{
-                                Spacer()
-                                Text("New Task")
-                                Spacer()
-                            }
-                            .modifier(AddButtonModifier())
-                        })
-                        .sheet(isPresented: $VM.isAddTask, onDismiss: {
-                            if let company = masterDataManager.currentCompany {
-                                VM.onDismissAddTaskSheet(companyId: company.id, serviceLocationId: job.serviceLocationId, jobId: job.id)
-                            }
-                        }, content: {
-                            AddNewTaskToJob(dataService: dataService, jobId: job.id, taskTypes: VM.taskTypes,customerId: job.customerId,serviceLocationId: job.serviceLocationId)
-                                .presentationDetents([.medium,.large])
-                        })
-                        Button(action: {
-                            VM.isAddTaskGroup.toggle()
-                        }, label: {
-                            HStack{
-                                Spacer()
-                                Text("Task Group")
-                                Spacer()
-                            }
-                            .modifier(AddButtonModifier())
-                        })
-                        .sheet(isPresented: $VM.isAddTaskGroup,
-                           onDismiss: {
-                            if let company = masterDataManager.currentCompany {
-                                VM.addNewTasks(companyId: company.id, jobId: job.id)
-                                VM.onDismissAddTaskSheet(companyId: company.id, serviceLocationId: job.serviceLocationId, jobId: job.id)
-                            }
-                        },
-                           content: {
-                            TaskGroupPickerView(dataService: dataService, tasks: $VM.taskGroupItems)
-                        })
-                    }
-                }
-                .padding(5)
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Button(action: {
-                        VM.isEdit = true
-                    }, label: {
-                        Text("Edit")
-                            .modifier(SubmitButtonModifier())
-                    })
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
                     
-                    Spacer()
-                    Button(action: {
-                        view = "Shopping"
-                    }, label: {
-                        Text("Next")
-                            .modifier(AddButtonModifier())
-                    })
+                    Text("Plan expected visits, tasks, and reusable task groups before scheduling work.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal,8)
-                .background(Color.listColor)
+                
+                Spacer()
+                
+                Text("\(VM.jobTaskList.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(.thinMaterial, in: Capsule())
+            }
+            
+            HStack(spacing: 8) {
+                Label("\(VM.jobTaskList.count) Tasks", systemImage: "checklist")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(.thinMaterial, in: Capsule())
+                
+                if !job.internalId.isEmpty {
+                    Label(job.internalId, systemImage: "number")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(.thinMaterial, in: Capsule())
+                }
+                
+                Spacer()
             }
         }
-        .ddBottomBar()
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
     
+    var taskListCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionHeader("Tasks", systemImage: "checklist")
+                
+                Spacer()
+                
+                Text("\(VM.jobTaskList.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+            
+            if VM.jobTaskList.isEmpty {
+                emptyTaskState
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(VM.jobTaskList) { task in
+                        JobTaskCardView(
+                            dataService: dataService,
+                            jobId: job.id,
+                            jobTask: task
+                        )
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+    
+    var addTaskActionsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("Add Work", systemImage: "plus.circle")
+            
+            Button {
+                VM.isAddTask.toggle()
+            } label: {
+                addTaskActionLabel(
+                    title: "New Task",
+                    subtitle: "Add a single custom task to this job.",
+                    systemImage: "checkmark.circle"
+                )
+            }
+            .buttonStyle(.plain)
+            
+            Button {
+                VM.isAddTaskGroup.toggle()
+            } label: {
+                addTaskActionLabel(
+                    title: "Task Group",
+                    subtitle: "Add a reusable group of tasks to this job.",
+                    systemImage: "square.stack.3d.up"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+    
+    func addTaskActionLabel(
+        title: String,
+        subtitle: String,
+        systemImage: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 30, height: 30)
+                .background(.thinMaterial, in: Circle())
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(12)
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+    
+    var taskBottomActionBar: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .opacity(0.35)
+            
+            HStack(spacing: 12) {
+                Button {
+                    VM.isEdit = true
+                } label: {
+                    Label("Edit", systemImage: "square.and.pencil")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                
+                Button {
+                    view = "Offers"
+                } label: {
+                    Label("Offers", systemImage: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
+            .background(.regularMaterial)
+        }
+    }
+    
+    var emptyTaskState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checklist.unchecked")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            
+            Text("No tasks added yet.")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+            
+            Text("Add a task or task group to build this job’s scope.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+    
+    func sectionHeader(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+    var taskView: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    taskHeaderCard
+                    plannedServiceStopsCard
+                    taskListCard
+                    addTaskActionsCard
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 20)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            taskBottomActionBar
+        }
+        .sheet(isPresented: $VM.isAddTask, onDismiss: {
+            if let company = masterDataManager.currentCompany {
+                VM.onDismissAddTaskSheet(
+                    companyId: company.id,
+                    serviceLocationId: job.serviceLocationId,
+                    jobId: job.id
+                )
+            }
+        }) {
+            AddNewTaskToJob(
+                dataService: dataService,
+                jobId: job.id,
+                taskTypes: VM.taskTypes,
+                customerId: job.customerId,
+                serviceLocationId: job.serviceLocationId
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $VM.isAddTaskGroup, onDismiss: {
+            if let company = masterDataManager.currentCompany {
+                VM.addNewTasks(companyId: company.id, jobId: job.id)
+                VM.onDismissAddTaskSheet(
+                    companyId: company.id,
+                    serviceLocationId: job.serviceLocationId,
+                    jobId: job.id
+                )
+            }
+        }) {
+            TaskGroupPickerView(
+                dataService: dataService,
+                tasks: $VM.taskGroupItems
+            )
+        }
+        .sheet(isPresented: $VM.isAddPlannedServiceStop, onDismiss: {
+            if let company = masterDataManager.currentCompany {
+                Task {
+                    do {
+                        try await VM.reloadPlannedServiceStops(
+                            companyId: company.id,
+                            jobId: job.id
+                        )
+                    } catch {
+                        print("[][reloadPlannedServiceStops] Error \(error)")
+                    }
+                }
+            }
+        }) {
+            if let company = masterDataManager.currentCompany {
+                AddJobPlannedServiceStopView(
+                    companyId: company.id,
+                    jobId: job.id,
+                    jobTasks: VM.jobTaskList,
+                    existingPlannedStops: VM.plannedServiceStops,
+                    dataService: dataService,
+                    onSaved: {
+                        Task {
+                            do {
+                                try await VM.reloadPlannedServiceStops(
+                                    companyId: company.id,
+                                    jobId: job.id
+                                )
+                            } catch {
+                                print("[][planned stop saved reload] Error \(error)")
+                            }
+                        }
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            } else {
+                Text("Missing company.")
+                    .presentationDetents([.medium])
+            }
+        }
+        .alert("Delete Planned Stop?", isPresented: $VM.showDeletePlannedServiceStopConfirmation) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    do {
+                        guard let company = masterDataManager.currentCompany,
+                              let plannedStop = VM.plannedServiceStopToDelete else {
+                            return
+                        }
+
+                        try await VM.deletePlannedServiceStop(
+                            companyId: company.id,
+                            plannedStop: plannedStop
+                        )
+
+                        VM.plannedServiceStopToDelete = nil
+                    } catch {
+                        print("[][delete planned stop] Error \(error)")
+                    }
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                VM.plannedServiceStopToDelete = nil
+            }
+        } message: {
+            Text("This only removes the planned visit. It does not delete scheduled service stops or tasks.")
+        }
+    }
     var editTaskView: some View {
         ZStack{
             ScrollView {
@@ -1224,11 +1386,11 @@ extension JobDetailView {
                     Text("Task List")
                         .font(.headline)
                         .sheet(item: $VM.editTaskItem, onDismiss: {
-                            //Get updated Task List Item List
+                                //Get updated Task List Item List
                             if let company = masterDataManager.currentCompany {
                                 VM.onDismissAddTaskSheet(companyId: company.id, serviceLocationId: job.serviceLocationId, jobId: job.id)
                             }
-                          
+                            
                         }) { item in
                             EditTaskView(dataService: dataService, task: item)
                         }
@@ -1286,7 +1448,7 @@ extension JobDetailView {
                 VStack(alignment: .leading,spacing: 8){
                     Text("Shopping List")
                         .sheet(item: $VM.editShoppingItem, onDismiss: {
-                            //Get updated shopping List Item List
+                                //Get updated shopping List Item List
                             if let currentCompany = masterDataManager.currentCompany {
                                 VM.onDismissAddShoppingListItem(companyId: currentCompany.id, serviceLocationId: job.serviceLocationId, jobId: jobId)
                             }
@@ -1307,7 +1469,7 @@ extension JobDetailView {
                             Button(action: {
                                 if let currentCompany = masterDataManager.currentCompany {
                                     VM.onDismissAddShoppingListItem(companyId: currentCompany.id, serviceLocationId: job.serviceLocationId, jobId: jobId)
-
+                                    
                                     VM.deleteShoppingListItem(companyId: currentCompany.id, jobId: jobId, item: item)
                                 }
                             }, label: {
@@ -1343,403 +1505,120 @@ extension JobDetailView {
         .ddBottomBar()
     }
     
-    var shoppingListView: some View {
-        ZStack{
-            ScrollView {
-                VStack(alignment: .leading,spacing: 8){
-                    Text("Shopping List")
-                    ForEach(VM.shoppingItemList){ item in
-                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
-                    }
-                    HStack{
-                        Button(action: {
-                            VM.isAddShoppingList.toggle()
-                        }, label: {
-                            HStack{
-                                Spacer()
-                                Text("Add New Shopping List Item")
-                                Spacer()
-                            }
-                            .modifier(AddButtonModifier())
-                        })
-                        .sheet(isPresented: $VM.isAddShoppingList, onDismiss: {
-                            if let currentCompany = masterDataManager.currentCompany {
-                                VM.onDismissAddShoppingListItem(companyId: currentCompany.id, serviceLocationId: job.serviceLocationId, jobId: jobId)
-                            }
-                        }, content: {
-                            AddNewShoppingListItemToJob(dataService: dataService, job: job)
-                                .presentationDetents([.medium,.large])
-                        })
-                        Spacer()
-                    }
-                }
-                .padding(5)
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Button(action: {
-                        VM.isEdit = true
-                    }, label: {
-                        Text("Edit")
-                            .modifier(SubmitButtonModifier())
-                    })
-                    Spacer()
-                    Button(action: {
-                        view = "Schedule"
-                    }, label: {
-                        Text("Next")
-                            .modifier(AddButtonModifier())
-                    })
-                }
-                .padding(.horizontal,8)
-            }
-        }
-        .ddBottomBar()
-    }
-    
     var editSchedule: some View {
-        ZStack{
-            ScrollView{
-                VStack(alignment: .center,spacing: 8){
-                    Text("Service Stops")
-                        .font(.headline)
-                    Divider()
-                    if VM.serviceStops.isEmpty {
-                        ForEach(VM.serviceStopIds, id:\.self) { id in
-                            ZStack {
-                                if id != "" {
-                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: id)
-                                }
-                                ProgressView()
-                            }
-                        }
-                    } else {
-                        ForEach(VM.serviceStops) { stop in
-                            if UIDevice.isIPhone {
-                                NavigationLink(value: Route.serviceStop(serviceStop: stop, dataService: dataService), label: {
-                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: stop.id)
-                                })
-                            } else {
-                                Button(action: {
-                                    masterDataManager.selectedCategory = .serviceStops
-                                    masterDataManager.selectedID = stop.id
-                                    masterDataManager.selectedServiceStops = stop
-                                    
-                                }, label: {
-                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: stop.id)
-                                })
-                            }
-                        }
-                    }
-                    Button(action: {
-                        VM.isPresentServiceStop.toggle()
-                    }, label: {
-                        Text("Schedule Service Stop")
-                            .modifier(AddButtonModifier())
-                    })
-                    .sheet(isPresented: $VM.isPresentServiceStop,
-                           onDismiss: {
-                                Task{
-                                    if let currentCompany = masterDataManager.currentCompany {
-                                        do {
-                                            try await VM.onDismissOfScheduleServiceStop(
-                                                companyId: currentCompany.id,
-                                                serviceLocationId: job.serviceLocationId,
-                                                job: job
-                                            )
-                                        } catch {
-                                            print(error)
-                                        }
-                                    }
-                                }
-                            },
-                           content: {
-                        ScheduleServiceStopView(
-                            dataService: dataService,
-                            job: job,
-                            customerId: job.customerId,
-                            customerName: job.customerName,
-                            serviceLocationId: job.serviceLocationId,
-                            description: job.description,
-                            jobTaskList: VM.jobTaskList
-                        )
-                        .presentationDetents([.medium, .large])
-                    })
-                    /*
-                    Rectangle()
-                        .frame(height: 1)
-                    Text("Labor Contracts")
-                        .font(.headline)
-                    Divider()
-                    if VM.laborContracts.isEmpty {
-                        ForEach(VM.laborContractIds, id:\.self) { id in
-                            ZStack {
-                                if id != "" {
-                                    
-                                    LaborContractIdCardView(dataService: dataService, laborContractId: id)
-                                }
-                                ProgressView()
-                            }
-                        }
-                    } else {
-                        ForEach(VM.laborContracts) { laborContract in
-                            NavigationLink(value: Route.laborContractDetailView(dataService: dataService, contract: laborContract), label: {
-                                LaborContractCardView(laborContract: laborContract)
-                            })
-                        }
-                    }
-                    
-                    Button(action: {
-                        VM.isPresentLaborContract.toggle()
-                        print("Presenting CreateNewLaborContractView")
-                    }, label: {
-                        Text("Offer New Labor Contract")
-                            .modifier(AddButtonModifier())
-                    })
-                    
-                    .sheet(isPresented: $VM.isPresentLaborContract,
-                           onDismiss: {
-                        Task{
-                            if let currentCompany = masterDataManager.currentCompany {
-                                do {
-                                    try await VM.onDismissOfOfferLaborContract(
-                                        companyId: currentCompany.id,
-                                        serviceLocationId: job.serviceLocationId,
-                                        job: job
-                                    )
-                                } catch {
-                                    print(error)
-                                }
-                            }
-                        }
-                    },
-                       content: {
-                        CreateNewLaborContractView(
-                            dataService: dataService,
-                            jobId: job.id,
-                            customerId: job.customerId,
-                            customerName: job.customerName,
-                            serviceLocationId: job.serviceLocationId,
-                            description: job.description,
-                            jobTaskList: VM.jobTaskList
-                        )
-                        .presentationDetents([.medium,.large])
-                    })
-                    Rectangle()
-                        .frame(height: 1)
-                    */
-
-                }
-                .padding(5)
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Button(action: {
-                        VM.isEdit = true
-                    }, label: {
-                        Text("Save")
-                            .modifier(SubmitButtonModifier())
-                    })
-                    Spacer()
-                    Button(action: {
-                        VM.isEdit.toggle()
-                    }, label: {
-                        Text("Cancel")
-                            .modifier(DeleteButtonModifier())
-                    })
-                }
-                .padding(.horizontal,8)
-            }
-        }
-        .ddBottomBar()
+        schedule
     }
-    
     var schedule: some View {
-        ZStack{
-            ScrollView{
-                VStack(alignment: .center,spacing: 8){
-                    Text("Service Stops")
-                        .font(.headline)
-                    Divider()
-                    if VM.serviceStops.isEmpty {
-                        ForEach(VM.serviceStopIds, id:\.self) { id in
-                            ZStack {
-                                if id != "" {
-                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: id)
-                                }
-                                ProgressView()
-                            }
-                        }
-                    } else {
-                        ForEach(VM.serviceStops) { stop in
-                            if UIDevice.isIPhone {
-                                NavigationLink(value: Route.serviceStop(serviceStop: stop, dataService: dataService), label: {
-                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: stop.id)
-                                })
-                            } else {
-                                Button(action: {
-                                    masterDataManager.selectedCategory = .serviceStops
-                                    masterDataManager.selectedID = stop.id
-                                    masterDataManager.selectedServiceStops = stop
-                                    
-                                }, label: {
-                                    ServiceStopIdCardView(dataService: dataService, serviceStopId: stop.id)
-                                })
-                            }
-                        }
-                    }
-                    Button(action: {
+        ZStack {
+            if let currentCompany = masterDataManager.currentCompany {
+                JobScheduleWorkCenterView(
+                    companyId: currentCompany.id,
+                    currentUserId: masterDataManager.user?.id ?? "",
+                    currentUserName: currentUserDisplayName,
+                    job: job,
+                    jobTasks: VM.jobTaskList,
+                    serviceStops: VM.serviceStops,
+                    workOffers: VM.workOffers,
+                    serviceLocation: VM.serviceLocation,
+                    dataService: dataService,
+                    onScheduleServiceStop: {
                         VM.isPresentServiceStop.toggle()
-                    }, label: {
-                        Text("Schedule Service Stop")
-                            .modifier(AddButtonModifier())
-                    })
-                    .sheet(isPresented: $VM.isPresentServiceStop,
-                           onDismiss: {
-                                Task{
-                                    if let currentCompany = masterDataManager.currentCompany {
-                                        do {
-                                            try await VM.onDismissOfScheduleServiceStop(
-                                                companyId: currentCompany.id,
-                                                serviceLocationId: job.serviceLocationId,
-                                                job: job
-                                            )
-                                        } catch {
-                                            print(error)
-                                        }
-                                    }
-                                }
-                            },
-                           content: {
-                        ScheduleServiceStopView(
-                            dataService: dataService,
-                            job: job,
-                            customerId: job.customerId,
-                            customerName: job.customerName,
-                            serviceLocationId: job.serviceLocationId,
-                            description: job.description,
-                            jobTaskList: VM.jobTaskList
-                        )
-                        .presentationDetents([.medium, .large])
-                    })
-                    Rectangle()
-                        .frame(height: 1)
-                    Text("Labor Contracts")
-                        .font(.headline)
-                    Divider()
-                    if VM.laborContracts.isEmpty {
-                        ForEach(VM.laborContractIds, id:\.self) { id in
-                            ZStack {
-                                if id != "" {
-                                    
-                                    LaborContractIdCardView(dataService: dataService, laborContractId: id)
-                                }
-                                ProgressView()
+                    },
+                    onGoToOffers: {
+                        view = "Offers"
+                    },
+                    onReload: {
+                        Task {
+                            do {
+                                try await VM.onLoad(
+                                    companyId: currentCompany.id,
+                                    serviceLocationId: job.serviceLocationId,
+                                    job: job
+                                )
+                            } catch {
+                                print("[][JobDetailView schedule reload] Error \(error)")
                             }
-                        }
-                    } else {
-                        ForEach(VM.laborContracts) { laborContract in
-                            NavigationLink(value: Route.laborContractDetailView(dataService: dataService, contract: laborContract), label: {
-                                LaborContractCardView(laborContract: laborContract)
-                            })
                         }
                     }
-                    
-                    Button(action: {
-                        VM.isPresentLaborContract.toggle()
-                        print("Presenting CreateNewLaborContractView")
-                    }, label: {
-                        Text("Offer New Labor Contract")
-                            .modifier(AddButtonModifier())
-                    })
-                    
-                    .sheet(isPresented: $VM.isPresentLaborContract,
-                           onDismiss: {
-                        Task{
-                            if let currentCompany = masterDataManager.currentCompany {
-                                do {
-                                    try await VM.onDismissOfOfferLaborContract(
-                                        companyId: currentCompany.id,
-                                        serviceLocationId: job.serviceLocationId,
-                                        job: job
-                                    )
-                                } catch {
-                                    print(error)
-                                }
-                            }
-                        }
-                    },
-                           content: {
-                        CreateNewLaborContractView(
-                            dataService: dataService,
-                            jobId: job.id,
-                            customerId: job.customerId,
-                            customerName: job.customerName,
-                            serviceLocationId: job.serviceLocationId,
-                            description: job.description,
-                            jobTaskList: VM.jobTaskList
-                        )
-                        .presentationDetents([.medium,.large])
-                    })
-                    Rectangle()
-                        .frame(height: 1)
-                        //----------------------------------------
-                        //Add Back in During Roll out of Phase 2
-                        //----------------------------------------
-//                    Text("Post To Job Board")
-//                        .font(.headline)
-//                        .background(Color.pink)
-//                    Divider()
-//                    ForEach(VM.laborContractIds, id: \.self) { id in
-//                        Text(id)
-//                    }
-//                    Button(action: {
-//                        VM.isPresentLaborContract.toggle()
-//                    }, label: {
-//                        Text("Post To Job Board")
-//                            .modifier(AddButtonModifier())
-//                    })
-//                    .sheet(isPresented: $VM.isPresentLaborContract){
-//                        
-//                        CreateNewLaborContractView(
-//                            dataService: dataService,
-//                            jobId: job.id,
-//                            customerId: job.customerId,
-//                            customerName: job.customerName,
-//                            serviceLocationId: job.serviceLocationId,
-//                            description: job.description,
-//                            jobTaskList: VM.jobTaskList
-//                        )
-//                        .presentationDetents([.medium,.large])
-//                    }
-                }
-                .padding(5)
-            }
-            VStack{
-                Spacer()
-                HStack{
-                    Button(action: {
-                        VM.isEdit = true
-                    }, label: {
-                        Text("Edit")
-                            .modifier(SubmitButtonModifier())
-                    })
-                    Spacer()
-                    Button(action: {
-                        view = "Info"
-                    }, label: {
-                        Text("Review")
-                            .modifier(AddButtonModifier())
-                    })
-                }
-                .padding(.horizontal,8)
+                )
+            } else {
+                ContentUnavailableView(
+                    "Missing Company",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("Select a company before scheduling work.")
+                )
             }
         }
-        .ddBottomBar()
+        .sheet(isPresented: $VM.isPresentServiceStop,
+               onDismiss: {
+            Task {
+                if let currentCompany = masterDataManager.currentCompany {
+                    do {
+                        try await VM.onDismissOfScheduleServiceStop(
+                            companyId: currentCompany.id,
+                            serviceLocationId: job.serviceLocationId,
+                            job: job
+                        )
+                        
+                        await VM.reloadWorkOffers(
+                            companyId: currentCompany.id,
+                            jobId: job.id
+                        )
+                    } catch {
+                        print(error)
+                    }
+                }
+            }
+        },
+               content: {
+            if let currentCompany = masterDataManager.currentCompany {
+                ScheduleServiceStopView(
+                    dataService: dataService,
+                    companyId: currentCompany.id,
+                    job: job,
+                    customerId: job.customerId,
+                    customerName: job.customerName,
+                    serviceLocationId: job.serviceLocationId,
+                    description: job.description,
+                    jobTaskList: VM.jobTaskList,
+                    serviceStopTypeUseCase: .jobVisit
+                )
+                .presentationDetents([.medium, .large])
+            } else {
+                Text("Missing company.")
+                    .presentationDetents([.medium])
+            }
+        })
+        
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button {
+                    view = "Offers"
+                } label: {
+                    Label("Offers", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                
+                Button {
+                    view = "Materials"
+                } label: {
+                    Label("Materials", systemImage: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.regularMaterial)
+        }
     }
-    
     var review: some View {
         ZStack{
             ScrollView {
@@ -1760,102 +1639,1078 @@ extension JobDetailView {
         .ddBottomBar()
     }
     var manualEstimateAcceptInfo: some View {
-        VStack{
-            HStack{
-                Text("Date Accepted :")
-                    .bold(true)
-                DatePicker(selection: $VM.estiamtedAcceptedDate, displayedComponents: .date) {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+                ScrollView(showsIndicators:false){
+                    VStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("Accept Estimate")
+                                        .font(.title3.weight(.semibold))
+
+                                    Text("\(job.internalId) • \(job.customerName)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "checkmark.circle")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 36, height: 36)
+                                    .background(.thinMaterial, in: Circle())
+                            }
+
+                            Text("Record when the estimate was accepted and who approved it. This moves the job billing workflow forward.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .basicCard()
+
+                        VStack(alignment: .leading, spacing: 14) {
+                            Label("Acceptance Details", systemImage: "doc.text")
+                                .font(.headline.weight(.semibold))
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Date Accepted")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+
+                                DatePicker(
+                                    "Date Accepted",
+                                    selection: $VM.estiamtedAcceptedDate,
+                                    displayedComponents: .date
+                                )
+                                .datePickerStyle(.compact)
+                                .labelsHidden()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(12)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Who Accepted / Notes")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+
+                                TextField(
+                                    "Example: Customer approved by phone",
+                                    text: $VM.estimateAcceptedNotes,
+                                    axis: .vertical
+                                )
+                                .lineLimit(3, reservesSpace: true)
+                                .modifier(PlainTextFieldModifier())
+
+                                Text("Add the customer name, approval method, or any internal note you want saved with this acceptance.")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(12)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .basicCard()
+
+                        Color.clear.frame(height: 90)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
                 }
             }
-            HStack{
-                Text("Who Accepted: ")
-                    .bold(true)
-                TextField(
-                    "Who Accepted",
-                    text: $VM.estimateAcceptedNotes
-                )
-                .modifier(PlainTextFieldModifier())
+            .navigationTitle("Estimate Accepted")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        VM.isPresentingMarkEstiamteAsAccepted = false
+                    }
+                }
             }
-            Button(action: {
-                Task{
-                    do {
-                        if let company = masterDataManager.currentCompany {
-                            if VM.estimateAcceptedNotes != "" {
+            .safeAreaInset(edge: .bottom) {
+                HStack(spacing: 12) {
+                    Button {
+                        Task {
+                            do {
+                                print("[JobDetailView][basicCard][markEstimateAsAccepted] 1")
+                                guard let company = masterDataManager.currentCompany else {
+                                    VM.alertMessage = "Missing Company"
+                                    VM.showAlert = true
+                                    return
+                                }
+                                print("[JobDetailView][basicCard][markEstimateAsAccepted] 2")
+
+                                guard !VM.estimateAcceptedNotes
+                                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                                    .isEmpty else {
+                                    VM.alertMessage = "Please provide who accepted or acceptance notes."
+                                    VM.showAlert = true
+                                    return
+                                }
+                                print("[JobDetailView][basicCard][markEstimateAsAccepted] 3")
+
                                 try await VM.markEstimateAsAccepted(
                                     companyId: company.id,
                                     job: job
                                 )
-                                VM.alertMessage = "Successfully Accapted"
-                                VM.showAlert.toggle()
-                                VM.isPresentingMarkEstiamteAsAccepted.toggle()
-                            } else {
-                                VM.alertMessage = "Please Provide Notes"
-                                VM.showAlert.toggle()
+
+                                VM.alertMessage = "Successfully Accepted"
+                                print(VM.alertMessage)
+                                VM.showAlert = true
+                                VM.isPresentingMarkEstiamteAsAccepted = false
+                                print("[JobDetailView][basicCard][markEstimateAsAccepted] Success")
+                            } catch {
+                                print("")
+                                print("Job - markEstimateAsAccepted - [JobDetailView]")
+                                print(error)
+                                print("")
+
+                                VM.alertMessage = "Could not mark estimate as accepted."
+                                VM.showAlert = true
                             }
                         }
-                    } catch {
-                        print("")
-                        print("Job - markEstimateAsAccepted - [JobDetailView]")
-                        print(error)
-                        print("")
+                    } label: {
+                        Label("Mark Accepted", systemImage: "checkmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        VM.isPresentingMarkEstiamteAsAccepted = false
+                    } label: {
+                        Label("Cancel", systemImage: "xmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
                 }
-            }, label: {
-                Text("Mark As Accepted")
-                    .modifier(SubmitButtonModifier())
-            })
-        }
-        .ddBottomBar()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
+            }
+        
     }
     
     var manualInvoicedInfo: some View {
-        VStack{
-            HStack{
-                Text("Invoice Ref: ")
-                    .bold(true)
-                TextField(
-                    "Refrence Number...",
-                    text: $VM.invoiceRef
-                )
-                .modifier(PlainTextFieldModifier())
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Mark Job Invoiced")
+                                    .font(.title3.weight(.semibold))
+
+                                Text("\(job.internalId) • \(job.customerName)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "doc.badge.plus")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 36, height: 36)
+                                .background(.thinMaterial, in: Circle())
+                        }
+
+                        Text("Record the invoice reference and notes for this job. This marks the job billing status as invoiced.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .basicCard()
+
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label("Invoice Details", systemImage: "doc.text")
+                            .font(.headline.weight(.semibold))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Invoice Reference")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            TextField(
+                                "Example: INV-1048, QuickBooks ref, or manual receipt number",
+                                text: $VM.invoiceRef
+                            )
+                            .textInputAutocapitalization(.characters)
+                            .modifier(PlainTextFieldModifier())
+
+                            Text("Use the invoice number, QuickBooks reference, or any payment record you want tied to this job.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Invoice Notes")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            TextField(
+                                "Optional notes...",
+                                text: $VM.invoiceNotes,
+                                axis: .vertical
+                            )
+                            .lineLimit(4, reservesSpace: true)
+                            .modifier(PlainTextFieldModifier())
+
+                            Text("Add payment method, customer communication, or internal billing notes.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .basicCard()
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Billing Snapshot", systemImage: "dollarsign.circle")
+                            .font(.headline.weight(.semibold))
+                        if let status = VM.billingStatus {
+                            JobManualInvoiceSummaryRow(
+                                title: "Current Billing Status",
+                                value: status.rawValue
+                            )
+                        }
+                        JobManualInvoiceSummaryRow(
+                            title: "Customer Price",
+                            value: JobManualInvoiceMoneyFormatter.money(job.rate)
+                        )
+
+                        JobManualInvoiceSummaryRow(
+                            title: "Planned Labor",
+                            value: JobManualInvoiceMoneyFormatter.money(job.laborCost)
+                        )
+
+                        Text("This is a manual invoice record. Full customer billing and payment collection can be built on top of this later.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+                    }
+                    .basicCard()
+
+                    Color.clear.frame(height: 90)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
             }
-            HStack{
-                Text("Invoice Notes: ")
-                    .bold(true)
-                TextField(
-                    "notes...",
-                    text: $VM.invoiceNotes
-                )
-                .modifier(PlainTextFieldModifier())
+        }
+        .navigationTitle("Invoice Job")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    VM.isPresentingMarkJobAsInvoiced = false
+                }
             }
-            Button(action: {
-                Task{
-                    do {
-                        if let company = masterDataManager.currentCompany {
-                            if VM.billingStatus != .invoiced && VM.billingStatus != .paid {
-                                try await VM.markJobAsInvoiced(
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack(spacing: 12) {
+                Button {
+                    Task {
+                        do {
+                            guard let company = masterDataManager.currentCompany else {
+                                VM.alertMessage = "Missing Company"
+                                VM.showAlert = true
+                                return
+                            }
+
+                            guard VM.billingStatus != .invoiced &&
+                                    VM.billingStatus != .paid else {
+                                VM.alertMessage = "This job is already invoiced or paid."
+                                VM.showAlert = true
+                                return
+                            }
+
+                            guard !VM.invoiceRef
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+                                .isEmpty else {
+                                VM.alertMessage = "Please provide an invoice reference."
+                                VM.showAlert = true
+                                return
+                            }
+
+                            try await VM.markJobAsInvoiced(
+                                companyId: company.id,
+                                job: job
+                            )
+
+                            VM.alertMessage = "Job marked as invoiced."
+                            VM.showAlert = true
+                            VM.isPresentingMarkJobAsInvoiced = false
+                        } catch {
+                            print("")
+                            print("Job - markJobAsInvoiced - [JobDetailView]")
+                            print(error)
+                            print("")
+
+                            VM.alertMessage = "Could not mark job as invoiced."
+                            VM.showAlert = true
+                        }
+                    }
+                } label: {
+                    Label("Mark Invoiced", systemImage: "doc.badge.plus")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    VM.isPresentingMarkJobAsInvoiced = false
+                } label: {
+                    Label("Cancel", systemImage: "xmark.circle")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.regularMaterial)
+        }
+        
+    }
+    var currentUserDisplayName: String {
+        let first = masterDataManager.user?.firstName ?? ""
+        let last = masterDataManager.user?.lastName ?? ""
+        let fullName = "\(first) \(last)".trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if !fullName.isEmpty {
+            return fullName
+        }
+        
+        return masterDataManager.user?.email ?? "Admin"
+    }
+    
+    var commentsView: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Comments")
+                            .font(.title3.weight(.semibold))
+                        Text("\(VM.comments.filter { !$0.resolved }.count) open")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        Task {
+                            if let company = masterDataManager.currentCompany {
+                                await VM.loadComments(
                                     companyId: company.id,
-                                    job: job
+                                    jobId: job.id
                                 )
-                                VM.alertMessage = "Invoiced"
-                                VM.showAlert.toggle()
-                                VM.isPresentingMarkJobAsInvoiced.toggle()
                             }
                         }
-                    } catch {
-                        print("")
-                        print("Job - markJobAsFinished - [JobDetailView]")
-                        print(error)
-                        print("")
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 36, height: 36)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Refresh comments")
+                }
+                
+                Picker("Comment Filter", selection: $VM.commentFilter) {
+                    ForEach(JobCommentFilter.allCases) { filter in
+                        Text(filter.rawValue).tag(filter)
                     }
                 }
-            }, label: {
-                Text("Mark As Accepted")
-                    .modifier(SubmitButtonModifier())
-            })
+                .pickerStyle(.segmented)
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    TextEditor(text: $VM.newComment)
+                        .frame(minHeight: 92)
+                        .padding(8)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                        )
+                    
+                    Button {
+                        Task {
+                            if let company = masterDataManager.currentCompany {
+                                await VM.addComment(
+                                    companyId: company.id,
+                                    jobId: job.id,
+                                    userId: masterDataManager.user?.id ?? "",
+                                    userName: currentUserDisplayName
+                                )
+                            }
+                        }
+                    } label: {
+                        if VM.addingComment {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        } else {
+                            Label("Add Comment", systemImage: "plus.message.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(
+                        VM.addingComment ||
+                        VM.newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                        masterDataManager.currentCompany == nil
+                    )
+                }
+                
+                if VM.commentsLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                } else if VM.filteredComments.isEmpty {
+                    ContentUnavailableView(
+                        "No Comments",
+                        systemImage: "text.bubble",
+                        description: Text("No comments in this filter.")
+                    )
+                    .padding(.vertical, 24)
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(VM.filteredComments) { comment in
+                            jobCommentRow(comment)
+                        }
+                    }
+                }
+            }
+            .padding(14)
         }
-        .ddBottomBar()
+        .background(Color.listColor.ignoresSafeArea())
     }
+    
+    @ViewBuilder
+    func jobCommentRow(_ comment: JobComment) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(comment.userName ?? comment.authorName ?? "Unknown")
+                        .font(.subheadline.weight(.semibold))
+                    Text(commentDateText(comment.date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Text(comment.resolved ? "Resolved" : "Open")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(comment.resolved ? Color.green : Color.orange)
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .background(
+                        Capsule()
+                            .fill((comment.resolved ? Color.green : Color.orange).opacity(0.12))
+                    )
+            }
+            
+            Text(comment.comment)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Button {
+                Task {
+                    if let company = masterDataManager.currentCompany {
+                        await VM.setCommentResolved(
+                            companyId: company.id,
+                            jobId: job.id,
+                            commentId: comment.id,
+                            resolved: !comment.resolved
+                        )
+                    }
+                }
+            } label: {
+                Label(
+                    comment.resolved ? "Reopen" : "Mark Resolved",
+                    systemImage: comment.resolved ? "arrow.uturn.left.circle" : "checkmark.circle"
+                )
+                .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+    
+    func commentDateText(_ date: Date?) -> String {
+        guard let date else { return "Pending" }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+    
+    var offersView: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+            
+            ScrollView(showsIndicators: false) {
+                if let company = masterDataManager.currentCompany {
+                    JobWorkOffersView(
+                        companyId: company.id,
+                        currentUserId: masterDataManager.user?.id ?? "",
+                        currentUserName: currentUserDisplayName,
+                        job: job,
+                        jobTasks: VM.jobTaskList,
+                        serviceLocation: VM.serviceLocation,
+                        workOffers: VM.workOffers,
+                        dataService: dataService,
+                        onReload: {
+                            Task {
+                                do {
+                                    try await VM.onLoad(
+                                        companyId: company.id,
+                                        serviceLocationId: job.serviceLocationId,
+                                        job: job
+                                    )
+                                } catch {
+                                    print("[][JobDetailView offers reload] Error \(error)")
+                                }
+                            }
+                        }
+                    )
+                } else {
+                    ContentUnavailableView(
+                        "Missing Company",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text("Select a company before creating work offers.")
+                    )
+                    .padding()
+                }
+                
+                Color.clear.frame(height: 90)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button {
+                    view = "Tasks"
+                } label: {
+                    Label("Plan", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                
+                Button {
+                    view = "Schedule"
+                } label: {
+                    Label("Schedule", systemImage: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.regularMaterial)
+        }
+    }
+    var actualWorkView: some View {
+        ZStack {
+            if let currentCompany = masterDataManager.currentCompany {
+                JobActualWorkView(
+                    job: job,
+                    jobTasks: VM.jobTaskList,
+                    serviceStops: VM.serviceStops,
+                    payLineItems: VM.actualPayLineItems,
+                    dataService: dataService
+                )
+                .refreshable {
+                    do {
+                        try await VM.onLoad(
+                            companyId: currentCompany.id,
+                            serviceLocationId: job.serviceLocationId,
+                            job: job
+                        )
+                    } catch {
+                        print("[][actualWorkView refresh] Error \(error)")
+                    }
+                }
+            } else {
+                ContentUnavailableView(
+                    "Missing Company",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("Select a company before reviewing actual work.")
+                )
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button {
+                    view = "Materials"
+                } label: {
+                    Label("Materials", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                
+                Button {
+                    view = "Billing"
+                } label: {
+                    Label("Billing", systemImage: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.regularMaterial)
+        }
+    }
+    
+    var shoppingListView: some View {
+        ZStack {
+            JobMaterialsView(
+                shoppingItems: VM.shoppingItemList,
+                purchasedItems: VM.purchasedItems,
+                plannedMaterialCostCents: VM.plannedMaterialCostCents,
+                plannedMaterialPriceCents: VM.plannedMaterialPriceCents,
+                actualPurchasedMaterialCostCents: VM.actualPurchasedMaterialCostCents,
+                billablePurchasedMaterialPriceCents: VM.billablePurchasedMaterialPriceCents,
+                onAddShoppingItem: {
+                    VM.isAddShoppingList.toggle()
+                },
+                onEditShoppingItem: { item in
+                    VM.editShoppingItem = item
+                },
+                onDeleteShoppingItem: { item in
+                    if let currentCompany = masterDataManager.currentCompany {
+                        VM.deleteShoppingListItem(
+                            companyId: currentCompany.id,
+                            jobId: job.id,
+                            item: item
+                        )
+                        
+                        VM.onDismissAddShoppingListItem(
+                            companyId: currentCompany.id,
+                            serviceLocationId: job.serviceLocationId,
+                            jobId: job.id
+                        )
+                    }
+                }
+            )
+            
+            VStack {
+                Spacer()
+                
+                HStack {
+                    Button {
+                        view = "Schedule"
+                    } label: {
+                        Label("Schedule", systemImage: "chevron.left")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Button {
+                        view = "Actual"
+                    } label: {
+                        Label("Actual", systemImage: "chevron.right")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
+            }
+        }
+        .sheet(isPresented: $VM.isAddShoppingList, onDismiss: {
+            if let currentCompany = masterDataManager.currentCompany {
+                VM.onDismissAddShoppingListItem(
+                    companyId: currentCompany.id,
+                    serviceLocationId: job.serviceLocationId,
+                    jobId: job.id
+                )
+            }
+        }) {
+            AddNewShoppingListItemToJob(
+                dataService: dataService,
+                job: job
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $VM.editShoppingItem, onDismiss: {
+            if let currentCompany = masterDataManager.currentCompany {
+                VM.onDismissAddShoppingListItem(
+                    companyId: currentCompany.id,
+                    serviceLocationId: job.serviceLocationId,
+                    jobId: job.id
+                )
+            }
+        }) { item in
+            EditShoppingListItem(
+                dataService: dataService,
+                item: item
+            )
+        }
+    }
+    
+    // MARK: billingView
+    var billingView: some View {
+        JobBillingView(
+            job: job,
+            plannedLaborCents: VM.plannedTotalLaborCents,
+            actualPayrollCents: VM.actualPayrollTotalCents,
+            plannedMaterialCostCents: VM.plannedMaterialCostCents,
+            actualMaterialCostCents: VM.actualPurchasedMaterialCostCents,
+            plannedMaterialPriceCents: VM.plannedMaterialPriceCents,
+            billablePurchasedMaterialPriceCents: VM.billablePurchasedMaterialPriceCents,
+            operationStatus: VM.operationStatus,
+            billingStatus: VM.billingStatus,
+            invoiceDate: VM.invoiceDate,
+            invoiceRef: VM.invoiceRef,
+            invoiceType: VM.invoiceType,
+            invoiceNotes: VM.invoiceNotes,
+            onSendEstimate: {
+                Task {
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            try await VM.sendEstiamteToCustomer(
+                                companyId: company.id,
+                                job: job
+                            )
+
+                            VM.alertMessage = "Estimate Sent To Customer"
+                            VM.showAlert = true
+                        }
+                    } catch {
+                        print("[][billing send estimate] Error \(error)")
+                        VM.alertMessage = "Could not send estimate."
+                        VM.showAlert = true
+                    }
+                }
+            },
+            onMarkEstimateAccepted: {
+                VM.isPresentingMarkEstiamteAsAccepted = true
+            },
+            onMarkInvoiced: {
+                VM.isPresentingMarkJobAsInvoiced = true
+            },
+            onMarkNotInvoiced: {
+                Task {
+                    do {
+                        if let company = masterDataManager.currentCompany {
+                            try await VM.markJobAsNotInvoiced(
+                                companyId: company.id,
+                                job: job
+                            )
+
+                            try await VM.onLoad(
+                                companyId: company.id,
+                                serviceLocationId: job.serviceLocationId,
+                                job: job
+                            )
+                        }
+                    } catch {
+                        print("[][billing mark not invoiced] Error \(error)")
+                        VM.alertMessage = "Could not mark job as not invoiced."
+                        VM.showAlert = true
+                    }
+                }
+            },
+            onGoToMaterials: {
+                view = "Materials"
+            },
+            onGoToActual: {
+                view = "Actual"
+            }
+        )
+        .sheet(isPresented: $VM.isPresentingMarkEstiamteAsAccepted) {
+            manualEstimateAcceptInfo
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $VM.isPresentingMarkJobAsInvoiced) {
+            manualInvoicedInfo
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showSaveJobAsTemplateSheet) {
+            if let company = masterDataManager.currentCompany {
+                SaveJobAsTemplateSheet(
+                    companyId: company.id,
+                    job: job,
+                    plannedServiceStops: VM.plannedServiceStops,
+                    jobTasks: VM.jobTaskList,
+                    shoppingItems: VM.shoppingItemList,
+                    dataService: dataService
+                )
+                .presentationDetents([.medium, .large])
+            } else {
+                Text("Missing company.")
+                    .presentationDetents([.medium])
+            }
+        }
+        .sheet(isPresented: $showDuplicateJobSheet) {
+            if let company = masterDataManager.currentCompany {
+                DuplicateJobSheet(
+                    companyId: company.id,
+                    sourceJob: job,
+                    plannedServiceStops: VM.plannedServiceStops,
+                    jobTasks: VM.jobTaskList,
+                    shoppingItems: VM.shoppingItemList,
+                    dataService: dataService
+                )
+                .presentationDetents([.large])
+            } else {
+                Text("Missing company.")
+                    .presentationDetents([.medium])
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            billingBottomBar
+        }
+    }
+    func pickerButtonRow(
+        title: String,
+        value: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+                
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    
+                    Text(value)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+    func workflowStatusButton(
+        title: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(isSelected ? .accent : .secondary)
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: Circle())
+
+                Text(title)
+                    .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                if isSelected {
+                    Text("Current")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.thinMaterial, in: Capsule())
+                }
+            }
+            .padding(12)
+            .background(
+                isSelected
+                ? Color.accentColor.opacity(0.12)
+                : Color.primary.opacity(0.045),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        isSelected ? Color.accentColor.opacity(0.35) : Color.primary.opacity(0.06),
+                        lineWidth: 1
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    func operationStatusIcon(_ status: JobOperationStatus) -> String {
+        switch status {
+        case .estimatePending:
+            return "doc.text.magnifyingglass"
+        case .unscheduled:
+            return "calendar.badge.exclamationmark"
+        case .scheduled:
+            return "calendar.badge.checkmark"
+        case .inProgress:
+            return "clock.arrow.circlepath"
+        case .finished:
+            return "checkmark.seal"
+        case .waitingForParts:
+            return "shippingbox"
+        }
+    }
+
+    func billingStatusIcon(_ status: JobBillingStatus) -> String {
+        switch status {
+        case .draft:
+            return "doc"
+        case .estimate:
+            return "paperplane"
+        case .accepted:
+            return "checkmark.circle"
+        case .inProgress:
+            return "clock"
+        case .invoiced:
+            return "doc.badge.plus"
+        case .paid:
+            return "dollarsign.circle"
+        case .expired:
+            return "xmark.circle"
+        }
+    }
+    private func applyBillingSuggestionForOperation(_ status: JobOperationStatus) {
+        switch status {
+        case .estimatePending:
+            if billingStatus == .draft {
+                billingStatus = .draft
+            }
+
+        case .unscheduled:
+            if billingStatus == .draft {
+                billingStatus = .estimate
+            }
+
+        case .scheduled:
+            if billingStatus == .draft || billingStatus == .estimate {
+                billingStatus = .accepted
+            }
+
+        case .inProgress:
+            if billingStatus == .draft || billingStatus == .estimate || billingStatus == .accepted {
+                billingStatus = .inProgress
+            }
+
+        case .waitingForParts:
+            if billingStatus == .draft || billingStatus == .estimate {
+                billingStatus = .accepted
+            }
+
+        case .finished:
+            if billingStatus == .draft || billingStatus == .estimate || billingStatus == .accepted {
+                billingStatus = .inProgress
+            }
+        }
+    }
+
+    private func applyOperationSuggestionForBilling(_ status: JobBillingStatus) {
+        switch status {
+        case .draft:
+            if operationStatus == .finished {
+                operationStatus = .estimatePending
+            }
+
+        case .estimate:
+            if operationStatus == .estimatePending {
+                operationStatus = .unscheduled
+            }
+
+        case .accepted:
+            if operationStatus == .estimatePending || operationStatus == .unscheduled {
+                operationStatus = .unscheduled
+            }
+
+        case .inProgress:
+            if operationStatus == .estimatePending || operationStatus == .unscheduled {
+                operationStatus = .scheduled
+            }
+
+        case .invoiced:
+            if operationStatus != .finished {
+                operationStatus = .finished
+            }
+
+        case .paid:
+            operationStatus = .finished
+
+        case .expired:
+            if operationStatus != .finished {
+                operationStatus = .estimatePending
+            }
+        }
+    }
+    private var laborCostCentsBinding: Binding<Int> {
+        Binding(
+            get: {
+                Int(laborCost) ?? 0
+            },
+            set: { newValue in
+                laborCost = String(newValue)
+            }
+        )
+    }
+    private var projectedEditProfitCents: Int {
+        rate - (laborCostCentsBinding.wrappedValue + VM.plannedMaterialCostCents)
+    }
+    
 }
 
 private extension View {
@@ -1903,5 +2758,761 @@ private struct DDFieldRow: View {
                 .font(.subheadline.weight(.semibold))
                 .multilineTextAlignment(.trailing)
         }
+    }
+}
+private struct JobEditSectionHeader: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+}
+private struct JobOperationStatusSelectorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var selectedStatus: JobOperationStatus
+    let onSelect: (JobOperationStatus) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(JobOperationStatus.allCases, id: \.self) { status in
+                        Button {
+                            onSelect(status)
+                            dismiss()
+                        } label: {
+                            JobStatusSelectorRow(
+                                title: status.rawValue,
+                                subtitle: operationStatusSubtitle(status),
+                                systemImage: operationStatusIcon(status),
+                                isSelected: selectedStatus == status
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Operation Status")
+                } footer: {
+                    Text("Operation status describes where the job is in the work lifecycle.")
+                }
+            }
+            .navigationTitle("Operation Status")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func operationStatusIcon(_ status: JobOperationStatus) -> String {
+        switch status {
+        case .estimatePending:
+            return "doc.text.magnifyingglass"
+        case .unscheduled:
+            return "calendar.badge.exclamationmark"
+        case .scheduled:
+            return "calendar.badge.checkmark"
+        case .inProgress:
+            return "clock.arrow.circlepath"
+        case .finished:
+            return "checkmark.seal"
+        case .waitingForParts:
+            return "shippingbox"
+        }
+    }
+
+    private func operationStatusSubtitle(_ status: JobOperationStatus) -> String {
+        switch status {
+        case .estimatePending:
+            return "The job is still being scoped or estimated."
+        case .unscheduled:
+            return "The estimate or job exists, but work has not been scheduled."
+        case .scheduled:
+            return "Work has been scheduled on one or more service stops."
+        case .inProgress:
+            return "Work has started or is actively being handled."
+        case .finished:
+            return "The work is complete and ready for billing review."
+        case .waitingForParts:
+            return "Work is paused until materials or parts are available."
+        }
+    }
+}
+
+private struct JobBillingStatusSelectorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var selectedStatus: JobBillingStatus
+    let onSelect: (JobBillingStatus) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(JobBillingStatus.allCases, id: \.self) { status in
+                        Button {
+                            onSelect(status)
+                            dismiss()
+                        } label: {
+                            JobStatusSelectorRow(
+                                title: status.rawValue,
+                                subtitle: billingStatusSubtitle(status),
+                                systemImage: billingStatusIcon(status),
+                                isSelected: selectedStatus == status
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Billing Status")
+                } footer: {
+                    Text("Billing status describes where the customer-facing money workflow stands.")
+                }
+            }
+            .navigationTitle("Billing Status")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private func billingStatusIcon(_ status: JobBillingStatus) -> String {
+        switch status {
+        case .draft:
+            return "doc"
+        case .estimate:
+            return "paperplane"
+        case .accepted:
+            return "checkmark.circle"
+        case .inProgress:
+            return "clock"
+        case .invoiced:
+            return "doc.badge.plus"
+        case .paid:
+            return "dollarsign.circle"
+        case .expired:
+            return "xmark.circle"
+        }
+    }
+
+    private func billingStatusSubtitle(_ status: JobBillingStatus) -> String {
+        switch status {
+        case .draft:
+            return "Billing has not been prepared yet."
+        case .estimate:
+            return "An estimate has been created or sent."
+        case .accepted:
+            return "The customer has accepted the estimate."
+        case .inProgress:
+            return "Work is underway before final invoice."
+        case .invoiced:
+            return "The customer has been invoiced."
+        case .paid:
+            return "The customer has paid."
+        case .expired:
+            return "The estimate or billing window has expired."
+        }
+    }
+}
+
+private struct JobStatusSelectorRow: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: isSelected ? "checkmark.circle.fill" : systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(isSelected ? .accent : .secondary)
+                .frame(width: 32, height: 32)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 6)
+    }
+}
+private struct JobEditInfoReadOnlyRow: View {
+    let title: String
+    let value: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .frame(width: 32, height: 32)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(value.isEmpty ? "-" : value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct JobEditInfoMoneyRow: View {
+    let title: String
+    let cents: Int
+    var valueIsWarning: Bool = false
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Text(JobEditInfoMoneyFormatter.money(cents))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(valueIsWarning ? .orange : .primary)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+private struct JobEditNavigationRow: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .frame(width: 32, height: 32)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private enum JobEditInfoMoneyFormatter {
+    static func money(_ cents: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+
+        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "$0.00"
+    }
+}
+
+private extension View {
+    
+    func basicCard() -> some View {
+        self
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+private struct JobManualInvoiceSummaryRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Text(value.isEmpty ? "-" : value)
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+private enum JobManualInvoiceMoneyFormatter {
+    static func money(_ cents: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+
+        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "$0.00"
+    }
+}
+
+// MARK: Planned Service Stops
+extension JobDetailView {
+    var plannedServiceStopsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionHeader("Planned Service Stops", systemImage: "calendar.badge.clock")
+
+                Spacer()
+
+                Text("\(VM.plannedServiceStops.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            if VM.plannedServiceStops.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+
+                    Text("No planned service stops yet.")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("Add the visits you expect this job to need before scheduling real service stops.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 22)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(VM.plannedServiceStops.sorted(by: { $0.sortOrder < $1.sortOrder })) { plannedStop in
+                        plannedServiceStopRow(plannedStop)
+                    }
+                }
+            }
+
+            Button {
+                VM.isAddPlannedServiceStop = true
+            } label: {
+                addTaskActionLabel(
+                    title: "Add Planned Stop",
+                    subtitle: "Plan an expected job visit before scheduling it.",
+                    systemImage: "calendar.badge.plus"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+    func plannedServiceStopRow(_ plannedStop: JobPlannedServiceStop) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: plannedStop.serviceStopTypeImage.isEmpty ? "calendar" : plannedStop.serviceStopTypeImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(plannedStop.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text("\(plannedStop.serviceStopTypeName) • \(plannedStop.estimatedMinutes) min")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let plannedLaborCostCents = plannedStop.plannedLaborCostCents,
+                   plannedLaborCostCents > 0 {
+                    Text("Planned labor: \(JobEditInfoMoneyFormatter.money(plannedLaborCostCents))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                if !plannedStop.description.isEmpty {
+                    Text(plannedStop.description)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(2)
+                }
+
+                if !plannedStop.taskIds.isEmpty {
+                    Label("\(plannedStop.taskIds.count) linked task(s)", systemImage: "checklist")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                VM.plannedServiceStopToDelete = plannedStop
+                VM.showDeletePlannedServiceStopConfirmation = true
+            } label: {
+                Image(systemName: "trash")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.red)
+                    .padding(8)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+    private var billingBottomBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                view = "Actual"
+            } label: {
+                Label("Actual", systemImage: "chevron.left")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                showBillingActionsSheet = true
+            } label: {
+                Label("Actions", systemImage: "ellipsis.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                view = "Info"
+            } label: {
+                Label("Review", systemImage: "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
+        .sheet(isPresented: $showBillingActionsSheet) {
+            billingActionsSheet
+                .presentationDetents([.medium, .large])
+        }
+    }
+    private var billingActionsSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("Job Actions")
+                                        .font(.title3.weight(.semibold))
+
+                                    Text("\(job.internalId) • \(job.customerName)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "ellipsis.circle")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 36, height: 36)
+                                    .background(.thinMaterial, in: Circle())
+                            }
+
+                            Text("Use these actions to manage billing, templates, duplication, and job cleanup.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .basicCard()
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Billing", systemImage: "doc.text")
+                                .font(.headline.weight(.semibold))
+
+                            jobBillingActionRow(
+                                title: "Send Estimate",
+                                subtitle: "Send or resend the customer estimate.",
+                                systemImage: "paperplane"
+                            ) {
+                                showBillingActionsSheet = false
+
+                                Task {
+                                    do {
+                                        if let company = masterDataManager.currentCompany {
+                                            try await VM.sendEstiamteToCustomer(
+                                                companyId: company.id,
+                                                job: job
+                                            )
+
+                                            VM.alertMessage = "Estimate Sent To Customer"
+                                            VM.showAlert = true
+                                        }
+                                    } catch {
+                                        print("[][billing actions send estimate] Error \(error)")
+                                        VM.alertMessage = "Could not send estimate."
+                                        VM.showAlert = true
+                                    }
+                                }
+                            }
+
+                            jobBillingActionRow(
+                                title: "Mark Estimate Accepted",
+                                subtitle: "Record manual acceptance details.",
+                                systemImage: "checkmark.circle"
+                            ) {
+                                showBillingActionsSheet = false
+                                VM.isPresentingMarkEstiamteAsAccepted = true
+                            }
+
+                            if VM.billingStatus == .invoiced {
+                                jobBillingActionRow(
+                                    title: "Mark Not Invoiced",
+                                    subtitle: "Undo manual invoiced status.",
+                                    systemImage: "arrow.uturn.backward.circle"
+                                ) {
+                                    showBillingActionsSheet = false
+
+                                    Task {
+                                        do {
+                                            if let company = masterDataManager.currentCompany {
+                                                try await VM.markJobAsNotInvoiced(
+                                                    companyId: company.id,
+                                                    job: job
+                                                )
+                                            }
+                                        } catch {
+                                            print("[][billing actions mark not invoiced] Error \(error)")
+                                            VM.alertMessage = "Could not mark job as not invoiced."
+                                            VM.showAlert = true
+                                        }
+                                    }
+                                }
+                            } else {
+                                jobBillingActionRow(
+                                    title: "Mark Invoiced",
+                                    subtitle: "Record manual invoice reference and notes.",
+                                    systemImage: "doc.badge.plus"
+                                ) {
+                                    showBillingActionsSheet = false
+                                    VM.isPresentingMarkJobAsInvoiced = true
+                                }
+                            }
+                        }
+                        .basicCard()
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Reuse", systemImage: "square.stack.3d.up")
+                                .font(.headline.weight(.semibold))
+
+                            jobBillingActionRow(
+                                title: "Save As Template",
+                                subtitle: "Save this job plan for future jobs.",
+                                systemImage: "doc.badge.plus"
+                            ) {
+                                showBillingActionsSheet = false
+                                showSaveJobAsTemplateSheet = true
+                            }
+
+                            jobBillingActionRow(
+                                title: "Duplicate Job",
+                                subtitle: "Create a new draft copy from this job.",
+                                systemImage: "doc.on.doc"
+                            ) {
+                                showBillingActionsSheet = false
+                                showDuplicateJobSheet = true
+                            }
+                        }
+                        .basicCard()
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Manage", systemImage: "gearshape")
+                                .font(.headline.weight(.semibold))
+
+                            jobBillingActionRow(
+                                title: "Edit Job Info",
+                                subtitle: "Change admin, status, price, labor snapshot, or description.",
+                                systemImage: "square.and.pencil"
+                            ) {
+                                showBillingActionsSheet = false
+                                view = "Info"
+                                VM.isEdit = true
+                            }
+
+                            jobBillingActionRow(
+                                title: VM.operationStatus == .finished ? "Mark Unfinished" : "Mark Finished",
+                                subtitle: VM.operationStatus == .finished ? "Move this job back out of finished status." : "Mark this job's work as finished.",
+                                systemImage: VM.operationStatus == .finished ? "xmark.circle" : "checkmark.seal"
+                            ) {
+                                showBillingActionsSheet = false
+
+                                Task {
+                                    do {
+                                        if let company = masterDataManager.currentCompany {
+                                            if VM.operationStatus == .finished {
+                                                try await VM.markJobAsUnFinished(
+                                                    companyId: company.id,
+                                                    job: job
+                                                )
+                                            } else {
+                                                try await VM.markJobAsFinished(
+                                                    companyId: company.id,
+                                                    job: job
+                                                )
+                                            }
+                                        }
+                                    } catch {
+                                        print("[][billing actions toggle finished] Error \(error)")
+                                        VM.alertMessage = "Could not update job status."
+                                        VM.showAlert = true
+                                    }
+                                }
+                            }
+
+                            jobBillingDeleteActionRow {
+                                pendingDeleteConfirmation = true
+                                showBillingActionsSheet = false
+                            }
+                        }
+                        .basicCard()
+
+                        Color.clear.frame(height: 28)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
+                }
+            }
+            .navigationTitle("Actions")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        showBillingActionsSheet = false
+                    }
+                }
+            }
+        }
+    }
+    private func jobBillingActionRow(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, height: 34)
+                    .background(.thinMaterial, in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func jobBillingDeleteActionRow(
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "trash")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.red)
+                    .frame(width: 34, height: 34)
+                    .background(.thinMaterial, in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Delete Job")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.red)
+
+                    Text("Delete this job and related planned work.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }

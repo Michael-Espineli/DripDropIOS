@@ -2,6 +2,10 @@
 //  JobTemplatePickerCreateJobSheet.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/24/26.
+//
+
+
 
 import SwiftUI
 
@@ -62,11 +66,11 @@ struct JobTemplatePickerCreateJobSheet: View {
             .sheet(item: $selectedTemplate, onDismiss: {
                 dismiss()
             }) { template in
-                CreateJobFromTemplateSheet(
-                    template: template,
-                    dataService: dataService
+                AddNewJobView(
+                    dataService: dataService,
+                    customerId: nil,
+                    startingTemplate: template
                 )
-                .presentationDetents([.large])
             }
         }
     }

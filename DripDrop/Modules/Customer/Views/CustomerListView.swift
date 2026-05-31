@@ -60,6 +60,7 @@ final class CustomerListViewModel:ObservableObject{
             self?.customers = customers
         }
         
+        filterCustomerList()
     }
     func getCustomer(companyId: String,customerId:String) async throws{
         self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: customerId)
@@ -160,13 +161,12 @@ struct CustomerListView: View{
         }
         .task {
             if let company = masterDataManager.currentCompany {
+                if let term = masterDataManager.customerSearchTerm {
+                    VM.searchTerm = term
+                }
                 VM.onLoad(companyId: company.id)
                 searchField = false
                 VM.showSearch = false
-                if let term = masterDataManager.customerSearchTerm {
-//                    VM.filterCustomerList()
-                    VM.searchTerm = term
-                }
             }
         }
         .onChange(of: masterDataManager.selectedID, perform: { id in
@@ -207,6 +207,9 @@ struct CustomerListView: View{
         }
         .onChange(of: VM.customers, perform: { list in
             print("Change in Customer List")
+            if let term = masterDataManager.customerSearchTerm {
+                VM.searchTerm = term
+            }
             VM.filterCustomerList()
         })
         .onDisappear(perform: {
@@ -232,190 +235,7 @@ extension CustomerListView {
                     }}
             } else {
                 switch VM.customerSortOption {
-                case .firstNameHigh:
-                    List(selection:$masterDataManager.selectedID){
-                        ForEach(Alphebet.allCases) { letter in
-                            if VM.displayCustomers.filter({$0.firstName.lowercased().starts(with: letter.lowerCase())}).count != 0 {
-                                Section(content: {
-                                    ForEach(VM.displayCustomers.filter({$0.firstName.lowercased().starts(with: letter.lowerCase())})){ customer in
-                                        if UIDevice.isIPhone {
-                                            NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                            })
-                                            .onTapGesture(perform: {
-                                                VM.showSearch = false
-                                            })
-                                        } else {
-                                            Button(action: {
-                                                masterDataManager.selectedCustomer = customer
-                                                navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                            }, label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                            })
-                                        }
-                                    }
-                                    
-                                }, header: {
-                                    Text(letter.upperCase())
-                                        .foregroundColor(Color.accentColor)
-                                    
-                                })
-                            }
-                        }
-                        if VM.displayCustomers.filter({$0.firstName.lowercased() == ""}).count != 0 {
-                            Section(content: {
-                                ForEach(VM.displayCustomers.filter({$0.firstName.lowercased() == ""})){ customer in
-                                    if UIDevice.isIPhone {
-                                        NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                        .onTapGesture(perform: {
-                                            VM.showSearch = false
-                                        })
-                                    } else {
-                                        Button(action: {
-                                            masterDataManager.selectedCustomer = customer
-                                            navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                        }, label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                    }
-                                }
-                                
-                            }, header: {
-                                Text("No Name")
-                                    .foregroundColor(Color.accentColor)
-                                
-                            })
-                        }
-                    }
-                    .background(Color.gray.opacity(0.5))
-                    .listStyle(.plain)
-                case .firstNameLow:
-                    List(selection:$masterDataManager.selectedID){
-                        ForEach(Alphebet.allCases.reversed()) { letter in
-                            if VM.displayCustomers.filter({$0.firstName.lowercased().starts(with: letter.lowerCase())}).count != 0 {
-                                
-                                Section(content: {
-                                    ForEach(VM.displayCustomers.filter({$0.firstName.lowercased().starts(with: letter.lowerCase())})){ customer in
-                                        if UIDevice.isIPhone {
-                                            NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                            })
-                                            .onTapGesture(perform: {
-                                                VM.showSearch = false
-                                            })
-                                        } else {
-                                            Button(action: {
-                                                masterDataManager.selectedCustomer = customer
-                                                navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                            }, label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                            })
-                                        }
-                                    }
-                                    
-                                }, header: {
-                                    Text(letter.upperCase())
-                                        .foregroundColor(Color.accentColor)
-                                    
-                                })
-                            }
-                        }
-                        if VM.displayCustomers.filter({$0.firstName.lowercased() == ""}).count != 0 {
-                            Section(content: {
-                                ForEach(VM.displayCustomers.filter({$0.firstName.lowercased() == ""})){ customer in
-                                    if UIDevice.isIPhone {
-                                        NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                        .onTapGesture(perform: {
-                                            VM.showSearch = false
-                                            searchField = false
-                                        })
-                                    } else {
-                                        Button(action: {
-                                            masterDataManager.selectedCustomer = customer
-                                            navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                        }, label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                    }
-                                }
-                                
-                            }, header: {
-                                Text("No Name")
-                                    .foregroundColor(Color.accentColor)
-                                
-                            })
-                        }
-                    }
-                    .background(Color.gray.opacity(0.5))
-                    .listStyle(.plain)
-                    
-                case .lastNameLow:
-                    List(selection:$masterDataManager.selectedID){
-                        ForEach(Alphebet.allCases.reversed()) { letter in
-                            if VM.displayCustomers.filter({$0.lastName.lowercased().starts(with: letter.lowerCase())}).count != 0 {
-                                
-                                Section(content: {
-                                    ForEach(VM.displayCustomers.filter({$0.lastName.lowercased().starts(with: letter.lowerCase())})){ customer in
-                                        if UIDevice.isIPhone {
-                                            NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                            })
-                                            .onTapGesture(perform: {
-                                                VM.showSearch = false
-                                                searchField = false
-                                            })
-                                        } else {
-                                            Button(action: {
-                                                masterDataManager.selectedCustomer = customer
-                                                navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                            }, label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                            })
-                                        }
-                                    }
-                                    
-                                }, header: {
-                                    Text(letter.upperCase())
-                                        .foregroundColor(Color.accentColor)
-                                    
-                                })
-                            }
-                        }
-                        if VM.displayCustomers.filter({$0.firstName.lowercased() == ""}).count != 0 {
-                            Section(content: {
-                                ForEach(VM.displayCustomers.filter({$0.firstName.lowercased() == ""})){ customer in
-                                    if UIDevice.isIPhone {
-                                        NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                        .onTapGesture(perform: {
-                                            VM.showSearch = false
-                                            searchField = false
-                                        })
-                                    } else {
-                                        Button(action: {
-                                            masterDataManager.selectedCustomer = customer
-                                            navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                        }, label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                    }
-                                }
-                                
-                            }, header: {
-                                Text("No Name")
-                                    .foregroundColor(Color.accentColor)
-                                
-                            })
-                        }
-                    }
-                    .background(Color.gray.opacity(0.5))
-                    .listStyle(.plain)
-                case .lastNameHigh:
+                case .lastNameHigh, .durationHigh, .durationLow, .lastNameLow, .firstNameLow, .firstNameHigh:
                     ScrollView{
                         ForEach(Alphebet.allCases) { letter in
                             if VM.displayCustomers.filter({$0.lastName.lowercased().starts(with: letter.lowerCase())}).count != 0 {
@@ -484,119 +304,6 @@ extension CustomerListView {
                         }
                     }
                     .padding(8)
-                case .durationHigh:
-                    List(selection:$masterDataManager.selectedID){
-                        ForEach(Alphebet.allCases) { letter in
-                            HStack{
-                                Text(letter.upperCase())
-                                    .foregroundColor(Color.accentColor)
-                                    .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-                                Spacer()
-                            }
-                            .background(Color.gray.opacity(0.5))
-                            
-                            ForEach(VM.displayCustomers.filter({$0.lastName.lowercased().starts(with: letter.lowerCase())})){ customer in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                        CustomerCardViewSmall(customer: customer)
-                                    })
-                                    .onTapGesture(perform: {
-                                        VM.showSearch = false
-                                        searchField = false
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCustomer = customer
-                                        navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                    }, label: {
-                                        CustomerCardViewSmall(customer: customer)
-                                    })
-                                }
-                            }
-                        }
-                        if VM.displayCustomers.filter({$0.firstName.lowercased() == ""}).count != 0 {
-                            Section(content: {
-                                ForEach(VM.displayCustomers.filter({$0.firstName.lowercased() == ""})){ customer in
-                                    if UIDevice.isIPhone {
-                                        NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                    } else {
-                                        Button(action: {
-                                            masterDataManager.selectedCustomer = customer
-                                            navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                        }, label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                    }
-                                }
-                                
-                            }, header: {
-                                Text("No Name")
-                                    .foregroundColor(Color.accentColor)
-                                
-                            })
-                        }
-                    }
-                    .listStyle(.plain)
-                case .durationLow:
-                    List(selection:$masterDataManager.selectedID){
-                        ForEach(Alphebet.allCases) { letter in
-                            HStack{
-                                Text(letter.upperCase())
-                                    .foregroundColor(Color.accentColor)
-                                    .padding(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
-                                Spacer()
-                            }
-                            .background(Color.gray.opacity(0.5))
-                            
-                            ForEach(VM.displayCustomers.filter({$0.lastName.lowercased().starts(with: letter.lowerCase())})){ customer in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                        CustomerCardViewSmall(customer: customer)
-                                    })
-                                    .onTapGesture(perform: {
-                                        VM.showSearch = false
-                                        searchField = false
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCustomer = customer
-                                        navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                    }, label: {
-                                        CustomerCardViewSmall(customer: customer)
-                                    })
-                                }
-                            }
-                        }
-                        if VM.displayCustomers.filter({$0.firstName.lowercased() == ""}).count != 0 {
-                            Section(content: {
-                                ForEach(VM.displayCustomers.filter({$0.firstName.lowercased() == ""})){ customer in
-                                    if UIDevice.isIPhone {
-                                        NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                        .onTapGesture(perform: {
-                                            VM.showSearch = false
-                                            searchField = false
-                                        })
-                                    } else {
-                                        Button(action: {
-                                            masterDataManager.selectedCustomer = customer
-                                            navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                        }, label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                        })
-                                    }
-                                }
-                                
-                            }, header: {
-                                Text("No Name")
-                                    .foregroundColor(Color.accentColor)
-                            })
-                        }
-                    }
-                    .listStyle(.plain)
                 }
                 
             }
@@ -1118,6 +825,7 @@ extension CustomerListView {
                                     VM.showSearch.toggle()
                                     
                                     searchField.toggle()
+                                    VM.filterCustomerList()
                                 }, label: {
                                     Image(systemName: "magnifyingglass")
                                         .modifier(SearchIconModifer())

@@ -1,7 +1,11 @@
 //
-//  CompanyPayStatementsView.swift
+//  PayStatementCandidateGroup.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/21/26.
+//
+
+
 
 import SwiftUI
 
@@ -52,9 +56,10 @@ final class CompanyPayStatementsViewModel: ObservableObject {
     @Published var alertMessage: String = ""
 
     let companyId: String
-
-    private let currentUserId: String
-    private let dataService: any ProductionDataServiceProtocol
+    
+    let currentUserId: String
+    let dataService: any ProductionDataServiceProtocol
+    
     private var hasLoaded = false
 
     init(
@@ -167,8 +172,10 @@ final class CompanyPayStatementsViewModel: ObservableObject {
 
         isSaving = true
         defer { isSaving = false }
-
         do {
+            let statementNumber = try await dataService.getNextPayStatementNumber(companyId: companyId)
+            let statementReference = PayrollReferenceFormatter.statement(statementNumber)
+            
             let statementId = PayrollIdFactory.technicianPayStatementId()
             let subtotal = group.subtotalCents
 
@@ -194,7 +201,11 @@ final class CompanyPayStatementsViewModel: ObservableObject {
                 exportedAt: nil,
                 exportProvider: nil,
                 externalReferenceId: nil,
-                notes: nil
+                notes: nil,
+                statementNumber: statementNumber,
+                statementReference: statementReference,
+                paymentReference: nil,
+                paidNotes: nil
             )
 
             try await dataService.saveTechnicianPayStatement(statement)
@@ -371,6 +382,8 @@ final class CompanyPayStatementsViewModel: ObservableObject {
 struct CompanyPayStatementsView: View {
 
     @StateObject private var viewModel: CompanyPayStatementsViewModel
+    @EnvironmentObject var dataService: ProductionDataService
+    @EnvironmentObject var masterDataManager: MasterDataManager
 
     init(
         companyId: String,
@@ -531,25 +544,36 @@ struct CompanyPayStatementsView: View {
                     description: Text("No pay statements match this filter and date range.")
                 )
             } else {
-                ForEach(viewModel.filteredStatements) { statement in
-                    PayStatementRow(
-                        statement: statement,
-                        approveAction: {
-                            Task {
-                                await viewModel.approveStatement(statement)
-                            }
-                        },
-                        markPaidAction: {
-                            Task {
-                                await viewModel.markStatementPaid(statement)
-                            }
-                        },
-                        voidAction: {
-                            Task {
-                                await viewModel.voidStatement(statement)
-                            }
+                if let user = masterDataManager.user {
+                    ForEach(viewModel.filteredStatements) { statement in
+                        NavigationLink {
+                            TechnicianPayStatementDetailView(
+                                statement: statement,
+                                currentUserId: user.id,
+                                dataService: dataService
+                            )
+                        } label: {
+                            PayStatementRow(
+                                statement: statement,
+                                approveAction: {
+                                    Task {
+                                        await viewModel.approveStatement(statement)
+                                    }
+                                },
+                                markPaidAction: {
+                                    Task {
+                                        await viewModel.markStatementPaid(statement)
+                                    }
+                                },
+                                voidAction: {
+                                    Task {
+                                        await viewModel.voidStatement(statement)
+                                    }
+                                }
+                            )
                         }
-                    )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         } header: {

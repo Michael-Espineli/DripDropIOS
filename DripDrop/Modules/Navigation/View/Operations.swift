@@ -1,2219 +1,844 @@
-//
-//  Operations.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 4/2/24.
-//
+    //
+    //  Operations.swift
+    //  ThePoolApp
+    //
+    //  Created by Michael Espineli on 4/2/24.
+    //
 
-import SwiftUI
-import MapKit
-import Firebase
-import Charts
+    import SwiftUI
+    import MapKit
+    import Firebase
+    import Charts
 
-struct Operations: View {
-    @EnvironmentObject var navigationManager: NavigationStateManager
-    @EnvironmentObject var masterDataManager : MasterDataManager
-    
-    @EnvironmentObject var dataService: ProductionDataService
-    
-    @StateObject var VM : MyCompanyViewModel
-    
-    init( dataService:any ProductionDataServiceProtocol){
-        _VM = StateObject(wrappedValue: MyCompanyViewModel(dataService: dataService))
-    }
+    struct Operations: View {
+        @EnvironmentObject var navigationManager: NavigationStateManager
+        @EnvironmentObject var masterDataManager: MasterDataManager
+        @EnvironmentObject var dataService: ProductionDataService
 
-    @State var showOperations:Bool = false //DEVELOPER LATER MAKE THIS TRUE
-    @State var showFinace:Bool = false //DEVELOPER LATER MAKE THIS TRUE
-    @State var showManagement:Bool = false //DEVELOPER LATER MAKE THIS TRUE
-    
-    @State var isLoading: Bool = true
-    
-    var body: some View {
-        ZStack{
-            Color.listColor.ignoresSafeArea()
-            
-            ScrollView(showsIndicators: false){
-                if let role = masterDataManager.role {
-                    VStack(alignment: .leading,spacing: 20){
-                        if role.permissionIdList.contains("0") {
-                            
-                            //----------------------------------------
-                            //Add Back in During Roll out of Phase 2
-                            //----------------------------------------
-//                            snapshot
-                            operations
+        @StateObject var VM: MyCompanyViewModel
+
+        init(dataService: any ProductionDataServiceProtocol) {
+            _VM = StateObject(wrappedValue: MyCompanyViewModel(dataService: dataService))
+        }
+
+        @State var showOperations: Bool = false
+        @State var showFinace: Bool = false
+        @State var showManagement: Bool = false
+
+        @State var isLoading: Bool = true
+
+        var body: some View {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        headerCard
+
+                        if let role = masterDataManager.role {
+                            if role.permissionIdList.contains("0") {
+                                operations
+                            } else {
+                                emptyState(
+                                    title: "No operations access.",
+                                    message: "Your role does not currently include operations permissions.",
+                                    systemImage: "lock.shield"
+                                )
+                            }
+                        } else {
+                            emptyState(
+                                title: "Loading role.",
+                                message: "Operations will appear after your role permissions load.",
+                                systemImage: "person.badge.key"
+                            )
                         }
                     }
-                    .padding(.horizontal,8)
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
+                }
+
+//                if isLoading {
+//                    loadingOverlay
+//                }
+            }
+            .onAppear {
+                if !UIDevice.isIPhone {
+                    showOperations = true
+                    showFinace = true
+                    showManagement = true
                 }
             }
-            
-        }
-        .onAppear(perform: {
-            if !UIDevice.isIPhone {
-                showOperations = true
-                showFinace = true
-                showManagement = true
-            }
-        })
-        .task{
-            if let company = masterDataManager.currentCompany,let user = masterDataManager.user {
-                do {
-                    try await VM.onLoad(companyId: company.id, userId: user.id, category: "Operations")
-                } catch {
-                    print(error)
-                }
-            }
-        }
-        .onChange(of:  masterDataManager.currentCompany, perform: { selectedCompany in
-            Task{
-                if let company = masterDataManager.currentCompany,let user = masterDataManager.user {
+            .task {
+                if let company = masterDataManager.currentCompany,
+                   let user = masterDataManager.user {
                     do {
-                        try await VM.onLoad(companyId: company.id, userId: user.id,category: "Operations")
+                        try await VM.onLoad(
+                            companyId: company.id,
+                            userId: user.id,
+                            category: "Operations"
+                        )
                     } catch {
+                        print("[Operations][Task onAppear:onLoad:catch:]")
                         print(error)
                     }
                 }
             }
-        })
-        .onChange(of: VM.isLoading, perform: { loading in
-            if loading {
-                isLoading = loading
-                
-            } else {
-                withAnimation(Animation.linear(duration: 0.1)) {
+            .onChange(of: masterDataManager.currentCompany) { _ in
+                Task {
+                    if let company = masterDataManager.currentCompany,
+                       let user = masterDataManager.user {
+                        do {
+                            try await VM.onLoad(
+                                companyId: company.id,
+                                userId: user.id,
+                                category: "Operations"
+                            )
+                        } catch {
+                            print(error)
+                        }
+                    }
+                }
+            }
+            .onChange(of: VM.isLoading) { loading in
+                if loading {
                     isLoading = loading
-                }
-            }
-        })
-    }
-}
-
-
-extension Operations{
-    var snapshot: some View {
-        VStack{
-            Chart(VM.buildActivities) { buildActivity in
-                BarMark(
-                    x: .value("Date", buildActivity.date, unit: .month),
-                    y: .value("Total Count", buildActivity.numberOfUnits)
-                )
-                /// Show a different color for each scheme
-                .foregroundStyle(
-                    by: .value("Name", buildActivity.name)
-                )
-            }
-            /// Customize the colors for each scheme
-            .chartForegroundStyleScale([
-     
-                "Jobs" : .blue,
-                "Repair Requests": .red,
-                "Items Purchased": .green
-            ])
-        }
-        .padding(.top,8)
-    }
-    
-    var operations: some View {
-        VStack{
-            HStack{
-                Text("Operations")
-                Spacer()
-            }
-            .modifier(HeaderModifier())
-            if let role = masterDataManager.role {
-                if role.permissionIdList.contains("10") {
-                    customers
-                    Divider()
-                }
-                if role.permissionIdList.contains("60") {
-                    equipment
-                    Divider()
-                }
-                    //----------------------------------------
-                    //Add Back in During Roll out of Phase 2.1
-                    //----------------------------------------
-                
-                    //            otherCustomers
-                    //            Divider()
-                if role.permissionIdList.contains("20") {
-                    jobs
-                    Divider()
-                }
-                    //                Update 2.1
-                    //            shoppingListItems
-                    //            Divider()
-                if role.permissionIdList.contains("30") {
-                    repairRequests
-                    Divider()
-                }
-                if role.permissionIdList.contains("240") {
-                    serviceStops
-                    Divider()
-                }
-            }
-        }
-    }
-    var customers: some View {
-        VStack{
-            HStack{
-                Text("Customers")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    
-                    NavigationLink(value: Route.customers(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
                 } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .customers
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .modifier(RedLinkModifier())
-                    })
+                    withAnimation(.linear(duration: 0.1)) {
+                        isLoading = loading
+                    }
                 }
             }
-            
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
+        }
+    }
+
+    // MARK: - Main Sections
+
+    extension Operations {
+
+        var headerCard: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.accentColor.opacity(0.14))
+                            .frame(width: 58, height: 58)
+
+                        Image(systemName: "chart.bar.doc.horizontal")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.primary)
                     }
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Operations")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text(masterDataManager.currentCompany?.name ?? "Review customers, jobs, repair requests, service stops, and equipment.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
                     Spacer()
                 }
-                HStack{
-                    VStack(alignment: .leading){
+
+                HStack(spacing: 8) {
+                    Label(masterDataManager.mainScreenDisplayType.rawValue, systemImage: "rectangle.grid.1x2")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(.thinMaterial, in: Capsule())
+
+                    if let role = masterDataManager.role {
+                        Label("\(role.permissionIdList.count) Permissions", systemImage: "lock.shield")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+
+                    Spacer()
+                }
+            }
+            .padding(16)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        var operations: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    sectionHeader("Operations Overview", systemImage: "slider.horizontal.3")
+
+                    Spacer()
+                }
+
+                if let role = masterDataManager.role {
+                    if role.permissionIdList.contains("10") {
+                        customers
+                    }
+
+                    if role.permissionIdList.contains("60") {
+                        equipment
+                    }
+
+                    if role.permissionIdList.contains("20") {
+                        jobs
+                    }
+
+                    if role.permissionIdList.contains("30") {
+                        repairRequests
+                    }
+
+                    if role.permissionIdList.contains("240") {
+                        serviceStops
+                    }
+                }
+            }
+        }
+
+        var snapshot: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                sectionHeader("Snapshot", systemImage: "chart.bar")
+
+                Chart(VM.buildActivities) { buildActivity in
+                    BarMark(
+                        x: .value("Date", buildActivity.date, unit: .month),
+                        y: .value("Total Count", buildActivity.numberOfUnits)
+                    )
+                    .foregroundStyle(by: .value("Name", buildActivity.name))
+                }
+                .chartForegroundStyleScale([
+                    "Jobs": .blue,
+                    "Repair Requests": .red,
+                    "Items Purchased": .green
+                ])
+                .frame(height: 220)
+            }
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+    }
+
+    // MARK: - Operations Cards
+
+    extension Operations {
+
+        var customers: some View {
+            operationsCard(
+                title: "Customers",
+                subtitle: "Active residential and commercial accounts.",
+                systemImage: "person.2",
+                countText: VM.totalCustomers == nil ? nil : "\(VM.totalCustomers ?? 0)",
+                seeMore: {
+                    if UIDevice.isIPhone {
+                        AnyView(
+                            NavigationLink(value: Route.customers(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    } else {
+                        AnyView(
+                            Button {
+                                masterDataManager.selectedCategory = .customers
+                            } label: {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    }
+                },
+                stats: {
+                    VStack(spacing: 8) {
                         if let num = VM.totalCustomers {
-                            
-                            HStack{
-                                Text("Total: \(num.description)")
-                                Spacer()
-                                
-                            }
+                            statRow(title: "Total", value: num.description, systemImage: "person.2")
                         }
-                        if let num = VM.totalResidentalAccounts {
-                            
-                            HStack{
-                                Text("Residential: \(num.description)")
-                                Spacer()
-                                
-                                
-                            }
-                        }
-                        if let num = VM.totalComericalAccounts {
-                            
-                            HStack{
-                                Text("Comercial: \(num.description)")
-                                Spacer()
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                if VM.customers.count == 0 {
-                    HStack{
-                        
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Customers")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.customers){ datum in
-                                let customerName = datum.firstName + " " + datum.lastName
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.customer(
-                                        customer:datum,
-                                        dataService: dataService
-                                    ),label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: customerName, iconName: "person.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCategory = .customers
-                                        masterDataManager.selectedCustomer = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: customerName, iconName: "person.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    var otherCustomers: some View {
-        VStack{
-            HStack{
-                Text("Other Company Customers")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    
-                    NavigationLink(value: Route.customers(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .customers
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        if let num = VM.totalCustomers {
-                            
-                            HStack{
-                                Text("Total: \(num.description)")
-                                Spacer()
-                                
-                            }
-                        }
-                        if let num = VM.totalResidentalAccounts {
-                            
-                            HStack{
-                                Text("Residential: \(num.description)")
-                                Spacer()
-                                
-                                
-                            }
-                        }
-                        if let num = VM.totalComericalAccounts {
-                            
-                            HStack{
-                                Text("Comercial: \(num.description)")
-                                Spacer()
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                if VM.customers.count == 0 {
-                    HStack{
-                        
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Customers")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.customers){ datum in
-                                let customerName = datum.firstName + " " + datum.lastName
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.customer(
-                                        customer:datum,
-                                        dataService: dataService
-                                    ),label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: customerName, iconName: "person.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCategory = .customers
-                                        masterDataManager.selectedCustomer = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: customerName, iconName: "person.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    
 
-    var jobs: some View {
-        VStack{
-            HStack{
-                Text("Jobs")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.jobs(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
+                        if let num = VM.totalResidentalAccounts {
+                            statRow(title: "Residential", value: num.description, systemImage: "house")
                         }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .jobs
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
+
+                        if let num = VM.totalComericalAccounts {
+                            statRow(title: "Commercial", value: num.description, systemImage: "building.2")
                         }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-                
-            }
-            
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
                     }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading,spacing: 3){
-                        Text("Open: \(String(VM.openJobs ?? 0))")
-                        Text("Recently Finished: \(String(VM.recentlyFinishedJobs ?? 0))")
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.jobs.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Jobs")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.jobs){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.job(
-                                        job: datum,
-                                        dataService: dataService
-                                    ), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.black,text: datum.id, iconName: "wrench.adjustable.fill")
-                                        
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedJob = datum
-                                        masterDataManager.selectedCategory = .jobs
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.black,text: datum.id, iconName: "wrench.adjustable.fill")
-                                    })
+                },
+                preview: {
+                    if shouldShowFullPreview {
+                        if VM.customers.isEmpty {
+                            emptyPreviewTile("No Customers", systemImage: "person.slash")
+                        } else {
+                            horizontalPreviewList {
+                                ForEach(VM.customers) { datum in
+                                    let customerName = datum.displayAsCompany
+                                    ? (datum.company ?? "\(datum.firstName) \(datum.lastName)")
+                                    : "\(datum.firstName) \(datum.lastName)"
+
+                                    if UIDevice.isIPhone {
+                                        NavigationLink(
+                                            value: Route.customer(
+                                                customer: datum,
+                                                dataService: dataService
+                                            )
+                                        ) {
+                                            previewTile(
+                                                title: customerName,
+                                                subtitle: datum.billingAddress.streetAddress,
+                                                systemImage: "person.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        Button {
+                                            masterDataManager.selectedCategory = .customers
+                                            masterDataManager.selectedCustomer = datum
+                                        } label: {
+                                            previewTile(
+                                                title: customerName,
+                                                subtitle: datum.billingAddress.streetAddress,
+                                                systemImage: "person.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            )
         }
-    }
-    
-    var shoppingListItems: some View {
-        VStack{
-            HStack{
-                Text("Shopping List")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.shoppingList(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .shoppingList
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
+
+        var equipment: some View {
+            operationsCard(
+                title: "Equipment",
+                subtitle: "Installed equipment, repair needs, and service reminders.",
+                systemImage: "spigot.fill",
+                countText: VM.listOfEquipment.isEmpty ? nil : "\(VM.listOfEquipment.count)",
+                seeMore: {
+                    if UIDevice.isIPhone {
+                        AnyView(
+                            NavigationLink(value: Route.equipmentList(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    } else {
+                        AnyView(
+                            Button {
+                                masterDataManager.selectedCategory = .equipment
+                            } label: {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
                     }
-                    Spacer()
-                }
-                
-                HStack{
-                    VStack(alignment: .leading){
-                        Text("Need to Purchase: 4")
-                        Text("Purchased: 2")
-                        Text("Installed: 0")
+                },
+                stats: {
+                    VStack(spacing: 8) {
+                        statRow(title: "Needs Service", value: "15", systemImage: "wrench.and.screwdriver")
+                        statRow(title: "Needs Repair", value: "2", systemImage: "cross.case")
                     }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.listOfShoppingListItems.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Shopping List Items")
-                        
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.listOfShoppingListItems){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.shoppingListDetail(item: datum, dataService: dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.realYellow,textColor: Color.black,text: datum.name, iconName: "wrench.adjustable.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedShoppingListItem = datum
-                                        masterDataManager.selectedCategory = .shoppingList
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.realYellow,textColor: Color.black,text: datum.name, iconName: "wrench.adjustable.fill")
-                                    })
+                },
+                preview: {
+                    if shouldShowFullPreview {
+                        if VM.listOfEquipment.isEmpty {
+                            emptyPreviewTile("No Equipment", systemImage: "spigot.fill")
+                        } else {
+                            horizontalPreviewList {
+                                ForEach(VM.listOfEquipment) { datum in
+                                    if UIDevice.isIPhone {
+                                        NavigationLink(
+                                            value: Route.equipmentDetailView(
+                                                equipment: datum,
+                                                dataService: dataService
+                                            )
+                                        ) {
+                                            previewTile(
+                                                title: datum.name,
+                                                subtitle: datum.customerName,
+                                                systemImage: "spigot.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        Button {
+                                            masterDataManager.selectedCategory = .equipment
+                                            masterDataManager.selectedEquipment = datum
+                                        } label: {
+                                            previewTile(
+                                                title: datum.name,
+                                                subtitle: datum.customerName,
+                                                systemImage: "spigot.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            )
         }
-    }
-    
-    var repairRequests: some View {
-        VStack{
-            HStack{
-                Text("Repair Requests")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.repairRequestList(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .repairRequest
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
+
+        var jobs: some View {
+            operationsCard(
+                title: "Jobs",
+                subtitle: "Open work orders, estimates, and recently completed jobs.",
+                systemImage: "briefcase",
+                countText: VM.openJobs == nil ? nil : "\(VM.openJobs ?? 0)",
+                seeMore: {
+                    if UIDevice.isIPhone {
+                        AnyView(
+                            NavigationLink(value: Route.jobs(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    } else {
+                        AnyView(
+                            Button {
+                                masterDataManager.selectedCategory = .jobs
+                            } label: {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
                     }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        Text("Open: 8")
-                        Text("In Progress/Scheduled: 3")
-                        Text("Recently Finished: 3")
+                },
+                stats: {
+                    VStack(spacing: 8) {
+                        statRow(title: "Open", value: String(VM.openJobs ?? 0), systemImage: "folder")
+                        statRow(title: "Recently Finished", value: String(VM.recentlyFinishedJobs ?? 0), systemImage: "checkmark.circle")
                     }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.listOfRepairRequests.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Repairs")
-                        
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.listOfRepairRequests){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.repairRequest(
-                                        repairRequest:datum,
-                                        dataService: dataService
-                                    ), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.realYellow,textColor: Color.black,text: datum.customerName, iconName: "wrench.adjustable.fill")
-                                        
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedRepairRequest = datum
-                                        masterDataManager.selectedCategory = .repairRequest
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.realYellow,textColor: Color.black,text: datum.customerName, iconName: "wrench.adjustable.fill")
-                                    })
+                },
+                preview: {
+                    if shouldShowFullPreview {
+                        if VM.jobs.isEmpty {
+                            emptyPreviewTile("No Jobs", systemImage: "briefcase")
+                        } else {
+                            horizontalPreviewList {
+                                ForEach(VM.jobs) { datum in
+                                    if UIDevice.isIPhone {
+                                        NavigationLink(
+                                            value: Route.job(
+                                                job: datum,
+                                                dataService: dataService
+                                            )
+                                        ) {
+                                            previewTile(
+                                                title: datum.internalId.isEmpty ? datum.id : datum.internalId,
+                                                subtitle: datum.customerName,
+                                                systemImage: "wrench.adjustable.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        Button {
+                                            masterDataManager.selectedJob = datum
+                                            masterDataManager.selectedCategory = .jobs
+                                        } label: {
+                                            previewTile(
+                                                title: datum.internalId.isEmpty ? datum.id : datum.internalId,
+                                                subtitle: datum.customerName,
+                                                systemImage: "wrench.adjustable.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            )
         }
-    }
-    
-    var serviceStops: some View {
-        VStack{
-            HStack{
-                Text("Service Stops")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.serviceStops(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
+
+        var repairRequests: some View {
+            operationsCard(
+                title: "Repair Requests",
+                subtitle: "Customer repair requests waiting for review or action.",
+                systemImage: "cross.case",
+                countText: VM.listOfRepairRequests.isEmpty ? nil : "\(VM.listOfRepairRequests.count)",
+                seeMore: {
+                    if UIDevice.isIPhone {
+                        AnyView(
+                            NavigationLink(value: Route.repairRequestList(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    } else {
+                        AnyView(
+                            Button {
+                                masterDataManager.selectedCategory = .repairRequest
+                            } label: {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    }
+                },
+                stats: {
+                    VStack(spacing: 8) {
+                        statRow(title: "Open", value: "8", systemImage: "tray")
+                        statRow(title: "In Progress / Scheduled", value: "3", systemImage: "calendar.badge.clock")
+                        statRow(title: "Recently Finished", value: "3", systemImage: "checkmark.circle")
+                    }
+                },
+                preview: {
+                    if shouldShowFullPreview {
+                        if VM.listOfRepairRequests.isEmpty {
+                            emptyPreviewTile("No Repairs", systemImage: "cross.case")
+                        } else {
+                            horizontalPreviewList {
+                                ForEach(VM.listOfRepairRequests) { datum in
+                                    if UIDevice.isIPhone {
+                                        NavigationLink(
+                                            value: Route.repairRequest(
+                                                repairRequest: datum,
+                                                dataService: dataService
+                                            )
+                                        ) {
+                                            previewTile(
+                                                title: datum.customerName,
+                                                subtitle: datum.description,
+                                                systemImage: "wrench.adjustable.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        Button {
+                                            masterDataManager.selectedRepairRequest = datum
+                                            masterDataManager.selectedCategory = .repairRequest
+                                        } label: {
+                                            previewTile(
+                                                title: datum.customerName,
+                                                subtitle: datum.description,
+                                                systemImage: "wrench.adjustable.fill"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
                         }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .serviceStops
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
+                    }
                 }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.serviceStops.count != 0 {
-                    HStack{
-                        VStack(alignment: .leading){
+            )
+        }
+
+        var serviceStops: some View {
+            operationsCard(
+                title: "Service Stops",
+                subtitle: "Upcoming and current route work.",
+                systemImage: "mappin.and.ellipse",
+                countText: VM.serviceStops.isEmpty ? nil : "\(VM.serviceStops.count)",
+                seeMore: {
+                    if UIDevice.isIPhone {
+                        AnyView(
+                            NavigationLink(value: Route.serviceStops(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    } else {
+                        AnyView(
+                            Button {
+                                masterDataManager.selectedCategory = .serviceStops
+                            } label: {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    }
+                },
+                stats: {
+                    VStack(spacing: 8) {
+                        if VM.typesAndAmount.isEmpty {
+                            statRow(title: "Scheduled", value: "\(VM.serviceStops.count)", systemImage: "calendar")
+                        } else {
                             ForEach(Array(VM.typesAndAmount.keys), id: \.self) { key in
                                 if let amount = VM.typesAndAmount[key] {
-                                    Text("\(key):  \(amount.description)")
+                                    statRow(title: key, value: amount.description, systemImage: "tag")
                                 }
                             }
                         }
-                        Spacer()
                     }
-                    .fontDesign(.monospaced)
+                },
+                preview: {
+                    if shouldShowFullPreview {
+                        if VM.serviceStops.isEmpty {
+                            emptyPreviewTile("No Service Stops", systemImage: "mappin.slash")
+                        } else {
+                            horizontalPreviewList {
+                                ForEach(VM.serviceStops) { datum in
+                                    if UIDevice.isIPhone {
+                                        NavigationLink(
+                                            value: Route.serviceStop(
+                                                serviceStop: datum,
+                                                dataService: dataService
+                                            )
+                                        ) {
+                                            previewTile(
+                                                title: datum.customerName,
+                                                subtitle: shortDate(date: datum.serviceDate),
+                                                systemImage: serviceStopIcon(datum.typeImage)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        Button {
+                                            masterDataManager.selectedCategory = .serviceStops
+                                            masterDataManager.selectedServiceStops = datum
+                                        } label: {
+                                            previewTile(
+                                                title: datum.customerName,
+                                                subtitle: shortDate(date: datum.serviceDate),
+                                                systemImage: serviceStopIcon(datum.typeImage)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    // MARK: - Reusable Card UI
+
+    extension Operations {
+
+        var shouldShowStats: Bool {
+            masterDataManager.mainScreenDisplayType == .fullPreview ||
+            masterDataManager.mainScreenDisplayType == .preview
+        }
+
+        var shouldShowFullPreview: Bool {
+            masterDataManager.mainScreenDisplayType == .fullPreview
+        }
+
+        var seeMoreLabel: some View {
+            Label("See More", systemImage: "arrow.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.poolRed)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Color.poolRed.opacity(0.10), in: Capsule())
+        }
+
+        func operationsCard<Stats: View, Preview: View, SeeMore: View>(
+            title: String,
+            subtitle: String,
+            systemImage: String,
+            countText: String?,
+            @ViewBuilder seeMore: () -> SeeMore,
+            @ViewBuilder stats: () -> Stats,
+            @ViewBuilder preview: () -> Preview
+        ) -> some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: systemImage)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor.opacity(0.12), in: Circle())
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(title)
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                            if let countText {
+                                Text(countText)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(.thinMaterial, in: Capsule())
+                            }
+                        }
+
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    seeMore()
+                }
+
+                if shouldShowStats {
+                    stats()
+                }
+
+                preview()
+            }
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        func statRow(title: String, value: String, systemImage: String) -> some View {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+
+        func horizontalPreviewList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    content()
+                }
+                .padding(.vertical, 2)
+            }
+        }
+
+        func previewTile(
+            title: String,
+            subtitle: String,
+            systemImage: String
+        ) -> some View {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Image(systemName: systemImage)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title.isEmpty ? "-" : title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+            .frame(width: 142, height: 118)
+            .padding(12)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+            )
+        }
+
+        func emptyPreviewTile(_ title: String, systemImage: String) -> some View {
+            HStack {
+                VStack(alignment: .leading, spacing: 10) {
+                    Image(systemName: systemImage)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+            .padding(14)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+
+        func emptyState(
+            title: String,
+            message: String,
+            systemImage: String
+        ) -> some View {
+            VStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(message)
                     .font(.footnote)
-                    .padding(.horizontal,16)
-                    
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.serviceStops){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.serviceStop(serviceStop: datum,
-                                                                            dataService: dataService
-                                                                           ), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.pink,textColor: Color.black,text: datum.customerName, iconName: datum.typeImage)
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCategory = .serviceStops
-                                        masterDataManager.selectedServiceStops = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.pink,textColor: Color.black,text: datum.customerName, iconName: datum.typeImage)
-                                    })
-                                }
-                                
-                            }
-                        }
-                    }
-                } else {
-                    HStack{
-                        SquareLoading(color: Color.gray, footer: Color.clear,textColor: Color.white)
-                        Spacer()
-                    }
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        func sectionHeader(_ title: String, systemImage: String) -> some View {
+            Label(title, systemImage: systemImage)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+
+        var loadingOverlay: some View {
+            ZStack {
+                Color.black.opacity(0.08)
+                    .ignoresSafeArea()
+
+                VStack(spacing: 12) {
+                    ProgressView()
+
+                    Text("Loading operations...")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
+                .padding(22)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
         }
-        .foregroundColor(Color.basicFontText)
-        .fontDesign(.monospaced)
-    }
-    
-    var purchases: some View {
-        VStack{
-            HStack{
-                Text("Purchases")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.purchases(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .purchases
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
+
+        func serviceStopIcon(_ iconName: String) -> String {
+            if iconName.isEmpty {
+                return "mappin.and.ellipse"
             }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        HStack{
-                            if let items = VM.itemsPurchased {
-                                Text("Total Items:  \(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                            if let amount = VM.totalSpent {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                        HStack{
-                            if let items = VM.itemsPurchasedBillable {
-                                Text("Billable Items:  \(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                            if let amount = VM.totalSpentOnBillables {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                        }
-                        HStack{
-                            if let items = VM.itemsPurchasedAndBilled {
-                                Text("Billed:  \(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                            if let amount = VM.totalBilled {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.purchasedItems.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Purchases")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.purchasedItems){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.purchase(
-                                        purchasedItem: datum,
-                                        dataService: dataService
-                                    ), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: datum.name, iconName: "cart.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedPurchases = datum
-                                        masterDataManager.selectedCategory = .purchases
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: datum.name, iconName: "cart.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+
+            return iconName
         }
     }
-    
-    var receipts: some View {
-        VStack{
-            HStack{
-                Text("Receipts")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.receipts(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .receipts
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        HStack{
-                            if let items = VM.itemsPurchased {
-                                Text("Total Items:  \(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                            if let amount = VM.totalSpent {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                        HStack{
-                            if let items = VM.itemsPurchasedBillable {
-                                Text("Billable Items:  \(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                            if let amount = VM.totalSpentOnBillables {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                        }
-                        HStack{
-                            if let items = VM.itemsPurchasedAndBilled {
-                                Text("Billed:  \(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                            if let amount = VM.totalBilled {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.purchasedItems.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Purchases")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.purchasedItems){ datum in
-                                
-                                NavigationLink(value: Route.purchase(
-                                    purchasedItem: datum,
-                                    dataService: dataService
-                                ), label: {
-                                    SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: datum.name, iconName: "cart.fill")
-                                })
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var payRoll: some View {
-        VStack{
-            HStack{
-                Text("Pay Roll // Developer")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.accountsPayableList(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .accountsPayable
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        HStack{
-                            if let items = VM.APOutstandingCount {
-                                Text("Total Outstanding Invoices :  \(String(items))")
-                            }
-                            Spacer()
-                            if let amount = VM.APTotal {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                        HStack{
-                            if let items = VM.APOutstandingLateCount {
-                                Text("Total Outstanding Late :  \(String(items))")
-                            }
-                            Spacer()
-                            if let amount = VM.APTotalOutstandingLate {
-                                Text("\(Double(amount)/100, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.APInvoiceList.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Invoice")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.APInvoiceList){ datum in
-                                let title =  datum.senderName + " $" + String(datum.total/100)
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value:Route.accountsPayableDetail(invoice:datum, dataService:dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolRed,textColor: Color.white,text:title, iconName: "creditcard.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedAccountsPayableInvoice = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolRed,textColor: Color.white,text:title, iconName: "creditcard.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var accountsPayable: some View {
-        VStack{
-            HStack{
-                Text("Accounts Payable")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.accountsPayableList(
-                        dataService: dataService
-                    ), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .accountsPayable
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        HStack{
-                            if let items = VM.APOutstandingCount {
-                                Text("Total Outstanding Invoices :  \(String(items))")
-                            }
-                            Spacer()
-                            if let amount = VM.APTotal {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                        HStack{
-                            if let items = VM.APOutstandingLateCount {
-                                Text("Total Outstanding Late :  \(String(items))")
-                            }
-                            Spacer()
-                            if let amount = VM.APTotalOutstandingLate {
-                                Text("\(Double(amount)/100, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.APInvoiceList.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Invoice")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.APInvoiceList){ datum in
-                                let title =  datum.senderName + " $" + String(datum.total/100)
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value:Route.accountsPayableDetail(invoice:datum, dataService:dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolRed,textColor: Color.white,text:title, iconName: "creditcard.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedAccountsPayableInvoice = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolRed,textColor: Color.white,text:title, iconName: "creditcard.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var accountsReceivable: some View {
-        VStack{
-            HStack{
-                Text("Accounts Receivable")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.accountsReceivableList(dataService: dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .accountsReceivable
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        HStack{
-                            
-                            if let items = VM.AROutstandingCount {
-                                Text("Total Receivable Invoices :  \(String(items))")
-                            }
-                            Spacer()
-                            if let amount = VM.ARTotal {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.ARInvoiceList.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Invoice")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.ARInvoiceList){ datum in
-                                let title =  datum.senderName + " $" + String(datum.total/100)
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value:Route.accountsReceivableDetail(invoice:datum,dataService:dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: title, iconName: "creditcard.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedAccountsReceivableInvoice = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.poolGreen,textColor: Color.white,text: title, iconName: "creditcard.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var venders: some View {
-        VStack{
-            HStack{
-                Text("Vender")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.venders(dataService: dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .vender
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        if let count = VM.venderCount {
-                            HStack{
-                                Text("Venders: \(count)")
-                                Spacer()
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.listOfVenders.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Venders")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.listOfVenders){ datum in
-                                let text:String = datum.name ?? ""
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.vender(vender: datum, dataService: dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.yellow,textColor: Color.white,text: text, iconName: "building.2")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        navigationManager.routes.append(Route.vender(vender: datum, dataService: dataService))
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.yellow,textColor: Color.white,text: text, iconName: "building.2")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var equipment: some View {
-        VStack{
-            HStack{
-                Text("Equipment")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.equipmentList(dataService: dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .equipment
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading){
-                        HStack{
-                            Text("Needs Service: 15")
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Needs Repair: 2")
-                            Spacer()
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.listOfEquipment.count == 0 {
-                    HStack{
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Equipment")
-                        
-                        Spacer()
-                    }
-                    
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.listOfEquipment){ datum in
-                                let text = datum.make + " " + datum.model
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value:Route.equipmentDetailView(equipment: datum, dataService:dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.yellow,textColor: Color.white,text: datum.name,text2: datum.customerName, iconName: "spigot.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCategory = .equipment
-                                        masterDataManager.selectedEquipment = datum
-                                        //                                    navigationManager.routes.append(Route.equipmentDetailView(dataService:dataService))
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.yellow,textColor: Color.white,text: datum.name, iconName: "spigot.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var users: some View {
-        VStack{
-            HStack{
-                Text("Techs")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.users(dataService:dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .users
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                VStack{
-                    HStack{
-                        Text("Total Users:")
-                        if let total = VM.totalUSers {
-                            Text("\(total)")
-                        }
-                        Spacer()
-                    }
-                    ForEach(Array(VM.techsByRoles.keys)){ key in
-                        if let count = VM.techsByRoles[key] {
-                            if count != 0 {
-                                HStack{
-                                    Text("\(key.name): \(count)")
-                                    Spacer()
-                                }
-                            }
-                        }
-                    }
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.companyUsers.count == 0 {
-                    HStack{
-                        
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Users")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.companyUsers){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value:Route.users(dataService:dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.userName, iconName: "person.3.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.companyUser = datum
-                                        navigationManager.routes.append(Route.users(dataService:dataService))
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.userName, iconName: "person.3.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var fleet: some View {
-        VStack{
-            HStack{
-                Text("Fleet")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.fleet(dataService:dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .fleet
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                VStack{
-                    if let count = VM.vehicalCount {
-                        HStack{
-                            Text("Vehicals: \(count)")
-                            Spacer()
-                        }
-                    }
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.listOfVehicals.count == 0 {
-                    HStack{
-                        
-                        SquareEmpty(color: Color.poolRed, footer: Color.clear,textColor: Color.white,text: "No Vehicals")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.listOfVehicals){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value:Route.vehicalDetailView(vehical: datum, dataService:dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.nickName, iconName: "car.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedVehical = datum
-                                        navigationManager.routes.append(Route.vehicalDetailView(vehical:datum,dataService:dataService))
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.nickName, iconName: "car.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var routeSandBox: some View {
-        VStack{
-            HStack{
-                Text("Route Sandbox")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                
-                Spacer()
-            }
-        }
-    }
-    
-    var routeOverView: some View {
-        VStack{
-            HStack{
-                Text("Internal And Extenral Routes")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.companyRouteOverView(dataService:dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .companyRouteOverView
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                
-                
-                VStack{
-                    ForEach(VM.companyUsers){ tech in
-                        HStack{
-                            Text("\(tech.userName)")
-                            Spacer()
-                        }
-                    }
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-        }
-    }
-    var internalRoutes: some View {
-        VStack{
-            HStack{
-                Text("Internal Routes")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.companyRouteOverView(dataService:dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .companyRouteOverView
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                
-                
-                VStack{
-                    ForEach(VM.companyUsers){ tech in
-                        HStack{
-                            Text("\(tech.userName)")
-                            Spacer()
-                        }
-                    }
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-        }
-    }
-    
-    var externalRoutes: some View {
-        VStack{
-            HStack{
-                Text("External Routes")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                Spacer()
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.externalRouteOverView(dataService:dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .externalRoutesOverview
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                VStack{
-                    ForEach(VM.companyUsers){ tech in
-                        HStack{
-                            Text("\(tech.userName)")
-                            Spacer()
-                        }
-                    }
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-        }
-    }
-    
-    var routeBuilder: some View {
-        VStack{
-            HStack{
-                Text("Route Managment")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                
-                Spacer()
-                
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value:Route.routeBuilder(dataService: dataService), label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .routeBuilder
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                VStack{
-                    ForEach( Array(VM.daysAndRoutes.enumerated()), id: \.offset) { index, value in
-                        HStack{
-                            Text("\(value.key): \(value.value)")
-                            Spacer()
-                        }
-                    }
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-        }
-    }
-    
-    var contract: some View {
-        VStack{
-            HStack{
-                Text("Contract")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                
-                Spacer()
-                
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.contracts(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                    
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .contracts
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading,spacing: 3){
-                        HStack{
-                            Text("Open Contracts:")
-                            if let items = VM.contractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Pending Contracts:")
-                            if let items = VM.pendingContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Total: $ 10,350.69")
-                            if let amount = VM.contractTotal {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            Spacer()
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.contractList.count == 0 {
-                    HStack{
-                        
-                        SquareEmpty(color: Color.teal, footer: Color.clear,textColor: Color.black,text: "No Contracts")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.contractList){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.contract(contract: datum, dataService: dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.internalCustomerName, iconName: "car.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCategory = .contracts
-                                        masterDataManager.selectedContract = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.internalCustomerName, iconName: "car.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var sentLaborContract: some View {
-        VStack{
-            HStack{
-                Text("Sent Labor Contract")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                
-                Spacer()
-                
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.laborContracts(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                    
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .sentLaborContracts
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading,spacing: 3){
-                        HStack{
-                            Text("Total Contracts:")
-                            if let items = VM.sentAcceptedLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Sent Open Contracts:")
-                            if let items = VM.sentAcceptedLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Sent Pending Contracts:")
-                            if let items = VM.sentPendingLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Sent Past Contracts:")
-                            if let items = VM.sentPastLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Sum Total: $ 10,350.69")
-                            if let amount = VM.sentLaborContractTotal {
-                                Text("\(amount, format: .currency(code: "USD").precision(.fractionLength(0)))")
-                            }
-                            Spacer()
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview {
-                
-                if VM.laborContractList.count == 0 {
-                    HStack{
-                        
-                        SquareEmpty(color: Color.teal, footer: Color.clear,textColor: Color.black,text: "Labor Contracts")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.laborContractList){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.recurringLaborContractDetailView(contract: datum, dataService: dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCategory = .receivedLaborContracts
-                                        masterDataManager.selectedRecurringLaborContract = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    var receivedLaborContract: some View {
-        VStack{
-            HStack{
-                Text("Received Labor Contract")
-                    .font(.headline)
-                    .fontDesign(.monospaced)
-                    .foregroundColor(Color.basicFontText)
-                    .background(Color.pink)
-                
-                Spacer()
-                
-                
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.laborContracts(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                    
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedCategory = .receivedLaborContracts
-                    }, label: {
-                        HStack{
-                            Text("See More")
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.footnote)
-                        .padding(3)
-                        .foregroundColor(Color.poolRed)
-                    })
-                }
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
-                
-                HStack{
-                    VStack{
-                        Divider()
-                            .frame(width: 200)
-                    }
-                    Spacer()
-                }
-                HStack{
-                    VStack(alignment: .leading,spacing: 3){
-                        HStack{
-                            Text("Total Contracts:")
-                            if let items = VM.receivedLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Sent Open Contracts:")
-                            if let items = VM.receivedAcceptedLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Sent Pending Contracts:")
-                            if let items = VM.receivedPendingLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Sent Past Contracts:")
-                            if let items = VM.receivedPastLaborContractCount {
-                                Text("\(String(format:  "%.0f", items))")
-                            }
-                            Spacer()
-                        }
-                    }
-                    Spacer()
-                }
-                .fontDesign(.monospaced)
-                .font(.footnote)
-                .padding(.horizontal,16)
-            }
-            if masterDataManager.mainScreenDisplayType == .fullPreview{
-                
-                if VM.laborContractList.count == 0 {
-                    HStack{
-                        
-                        SquareEmpty(color: Color.teal, footer: Color.clear,textColor: Color.black,text: "Labor Contracts")
-                        Spacer()
-                    }
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false){
-                        HStack{
-                            ForEach(VM.laborContractList){ datum in
-                                if UIDevice.isIPhone {
-                                    NavigationLink(value: Route.recurringLaborContractDetailView(contract: datum, dataService: dataService), label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
-                                    })
-                                } else {
-                                    Button(action: {
-                                        masterDataManager.selectedCategory = .receivedLaborContracts
-                                        masterDataManager.selectedRecurringLaborContract = datum
-                                    }, label: {
-                                        SquareSnapShot(color: Color.gray, footer: Color.blue,textColor: Color.white,text: datum.senderName, iconName: "car.fill")
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    
-}

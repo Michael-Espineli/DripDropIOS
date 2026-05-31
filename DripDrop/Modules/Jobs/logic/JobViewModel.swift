@@ -137,7 +137,7 @@ final class JobViewModel:ObservableObject{
             workOrder: Job(
                 id: "comp_wo_" + UUID().uuidString,
                 internalId: "J" + String(workOrderCount),
-                type: workOrderTemplateType.type ?? "..Loading",
+                type: "..Loading",
                 dateCreated: workOrder.dateCreated,
                 description: workOrder.description,
                 operationStatus: workOrder.operationStatus,
@@ -201,7 +201,7 @@ final class JobViewModel:ObservableObject{
         try await dataService.uploadWorkOrder(companyId: companyId,
                                               workOrder: Job(id: jobId, 
                                                              internalId: "J",
-                                                             type: jobTemplate.type ?? "..Loading",
+                                                             type: "..Loading",
                                                              dateCreated: dateCreated,
                                                              description: description,
                                                              operationStatus: operationStatus,

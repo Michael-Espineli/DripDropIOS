@@ -1,121 +1,98 @@
 //
-//  AddNewShoppingListItemToJob.swift
+//  AddNewShoppingListItemToJobViewModel.swift
 //  DripDrop
 //
 //  Created by Michael Espineli on 11/23/24.
 //
 //
 
-
  import SwiftUI
+
 @MainActor
-final class AddNewShoppingListItemToJobViewModel:ObservableObject{
-    private var dataService:any ProductionDataServiceProtocol
-    init(dataService:any ProductionDataServiceProtocol){
+final class AddNewShoppingListItemToJobViewModel: ObservableObject {
+    private var dataService: any ProductionDataServiceProtocol
+
+    init(dataService: any ProductionDataServiceProtocol) {
         self.dataService = dataService
     }
-    
-    @Published  var job: Job? = nil
+
+    @Published var job: Job? = nil
     @Published private(set) var dataBaseItems: [DataBaseItem] = []
     @Published private(set) var dataBaseItemsFiltered: [DataBaseItem] = []
 
-    func onLoad(companyId:String,jobId:String) async throws {
-//        self.job = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
-//        self.dataBaseItems = try await DatabaseManager.shared.getAllDataBaseItems(companyId: companyId)
+    func onLoad(companyId: String, jobId: String) async throws {
+        // Keep this light for now. The draft form currently owns item selection.
+        // If needed later:
+        // self.job = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
+        // self.dataBaseItems = try await dataService.getAllDataBaseItems(companyId: companyId)
     }
-    func addNewShoppingListItemWithValidation(
-        companyId:String,
-        datePurchased:Date?,
-        category:ShoppingListCategory,
-        subCategory:ShoppingListSubCategory,
-        purchaserId:String,
-        itemId:String?,
-        quantiy:String?,
-        description:String,
-        jobId:String?,
-        customerId:String?,
-        customerName:String?,
-        purchaserName:String?,
-        name:String
-    ) async throws{
 
-        let id = UUID().uuidString
-        //, Purchased, Installed
-        let shoppingListItem = ShoppingListItem(
-            id: id,
-            category: category,
-            subCategory: subCategory,
-            status: .needToPurchase,
+    func saveShoppingListItem(
+        companyId: String,
+        draft: ShoppingListItemDraft,
+        purchaserId: String,
+        purchaserName: String,
+        job: Job
+    ) async throws {
+        let item = buildShoppingListItem(
+            draft: draft,
             purchaserId: purchaserId,
-            purchaserName: purchaserName ?? "",
-            genericItemId: "",
-            name: name,
-            description: description,
-            datePurchased: datePurchased,
-            quantity: quantiy,
-            jobId: jobId,
-            customerId: customerId ?? "",
-            customerName: customerName ?? "",
-            dbItemId: itemId,
-            invoiced: true
-
+            purchaserName: purchaserName,
+            jobId: job.id,
+            customerId: job.customerId,
+            customerName: job.customerName,
+            serviceLocationId: job.serviceLocationId,
+            serviceLocationName: nil
         )
-        try await dataService.addNewShoppingListItem(companyId: companyId, shoppingListItem: shoppingListItem)
-    }
-    func addNewShoppingListItemToList(
-        companyId:String,
-        datePurchased:Date?,
-        category:ShoppingListCategory,
-        subCategory:ShoppingListSubCategory,
-        purchaserId:String,
-        itemId:String?,
-        quantiy:String?,
-        description:String,
-        jobId:String?,
-        customerId:String?,
-        customerName:String?,
-        purchaserName:String?,
-        name:String
-    ) async throws -> ShoppingListItem {
 
-        let id = UUID().uuidString
-        //, Purchased, Installed
-        let shoppingListItem = ShoppingListItem(
-            id: id,
-            category: category,
-            subCategory: subCategory,
-            status: .needToPurchase,
+        try await dataService.addNewShoppingListItem(
+            companyId: companyId,
+            shoppingListItem: item
+        )
+    }
+
+    func buildShoppingListItem(
+        draft: ShoppingListItemDraft,
+        purchaserId: String,
+        purchaserName: String,
+        jobId: String?,
+        customerId: String?,
+        customerName: String?,
+        serviceLocationId: String? = nil,
+        serviceLocationName: String? = nil
+    ) -> ShoppingListItem {
+        let cleanJobId = jobId ?? ""
+        let cleanCustomerId = customerId ?? ""
+        let cleanServiceLocationId = serviceLocationId ?? ""
+
+        let prepKeys = ShoppingPrepKeyBuilder.keysForJobMaterial(
+            jobId: cleanJobId,
+            customerId: cleanCustomerId,
+            serviceLocationId: cleanServiceLocationId
+        )
+
+        return draft.makeJobShoppingListItem(
             purchaserId: purchaserId,
-            purchaserName: purchaserName ?? "",
-            genericItemId: "",
-            name: name,
-            description: description,
-            datePurchased: datePurchased,
-            quantity: quantiy,
+            purchaserName: purchaserName,
             jobId: jobId,
-            customerId: customerId ?? "",
-            customerName: customerName ?? "",
-            dbItemId: itemId,
-            invoiced: true
+            customerId: customerId,
+            customerName: customerName,
+            serviceLocationId: serviceLocationId,
+            serviceLocationName: serviceLocationName,
+            prepKeys: prepKeys
         )
-        return shoppingListItem
     }
-    func filterDataBaseList(filterTerm:String,items:[DataBaseItem]) {
-        //very facncy Search Bar
-        
-        var dataBaseItemsFiltered:[DataBaseItem] = []
+
+    func filterDataBaseList(filterTerm: String, items: [DataBaseItem]) {
+        var dataBaseItemsFiltered: [DataBaseItem] = []
+
         for item in items {
             let rateString = String(item.rate)
 
-            if item.sku.lowercased().contains(
-                filterTerm.lowercased()
-            ) || item.name.lowercased().contains(
-                filterTerm.lowercased()
-            ) || rateString.lowercased().contains(
-                filterTerm.lowercased()
-            ) || item.description.lowercased().contains(
-                filterTerm.lowercased()
-            ) {
+            if item.sku.lowercased().contains(filterTerm.lowercased()) ||
+                item.name.lowercased().contains(filterTerm.lowercased()) ||
+                rateString.lowercased().contains(filterTerm.lowercased()) ||
+                item.description.lowercased().contains(filterTerm.lowercased()) {
                 dataBaseItemsFiltered.append(item)
             }
         }
@@ -123,207 +100,194 @@ final class AddNewShoppingListItemToJobViewModel:ObservableObject{
         self.dataBaseItemsFiltered = dataBaseItemsFiltered
     }
 }
- struct AddNewShoppingListItemToJob: View {
+extension ShoppingListItemDraft {
+    func makeJobShoppingListItem(
+        purchaserId: String,
+        purchaserName: String,
+        jobId: String?,
+        customerId: String?,
+        customerName: String?,
+        serviceLocationId: String?,
+        serviceLocationName: String?,
+        prepKeys: [String]
+    ) -> ShoppingListItem {
+        let quantityValue = Double(quantity) ?? 0
 
-     init(dataService:any ProductionDataServiceProtocol,job:Job){
-         _VM = StateObject(wrappedValue: AddNewShoppingListItemToJobViewModel(dataService: dataService))
-         _job = State(wrappedValue: job)
-     }
-     @Environment(\.dismiss) private var dismiss
-     @EnvironmentObject var masterDataManager : MasterDataManager
-     @EnvironmentObject var dataService : ProductionDataService
-     
-     @StateObject var VM : AddNewShoppingListItemToJobViewModel
+        let plannedTotalCostCents: Int? = {
+            guard let plannedUnitCostCents else { return nil }
+            return Int((Double(plannedUnitCostCents) * quantityValue).rounded())
+        }()
 
-     @State var job:Job
+        let plannedTotalPriceCents: Int? = {
+            guard let plannedUnitPriceCents else { return nil }
+            return Int((Double(plannedUnitPriceCents) * quantityValue).rounded())
+        }()
 
-     @State var description:String = ""
-     @State var type:ShoppingListCategory = .job
-     @State var itemType:ShoppingListSubCategory = .dataBase
-     @State var quantity:String = "1"
-     
-     @State var search:String = ""
-     @State var name:String = ""
-     
-     @State var jobSearch:String = ""
-     
-     @State var selectCustomer:Bool = false
-     @State var addNewItem:Bool = false
-     @State var addJob:Bool = false
-     @State var addUser:Bool = false
+        let status: ShoppingListStatus = .needToPurchase
 
-     @State var dataBaseItem:DataBaseItem = DataBaseItem(id: "", name: "", rate: 0, storeName: "", venderId: "", category: .chems, subCategory: .bushing, description: "", dateUpdated: Date(), sku: "", billable: false, color: "", size: "",UOM:.ft)
-     @State var customer:Customer = Customer(
-         id: "",
-         firstName: "",
-         lastName: "",
-         email: "",
-         billingAddress: Address(
-             streetAddress: "",
-             city: "",
-             state: "",
-             zip: "",
-             latitude: 0,
-             longitude: 0
-         ),
-         active: true,
-         displayAsCompany: true,
-         hireDate: Date(),
-         billingNotes: "",
-         linkedInviteId: UUID().uuidString
-     )
+        return ShoppingListItem(
+            id: "comp_shop_" + UUID().uuidString,
+            category: .job,
+            subCategory: subCategory,
+            status: status,
+            purchaserId: purchaserId,
+            purchaserName: purchaserName,
+            genericItemId: "",
+            name: "",
+            description: description,
+            datePurchased: nil,
+            quantity: quantity,
 
-     @State var companyUser:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .employee)
-     var body: some View {
-         ZStack {
-             Color.listColor.ignoresSafeArea()
+            jobId: jobId,
 
-             ScrollView(showsIndicators: false) {
-                 VStack(alignment: .leading, spacing: 12) {
+            customerId: customerId ?? "",
+            customerName: customerName ?? "",
 
-                     // Header card
-                     HStack {
-                         VStack(alignment: .leading, spacing: 4) {
-                             Text("Add Item To Job")
-                                 .font(.title3.weight(.semibold))
-                             Text(job.internalId)
-                                 .font(.caption)
-                                 .foregroundStyle(.secondary)
-                         }
-                         Spacer()
-                         Text(fullDate(date: Date()))
-                             .font(.caption.weight(.semibold))
-                             .foregroundStyle(.secondary)
-                             .padding(.vertical, 6)
-                             .padding(.horizontal, 10)
-                             .background(Capsule().fill(Color.primary.opacity(0.08)))
-                     }
-                     .ddCard()
+            userId: nil,
+            userName: nil,
 
-                     // Main form card
-                     form
-                         .ddCard()
+            serviceStopId: nil,
+            serviceStopInternalId: nil,
+            serviceLocationId: serviceLocationId,
+            serviceLocationName: serviceLocationName,
+            scheduledDate: nil,
 
-                     // spacer so bottom bar doesn’t cover content
-                     Color.clear.frame(height: 80)
-                 }
-                 .padding(12)
-             }
+            prepKeys: prepKeys,
+            needsAction: status.needsShoppingAction,
+            actionDate: Date(),
+            assignedTechIds: [],
 
-             VStack {
-                 Spacer()
-                 submitButton
-             }
-         }
-         .padding(8)
-         .navigationTitle("Add Item To Job")
-         .toolbar{
-             ToolbarItem{
-                 submitButton
-             }
-         }
-         .task {
-             if let company = masterDataManager.currentCompany {
-                 do {
-                     try await VM.onLoad(companyId: company.id, jobId: job.id)
-                 } catch {
-                     print("Error - [AddNewShoppingListItemToJob]")
-                     print(error)
-                 }
-             }
-             if let selectedCustomer = masterDataManager.selectedCustomer{
-                 customer = selectedCustomer
-             }
-         }
-         .onChange(of: dataBaseItem, perform: { item in
-             if item.id != "" {
-                 name = item.name
-             }
-             
-         })
-         .onChange(of: search, perform: { term in
-             if term != "" {
-                 VM.filterDataBaseList(filterTerm: term, items: VM.dataBaseItems)
-                 if VM.dataBaseItemsFiltered.count != 0 {
-                     dataBaseItem = VM.dataBaseItemsFiltered.first!
-                 }
-             }
-         })
-     }
- }
+            dbItemId: "",
+            purchasedItem: nil,
+            invoiced: false,
 
- extension AddNewShoppingListItemToJob{
-     var form: some View {
-         VStack(alignment: .leading, spacing: 12) {
+            plannedUnitCostCents: plannedUnitCostCents,
+            plannedUnitPriceCents: plannedUnitPriceCents,
+            plannedTotalCostCents: plannedTotalCostCents,
+            plannedTotalPriceCents: plannedTotalPriceCents
+        )
+    }
+}
+struct AddNewShoppingListItemToJob: View {
 
-             Text("Item Details")
-                 .font(.headline.weight(.semibold))
+    init(dataService: any ProductionDataServiceProtocol, job: Job) {
+        _VM = StateObject(wrappedValue: AddNewShoppingListItemToJobViewModel(dataService: dataService))
+        _job = State(wrappedValue: job)
+    }
 
-             CreateShoppingListItemView(
-                 itemType: $itemType,
-                 name: $name,
-                 quantity: $quantity,
-                 addNewItem: $addNewItem,
-                 dataBaseItem: $dataBaseItem
-             )
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    @EnvironmentObject var dataService: ProductionDataService
 
-             // If you plan to use `description` later, this keeps style consistent without changing behavior
-             // (Remove if you intentionally don’t want it on this screen.)
-             if description != "" {
-                 Divider().opacity(0.15)
-                 Text("Notes")
-                     .font(.subheadline.weight(.semibold))
-                     .foregroundStyle(.secondary)
-                 Text(description)
-                     .font(.subheadline)
-                     .foregroundStyle(.secondary)
-             }
-         }
-     }
+    @StateObject var VM: AddNewShoppingListItemToJobViewModel
 
+    @State var job: Job
+    @State private var draft: ShoppingListItemDraft = ShoppingListItemDraft()
 
-     var submitButton: some View {
-         HStack {
-             Button(action: {
-                 Task {
-                     if let company = masterDataManager.currentCompany,
-                        let user = masterDataManager.user {
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
 
-                         do {
-                             let purchaserName = (user.firstName) + " " + (user.lastName)
-                             try await VM.addNewShoppingListItemWithValidation(
-                                 companyId: company.id,
-                                 datePurchased: Date(),
-                                 category: type,
-                                 subCategory: itemType,
-                                 purchaserId: user.id,
-                                 itemId: dataBaseItem.id,
-                                 quantiy: quantity,
-                                 description: description,
-                                 jobId: job.id,
-                                 customerId: job.customerId,
-                                 customerName: job.customerName,
-                                 purchaserName: purchaserName,
-                                 name: name
-                             )
-                             print("Sucessfully Added")
-                             dismiss()
-                         } catch {
-                             print("Error Uploading New shopping List Item")
-                             print(error)
-                         }
-                     }
-                 }
-             }, label: {
-                 Text("Submit")
-                     .frame(maxWidth: .infinity)
-                     .modifier(SubmitButtonModifier())
-             })
-         }
-         .ddBottomBar()
-     }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    headerCard
 
- }
+                    ShoppingListItemDraftForm(
+                        draft: $draft,
+                        title: "Item Details",
+                        showCategoryPicker: false,
+                        showDescription: true
+                    )
+                    .ddCard()
+
+                    Color.clear.frame(height: 88)
+                }
+                .padding(12)
+            }
+        }
+        .navigationTitle("Add Item To Job")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if let company = masterDataManager.currentCompany {
+                do {
+                    try await VM.onLoad(companyId: company.id, jobId: job.id)
+                } catch {
+                    print("Error - [AddNewShoppingListItemToJob]")
+                    print(error)
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            submitButton
+        }
+    }
+
+    private var headerCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Add Item To Job")
+                    .font(.title3.weight(.semibold))
+
+                Text(job.internalId)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(fullDate(date: Date()))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Capsule().fill(Color.primary.opacity(0.08)))
+        }
+        .ddCard()
+    }
+
+    private var submitButton: some View {
+        HStack {
+            Button {
+                Task {
+                    await submit()
+                }
+            } label: {
+                Text("Submit")
+                    .frame(maxWidth: .infinity)
+                    .modifier(SubmitButtonModifier())
+            }
+            .disabled(!draft.canSubmit)
+            .opacity(draft.canSubmit ? 1.0 : 0.55)
+        }
+        .ddBottomBar()
+    }
+
+    private func submit() async {
+        guard let company = masterDataManager.currentCompany,
+              let user = masterDataManager.user else {
+            return
+        }
+
+        do {
+            let purchaserName = "\(user.firstName) \(user.lastName)"
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            try await VM.saveShoppingListItem(
+                companyId: company.id,
+                draft: draft,
+                purchaserId: user.id,
+                purchaserName: purchaserName,
+                job: job
+            )
+
+            print("Successfully Added")
+            dismiss()
+        } catch {
+            print("Error Uploading New shopping List Item")
+            print(error)
+        }
+    }
+}
 
 private extension View {
     func ddCard() -> some View {

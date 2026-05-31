@@ -95,9 +95,11 @@ final class ActiveRouteViewModel:ObservableObject{
                                                  vehicalId: ""
                          )
                          
-                         try await dataService.uploadRoute(companyId: companyId,
-                                                                   activeRoute: route)
-                         finalListOfActiveRoutes.append(route)
+                         let syncedRoute = try await dataService.uploadRoute(
+                            companyId: companyId,
+                            activeRoute: route
+                         )
+                         finalListOfActiveRoutes.append(syncedRoute)
                          self.serviceStopList = serviceStopList
                          self.totalStops = serviceStopList.count
                          self.finishedStops = finishedCount
@@ -201,9 +203,11 @@ final class ActiveRouteViewModel:ObservableObject{
                                         vehicalId: ""
                 )
                 
-                try await dataService.uploadRoute(companyId: companyId,
-                                                          activeRoute: route)
-                self.activeRoute = route
+                let syncedRoute = try await dataService.uploadRoute(
+                    companyId: companyId,
+                    activeRoute: route
+                )
+                self.activeRoute = syncedRoute
                 self.serviceStopList = serviceStopList
                 self.totalStops = serviceStopList.count
                 self.finishedStops = finishedCount
@@ -295,19 +299,21 @@ final class ActiveRouteViewModel:ObservableObject{
                                                 durationMin: duration,
                                                 distanceMiles: 69,
                                                 status: .didNotStart,
-                                                totalStops: serviceStopList.count,
+                                                totalStops: serviceStopListFromToday.count,
                                                 finishedStops:finishedCount,
                                                 vehicalId: ""
                         )
                         do {
-                            try await dataService.uploadRoute(companyId: companyId,
-                                                                      activeRoute: route)
+                            let syncedRoute = try await dataService.uploadRoute(
+                                companyId: companyId,
+                                activeRoute: route
+                            )
+                            self.activeRoute = syncedRoute
                         } catch {
                             throw MobileDisplayError.failedToUpload
                         }
-                        self.activeRoute = route
                         self.serviceStopList = serviceStopListFromToday
-                        self.totalStops = serviceStopList.count
+                        self.totalStops = serviceStopListFromToday.count
                         self.finishedStops = finishedCount
                         self.routeToday = true
                         
@@ -409,19 +415,21 @@ final class ActiveRouteViewModel:ObservableObject{
                                                 durationMin: duration,
                                                 distanceMiles: 69,
                                                 status: .didNotStart,
-                                                totalStops: serviceStopList.count,
+                                                totalStops: serviceStopListFromToday.count,
                                                 finishedStops:finishedCount,
                                                 vehicalId: ""
                         )
                         do {
-                            try await dataService.uploadRoute(companyId: companyId,
-                                                                      activeRoute: route)
+                            let syncedRoute = try await dataService.uploadRoute(
+                                companyId: companyId,
+                                activeRoute: route
+                            )
+                            self.activeRoute = syncedRoute
                         } catch {
                             throw MobileDisplayError.failedToUpload
                         }
-                        self.activeRoute = route
                         self.serviceStopList = serviceStopListFromToday
-                        self.totalStops = serviceStopList.count
+                        self.totalStops = serviceStopListFromToday.count
                         self.finishedStops = finishedCount
                         self.routeToday = true
                         

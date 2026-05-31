@@ -21,13 +21,7 @@ final class NewRouteViewModel:ObservableObject{
     // View Based Variables
     @Published var listOfRecurringStops:[RecurringServiceStop] = []
     
-    @Published var jobType:JobTemplate = JobTemplate(id: "",
-                                                 name: "Job Template",
-                                                 type: "",
-                                                 typeImage: "",
-                                                 dateCreated: Date(),
-                                                 rate: "",
-                                                 color: "")
+    @Published var jobType:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     
     @Published var customer:Customer = Customer(
         id: "",
@@ -376,7 +370,7 @@ final class NewRouteViewModel:ObservableObject{
                         internalId: "RSS" + String(rssCount),
                         type: job.name,
                         typeId: job.id,
-                        typeImage: job.typeImage ?? "bubbles.and.sparkles.fill",
+                        typeImage: "bubbles.and.sparkles.fill",
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,
@@ -436,7 +430,7 @@ final class NewRouteViewModel:ObservableObject{
                                                          internalId: "", //DEVELOPER
                                                          type: jobType.name,
                                                          typeId: jobType.id,
-                                                         typeImage: jobType.typeImage ?? "gear",
+                                                         typeImage: "gear",
                                                          customerName: location.customerName,
                                                          customerId: location.customerId,
                                                          address: location.address,

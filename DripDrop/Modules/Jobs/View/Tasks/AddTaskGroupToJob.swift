@@ -22,14 +22,8 @@ final class AddTaskGroupToJobViewModel:ObservableObject{
     @Published var selectedJobTasks : [JobTaskGroupItem] = []
 
     func onLoad(commpanyId:String) async throws {
-        self.dataTaskGroups = [
-            JobTaskGroup(
-                id: UUID().uuidString,
-                name: "Filter Cleaning",
-                description: "The Tasks involded in cleaning a filter from start to finish",
-                numberOfTasks: 5
-            )
-        ]
+        
+        self.dataTaskGroups = []
         self.taskGroups = dataTaskGroups
     }
     func changeOfSelectedTaskGroup(commpanyId:String) async throws {

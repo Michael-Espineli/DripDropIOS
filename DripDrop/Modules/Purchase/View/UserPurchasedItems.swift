@@ -31,7 +31,7 @@ struct UserPurchasedItems: View{
     @State private var sortOrder = [KeyPathComparator(\PurchasedItem.invoiceNum, order: .reverse)]
     @State private var serviceStopDetail: PurchasedItem? = nil
     
-    @State var workOrderTemplate:JobTemplate = JobTemplate(id: "", name: "sum",type: "all")
+    @State var workOrderTemplate:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     
     @State var startViewingDate: Date = Calendar.current.date(byAdding: .day, value: -200, to: Date())!
     

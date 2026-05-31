@@ -83,10 +83,7 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
         status: .active,
         workerType: .employee
     )
-    @Published var selectedJobTemplate: JobTemplate = JobTemplate(
-        id: "",
-        name: ""
-    )
+    @Published var selectedJobTemplate: JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @Published var selectedLocation:ServiceLocation = ServiceLocation(
         id: "",
         nickName: "Location",
@@ -197,7 +194,7 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
                                                          internalId: "", //Developer Maybe
                                                          type: selectedJobTemplate.name,
                                                          typeId: selectedJobTemplate.id,
-                                                         typeImage: selectedJobTemplate.typeImage ?? "gear",
+                                                         typeImage: "gear",
                                                          customerName: selectedLocation.customerName,
                                                          customerId: selectedLocation.customerId,
                                                          address: selectedLocation.address,

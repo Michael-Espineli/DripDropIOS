@@ -81,6 +81,7 @@ enum Route {
         jobPost:JobPost
 
     )
+    case technicianWorkCenter(dataService:any ProductionDataServiceProtocol,companyUser: CompanyUser)
     case feed(dataService:any ProductionDataServiceProtocol)//Are these the Same
     case chats(dataService:any ProductionDataServiceProtocol)//Are these the Same
     
@@ -328,6 +329,8 @@ enum Route {
     case manageTermsTemplates(
         dataService:any ProductionDataServiceProtocol
     )
+    case payRoll(dataService:any ProductionDataServiceProtocol)
+    case payRollSettings(dataService:any ProductionDataServiceProtocol)
 }
 
 extension Route:View {
@@ -386,7 +389,6 @@ extension Route:View {
         case .allTechRouteOverview(route: let route, dataService:let dataService):
             UserRouteDetailViewAll(dataService:dataService, activeRoute: route)
         case .dailyDisplayStop(dataService: let dataService,serviceStop: let stop):
-//            ServiceStopDetailView(dataService:dataService, serviceStop: stop)
             ServiceStopDetailView2(dataService:dataService, serviceStopId: stop.id)
         case .reports(dataService: let dataService):
             ReportDetailView(dataService: dataService)
@@ -510,14 +512,14 @@ extension Route:View {
             PersonalAlertView(dataService: dataService)
             
         case .jobTemplate(jobTemplate: let jobTemplate, dataService: let dataService):
-            JobTemplateDetailView(template: jobTemplate)
+            JobTemplateDetailView(template: jobTemplate, dataService: dataService)
             
         case .companyAlerts(dataService: let dataService):
             CompanyAlerts(dataService: dataService)
             
         case .companyRouteOverView(dataService: let dataService):
-            AllCompanyRegularRoutes(dataService: dataService)
-            
+//            AllCompanyRegularRoutes(dataService: dataService) // Maybe remove View Entierly
+            CompanyActiveRouteOverviewView(dataService: dataService)
         case .internalRouteOverView(dataService: let dataService):
             RouteManagmentView(dataService: dataService)
             
@@ -642,6 +644,17 @@ extension Route:View {
             TermsTemplateList(dataService: dataService)
         case .termsTemplateDetailView(dataService: let dataService, termsTemplate: let termsTemplate):
             TermsTemplateDetailView(dataService: dataService, termsTemplateId: termsTemplate.id)
+        case .payRoll(dataService: let dataService):
+            CompanyPayrollAdminHomeView(dataService: dataService)
+        case .payRollSettings(dataService: let dataService):
+            CompanyPaySettingsView(
+                dataService: dataService
+            )
+        case .technicianWorkCenter(dataService: let dataService, companyUser: let companyUser):
+            TechnicianWorkCenterView(
+                companyUser: companyUser,
+                dataService: dataService
+            )
         }
     }
 }

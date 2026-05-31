@@ -2,6 +2,9 @@
 //  SaveJobAsTemplateSheet.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
+
 
 import SwiftUI
 
@@ -204,21 +207,25 @@ struct SaveJobAsTemplateSheet: View {
         guard canSave else {
             alertMessage = "Please enter a template name."
             showAlert = true
+            print("  [SaveJobAsTemplateSheet][save] \(alertMessage)")
             return
         }
 
         guard let userId = masterDataManager.user?.id else {
             alertMessage = "Missing user."
             showAlert = true
+            print("  [SaveJobAsTemplateSheet][save] \(alertMessage)")
             return
         }
 
         isSaving = true
         defer { isSaving = false }
-
+        
+    print("  [SaveJobAsTemplateSheet][save] 1")
         do {
             let service = JobTemplateWorkflowService(dataService: dataService)
-
+            
+        print("  [SaveJobAsTemplateSheet][save] 2")
             _ = try await service.saveJobAsTemplate(
                 companyId: companyId,
                 sourceJob: job,
@@ -228,7 +235,11 @@ struct SaveJobAsTemplateSheet: View {
                 templateName: templateName.trimmingCharacters(in: .whitespacesAndNewlines),
                 createdByUserId: userId
             )
+            print("  [SaveJobAsTemplateSheet][save] 3")
 
+                alertMessage = "Successfully Added"
+                showAlert = true
+            print("  [SaveJobAsTemplateSheet][save] \(alertMessage)")
             dismiss()
         } catch {
             alertMessage = "Could not save template. \(error.localizedDescription)"

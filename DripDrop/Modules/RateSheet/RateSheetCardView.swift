@@ -59,6 +59,6 @@ struct RateSheetCardView: View {
 
 struct RateSheetCardView_Previews: PreviewProvider {
     static var previews: some View {
-        RateSheetCardView(rateSheets: [], jobTemplate: JobTemplate(id: "", name: ""))
+        RateSheetCardView(rateSheets: [], jobTemplate: JobTemplate(companyId: "", name: "", createdByUserId: ""))
     }
 }

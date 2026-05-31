@@ -2,13 +2,18 @@
 //  JobDashboardSummary.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
+
 
 import Foundation
 
 struct JobDashboardSummary: Hashable {
     var jobRateCents: Int
 
-    var plannedLaborCents: Int
+    var plannedTaskLaborCents: Int
+    var plannedServiceStopLaborCents: Int
+    
     var actualPayrollCents: Int
 
     var plannedMaterialCostCents: Int
@@ -22,9 +27,14 @@ struct JobDashboardSummary: Hashable {
 
     var openOfferCount: Int
     var acceptedOfferCount: Int
+    var acceptedOffersReadyToScheduleCount: Int
 
     var payrollNeedsReviewCount: Int
-
+    
+    var plannedLaborCents: Int {
+        plannedTaskLaborCents + plannedServiceStopLaborCents
+    }
+    
     var plannedTotalCostCents: Int {
         plannedLaborCents + plannedMaterialCostCents
     }

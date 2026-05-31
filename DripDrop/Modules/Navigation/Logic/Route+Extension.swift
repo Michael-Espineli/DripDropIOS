@@ -14,10 +14,8 @@ extension Route {
             return "Jobs"
         case .billingJobs:
             return "Billing Jobs"
-
         case .employeeMainDailyDisplayView:
             return "Employee Dashboard"
-            
         case .operation:
             return "Operation"
         case .managementTables:
@@ -285,6 +283,12 @@ extension Route {
             return "Role Detail View"
         case .termsTemplateDetailView:
             return "Terms Template Detail"
+        case .payRoll:
+            return "Pay Roll"
+        case .payRollSettings:
+            return "Pay Roll Settings"
+        case .technicianWorkCenter:
+            return "Technician Work Center"
         }
     }
 }

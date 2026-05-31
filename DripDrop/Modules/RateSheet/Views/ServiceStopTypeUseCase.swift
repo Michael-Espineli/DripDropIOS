@@ -6,11 +6,6 @@
 //
 
 
-//
-//  ServiceStopTypeUseCase.swift
-//  DripDrop
-//
-
 import Foundation
 
 enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {

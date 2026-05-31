@@ -80,13 +80,7 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
         isActive: true
     )
     @Published var techEntity:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active, workerType: .employee)
-    @Published var jobType:JobTemplate = JobTemplate(id: "",
-                                                 name: "Job Template",
-                                                 type: "",
-                                                 typeImage: "",
-                                                 dateCreated: Date(),
-                                                 rate: "",
-                                                 color: "")
+    @Published var jobType:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     //Data Service Provided
     @Published private(set) var customers: [Customer] = []
     @Published private(set) var displayCustomers: [Customer] = []
@@ -182,7 +176,7 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
             return
         }
         let jobName = jobType.name
-        let jobImage = jobType.typeImage
+        let jobImage = "gear"
         
         if customer.id == "" || customer.firstName == "" ||  customer.lastName == ""{
             self.alertMessage = "No Customer Selected"

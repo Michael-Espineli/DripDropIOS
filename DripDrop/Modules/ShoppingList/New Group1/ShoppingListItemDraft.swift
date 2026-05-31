@@ -2,6 +2,10 @@
 //  ShoppingListItemDraft.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
+
+
 
 import Foundation
 
@@ -86,8 +90,55 @@ struct ShoppingListItemDraft: Hashable {
             jobId: jobId,
             customerId: customerId ?? "",
             customerName: customerName ?? "",
+            userId: purchaserId,
+            userName: purchaserName,
             dbItemId: selectedDataBaseItemId,
-            invoiced: true
+            invoiced: true,
+            plannedUnitCostCents: plannedUnitCostCents,
+            plannedUnitPriceCents: plannedUnitPriceCents,
+            plannedTotalCostCents: plannedTotalCostCents,
+            plannedTotalPriceCents: plannedTotalPriceCents,
         )
+    }
+    var quantityDouble: Double {
+        Double(quantity) ?? 0
+    }
+
+    var plannedUnitCostCents: Int? {
+        guard subCategory == .dataBase,
+              !selectedDataBaseItem.id.isEmpty else {
+            return nil
+        }
+
+        return Int(selectedDataBaseItem.rate.rounded())
+    }
+
+    var plannedUnitPriceCents: Int? {
+        guard subCategory == .dataBase,
+              !selectedDataBaseItem.id.isEmpty else {
+            return nil
+        }
+
+        if let sellPrice = selectedDataBaseItem.sellPrice {
+            return Int(sellPrice.rounded())
+        }
+
+        return Int(selectedDataBaseItem.rate.rounded())
+    }
+
+    var plannedTotalCostCents: Int? {
+        guard let plannedUnitCostCents else {
+            return nil
+        }
+
+        return Int((Double(plannedUnitCostCents) * quantityDouble).rounded())
+    }
+
+    var plannedTotalPriceCents: Int? {
+        guard let plannedUnitPriceCents else {
+            return nil
+        }
+
+        return Int((Double(plannedUnitPriceCents) * quantityDouble).rounded())
     }
 }

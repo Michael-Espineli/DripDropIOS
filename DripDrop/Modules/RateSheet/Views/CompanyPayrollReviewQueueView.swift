@@ -31,37 +31,80 @@ struct PayrollReviewTechnicianGroup: Identifiable {
 
 @MainActor
 final class CompanyPayrollReviewQueueViewModel: ObservableObject {
+
     @Published var lineItems: [TechnicianPayLineItem] = []
     @Published var selectedFilter: PayrollQueueFilter = .outstanding
 
+    @Published var startDate: Date
+    @Published var endDate: Date
+
+    @Published var isLoading: Bool = false
+    @Published var isSaving: Bool = false
+
+    @Published var showAlert: Bool = false
+    @Published var alertMessage: String = ""
+
     let companyId: String
 
-    init(companyId: String) {
+    private let currentUserId: String
+    private let dataService: any ProductionDataServiceProtocol
+    private var hasLoaded = false
+
+    init(
+        companyId: String,
+        currentUserId: String,
+        dataService: any ProductionDataServiceProtocol
+    ) {
         self.companyId = companyId
-        loadMockData()
+        self.currentUserId = currentUserId
+        self.dataService = dataService
+
+        let today = Date()
+        self.startDate = Calendar.current.date(
+            byAdding: .day,
+            value: -14,
+            to: today
+        ) ?? today
+        self.endDate = today
     }
 
     var filteredLineItems: [TechnicianPayLineItem] {
+        let filteredByStatus: [TechnicianPayLineItem]
+
         switch selectedFilter {
         case .outstanding:
-            return lineItems.filter {
+            filteredByStatus = lineItems.filter {
+                $0.calculationStatus == .pending ||
                 $0.calculationStatus == .calculated ||
                 $0.calculationStatus == .needsReview ||
-                $0.calculationStatus == .adjusted ||
-                $0.calculationStatus == .pending
+                $0.calculationStatus == .adjusted
             }
 
         case .needsReview:
-            return lineItems.filter { $0.calculationStatus == .needsReview }
+            filteredByStatus = lineItems.filter {
+                $0.calculationStatus == .needsReview
+            }
 
         case .approved:
-            return lineItems.filter { $0.calculationStatus == .approved }
+            filteredByStatus = lineItems.filter {
+                $0.calculationStatus == .approved
+            }
 
         case .paid:
-            return lineItems.filter { $0.calculationStatus == .paid }
+            filteredByStatus = lineItems.filter {
+                $0.calculationStatus == .paid
+            }
 
         case .all:
-            return lineItems
+            filteredByStatus = lineItems
+        }
+
+        return filteredByStatus.sorted {
+            if $0.completedDate == $1.completedDate {
+                return $0.technicianName < $1.technicianName
+            }
+
+            return $0.completedDate < $1.completedDate
         }
     }
 
@@ -84,10 +127,10 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
     var outstandingTotalCents: Int {
         lineItems
             .filter {
+                $0.calculationStatus == .pending ||
                 $0.calculationStatus == .calculated ||
                 $0.calculationStatus == .needsReview ||
-                $0.calculationStatus == .adjusted ||
-                $0.calculationStatus == .pending
+                $0.calculationStatus == .adjusted
             }
             .reduce(0) { $0 + $1.totalAmountCents }
     }
@@ -108,243 +151,199 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
             .reduce(0) { $0 + $1.totalAmountCents }
     }
 
-    func approve(_ lineItem: TechnicianPayLineItem) {
-        update(lineItem) { item in
-            item.calculationStatus = .approved
-            item.approvedAt = Date()
-            item.approvedByUserId = "mock_admin_user"
+    func load(forceRefresh: Bool = false) async {
+        guard forceRefresh || !hasLoaded else { return }
+
+        isLoading = true
+        defer {
+            isLoading = false
+            hasLoaded = true
+        }
+
+        do {
+            lineItems = try await dataService.fetchTechnicianPayLineItems(
+                companyId: companyId,
+                startDate: startDate,
+                endDate: endDate
+            )
+        } catch {
+            alertMessage = "Could not load payroll queue. \(error.localizedDescription)"
+            showAlert = true
         }
     }
 
-    func markPaid(_ lineItem: TechnicianPayLineItem) {
-        update(lineItem) { item in
-            item.calculationStatus = .paid
-            item.paidAt = Date()
-            item.paidByUserId = "mock_admin_user"
-        }
+    func approve(_ lineItem: TechnicianPayLineItem) async {
+        var updated = lineItem
+        updated.calculationStatus = .approved
+        updated.approvedAt = Date()
+        updated.approvedByUserId = currentUserId
+
+        await saveUpdatedLineItem(updated)
     }
 
-    func void(_ lineItem: TechnicianPayLineItem) {
-        update(lineItem) { item in
-            item.calculationStatus = .voided
-            item.adminReviewNotes = "Voided from mock payroll queue."
+    func markPaid(_ lineItem: TechnicianPayLineItem) async {
+        var updated = lineItem
+
+        if updated.approvedAt == nil {
+            updated.approvedAt = Date()
+            updated.approvedByUserId = currentUserId
         }
+
+        updated.calculationStatus = .paid
+        updated.paidAt = Date()
+        updated.paidByUserId = currentUserId
+
+        await saveUpdatedLineItem(updated)
     }
 
-    func approveAllVisible() {
-        let visibleIds = Set(filteredLineItems.map { $0.id })
+    func void(_ lineItem: TechnicianPayLineItem) async {
+        var updated = lineItem
+        updated.calculationStatus = .voided
 
-        for index in lineItems.indices {
-            if visibleIds.contains(lineItems[index].id),
-               lineItems[index].calculationStatus != .paid,
-               lineItems[index].calculationStatus != .voided {
-                lineItems[index].calculationStatus = .approved
-                lineItems[index].approvedAt = Date()
-                lineItems[index].approvedByUserId = "mock_admin_user"
-            }
-        }
+        let existingNotes = updated.adminReviewNotes ?? ""
+        let newNote = "Voided by admin on \(PayrollDateFormatter.shortDate(Date()))."
+
+        updated.adminReviewNotes = existingNotes.isEmpty
+            ? newNote
+            : existingNotes + "\n" + newNote
+
+        await saveUpdatedLineItem(updated)
     }
 
-    private func update(
-        _ lineItem: TechnicianPayLineItem,
-        mutation: (inout TechnicianPayLineItem) -> Void
-    ) {
-        guard let index = lineItems.firstIndex(where: { $0.id == lineItem.id }) else {
+    func approveAllVisible() async {
+        let visibleItems = filteredLineItems.filter {
+            $0.calculationStatus != .paid &&
+            $0.calculationStatus != .voided &&
+            $0.calculationStatus != .approved
+        }
+
+        guard !visibleItems.isEmpty else {
+            alertMessage = "There are no visible items to approve."
+            showAlert = true
             return
         }
 
-        mutation(&lineItems[index])
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            for item in visibleItems {
+                var updated = item
+                updated.calculationStatus = .approved
+                updated.approvedAt = Date()
+                updated.approvedByUserId = currentUserId
+
+                try await dataService.updateTechnicianPayLineItem(updated)
+                upsertLocal(updated)
+            }
+        } catch {
+            alertMessage = "Could not approve all visible items. \(error.localizedDescription)"
+            showAlert = true
+        }
     }
 
-    private func loadMockData() {
-        let now = Date()
-        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now) ?? now
-        let twoDaysAgo = Calendar.current.date(byAdding: .day, value: -2, to: now) ?? now
+    private func saveUpdatedLineItem(_ lineItem: TechnicianPayLineItem) async {
+        isSaving = true
+        defer { isSaving = false }
 
-        lineItems = [
-            TechnicianPayLineItem(
-                id: "comp_pay_line_mock_001",
-                companyId: companyId,
-                technicianId: "usr_marco",
-                technicianName: "Marco",
-                workerType: .employee,
-                source: .serviceStop,
-                serviceStopId: "comp_ss_mock_001",
-                serviceStopTaskId: nil,
-                activeRouteId: nil,
-                activeRouteLogId: nil,
-                workTypeId: "comp_work_type_routes",
-                workTypeName: "Routes",
-                rateId: "comp_tech_rate_mock_001",
-                rateAmountCents: 1600,
-                rateType: .flatPerStop,
-                quantity: 1,
-                quantityUnit: .each,
-                totalAmountCents: 1600,
-                completedDate: twoDaysAgo,
-                calculatedAt: now,
-                calculationStatus: .calculated,
-                approvedAt: nil,
-                approvedByUserId: nil,
-                paidAt: nil,
-                paidByUserId: nil,
-                payStatementId: nil,
-                exportBatchId: nil,
-                notes: "Generated from finished recurring service stop.",
-                adminReviewNotes: nil
-            ),
-            TechnicianPayLineItem(
-                id: "comp_pay_line_mock_002",
-                companyId: companyId,
-                technicianId: "usr_marco",
-                technicianName: "Marco",
-                workerType: .employee,
-                source: .serviceStopTask,
-                serviceStopId: "comp_ss_mock_001",
-                serviceStopTaskId: "comp_ss_task_mock_001",
-                activeRouteId: nil,
-                activeRouteLogId: nil,
-                workTypeId: "comp_work_type_filter",
-                workTypeName: "Clean Filter",
-                rateId: "comp_tech_rate_mock_002",
-                rateAmountCents: 8000,
-                rateType: .flatPerTask,
-                quantity: 1,
-                quantityUnit: .each,
-                totalAmountCents: 8000,
-                completedDate: twoDaysAgo,
-                calculatedAt: now,
-                calculationStatus: .calculated,
-                approvedAt: nil,
-                approvedByUserId: nil,
-                paidAt: nil,
-                paidByUserId: nil,
-                payStatementId: nil,
-                exportBatchId: nil,
-                notes: "Route plus filter cleaning.",
-                adminReviewNotes: nil
-            ),
-            TechnicianPayLineItem(
-                id: "comp_pay_line_mock_003",
-                companyId: companyId,
-                technicianId: "usr_anna",
-                technicianName: "Anna",
-                workerType: .contractor,
-                source: .serviceStopTask,
-                serviceStopId: "comp_ss_mock_002",
-                serviceStopTaskId: "comp_ss_task_mock_002",
-                activeRouteId: nil,
-                activeRouteLogId: nil,
-                workTypeId: nil,
-                workTypeName: nil,
-                rateId: nil,
-                rateAmountCents: 0,
-                rateType: .manual,
-                quantity: 0,
-                quantityUnit: .each,
-                totalAmountCents: 0,
-                completedDate: yesterday,
-                calculatedAt: now,
-                calculationStatus: .needsReview,
-                approvedAt: nil,
-                approvedByUserId: nil,
-                paidAt: nil,
-                paidByUserId: nil,
-                payStatementId: nil,
-                exportBatchId: nil,
-                notes: "No WorkTypeMapping found for task type: Repair.",
-                adminReviewNotes: nil
-            ),
-            TechnicianPayLineItem(
-                id: "comp_pay_line_mock_004",
-                companyId: companyId,
-                technicianId: "usr_caleb",
-                technicianName: "Caleb",
-                workerType: .contractor,
-                source: .serviceStop,
-                serviceStopId: "comp_ss_mock_003",
-                serviceStopTaskId: nil,
-                activeRouteId: nil,
-                activeRouteLogId: nil,
-                workTypeId: "comp_work_type_service_call",
-                workTypeName: "Service Call",
-                rateId: "comp_tech_rate_mock_004",
-                rateAmountCents: 5000,
-                rateType: .flatPerStop,
-                quantity: 1,
-                quantityUnit: .each,
-                totalAmountCents: 5000,
-                completedDate: yesterday,
-                calculatedAt: now,
-                calculationStatus: .approved,
-                approvedAt: now,
-                approvedByUserId: "mock_admin_user",
-                paidAt: nil,
-                paidByUserId: nil,
-                payStatementId: nil,
-                exportBatchId: nil,
-                notes: "Approved contractor service call.",
-                adminReviewNotes: nil
-            ),
-            TechnicianPayLineItem(
-                id: "comp_pay_line_mock_005",
-                companyId: companyId,
-                technicianId: "usr_jose",
-                technicianName: "Jose",
-                workerType: .employee,
-                source: .activeRoute,
-                serviceStopId: nil,
-                serviceStopTaskId: nil,
-                activeRouteId: "comp_active_route_mock_001",
-                activeRouteLogId: nil,
-                workTypeId: nil,
-                workTypeName: "Hourly Route Time",
-                rateId: "comp_tech_rate_mock_005",
-                rateAmountCents: 2500,
-                rateType: .hourly,
-                quantity: 480,
-                quantityUnit: .minutes,
-                totalAmountCents: 20000,
-                completedDate: yesterday,
-                calculatedAt: now,
-                calculationStatus: .paid,
-                approvedAt: yesterday,
-                approvedByUserId: "mock_admin_user",
-                paidAt: now,
-                paidByUserId: "mock_admin_user",
-                payStatementId: "comp_pay_stmt_mock_001",
-                exportBatchId: nil,
-                notes: "Generated from ActiveRoute duration.",
-                adminReviewNotes: nil
-            )
-        ]
+        do {
+            try await dataService.updateTechnicianPayLineItem(lineItem)
+            upsertLocal(lineItem)
+        } catch {
+            alertMessage = "Could not update payroll item. \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
+    private func upsertLocal(_ lineItem: TechnicianPayLineItem) {
+        if let index = lineItems.firstIndex(where: { $0.id == lineItem.id }) {
+            lineItems[index] = lineItem
+        } else {
+            lineItems.append(lineItem)
+        }
     }
 }
 
 struct CompanyPayrollReviewQueueView: View {
+
     @StateObject private var viewModel: CompanyPayrollReviewQueueViewModel
 
-    init(companyId: String) {
+    init(
+        companyId: String,
+        currentUserId: String,
+        dataService: any ProductionDataServiceProtocol
+    ) {
         _viewModel = StateObject(
-            wrappedValue: CompanyPayrollReviewQueueViewModel(companyId: companyId)
+            wrappedValue: CompanyPayrollReviewQueueViewModel(
+                companyId: companyId,
+                currentUserId: currentUserId,
+                dataService: dataService
+            )
         )
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                summarySection
-                filterSection
-                queueSection
-            }
-            .navigationTitle("Payroll Review")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Approve Visible") {
-                        viewModel.approveAllVisible()
+        List {
+            dateRangeSection
+            summarySection
+            filterSection
+            queueSection
+        }
+        .navigationTitle("Payroll Review")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Approve Visible") {
+                    Task {
+                        await viewModel.approveAllVisible()
                     }
                 }
+                .disabled(viewModel.isSaving)
             }
+        }
+        .task {
+            await viewModel.load()
+        }
+        .refreshable {
+            await viewModel.load(forceRefresh: true)
+        }
+        .overlay {
+            if viewModel.isLoading {
+                ProgressView("Loading payroll...")
+                    .padding()
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .alert("Payroll Review", isPresented: $viewModel.showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.alertMessage)
+        }
+    }
+
+    private var dateRangeSection: some View {
+        Section {
+            DatePicker(
+                "Start",
+                selection: $viewModel.startDate,
+                displayedComponents: .date
+            )
+
+            DatePicker(
+                "End",
+                selection: $viewModel.endDate,
+                displayedComponents: .date
+            )
+
+            Button {
+                Task {
+                    await viewModel.load(forceRefresh: true)
+                }
+            } label: {
+                Label("Load Pay Period", systemImage: "arrow.clockwise")
+            }
+        } header: {
+            Text("Pay Period")
         }
     }
 
@@ -352,7 +351,7 @@ struct CompanyPayrollReviewQueueView: View {
         Section("Summary") {
             PayrollSummaryRow(
                 title: "Outstanding",
-                value: money(viewModel.outstandingTotalCents)
+                value: PayrollMoneyFormatter.money(viewModel.outstandingTotalCents)
             )
 
             PayrollSummaryRow(
@@ -362,12 +361,12 @@ struct CompanyPayrollReviewQueueView: View {
 
             PayrollSummaryRow(
                 title: "Approved",
-                value: money(viewModel.approvedTotalCents)
+                value: PayrollMoneyFormatter.money(viewModel.approvedTotalCents)
             )
 
             PayrollSummaryRow(
                 title: "Paid",
-                value: money(viewModel.paidTotalCents)
+                value: PayrollMoneyFormatter.money(viewModel.paidTotalCents)
             )
         }
     }
@@ -383,36 +382,50 @@ struct CompanyPayrollReviewQueueView: View {
         }
     }
 
+    @ViewBuilder
     private var queueSection: some View {
-        ForEach(viewModel.groups) { group in
+        if viewModel.groups.isEmpty {
             Section {
-                ForEach(group.lineItems) { lineItem in
-                    PayrollLineItemReviewRow(
-                        lineItem: lineItem,
-                        approveAction: {
-                            viewModel.approve(lineItem)
-                        },
-                        markPaidAction: {
-                            viewModel.markPaid(lineItem)
-                        },
-                        voidAction: {
-                            viewModel.void(lineItem)
-                        }
-                    )
-                }
-            } header: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(group.technicianName)
-                    Text("\(group.workerType.rawValue) • \(money(group.totalCents))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                ContentUnavailableView(
+                    "No Payroll Items",
+                    systemImage: "checklist",
+                    description: Text("No payroll line items match this filter and date range.")
+                )
+            }
+        } else {
+            ForEach(viewModel.groups) { group in
+                Section {
+                    ForEach(group.lineItems) { lineItem in
+                        PayrollLineItemReviewRow(
+                            lineItem: lineItem,
+                            approveAction: {
+                                Task {
+                                    await viewModel.approve(lineItem)
+                                }
+                            },
+                            markPaidAction: {
+                                Task {
+                                    await viewModel.markPaid(lineItem)
+                                }
+                            },
+                            voidAction: {
+                                Task {
+                                    await viewModel.void(lineItem)
+                                }
+                            }
+                        )
+                    }
+                } header: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(group.technicianName)
+
+                        Text("\(group.workerType.rawValue) • \(PayrollMoneyFormatter.money(group.totalCents))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
-    }
-
-    private func money(_ cents: Int) -> String {
-        MoneyFormatter.money(cents)
     }
 }
 
@@ -439,56 +452,97 @@ struct PayrollLineItemReviewRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(lineItem.workTypeName ?? "Missing Work Type")
-                        .font(.headline)
+            header
 
-                    Text(lineItem.source.rawValue)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Text(lineItem.calculationStatus.title)
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.thinMaterial)
-                    .clipShape(Capsule())
-            }
-
-            HStack {
-                Text("Rate: \(MoneyFormatter.money(lineItem.rateAmountCents))")
-                Spacer()
-                Text("Qty: \(quantityText)")
-                Spacer()
-                Text(MoneyFormatter.money(lineItem.totalAmountCents))
-                    .fontWeight(.semibold)
-            }
-            .font(.caption)
+            amountRow
 
             if let notes = lineItem.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if let adminReviewNotes = lineItem.adminReviewNotes,
+               !adminReviewNotes.isEmpty {
+                Text(adminReviewNotes)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
         }
         .padding(.vertical, 6)
         .swipeActions(edge: .trailing) {
-            Button("Paid") {
-                markPaidAction()
+            if lineItem.calculationStatus != .paid &&
+                lineItem.calculationStatus != .voided {
+                Button("Paid") {
+                    markPaidAction()
+                }
             }
 
-            Button("Approve") {
-                approveAction()
+            if lineItem.calculationStatus != .approved &&
+                lineItem.calculationStatus != .paid &&
+                lineItem.calculationStatus != .voided {
+                Button("Approve") {
+                    approveAction()
+                }
             }
 
-            Button("Void", role: .destructive) {
-                voidAction()
+            if lineItem.calculationStatus != .paid &&
+                lineItem.calculationStatus != .voided {
+                Button("Void", role: .destructive) {
+                    voidAction()
+                }
             }
         }
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(lineItem.workTypeName ?? "Missing Work Type")
+                    .font(.headline)
+
+                Text(sourceSubtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(lineItem.calculationStatus.title)
+                .font(.caption)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.thinMaterial)
+                .clipShape(Capsule())
+        }
+    }
+
+    private var amountRow: some View {
+        HStack {
+            Text("Rate: \(PayrollMoneyFormatter.money(lineItem.rateAmountCents))")
+            Spacer()
+            Text("Qty: \(quantityText)")
+            Spacer()
+            Text(PayrollMoneyFormatter.money(lineItem.totalAmountCents))
+                .fontWeight(.semibold)
+        }
+        .font(.caption)
+    }
+
+    private var sourceSubtitle: String {
+        var parts: [String] = []
+
+        parts.append(lineItem.source.rawValue)
+
+        if let serviceStopId = lineItem.serviceStopId {
+            parts.append(serviceStopId)
+        }
+
+        if let taskId = lineItem.serviceStopTaskId {
+            parts.append(taskId)
+        }
+
+        return parts.joined(separator: " • ")
     }
 
     private var quantityText: String {
@@ -509,7 +563,7 @@ struct PayrollLineItemReviewRow: View {
     }
 }
 
-enum MoneyFormatter {
+enum PayrollMoneyFormatter {
     static func money(_ cents: Int) -> String {
         let dollars = Double(cents) / 100.0
 
@@ -522,8 +576,21 @@ enum MoneyFormatter {
     }
 }
 
+enum PayrollDateFormatter {
+    static func shortDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+}
+
 #Preview {
-    CompanyPayrollReviewQueueView(
-        companyId: "com_mock_company"
-    )
+    NavigationStack {
+        CompanyPayrollReviewQueueView(
+            companyId: "com_mock_company",
+            currentUserId: "mock_admin_user",
+            dataService: MockDataService()
+        )
+    }
 }

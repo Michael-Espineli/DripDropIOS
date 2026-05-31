@@ -21,6 +21,9 @@ final class EquipmentViewModel:ObservableObject{
     //----------------------------------------------------
     
     //SINGLES
+    @Published var searchTerm:String = ""
+
+    @Published private(set) var showSearch: Bool = false
     @Published private(set) var showAddNewEquipment: Bool = false
 
     @Published private(set) var equipment: Equipment? = nil
@@ -29,6 +32,7 @@ final class EquipmentViewModel:ObservableObject{
 
     //ARRAYS
     @Published private(set) var listOfEquipment:[Equipment] = []
+    @Published private(set) var displayEquipment:[Equipment] = []
     @Published private(set) var partList:[EquipmentPart] = []
     @Published private(set) var equipmentCategories:[String] = ["Pump","Filter","Vacuum","Salt Cell","Heater","Light"]
 
@@ -222,10 +226,12 @@ final class EquipmentViewModel:ObservableObject{
             self.lastDocument = lastDocument
 
         }
+        filterEquipmentList()
     }
     func getAllEquipment(companyId: String) async throws {
         
         self.listOfEquipment = try await EquipmentManager.shared.getAllEquipment(companyId: companyId)
+        filterEquipmentList()
     }
     func getEquipmentSnapShot(companyId: String) async throws {
         
@@ -338,5 +344,25 @@ final class EquipmentViewModel:ObservableObject{
              self?.listOfEquipment = equipment
         }
     }
-
+    func changeSearch(){
+        self.showSearch.toggle()
+    }
+    func filterEquipmentList() {
+        //very facncy Search Bar
+        print("Filtering Customers: \(searchTerm)")
+        if searchTerm != "" {
+            var filteredListOfEquipment:[Equipment] = []
+            for customer in listOfEquipment {
+                if customer.customerName.lowercased().contains(searchTerm.lowercased()) || customer.name.lowercased().contains(searchTerm.lowercased()) || customer.make.lowercased().contains(searchTerm.lowercased()) || customer.model.lowercased().contains(searchTerm.lowercased()) {
+                    filteredListOfEquipment.append(customer)
+                }
+            }
+            self.displayEquipment = filteredListOfEquipment
+            
+            print("Equipment Count: \(filteredListOfEquipment.count)")
+        } else {
+            
+            self.displayEquipment = listOfEquipment
+        }
+    }
 }

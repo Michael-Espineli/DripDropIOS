@@ -64,7 +64,9 @@ struct RouteManagmentView2: View {
                     ZStack{
                         Color.listColor.ignoresSafeArea()
                         if let selectedRoute = VM.selectedRoute, let tech = VM.selectedTech, let day = VM.selectedDay {
-                            ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: selectedRoute)
+//                            ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: selectedRoute)
+                            NewRouteView(dataService: dataService, tech: tech, day: day)
+
                         }
                     }
                 })
@@ -113,7 +115,7 @@ struct RouteManagmentView2: View {
                     }
                 })
         }
-        .navigationTitle("Routes IP")
+        .navigationTitle("Routes")
         
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }

@@ -2,6 +2,9 @@
 //  AddJobPlannedServiceStopView.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
+
 
 import SwiftUI
 
@@ -22,6 +25,8 @@ struct AddJobPlannedServiceStopView: View {
     @State private var selectedCompanyServiceStopType: CompanyServiceStopType?
     @State private var serviceStopTypeUseCase: ServiceStopTypeUseCase = .jobVisit
     @State private var estimatedMinutes: Int = 60
+    @State private var plannedLaborCostCents: Int = 0
+    @State private var plannedLaborNotes: String = ""
     @State private var selectedTaskIds: Set<String> = []
 
     @State private var isSaving: Bool = false
@@ -122,16 +127,6 @@ struct AddJobPlannedServiceStopView: View {
 
     private var serviceStopTypeCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Service Stop Type", systemImage: "flag")
-                .font(.headline.weight(.semibold))
-
-            Picker("Use Case", selection: $serviceStopTypeUseCase) {
-                ForEach(ServiceStopTypeUseCase.allCases, id: \.self) { useCase in
-                    Text(useCase.fallbackName).tag(useCase)
-                }
-            }
-            .pickerStyle(.menu)
-
             CompanyServiceStopTypePickerView(
                 companyId: companyId,
                 dataService: dataService,
@@ -150,7 +145,7 @@ struct AddJobPlannedServiceStopView: View {
 
     private var detailsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Details", systemImage: "doc.text")
+            Label("Details & Planned Labor", systemImage: "doc.text")
                 .font(.headline.weight(.semibold))
 
             VStack(alignment: .leading, spacing: 8) {
@@ -179,6 +174,36 @@ struct AddJobPlannedServiceStopView: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
+                Text("Planned Labor Cost")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                MoneyTextField(cents: $plannedLaborCostCents)
+
+                Text("Use this to estimate the cost of this expected visit before a real service stop is scheduled.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Labor Notes")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField(
+                    "Example: Estimated from route + install visit",
+                    text: $plannedLaborNotes,
+                    axis: .vertical
+                )
+                .lineLimit(2, reservesSpace: true)
+                .modifier(PlainTextFieldModifier())
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Description")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -196,7 +221,6 @@ struct AddJobPlannedServiceStopView: View {
         }
         .plannedStopCard()
     }
-
     private var taskLinkCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -356,6 +380,8 @@ struct AddJobPlannedServiceStopView: View {
                 estimatedMinutes: estimatedMinutes,
                 sortOrder: nextSortOrder,
                 taskIds: Array(selectedTaskIds),
+                plannedLaborCostCents: plannedLaborCostCents,
+                plannedLaborNotes: plannedLaborNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : plannedLaborNotes,
                 createdByUserId: userId
             )
 

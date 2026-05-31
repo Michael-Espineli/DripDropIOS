@@ -4,232 +4,408 @@
 //
 //  Created by Michael Espineli on 1/19/24.
 //
+//
 
 import SwiftUI
 
 @MainActor
-final class ShoppingListItemCardViewModel:ObservableObject{
-    let dataService:any ProductionDataServiceProtocol
-    init(dataService:any ProductionDataServiceProtocol){
+final class ShoppingListItemCardViewModel: ObservableObject {
+    let dataService: any ProductionDataServiceProtocol
+
+    init(dataService: any ProductionDataServiceProtocol) {
         self.dataService = dataService
     }
+
     @Published private(set) var dataBaseItem: DataBaseItem? = nil
     @Published private(set) var job: Job? = nil
-    func onLoad(companyId:String,shoppingListItem:ShoppingListItem) async throws {
+
+    func onLoad(
+        companyId: String,
+        shoppingListItem: ShoppingListItem
+    ) async throws {
         switch shoppingListItem.category {
         case .personal:
-            print("personal")
-        case .customer:
-            print("personal")
-        case .job:
-            if let jobId = shoppingListItem.jobId {
-                self.job = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
-                print("personal")
-            }
-        }
-        switch shoppingListItem.subCategory {
-        case .dataBase:
-            print("personal")
-        case .chemical:
-            print("personal")
-        case .part:
-            print("personal")
-        case .custom:
-            print("personal")
-        }
-    }
-    func updateShoppingListItemStatus(companyId:String,shoppingListItemId:String,status:ShoppingListStatus) async throws {
-        try await dataService.updateShoppingListItemStatus(companyId: companyId, shoppingListItemId: shoppingListItemId, status: status)
-    }
-}
-struct ShoppingListItemCardView: View {    
-    @EnvironmentObject var masterDataManager : MasterDataManager
-    @EnvironmentObject var dataService : ProductionDataService
-    @StateObject var VM : ShoppingListItemCardViewModel
-    init(dataService:any ProductionDataServiceProtocol,shoppingListItem:ShoppingListItem){
-        _VM = StateObject(wrappedValue: ShoppingListItemCardViewModel(dataService: dataService))
-        _shoppingListItem = State(wrappedValue: shoppingListItem)
-    }
-    @State var showStatusPicker : Bool = false
-    @State var status : ShoppingListStatus = .needToPurchase
-    @State var shoppingListItem: ShoppingListItem
-    var body: some View {
-        VStack(alignment: .leading){
+            break
 
-                if UIDevice.isIPhone {
-                    VStack{
-                        HStack{
-                            colorIcon
-                            Spacer()
-                            statusView
-                        }
-                        HStack{
-                            details
-                            Spacer()
-                            Text(shoppingListItem.quantity ?? "")
-                        }
-//                        cat
-                    }
-                } else {
-                    HStack{
-                        colorIcon
-                        Spacer()
-                        statusView
-                    }
-                    VStack(alignment: .leading){
-                            details
-                            cat
-                        }
-                    
-                }
+        case .customer:
+            break
+
+        case .job:
+            if let jobId = shoppingListItem.jobId,
+               !jobId.isEmpty {
+                self.job = try? await dataService.getWorkOrderById(
+                    companyId: companyId,
+                    workOrderId: jobId
+                )
             }
-        .modifier(ListButtonModifier())
-        .padding(.horizontal,8)
-        .task {
-            Task{
-                if let currentCompany = masterDataManager.currentCompany {
-                    do {
-                        status = shoppingListItem.status
-                        try await VM.onLoad(companyId: currentCompany.id, shoppingListItem: shoppingListItem)
-                    } catch {
-                        print("Error - [ShoppingListItemCardView]")
-                        print(error)
-                    }
-                }
+        }
+
+        // Optional later:
+        // If you have a fetchDataBaseItem method, load it here using shoppingListItem.dbItemId.
+    }
+
+    func updateShoppingListItemStatus(
+        companyId: String,
+        shoppingListItemId: String,
+        status: ShoppingListStatus
+    ) async throws {
+        try await dataService.updateShoppingListItemStatus(
+            companyId: companyId,
+            shoppingListItemId: shoppingListItemId,
+            status: status
+        )
+//        try await dataService.updateShoppingListItemStatus(
+//            companyId: companyId,
+//            itemId: item.id,
+//            status: newStatus,
+//            needsAction: newStatus != .installed
+//        )
+    }
+}
+
+
+struct ShoppingListItemCardView: View {
+    let dataService: any ProductionDataServiceProtocol
+    let shoppingListItem: ShoppingListItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            topRow
+
+            if !shoppingListItem.description.isEmpty {
+                Text(shoppingListItem.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
+
+            contextRows
+
+            moneyRows
+
+            footerBadges
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(statusTint.opacity(0.22), lineWidth: 1)
         }
     }
 }
-extension ShoppingListItemCardView{
-    // Data Base , Chemical , Part , Custom
-  
-    var details: some View {
-        VStack{
-            switch shoppingListItem.category {
-            case .personal:
-                HStack{
-                    Text("\(shoppingListItem.name)")
-                    Spacer()
-                }
-            case .customer:
-                HStack{
-                    Text("\(shoppingListItem.name)")
-                    Spacer()
-                }
-            case .job:
-                VStack{
-                    if let dataBaseItem = VM.dataBaseItem {
-                        HStack{
-                            Text("\(dataBaseItem.name)")
-                            Spacer()
-                        }
-                        Text("\(dataBaseItem.description)")
-                            .font(.footnote)
-                    } else {
-                        HStack{
-                            Text("\(shoppingListItem.name)")
-                            Spacer()
-                        }
-                    }
-                }
-            }         }
-    }
-    var statusView: some View {
-        ZStack{
-            Button(action: {
-                print("Show Status PIcker")
-                showStatusPicker.toggle()
-            }, label: {
-                switch status {
-                case .installed:
-                    Text("\(shoppingListItem.status.rawValue)")
-                        .padding(5)
-                        .background(Color.green)
-                        .foregroundColor(Color.black)
-                        .cornerRadius(5)
-                        .padding(5)
-                case .purchased:
-                    Text("\(shoppingListItem.status.rawValue)")
-                        .padding(5)
-                        .background(Color.yellow)
-                        .foregroundColor(Color.black)
-                        .cornerRadius(5)
-                    
-                        .padding(5)
-                case .needToPurchase:
-                    Text("Not Purchased")
-                        .lineLimit(1)
-                        .padding(5)
-                        .background(Color.poolRed)
-                        .foregroundColor(Color.white)
-                        .cornerRadius(5)
-                        .padding(5)
-                }
-            })
-            .sheet(isPresented: $showStatusPicker, onDismiss: {
-                Task{
-                    if let currentCompany = masterDataManager.currentCompany {
-                        do {
-                            try await VM.updateShoppingListItemStatus(companyId: currentCompany.id,shoppingListItemId:shoppingListItem.id, status: status)
-                        } catch {
-                            print("Error")
-                            print(error)
-                        }
-                    }
-                }
-                print("Update Shopping List Item Status")
-            }, content: {
-                ShoppingListItemStatusPicker(dataService: dataService, status: $status)
-                    .presentationDetents([.fraction(0.6)])
-            })
+
+// MARK: - Sections
+
+extension ShoppingListItemCardView {
+
+    private var topRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(statusTint.opacity(0.14))
+                    .frame(width: 40, height: 40)
+
+                Image(systemName: iconName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(statusTint)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text("\(shoppingListItem.subCategory.rawValue) • Qty: \(quantityText)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            statusBadge
         }
     }
-    
-    var cat: some View {
-        HStack{
-            switch shoppingListItem.category {
-            case .customer:
-                    Text("\(shoppingListItem.category.rawValue)")
-                    if let customerName = shoppingListItem.customerName {
-                        Text("\(customerName)")
+
+    private var contextRows: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let contextText {
+                Label(contextText, systemImage: contextIcon)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if let serviceLocationName = shoppingListItem.serviceLocationName,
+               !serviceLocationName.isEmpty {
+                Label(serviceLocationName, systemImage: "mappin.and.ellipse")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if let serviceStopInternalId = shoppingListItem.serviceStopInternalId,
+               !serviceStopInternalId.isEmpty {
+                Label("Stop \(serviceStopInternalId)", systemImage: "calendar.badge.clock")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var moneyRows: some View {
+        if hasPlannedMoney {
+            VStack(spacing: 6) {
+                HStack {
+                    if let plannedUnitCostCents = shoppingListItem.plannedUnitCostCents {
+                        moneyChip(
+                            title: "Unit Cost",
+                            value: JobMaterialsMoneyFormatter.money(plannedUnitCostCents)
+                        )
                     }
-                
-            case .personal:
-                Text("\(shoppingListItem.category.rawValue)")
-            case .job:
-                if let job = VM.job {
-                    Text(job.internalId)
+
+                    if let plannedUnitPriceCents = shoppingListItem.plannedUnitPriceCents {
+                        moneyChip(
+                            title: "Unit Billable",
+                            value: JobMaterialsMoneyFormatter.money(plannedUnitPriceCents)
+                        )
+                    }
+                }
+
+                HStack {
+                    if let plannedTotalCostCents = shoppingListItem.plannedTotalCostCents {
+                        moneyChip(
+                            title: "Planned Cost",
+                            value: JobMaterialsMoneyFormatter.money(plannedTotalCostCents)
+                        )
+                    }
+
+                    if let plannedTotalPriceCents = shoppingListItem.plannedTotalPriceCents {
+                        moneyChip(
+                            title: "Planned Billable",
+                            value: JobMaterialsMoneyFormatter.money(plannedTotalPriceCents)
+                        )
+                    }
                 }
             }
+        }
+    }
+
+    private var footerBadges: some View {
+        HStack(spacing: 8) {
+            categoryBadge
+
+            if shoppingListItem.needsAction {
+                smallBadge(
+                    title: "Needs Action",
+                    systemImage: "exclamationmark.circle",
+                    tint: .orange
+                )
+            }
+
+            if shoppingListItem.invoiced {
+                smallBadge(
+                    title: "Invoiced",
+                    systemImage: "checkmark.seal",
+                    tint: .green
+                )
+            }
+
             Spacer()
         }
     }
-    var colorIcon: some View {
-        VStack{
-            switch shoppingListItem.category{
-            case .personal:
-                Image(systemName: "figure.stand.line.dotted.figure.stand")
-                    .foregroundColor(getColor(subCategory: shoppingListItem.subCategory))
-            case .job:
-                Image(systemName: "wrench.fill")
-                    .foregroundColor(getColor(subCategory: shoppingListItem.subCategory))
-            case .customer:
-                Image(systemName: "testtube.2")
-                    .foregroundColor(getColor(subCategory: shoppingListItem.subCategory))
+}
+
+// MARK: - Components
+
+extension ShoppingListItemCardView {
+
+    private var statusBadge: some View {
+        Text(shoppingListItem.status.rawValue)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(statusTint)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(statusTint.opacity(0.12), in: Capsule())
+    }
+
+    private var categoryBadge: some View {
+        smallBadge(
+            title: shoppingListItem.category.rawValue,
+            systemImage: categoryIcon,
+            tint: .secondary
+        )
+    }
+
+    private func smallBadge(
+        title: String,
+        systemImage: String,
+        tint: Color
+    ) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(.thinMaterial, in: Capsule())
+    }
+
+    private func moneyChip(
+        title: String,
+        value: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(9)
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+// MARK: - Computed Values
+
+extension ShoppingListItemCardView {
+
+    private var displayName: String {
+        if !shoppingListItem.name.isEmpty {
+            return shoppingListItem.name
+        }
+
+        if let purchasedItem = shoppingListItem.purchasedItem,
+           !purchasedItem.isEmpty {
+            return purchasedItem
+        }
+
+        return "Shopping Item"
+    }
+
+    private var quantityText: String {
+        guard let quantity = shoppingListItem.quantity,
+              !quantity.isEmpty else {
+            return "-"
+        }
+
+        return quantity
+    }
+
+    private var hasPlannedMoney: Bool {
+        shoppingListItem.plannedUnitCostCents != nil ||
+        shoppingListItem.plannedUnitPriceCents != nil ||
+        shoppingListItem.plannedTotalCostCents != nil ||
+        shoppingListItem.plannedTotalPriceCents != nil
+    }
+
+    private var contextText: String? {
+        switch shoppingListItem.category {
+        case .personal:
+            if let userName = shoppingListItem.userName,
+               !userName.isEmpty {
+                return userName
             }
+
+            return shoppingListItem.purchaserName.isEmpty ? nil : shoppingListItem.purchaserName
+
+        case .customer:
+            if let customerName = shoppingListItem.customerName,
+               !customerName.isEmpty {
+                return customerName
+            }
+
+            return nil
+
+        case .job:
+            if let jobId = shoppingListItem.jobId,
+               !jobId.isEmpty {
+                if let customerName = shoppingListItem.customerName,
+                   !customerName.isEmpty {
+                    return "\(customerName) • Job"
+                }
+
+                return "Job \(jobId)"
+            }
+
+            return nil
         }
     }
-    func getColor(subCategory:ShoppingListSubCategory) -> Color{
-        switch subCategory{
-        case .dataBase:
-            return Color.blue
-        case .chemical:
-            return Color.green
-        case .part:
-            return Color.yellow
-        case .custom:
-            return Color.purple
-     
+
+    private var contextIcon: String {
+        switch shoppingListItem.category {
+        case .personal:
+            return "person.crop.circle"
+
+        case .customer:
+            return "person.text.rectangle"
+
+        case .job:
+            return "briefcase"
         }
+    }
+
+    private var categoryIcon: String {
+        switch shoppingListItem.category {
+        case .personal:
+            return "person.crop.circle"
+
+        case .customer:
+            return "person.text.rectangle"
+
+        case .job:
+            return "briefcase"
+        }
+    }
+
+    private var iconName: String {
+        switch shoppingListItem.subCategory {
+        case .chemical:
+            return "drop"
+
+        case .part:
+            return "wrench.and.screwdriver"
+
+        case .custom:
+            return "shippingbox"
+
+        case .dataBase:
+            return "tray.full"
+        }
+    }
+
+    private var statusTint: Color {
+        let status = shoppingListItem.status.rawValue.lowercased()
+
+        if status.contains("installed") {
+            return .green
+        }
+
+        if status.contains("purchased") {
+            return .blue
+        }
+
+        if status.contains("need") || status.contains("purchase") {
+            return .orange
+        }
+
+        return .secondary
+    }
+}
+private enum ShoppingListItemMoneyFormatter {
+    static func money(_ cents: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+
+        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "$0.00"
     }
 }

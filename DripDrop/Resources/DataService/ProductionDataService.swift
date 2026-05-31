@@ -20,6 +20,916 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
 
     var storage = Storage.storage().reference()
     let id = UUID().uuidString
+    func getNextPayStatementNumber(companyId: String) async throws -> Int {
+        return try await getNextCompanyIncrement(
+            companyId: companyId,
+            category: "payStatements"
+        )
+    }
+
+    func getNextPayLineItemNumber(companyId: String) async throws -> Int {
+        return try await getNextCompanyIncrement(
+            companyId: companyId,
+            category: "payLineItems"
+        )
+    }
+    func getNextCompanyIncrement(
+        companyId: String,
+        category: String
+    ) async throws -> Int {
+        let db = Firestore.firestore()
+
+        let ref = db
+            .collection("companies")
+            .document(companyId)
+            .collection("settings")
+            .document(category)
+
+        return try await db.runTransaction { transaction, errorPointer in
+            do {
+                let snapshot = try transaction.getDocument(ref)
+
+                let currentIncrement: Int
+
+                if snapshot.exists {
+                    let increment = try snapshot.data(as: Increment.self)
+                    currentIncrement = increment.increment
+                } else {
+                    currentIncrement = 0
+                }
+
+                let nextIncrement = currentIncrement + 1
+
+                let updated = Increment(
+                    category: category,
+                    increment: nextIncrement
+                )
+
+                try transaction.setData(from: updated, forDocument: ref, merge: false)
+
+                return nextIncrement
+            } catch {
+                errorPointer?.pointee = error as NSError
+                return 0
+            }
+        } as? Int ?? 0
+    }
+    func updateShoppingListStatus(
+        companyId: String,
+        shoppingListItemId: String,
+        status: ShoppingListStatus,
+        needsAction: Bool
+    ) async throws {
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .document(shoppingListItemId)
+            .updateData([
+                "status": status.rawValue,
+                "needsAction": needsAction
+            ])
+    }
+    
+    // MARK: - ShoppingList
+    func getOutstandingShoppingListItemsPage(
+        companyId: String,
+        limit: Int = 100
+    ) async throws -> [ShoppingListItem] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .whereField("needsAction", isEqualTo: true)
+            .limit(to: limit)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            try? document.data(as: ShoppingListItem.self)
+        }
+    }
+    func getShoppingListItemsForPrepKeys(
+        companyId: String,
+        prepKeys: [String],
+        needsAction: Bool = true
+    ) async throws -> [ShoppingListItem] {
+
+        guard !prepKeys.isEmpty else { return [] }
+
+        var results: [ShoppingListItem] = []
+        let chunks = prepKeys.chunked(into: 10)
+
+        for chunk in chunks {
+            let snapshot = try await db
+                .collection("companies")
+                .document(companyId)
+                .collection("shoppingList")
+                .whereField("needsAction", isEqualTo: needsAction)
+                .whereField("prepKeys", arrayContainsAny: chunk)
+                .getDocuments()
+
+            let items = snapshot.documents.compactMap { document in
+                try? document.data(as: ShoppingListItem.self)
+            }
+
+            results.append(contentsOf: items)
+        }
+
+        return results.dedupedById()
+    }
+    // MARK: - Job Templates
+
+    func fetchJobTemplates(
+        companyId: String
+    ) async throws -> [JobTemplate] {
+        let snapshot = try await WorkOrderTemplateCollection(companyId: companyId)
+            .whereField("isActive", isEqualTo: true)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: JobTemplate.self)
+        }
+        .sorted { $0.name < $1.name }
+    }
+
+    func fetchJobTemplate(
+        companyId: String,
+        templateId: String
+    ) async throws -> JobTemplate {
+        try await WorkOrderDocument(workOrderTemplateId: templateId, companyId: companyId)
+        .getDocument(as: JobTemplate.self)
+    }
+
+    func saveJobTemplate(
+        _ template: JobTemplate
+    ) async throws {
+        try WorkOrderDocument(workOrderTemplateId: template.id, companyId: template.companyId)
+        .setData(from: template, merge: true)
+    }
+
+    func saveJobTemplatePlannedServiceStops(
+        _ plannedStops: [JobTemplatePlannedServiceStop]
+    ) async throws {
+        for plannedStop in plannedStops {
+            try jobTemplatePlannedServiceStopDoc(
+                companyId: plannedStop.companyId,
+                templateId: plannedStop.templateId,
+                plannedStopId: plannedStop.id
+            )
+            .setData(from: plannedStop, merge: true)
+        }
+    }
+
+    func saveJobTemplateTasks(
+        _ tasks: [JobTemplateTask]
+    ) async throws {
+        for task in tasks {
+            try jobTemplateTaskDoc(
+                companyId: task.companyId,
+                templateId: task.templateId,
+                templateTaskId: task.id
+            )
+            .setData(from: task, merge: true)
+        }
+    }
+
+    func saveJobTemplateShoppingItems(
+        _ items: [JobTemplateShoppingItem]
+    ) async throws {
+        for item in items {
+            try jobTemplateShoppingItemDoc(
+                companyId: item.companyId,
+                templateId: item.templateId,
+                templateShoppingItemId: item.id
+            )
+            .setData(from: item, merge: true)
+        }
+    }
+
+    func fetchJobTemplatePlannedServiceStops(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplatePlannedServiceStop] {
+        let snapshot = try await jobTemplatePlannedServiceStopsCollection(
+            companyId: companyId,
+            templateId: templateId
+        )
+        .order(by: "sortOrder", descending: false)
+        .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: JobTemplatePlannedServiceStop.self)
+        }
+    }
+
+    func fetchJobTemplateTasks(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplateTask] {
+        let snapshot = try await jobTemplateTasksCollection(
+            companyId: companyId,
+            templateId: templateId
+        )
+        .order(by: "sortOrder", descending: false)
+        .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: JobTemplateTask.self)
+        }
+    }
+
+    func fetchJobTemplateShoppingItems(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplateShoppingItem] {
+        let snapshot = try await jobTemplateShoppingItemsCollection(
+            companyId: companyId,
+            templateId: templateId
+        )
+        .order(by: "sortOrder", descending: false)
+        .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: JobTemplateShoppingItem.self)
+        }
+    }
+    // MARK: - Job Copy Helpers
+
+    func saveJobPlannedServiceStops(
+        _ plannedStops: [JobPlannedServiceStop]
+    ) async throws {
+        for plannedStop in plannedStops {
+            try jobPlannedServiceStopDoc(
+                companyId: plannedStop.companyId,
+                jobId: plannedStop.jobId,
+                plannedServiceStopId: plannedStop.id
+            )
+            .setData(from: plannedStop, merge: true)
+        }
+    }
+
+    func saveJobTasks(
+        companyId: String,
+        jobId: String,
+        tasks: [JobTask]
+    ) async throws {
+        for task in tasks {
+            try workOrderTaskDocument(companyId: companyId, workOrderId: jobId, taskId: task.id)
+            .setData(from: task, merge: true)
+        }
+    }
+
+    func saveShoppingListItems(
+        companyId: String,
+        items: [ShoppingListItem]
+    ) async throws {
+        for item in items {
+            try shoppingListDoc(
+                companyId: companyId,
+                shoppingListItemId: item.id
+            )
+            .setData(from: item, merge: true)
+        }
+    }
+    
+    // MARK: - Planned Service stops
+    func fetchJobPlannedServiceStops(
+        companyId: String,
+        jobId: String
+    ) async throws -> [JobPlannedServiceStop] {
+        let snapshot = try await jobPlannedServiceStopsCollection(
+            companyId: companyId,
+            jobId: jobId
+        )
+        .order(by: "sortOrder", descending: false)
+        .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: JobPlannedServiceStop.self)
+        }
+    }
+
+    func saveJobPlannedServiceStop(
+        _ plannedStop: JobPlannedServiceStop
+    ) async throws {
+        try jobPlannedServiceStopDoc(
+            companyId: plannedStop.companyId,
+            jobId: plannedStop.jobId,
+            plannedServiceStopId: plannedStop.id
+        )
+        .setData(from: plannedStop, merge: true)
+    }
+
+    func deleteJobPlannedServiceStop(
+        companyId: String,
+        jobId: String,
+        plannedServiceStopId: String
+    ) async throws {
+        try await jobPlannedServiceStopDoc(
+            companyId: companyId,
+            jobId: jobId,
+            plannedServiceStopId: plannedServiceStopId
+        )
+        .delete()
+    }
+    // MARK: - Work Offers
+    func fetchCompanyServiceStopType(
+        companyId: String,
+        serviceStopTypeId: String
+    ) async throws -> CompanyServiceStopType {
+        try await companyServiceStopTypeDoc(
+            companyId: companyId,
+            serviceStopTypeId: serviceStopTypeId
+        )
+        .getDocument(as: CompanyServiceStopType.self)
+    }
+    func fetchServiceStopsForTechnician(
+        companyId: String,
+        technicianId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [ServiceStop] {
+        let snapshot = try await serviceStopsCollection(companyId: companyId)
+            .whereField("techId", isEqualTo: technicianId)
+            .whereField("serviceDate", isGreaterThanOrEqualTo: startDate)
+            .whereField("serviceDate", isLessThanOrEqualTo: endDate)
+            .order(by: "serviceDate", descending: false)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: ServiceStop.self)
+        }
+    }
+    func fetchAcceptedWorkOffersForUser(
+        companyId: String,
+        userId: String
+    ) async throws -> [WorkOffer] {
+        let snapshot = try await workOffersCollection(companyId: companyId)
+            .whereField("acceptedByUserId", isEqualTo: userId)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: WorkOffer.self)
+        }
+    }
+    func fetchWorkOffers(
+        companyId: String,
+        jobId: String
+    ) async throws -> [WorkOffer] {
+        let snapshot = try await workOffersCollection(companyId: companyId)
+            .whereField("jobId", isEqualTo: jobId)
+            .order(by: "createdAt", descending: true)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: WorkOffer.self)
+        }
+    }
+
+    func fetchWorkOffersForUser(
+        companyId: String,
+        userId: String
+    ) async throws -> [WorkOffer] {
+        let snapshot = try await workOffersCollection(companyId: companyId)
+            .whereField("offeredToUserId", isEqualTo: userId)
+            .order(by: "createdAt", descending: true)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: WorkOffer.self)
+        }
+    }
+
+    func fetchOpenBoardWorkOffers(
+        companyId: String,
+        workerType: WorkerTypeEnum
+    ) async throws -> [WorkOffer] {
+        let snapshot = try await workOffersCollection(companyId: companyId)
+            .whereField("postedToBoard", isEqualTo: true)
+            .whereField("status", in: [
+                WorkOfferStatus.posted.rawValue,
+                WorkOfferStatus.viewed.rawValue
+            ])
+            .order(by: "createdAt", descending: true)
+            .getDocuments()
+
+        let offers = try snapshot.documents.compactMap { document in
+            try document.data(as: WorkOffer.self)
+        }
+
+        return offers.filter { offer in
+            switch offer.boardVisibility {
+            case .employeesOnly:
+                return workerType == .employee
+            case .contractorsOnly:
+                return workerType == .contractor
+            case .employeesAndContractors:
+                return workerType == .employee || workerType == .contractor
+            case .adminsOnly:
+                return false
+            }
+        }
+    }
+
+    func saveWorkOffer(
+        _ workOffer: WorkOffer
+    ) async throws {
+        try workOfferDoc(
+            companyId: workOffer.companyId,
+            workOfferId: workOffer.id
+        )
+        .setData(from: workOffer, merge: true)
+
+        // Optional reference under the job for quick future UI loading.
+        let refData: [String: Any] = [
+            "id": workOffer.id,
+            "jobId": workOffer.jobId,
+            "status": workOffer.status.rawValue,
+            "offerType": workOffer.offerType.rawValue,
+            "title": workOffer.title,
+            "createdAt": workOffer.createdAt
+        ]
+
+        try await jobWorkOfferRefDoc(
+            companyId: workOffer.companyId,
+            jobId: workOffer.jobId,
+            workOfferId: workOffer.id
+        )
+        .setData(refData, merge: true)
+    }
+
+    func updateWorkOfferStatus(
+        companyId: String,
+        workOfferId: String,
+        status: WorkOfferStatus
+    ) async throws {
+        var data: [String: Any] = [
+            "status": status.rawValue
+        ]
+
+        switch status {
+        case .sent:
+            data["sentAt"] = Date()
+        case .posted:
+            data["postedAt"] = Date()
+        case .viewed:
+            data["viewedAt"] = Date()
+        case .accepted:
+            data["acceptedAt"] = Date()
+        case .rejected:
+            data["rejectedAt"] = Date()
+        case .cancelled:
+            data["cancelledAt"] = Date()
+        case .completed:
+            data["completedAt"] = Date()
+        case .draft, .expired, .scheduled, .inProgress:
+            break
+        }
+
+        try await workOfferDoc(
+            companyId: companyId,
+            workOfferId: workOfferId
+        )
+        .updateData(data)
+    }
+
+    func acceptWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        acceptedByUserId: String,
+        acceptedByUserName: String
+    ) async throws {
+        try await workOfferDoc(
+            companyId: companyId,
+            workOfferId: workOfferId
+        )
+        .updateData([
+            "status": WorkOfferStatus.accepted.rawValue,
+            "acceptedAt": Date(),
+            "acceptedByUserId": acceptedByUserId,
+            "acceptedByUserName": acceptedByUserName
+        ])
+    }
+
+    func rejectWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        rejectedByUserId: String,
+        rejectedByUserName: String,
+        reason: String
+    ) async throws {
+        try await workOfferDoc(
+            companyId: companyId,
+            workOfferId: workOfferId
+        )
+        .updateData([
+            "status": WorkOfferStatus.rejected.rawValue,
+            "rejectedAt": Date(),
+            "acceptedByUserId": rejectedByUserId,
+            "acceptedByUserName": rejectedByUserName,
+            "rejectionReason": reason
+        ])
+    }
+
+    func cancelWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        reason: String
+    ) async throws {
+        try await workOfferDoc(
+            companyId: companyId,
+            workOfferId: workOfferId
+        )
+        .updateData([
+            "status": WorkOfferStatus.cancelled.rawValue,
+            "cancelledAt": Date(),
+            "adminNotes": reason,
+            "rejectionReason": reason
+        ])
+    }
+    func updateWorkOfferScheduledServiceStop(
+        companyId: String,
+        workOfferId: String,
+        serviceStopId: String,
+        serviceStopInternalId: String
+    ) async throws {
+        try await workOfferDoc(
+            companyId: companyId,
+            workOfferId: workOfferId
+        )
+        .updateData([
+            "serviceStopId": serviceStopId,
+            "serviceStopInternalId": serviceStopInternalId,
+            "status": WorkOfferStatus.scheduled.rawValue
+        ])
+    }
+    func appendServiceStopIdToJob(
+        companyId: String,
+        jobId: String,
+        serviceStopId: String
+    ) async throws {
+        try await workOrderDocument(workOrderId: jobId, companyId: companyId)
+            .updateData([
+            "serviceStopIds": FieldValue.arrayUnion([serviceStopId])
+        ])
+    }
+    // MARK: - Billing Info
+    func ensureCompanyPaySettings(
+        companyId: String
+    ) async throws -> CompanyPaySettings {
+//        if let settings = try await fetchCompanyPaySettings(companyId: companyId) {
+//            return settings
+//        }
+
+        let defaultSettings = CompanyPaySettings.defaultSettings()
+        try await saveCompanyPaySettings(companyId: companyId, defaultSettings)
+
+        return defaultSettings
+    }
+    // MARK: - Company Users
+
+    func fetchCompanyUsers(
+        companyId: String
+    ) async throws -> [CompanyUser] {
+        let snapshot = try await companyUsersCollection(companyId: companyId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: CompanyUser.self) }
+            .sorted { $0.userName < $1.userName }
+    }
+
+    // MARK: - Service Stop Tasks
+
+    func fetchServiceStopTasks(
+        companyId: String,
+        serviceStopId: String
+    ) async throws -> [ServiceStopTask] {
+        let snapshot = try await serviceStopTasksCollection(
+            companyId: companyId,
+            serviceStopId: serviceStopId
+        )
+        .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: ServiceStopTask.self) }
+    }
+
+    // MARK: - Pay Settings
+
+    func fetchCompanyPaySettings(
+        companyId: String
+    ) async throws -> CompanyPaySettings? {
+        let snapshot = try await companyPaySettingsDoc(companyId: companyId)
+            .getDocument()
+
+        guard snapshot.exists else {
+            return nil
+        }
+
+        return try snapshot.data(as: CompanyPaySettings.self)
+    }
+
+    func saveCompanyPaySettings(
+        companyId:String,
+        _ settings: CompanyPaySettings
+    ) async throws {
+        try await companyPaySettingsDoc(companyId: companyId)
+            .setData(from: settings, merge: true)
+    }
+
+    // MARK: - Service Stop Types
+
+    func fetchCompanyServiceStopTypes(
+        companyId: String
+    ) async throws -> [CompanyServiceStopType] {
+        let snapshot = try await companyServiceStopTypesCollection(companyId: companyId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: CompanyServiceStopType.self) }
+            .sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    func saveCompanyServiceStopType(
+        _ serviceStopType: CompanyServiceStopType
+    ) async throws {
+        try await companyServiceStopTypeDoc(
+            companyId: serviceStopType.companyId,
+            serviceStopTypeId: serviceStopType.id
+        )
+        .setData(from: serviceStopType, merge: true)
+    }
+
+    // MARK: - Work Types
+
+    func fetchCompanyWorkTypes(
+        companyId: String
+    ) async throws -> [CompanyWorkType] {
+        let snapshot = try await companyWorkTypesCollection(companyId: companyId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: CompanyWorkType.self) }
+            .sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    func saveCompanyWorkType(
+        _ workType: CompanyWorkType
+    ) async throws {
+        try await companyWorkTypeDoc(
+            companyId: workType.companyId,
+            workTypeId: workType.id
+        )
+        .setData(from: workType, merge: true)
+    }
+
+    // MARK: - Work Type Mappings
+
+    func fetchWorkTypeMappings(
+        companyId: String
+    ) async throws -> [WorkTypeMapping] {
+        let snapshot = try await workTypeMappingsCollection(companyId: companyId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: WorkTypeMapping.self) }
+    }
+
+    func saveWorkTypeMapping(
+        _ mapping: WorkTypeMapping
+    ) async throws {
+        try await workTypeMappingDoc(
+            companyId: mapping.companyId,
+            mappingId: mapping.id
+        )
+        .setData(from: mapping, merge: true)
+    }
+    func deleteWorkTypeMapping(
+        companyId: String,
+        mappingId: String
+    ) async throws {
+        try await workTypeMappingDoc(
+            companyId: companyId,
+            mappingId: mappingId
+        )
+        .delete()
+    }
+
+    // MARK: - Company Rate Plans
+
+    func fetchCompanyRatePlans(
+        companyId: String
+    ) async throws -> [CompanyRatePlan] {
+        let snapshot = try await companyRatePlansCollection(companyId: companyId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: CompanyRatePlan.self) }
+            .sorted { $0.effectiveStartDate > $1.effectiveStartDate }
+    }
+
+    func saveCompanyRatePlan(
+        _ ratePlan: CompanyRatePlan
+    ) async throws {
+        try await companyRatePlanDoc(
+            companyId: ratePlan.companyId,
+            ratePlanId: ratePlan.id
+        )
+        .setData(from: ratePlan, merge: true)
+    }
+
+    // MARK: - Technician Rates
+
+    func fetchTechnicianRates(
+        companyId: String
+    ) async throws -> [TechnicianRate] {
+        let snapshot = try await technicianRatesCollection(companyId: companyId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: TechnicianRate.self) }
+            .sorted { $0.effectiveStartDate > $1.effectiveStartDate }
+    }
+
+    func fetchTechnicianRates(
+        companyId: String,
+        technicianId: String
+    ) async throws -> [TechnicianRate] {
+        let snapshot = try await technicianRatesCollection(companyId: companyId)
+            .whereField("technicianId", isEqualTo: technicianId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: TechnicianRate.self) }
+            .sorted { $0.effectiveStartDate > $1.effectiveStartDate }
+    }
+
+    func saveTechnicianRate(
+        _ rate: TechnicianRate
+    ) async throws {
+        try await technicianRateDoc(
+            companyId: rate.companyId,
+            technicianRateId: rate.id
+        )
+        .setData(from: rate, merge: true)
+    }
+
+    func saveTechnicianRateIncrease(
+        expiredOldRate: TechnicianRate,
+        newRate: TechnicianRate
+    ) async throws {
+        let batch = db.batch()
+        let encoder = Firestore.Encoder()
+
+        let oldData = try encoder.encode(expiredOldRate)
+        let newData = try encoder.encode(newRate)
+
+        batch.setData(
+            oldData,
+            forDocument: technicianRateDoc(
+                companyId: expiredOldRate.companyId,
+                technicianRateId: expiredOldRate.id
+            ),
+            merge: true
+        )
+
+        batch.setData(
+            newData,
+            forDocument: technicianRateDoc(
+                companyId: newRate.companyId,
+                technicianRateId: newRate.id
+            ),
+            merge: true
+        )
+
+        try await batch.commit()
+    }
+
+    // MARK: - Technician Pay Line Items
+
+    func fetchTechnicianPayLineItems(
+        companyId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [TechnicianPayLineItem] {
+        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+            .whereField("completedDate", isGreaterThanOrEqualTo: startDate)
+            .whereField("completedDate", isLessThanOrEqualTo: endDate)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: TechnicianPayLineItem.self) }
+            .sorted {
+                if $0.completedDate == $1.completedDate {
+                    return $0.technicianName < $1.technicianName
+                }
+
+                return $0.completedDate < $1.completedDate
+            }
+    }
+    func fetchTechnicianPayLineItems(
+        companyId: String,
+        serviceStopId: String
+    ) async throws -> [TechnicianPayLineItem] {
+        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+            .whereField("serviceStopId", isEqualTo: serviceStopId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: TechnicianPayLineItem.self) }
+            .sorted {
+                if $0.completedDate == $1.completedDate {
+                    return ($0.workTypeName ?? "") < ($1.workTypeName ?? "")
+                }
+
+                return $0.completedDate < $1.completedDate
+            }
+    }
+
+    func saveTechnicianPayLineItems(
+        _ lineItems: [TechnicianPayLineItem]
+    ) async throws {
+        guard !lineItems.isEmpty else {
+            return
+        }
+
+        let batch = db.batch()
+        let encoder = Firestore.Encoder()
+
+        for lineItem in lineItems {
+            let data = try encoder.encode(lineItem)
+
+            batch.setData(
+                data,
+                forDocument: technicianPayLineItemDoc(
+                    companyId: lineItem.companyId,
+                    payLineItemId: lineItem.id
+                ),
+                merge: true
+            )
+        }
+
+        try await batch.commit()
+    }
+
+    func updateTechnicianPayLineItem(
+        _ lineItem: TechnicianPayLineItem
+    ) async throws {
+        try await technicianPayLineItemDoc(
+            companyId: lineItem.companyId,
+            payLineItemId: lineItem.id
+        )
+        .setData(from: lineItem, merge: true)
+    }
+
+    // MARK: - Technician Pay Statements
+
+    func fetchTechnicianPayStatements(
+        companyId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [TechnicianPayStatement] {
+        let snapshot = try await technicianPayStatementsCollection(companyId: companyId)
+            .whereField("startDate", isLessThanOrEqualTo: endDate)
+            .whereField("endDate", isGreaterThanOrEqualTo: startDate)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: TechnicianPayStatement.self) }
+            .sorted { $0.startDate > $1.startDate }
+    }
+    func fetchTechnicianPayLineItems(
+        companyId: String,
+        payStatementId: String
+    ) async throws -> [TechnicianPayLineItem] {
+        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+            .whereField("payStatementId", isEqualTo: payStatementId)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: TechnicianPayLineItem.self) }
+            .sorted {
+                if $0.completedDate == $1.completedDate {
+                    return ($0.workTypeName ?? "") < ($1.workTypeName ?? "")
+                }
+
+                return $0.completedDate < $1.completedDate
+            }
+    }
+    
+    func saveTechnicianPayStatement(
+        _ statement: TechnicianPayStatement
+    ) async throws {
+        try await technicianPayStatementDoc(
+            companyId: statement.companyId,
+            payStatementId: statement.id
+        )
+        .setData(from: statement, merge: true)
+    }
+    
+    // MARK: - Billing Info
+
     nonisolated static func == (lhs: ProductionDataService, rhs: ProductionDataService) -> Bool {
         return lhs.id == rhs.id
     }
@@ -35,7 +945,214 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         return decoder
     }()
     let db = Firestore.firestore()
-    
+    func getEquipmentServiceHistory(
+        companyId: String,
+        equipmentId: String
+    ) async throws -> [EquipmentServiceHistory] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("serviceHistory")
+            .order(by: "date", descending: true)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: EquipmentServiceHistory.self)
+        }
+    }
+    func getEquipmentScheduledWork(
+        companyId: String,
+        equipmentId: String
+    ) async throws -> [EquipmentScheduledWork] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("scheduledWork")
+            .whereField("status", in: [
+                EquipmentScheduledWorkStatus.draft.rawValue,
+                EquipmentScheduledWorkStatus.estimatePending.rawValue,
+                EquipmentScheduledWorkStatus.scheduled.rawValue,
+                EquipmentScheduledWorkStatus.inProgress.rawValue
+            ])
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: EquipmentScheduledWork.self)
+        }
+    }
+
+    func uploadEquipmentScheduledWork(
+        companyId: String,
+        equipmentId: String,
+        scheduledWork: EquipmentScheduledWork
+    ) async throws {
+        try db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("scheduledWork")
+            .document(scheduledWork.id)
+            .setData(from: scheduledWork, merge: true)
+    }
+
+    func updateEquipmentScheduledWorkStatus(
+        companyId: String,
+        equipmentId: String,
+        scheduledWorkId: String,
+        status: EquipmentScheduledWorkStatus,
+        dateCompleted: Date? = nil
+    ) async throws {
+        var data: [String: Any] = [
+            "status": status.rawValue
+        ]
+
+        if let dateCompleted {
+            data["dateCompleted"] = dateCompleted
+        }
+
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("scheduledWork")
+            .document(scheduledWorkId)
+            .setData(data, merge: true)
+    }
+//    func getScheduledWorkForEquipment(
+//        companyId: String,
+//        equipmentId: String
+//    ) async throws -> [EquipmentScheduledWork] {
+//        let db = self.db
+//
+//        let taskSnapshot = try await db
+//            .collectionGroup("tasks")
+//            .whereField("equipmentId", isEqualTo: equipmentId)
+//            .getDocuments()
+//
+//        var scheduledWork: [EquipmentScheduledWork] = []
+//
+//        for taskDoc in taskSnapshot.documents {
+//            let task = try taskDoc.data(as: ServiceStopTask.self)
+//
+//            guard task.status == .scheduled || task.status == .inProgress else {
+//                continue
+//            }
+//
+//            guard let serviceStopRef = taskDoc.reference.parent.parent else {
+//                continue
+//            }
+//
+//            let serviceStopSnapshot = try await serviceStopRef.getDocument()
+//            let serviceStop = try serviceStopSnapshot.data(as: ServiceStop.self)
+//
+//            guard serviceStop.companyId == companyId else {
+//                continue
+//            }
+//
+//            guard serviceStop.serviceDate >= Calendar.current.startOfDay(for: Date()) else {
+//                continue
+//            }
+//
+//            var jobInternalId = task.jobId.internalId
+//
+//            if !serviceStop.jobId.isEmpty {
+//                do {
+//                    let job = try await getWorkOrderById(
+//                        companyId: companyId,
+//                        workOrderId: serviceStop.jobId
+//                    )
+//                    jobInternalId = job.internalId
+//                } catch {
+//                    print("Unable to fetch job for scheduled equipment work: \(error)")
+//                }
+//            }
+//
+//            let item = EquipmentScheduledWork(
+//                id: task.id,
+//                taskName: task.name,
+//                taskType: task.type,
+//                serviceDate: serviceStop.serviceDate,
+//                techName: serviceStop.tech,
+//                serviceStopId: serviceStop.id,
+//                serviceStopInternalId: serviceStop.internalId,
+//                jobId: serviceStop.jobId,
+//                jobInternalId: jobInternalId,
+//                status: task.status
+//            )
+//
+//            scheduledWork.append(item)
+//        }
+//
+//        return scheduledWork.sorted { $0.serviceDate < $1.serviceDate }
+//    }
+    func uploadEquipmentServiceHistory(
+        companyId: String,
+        equipmentId: String,
+        history: EquipmentServiceHistory
+    ) async throws {
+        try db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("serviceHistory")
+            .document(history.id)
+            .setData(from: history, merge: true)
+    }
+
+    func updateEquipmentServiceDates(
+        companyId: String,
+        equipmentId: String,
+        lastServiceDate: Date,
+        nextServiceDate: Date?
+    ) async throws {
+        var data: [String: Any] = [
+            "lastServiceDate": lastServiceDate
+        ]
+
+        if let nextServiceDate {
+            data["nextServiceDate"] = nextServiceDate
+        } else {
+            data["nextServiceDate"] = FieldValue.delete()
+        }
+
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .setData(data, merge: true)
+    }
+
+    func createEquipmentPartFromName(
+        companyId: String,
+        equipmentId: String,
+        name: String
+    ) async throws -> String {
+        let partId = "com_equ_par_" + UUID().uuidString
+
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("parts")
+            .document(partId)
+            .setData([
+                "id": partId,
+                "name": name,
+                "date": Date(),
+                "createdAt": Date()
+            ], merge: true)
+
+        return partId
+    }
         //----------------------------------------------------
         //                   Universal Collections
         //----------------------------------------------------
@@ -51,9 +1168,270 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func generalDossageDocument(dosageTemplateId:String)-> DocumentReference{
         universalDossagesTemplateCollection().document(dosageTemplateId)
     }
-        //----------------------------------------------------
-        //                    Invites Collections
-        //----------------------------------------------------
+        // MARK: - Job Planned Service Stops
+
+    func jobPlannedServiceStopsCollection(
+        companyId: String,
+        jobId: String
+    ) -> CollectionReference {
+        workOrderDocument(workOrderId: jobId, companyId: companyId)
+            .collection("plannedServiceStops")
+    }
+
+    func jobPlannedServiceStopDoc(
+        companyId: String,
+        jobId: String,
+        plannedServiceStopId: String
+    ) -> DocumentReference {
+        jobPlannedServiceStopsCollection(
+            companyId: companyId,
+            jobId: jobId
+        )
+        .document(plannedServiceStopId)
+    }
+    //MARK: - Billing Collections and docuemnts
+    /*
+     
+     "comp_pay_set_main"
+     "comp_ss_type_" + UUID().uuidString
+     "comp_work_type_" + UUID().uuidString
+     "comp_work_map_" + UUID().uuidString
+     "comp_rate_plan_" + UUID().uuidString
+     "comp_tech_rate_" + UUID().uuidString
+     "comp_pay_line_" + UUID().uuidString
+     "comp_pay_stmt_" + UUID().uuidString
+     
+     */
+
+    // MARK: - Companies
+
+//    func companyCollection() -> CollectionReference {
+//        db.collection("companies")
+//    }
+
+    func companyDoc(companyId: String) -> DocumentReference {
+        companyCollection().document(companyId)
+    }
+
+    // MARK: - Company Users
+    // companies/{companyId}/companyUsers/{companyUserId}
+
+//    func companyUsersCollection(companyId: String) -> CollectionReference {
+//        companyDoc(companyId: companyId).collection("companyUsers")
+//    }
+
+//    func companyUserDoc(
+//        companyId: String,
+//        companyUserId: String
+//    ) -> DocumentReference {
+//        companyUsersCollection(companyId: companyId)
+//            .document(companyUserId)
+//    }
+
+    func companyUserByUserIdQuery(
+        companyId: String,
+        userId: String
+    ) -> Query {
+        companyUsersCollection(companyId: companyId)
+            .whereField("userId", isEqualTo: userId)
+    }
+
+    // MARK: - Service Stops
+    // companies/{companyId}/serviceStops/{serviceStopId}
+
+    func serviceStopsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("serviceStops")
+    }
+
+    func serviceStopDoc(
+        companyId: String,
+        serviceStopId: String
+    ) -> DocumentReference {
+        serviceStopsCollection(companyId: companyId)
+            .document(serviceStopId)
+    }
+
+    // MARK: - Service Stop Tasks
+    // companies/{companyId}/serviceStops/{serviceStopId}/tasks/{taskId}
+
+    func serviceStopTasksCollection(
+        companyId: String,
+        serviceStopId: String
+    ) -> CollectionReference {
+        serviceStopDoc(
+            companyId: companyId,
+            serviceStopId: serviceStopId
+        )
+        .collection("tasks")
+    }
+
+    func serviceStopTaskDoc(
+        companyId: String,
+        serviceStopId: String,
+        taskId: String
+    ) -> DocumentReference {
+        serviceStopTasksCollection(
+            companyId: companyId,
+            serviceStopId: serviceStopId
+        )
+        .document(taskId)
+    }
+
+    // MARK: - Company Pay Settings
+    // companies/{companyId}/paySettings/main
+
+    func companyPaySettingsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("paySettings")
+    }
+
+    func companyPaySettingsDoc(companyId: String) -> DocumentReference {
+        companyPaySettingsCollection(companyId: companyId)
+            .document("main")
+    }
+
+    // MARK: - Company Service Stop Types
+    // companies/{companyId}/companyServiceStopTypes/{serviceStopTypeId}
+
+    func companyServiceStopTypesCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("companyServiceStopTypes")
+    }
+
+    func companyServiceStopTypeDoc(
+        companyId: String,
+        serviceStopTypeId: String
+    ) -> DocumentReference {
+        companyServiceStopTypesCollection(companyId: companyId)
+            .document(serviceStopTypeId)
+    }
+
+    // MARK: - Company Work Types
+    // companies/{companyId}/companyWorkTypes/{workTypeId}
+
+    func companyWorkTypesCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("companyWorkTypes")
+    }
+
+    func companyWorkTypeDoc(
+        companyId: String,
+        workTypeId: String
+    ) -> DocumentReference {
+        companyWorkTypesCollection(companyId: companyId)
+            .document(workTypeId)
+    }
+
+    // MARK: - Work Type Mappings
+    // companies/{companyId}/workTypeMappings/{mappingId}
+
+    func workTypeMappingsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("workTypeMappings")
+    }
+
+    func workTypeMappingDoc(
+        companyId: String,
+        mappingId: String
+    ) -> DocumentReference {
+        workTypeMappingsCollection(companyId: companyId)
+            .document(mappingId)
+    }
+
+    // MARK: - Company Rate Plans
+    // companies/{companyId}/companyRatePlans/{ratePlanId}
+
+    func companyRatePlansCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("companyRatePlans")
+    }
+
+    func companyRatePlanDoc(
+        companyId: String,
+        ratePlanId: String
+    ) -> DocumentReference {
+        companyRatePlansCollection(companyId: companyId)
+            .document(ratePlanId)
+    }
+
+    // MARK: - Technician Rates
+    // companies/{companyId}/technicianRates/{technicianRateId}
+
+    func technicianRatesCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("technicianRates")
+    }
+
+    func technicianRateDoc(
+        companyId: String,
+        technicianRateId: String
+    ) -> DocumentReference {
+        technicianRatesCollection(companyId: companyId)
+            .document(technicianRateId)
+    }
+
+    // MARK: - Technician Pay Line Items
+    // companies/{companyId}/technicianPayLineItems/{payLineItemId}
+
+    func technicianPayLineItemsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("technicianPayLineItems")
+    }
+
+    func technicianPayLineItemDoc(
+        companyId: String,
+        payLineItemId: String
+    ) -> DocumentReference {
+        technicianPayLineItemsCollection(companyId: companyId)
+            .document(payLineItemId)
+    }
+
+    // MARK: - Technician Pay Statements
+    // companies/{companyId}/technicianPayStatements/{payStatementId}
+
+    func technicianPayStatementsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("technicianPayStatements")
+    }
+
+    func technicianPayStatementDoc(
+        companyId: String,
+        payStatementId: String
+    ) -> DocumentReference {
+        technicianPayStatementsCollection(companyId: companyId)
+            .document(payStatementId)
+    }
+        // MARK: - Work Offers
+
+    func workOffersCollection(
+        companyId: String
+    ) -> CollectionReference {
+        companyDoc(companyId: companyId)
+            .collection("workOffers")
+    }
+
+    func workOfferDoc(
+        companyId: String,
+        workOfferId: String
+    ) -> DocumentReference {
+        workOffersCollection(companyId: companyId)
+            .document(workOfferId)
+    }
+
+    // Optional lightweight job reference collection.
+    // Useful later if you want a job subcollection for quick navigation,
+    // but the source of truth should remain companies/{companyId}/workOffers.
+    func jobWorkOfferRefsCollection(
+        companyId: String,
+        jobId: String
+    ) -> CollectionReference {
+        workOrderDocument(workOrderId: jobId, companyId: companyId)
+            .collection("workOfferRefs")
+    }
+
+    func jobWorkOfferRefDoc(
+        companyId: String,
+        jobId: String,
+        workOfferId: String
+    ) -> DocumentReference {
+        jobWorkOfferRefsCollection(companyId: companyId, jobId: jobId)
+            .document(workOfferId)
+    }
+    //----------------------------------------------------
+    //                    Invites Collections
+    //----------------------------------------------------
     func inviteCollection() -> CollectionReference{
         db.collection("invites")
     }
@@ -101,9 +1479,76 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         db.collection("companies/\(companyId)/settings/trainingTemplates/trainingTemplates")
     }
     func WorkOrderTemplateCollection(companyId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/settings/workOrders/workOrders")
+        db.collection("companies/\(companyId)/jobTemplates")
     }
-    
+    func jobTemplatePlannedServiceStopsCollection(
+        companyId: String,
+        templateId: String
+    ) -> CollectionReference {
+        WorkOrderDocument(
+            workOrderTemplateId: templateId,
+            companyId: companyId
+        )
+        .collection("plannedServiceStops")
+    }
+
+    func jobTemplatePlannedServiceStopDoc(
+        companyId: String,
+        templateId: String,
+        plannedStopId: String
+    ) -> DocumentReference {
+        jobTemplatePlannedServiceStopsCollection(
+            companyId: companyId,
+            templateId: templateId
+        )
+        .document(plannedStopId)
+    }
+
+    func jobTemplateTasksCollection(
+        companyId: String,
+        templateId: String
+    ) -> CollectionReference {
+        WorkOrderDocument(
+            workOrderTemplateId: templateId,
+            companyId: companyId
+        )
+        .collection("tasks")
+    }
+
+    func jobTemplateTaskDoc(
+        companyId: String,
+        templateId: String,
+        templateTaskId: String
+    ) -> DocumentReference {
+        jobTemplateTasksCollection(
+            companyId: companyId,
+            templateId: templateId
+        )
+        .document(templateTaskId)
+    }
+
+    func jobTemplateShoppingItemsCollection(
+        companyId: String,
+        templateId: String
+    ) -> CollectionReference {
+        WorkOrderDocument(
+            workOrderTemplateId: templateId,
+            companyId: companyId
+        )
+        .collection("shoppingItems")
+    }
+
+    func jobTemplateShoppingItemDoc(
+        companyId: String,
+        templateId: String,
+        templateShoppingItemId: String
+    ) -> DocumentReference {
+        jobTemplateShoppingItemsCollection(
+            companyId: companyId,
+            templateId: templateId
+        )
+        .document(templateShoppingItemId)
+    }
         //                    toDos Collections
     
     func ToDoCollection(companyId:String) -> CollectionReference{
@@ -855,7 +2300,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
 
         serviceStopListener = serviceStopCollection(companyId: companyId)
             .whereField("techId", isEqualTo: techId)
-            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThan: date.startOfDay())
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: date.endOfDay())
             .addSnapshotListener { snapshot, error in
                 guard let docs = snapshot?.documents else {
@@ -894,16 +2339,33 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         activeRouteListener?.remove()
         activeRouteListener = ActiveRouteCollection(companyId: companyId)
             .whereField("techId", isEqualTo: techId)
-            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
-            .limit(to: 1)
             .addSnapshotListener { snapshot, error in
-                guard let doc = snapshot?.documents.first else {
+                guard let docs = snapshot?.documents else {
                     onChange(nil)
                     return
                 }
-                let route = try? doc.data(as: ActiveRoute.self)
-                onChange(route)
+                let routes = docs.compactMap { try? $0.data(as: ActiveRoute.self) }
+                    .filter { route in
+                        route.totalStops > 0 || route.startTime != nil || route.endTime != nil
+                    }
+                    .sorted { lhs, rhs in
+                        let lhsHasWork = lhs.startTime != nil || lhs.endTime != nil || lhs.status != .didNotStart
+                        let rhsHasWork = rhs.startTime != nil || rhs.endTime != nil || rhs.status != .didNotStart
+
+                        if lhsHasWork != rhsHasWork {
+                            return lhsHasWork
+                        }
+
+                        if lhs.serviceStopsIds.count != rhs.serviceStopsIds.count {
+                            return lhs.serviceStopsIds.count > rhs.serviceStopsIds.count
+                        }
+
+                        return lhs.id < rhs.id
+                    }
+
+                onChange(routes.first)
             }
     }
     private func UserAccessDocument(userId:String,accessId:String) -> DocumentReference{
@@ -1105,66 +2567,6 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             onChange(stops)
         }
         
-    }
-    func applyRouteChanges(companyId:String,diff:ActiveRouteDiff,calledFrom:String){
-        Task{
-            do {
-                print("")
-                print("    [ProductionDataService][applyRouteChanges] Called From \(calledFrom) Listener")
-                //if Diff oldRoute is nil then upload the new ActiveRoute. Other wise update the status and order
-                if diff.old == nil {
-                    print("    [ProductionDataService][applyRouteChanges] Old Route is nil")
-                    print("    [ProductionDataService][applyRouteChanges] Upload New Active route because Old Route is nil")
-                    print("      [ProductionDataService][applyRouteChanges] New Active Route: ID: \(diff.new.id)")
-                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Date: \(diff.new.date)")
-                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Total Stops: \(diff.new.totalStops)")
-                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Service Stop Ids: \(diff.new.serviceStopsIds.count)")
-                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Service Stop Order: \(String(describing: diff.new.order?.count))")
-                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Tech Id: \(diff.new.techId)")
-                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Tech Name: \(diff.new.techName)")
-                    try ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
-                        .setData(from:diff.new, merge: false)
-                } else {
-                    //If Order is Changed make updates to Ar Order
-                    if diff.orderChanged {
-                     print("    [ProductionDataService][applyRouteChanges] Update Order Changed")
-                        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
-                        try await ref.updateData([
-                            "order": []
-                        ])
-                        
-                        for order in diff.new.order ?? [] {
-                            let data =  [
-                                "order": FieldValue.arrayUnion([
-                                    [
-                                        "id": order.id,
-                                        "order": order.order,
-                                        "serviceStopId": order.serviceStopId,
-                                        "recurringServiceStopId": order.recurringServiceStopId,
-                                    ]
-                                ])
-                            ]
-                            try await ref.updateData(data)
-                        }
-                        
-                    } else {
-                        print("    [ProductionDataService][applyRouteChanges] No Change To Order")
-                    }
-//                    if Status has changed make updates
-                    if diff.statusChanged {
-                     print("    [ProductionDataService][applyRouteChanges]Update Status Changed")
-                        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
-                        try await ref.updateData([
-                            "status": diff.new.status
-                        ])
-                    } else {
-                        print("    [ProductionDataService][applyRouteChanges] No Change To Status")
-                    }
-                }
-            } catch {
-                print("[ProductionDataService][applyRouteChanges] [Build] Error \(error)")
-            }
-        }
     }
     func stopServiceStopActiveRouteRecurringRouteListenrs() {
          serviceStopListener?.remove()

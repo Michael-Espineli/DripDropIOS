@@ -133,6 +133,84 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             case dateUninstalled = "dateUninstalled"
         }
 }
+// MARK: - Maybe update
+/*struct EquipmentServiceHistory: Identifiable, Codable, Equatable, Hashable {
+ var id: String = "com_equ_sh_" + UUID().uuidString
+ var name: String
+ var type: EquipmentServiceType
+ var date: Date
+ var description: String
+ var performedBy: ServicePerformaceType
+ var addedBy: ServiceRecordType
+ var techId: String
+ var techName: String
+ var jobId: String
+ var partIds: [String]
+
+ init(
+     id: String,
+     name: String,
+     type: EquipmentServiceType,
+     date: Date,
+     description: String,
+     performedBy: ServicePerformaceType,
+     addedBy: ServiceRecordType,
+     techId: String,
+     techName: String,
+     jobId: String,
+     partIds: [String]
+ ) {
+     self.id = id
+     self.name = name
+     self.type = type
+     self.date = date
+     self.description = description
+     self.performedBy = performedBy
+     self.addedBy = addedBy
+     self.techId = techId
+     self.techName = techName
+     self.jobId = jobId
+     self.partIds = partIds
+ }
+
+ enum CodingKeys: String, CodingKey {
+     case id
+     case name
+     case type
+     case date
+     case description
+     case performedBy
+     case addedBy
+     case techId
+     case techName
+     case jobId
+     case partIds
+ }
+
+ init(from decoder: Decoder) throws {
+     let container = try decoder.container(keyedBy: CodingKeys.self)
+
+     self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? "com_equ_sh_" + UUID().uuidString
+     self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+
+     let typeRaw = try container.decodeIfPresent(String.self, forKey: .type) ?? "Maintenance"
+     self.type = EquipmentServiceType(rawValue: typeRaw) ?? .maintenance
+
+     self.date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+     self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+
+     let performedByRaw = try container.decodeIfPresent(String.self, forKey: .performedBy) ?? ""
+     self.performedBy = ServicePerformaceType(rawValue: performedByRaw) ?? .unknown
+
+     let addedByRaw = try container.decodeIfPresent(String.self, forKey: .addedBy) ?? ""
+     self.addedBy = ServiceRecordType(rawValue: addedByRaw) ?? .unknown
+
+     self.techId = try container.decodeIfPresent(String.self, forKey: .techId) ?? ""
+     self.techName = try container.decodeIfPresent(String.self, forKey: .techName) ?? ""
+     self.jobId = try container.decodeIfPresent(String.self, forKey: .jobId) ?? ""
+     self.partIds = try container.decodeIfPresent([String].self, forKey: .partIds) ?? []
+ }
+}*/
 struct EquipmentServiceHistory:Identifiable,Codable,Equatable,Hashable{
     
     var id : String = "com_equ_sh_" + UUID().uuidString
@@ -185,7 +263,84 @@ struct EquipmentServiceHistory:Identifiable,Codable,Equatable,Hashable{
         case partIds = "partIds"
     }
 }
+struct EquipmentScheduledWork: Identifiable, Codable, Equatable, Hashable {
+    var id: String
+    var name: String
+    var type: EquipmentServiceType
+    var serviceDate: Date?
+    var techId: String
+    var techName: String
 
+    var serviceStopId: String
+    var serviceStopInternalId: String
+
+    var jobId: String
+    var jobInternalId: String
+
+    var status: EquipmentScheduledWorkStatus
+    var description: String
+    var dateCreated: Date
+    var dateCompleted: Date?
+
+    init(
+        id: String = "com_equ_sw_" + UUID().uuidString,
+        name: String,
+        type: EquipmentServiceType,
+        serviceDate: Date? = nil,
+        techId: String = "",
+        techName: String = "",
+        serviceStopId: String = "",
+        serviceStopInternalId: String = "",
+        jobId: String = "",
+        jobInternalId: String = "",
+        status: EquipmentScheduledWorkStatus,
+        description: String = "",
+        dateCreated: Date = Date(),
+        dateCompleted: Date? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.type = type
+        self.serviceDate = serviceDate
+        self.techId = techId
+        self.techName = techName
+        self.serviceStopId = serviceStopId
+        self.serviceStopInternalId = serviceStopInternalId
+        self.jobId = jobId
+        self.jobInternalId = jobInternalId
+        self.status = status
+        self.description = description
+        self.dateCreated = dateCreated
+        self.dateCompleted = dateCompleted
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case type
+        case serviceDate
+        case techId
+        case techName
+        case serviceStopId
+        case serviceStopInternalId
+        case jobId
+        case jobInternalId
+        case status
+        case description
+        case dateCreated
+        case dateCompleted
+    }
+}
+enum EquipmentScheduledWorkStatus: String, Codable, CaseIterable, Identifiable, Hashable {
+    var id: String { rawValue }
+
+    case draft = "Draft"
+    case estimatePending = "Estimate Pending"
+    case scheduled = "Scheduled"
+    case inProgress = "In Progress"
+    case completed = "Completed"
+    case canceled = "Canceled"
+}
 extension ProductionDataService {
  
     func EquipmentImageRefrence(id:String)->StorageReference {

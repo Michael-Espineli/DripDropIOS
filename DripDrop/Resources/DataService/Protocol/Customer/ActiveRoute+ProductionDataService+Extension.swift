@@ -14,7 +14,7 @@ import CoreLocation
 import MapKit
 struct ActiveRoute:Identifiable, Codable,Equatable{
     
-    let id :String
+    var id :String
     var name: String
     var date : Date
     var serviceStopsIds : [String]
@@ -139,8 +139,125 @@ extension ProductionDataService {
     }
         //
         //CREATE
-    func uploadRoute(companyId: String,activeRoute:ActiveRoute) async throws {
-        try ActiveRouteCollection(companyId: companyId).document(activeRoute.id).setData(from:activeRoute, merge: false)
+    private func activeRouteStableDocumentId(date: Date, techId: String) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd"
+
+        let safeTechId = techId.replacingOccurrences(of: "/", with: "_")
+        return "com_ar_\(formatter.string(from: date.startOfDay()))_\(safeTechId)"
+    }
+
+    private func canonicalActiveRoute(from routes: [ActiveRoute]) -> ActiveRoute? {
+        routes.sorted { lhs, rhs in
+            let lhsHasWork = lhs.startTime != nil || lhs.endTime != nil || lhs.status != .didNotStart
+            let rhsHasWork = rhs.startTime != nil || rhs.endTime != nil || rhs.status != .didNotStart
+
+            if lhsHasWork != rhsHasWork {
+                return lhsHasWork
+            }
+
+            if lhs.serviceStopsIds.count != rhs.serviceStopsIds.count {
+                return lhs.serviceStopsIds.count > rhs.serviceStopsIds.count
+            }
+
+            return lhs.id < rhs.id
+        }
+        .first
+    }
+
+    private func getActiveRoutesForDateAndTech(
+        companyId: String,
+        date: Date,
+        techId: String
+    ) async throws -> [ActiveRoute] {
+        try await ActiveRouteCollection(companyId: companyId)
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThanOrEqualTo: date.startOfDay())
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
+            .whereField(ActiveRoute.CodingKeys.techId.rawValue, isEqualTo: techId)
+            .getDocuments(as: ActiveRoute.self)
+    }
+
+    private func routeStatus(
+        existingRoute: ActiveRoute?,
+        totalStops: Int,
+        finishedStops: Int
+    ) -> ActiveRouteStatus {
+        if totalStops > 0 && totalStops == finishedStops {
+            return .finished
+        }
+
+        if let existingRoute,
+           existingRoute.status == .inProgress ||
+            existingRoute.status == .traveling ||
+            existingRoute.status == .onBreak {
+            return existingRoute.status
+        }
+
+        return finishedStops > 0 ? .inProgress : .didNotStart
+    }
+
+    private func reconcileDuplicateActiveRoutes(
+        companyId: String,
+        routes: [ActiveRoute],
+        primaryRouteId: String
+    ) async {
+        for route in routes where route.id != primaryRouteId {
+            do {
+                try await ActiveRouteDocument(companyId: companyId, activeRouteId: route.id)
+                    .updateData([
+                        "duplicateOf": primaryRouteId,
+                        ActiveRoute.CodingKeys.serviceStopsIds.rawValue: [],
+                        ActiveRoute.CodingKeys.order.rawValue: [],
+                        ActiveRoute.CodingKeys.totalStops.rawValue: 0,
+                        ActiveRoute.CodingKeys.finishedStops.rawValue: 0
+                    ])
+            } catch {
+                print("[ProductionDataService][reconcileDuplicateActiveRoutes] Error: \(error)")
+            }
+        }
+    }
+
+    func uploadRoute(companyId: String,activeRoute:ActiveRoute) async throws -> ActiveRoute {
+        let existingRoutes = try await getActiveRoutesForDateAndTech(
+            companyId: companyId,
+            date: activeRoute.date,
+            techId: activeRoute.techId
+        )
+
+        let existingRoute = canonicalActiveRoute(from: existingRoutes)
+        var routeToSave = activeRoute
+        routeToSave.id = existingRoute?.id ?? activeRouteStableDocumentId(
+            date: activeRoute.date,
+            techId: activeRoute.techId
+        )
+        routeToSave.date = activeRoute.date.startOfDay()
+
+        if let existingRoute {
+            routeToSave.name = existingRoute.name.isEmpty ? activeRoute.name : existingRoute.name
+            routeToSave.startTime = existingRoute.startTime
+            routeToSave.endTime = existingRoute.endTime
+            routeToSave.startMilage = existingRoute.startMilage
+            routeToSave.endMilage = existingRoute.endMilage
+            routeToSave.vehicalId = existingRoute.vehicalId
+            routeToSave.status = routeStatus(
+                existingRoute: existingRoute,
+                totalStops: activeRoute.totalStops,
+                finishedStops: activeRoute.finishedStops
+            )
+        }
+
+        try ActiveRouteDocument(companyId: companyId, activeRouteId: routeToSave.id)
+            .setData(from: routeToSave, merge: true)
+
+        await reconcileDuplicateActiveRoutes(
+            companyId: companyId,
+            routes: existingRoutes,
+            primaryRouteId: routeToSave.id
+        )
+
+        return routeToSave
     }
     func upLoadActiveRouteLocation(companyId:String,activeRouteId:String,location: ActiveRouteLocation) async throws {
         try ActiveRouteLocationCollection(companyId: companyId, activeRouteId: activeRouteId).document(location.id).setData(from:location, merge: false)
@@ -177,7 +294,7 @@ extension ProductionDataService {
             //MEMORY LEAK
         print("Date - \(date) - Route Manager : getAllActiveRoutesBasedOnDate ")
         return try await  ActiveRouteCollection(companyId: companyId)
-            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
             .whereField(ActiveRoute.CodingKeys.techId.rawValue, isEqualTo: tech.id)
             .getDocuments(as: ActiveRoute.self)
@@ -187,7 +304,7 @@ extension ProductionDataService {
             //MEMORY LEAK
         print("Date - \(date) - Route Manager : getAllActiveRoutesBasedOnDate ")
         return try await  ActiveRouteCollection(companyId: companyId)
-            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
             .whereField(ActiveRoute.CodingKeys.techId.rawValue, isEqualTo: tech.userId)
             .getDocuments(as: ActiveRoute.self)
@@ -384,5 +501,262 @@ extension ProductionDataService {
             }
         }
     }
+
+    @discardableResult
+    func syncActiveRouteForServiceStops(
+        companyId: String,
+        date: Date,
+        techId: String,
+        techName: String
+    ) async throws -> ActiveRoute? {
+        let serviceStops = try await getAllServiceStopsByDayAndTech(
+            companyId: companyId,
+            date: date,
+            techId: techId
+        )
+
+        let existingRoutes = try await getActiveRoutesForDateAndTech(
+            companyId: companyId,
+            date: date,
+            techId: techId
+        )
+
+        guard !serviceStops.isEmpty || !existingRoutes.isEmpty else {
+            return nil
+        }
+
+        let existingRoute = canonicalActiveRoute(from: existingRoutes)
+        let serviceStopIds = serviceStops.map { $0.id }
+        let finishedStops = serviceStops.filter { $0.operationStatus == .finished }.count
+        let existingOrder = existingRoute?.order ?? []
+        let order = RouteOrderBuilder.build(
+            serviceStops: serviceStops,
+            recurringRoute: nil,
+            existingOrder: existingOrder
+        )
+
+        var route = existingRoute ?? ActiveRoute(
+            id: activeRouteStableDocumentId(date: date, techId: techId),
+            name: "\(techName)'s Route",
+            date: date.startOfDay(),
+            serviceStopsIds: serviceStopIds,
+            order: order,
+            techId: techId,
+            techName: techName,
+            durationMin: serviceStops.reduce(0) { $0 + $1.duration },
+            distanceMiles: 0,
+            status: .didNotStart,
+            totalStops: serviceStops.count,
+            finishedStops: finishedStops,
+            vehicalId: ""
+        )
+
+        route.date = date.startOfDay()
+        route.techId = techId
+        route.techName = techName
+        route.serviceStopsIds = serviceStopIds
+        route.order = order
+        route.durationMin = serviceStops.reduce(0) { $0 + $1.duration }
+        route.totalStops = serviceStops.count
+        route.finishedStops = finishedStops
+        route.status = routeStatus(
+            existingRoute: existingRoute,
+            totalStops: route.totalStops,
+            finishedStops: route.finishedStops
+        )
+
+        try ActiveRouteDocument(companyId: companyId, activeRouteId: route.id)
+            .setData(from: route, merge: true)
+
+        await reconcileDuplicateActiveRoutes(
+            companyId: companyId,
+            routes: existingRoutes,
+            primaryRouteId: route.id
+        )
+
+        return route
+    }
         //DELETE
+    
+    //Extra
+    func getRecentActiveRoutes(
+        companyId: String,
+        technicianId: String,
+        limit: Int = 10
+    ) async throws -> [ActiveRoute] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("activeRoutes")
+            .whereField("techId", isEqualTo: technicianId)
+            .order(by: "date", descending: true)
+            .limit(to: limit)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            try? document.data(as: ActiveRoute.self)
+        }
+    }
+    func applyRouteChanges(companyId:String,diff:ActiveRouteDiff,calledFrom:String){
+        Task{
+            do {
+                print("")
+                print("    [ProductionDataService][applyRouteChanges] Called From \(calledFrom) Listener")
+                //if Diff oldRoute is nil then upload the new ActiveRoute. Other wise update the status and order
+                if diff.old == nil {
+                    print("    [ProductionDataService][applyRouteChanges] Old Route is nil")
+                    print("    [ProductionDataService][applyRouteChanges] Upload New Active route because Old Route is nil")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: ID: \(diff.new.id)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Date: \(diff.new.date)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Total Stops: \(diff.new.totalStops)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Service Stop Ids: \(diff.new.serviceStopsIds.count)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Service Stop Order: \(String(describing: diff.new.order?.count))")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Tech Id: \(diff.new.techId)")
+                    print("      [ProductionDataService][applyRouteChanges] New Active Route: Tech Name: \(diff.new.techName)")
+                    _ = try await uploadRoute(companyId: companyId, activeRoute: diff.new)
+                } else {
+                    let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
+                    try await ref.updateData([
+                        ActiveRoute.CodingKeys.serviceStopsIds.rawValue: diff.new.serviceStopsIds,
+                        ActiveRoute.CodingKeys.totalStops.rawValue: diff.new.totalStops,
+                        ActiveRoute.CodingKeys.finishedStops.rawValue: diff.new.finishedStops,
+                        ActiveRoute.CodingKeys.durationMin.rawValue: diff.new.durationMin,
+                        ActiveRoute.CodingKeys.status.rawValue: diff.new.status.rawValue
+                    ])
+
+                    //If Order is Changed make updates to Ar Order
+                    if diff.orderChanged {
+                     print("    [ProductionDataService][applyRouteChanges] Update Order Changed")
+                        try await ref.updateData([
+                            "order": []
+                        ])
+                        
+                        for order in diff.new.order ?? [] {
+                            let data =  [
+                                "order": FieldValue.arrayUnion([
+                                    [
+                                        "id": order.id,
+                                        "order": order.order,
+                                        "serviceStopId": order.serviceStopId,
+                                        "recurringServiceStopId": order.recurringServiceStopId,
+                                    ]
+                                ])
+                            ]
+                            try await ref.updateData(data)
+                        }
+                        
+                    } else {
+                        print("    [ProductionDataService][applyRouteChanges] No Change To Order")
+                    }
+//                    if Status has changed make updates
+                    if diff.statusChanged {
+                     print("    [ProductionDataService][applyRouteChanges]Update Status Changed")
+                        try await ref.updateData([
+                            "status": diff.new.status.rawValue
+                        ])
+                    } else {
+                        print("    [ProductionDataService][applyRouteChanges] No Change To Status")
+                    }
+                }
+            } catch {
+                print("[ProductionDataService][applyRouteChanges] [Build] Error \(error)")
+            }
+        }
+    }
+    
+    func getActiveRoutesNeedingReview(
+        companyId: String,
+        technicianId: String,
+        beforeDate: Date
+    ) async throws -> [ActiveRoute] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("activeRoutes")
+            .whereField("techId", isEqualTo: technicianId)
+            .whereField("date", isLessThan: beforeDate)
+            .getDocuments()
+
+        let routes = snapshot.documents.compactMap { document in
+            try? document.data(as: ActiveRoute.self)
+        }
+
+        return routes.filter { route in
+            route.status != .finished || route.endMilage == nil || route.endTime == nil
+        }
+        .sorted { lhs, rhs in
+            lhs.date > rhs.date
+        }
+    }
+    func getActiveRoutesForDate(
+        companyId: String,
+        date: Date
+    ) async throws -> [ActiveRoute] {
+        let routes = try await ActiveRouteCollection(companyId: companyId)
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
+            .getDocuments(as: ActiveRoute.self)
+
+        return routes.sorted {
+            if $0.status.rawValue == $1.status.rawValue {
+                return $0.techName < $1.techName
+            }
+
+            return $0.status.rawValue < $1.status.rawValue
+        }
+    }
+
+    func getActiveRouteLogs(
+        companyId: String,
+        activeRouteId: String
+    ) async throws -> [ActiveRouteLog] {
+        let logs = try await ActiveRouteLogCollection(
+            companyId: companyId,
+            activeRouteId: activeRouteId
+        )
+        .whereField(ActiveRouteLog.CodingKeys.activeRouteId.rawValue, isEqualTo: activeRouteId)
+        .getDocuments(as: ActiveRouteLog.self)
+
+        return logs.sorted { $0.startTime < $1.startTime }
+    }
+
+    func getActiveRouteLocations(
+        companyId: String,
+        activeRouteId: String
+    ) async throws -> [ActiveRouteLocation] {
+        let locations = try await ActiveRouteLocationCollection(
+            companyId: companyId,
+            activeRouteId: activeRouteId
+        )
+        .whereField(ActiveRouteLocation.CodingKeys.activeRouteId.rawValue, isEqualTo: activeRouteId)
+        .getDocuments(as: ActiveRouteLocation.self)
+
+        return locations.sorted { $0.time < $1.time }
+    }
+
+    func getServiceStopsByIds(
+        companyId: String,
+        serviceStopIds: [String]
+    ) async throws -> [ServiceStop] {
+        guard !serviceStopIds.isEmpty else { return [] }
+
+        var allStops: [ServiceStop] = []
+
+        let chunks = serviceStopIds.chunked(into: 10)
+
+        for chunk in chunks {
+            let snapshot = try await serviceStopCollection(companyId: companyId)
+                .whereField(FieldPath.documentID(), in: chunk)
+                .getDocuments()
+
+            let stops = try snapshot.documents.map {
+                try $0.data(as: ServiceStop.self)
+            }
+
+            allStops.append(contentsOf: stops)
+        }
+
+        return allStops
+    }
+
 }

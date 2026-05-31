@@ -98,19 +98,17 @@ final class EmailConfigurationViewModel: ObservableObject {
     func checkChanges(){
         print("Check Changes")
         if let emailConfig = self.emailConfig {
-            if emailConfig.emailIsOn != self.emailIsOn {
-                print("Has Changes 1")
+            if emailConfig.emailIsOn != self.emailIsOn && emailConfig.emailBody != self.emailBody {
                 self.hasChanges = true
-            } else {
-                print("Does Not Have Changes 1")
-                self.hasChanges = false
-            }
-            if emailConfig.emailBody != self.emailBody {
-                print("Has Changes 2")
+            } else if emailConfig.emailIsOn != self.emailIsOn {
+                print("Has Changes in email is on")
+                self.hasChanges = true
+            } else if emailConfig.emailBody != self.emailBody {
+                print("Has Changes In Email Body ")
                 self.hasChanges = true
             } else {
                 self.hasChanges = false
-                print("Does Not Have Changes 2")
+                print("Does Not Have Changes In Email Body")
             }
         } else {
             print("Email Config DNE")
@@ -121,6 +119,8 @@ final class EmailConfigurationViewModel: ObservableObject {
             
             self.emailIsOn = emailConfig.emailIsOn
             self.emailBody = emailConfig.emailBody
+            
+            self.hasChanges = false
         }
     }
     func updateCustomerConfig(companyId:String,customerEmailConfig:CustomerEmailConfiguration?,customer:Customer,emailIsOn:Bool) async throws {

@@ -52,9 +52,9 @@ struct ServiceStopCardViewLarge: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 18)
-                .fill(Color(.systemBackground))
+                .fill(Color.poolGray.opacity(0.15))
                 .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
         )
-        .padding(.horizontal, 12)
+        .padding(.leading, 8)
     }
 }

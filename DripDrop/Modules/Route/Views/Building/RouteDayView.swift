@@ -54,11 +54,12 @@ struct RouteDayView: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color(.systemBackground))
                 )
+                .padding(.vertical, 4)
                 
                 ForEach(VM.companyUsers){ tech in
                     RouteTechView2(tech: tech, day: day)
                 }
-                .padding(.leading, 8)
+                .padding(.leading, 16)
             }
         }
     }

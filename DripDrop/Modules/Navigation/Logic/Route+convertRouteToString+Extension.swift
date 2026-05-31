@@ -270,5 +270,11 @@ func convertRouteToString(route:Route) -> RouteString {
         return .managementTables  // Developer fix
     case .termsTemplateDetailView:
         return .managementTables  // Developer fix
+    case .payRoll:
+        return .managementTables  // Developer fix
+    case .payRollSettings:
+        return .managementTables  // Developer fix
+    case .technicianWorkCenter:
+        return .managementTables  // Developer fix
     }
 }

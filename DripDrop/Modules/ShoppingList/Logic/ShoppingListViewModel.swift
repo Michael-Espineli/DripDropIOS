@@ -12,11 +12,18 @@ import MapKit
 
 @MainActor
 final class ShoppingListViewModel:ObservableObject{
+    
     //Variables
     let dataService:any ProductionDataServiceProtocol
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
+    @Published private(set) var routePrepItems: [ShoppingListItem] = []
+    @Published private(set) var outstandingItems: [ShoppingListItem] = []
+    @Published private(set) var myItems: [ShoppingListItem] = []
+    @Published private(set) var jobItems: [ShoppingListItem] = []
+    @Published private(set) var customerItems: [ShoppingListItem] = []
+    
     //Singles
     @Published private(set) var shoppingListItem: ShoppingListItem? = nil
     @Published private(set) var shoppingListItemCount: Int? = nil
@@ -28,32 +35,147 @@ final class ShoppingListViewModel:ObservableObject{
     @Published private(set) var jobShoppingItems:[Job:[ShoppingListItem]] = [:]
     
     @Published private(set) var companyUsers:[CompanyUser] = []
-
+    
+    @Published private(set) var routeCustomerItems: [ShoppingListItem] = []
+    @Published private(set) var routeJobItems: [ShoppingListItem] = []
+    @Published private(set) var purchasedButNotInstalledItems: [ShoppingListItem] = []
+    
     //Create
-    func addNewShoppingListItemWithValidation(companyId:String,datePurchased:Date?,category:ShoppingListCategory,subCategory:ShoppingListSubCategory,purchaserId:String,itemId:String?,quantiy:String?,description:String,jobId:String?,customerId:String?,customerName:String?,purchaserName:String?,name:String) async throws{
+    func addNewShoppingListItemWithValidation(
+    companyId: String,
+    datePurchased: Date?,
+    category: ShoppingListCategory,
+    subCategory: ShoppingListSubCategory,
+    purchaserId: String,
+    itemId: String?,
+    quantiy: String?,
+    description: String,
+    jobId: String?,
+    customerId: String?,
+    customerName: String?,
+    userId: String?,
+    userName: String?,
+    serviceLocationId: String?,
+    serviceLocationName: String?,
+    purchaserName: String?,
+    name: String
+) async throws {
 
-        let id = UUID().uuidString
-        //, Purchased, Installed
-        let shoppingListItem = ShoppingListItem(
-            id: id,
-            category: category,
-            subCategory: subCategory,
-            status: .needToPurchase,
-            purchaserId: purchaserId,
-            purchaserName: purchaserName ?? "",
-            genericItemId: "",
-            name: name,
-            description: description,
-            datePurchased: datePurchased,
-            quantity: quantiy,
-            jobId: jobId,
-            customerId: customerId ?? "",
-            customerName: customerName ?? "",
-            invoiced: true
-        )
-        try await dataService.addNewShoppingListItem(companyId: companyId, shoppingListItem: shoppingListItem)
-    }
+    let id = "comp_shop_" + UUID().uuidString
+    let status: ShoppingListStatus = .needToPurchase
+
+    let prepKeys = buildPrepKeys(
+        category: category,
+        jobId: jobId,
+        customerId: customerId,
+        userId: userId,
+        serviceLocationId: serviceLocationId
+    )
+
+    let shoppingListItem = ShoppingListItem(
+        id: id,
+        category: category,
+        subCategory: subCategory,
+        status: status,
+        purchaserId: purchaserId,
+        purchaserName: purchaserName ?? "",
+        genericItemId: itemId ?? "",
+        name: name,
+        description: description,
+        datePurchased: datePurchased,
+        quantity: quantiy,
+
+        jobId: jobId,
+
+        customerId: customerId ?? "",
+        customerName: customerName ?? "",
+
+        userId: userId,
+        userName: userName,
+
+        serviceStopId: nil,
+        serviceStopInternalId: nil,
+        serviceLocationId: serviceLocationId,
+        serviceLocationName: serviceLocationName,
+        scheduledDate: nil,
+
+        prepKeys: prepKeys,
+        needsAction: status.needsShoppingAction,
+        actionDate: Date(),
+        assignedTechIds: userId == nil ? [] : [userId!],
+
+        dbItemId: itemId,
+        purchasedItem: nil,
+        invoiced: false,
+
+        plannedUnitCostCents: nil,
+        plannedUnitPriceCents: nil,
+        plannedTotalCostCents: nil,
+        plannedTotalPriceCents: nil
+    )
+
+    try await dataService.addNewShoppingListItem(
+        companyId: companyId,
+        shoppingListItem: shoppingListItem
+    )
+}
     //Read
+    func loadRoutePrepShoppingItems(
+        companyId: String,
+        userId: String,
+        serviceStops: [ServiceStop]
+    ) async throws {
+        let prepKeys = ShoppingPrepKeyBuilder.keysForRoute(
+            serviceStops: serviceStops,
+            userId: userId
+        )
+
+        let items = try await dataService.getShoppingListItemsForPrepKeys(
+            companyId: companyId,
+            prepKeys: prepKeys,
+            needsAction: true
+        )
+        .sortedForShoppingPrep()
+
+        self.routePrepItems = items
+
+        self.myItems = items.filter { item in
+            item.category == .personal || item.userId == userId
+        }
+
+        self.jobItems = items.filter { item in
+            item.category == .job
+        }
+
+        self.customerItems = items.filter { item in
+            item.category == .customer
+        }
+
+        self.outstandingItems = items
+
+        self.purchasedButNotInstalledItems = items.filter { item in
+            item.status.rawValue.localizedCaseInsensitiveContains("Purchased")
+        }
+    }
+    
+    
+    func loadOutstandingShoppingItems(
+        companyId: String,
+        limit: Int = 100
+    ) async throws {
+        let items = try await dataService.getOutstandingShoppingListItemsPage(
+            companyId: companyId,
+            limit: limit
+        )
+        .sortedForShoppingPrep()
+
+        self.outstandingItems = items
+
+        self.purchasedButNotInstalledItems = items.filter { item in
+            item.status.rawValue.localizedCaseInsensitiveContains("Purchased")
+        }
+    }
+    
     func getSpecificShoppingListItem(companyId: String, shoppingListItemId: String) async throws {
         self.shoppingListItem = try await dataService.getSpecificShoppingListItem(companyId: companyId, shoppingListItemId: shoppingListItemId)
     }
@@ -117,5 +239,170 @@ final class ShoppingListViewModel:ObservableObject{
     func deleteShoppingListItem(companyId:String,shoppingListItemId:String) async throws {
         try await dataService.deleteShoppingListItem(companyId: companyId, shoppingListItemId: shoppingListItemId)
     }
+    //Setters for private Functions
+    func setOutstandingItemsForCurrentContext(_ items: [ShoppingListItem]) {
+        self.outstandingItems = items.sortedForShoppingPrep()
+    }
+    private func buildPrepKeys(
+        category: ShoppingListCategory,
+        jobId: String?,
+        customerId: String?,
+        userId: String?,
+        serviceLocationId: String?
+    ) -> [String] {
+        var keys: [String] = []
+
+        switch category {
+        case .personal:
+            if let userId, !userId.isEmpty {
+                keys.append(ShoppingPrepKeyBuilder.user(userId))
+            }
+
+        case .customer:
+            if let customerId, !customerId.isEmpty {
+                keys.append(ShoppingPrepKeyBuilder.customer(customerId))
+            }
+
+            if let serviceLocationId, !serviceLocationId.isEmpty {
+                keys.append(ShoppingPrepKeyBuilder.serviceLocation(serviceLocationId))
+            }
+
+        case .job:
+            if let jobId, !jobId.isEmpty {
+                keys.append(ShoppingPrepKeyBuilder.job(jobId))
+            }
+
+            if let customerId, !customerId.isEmpty {
+                keys.append(ShoppingPrepKeyBuilder.customer(customerId))
+            }
+
+            if let serviceLocationId, !serviceLocationId.isEmpty {
+                keys.append(ShoppingPrepKeyBuilder.serviceLocation(serviceLocationId))
+            }
+        }
+
+        return Array(Set(keys))
+    }
+    func updateShoppingListStatus(
+        companyId: String,
+        shoppingListItemId: String,
+        status: ShoppingListStatus
+    ) async throws {
+        try await dataService.updateShoppingListStatus(
+            companyId: companyId,
+            shoppingListItemId: shoppingListItemId,
+            status: status,
+            needsAction: status.needsShoppingAction
+        )
+    }
 }
 
+//MARK: Helper Functions
+extension ShoppingListViewModel {
+    /*
+    func loadShoppingCenter(
+        companyId: String,
+        userId: String,
+        routeServiceStops: [ServiceStop],
+        includeAllOutstanding: Bool = false
+    ) async throws {
+        let allItems = try await dataService.getAllShoppingListItemsByCompany(companyId: companyId)
+
+        self.allShoppingItems = allItems
+
+        let prepContext = ShoppingRoutePrepContext(serviceStops: routeServiceStops)
+
+        self.myItems = allItems.filter { item in
+            item.category == .personal &&
+            item.userId == userId &&
+            item.isOutstandingShoppingAction
+        }
+
+        self.routeCustomerItems = allItems.filter { item in
+            item.category == .customer &&
+            item.isOutstandingShoppingAction &&
+            item.matchesRoutePrepContext(prepContext)
+        }
+
+        self.routeJobItems = allItems.filter { item in
+            item.category == .job &&
+            item.isOutstandingShoppingAction &&
+            item.matchesRoutePrepContext(prepContext)
+        }
+
+        self.routePrepItems = uniqueShoppingItems(
+            myItems + routeCustomerItems + routeJobItems
+        )
+
+        self.outstandingItems = allItems.filter { item in
+            item.isOutstandingShoppingAction &&
+            (
+                includeAllOutstanding ||
+                item.purchaserId == userId ||
+                item.userId == userId ||
+                item.matchesRoutePrepContext(prepContext)
+            )
+        }
+
+        self.purchasedButNotInstalledItems = allItems.filter { item in
+            item.status.rawValue.localizedCaseInsensitiveContains("Purchased")
+        }
+    }
+     */
+}
+private extension ShoppingListItem {
+    var isOutstandingShoppingAction: Bool {
+        let value = status.rawValue.lowercased()
+
+        return value.contains("need") ||
+        value.contains("purchase") ||
+        value.contains("purchased")
+    }
+
+    func matchesRoutePrepContext(_ context: ShoppingRoutePrepContext) -> Bool {
+        if let serviceStopId,
+           !serviceStopId.isEmpty,
+           context.serviceStopIds.contains(serviceStopId) {
+            return true
+        }
+
+        if let serviceStopInternalId,
+           !serviceStopInternalId.isEmpty,
+           context.serviceStopInternalIds.contains(serviceStopInternalId) {
+            return true
+        }
+
+        if let serviceLocationId,
+           !serviceLocationId.isEmpty,
+           context.serviceLocationIds.contains(serviceLocationId) {
+            return true
+        }
+
+        if let customerId,
+           !customerId.isEmpty,
+           context.customerIds.contains(customerId) {
+            return true
+        }
+
+        if let jobId,
+           !jobId.isEmpty,
+           context.jobIds.contains(jobId) {
+            return true
+        }
+
+        return false
+    }
+}
+private func uniqueShoppingItems(_ items: [ShoppingListItem]) -> [ShoppingListItem] {
+    var seen: Set<String> = []
+    var result: [ShoppingListItem] = []
+
+    for item in items {
+        if !seen.contains(item.id) {
+            seen.insert(item.id)
+            result.append(item)
+        }
+    }
+
+    return result
+}

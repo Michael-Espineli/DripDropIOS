@@ -200,12 +200,17 @@ struct CustomerStopDataDetailView: View {
         ZStack{
             Color.listColor
             VStack{
-                Button(action: {
-                    VM.loadTestData(companyId: masterDataManager.currentCompany!.id, customerId: customerId)
-                }, label: {
-                    Text("Load Test Data")
-                        .modifier(DeleteButtonModifier())
-                })
+                
+                    #if DEBUG
+                if AppEnvironment.current == .dev {
+                    Button(action: {
+                        VM.loadTestData(companyId: masterDataManager.currentCompany!.id, customerId: customerId)
+                    }, label: {
+                        Text("Load Test Data")
+                            .modifier(DeleteButtonModifier())
+                    })
+                }
+#endif
                 form
             }
         }

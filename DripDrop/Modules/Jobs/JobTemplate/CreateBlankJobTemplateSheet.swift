@@ -2,6 +2,8 @@
 //  CreateBlankJobTemplateSheet.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
 
 import SwiftUI
 
@@ -246,5 +248,18 @@ struct CreateBlankJobTemplateSheet: View {
             alertMessage = "Could not create template. \(error.localizedDescription)"
             showAlert = true
         }
+    }
+}
+
+
+
+
+
+
+private extension View {
+    func jobTemplateSettingsCard() -> some View {
+        self
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }

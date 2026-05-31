@@ -14,37 +14,73 @@ import CoreLocation
 import MapKit
 import Darwin
 
-struct ShoppingListItem:Identifiable, Codable,Hashable{
-    var id:String
-    
-    var category:ShoppingListCategory // Personal , Customer , Job
-    var subCategory:ShoppingListSubCategory // Data Base , Chemical , Part , Custom
-    var status:ShoppingListStatus //Need to Purchase, Purchased, Installed
-    var purchaserId:String
-    var purchaserName:String
-    
-    var genericItemId:String // Generic Id
-    var name:String
-    var description:String
-    var datePurchased:Date?
-    var quantity:String?
-    
-    //Job
-    var jobId:String?
-    
-    //Customer
-    var customerId:String?
-    var customerName:String?
-    //Personal
-    var userId:String?
-    var userName:String?
-    
-    //DataBaseItem
-    var dbItemId: String?
-    var purchasedItem:String?
-    var invoiced:Bool
-}
+struct ShoppingListItem: Identifiable, Codable, Hashable {
+    var id: String
 
+    var category: ShoppingListCategory
+    var subCategory: ShoppingListSubCategory
+    var status: ShoppingListStatus
+
+    var purchaserId: String
+    var purchaserName: String
+
+    var genericItemId: String
+    var name: String
+    var description: String
+    var datePurchased: Date?
+    var quantity: String?
+
+    // Job
+    var jobId: String?
+
+    // Customer
+    var customerId: String?
+    var customerName: String?
+
+    // Personal
+    var userId: String?
+    var userName: String?
+
+    // Route / prep context
+    var serviceStopId: String? = nil
+    var serviceStopInternalId: String? = nil
+    var serviceLocationId: String? = nil
+    var serviceLocationName: String? = nil
+    var scheduledDate: Date? = nil
+    
+    // Efficient query support
+    var prepKeys: [String] = []
+    var needsAction: Bool = true
+    var actionDate: Date? = nil
+    var assignedTechIds: [String] = []
+
+    // DataBaseItem
+    var dbItemId: String?
+    var purchasedItem: String?
+    var invoiced: Bool
+
+    // Planned material pricing snapshot
+    var plannedUnitCostCents: Int?
+    var plannedUnitPriceCents: Int?
+    var plannedTotalCostCents: Int?
+    var plannedTotalPriceCents: Int?
+    
+}
+extension ShoppingListItem {
+    var computedNeedsAction: Bool {
+        switch status {
+        case .installed:
+            return false
+        default:
+            return true
+        }
+    }
+}
+extension ShoppingListStatus {
+    var needsShoppingAction: Bool {
+        !rawValue.localizedCaseInsensitiveContains("Installed")
+    }
+}
 protocol ShoppingListManagerProtocol {
     func addNewShoppingListItem(companyId:String,shoppingListItem:ShoppingListItem) async throws
     

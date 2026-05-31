@@ -6,11 +6,6 @@
 //
 
 
-//
-//  CompanyWorkTypesView.swift
-//  DripDrop
-//
-
 import SwiftUI
 
 // MARK: - Filter
@@ -146,16 +141,13 @@ final class CompanyWorkTypesViewModel: ObservableObject {
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
 
-    let companyId: String
 
     private let dataService: any ProductionDataServiceProtocol
     private var hasLoaded = false
 
     init(
-        companyId: String,
         dataService: any ProductionDataServiceProtocol
     ) {
-        self.companyId = companyId
         self.dataService = dataService
     }
 
@@ -206,7 +198,7 @@ final class CompanyWorkTypesViewModel: ObservableObject {
         (workTypes.map { $0.sortOrder }.max() ?? 0) + 10
     }
 
-    func load(forceRefresh: Bool = false) async {
+    func load(companyId: String,forceRefresh: Bool = false) async {
         guard forceRefresh || !hasLoaded else { return }
 
         isLoading = true
@@ -258,7 +250,7 @@ final class CompanyWorkTypesViewModel: ObservableObject {
         await save(updated)
     }
 
-    func seedPoolCompanyDefaults() async {
+    func seedPoolCompanyDefaults(companyId: String) async {
         let existingNames = Set(
             workTypes.map {
                 normalizedName($0.name)
@@ -365,17 +357,16 @@ final class CompanyWorkTypesViewModel: ObservableObject {
 // MARK: - View
 
 struct CompanyWorkTypesView: View {
+    @EnvironmentObject var masterDataManager: MasterDataManager
 
     @StateObject private var viewModel: CompanyWorkTypesViewModel
     @State private var editorRoute: CompanyWorkTypeEditorRoute?
 
     init(
-        companyId: String,
         dataService: any ProductionDataServiceProtocol
     ) {
         _viewModel = StateObject(
             wrappedValue: CompanyWorkTypesViewModel(
-                companyId: companyId,
                 dataService: dataService
             )
         )
@@ -399,10 +390,14 @@ struct CompanyWorkTypesView: View {
             }
         }
         .task {
-            await viewModel.load()
+            if let currentCompany = masterDataManager.currentCompany {
+                await viewModel.load(companyId: currentCompany.id)
+            }
         }
         .refreshable {
-            await viewModel.load(forceRefresh: true)
+            if let currentCompany = masterDataManager.currentCompany {
+                await viewModel.load(companyId:currentCompany.id,forceRefresh: true)
+            }
         }
         .overlay {
             if viewModel.isLoading {
@@ -414,7 +409,6 @@ struct CompanyWorkTypesView: View {
         }
         .sheet(item: $editorRoute) { route in
             CompanyWorkTypeEditorView(
-                companyId: viewModel.companyId,
                 originalWorkType: route.workType,
                 defaultSortOrder: viewModel.nextSortOrder
             ) { workType in
@@ -448,7 +442,10 @@ struct CompanyWorkTypesView: View {
 
             Button {
                 Task {
-                    await viewModel.seedPoolCompanyDefaults()
+                    
+                    if let currentCompany = masterDataManager.currentCompany {
+                        await viewModel.seedPoolCompanyDefaults(companyId: currentCompany.id)
+                    }
                 }
             } label: {
                 Label("Add Pool Company Defaults", systemImage: "sparkles")
@@ -606,7 +603,6 @@ struct CompanyWorkTypeEditorView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    let companyId: String
     let originalWorkType: CompanyWorkType?
     let defaultSortOrder: Int
     let saveAction: (CompanyWorkType) -> Void
@@ -621,18 +617,17 @@ struct CompanyWorkTypeEditorView: View {
 
     @State private var showValidationAlert: Bool = false
     @State private var validationMessage: String = ""
-
+    
+    @EnvironmentObject var masterDataManager: MasterDataManager
     private var isEditing: Bool {
         originalWorkType != nil
     }
 
     init(
-        companyId: String,
         originalWorkType: CompanyWorkType?,
         defaultSortOrder: Int,
         saveAction: @escaping (CompanyWorkType) -> Void
     ) {
-        self.companyId = companyId
         self.originalWorkType = originalWorkType
         self.defaultSortOrder = defaultSortOrder
         self.saveAction = saveAction
@@ -667,7 +662,9 @@ struct CompanyWorkTypeEditorView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        save()
+                        if let currentCompany = masterDataManager.currentCompany {
+                            save(companyId: currentCompany.id)
+                        }
                     }
                 }
             }
@@ -792,7 +789,7 @@ struct CompanyWorkTypeEditorView: View {
         ]
     }
 
-    private func save() {
+    private func save(companyId:String) {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedName.isEmpty else {
@@ -828,7 +825,6 @@ struct CompanyWorkTypeEditorView: View {
 #Preview {
     NavigationStack {
         CompanyWorkTypesView(
-            companyId: "com_mock_company",
             dataService: MockDataService()
         )
     }

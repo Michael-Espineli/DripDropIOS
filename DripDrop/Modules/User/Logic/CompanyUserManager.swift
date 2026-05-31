@@ -23,15 +23,16 @@ struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will A
     var linkedCompanyId : String?
     var linkedCompanyName : String?
 }
-struct RateSheet:Codable,Identifiable,Hashable{
-    var id :String
-    var templateName : String
-    var templateId : String
-    var rate : Double
-    var dateImplemented : Date
-    var status : RateSheetStatus
-    var laborType:RateSheetLaborType
-}
+
+//struct RateSheet:Codable,Identifiable,Hashable{
+//    var id :String
+//    var templateName : String
+//    var templateId : String
+//    var rate : Double
+//    var dateImplemented : Date
+//    var status : RateSheetStatus
+//    var laborType:RateSheetLaborType
+//}
 
 final class CompanyUserManager {
     

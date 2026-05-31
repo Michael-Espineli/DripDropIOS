@@ -268,6 +268,12 @@ extension Route {
             return 129
         case .termsTemplateDetailView:
             return 130
+        case .payRoll:
+            return 131
+        case .payRollSettings:
+            return 132
+        case .technicianWorkCenter:
+            return 133
         }
     }
 
@@ -627,7 +633,10 @@ extension Route {
              .createRepairRequest,
              .createCustomer,
              .editCompanySubscription,
-            .manageTermsTemplates:
+            .manageTermsTemplates,
+            .payRoll,
+            .payRollSettings,
+            .technicianWorkCenter:
             return nil
 
         // Cases with identity — return a stable identifier only

@@ -45,7 +45,7 @@ struct ServiceStopDetailView3: View {
         equipmentMeasurements: []
     )
     
-    @State private var title: String = ""
+    @State private var title: String = "Service Stop"
     
     private var serviceStop: ServiceStop? {
         customerProfileVM.serviceStops.first { $0.id == serviceStopId }

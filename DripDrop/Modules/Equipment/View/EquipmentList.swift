@@ -21,6 +21,8 @@ struct EquipmentList: View {
     }
     @State var count:Int = 20
     @State var showFilerOptions:Bool = false
+    @FocusState var searchField:Bool
+
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -29,10 +31,15 @@ struct EquipmentList: View {
             
         }
         .navigationTitle("Equipment")
+        .onChange(of: equipmentVM.searchTerm){ term in
+            print("on Change of Search Term")
+            equipmentVM.filterEquipmentList()
+        }
         .task {
             if let company = masterDataManager.currentCompany {
                 do {
-                    try await equipmentVM.getAllEquipmentBy25(companyId: company.id)
+                    try await equipmentVM.getAllEquipment(companyId: company.id)
+//                    try await equipmentVM.getAllEquipmentBy25(companyId: company.id)
                 } catch {
                     print("[EquipmentList][task]equipmentVM.getAllEquipmentBy25")
                     print(error)
@@ -50,7 +57,7 @@ extension EquipmentList {
     var list: some View {
         ScrollView{
             LazyVStack{
-                ForEach(equipmentVM.listOfEquipment) { equipment in
+                ForEach(equipmentVM.displayEquipment) { equipment in
                     if UIDevice.isIPhone {
                         NavigationLink(value: Route.equipmentDetailView(
                             equipment: equipment, dataService: dataService
@@ -119,7 +126,7 @@ extension EquipmentList {
 //                    })
                     Button(action: {
                         Task{
-//                            VM.showSearch = true
+                            equipmentVM.changeSearch()
                         }
                     }, label: {
                         Image(systemName: "magnifyingglass")
@@ -131,6 +138,30 @@ extension EquipmentList {
                     })
                     .padding(8)
                 }
+            }
+            if equipmentVM.showSearch && UIDevice.isIPhone{
+                HStack{
+                    HStack{
+                        TextField(
+                            "Search",
+                            text: $equipmentVM.searchTerm
+                        )
+                        .focused($searchField, equals: true)
+                        .submitLabel(.search)
+                        .onSubmit {
+                            equipmentVM.filterEquipmentList()
+                        }
+                        Spacer()
+                        Button(action: {
+                            equipmentVM.searchTerm = ""
+                        }, label: {
+                            Image(systemName: "xmark")
+                        })
+                    }
+                    .modifier(SearchTextFieldModifier())
+                    .padding(8)
+                }
+                .background(Color.listColor)
             }
         }
     }

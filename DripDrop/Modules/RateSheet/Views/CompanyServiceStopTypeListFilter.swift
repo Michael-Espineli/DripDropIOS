@@ -1,7 +1,10 @@
 //
-//  CompanyServiceStopTypesView.swift
+//  CompanyServiceStopTypeListFilter.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/20/26.
+//
+
 
 import SwiftUI
 

@@ -2,6 +2,14 @@
 //  ShoppingListItemDraftForm.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
+
+
+//
+//  ShoppingListItemDraftForm.swift
+//  DripDrop
+//
 
 import SwiftUI
 
@@ -156,11 +164,11 @@ struct ShoppingListItemDraftForm: View {
         }
 
         if draft.selectedDataBaseItem.rate > 0 {
-            parts.append(draft.selectedDataBaseItem.rate.formatted(.currency(code: "USD")))
+            parts.append("Cost \(moneyFromCents(draft.selectedDataBaseItem.rate))")
         }
 
         if let sellPrice = draft.selectedDataBaseItem.sellPrice, sellPrice > 0 {
-            parts.append("Sell \(sellPrice.formatted(.currency(code: "USD")))")
+            parts.append("Sell \(moneyFromCents(sellPrice))")
         }
 
         return parts.isEmpty ? draft.selectedDataBaseItem.description : parts.joined(separator: " • ")
@@ -206,5 +214,9 @@ struct ShoppingListItemDraftForm: View {
             .lineLimit(3, reservesSpace: true)
             .modifier(PlainTextFieldModifier())
         }
+    }
+    private func moneyFromCents(_ cents: Double) -> String {
+        let dollars = cents / 100.0
+        return dollars.formatted(.currency(code: "USD"))
     }
 }

@@ -128,13 +128,7 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
     @Published var estimatedTime:String = "15"
     @Published var frequency:LaborContractFrequency = .daily
     @Published var selectedDay:DaysOfWeek? = nil
-    @Published var jobType:JobTemplate = JobTemplate(id: "",
-                                                 name: "Job Template",
-                                                 type: "",
-                                                 typeImage: "",
-                                                 dateCreated: Date(),
-                                                 rate: "",
-                                                 color: "")
+    @Published var jobType:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @Published private(set) var submitButtonDisabled : Bool = false
     @Published var isLoading : Bool = false
 
@@ -209,7 +203,7 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
                         internalId: internalRSSID,
                         type: self.jobType.name,
                         typeId: self.jobType.id,
-                        typeImage: self.jobType.typeImage ?? "",
+                        typeImage: "",
                         customerName: self.selectedRecurringWork.customerName,
                         customerId: self.selectedRecurringWork.customerId,
                         address: self.location.address, //DEVELOPER GET ADDRESS FOR RECURRING SERVICE STOP

@@ -8,7 +8,7 @@
 import SwiftUI
 @MainActor
 final class NewSingleRecurringServiceStopViewModel:ObservableObject{
-    private var dataService:any ProductionDataServiceProtocol
+    let dataService:any ProductionDataServiceProtocol
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
@@ -56,8 +56,9 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
         customerName: "",
         isActive: true
     )
-
-
+    
+    @Published var showCompanyUserSelector: Bool = false
+    @Published var showServiceLocationPicker: Bool = false
 
     func onLoad(companyId:String,customerId:String) {
         Task{
@@ -86,7 +87,11 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
             }
         }
     }
-    func submit(companyId:String,customerId:String) {
+    func submit(
+        companyId:String,
+        customerId:String,
+        serviceStopTypeFields: ServiceStopTypeFields
+    ) {
         Task{
             if selectedUser.id != "" {
                 print("")
@@ -111,9 +116,9 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
                         let rss = RecurringServiceStop(
                             id: "comp_rss_" + UUID().uuidString,
                             internalId: "RSS" + String(rssCount),
-                            type: "",
-                            typeId: "",
-                            typeImage: "",
+                            type: serviceStopTypeFields.type,
+                            typeId: serviceStopTypeFields.typeId,
+                            typeImage: serviceStopTypeFields.typeImage,
                             customerName: name,
                             customerId: customer.id,
                             address: selectedLocation.address,
@@ -169,14 +174,23 @@ final class NewSingleRecurringServiceStopViewModel:ObservableObject{
     }
 }
 struct NewSingleRecurringServiceStop: View {
+    @EnvironmentObject var dataService : ProductionDataService
     @EnvironmentObject var masterDataManager : MasterDataManager
     @StateObject var VM : NewSingleRecurringServiceStopViewModel
     @State var customerId:String
     @Environment(\.dismiss) var dismiss
     
-    init(dataService: any ProductionDataServiceProtocol,customerId:String) {
+    let serviceStopTypeUseCase: ServiceStopTypeUseCase
+    
+    @State private var selectedCompanyServiceStopType: CompanyServiceStopType?
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        customerId:String = "",
+        serviceStopTypeUseCase: ServiceStopTypeUseCase = .recurringRoute
+    ) {
         _customerId = State(wrappedValue: customerId)
         _VM = StateObject(wrappedValue: NewSingleRecurringServiceStopViewModel(dataService: dataService))
+        self.serviceStopTypeUseCase = serviceStopTypeUseCase
     }
     var body: some View {
         
@@ -210,6 +224,20 @@ struct NewSingleRecurringServiceStop: View {
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
+        
+        .sheet(isPresented: $VM.showCompanyUserSelector) {
+            CompanyUserPicker(
+                dataService: dataService,
+                companyUser: $VM.selectedUser
+            )
+        }
+        
+        .sheet(isPresented: $VM.showServiceLocationPicker) {
+            CompanyUserPicker(
+                dataService: dataService,
+                companyUser: $VM.selectedUser
+            )
+        }
     }
 }
 
@@ -223,90 +251,27 @@ extension NewSingleRecurringServiceStop {
             Text("Add New Recurring Service Stop")
                 .font(.headline)
             Divider()
-            VStack{
-                HStack{
-                    Text("Service Location:")
-                    Spacer()
-                }
-                Picker("Select Location", selection: $VM.selectedLocation) {
-                    Text("Select Location").tag(
-                        ServiceLocation(
-                            id: "",
-                            nickName: "",
-                            address: Address(
-                                streetAddress: "",
-                                city: "",
-                                state: "",
-                                zip: "",
-                                latitude: 0,
-                                longitude: 0
-                            ),
-                            gateCode: "",
-                            mainContact: Contact(id: "", name: "", phoneNumber: "", email: "", notes: ""),
-                            bodiesOfWaterId: [],
-                            rateType: "",
-                            laborType: "",
-                            chemicalCost: "",
-                            laborCost: "",
-                            rate: "",
-                            customerId: "",
-                            customerName: "",
-                            isActive: true
-                        )
-                    )
-                    ForEach(VM.locations){ datum in
-                        Text(datum.address.streetAddress).tag(datum)
-                    }
-                }
-            
-                HStack{
-                    Text("User:")
-                    Spacer()
-                }
-                Picker("Picker User", selection: $VM.selectedUser) {
-                    Text("Select User").tag(
-                        CompanyUser(
-                            id: "1",
-                            userId: "1",
-                            userName: "1",
-                            roleId: "1",
-                            roleName: "1",
-                            dateCreated: Date(),
-                            status: .active,
-                            workerType: .contractor
-                        )
-                    )
-                    ForEach(VM.companyUsers){ datum in
-                        Text(datum.userName).tag(datum)
-                    }
-                    
-                }
-                HStack{
-                    Text("Day:")
-                    Spacer()
-                }
-                Picker("Pick Day", selection: $VM.selectedDay) {
-                    ForEach(DaysOfWeek.allCases, id: \.self){ day in
-                        Text(day.rawValue).tag(day)
-                    }
-                }
-                HStack{
-                    Text("Frequency:")
-                    Spacer()
-                }
-                
-                Picker("Pick Frequency", selection: $VM.frequency) {
-                    ForEach(LaborContractFrequency.allCases, id: \.self){ day in
-                        Text(day.rawValue).tag(day)
-                    }
-                }
-                DatePicker("Start On:", selection: $VM.startOn, in: Date()...,displayedComponents: .date)
-                Button(action: {
-                    if let currentCompany = masterDataManager.currentCompany {
-                        VM.submit(companyId: currentCompany.id, customerId: customerId)
-                        dismiss()
-                    }
-                }, label: {
+            ScrollView{
+                detailsCard
+                serviceStopTypeCard
+                Button(
+                    action: {
+                        if let currentCompany = masterDataManager.currentCompany {
+                            
+                            let typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
+                                selectedType: selectedCompanyServiceStopType,
+                                useCase: serviceStopTypeUseCase
+                            )
+                            
+                            VM.submit(
+                                companyId: currentCompany.id,
+                                customerId: customerId,
+                                serviceStopTypeFields: typeFields
+                            )
+                            dismiss()
+                        }
+                    },
+                    label: {
                     HStack{
                         Spacer()
                         Text("Add")
@@ -336,5 +301,192 @@ extension NewSingleRecurringServiceStop {
                 }
             }
         }
+    }
+}
+
+extension NewSingleRecurringServiceStop {
+    var detailsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("Details", systemImage: "calendar.badge.plus")
+
+            pickerButtonRow(
+                title: "Technician",
+                value: VM.selectedUser.id == "" ? "Select Technician" : "\(VM.selectedUser.userName) \(VM.selectedUser.roleName)",
+                systemImage: "person.crop.circle",
+                isSelected: VM.selectedUser.id != ""
+            ) {
+                VM.showCompanyUserSelector.toggle()
+            }
+            
+            pickerButtonRow(
+                title: "Location",
+                value: VM.selectedUser.id == "" ? "Select Location" : "\(VM.selectedLocation.nickName) - \(VM.selectedLocation.address.streetAddress) ",
+                systemImage: "route",
+                isSelected: VM.selectedLocation.id != ""
+            ) {
+                VM.showServiceLocationPicker.toggle()
+            }
+            
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+
+                
+                Picker("Pick Day", selection: $VM.selectedDay) {
+                    ForEach(DaysOfWeek.allCases, id: \.self){ day in
+                        Text(day.rawValue).tag(day)
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+
+                
+                Picker("Pick Frequency", selection: $VM.frequency) {
+                    ForEach(LaborContractFrequency.allCases, id: \.self){ day in
+                        Text(day.rawValue).tag(day)
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            HStack(spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+
+                DatePicker(
+                    "Start Date",
+                    selection: $VM.startOn,
+                    in: Date()...,
+                    displayedComponents: .date
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var serviceStopTypeCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("Stop Type", systemImage: "mappin.and.ellipse")
+
+            if let currentCompany = masterDataManager.currentCompany {
+                
+                    CompanyServiceStopTypePickerView(
+                        companyId: currentCompany.id,
+                        dataService: VM.dataService,
+                        selectedType: $selectedCompanyServiceStopType,
+                        useCase: serviceStopTypeUseCase,
+                        title: "Service Stop Type",
+                        subtitle: "Payroll uses this type to decide which work type rates apply when this stop is finished."
+                    )
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Missing company", systemImage: "exclamationmark.triangle")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.orange)
+
+                    Text("Company ID is required to load service stop types. This stop will use the fallback job service stop type if scheduled.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+    
+}
+extension NewSingleRecurringServiceStop {
+    
+    func sectionHeader(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+    
+    func pickerButtonRow(
+        title: String,
+        value: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(value)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+    
+    func detailDisplayRow(title: String, value: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(value.isEmpty ? "-" : value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

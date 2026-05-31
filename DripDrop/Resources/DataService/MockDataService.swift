@@ -16,21 +16,1107 @@ import MapKit
 
 @MainActor
 final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
-    func upLoadActiveRouteLocation(companyId:String,activeRouteId:String,location: ActiveRouteLocation) async throws {
+    func getActiveRoutesForDate(
+        companyId: String,
+        date: Date
+    ) async throws -> [ActiveRoute] {
+        return []
+    }
+
+    func getActiveRouteLogs(
+        companyId: String,
+        activeRouteId: String
+    ) async throws -> [ActiveRouteLog] {
+        return []
+    }
+
+    func getActiveRouteLocations(
+        companyId: String,
+        activeRouteId: String
+    ) async throws -> [ActiveRouteLocation] {
+        return []
+    }
+
+    func getServiceStopsByIds(
+        companyId: String,
+        serviceStopIds: [String]
+    ) async throws -> [ServiceStop] {
+        return []
+    }
+    func getNextPayStatementNumber(companyId: String) async throws -> Int {
+        return 1
+    }
+
+    func getNextPayLineItemNumber(companyId: String) async throws -> Int {
+        return 1
+    }
+    func getNextCompanyIncrement(
+        companyId: String,
+        category: String
+    ) async throws -> Int {
+        return 1
+    }
+    func getActiveRoutesNeedingReview(
+        companyId: String,
+        technicianId: String,
+        beforeDate: Date
+    ) async throws -> [ActiveRoute] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("activeRoutes")
+            .whereField("techId", isEqualTo: technicianId)
+            .whereField("date", isLessThan: beforeDate)
+            .getDocuments()
+
+        let routes = snapshot.documents.compactMap { document in
+            try? document.data(as: ActiveRoute.self)
+        }
+
+        return routes.filter { route in
+            route.status != .finished || route.endMilage == nil || route.endTime == nil
+        }
+        .sorted { lhs, rhs in
+            lhs.date > rhs.date
+        }
+    }
+
+    func getRecentActiveRoutes(
+        companyId: String,
+        technicianId: String,
+        limit: Int = 10
+    ) async throws -> [ActiveRoute] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("activeRoutes")
+            .whereField("techId", isEqualTo: technicianId)
+            .order(by: "date", descending: true)
+            .limit(to: limit)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            try? document.data(as: ActiveRoute.self)
+        }
+    }
+    // MARK: - ShoppingList
+    func updateShoppingListStatus(
+        companyId: String,
+        shoppingListItemId: String,
+        status: ShoppingListStatus,
+        needsAction: Bool
+    ) async throws {
+    }
+    func getOutstandingShoppingListItemsPage(
+        companyId: String,
+        limit: Int = 100
+    ) async throws -> [ShoppingListItem] {
+        return []
+    }
+    func getShoppingListItemsForPrepKeys(
+        companyId: String,
+        prepKeys: [String],
+        needsAction: Bool = true
+    ) async throws -> [ShoppingListItem] {
+        return []
+    }
+    func fetchJobTemplates(companyId: String) async throws -> [JobTemplate] { [] }
+
+    func fetchJobTemplate(
+        companyId: String,
+        templateId: String
+    ) async throws -> JobTemplate {
+        JobTemplate(
+            id: templateId,
+            companyId: companyId,
+            name: "Mock Template",
+            createdByUserId: "mock_user"
+        )
+    }
+
+    func saveJobTemplate(_ template: JobTemplate) async throws { }
+
+    func saveJobTemplatePlannedServiceStops(
+        _ plannedStops: [JobTemplatePlannedServiceStop]
+    ) async throws { }
+
+    func saveJobTemplateTasks(
+        _ tasks: [JobTemplateTask]
+    ) async throws { }
+
+    func saveJobTemplateShoppingItems(
+        _ items: [JobTemplateShoppingItem]
+    ) async throws { }
+
+    func fetchJobTemplatePlannedServiceStops(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplatePlannedServiceStop] { [] }
+
+    func fetchJobTemplateTasks(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplateTask] { [] }
+
+    func fetchJobTemplateShoppingItems(
+        companyId: String,
+        templateId: String
+    ) async throws -> [JobTemplateShoppingItem] { [] }
+
+    func saveJobPlannedServiceStops(
+        _ plannedStops: [JobPlannedServiceStop]
+    ) async throws { }
+
+    func saveJobTasks(
+        companyId: String,
+        jobId: String,
+        tasks: [JobTask]
+    ) async throws { }
+
+    func saveShoppingListItems(
+        companyId: String,
+        items: [ShoppingListItem]
+    ) async throws { }
+        // MARK: - Planned service stops
+    func fetchJobPlannedServiceStops(
+        companyId: String,
+        jobId: String
+    ) async throws -> [JobPlannedServiceStop] {
+        []
+    }
+
+    func saveJobPlannedServiceStop(
+        _ plannedStop: JobPlannedServiceStop
+    ) async throws { }
+
+    func deleteJobPlannedServiceStop(
+        companyId: String,
+        jobId: String,
+        plannedServiceStopId: String
+    ) async throws { }
+    // MARK: - Work Offers
+    func fetchCompanyServiceStopType(
+        companyId: String,
+        serviceStopTypeId: String
+    ) async throws -> CompanyServiceStopType {
+        try await companyServiceStopTypeDoc(
+            companyId: companyId,
+            serviceStopTypeId: serviceStopTypeId
+        )
+        .getDocument(as: CompanyServiceStopType.self)
+    }
+    func fetchServiceStopsForTechnician(
+        companyId: String,
+        technicianId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [ServiceStop] {
+        []
+    }
+    func fetchAcceptedWorkOffersForUser(
+        companyId: String,
+        userId: String
+    ) async throws -> [WorkOffer] {
+        []
+    }
+    func fetchWorkOffers(
+        companyId: String,
+        jobId: String
+    ) async throws -> [WorkOffer] {
+        []
+    }
+
+    func fetchWorkOffersForUser(
+        companyId: String,
+        userId: String
+    ) async throws -> [WorkOffer] {
+        []
+    }
+
+    func fetchOpenBoardWorkOffers(
+        companyId: String,
+        workerType: WorkerTypeEnum
+    ) async throws -> [WorkOffer] {
+        []
+    }
+
+    func saveWorkOffer(
+        _ workOffer: WorkOffer
+    ) async throws { }
+
+    func updateWorkOfferStatus(
+        companyId: String,
+        workOfferId: String,
+        status: WorkOfferStatus
+    ) async throws { }
+
+    func acceptWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        acceptedByUserId: String,
+        acceptedByUserName: String
+    ) async throws { }
+
+    func rejectWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        rejectedByUserId: String,
+        rejectedByUserName: String,
+        reason: String
+    ) async throws { }
+
+    func cancelWorkOffer(
+        companyId: String,
+        workOfferId: String,
+        reason: String
+    ) async throws { }
+    func updateWorkOfferScheduledServiceStop(
+        companyId: String,
+        workOfferId: String,
+        serviceStopId: String,
+        serviceStopInternalId: String
+    ) async throws { }
+    
+    func updateJobTaskServiceStopId(
+        companyId: String,
+        jobId: String,
+        jobTaskId: String,
+        serviceStopId: IdInfo
+    ) async throws { }
+    
+    func appendServiceStopIdToJob(companyId: String, jobId: String, serviceStopId: String) async throws {
         
+    }
+    
+    // MARK: - Companies
+
+    func companyCollection() -> CollectionReference {
+        db.collection("companies")
+    }
+
+    func companyDoc(companyId: String) -> DocumentReference {
+        companyCollection().document(companyId)
+    }
+
+    // MARK: - Company Users
+    func ensureCompanyPaySettings(
+        companyId: String
+    ) async throws -> CompanyPaySettings {
+//        if let settings = try await fetchCompanyPaySettings(companyId: companyId) {
+//            return settings
+//        }
+
+        let defaultSettings = CompanyPaySettings.defaultSettings()
+        try await saveCompanyPaySettings(companyId: companyId, defaultSettings)
+
+        return defaultSettings
+    }
+    // companies/{companyId}/companyUsers/{companyUserId}
+
+    func companyUsersCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("companyUsers")
+    }
+
+    func companyUserDoc(
+        companyId: String,
+        companyUserId: String
+    ) -> DocumentReference {
+        companyUsersCollection(companyId: companyId)
+            .document(companyUserId)
+    }
+
+    func companyUserByUserIdQuery(
+        companyId: String,
+        userId: String
+    ) -> Query {
+        companyUsersCollection(companyId: companyId)
+            .whereField("userId", isEqualTo: userId)
+    }
+
+    // MARK: - Service Stops
+    // companies/{companyId}/serviceStops/{serviceStopId}
+
+    func serviceStopsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("serviceStops")
+    }
+
+    func serviceStopDoc(
+        companyId: String,
+        serviceStopId: String
+    ) -> DocumentReference {
+        serviceStopsCollection(companyId: companyId)
+            .document(serviceStopId)
+    }
+
+    // MARK: - Service Stop Tasks
+    // companies/{companyId}/serviceStops/{serviceStopId}/tasks/{taskId}
+
+    func serviceStopTasksCollection(
+        companyId: String,
+        serviceStopId: String
+    ) -> CollectionReference {
+        serviceStopDoc(
+            companyId: companyId,
+            serviceStopId: serviceStopId
+        )
+        .collection("tasks")
+    }
+
+    func serviceStopTaskDoc(
+        companyId: String,
+        serviceStopId: String,
+        taskId: String
+    ) -> DocumentReference {
+        serviceStopTasksCollection(
+            companyId: companyId,
+            serviceStopId: serviceStopId
+        )
+        .document(taskId)
+    }
+
+    // MARK: - Company Pay Settings
+    // companies/{companyId}/paySettings/main
+
+    func companyPaySettingsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("paySettings")
+    }
+
+    func companyPaySettingsDoc(companyId: String) -> DocumentReference {
+        companyPaySettingsCollection(companyId: companyId)
+            .document("main")
+    }
+
+    // MARK: - Company Service Stop Types
+    // companies/{companyId}/companyServiceStopTypes/{serviceStopTypeId}
+
+    func companyServiceStopTypesCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("companyServiceStopTypes")
+    }
+
+    func companyServiceStopTypeDoc(
+        companyId: String,
+        serviceStopTypeId: String
+    ) -> DocumentReference {
+        companyServiceStopTypesCollection(companyId: companyId)
+            .document(serviceStopTypeId)
+    }
+
+    // MARK: - Company Work Types
+    // companies/{companyId}/companyWorkTypes/{workTypeId}
+
+    func companyWorkTypesCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("companyWorkTypes")
+    }
+
+    func companyWorkTypeDoc(
+        companyId: String,
+        workTypeId: String
+    ) -> DocumentReference {
+        companyWorkTypesCollection(companyId: companyId)
+            .document(workTypeId)
+    }
+
+    // MARK: - Work Type Mappings
+    // companies/{companyId}/workTypeMappings/{mappingId}
+
+    func workTypeMappingsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("workTypeMappings")
+    }
+
+    func workTypeMappingDoc(
+        companyId: String,
+        mappingId: String
+    ) -> DocumentReference {
+        workTypeMappingsCollection(companyId: companyId)
+            .document(mappingId)
+    }
+
+    // MARK: - Company Rate Plans
+    // companies/{companyId}/companyRatePlans/{ratePlanId}
+
+    func companyRatePlansCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("companyRatePlans")
+    }
+
+    func companyRatePlanDoc(
+        companyId: String,
+        ratePlanId: String
+    ) -> DocumentReference {
+        companyRatePlansCollection(companyId: companyId)
+            .document(ratePlanId)
+    }
+
+    // MARK: - Technician Rates
+    // companies/{companyId}/technicianRates/{technicianRateId}
+
+    func technicianRatesCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("technicianRates")
+    }
+
+    func technicianRateDoc(
+        companyId: String,
+        technicianRateId: String
+    ) -> DocumentReference {
+        technicianRatesCollection(companyId: companyId)
+            .document(technicianRateId)
+    }
+
+    // MARK: - Technician Pay Line Items
+    // companies/{companyId}/technicianPayLineItems/{payLineItemId}
+
+    func technicianPayLineItemsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("technicianPayLineItems")
+    }
+
+    func technicianPayLineItemDoc(
+        companyId: String,
+        payLineItemId: String
+    ) -> DocumentReference {
+        technicianPayLineItemsCollection(companyId: companyId)
+            .document(payLineItemId)
+    }
+
+    // MARK: - Technician Pay Statements
+    // companies/{companyId}/technicianPayStatements/{payStatementId}
+
+    func technicianPayStatementsCollection(companyId: String) -> CollectionReference {
+        companyDoc(companyId: companyId).collection("technicianPayStatements")
+    }
+
+    func technicianPayStatementDoc(
+        companyId: String,
+        payStatementId: String
+    ) -> DocumentReference {
+        technicianPayStatementsCollection(companyId: companyId)
+            .document(payStatementId)
+    }
+        // MARK: - Company Users
+
+    func fetchCompanyUsers(
+        companyId: String
+    ) async throws -> [CompanyUser] {
+        [
+            CompanyUser(
+                id: "comp_user_marco",
+                userId: "usr_marco",
+                userName: "Marco",
+                roleId: "role_tech",
+                roleName: "Technician",
+                dateCreated: Date(),
+                status: .active,
+                workerType: .employee,
+                linkedCompanyId: nil,
+                linkedCompanyName: nil
+            ),
+            CompanyUser(
+                id: "comp_user_anna",
+                userId: "usr_anna",
+                userName: "Anna",
+                roleId: "role_tech",
+                roleName: "Technician",
+                dateCreated: Date(),
+                status: .active,
+                workerType: .contractor,
+                linkedCompanyId: nil,
+                linkedCompanyName: nil
+            ),
+            CompanyUser(
+                id: "comp_user_caleb",
+                userId: "usr_caleb",
+                userName: "Caleb",
+                roleId: "role_tech",
+                roleName: "Technician",
+                dateCreated: Date(),
+                status: .active,
+                workerType: .employee,
+                linkedCompanyId: nil,
+                linkedCompanyName: nil
+            )
+        ]
+    }
+
+        // MARK: - Service Stop Tasks
+
+        func fetchServiceStopTasks(
+            companyId: String,
+            serviceStopId: String
+        ) async throws -> [ServiceStopTask] {
+            let snapshot = try await serviceStopTasksCollection(
+                companyId: companyId,
+                serviceStopId: serviceStopId
+            )
+            .getDocuments()
+
+            return try snapshot.documents
+                .map { try $0.data(as: ServiceStopTask.self) }
+        }
+
+        // MARK: - Pay Settings
+
+        func fetchCompanyPaySettings(
+            companyId: String
+        ) async throws -> CompanyPaySettings? {
+            let snapshot = try await companyPaySettingsDoc(companyId: companyId)
+                .getDocument()
+
+            guard snapshot.exists else {
+                return nil
+            }
+
+            return try snapshot.data(as: CompanyPaySettings.self)
+        }
+
+    func saveCompanyPaySettings(companyId:String,
+            _ settings: CompanyPaySettings
+        ) async throws {
+            try await companyPaySettingsDoc(companyId: companyId)
+                .setData(from: settings, merge: true)
+        }
+
+    // MARK: - Service Stop Types
+
+    func fetchCompanyServiceStopTypes(
+        companyId: String
+    ) async throws -> [CompanyServiceStopType] {
+        [
+            CompanyServiceStopType(
+                id: "comp_ss_type_weekly_route",
+                companyId: companyId,
+                name: "Weekly Route",
+                imageName: "figure.pool.swim",
+                isActive: true,
+                sortOrder: 10,
+                defaultWorkTypeIds: ["comp_work_type_routes"],
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            ),
+            CompanyServiceStopType(
+                id: "comp_ss_type_route_spa",
+                companyId: companyId,
+                name: "Route + Spa",
+                imageName: "bubbles.and.sparkles",
+                isActive: true,
+                sortOrder: 20,
+                defaultWorkTypeIds: [
+                    "comp_work_type_routes",
+                    "comp_work_type_spa_add_on"
+                ],
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            ),
+            CompanyServiceStopType(
+                id: "comp_ss_type_service_call",
+                companyId: companyId,
+                name: "Service Call",
+                imageName: "phone",
+                isActive: true,
+                sortOrder: 30,
+                defaultWorkTypeIds: ["comp_work_type_service_call"],
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            )
+        ]
+    }
+
+    func saveCompanyServiceStopType(
+        _ serviceStopType: CompanyServiceStopType
+    ) async throws {
+        print("Mock saveCompanyServiceStopType: \(serviceStopType.name)")
+    }
+
+        // MARK: - Work Types
+
+        func fetchCompanyWorkTypes(
+            companyId: String
+        ) async throws -> [CompanyWorkType] {
+            let snapshot = try await companyWorkTypesCollection(companyId: companyId)
+                .getDocuments()
+
+            return try snapshot.documents
+                .map { try $0.data(as: CompanyWorkType.self) }
+                .sorted { $0.sortOrder < $1.sortOrder }
+        }
+
+        func saveCompanyWorkType(
+            _ workType: CompanyWorkType
+        ) async throws {
+            try await companyWorkTypeDoc(
+                companyId: workType.companyId,
+                workTypeId: workType.id
+            )
+            .setData(from: workType, merge: true)
+        }
+
+        // MARK: - Work Type Mappings
+
+    func fetchWorkTypeMappings(
+        companyId: String
+    ) async throws -> [WorkTypeMapping] {
+        [
+            WorkTypeMapping(
+                id: "comp_work_map_mock_recurring",
+                companyId: companyId,
+                sourceType: .serviceStopType,
+                sourceId: PayrollSystemSourceIds.recurringServiceStop,
+                workTypeId: "comp_work_type_routes"
+            ),
+            WorkTypeMapping(
+                id: "comp_work_map_mock_job",
+                companyId: companyId,
+                sourceType: .serviceStopType,
+                sourceId: PayrollSystemSourceIds.jobServiceStop,
+                workTypeId: "comp_work_type_service_call"
+            ),
+            WorkTypeMapping(
+                id: "comp_work_map_mock_clean_filter",
+                companyId: companyId,
+                sourceType: .jobTaskType,
+                sourceId: JobTaskType.cleanFilter.rawValue,
+                workTypeId: "comp_work_type_clean_filter"
+            )
+        ]
+    }
+
+    func saveWorkTypeMapping(
+        _ mapping: WorkTypeMapping
+    ) async throws {
+        print("Mock saveWorkTypeMapping: \(mapping.sourceType.rawValue) \(mapping.sourceId) -> \(mapping.workTypeId)")
+    }
+
+    func deleteWorkTypeMapping(
+        companyId: String,
+        mappingId: String
+    ) async throws {
+        print("Mock deleteWorkTypeMapping: \(mappingId)")
+    }
+
+        // MARK: - Company Rate Plans
+
+    func fetchCompanyRatePlans(
+        companyId: String
+    ) async throws -> [CompanyRatePlan] {
+        [
+            CompanyRatePlan(
+                id: "comp_rate_plan_mock_default",
+                companyId: companyId,
+                name: "Default Rate Plan",
+                status: .active,
+                effectiveStartDate: Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date(),
+                effectiveEndDate: nil,
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            )
+        ]
+    }
+
+    func saveCompanyRatePlan(
+        _ ratePlan: CompanyRatePlan
+    ) async throws {
+        print("Mock saveCompanyRatePlan: \(ratePlan.name)")
+    }
+
+        // MARK: - Technician Rates
+
+    func fetchTechnicianRates(
+        companyId: String
+    ) async throws -> [TechnicianRate] {
+        [
+            TechnicianRate(
+                id: "comp_tech_rate_mock_marco_routes",
+                ratePlanId: "comp_rate_plan_mock_default",
+                companyId: companyId,
+                technicianId: "usr_marco",
+                payBasis: .serviceStop,
+                workTypeId: "comp_work_type_routes",
+                amountCents: 1600,
+                rateType: .flatPerStop,
+                effectiveStartDate: Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date(),
+                effectiveEndDate: nil,
+                status: .active,
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user",
+                reason: "Starting route rate",
+                previousRateId: nil
+            ),
+            TechnicianRate(
+                id: "comp_tech_rate_mock_marco_filter",
+                ratePlanId: "comp_rate_plan_mock_default",
+                companyId: companyId,
+                technicianId: "usr_marco",
+                payBasis: .serviceStopTask,
+                workTypeId: "comp_work_type_clean_filter",
+                amountCents: 8000,
+                rateType: .flatPerTask,
+                effectiveStartDate: Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date(),
+                effectiveEndDate: nil,
+                status: .active,
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user",
+                reason: "Filter cleaning rate",
+                previousRateId: nil
+            ),
+            TechnicianRate(
+                id: "comp_tech_rate_mock_anna_hourly",
+                ratePlanId: "comp_rate_plan_mock_default",
+                companyId: companyId,
+                technicianId: "usr_anna",
+                payBasis: .technicianHourly,
+                workTypeId: nil,
+                amountCents: 2500,
+                rateType: .hourly,
+                effectiveStartDate: Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date(),
+                effectiveEndDate: nil,
+                status: .active,
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user",
+                reason: "$25/hour",
+                previousRateId: nil
+            )
+        ]
+    }
+
+    func fetchTechnicianRates(
+        companyId: String,
+        technicianId: String
+    ) async throws -> [TechnicianRate] {
+        let allRates = try await fetchTechnicianRates(companyId: companyId)
+        return allRates.filter { $0.technicianId == technicianId }
+    }
+
+    func saveTechnicianRate(
+        _ rate: TechnicianRate
+    ) async throws {
+        print("Mock saveTechnicianRate: \(rate.technicianId) \(rate.amountCents)")
+    }
+
+    func saveTechnicianRateIncrease(
+        expiredOldRate: TechnicianRate,
+        newRate: TechnicianRate
+    ) async throws {
+        print("Mock saveTechnicianRateIncrease: \(expiredOldRate.id) -> \(newRate.id)")
+    }
+        // MARK: - Technician Pay Line Items
+
+    func fetchTechnicianPayLineItems(
+        companyId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [TechnicianPayLineItem] {
+        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+            .whereField("completedDate", isGreaterThanOrEqualTo: startDate)
+            .whereField("completedDate", isLessThanOrEqualTo: endDate)
+            .getDocuments()
+
+        return try snapshot.documents
+            .map { try $0.data(as: TechnicianPayLineItem.self) }
+            .sorted {
+                if $0.completedDate == $1.completedDate {
+                    return $0.technicianName < $1.technicianName
+                }
+
+                return $0.completedDate < $1.completedDate
+            }
+    }
+    
+
+    func saveTechnicianPayLineItems(
+        _ lineItems: [TechnicianPayLineItem]
+    ) async throws {
+        guard !lineItems.isEmpty else {
+            return
+        }
+
+        let batch = db.batch()
+        let encoder = Firestore.Encoder()
+
+        for lineItem in lineItems {
+            let data = try encoder.encode(lineItem)
+
+            batch.setData(
+                data,
+                forDocument: technicianPayLineItemDoc(
+                    companyId: lineItem.companyId,
+                    payLineItemId: lineItem.id
+                ),
+                merge: true
+            )
+        }
+
+        try await batch.commit()
+    }
+
+    func updateTechnicianPayLineItem(
+        _ lineItem: TechnicianPayLineItem
+    ) async throws {
+        try await technicianPayLineItemDoc(
+            companyId: lineItem.companyId,
+            payLineItemId: lineItem.id
+        )
+        .setData(from: lineItem, merge: true)
+    }
+
+    // MARK: - Technician Pay Statements
+
+    func fetchTechnicianPayStatements(
+        companyId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [TechnicianPayStatement] {
+        [
+            TechnicianPayStatement(
+                id: "comp_pay_stmt_mock_001",
+                companyId: companyId,
+                technicianId: "usr_marco",
+                technicianName: "Marco",
+                workerType: .employee,
+                startDate: startDate,
+                endDate: endDate,
+                lineItemIds: [
+                    "comp_pay_line_mock_001",
+                    "comp_pay_line_mock_002"
+                ],
+                subtotalCents: 9600,
+                adjustmentCents: 0,
+                totalCents: 9600,
+                status: .draft,
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user",
+                approvedAt: nil,
+                approvedByUserId: nil,
+                paidAt: nil,
+                paidByUserId: nil,
+                exportedAt: nil,
+                exportProvider: nil,
+                externalReferenceId: nil,
+                notes: nil,
+                statementNumber: 1,
+                statementReference: "REF_001"
+            )
+        ]
+    }
+    
+    func fetchTechnicianPayLineItems(companyId: String, serviceStopId: String) async throws -> [TechnicianPayLineItem] {
+        return []
+    }
+    
+    func fetchTechnicianPayLineItems(companyId: String, payStatementId: String) async throws -> [TechnicianPayLineItem] {
+        return []
+    }
+    
+
+    func saveTechnicianPayStatement(
+        _ statement: TechnicianPayStatement
+    ) async throws {
+        print("Mock saveTechnicianPayStatement: \(statement.id)")
+    }
+    
+    func upLoadActiveRouteLocation(companyId:String,activeRouteId:String,location: ActiveRouteLocation) async throws {
+    }
+    func getEquipmentServiceHistory(
+        companyId: String,
+        equipmentId: String
+    ) async throws -> [EquipmentServiceHistory] {
+        return []
+    }
+    func getEquipmentScheduledWork(
+        companyId: String,
+        equipmentId: String
+    ) async throws -> [EquipmentScheduledWork] {
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("scheduledWork")
+            .whereField("status", in: [
+                EquipmentScheduledWorkStatus.draft.rawValue,
+                EquipmentScheduledWorkStatus.estimatePending.rawValue,
+                EquipmentScheduledWorkStatus.scheduled.rawValue,
+                EquipmentScheduledWorkStatus.inProgress.rawValue
+            ])
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: EquipmentScheduledWork.self)
+        }
+    }
+
+    func uploadEquipmentScheduledWork(
+        companyId: String,
+        equipmentId: String,
+        scheduledWork: EquipmentScheduledWork
+    ) async throws {
+        try db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("scheduledWork")
+            .document(scheduledWork.id)
+            .setData(from: scheduledWork, merge: true)
+    }
+
+    func updateEquipmentScheduledWorkStatus(
+        companyId: String,
+        equipmentId: String,
+        scheduledWorkId: String,
+        status: EquipmentScheduledWorkStatus,
+        dateCompleted: Date? = nil
+    ) async throws {
+        var data: [String: Any] = [
+            "status": status.rawValue
+        ]
+
+        if let dateCompleted {
+            data["dateCompleted"] = dateCompleted
+        }
+
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("scheduledWork")
+            .document(scheduledWorkId)
+            .setData(data, merge: true)
+    }
+//    func getScheduledWorkForEquipment(
+//        companyId: String,
+//        equipmentId: String
+//    ) async throws -> [EquipmentScheduledWork] {
+//        let db = self.db
+//
+//        let taskSnapshot = try await db
+//            .collectionGroup("tasks")
+//            .whereField("equipmentId", isEqualTo: equipmentId)
+//            .getDocuments()
+//
+//        var scheduledWork: [EquipmentScheduledWork] = []
+//
+//        for taskDoc in taskSnapshot.documents {
+//            let task = try taskDoc.data(as: ServiceStopTask.self)
+//
+//            guard task.status == .scheduled || task.status == .inProgress else {
+//                continue
+//            }
+//
+//            guard let serviceStopRef = taskDoc.reference.parent.parent else {
+//                continue
+//            }
+//
+//            let serviceStopSnapshot = try await serviceStopRef.getDocument()
+//            let serviceStop = try serviceStopSnapshot.data(as: ServiceStop.self)
+//
+//            guard serviceStop.companyId == companyId else {
+//                continue
+//            }
+//
+//            guard serviceStop.serviceDate >= Calendar.current.startOfDay(for: Date()) else {
+//                continue
+//            }
+//
+//            var jobInternalId = task.jobId.internalId
+//
+//            if !serviceStop.jobId.isEmpty {
+//                do {
+//                    let job = try await getWorkOrderById(
+//                        companyId: companyId,
+//                        workOrderId: serviceStop.jobId
+//                    )
+//                    jobInternalId = job.internalId
+//                } catch {
+//                    print("Unable to fetch job for scheduled equipment work: \(error)")
+//                }
+//            }
+//
+//            let item = EquipmentScheduledWork(
+//                id: task.id,
+//                taskName: task.name,
+//                taskType: task.type,
+//                serviceDate: serviceStop.serviceDate,
+//                techName: serviceStop.tech,
+//                serviceStopId: serviceStop.id,
+//                serviceStopInternalId: serviceStop.internalId,
+//                jobId: serviceStop.jobId,
+//                jobInternalId: jobInternalId,
+//                status: task.status
+//            )
+//
+//            scheduledWork.append(item)
+//        }
+//
+//        return scheduledWork.sorted { $0.serviceDate < $1.serviceDate }
+//    }
+    func uploadEquipmentServiceHistory(
+        companyId: String,
+        equipmentId: String,
+        history: EquipmentServiceHistory
+    ) async throws {
+        try db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("serviceHistory")
+            .document(history.id)
+            .setData(from: history, merge: true)
+    }
+
+    func updateEquipmentServiceDates(
+        companyId: String,
+        equipmentId: String,
+        lastServiceDate: Date,
+        nextServiceDate: Date?
+    ) async throws {
+        var data: [String: Any] = [
+            "lastServiceDate": lastServiceDate
+        ]
+
+        if let nextServiceDate {
+            data["nextServiceDate"] = nextServiceDate
+        } else {
+            data["nextServiceDate"] = FieldValue.delete()
+        }
+
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .setData(data, merge: true)
+    }
+
+    func createEquipmentPartFromName(
+        companyId: String,
+        equipmentId: String,
+        name: String
+    ) async throws -> String {
+        let partId = "com_equ_par_" + UUID().uuidString
+
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipmentId)
+            .collection("parts")
+            .document(partId)
+            .setData([
+                "id": partId,
+                "name": name,
+                "date": Date(),
+                "createdAt": Date()
+            ], merge: true)
+
+        return partId
     }
     func upLoadActiveRouteLog(companyId:String,activeRouteId:String, log: ActiveRouteLog) async throws {
-        
     }
-    
-    
     func createCompanySubscription(subscription:CompanySubscription,company:Company) async throws{
         
     }
     func getCompanySubscription(companyId:String) async throws -> CompanySubscription?{
         return nil
     }
-
     func updateCompanyName(companyId:String,name:String) async throws{
         
     }
@@ -126,7 +1212,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func uploadNewTaskGroup(companyId:String,taskGroup:JobTaskGroup) async throws {
     }
     func getAllTaskGroupById(companyId:String,taskGroupId:String) async throws -> JobTaskGroup {
-        return JobTaskGroup(id: "", name: "", description: "", numberOfTasks: 0)
+        return JobTaskGroup(id: "",  name: "", description: "", defaultServiceStopTypeId: "", defaultServiceStopTypeName: "", numberOfTasks: 0, estimatedMinutes: 0, estimatedLaborCents: 0, isActive: false, createdAt: Date(), createdByUserId: "")
 
     }
     func getAllTaskGroups(companyId:String) async throws ->[JobTaskGroup] {
@@ -265,11 +1351,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateJobTaskLaborContractId(companyId:String,jobId:String,taskId:String,laborContractId:String) throws {
     }
-    func updateJobDateEstimateAccepted(companyId: String, jobId: String, date: Date) async throws{
+    func updateJobDateEstimateAccepted(companyId: String, jobId: String, date: Date) throws{
     }
-    func updateJobEstiamteAcceptedById(companyId: String, jobId: String, id: String) async throws{
+    func updateJobEstiamteAcceptedById(companyId: String, jobId: String, id: String) throws{
     }
-    func updateJobEstiamteAcceptedByType(companyId: String, jobId: String, type: JobEstiamteAcceptanceType) async throws {
+    func updateJobEstiamteAcceptedByType(companyId: String, jobId: String, type: JobEstiamteAcceptanceType) throws {
     }    
     func updateJobInvoiceDate(companyId: String, jobId: String, date: Date) async throws {
         
@@ -286,7 +1372,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
 
     func updateLaborContractStatus(contractId:String,status:LaborContractStatus)  async throws {
     }
-    func updateJobEstimateAcceptedNotes(companyId: String, jobId: String, notes: String) async throws{
+    func updateJobEstimateAcceptedNotes(companyId: String, jobId: String, notes: String) throws{
     }
     func uploadWorkOrderTask(companyId:String,workOrderId:String,task:JobTask) throws {
     }
@@ -318,6 +1404,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateActiveRouteVehicalId(companyId:String,activeRouteId:String,vehicalId:String){
         
+    }
+    func syncActiveRouteForServiceStops(companyId: String,date: Date,techId: String,techName: String) async throws -> ActiveRoute? {
+        nil
     }
     func updateCustomerFirstName(companyId:String,customerId:String,firstName:String) async throws {
     }
@@ -724,16 +1813,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func getJobTemplate(companyId: String, templateId: String) async throws -> JobTemplate {
-        return JobTemplate(
-            id: "",
-            name: "",
-            type: "",
-            typeImage: "",
-            dateCreated: Date(),
-            rate: "",
-            color: "",
-            locked: false
-        )
+        return JobTemplate(companyId: "", name: "", createdByUserId: "")
     }
     
     func getReadingTemplate(companyId: String, readingTemplateId: String) async throws -> ReadingsTemplate {
@@ -1073,8 +2153,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateEquipmentDateUninstalled(companyId:String,equipmentId:String,dateUninstalled:Date) throws {
     }
-    func uploadRoute(companyId: String, activeRoute: ActiveRoute) async throws {
+    func uploadRoute(companyId: String, activeRoute: ActiveRoute) async throws -> ActiveRoute {
         print("Upload Route")
+        return activeRoute
     }
     
     func getAllActiveRoutesBasedOnDate(companyId: String, date: Date, tech: DBUser) async throws -> [ActiveRoute] {
@@ -1387,9 +2468,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         //----------------------------------------------------
         //                    Companies Collections
         //----------------------------------------------------
-    private func companyCollection() -> CollectionReference{
-        db.collection("companies")
-    }
+ 
         //                    Settings Collections
     
     private func SettingsCollection(companyId:String) -> CollectionReference{
@@ -1509,10 +2588,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         db.collection("companies/\(companyId)/purchasedItems")
     }
         //                    companyUsers Collections
-    
-    private func companyUsersCollection(companyId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/companyUsers")
-    }
+
     private func companyUsersRateSheetCollection(companyId:String,companyUserId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/companyUsers/\(companyUserId)/rateSheet")
     }
@@ -1640,9 +2716,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         PurchaseItemCollection(companyId: companyId).document(purchaseItemId)
         
     }
-    private func companyUserDoc(companyId:String,companyUserId:String) -> DocumentReference{
-        companyUsersCollection(companyId: companyId).document(companyUserId)
-    }
+
     private func companyUserRateSheetDoc(companyId:String,companyUserId:String,rateSheetId:String) -> DocumentReference{
         companyUsersRateSheetCollection(companyId: companyId,companyUserId: companyUserId).document(rateSheetId)
     }
@@ -2497,17 +3571,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let serviceStopLaborId = UUID().uuidString
         
         let InitialTemplates:[JobTemplate] = [
-            
-            JobTemplate(id: weeklyCleaningId, name: "Weekly Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "red"),
-            JobTemplate(id: filterCleaningId, name: "Filter Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "120", color: "orange"),
-            JobTemplate(id: saltCellId, name: "Salt Cell Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "85", color: "yellow"),
-            JobTemplate(id: esitmateId, name: "Weekly Cleaning Estimate", type: "Estimate", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "green"),
-            JobTemplate(id: serviceCallId, name: "Service Call", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "blue"),
-            JobTemplate(id: DrainandfillID, name: "Drain and Fill", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
-            JobTemplate(id: isntallId, name: "Installation", type: "Installation", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
-            JobTemplate(id: repairID, name: "Repair", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
-            JobTemplate(id: startUpEstimateId, name: "Start Up Estimate", type: "Estimate", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "black",locked: true)
-            
+
         ]
         let InitialServiceStopTemplates:[ServiceStopTemplate] = [
             
@@ -2950,6 +4014,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws {
         try workOrderDocument(workOrderId: workOrder.id, companyId: companyId).setData(from:workOrder, merge: false)
     }
+    
+    func addWorkOrderComment(
+        companyId: String,
+        workOrderId: String,
+        comment: JobComment
+    ) async throws {}
+    
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
             //DEVELOPER REMOVE THIS FUNCTION
     }
@@ -4453,6 +5524,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return try await workOrderDocument(workOrderId: workOrderId, companyId: companyId).getDocument(as: Job.self)
         
     }
+    
+    func getWorkOrderComments(companyId: String, workOrderId: String) async throws -> [JobComment] {
+        []
+    }
+    
     func getAllPastJobsBasedOnCustomer(companyId: String, customer: Customer) async throws -> [Job] {
         return []
     }
@@ -5349,7 +6425,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
     }
-    func updateJobBillingStatus(companyId:String,jobId:String,billingStatus:JobBillingStatus) async throws{
+    func updateJobBillingStatus(companyId:String,jobId:String,billingStatus:JobBillingStatus)  throws{
         let ref = workOrderDocument(workOrderId: jobId, companyId: companyId)
         ref.updateData([
             "billingStatus": billingStatus.rawValue,
@@ -5397,6 +6473,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         }
     }
+    
+    func updateWorkOrderCommentResolved(
+        companyId: String,
+        workOrderId: String,
+        commentId: String,
+        resolved: Bool
+    ) async throws {}
     
     func updateContract(companyId:String,contract:RecurringContract) async throws {
         

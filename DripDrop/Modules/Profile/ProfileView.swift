@@ -238,7 +238,7 @@ extension ProfileView {
             PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
                 Image(systemName: "camera.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.black)
+                    .foregroundColor(Color.basicFontText)
                     .padding(6)
                     .background(.black.opacity(0.6), in: Circle())
             }
@@ -255,7 +255,7 @@ extension ProfileView {
                     HStack{
                         Text("\(user.firstName) \(user.lastName)")
                             .font(.title2.weight(.semibold))
-                            .foregroundStyle(.black)
+                            .foregroundColor(Color.basicFontText)
                         if let user = masterDataManager.user {
                             NavigationLink(value: Route.editUser(user: user, dataService: dataService)) {
                                 Label("Edit", systemImage: "pencil")
@@ -263,7 +263,7 @@ extension ProfileView {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.white.opacity(0.12))
-                            .foregroundStyle(.black)
+                            .foregroundColor(Color.basicFontText)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             .accessibilityLabel("Edit Profile")
                         }
@@ -283,7 +283,7 @@ extension ProfileView {
                                 .frame(width: 56, height: 56)
                             Text("\(calculateLevel(exp: user.exp).level)")
                                 .font(.headline.weight(.bold))
-                                .foregroundStyle(.black)
+                                .foregroundColor(Color.basicFontText)
                                 .frame(width: 56, height: 56)
                                 .background(Circle().fill(.white))
                         }
@@ -309,21 +309,21 @@ extension ProfileView {
                     HStack {
                         Text("Email:").bold()
                         Spacer()
-                        Text(user.email)
-                            .foregroundStyle(.black)
-                            .textSelection(.enabled)
                     }
+                    Text(user.email)
+                        .foregroundColor(Color.basicFontText)
+                        .textSelection(.enabled)
                     HStack {
                         Text("Phone Number:").bold()
                         Spacer()
                         Text(user.phoneNumber ?? "Not Set")
-                            .foregroundStyle(.black)
+                            .foregroundColor(Color.basicFontText)
                     }
                     HStack {
                         Text("Date Created:").bold()
                         Spacer()
                         Text(fullDate(date: user.dateCreated))
-                            .foregroundStyle(.black)
+                            .foregroundColor(Color.basicFontText)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Bio:").bold()
@@ -336,7 +336,7 @@ extension ProfileView {
                             )
                     }
                 }
-                .foregroundStyle(Color.black)
+                .foregroundColor(Color.basicFontText)
             }
         }
     }

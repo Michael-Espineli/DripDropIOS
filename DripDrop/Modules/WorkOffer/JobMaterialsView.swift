@@ -2,6 +2,8 @@
 //  JobMaterialsView.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
 
 import SwiftUI
 
@@ -329,6 +331,22 @@ struct JobShoppingMaterialRow: View {
                 Text("\(item.subCategory.rawValue) • Qty: \(item.quantity ?? "-")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if !plannedPriceText.isEmpty {
+                    Text(plannedPriceText)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                if let plannedTotalCostCents = item.plannedTotalCostCents {
+                    Text("Planned cost: \(JobMaterialsMoneyFormatter.money(plannedTotalCostCents))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let plannedTotalPriceCents = item.plannedTotalPriceCents {
+                    Text("Planned billable: \(JobMaterialsMoneyFormatter.money(plannedTotalPriceCents))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
 
                 if !item.description.isEmpty {
                     Text(item.description)
@@ -367,6 +385,19 @@ struct JobShoppingMaterialRow: View {
         default:
             return "cart"
         }
+    }
+    private var plannedPriceText: String {
+        var parts: [String] = []
+
+        if let unitCost = item.plannedUnitCostCents {
+            parts.append("Cost \(JobMaterialsMoneyFormatter.money(unitCost))")
+        }
+
+        if let unitPrice = item.plannedUnitPriceCents {
+            parts.append("Bill \(JobMaterialsMoneyFormatter.money(unitPrice))")
+        }
+
+        return parts.joined(separator: " • ")
     }
 }
 

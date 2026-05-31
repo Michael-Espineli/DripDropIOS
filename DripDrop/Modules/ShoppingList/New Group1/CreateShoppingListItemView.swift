@@ -19,10 +19,12 @@ struct CreateShoppingListItemView: View {
         VStack{
             HStack{
                 Picker("Item Type", selection: $itemType) {
-                    ForEach(ShoppingListSubCategory.allCases,id:\.self) { category in
-                        Text(category.rawValue).tag(category)
-                    }
-                    
+//                    ForEach(ShoppingListSubCategory.allCases,id:\.self) { category in
+//                        Text(category.rawValue).tag(category)
+//                    }
+                    Text(ShoppingListSubCategory.dataBase.rawValue).tag(ShoppingListSubCategory.dataBase)
+                    Text(ShoppingListSubCategory.custom.rawValue).tag(ShoppingListSubCategory.custom)
+
                 }
                 .pickerStyle(.segmented)
             }

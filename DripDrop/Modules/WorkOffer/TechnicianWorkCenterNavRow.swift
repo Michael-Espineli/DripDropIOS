@@ -1,3 +1,11 @@
+//
+//  TechnicianWorkCenterNavRow.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 5/23/26.
+//
+import SwiftUI
+
 struct TechnicianWorkCenterNavRow: View {
     var directOfferCount: Int
     var boardOfferCount: Int

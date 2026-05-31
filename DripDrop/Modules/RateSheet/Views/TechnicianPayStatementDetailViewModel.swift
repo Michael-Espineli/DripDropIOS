@@ -2,6 +2,8 @@
 //  TechnicianPayStatementDetailView.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/22/26.
+//
 
 import SwiftUI
 
@@ -18,7 +20,10 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
 
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
-
+    
+    @Published var exportedCSVURL: URL?
+    @Published var showShareSheet: Bool = false
+    
     let companyId: String
 
     private let currentUserId: String
@@ -244,6 +249,49 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
 
         return existingNote + "\n" + newNote
     }
+    func exportCombinedCSV() {
+        do {
+            let result = try PayrollCSVExportService.exportCombinedStatementCSV(
+                statement: statement,
+                lineItems: lineItems
+            )
+
+            exportedCSVURL = result.fileURL
+            showShareSheet = true
+        } catch {
+            alertMessage = "Could not export CSV. \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
+    func exportSummaryCSV() {
+        do {
+            let result = try PayrollCSVExportService.exportStatementSummary(
+                statement: statement
+            )
+
+            exportedCSVURL = result.fileURL
+            showShareSheet = true
+        } catch {
+            alertMessage = "Could not export summary CSV. \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
+    func exportLineItemsCSV() {
+        do {
+            let result = try PayrollCSVExportService.exportStatementLineItems(
+                statement: statement,
+                lineItems: lineItems
+            )
+
+            exportedCSVURL = result.fileURL
+            showShareSheet = true
+        } catch {
+            alertMessage = "Could not export line items CSV. \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
 }
 
 // MARK: - View
@@ -272,6 +320,7 @@ struct TechnicianPayStatementDetailView: View {
             totalsSection
             warningSection
             lineItemsSection
+            exportSection
             notesSection
             actionsSection
         }
@@ -296,6 +345,16 @@ struct TechnicianPayStatementDetailView: View {
         } message: {
             Text(viewModel.alertMessage)
         }
+        #if os(iOS)
+        .sheet(isPresented: $viewModel.showShareSheet) {
+            if let url = viewModel.exportedCSVURL {
+                ShareSheet(activityItems: [url])
+            } else {
+                Text("No export file available.")
+                    .presentationDetents([.medium])
+            }
+        }
+        #endif
     }
 
     private var summarySection: some View {
@@ -462,6 +521,33 @@ struct TechnicianPayStatementDetailView: View {
             Text("Marking a statement paid also marks its attached line items as paid. Voiding releases unpaid line items back to payroll review.")
         }
     }
+    private var exportSection: some View {
+        Section {
+            Button {
+                viewModel.exportCombinedCSV()
+            } label: {
+                Label("Export Statement CSV", systemImage: "square.and.arrow.up")
+            }
+            .disabled(viewModel.lineItems.isEmpty)
+
+            Button {
+                viewModel.exportSummaryCSV()
+            } label: {
+                Label("Export Summary CSV", systemImage: "doc.text")
+            }
+
+            Button {
+                viewModel.exportLineItemsCSV()
+            } label: {
+                Label("Export Line Items CSV", systemImage: "list.bullet.rectangle")
+            }
+            .disabled(viewModel.lineItems.isEmpty)
+        } header: {
+            Text("Export")
+        } footer: {
+            Text("CSV exports can be used for payroll records, contractor statements, bank transfer notes, QuickBooks imports, or manual bookkeeping.")
+        }
+    }
 }
 
 // MARK: - Line Item Row
@@ -473,10 +559,10 @@ struct TechnicianPayStatementLineItemRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(lineItem.workTypeName ?? "Missing Work Type")
+                    Text(lineItem.displayTitle ?? lineItem.customerName ?? lineItem.workTypeName ?? "Payroll Line")
                         .font(.headline)
 
-                    Text(sourceText)
+                    Text(lineItem.displaySubtitle ?? sourceText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -500,7 +586,19 @@ struct TechnicianPayStatementLineItemRow: View {
             Text(TechnicianPayStatementDetailDateFormatter.shortDate(lineItem.completedDate))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+            if let lineReference = lineItem.lineReference,
+               !lineReference.isEmpty {
+                Text(lineReference)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
 
+            if let paymentReference = lineItem.paymentReference,
+               !paymentReference.isEmpty {
+                Text("Payment Ref: \(paymentReference)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.green)
+            }
             if let notes = lineItem.notes,
                !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(notes)
@@ -601,6 +699,7 @@ enum TechnicianPayStatementDetailDateFormatter {
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
+    
 }
 
 // MARK: - Preview
@@ -633,10 +732,14 @@ enum TechnicianPayStatementDetailDateFormatter {
                 exportedAt: nil,
                 exportProvider: nil,
                 externalReferenceId: nil,
-                notes: nil
+                notes: nil,
+                statementNumber: 1,
+                statementReference: "REF_001"
             ),
             currentUserId: "mock_admin_user",
             dataService: MockDataService()
+            
         )
     }
+    
 }

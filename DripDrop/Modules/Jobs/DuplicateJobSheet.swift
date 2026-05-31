@@ -2,6 +2,8 @@
 //  DuplicateJobSheet.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
 
 import SwiftUI
 
@@ -19,8 +21,61 @@ struct DuplicateJobSheet: View {
     @State private var newInternalId: String
     @State private var selectedAdmin: CompanyUser
 
-    @State private var isSaving: Bool = false
+    @State private var selectedCustomer: Customer = Customer(
+        id: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        billingAddress: Address(
+            streetAddress: "",
+            city: "",
+            state: "",
+            zip: "",
+            latitude: 0,
+            longitude: 0
+        ),
+        active: true,
+        displayAsCompany: true,
+        hireDate: Date(),
+        billingNotes: "",
+        linkedInviteId: UUID().uuidString
+    )
+
+    @State private var selectedServiceLocation: ServiceLocation = ServiceLocation(
+        id: "",
+        nickName: "",
+        address: Address(
+            streetAddress: "",
+            city: "",
+            state: "",
+            zip: "",
+            latitude: 0,
+            longitude: 0
+        ),
+        gateCode: "",
+        mainContact: Contact(
+            id: "",
+            name: "",
+            phoneNumber: "",
+            email: ""
+        ),
+        bodiesOfWaterId: [],
+        rateType: "",
+        laborType: "",
+        chemicalCost: "",
+        laborCost: "",
+        rate: "",
+        customerId: "",
+        customerName: "",
+        preText: false,
+        isActive: true
+    )
+
     @State private var showAdminSelector: Bool = false
+    @State private var showCustomerSelector: Bool = false
+    @State private var showServiceLocationSelector: Bool = false
+
+    @State private var isSaving: Bool = false
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
 
@@ -54,9 +109,18 @@ struct DuplicateJobSheet: View {
         )
     }
 
+    private var selectedCustomerName: String {
+        let name = "\(selectedCustomer.firstName) \(selectedCustomer.lastName)"
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return name.isEmpty ? selectedCustomer.firstName : name
+    }
+
     private var canSave: Bool {
         !newInternalId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !selectedAdmin.userId.isEmpty
+        !selectedAdmin.userId.isEmpty &&
+        !selectedCustomer.id.isEmpty &&
+        !selectedServiceLocation.id.isEmpty
     }
 
     var body: some View {
@@ -68,6 +132,7 @@ struct DuplicateJobSheet: View {
                     VStack(spacing: 14) {
                         headerCard
                         detailsCard
+                        customerLocationCard
                         copySnapshotCard
 
                         Color.clear.frame(height: 90)
@@ -100,10 +165,10 @@ struct DuplicateJobSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Duplicate Job")
+                    Text("Duplicate Job Plan")
                         .font(.title3.weight(.semibold))
 
-                    Text("\(sourceJob.internalId) • \(sourceJob.customerName)")
+                    Text("Source: \(sourceJob.internalId) • \(sourceJob.customerName)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -118,7 +183,7 @@ struct DuplicateJobSheet: View {
                     .background(.thinMaterial, in: Circle())
             }
 
-            Text("This creates a new draft job with the same plan: planned stops, tasks, materials, price, and labor snapshot. It does not copy service stops, offers, payroll, invoices, or purchased items.")
+            Text("This copies the reusable job plan: planned stops, tasks, materials, price, and labor snapshot. Choose the new customer and service location for the copied job.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -142,45 +207,67 @@ struct DuplicateJobSheet: View {
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            Button {
+            duplicatePickerRow(
+                title: "Admin / Owner",
+                value: selectedAdmin.userId.isEmpty ? "Select Admin" : "\(selectedAdmin.userName) \(selectedAdmin.roleName)",
+                systemImage: "person.crop.circle",
+                isSelected: !selectedAdmin.userId.isEmpty
+            ) {
                 showAdminSelector = true
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(.thinMaterial, in: Circle())
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Admin / Owner")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        Text(selectedAdmin.userId.isEmpty ? "Select Admin" : "\(selectedAdmin.userName) \(selectedAdmin.roleName)")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selectedAdmin.userId.isEmpty ? .secondary : .primary)
-                            .lineLimit(1)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .buttonStyle(.plain)
             .sheet(isPresented: $showAdminSelector) {
                 CompanyUserPicker(
                     dataService: dataService,
                     companyUser: $selectedAdmin
                 )
             }
+        }
+        .jobTemplateActionCard()
+    }
 
-            Text("This version duplicates to the same customer and service location. We can add customer/location pickers in the next pass.")
+    private var customerLocationCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("New Customer & Location", systemImage: "mappin.and.ellipse")
+                .font(.headline.weight(.semibold))
+
+            duplicatePickerRow(
+                title: "Customer",
+                value: selectedCustomer.id.isEmpty ? "Select Customer" : selectedCustomerName,
+                systemImage: "person",
+                isSelected: !selectedCustomer.id.isEmpty
+            ) {
+                showCustomerSelector = true
+            }
+            .sheet(isPresented: $showCustomerSelector, onDismiss: {
+                if selectedServiceLocation.customerId != selectedCustomer.id {
+                    selectedServiceLocation = emptyServiceLocation()
+                }
+            }) {
+                CustomerPickerScreen(
+                    dataService: dataService,
+                    customer: $selectedCustomer
+                )
+            }
+
+            duplicatePickerRow(
+                title: "Service Location",
+                value: selectedServiceLocation.id.isEmpty ? "Select Service Location" : serviceLocationDisplayName(selectedServiceLocation),
+                systemImage: "house",
+                isSelected: !selectedServiceLocation.id.isEmpty
+            ) {
+                guard !selectedCustomer.id.isEmpty else {
+                    alertMessage = "Please select a customer first."
+                    showAlert = true
+                    return
+                }
+
+                showServiceLocationSelector = true
+            }
+            .sheet(isPresented: $showServiceLocationSelector) {
+                CustomerAndLocationPicker(dataService: dataService, customer: $selectedCustomer, location: $selectedServiceLocation)
+            }
+
+            Text("The duplicated job will be created for the selected customer and selected service location. Customer-specific actual work, invoices, payroll, offers, and purchased items are not copied.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -192,8 +279,9 @@ struct DuplicateJobSheet: View {
             Label("What Will Copy", systemImage: "square.stack.3d.up")
                 .font(.headline.weight(.semibold))
 
-            JobTemplateSnapshotRow(title: "Customer", value: sourceJob.customerName)
-            JobTemplateSnapshotRow(title: "Service Location ID", value: sourceJob.serviceLocationId)
+            JobTemplateSnapshotRow(title: "Source Customer", value: sourceJob.customerName)
+            JobTemplateSnapshotRow(title: "New Customer", value: selectedCustomer.id.isEmpty ? "Required" : selectedCustomerName)
+            JobTemplateSnapshotRow(title: "New Service Location", value: selectedServiceLocation.id.isEmpty ? "Required" : serviceLocationDisplayName(selectedServiceLocation))
             JobTemplateSnapshotRow(title: "Planned Stops", value: "\(plannedServiceStops.count)")
             JobTemplateSnapshotRow(title: "Tasks", value: "\(jobTasks.count)")
             JobTemplateSnapshotRow(title: "Materials", value: "\(shoppingItems.count)")
@@ -244,7 +332,7 @@ struct DuplicateJobSheet: View {
 
     private func duplicate() async {
         guard canSave else {
-            alertMessage = "Please enter a job ID and select an admin."
+            alertMessage = "Please enter a job ID, select an admin, select a customer, and select a service location."
             showAlert = true
             return
         }
@@ -268,9 +356,9 @@ struct DuplicateJobSheet: View {
                 jobTasks: jobTasks,
                 shoppingItems: shoppingItems,
                 newInternalId: newInternalId.trimmingCharacters(in: .whitespacesAndNewlines),
-                customerId: sourceJob.customerId,
-                customerName: sourceJob.customerName,
-                serviceLocationId: sourceJob.serviceLocationId,
+                customerId: selectedCustomer.id,
+                customerName: selectedCustomerName,
+                serviceLocationId: selectedServiceLocation.id,
                 admin: selectedAdmin,
                 createdByUserId: userId
             )
@@ -280,5 +368,83 @@ struct DuplicateJobSheet: View {
             alertMessage = "Could not duplicate job. \(error.localizedDescription)"
             showAlert = true
         }
+    }
+
+    private func duplicatePickerRow(
+        title: String,
+        value: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(value)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? .primary : .secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func serviceLocationDisplayName(_ location: ServiceLocation) -> String {
+        if !location.nickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return location.nickName
+        }
+
+        return location.address.streetAddress.isEmpty ? location.id : location.address.streetAddress
+    }
+
+    private func emptyServiceLocation() -> ServiceLocation {
+        ServiceLocation(
+            id: "",
+            nickName: "",
+            address: Address(
+                streetAddress: "",
+                city: "",
+                state: "",
+                zip: "",
+                latitude: 0,
+                longitude: 0
+            ),
+            gateCode: "",
+            mainContact: Contact(
+                id: "",
+                name: "",
+                phoneNumber: "",
+                email: ""
+            ),
+            bodiesOfWaterId: [],
+            rateType: "",
+            laborType: "",
+            chemicalCost: "",
+            laborCost: "",
+            rate: "",
+            customerId: "",
+            customerName: "",
+            preText: false,
+            isActive: true
+        )
     }
 }

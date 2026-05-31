@@ -358,6 +358,11 @@ struct TechnicianPayStatement: Identifiable, Codable, Hashable {
     var externalReferenceId: String?
 
     var notes: String?
+    
+    var statementNumber: Int?
+    var statementReference: String?
+    var paymentReference: String?
+    var paidNotes: String?
 }
 
 func makePayLineId(
@@ -415,14 +420,48 @@ struct TechnicianPayLineItem: Identifiable, Codable, Hashable {
 
     var paidAt: Date?
     var paidByUserId: String?
-
+    
+    var voidedAt: Date? = nil
+    var voidedByUserId: String? = nil
+    var voidReason: PayLineItemVoidReason? = nil
+    
     var payStatementId: String?
     var exportBatchId: String?
 
     var notes: String?
     var adminReviewNotes: String?
-}
+    
+        // Internal line reference
+    var lineNumber: Int?
+    var lineReference: String?
+    var paymentReference: String?
 
+    // Display snapshots
+    var displayTitle: String?
+    var displaySubtitle: String?
+    
+    var customerId: String?
+    var customerName: String?
+    
+    var serviceLocationId: String?
+    var serviceLocationAddress: String?
+    
+    var jobId: String?
+    var jobInternalId: String?
+    
+    var taskName: String?
+    var serviceStopTypeName: String?
+    
+}
+enum PayrollReferenceFormatter {
+    static func statement(_ number: Int) -> String {
+        "PS-" + String(format: "%06d", number)
+    }
+
+    static func lineItem(_ number: Int) -> String {
+        "PL-" + String(format: "%06d", number)
+    }
+}
 enum PayQuantityUnit: String, Codable, Hashable, CaseIterable {
     case each
     case minutes
@@ -645,4 +684,11 @@ enum PayrollExportProvider: String, Codable, Hashable, CaseIterable {
     case gusto
     case adp
     case manual
+}
+enum PayLineItemVoidReason: String, Codable, Hashable, CaseIterable {
+    case serviceStopReopened
+    case serviceStopSkipped
+    case taskReopened
+    case adminVoided
+    case duplicate
 }

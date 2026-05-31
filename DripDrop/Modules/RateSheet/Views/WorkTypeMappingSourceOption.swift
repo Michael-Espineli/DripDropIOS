@@ -1,7 +1,10 @@
 //
-//  WorkTypeMappingsView.swift
+//  WorkTypeMappingSourceOption.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/20/26.
+//
+
 
 import SwiftUI
 
@@ -54,16 +57,13 @@ final class WorkTypeMappingsViewModel: ObservableObject {
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
 
-    let companyId: String
 
     private let dataService: any ProductionDataServiceProtocol
     private var hasLoaded = false
 
     init(
-        companyId: String,
         dataService: any ProductionDataServiceProtocol
     ) {
-        self.companyId = companyId
         self.dataService = dataService
     }
 
@@ -204,7 +204,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         mappings.filter { workTypesById[$0.workTypeId] == nil }.count
     }
 
-    func load(forceRefresh: Bool = false) async {
+    func load(companyId:String,forceRefresh: Bool = false) async {
         guard forceRefresh || !hasLoaded else { return }
 
         isLoading = true
@@ -227,8 +227,8 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         }
     }
 
-    func save(_ mapping: WorkTypeMapping) async {
-        let validation = validate(mapping)
+    func save(companyId:String,_ mapping: WorkTypeMapping) async {
+        let validation = validate(companyId:companyId,mapping)
 
         guard validation.isValid else {
             alertMessage = validation.message
@@ -265,7 +265,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         }
     }
 
-    func seedSuggestedDefaults() async {
+    func seedSuggestedDefaults(companyId:String) async {
         guard !activeWorkTypes.isEmpty else {
             alertMessage = "Create company work types before seeding mappings."
             showAlert = true
@@ -426,7 +426,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         return workType.category.defaultIconName
     }
 
-    private func validate(_ mapping: WorkTypeMapping) -> (isValid: Bool, message: String) {
+    private func validate(companyId:String,_ mapping: WorkTypeMapping) -> (isValid: Bool, message: String) {
         guard mapping.companyId == companyId else {
             return (false, "Mapping company ID does not match the current company.")
         }
@@ -544,17 +544,15 @@ final class WorkTypeMappingsViewModel: ObservableObject {
 // MARK: - View
 
 struct WorkTypeMappingsView: View {
-
+    @EnvironmentObject var masterDataManager: MasterDataManager
     @StateObject private var viewModel: WorkTypeMappingsViewModel
     @State private var editorRoute: WorkTypeMappingEditorRoute?
 
     init(
-        companyId: String,
         dataService: any ProductionDataServiceProtocol
     ) {
         _viewModel = StateObject(
             wrappedValue: WorkTypeMappingsViewModel(
-                companyId: companyId,
                 dataService: dataService
             )
         )
@@ -578,10 +576,15 @@ struct WorkTypeMappingsView: View {
             }
         }
         .task {
-            await viewModel.load()
+            if let currentCompany = masterDataManager.currentCompany {
+                
+                await viewModel.load(companyId: currentCompany.id)
+            }
         }
         .refreshable {
-            await viewModel.load(forceRefresh: true)
+            if let currentCompany = masterDataManager.currentCompany {
+                await viewModel.load(companyId:currentCompany.id,forceRefresh: true)
+            }
         }
         .overlay {
             if viewModel.isLoading {
@@ -593,14 +596,15 @@ struct WorkTypeMappingsView: View {
         }
         .sheet(item: $editorRoute) { route in
             WorkTypeMappingEditorView(
-                companyId: viewModel.companyId,
                 originalMapping: route.mapping,
                 workTypes: viewModel.activeWorkTypes,
                 serviceStopSourceOptions: viewModel.serviceStopSourceOptions,
                 jobTaskSourceOptions: viewModel.jobTaskSourceOptions
             ) { mapping in
                 Task {
-                    await viewModel.save(mapping)
+                    if let currentCompany = masterDataManager.currentCompany {
+                        await viewModel.save(companyId:currentCompany.id,mapping)
+                    }
                 }
             }
         }
@@ -638,7 +642,9 @@ struct WorkTypeMappingsView: View {
 
             Button {
                 Task {
-                    await viewModel.seedSuggestedDefaults()
+                    if let currentCompany = masterDataManager.currentCompany {
+                        await viewModel.seedSuggestedDefaults(companyId:currentCompany.id)
+                    }
                 }
             } label: {
                 Label("Add Suggested Pool Mappings", systemImage: "sparkles")
@@ -775,10 +781,9 @@ struct WorkTypeMappingsEmptyState: View {
 // MARK: - Editor
 
 struct WorkTypeMappingEditorView: View {
-
+    @EnvironmentObject var masterDataManager : MasterDataManager
     @Environment(\.dismiss) private var dismiss
 
-    let companyId: String
     let originalMapping: WorkTypeMapping?
     let workTypes: [CompanyWorkType]
     let serviceStopSourceOptions: [WorkTypeMappingSourceOption]
@@ -799,14 +804,12 @@ struct WorkTypeMappingEditorView: View {
     }
 
     init(
-        companyId: String,
         originalMapping: WorkTypeMapping?,
         workTypes: [CompanyWorkType],
         serviceStopSourceOptions: [WorkTypeMappingSourceOption],
         jobTaskSourceOptions: [WorkTypeMappingSourceOption],
         saveAction: @escaping (WorkTypeMapping) -> Void
     ) {
-        self.companyId = companyId
         self.originalMapping = originalMapping
         self.workTypes = workTypes
         self.serviceStopSourceOptions = serviceStopSourceOptions
@@ -858,7 +861,9 @@ struct WorkTypeMappingEditorView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        save()
+                        if let currentCompany = masterDataManager.currentCompany {
+                            save(companyId:currentCompany.id)
+                        }
                     }
                 }
             }
@@ -1038,7 +1043,7 @@ struct WorkTypeMappingEditorView: View {
         ] + jobTaskSourceOptions
     }
 
-    private func save() {
+    private func save(companyId:String) {
         guard !selectedWorkTypeId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             validationMessage = "Select a company work type."
             showValidationAlert = true
@@ -1087,7 +1092,6 @@ struct WorkTypeMappingEditorView: View {
 #Preview {
     NavigationStack {
         WorkTypeMappingsView(
-            companyId: "com_mock_company",
             dataService: MockDataService()
         )
     }

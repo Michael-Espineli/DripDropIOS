@@ -310,7 +310,7 @@ final class ReceiptDatabaseViewModel:ObservableObject{
         self.dataBaseItem = try await DatabaseManager.shared.getDataBaseItem(companyId: companyId, dataBaseItemId: dataBaseItemId)
     }
     func getAllDataBaseItems(companyId:String) async throws{
-        self.dataBaseItems = try await DatabaseManager.shared.getAllDataBaseItems(companyId: companyId)
+        self.dataBaseItems = try await dataService.getAllDataBaseItems(companyId: companyId)
 
     }
     func getCommonDataBaseItems(companyId:String) async throws{

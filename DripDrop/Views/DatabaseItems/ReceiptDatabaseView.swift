@@ -26,7 +26,7 @@ struct ReceiptDatabaseView: View{
                     AddDataBaseFromComputer()
                 } label: {
                     HStack{
-                        Text("Uplpad")
+                        Text("Upload")
                         Image(systemName: "square.and.arrow.up")
                     }
                 }

@@ -56,8 +56,9 @@ struct MobileHome: View {
 
     @State private var jobSettingsPicker:String = "Present"
     var body: some View {
+        
+            ZStack(alignment: .bottomLeading) {
             NavigationStack(path: $navigationManager.routes, root: {
-                ZStack{
                     TabView(selection: $masterDataManager.tabViewSelection) {
                         ProfileView(dataService: dataService)
                             .tabItem {
@@ -68,12 +69,6 @@ struct MobileHome: View {
                             //Add Back in During Roll out of Phase 2
                             //----------------------------------------
 
-//                        ChatListView(dataService: dataService)
-//                            .tabItem {
-//                                Label("Messages", systemImage: "message.fill")
-//                            }
-//                            .tag("Messages")
-//                            .badge(23)
                         mainDashboard
                             .tabItem {
                                 Label("Dashboard", systemImage: "list.dash")
@@ -83,9 +78,8 @@ struct MobileHome: View {
                             .tabItem {
                                 Label("Settings", systemImage: "gear")
                             }
-                            .tag("Prefrences")
+                            .tag("Preferences")
                     }
-                }
                 .navigationDestination(for: Route.self) { $0 }
             })
             .environmentObject(mobileRouteVM)
@@ -94,8 +88,9 @@ struct MobileHome: View {
             .environmentObject(techListVM)
             .environmentObject(routeBoardVM)
             .environmentObject(customerVM)
-            .environmentObject(customerVM)
             .environmentObject(customerProfileVM)
+                routeDashboardFloatingButton
+            }
         .toolbar{
             ToolbarItem{
                 Button(action: {
@@ -198,6 +193,25 @@ struct MobileHome: View {
         let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
         print(timer)
     }
+    private var routeDashboardFloatingButton: some View {
+        Button {
+            masterDataManager.tabViewSelection = "Dashboard"
+            masterDataManager.mobileHomeScreen = .routing
+            navigationManager.replace(stack: [Route.employeeMainDailyDisplayView(dataService: dataService)])
+  
+        } label: {
+            Image(systemName: "map.fill")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 52, height: 52)
+                .background(Color.accentColor, in: Circle())
+                .shadow(color: Color.black.opacity(0.22), radius: 10, x: 0, y: 6)
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 16)
+        .padding(.bottom, 72)
+        .accessibilityLabel("Back to route dashboard")
+    }
 }
 struct MobileHome_Previews: PreviewProvider {
     static let dataService = MockDataService()
@@ -273,7 +287,12 @@ extension MobileHome {
                                             HStack{
                                                 Text("Route")
                                             }
-                                            .modifier(ListButtonModifier())
+                                            .font(.subheadline.weight(.semibold))
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 12)
+                                            .background(Color.poolWhite)
+                                            .foregroundColor(.poolBlack)
+                                            .cornerRadius(12)
                                             .bold()
                                         }
                                     })
@@ -291,12 +310,41 @@ extension MobileHome {
                                                 HStack{
                                                     Text("Operations")
                                                 }
-                                                .modifier(ListButtonModifier())
+                                                .font(.subheadline.weight(.semibold))
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 12)
+                                                .background(Color.poolWhite)
+                                                .foregroundColor(.poolBlack)
+                                                .cornerRadius(12)
                                                 .bold()
                                             }
                                         })
                                     }
                                     if role.permissionIdList.contains("400") {
+                                        if role.permissionIdList.contains("200") {
+                                            Button(action: {
+                                                masterDataManager.mobileHomeScreen = .managment
+                                            }, label: {
+                                                if masterDataManager.mobileHomeScreen == .managment {
+                                                    HStack{
+                                                        Text("Management")
+                                                    }
+                                                    .modifier(EditButtonModifier())
+                                                    .bold()
+                                                } else {
+                                                    HStack{
+                                                        Text("Management")
+                                                    }
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .padding(.horizontal, 16)
+                                                    .padding(.vertical, 12)
+                                                    .background(Color.poolWhite)
+                                                    .foregroundColor(.poolBlack)
+                                                    .cornerRadius(12)
+                                                    .bold()
+                                                }
+                                            })
+                                        }
                                         Button(action: {
                                             masterDataManager.mobileHomeScreen = .sales
                                         }, label: {
@@ -310,49 +358,42 @@ extension MobileHome {
                                                 HStack{
                                                     Text("Sales")
                                                 }
-                                                .modifier(ListButtonModifier())
+                                                .font(.subheadline.weight(.semibold))
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 12)
+                                                .background(Color.poolWhite)
+                                                .foregroundColor(.poolBlack)
+                                                .cornerRadius(12)
                                                 .bold()
                                             }
                                         })
-                                        /* Update 2.1
-                                        Button(action: {
-                                            masterDataManager.mobileHomeScreen = .finance
-                                        }, label: {
-                                            if masterDataManager.mobileHomeScreen == .finance {
-                                                HStack{
-                                                    Text("Finace")
+//  MARK:                                         Update 2.1: Finance
+
+                                        if role.permissionIdList.contains("200") {
+                                            
+                                            Button(action: {
+                                                masterDataManager.mobileHomeScreen = .finance
+                                            }, label: {
+                                                if masterDataManager.mobileHomeScreen == .finance {
+                                                    HStack{
+                                                        Text("Finance")
+                                                    }
+                                                    .modifier(EditButtonModifier())
+                                                    .bold()
+                                                } else {
+                                                    HStack{
+                                                        Text("Finance")
+                                                    }
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .padding(.horizontal, 16)
+                                                    .padding(.vertical, 12)
+                                                    .background(Color.poolWhite)
+                                                    .foregroundColor(.poolBlack)
+                                                    .cornerRadius(12)
+                                                    .bold()
                                                 }
-                                                .frame(minWidth: 50,maxHeight: 30)
-                                                .modifier(BlueButtonModifier())
-                                                .bold()
-                                            } else {
-                                                HStack{
-                                                    Text("Finace")
-                                                }
-                                                .frame(minWidth: 50,maxHeight: 30)
-                                                .modifier(ListButtonModifier())
-                                            }
-                                        })
-                                         */
-                                    }
-                                    if role.permissionIdList.contains("200") {
-                                        Button(action: {
-                                            masterDataManager.mobileHomeScreen = .managment
-                                        }, label: {
-                                            if masterDataManager.mobileHomeScreen == .managment {
-                                                HStack{
-                                                    Text("Manegement")
-                                                }
-                                                .modifier(EditButtonModifier())
-                                                .bold()
-                                            } else {
-                                                HStack{
-                                                    Text("Manegement")
-                                                }
-                                                .modifier(ListButtonModifier())
-                                                .bold()
-                                            }
-                                        })
+                                            })
+                                        }
                                     }
                                     
                                     if role.permissionIdList.contains("800") {
@@ -369,7 +410,13 @@ extension MobileHome {
                                                 HStack{
                                                     Text("Company Settings")
                                                 }
-                                                .modifier(ListButtonModifier())
+                                                .font(.subheadline.weight(.semibold))
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 12)
+                                                .background(Color.poolWhite)
+                                                .foregroundColor(.poolBlack)
+                                                .cornerRadius(12)
+                                                .bold()
                                             }
                                         })
                                     }

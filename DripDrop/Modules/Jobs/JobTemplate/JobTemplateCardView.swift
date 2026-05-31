@@ -13,18 +13,15 @@ struct JobTemplateCardView: View {
         ZStack{
             VStack{
                 HStack{
-                    Image(systemName: template.typeImage ?? "questionmark")
+                    Image(systemName: "questionmark")
                     Spacer()
                     Text("\(template.name)")
                     Spacer()
-                    if let locked = template.locked {
-                        Image(systemName: locked ? "lock.fill" : "lock.open.fill")
-                    }
                 }
                 
                 HStack{
                     Spacer()
-                    Text("\(template.type ?? "")")
+                    Text("")
                         .font(.footnote)
                 }
                 Rectangle()
@@ -38,12 +35,7 @@ struct JobTemplateCardView: View {
 
 struct JobTemplateCardView_Previews: PreviewProvider {
     static var previews: some View {
-        JobTemplateCardView(template:JobTemplate(id: "",
-                                                 name: "",
-                                                 type: "Repair",
-                                                 typeImage:"gear",
-                                                 dateCreated: Date(),
-                                                 rate: "150",
-                                                 color: "red"))
+        JobTemplateCardView(template: JobTemplate(companyId: "", name: "", createdByUserId: ""))
+        
     }
 }

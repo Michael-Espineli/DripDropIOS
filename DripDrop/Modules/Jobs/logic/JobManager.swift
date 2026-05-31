@@ -20,7 +20,20 @@ import FirebaseFirestoreSwift
 - comment: string
 - resolved: boolean
 */
-struct Job:Identifiable, Codable, Hashable{
+struct JobComment: Identifiable, Codable, Hashable {
+    var id: String
+    var jobId: String?
+    var companyId: String?
+    var userId: String?
+    var userName: String?
+    var authorId: String?
+    var authorName: String?
+    var date: Date?
+    var comment: String
+    var resolved: Bool
+}
+
+struct Job: Identifiable, Codable, Hashable{
     //work Order info
     var id :String
     var internalId : String
@@ -1111,5 +1124,4 @@ final class JobManager:JobManagerProtocol {
         try await workOrderDocument(workOrderId: jobId, companyId: companyId).delete()
     }
 }
-
 

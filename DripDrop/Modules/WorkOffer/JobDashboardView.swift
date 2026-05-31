@@ -2,6 +2,14 @@
 //  JobDashboardView.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
+
+
+//
+//  JobDashboardView.swift
+//  DripDrop
+//
 
 import SwiftUI
 
@@ -9,10 +17,12 @@ struct JobDashboardView: View {
 
     let job: Job
     let summary: JobDashboardSummary
+    let healthReport: JobWorkflowHealthReport
     let serviceLocation: ServiceLocation?
     let operationStatus: JobOperationStatus?
     let billingStatus: JobBillingStatus?
-
+    
+    let onNavigateToHealthIssue: (String) -> Void
     let onGoToPlan: () -> Void
     let onGoToOffers: () -> Void
     let onGoToSchedule: () -> Void
@@ -24,11 +34,12 @@ struct JobDashboardView: View {
     let onMarkAccepted: () -> Void
     let onMarkInvoiced: () -> Void
     let onToggleFinished: () -> Void
-
+    
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
                 headerCard
+                healthCard
                 financialSnapshotCard
                 workPipelineCard
                 billingAndPayrollCard
@@ -99,7 +110,14 @@ struct JobDashboardView: View {
         }
         .jobDashboardCard()
     }
-
+    
+    private var healthCard: some View {
+        JobWorkflowHealthView(
+            report: healthReport,
+            onNavigate: onNavigateToHealthIssue
+        )
+    }
+    
     private var financialSnapshotCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Financial Snapshot")
@@ -128,7 +146,17 @@ struct JobDashboardView: View {
             Divider().opacity(0.2)
 
             JobDashboardDetailRow(
-                title: "Planned Labor",
+                title: "Planned Stop Labor",
+                value: JobDashboardMoneyFormatter.money(summary.plannedServiceStopLaborCents)
+            )
+
+            JobDashboardDetailRow(
+                title: "Planned Task Labor",
+                value: JobDashboardMoneyFormatter.money(summary.plannedTaskLaborCents)
+            )
+
+            JobDashboardDetailRow(
+                title: "Planned Total Labor",
                 value: JobDashboardMoneyFormatter.money(summary.plannedLaborCents)
             )
 
@@ -197,12 +225,27 @@ struct JobDashboardView: View {
                 )
 
                 JobDashboardSummaryChip(
-                    title: "Open Offers",
-                    value: "\(summary.openOfferCount)",
-                    systemImage: "paperplane"
+                    title: "Ready",
+                    value: "\(summary.acceptedOffersReadyToScheduleCount)",
+                    systemImage: "calendar.badge.plus"
                 )
             }
-
+            if summary.acceptedOffersReadyToScheduleCount > 0 {
+                Button {
+                    onGoToSchedule()
+                } label: {
+                    Label(
+                        "\(summary.acceptedOffersReadyToScheduleCount) accepted offer(s) ready to schedule.",
+                        systemImage: "calendar.badge.plus"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
             Button {
                 onGoToPlan()
             } label: {

@@ -27,9 +27,9 @@ struct RecurringServiceStop:Identifiable, Codable, Equatable, Hashable{
     }
     var id :String
     var internalId : String
-    let type: String
-    let typeId: String
-    let typeImage: String
+    var type: String = "Recurring Service Stop"
+    var typeId: String = PayrollSystemSourceIds.recurringServiceStop
+    var typeImage: String = "figure.pool.swim"
     let customerName : String
     let customerId : String
     let address: Address

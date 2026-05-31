@@ -93,6 +93,7 @@ struct ContractorDailyDashboard: View {
                     })
             }
         }
+        .navigationTitle("Contractor Dash")
         .navigationBarBackButtonHidden(true)
 
         .onReceive(timer) { time in

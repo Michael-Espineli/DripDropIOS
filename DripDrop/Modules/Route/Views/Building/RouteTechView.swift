@@ -164,7 +164,8 @@ extension RouteTechView {
                 }, content: {
                     ZStack{
                         Color.listColor.ignoresSafeArea()
-                        ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: VM.recurringRoute!) //Developer fix and remove explicit unwrap
+                        NewRouteView(dataService: dataService, tech: tech, day: day)
+//                        ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: VM.recurringRoute!) //Developer fix and remove explicit unwrap
                     }
                 })
                 Button(action: {

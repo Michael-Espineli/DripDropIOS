@@ -63,12 +63,13 @@
                 }
             }
             .task {
-                if let company = masterDataManager.currentCompany {
-                    do {
-                        try await VM.onLoad(companyId: company.id, customerId: customerId)
-                    } catch {
-                        print(error)
-                    }
+                startLiveUpcomingWork()
+            }
+            .onAppear {
+                startLiveUpcomingWork()
+
+                Task {
+                    await refreshUpcomingWorkBackup()
                 }
             }
             .alert(isPresented: $showDeleteConfirmation) {
@@ -80,8 +81,17 @@
                             Task {
                                 if let company = masterDataManager.currentCompany {
                                     do {
-                                        try await VM.deleteRecurringServiceStop(companyId: company.id, RecurringServiceStopId: rssID)
+                                        try await VM.deleteRecurringServiceStop(
+                                            companyId: company.id,
+                                            RecurringServiceStopId: rssID
+                                        )
+
                                         rssID = ""
+
+                                        try await VM.reloadRecurringServiceStops(
+                                            companyId: company.id,
+                                            customerId: customerId
+                                        )
                                     } catch {
                                         print(error)
                                     }
@@ -94,6 +104,38 @@
             }
             .alert(alertMessage, isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
+            }
+        }
+
+        private func startLiveUpcomingWork() {
+            guard let company = masterDataManager.currentCompany else { return }
+
+            VM.startUpcomingWorkListeners(
+                companyId: company.id,
+                customerId: customerId
+            )
+        }
+
+        private func refreshUpcomingWorkBackup() async {
+            guard let company = masterDataManager.currentCompany else { return }
+
+            do {
+                try await VM.reloadRecurringServiceStops(
+                    companyId: company.id,
+                    customerId: customerId
+                )
+
+                try await VM.reloadRepairRequests(
+                    companyId: company.id,
+                    customerId: customerId
+                )
+
+                try await VM.reloadJobs(
+                    companyId: company.id,
+                    customerId: customerId
+                )
+            } catch {
+                print("[CustomerUpcomingWork][refreshUpcomingWorkBackup] Error: \(error)")
             }
         }
     }
@@ -123,25 +165,39 @@
         var recurringServiceStops: some View {
             SectionCard(
                 title: "Recurring Service Stops",
-                leadingButton: SectionIconButton(systemName: "square.and.pencil") { self.editRSS.toggle() },
-                trailingButton: SectionIconButton(systemName: "plus") { self.addRSS.toggle() }
+                leadingButton: SectionIconButton(systemName: "square.and.pencil") {
+                    self.editRSS.toggle()
+                },
+                trailingButton: SectionIconButton(systemName: "plus") {
+                    self.addRSS.toggle()
+                }
             ) {
                 VStack(spacing: 12) {
-                    ForEach(VM.recurringServiceStops) { RSS in
-                        NavigationLink(value: Route.recurringServiceStopDetail(dataService: dataService, recurringServiceStop: RSS)) {
-                            RecurringServiceStopSmallCardView(recurringServiceStop: RSS)
+                    if VM.recurringServiceStops.isEmpty {
+                        Text("No recurring service stops found.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                    } else {
+                        ForEach(VM.recurringServiceStops) { RSS in
+                            NavigationLink(
+                                value: Route.recurringServiceStopDetail(
+                                    dataService: dataService,
+                                    recurringServiceStop: RSS
+                                )
+                            ) {
+                                RecurringServiceStopSmallCardView(recurringServiceStop: RSS)
+                                    .id(rssCardRefreshId(RSS))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
             .sheet(isPresented: $addRSS, onDismiss: {
                 Task {
-                    if let company = masterDataManager.currentCompany {
-                        do {
-                            try await VM.reloadRecurringServiceStops(companyId: company.id, customerId: customerId)
-                        } catch { print(error) }
-                    }
+                    await refreshUpcomingWorkBackup()
                 }
             }) {
                 NewSingleRecurringServiceStop(dataService: dataService, customerId: customerId)
@@ -151,71 +207,87 @@
         var repairRequests: some View {
             SectionCard(
                 title: "Repair Requests",
-                trailingButton: SectionIconButton(systemName: "plus") { self.addRepairRequest.toggle() }
+                trailingButton: SectionIconButton(systemName: "plus") {
+                    self.addRepairRequest.toggle()
+                }
             ) {
                 VStack(spacing: 12) {
-                    ForEach(VM.repairRequest) { repair in
-                        if UIDevice.isIPhone {
-                            NavigationLink(value: Route.repairRequest(repairRequest: repair, dataService: dataService)) {
-                                RepairRequestCardView(repairRequest: repair)
+                    if VM.repairRequest.isEmpty {
+                        Text("No repair requests found.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                    } else {
+                        ForEach(VM.repairRequest) { repair in
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.repairRequest(repairRequest: repair, dataService: dataService)) {
+                                    RepairRequestCardView(repairRequest: repair)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Button(action: {
+                                    masterDataManager.selectedCategory = .jobs
+                                    masterDataManager.selectedRepairRequest = repair
+                                }) {
+                                    RepairRequestCardView(repairRequest: repair)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
-                        } else {
-                            Button(action: {
-                                masterDataManager.selectedCategory = .jobs
-                                masterDataManager.selectedRepairRequest = repair
-                            }) {
-                                RepairRequestCardView(repairRequest: repair)
-                            }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
             }
             .sheet(isPresented: $addRepairRequest, onDismiss: {
                 Task {
-                    if let company = masterDataManager.currentCompany {
-                        do {
-                            try await VM.reloadRepairRequests(companyId: company.id, customerId: customerId)
-                        } catch { print(error) }
-                    }
+                    await refreshUpcomingWorkBackup()
                 }
             }) {
-                AddNewRepairRequest(dataService: dataService, isPresented: $addRepairRequest, customer: customer)
+                AddNewRepairRequest(
+                    dataService: dataService,
+                    isPresented: $addRepairRequest,
+                    customer: customer
+                )
             }
         }
 
         var jobs: some View {
             SectionCard(
                 title: "Jobs",
-                trailingButton: SectionIconButton(systemName: "plus") { self.addJob.toggle() }
+                trailingButton: SectionIconButton(systemName: "plus") {
+                    self.addJob.toggle()
+                }
             ) {
                 VStack(spacing: 12) {
-                    ForEach(VM.jobs) { job in
-                        if UIDevice.isIPhone {
-                            NavigationLink(value: Route.job(job: job, dataService: dataService)) {
-                                JobCardView(job: job)
+                    if VM.jobs.isEmpty {
+                        Text("No jobs found.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                    } else {
+                        ForEach(VM.jobs) { job in
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.job(job: job, dataService: dataService)) {
+                                    JobCardView(job: job)
+                                }
+                                .buttonStyle(.plain)
+                            } else {
+                                Button(action: {
+                                    masterDataManager.selectedCategory = .jobs
+                                    masterDataManager.selectedJob = job
+                                }) {
+                                    JobCardView(job: job)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
-                        } else {
-                            Button(action: {
-                                masterDataManager.selectedCategory = .jobs
-                                masterDataManager.selectedJob = job
-                            }) {
-                                JobCardView(job: job)
-                            }
-                            .buttonStyle(.plain)
                         }
                     }
                 }
             }
             .sheet(isPresented: $addJob, onDismiss: {
                 Task {
-                    if let company = masterDataManager.currentCompany {
-                        do {
-                            try await VM.reloadJobs(companyId: company.id, customerId: customerId)
-                        } catch { print(error) }
-                    }
+                    await refreshUpcomingWorkBackup()
                 }
             }) {
                 AddNewJobView(dataService: dataService, customerId: customerId)
@@ -225,14 +297,24 @@
         var serviceStops: some View {
             SectionCard(
                 title: "Service Stops",
-                trailingButton: SectionIconButton(systemName: "plus") { self.addServiceStop.toggle() }
+                trailingButton: SectionIconButton(systemName: "plus") {
+                    self.addServiceStop.toggle()
+                }
             ) {
                 VStack(spacing: 12) {
-                    ForEach(VM.serviceStops) { ss in
-                        NavigationLink(value: Route.serviceStop(serviceStop: ss, dataService: dataService)) {
-                            ServiceStopCardViewLarge(serviceStop: ss)
+                    if VM.serviceStops.isEmpty {
+                        Text("No service stops found.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                    } else {
+                        ForEach(VM.serviceStops) { ss in
+                            NavigationLink(value: Route.serviceStop(serviceStop: ss, dataService: dataService)) {
+                                ServiceStopCardViewLarge(serviceStop: ss)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -240,17 +322,35 @@
                 Task {
                     if let company = masterDataManager.currentCompany {
                         do {
-                            try await VM.reloadShoppingListItem(companyId: company.id, customerId: customerId)
-                        } catch { print(error) }
+                            try await VM.reloadShoppingListItem(
+                                companyId: company.id,
+                                customerId: customerId
+                            )
+                        } catch {
+                            print(error)
+                        }
                     }
                 }
             }) {
                 AddNewServiceStop(dataService: dataService)
             }
         }
+
+        func rssCardRefreshId(_ rss: RecurringServiceStop) -> String {
+            [
+                rss.id,
+                rss.tech,
+                rss.techId,
+                rss.day.rawValue,
+                rss.frequency.rawValue,
+                rss.description,
+                String(rss.noEndDate),
+                String(rss.endDate?.timeIntervalSince1970 ?? 0)
+            ].joined(separator: "_")
+        }
     }
 
-    // MARK: - Reusable UI (Aesthetic helpers)
+    // MARK: - Reusable UI
 
     private struct SectionCard<Content: View>: View {
         let title: String
@@ -273,15 +373,7 @@
         var body: some View {
             VStack(alignment: .leading, spacing: 12) {
                 header
-
-                if isEmptyContent {
-                    Text("No records found.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .padding(.vertical, 6)
-                } else {
-                    content
-                }
+                content
             }
             .padding(16)
             .background(Color(.systemBackground))
@@ -291,7 +383,9 @@
 
         private var header: some View {
             HStack(spacing: 10) {
-                if let leadingButton { leadingButton }
+                if let leadingButton {
+                    leadingButton
+                }
 
                 Text(title)
                     .font(.headline)
@@ -300,15 +394,11 @@
 
                 Spacer()
 
-                if let trailingButton { trailingButton }
+                if let trailingButton {
+                    trailingButton
+                }
             }
             .padding(.bottom, 2)
-        }
-
-        // A tiny heuristic: if Content is EmptyView, show empty state.
-        // (If your section always has content, this will just remain false.)
-        private var isEmptyContent: Bool {
-            content is EmptyView
         }
     }
 

@@ -64,7 +64,7 @@ struct SettingsView: View {
                         .multilineTextAlignment(.center)
                     
                 }
-                Text("Change Companies and edit your settings!")
+                Text("Change your settings!")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

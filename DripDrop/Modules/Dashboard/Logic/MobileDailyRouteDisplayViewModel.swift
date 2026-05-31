@@ -67,7 +67,8 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
 
     @Published private(set) var currentLocation: CLLocation?
     @Published private(set) var locationAuthorizationStatus: CLAuthorizationStatus = .notDetermined
-
+    @Published private(set) var previousRoutesNeedingReview: [ActiveRoute] = []
+    @Published private(set) var recentActiveRoutes: [ActiveRoute] = []
     init(dataService:any ProductionDataServiceProtocol, routeLocationManager: RouteLocationManager = RouteLocationManager()){
         self.dataService = dataService
         self.routeLocationManager = routeLocationManager
@@ -167,7 +168,35 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     // Summary log tracking
     @Published private(set) var currentSummaryLogId: String? = nil
     @Published private(set) var currentSummaryType: WorkLogType? = nil
-    
+    func loadPreviousRouteReview(
+        companyId: String,
+        technicianId: String
+    ) async {
+        do {
+            let startOfToday = Calendar.current.startOfDay(for: Date())
+
+            async let needsReview = dataService.getActiveRoutesNeedingReview(
+                companyId: companyId,
+                technicianId: technicianId,
+                beforeDate: startOfToday
+            )
+
+            async let recentRoutes = dataService.getRecentActiveRoutes(
+                companyId: companyId,
+                technicianId: technicianId,
+                limit: 10
+            )
+
+            self.previousRoutesNeedingReview = try await needsReview
+            self.recentActiveRoutes = try await recentRoutes
+        } catch {
+            print("[MobileDailyRouteDisplayViewModel][loadPreviousRouteReview] Error")
+            print(error)
+
+            self.previousRoutesNeedingReview = []
+            self.recentActiveRoutes = []
+        }
+    }
     func updateVehicalMilage(companyId:String,vehicalId:String,miles:Double) async throws {
         try await dataService.updateVehicalMilage(companyId: companyId, vehicalId: vehicalId, miles: miles)
     }
@@ -405,6 +434,11 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         Task{
             do {
                 try await dataService.updateServiceStopStartTime(companyId: companyId, serviceStopId: serviceStopId, startTime: Date())
+                var list = serviceStopList
+                var first = list.first(where: {$0.id == serviceStopId})
+                first?.startTime = Date()
+                list.removeAll(where: {$0.id == serviceStopId})
+                list.append(first!)
             } catch {
                 print("[MobileDailyRouteDisplayViewModel][startServiceStop] Error \(error)")
             }
@@ -426,6 +460,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 
                 //Change Status
                 self.showMilage = true
+                
                 
                 dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: .inProgress)
                 
@@ -537,17 +572,40 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         guard let companyId else {return}
         guard let activeRoute else {return}
         guard let milage = Double(inputStartMilage) else {return}
+        if selectedVehical.id == "" {return}
+        //Update Route
         dataService.updateActiveRouteStartMilage(companyId: companyId, activeRouteId: activeRoute.id, startMilage: milage)
-
+        
+        // Update Vehicle
+        Task{
+            do {
+                try await dataService.updateVehicalMilage(companyId: companyId, vehicalId: selectedVehical.id, miles: milage)
+            } catch {
+                print(error)
+            }
+        }
     }
     
-    func updateRouteEndtMilage(companyId: String?){
+    func updateRouteEndtMilage(companyId: String?) {
         print("  [MobileDailyRouteDisplayViewModel][updateRouteEndtMilage]")
-        guard let companyId else {return}
-        guard let activeRoute else {return}
-        guard let milage = Double(inputEndMilage) else {return}
-        dataService.updateActiveRouteStartMilage(companyId: companyId, activeRouteId: activeRoute.id, startMilage: milage)
 
+        guard let companyId else { return }
+        guard let activeRoute else { return }
+        guard let milage = Double(inputEndMilage) else { return }
+
+        dataService.updateActiveRouteEndMilage(
+            companyId: companyId,
+            activeRouteId: activeRoute.id,
+            endMilage: milage
+        )
+
+        if let startMilage = activeRoute.startMilage {
+            dataService.updateActiveRouteDistnace(
+                companyId: companyId,
+                activeRouteId: activeRoute.id,
+                distance: milage - startMilage
+            )
+        }
     }
     
     func cancelMove(){
@@ -726,11 +784,20 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         print("    [MobileDailyRouteDisplayViewModel][applyOrder] Start")
 
         if let serviceStopOrders {
+            //Fix Later Developer
+//            return serviceStops
+            print("    [MobileDailyRouteDisplayViewModel][applyOrder] 1")
+            for order in serviceStopOrders {
+                print(order)
+            }
+            
             let orderLookup: [String: Int] = Dictionary(
                 uniqueKeysWithValues: serviceStopOrders.map {
                     ($0.serviceStopId, $0.order)
                 }
             )
+
+            print("    [MobileDailyRouteDisplayViewModel][applyOrder] 2")
             return serviceStops.sorted { lhs, rhs in
                 let lhsOrder = orderLookup[lhs.id]
                 let rhsOrder = orderLookup[rhs.id]
@@ -747,6 +814,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 }
             }
         } else {
+            print("    [MobileDailyRouteDisplayViewModel][applyOrder] 3")
             return serviceStops
         }
     }
@@ -999,6 +1067,15 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
 //Step B: Domain Logic (Pure Code)
 
 struct RouteBuilder {
+    private static func activeRouteId(date: Date, techId: String) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd"
+
+        let safeTechId = techId.replacingOccurrences(of: "/", with: "_")
+        return "com_ar_\(formatter.string(from: date.startOfDay()))_\(safeTechId)"
+    }
 
     static func build(
         date: Date,
@@ -1010,9 +1087,9 @@ struct RouteBuilder {
     ) -> ActiveRoute? {
         //Here Either Create Route Or init a new Route
         var route = existingActiveRoute ?? ActiveRoute(
-            id: "com_ar_" + UUID().uuidString,
+            id: activeRouteId(date: date, techId: techId),
             name: "",
-            date: date,
+            date: date.startOfDay(),
             serviceStopsIds: serviceStops.map { $0.id },
             techId: techId,
             techName: techName,
@@ -1129,8 +1206,19 @@ struct RouteOrderBuilder {
         }
         print("    [RouteOrderBuilder][build] Service Stops Count = Order Count")
         print("    [RouteOrderBuilder][build] \(serviceStops.count) = \(order.count) (Should Equal Each other)")
-        // ensure all service stops exist
-        return order.sorted(by: { $0.order < $1.order })
+        let activeStopIds = Set(serviceStops.map { $0.id })
+        let activeOrder = order
+            .filter { activeStopIds.contains($0.serviceStopId) }
+            .sorted(by: { $0.order < $1.order })
+
+        return activeOrder.enumerated().map { index, item in
+            ServiceStopOrder(
+                id: item.id,
+                order: index + 1,
+                serviceStopId: item.serviceStopId,
+                recurringServiceStopId: item.recurringServiceStopId
+            )
+        }
     }
 }
 //Step C: Diffing Domain (Pure)

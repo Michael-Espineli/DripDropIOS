@@ -38,10 +38,20 @@ struct NewRouteView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
+                        Button(action: {
+                            
+                            dismiss()
+                            
+                        }, label: {
+                            Image(systemName: "xmark")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 34, height: 34)
+                                .background(.thinMaterial, in: Circle())
+                        })
                     }
 
                     form
-
                     // Add some space so the bottom button bar doesn’t cover content
                     Color.clear.frame(height: 70)
                 }
@@ -64,20 +74,16 @@ struct NewRouteView: View {
         }
         .onAppear(perform: {
             print("[NewRouteView][onAppear]")
-            routeBoardVM.onLoad(day: day)
+            routeBoardVM.onLoad(day: day, techId: tech.id)
         })
-        .onChange(of: routeBoardVM.selectedTech, perform: { tech in
-            print("[NewRouteView][onChange][routeBoardVM.selectedTech]")
-            if let tech {
-                routeBoardVM.checkForRouteOnDayAndTech(techId: tech.userId, day: day)
-            }
+        .onChange(of: routeBoardVM.newSelectedTech, perform: { tech in
+            print("[NewRouteView][onChange][routeBoardVM.newSelectedTech]")
+                routeBoardVM.checkForRouteOnDayAndTech(techId: tech.userId, day: routeBoardVM.newSelectedDay)
+            
         })
-        .onChange(of: routeBoardVM.selectedDay, perform: { datum in
-            print("[NewRouteView][onChange][routeBoardVM.selectedDay]")
-            if let tech = routeBoardVM.selectedTech, let datum {
-                routeBoardVM.checkForRouteOnDayAndTech(techId: tech.userId, day: datum)
-                
-            }
+        .onChange(of: routeBoardVM.newSelectedDay, perform: { datum in
+            print("[NewRouteView][onChange][routeBoardVM.newSelectedDay]")
+                routeBoardVM.checkForRouteOnDayAndTech(techId: routeBoardVM.newSelectedTech.userId, day: datum)
         })
     }
 }
@@ -139,21 +145,40 @@ extension NewRouteView {
                 Button(action: {
                     routeBoardVM.showCustomerPicker.toggle()
                 }, label: {
-                    Text(routeBoardVM.newRouteRecurringStops.isEmpty ? "Add First Customer" : "Add Another")
-                        .modifier(BlueButtonModifier())
+                    Label(routeBoardVM.newRouteRecurringStops.isEmpty ? "Add First Customer" : "Add Another", systemImage: "plus.circle")
+                            .frame(maxWidth: .infinity)
+                            .padding(8)
+                            .background(Color.poolGray.opacity(0.1))
+                            .clipShape(Capsule())
                 })
-                .sheet(isPresented: $routeBoardVM.showCustomerPicker, onDismiss: {
-                    routeBoardVM.onDismissOfCustomerPicker()
-                }, content: {
-                    CustomerAndLocationPicker(dataService: dataService, customer: $routeBoardVM.customer, location: $routeBoardVM.location)
-                })
+                .sheet(isPresented: $routeBoardVM.showCustomerPicker) {
+                    if let currentCompany = masterDataManager.currentCompany {
+                        RouteRecurringStopPickerView(
+                            dataService: dataService,
+                            companyId: currentCompany.id,
+                            defaultUseCase: .recurringRoute
+                        ) { selection in
+                            routeBoardVM.addRecurringStopSelectionToNewRoute(
+                                selection: selection
+                            )
+                        }
+                        .presentationDetents([.medium, .large])
+                    } else {
+                        Text("Missing company.")
+                            .presentationDetents([.medium])
+                    }
+                }
 
                 if !routeBoardVM.newRouteRecurringStops.isEmpty {
                     Button(action: {
                         routeBoardVM.showCustomerSheet.toggle()
                     }, label: {
-                        Text("View List")
-                            .modifier(BlueButtonModifier())
+                        
+                        Label("View List", systemImage: "list.dash")
+                                .frame(maxWidth: .infinity)
+                                .padding(8)
+                                .background(Color.poolGray.opacity(0.1))
+                                .clipShape(Capsule())
                     })
                     .sheet(isPresented: $routeBoardVM.showCustomerSheet) {
                         VStack {
@@ -165,26 +190,35 @@ extension NewRouteView {
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
 
-                            List {
-                                ForEach(routeBoardVM.newRouteRecurringStops) { location in
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("\(location.customerName)")
-                                                .font(.subheadline.weight(.semibold))
-                                            Text("\(location.address.streetAddress)")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Spacer()
-                                        Text(location.frequency.rawValue)
-                                            .font(.caption.weight(.semibold))
-                                            .padding(.vertical, 6)
-                                            .padding(.horizontal, 10)
-                                            .background(Capsule().fill(Color.primary.opacity(0.08)))
+                            List {ForEach(routeBoardVM.newRouteRecurringStops) { stop in
+                                HStack {
+                                    Image(systemName: stop.typeImage.isEmpty ? "mappin.and.ellipse" : stop.typeImage)
+                                        .frame(width: 28)
+
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(stop.customerName)
+                                            .font(.subheadline.weight(.semibold))
+
+                                        Text(stop.address.streetAddress)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+
+                                        Text(stop.type.isEmpty ? "Recurring Route" : stop.type)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
                                     }
-                                    .padding(.vertical, 4)
+
+                                    Spacer()
+
+                                    Text(stop.frequency.rawValue)
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.vertical, 6)
+                                        .padding(.horizontal, 10)
+                                        .background(Capsule().fill(Color.primary.opacity(0.08)))
                                 }
-                                .onDelete(perform: routeBoardVM.removeRecurringstops)
+                                .padding(.vertical, 4)
+                            }
+                            .onDelete(perform: routeBoardVM.removeRecurringstops)
                             }
                         }
                         .presentationDetents([.medium, .large])
@@ -267,7 +301,8 @@ private extension View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(.background)
+                    .shadow(color: Color.darkGray.opacity(0.06), radius: 12, x: 0, y: 4)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)

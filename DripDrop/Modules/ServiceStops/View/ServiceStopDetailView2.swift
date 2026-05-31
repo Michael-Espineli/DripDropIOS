@@ -404,22 +404,25 @@ extension ServiceStopDetailView2 {
                             showSkipReason = true
                         }, label: {
                             Text("Skip")
-                                .foregroundColor(Color.white)
-                                .padding(5)
-                                .background(Color.gray)
-                                .cornerRadius(5)
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.poolYellow)
+                                .foregroundColor(.black)
+                                .cornerRadius(12)
+                                .shadow(color: Color.poolYellow.opacity(0.25), radius: 4, x: 0, y: 2)
                         })
                         .padding(5)
                         Spacer()
                         Button(action: {
                             Task{
-                                if let company = masterDataManager.currentCompany, let serviceStop{
+                                if let company = masterDataManager.currentCompany, let serviceStop, let user = masterDataManager.user{
                                     opStatus = .notFinished
                                     do {
                                         print("")
-                                        try await VM.updateServicestopOperationStatus(companyId: company.id, stop: serviceStop, operationStatus: .notFinished)
+                                        try await VM.updateServicestopOperationStatus(companyId: company.id,currentUserId: user.id, stop: serviceStop, operationStatus: .notFinished)
                                         if serviceStop.otherCompany && serviceStop.contractedCompanyId != "" {
-                                            try await VM.updateServicestopOperationStatus(companyId: serviceStop.contractedCompanyId, stop: serviceStop, operationStatus: .notFinished)
+                                            try await VM.updateServicestopOperationStatus(companyId: serviceStop.contractedCompanyId,currentUserId: user.id, stop: serviceStop, operationStatus: .notFinished)
                                         }
                                         print("Un finished")
                                         print("Successful")
@@ -438,7 +441,13 @@ extension ServiceStopDetailView2 {
                             }
                         }, label: {
                             Text("Finished")
-                                .modifier(DismissButtonModifier())
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.poolRed)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                                .shadow(color: Color.poolRed.opacity(0.25), radius: 4, x: 0, y: 2)
                         })
                         .padding(5)
                     case .notFinished:
@@ -447,20 +456,26 @@ extension ServiceStopDetailView2 {
                             showSkipReason = true
                         }, label: {
                             Text("Skip")
-                                .modifier(YellowButtonModifier())
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.poolYellow)
+                                .foregroundColor(.black)
+                                .cornerRadius(12)
+                                .shadow(color: Color.poolYellow.opacity(0.25), radius: 4, x: 0, y: 2)
                         })
                         .padding(5)
                         Spacer()
                         Button(action: {
                             Task{
-                                if let company = masterDataManager.currentCompany, let serviceStop{
+                                if let company = masterDataManager.currentCompany, let serviceStop, let user = masterDataManager.user{
                                     opStatus = .finished
                                     do {
                                         print("")
                                         print("Finishing Screen")
                                         print("-----------------")
                                         
-                                        try await VM.updateServicestopOperationStatus(companyId: company.id, stop: serviceStop, operationStatus: .finished)
+                                        try await VM.updateServicestopOperationStatus(companyId: company.id,currentUserId: user.id, stop: serviceStop, operationStatus: .finished)
                                     } catch {
                                         print("Failed To Updated Finish Stops \(serviceStop.id)")
                                         print(error)
@@ -476,21 +491,27 @@ extension ServiceStopDetailView2 {
                             }
                         }, label: {
                             Text("Finish")
-                                .modifier(SubmitButtonModifier())
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.poolGreen)
+                                .foregroundColor(.black)
+                                .cornerRadius(12)
+                                .shadow(color: Color.poolGreen.opacity(0.25), radius: 4, x: 0, y: 2)
                             
                         })
                         .padding(5)
                     case .skipped:
                         Button(action: {
                             Task{
-                                if let serviceStop = masterDataManager.selectedServiceStops, let company = masterDataManager.currentCompany {
+                                if let serviceStop = masterDataManager.selectedServiceStops, let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                                     do{
                                         opStatus = .notFinished
                                         
                                         if serviceStop.otherCompany && serviceStop.contractedCompanyId != "" {
-                                            try await VM.updateServicestopOperationStatus(companyId: serviceStop.contractedCompanyId, stop: serviceStop, operationStatus: .notFinished)
+                                            try await VM.updateServicestopOperationStatus(companyId: serviceStop.contractedCompanyId,currentUserId: user.id, stop: serviceStop, operationStatus: .notFinished)
                                         }
-                                        try await VM.updateServicestopOperationStatus(companyId: company.id, stop: serviceStop, operationStatus: .notFinished)
+                                        try await VM.updateServicestopOperationStatus(companyId: company.id,currentUserId: user.id, stop: serviceStop, operationStatus: .notFinished)
                                     } catch {
                                         print("Error")
                                     }
@@ -498,7 +519,13 @@ extension ServiceStopDetailView2 {
                             }
                         }, label: {
                             Text("Unskip")
-                                .modifier(YellowButtonModifier())
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.poolYellow)
+                                .foregroundColor(.black)
+                                .cornerRadius(12)
+                                .shadow(color: Color.poolYellow.opacity(0.25), radius: 4, x: 0, y: 2)
 
                         })
                     case .none:

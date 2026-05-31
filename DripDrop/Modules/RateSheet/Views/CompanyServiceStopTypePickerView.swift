@@ -1,15 +1,10 @@
 //
-//  CompanyServiceStopTypePickerViewModel.swift
+//  CompanyServiceStopTypePickerView.swift
 //  DripDrop
 //
 //  Created by Michael Espineli on 5/20/26.
 //
 
-
-//
-//  CompanyServiceStopTypePickerView.swift
-//  DripDrop
-//
 
 import SwiftUI
 

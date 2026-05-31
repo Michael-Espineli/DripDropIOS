@@ -2,6 +2,8 @@
 //  ScheduleAcceptedWorkOfferView.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/22/26.
+//
 
 import SwiftUI
 
@@ -185,6 +187,19 @@ struct ScheduleAcceptedWorkOfferView: View {
                 companyId: companyId,
                 locationId: offer.serviceLocationId
             )
+
+            if let rawValue = offer.serviceStopTypeUseCaseRawValue,
+               let useCase = ServiceStopTypeUseCase(rawValue: rawValue) {
+                serviceStopTypeUseCase = useCase
+            }
+
+            if let typeId = offer.serviceStopTypeId,
+               !typeId.isEmpty {
+                selectedCompanyServiceStopType = try? await dataService.fetchCompanyServiceStopType(
+                    companyId: companyId,
+                    serviceStopTypeId: typeId
+                )
+            }
         } catch {
             alertMessage = "Could not load job details. \(error.localizedDescription)"
             showAlert = true
@@ -202,10 +217,26 @@ struct ScheduleAcceptedWorkOfferView: View {
         defer { isSaving = false }
 
         do {
-            let typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
-                selectedType: selectedCompanyServiceStopType,
-                useCase: serviceStopTypeUseCase
-            )
+            let typeFields: ServiceStopTypeFields
+
+            if let selectedCompanyServiceStopType {
+                typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
+                    selectedType: selectedCompanyServiceStopType,
+                    useCase: serviceStopTypeUseCase
+                )
+            } else if let typeName = offer.serviceStopTypeName,
+                      !typeName.isEmpty {
+                typeFields = ServiceStopTypeFields(
+                    typeId: offer.serviceStopTypeId ?? "",
+                    type: typeName,
+                    typeImage: offer.serviceStopTypeImage ?? ""
+                )
+            } else {
+                typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
+                    selectedType: nil,
+                    useCase: serviceStopTypeUseCase
+                )
+            }
 
             let service = WorkOfferSchedulingService(
                 dataService: dataService

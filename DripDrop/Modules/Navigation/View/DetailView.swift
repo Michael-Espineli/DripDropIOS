@@ -137,7 +137,9 @@ struct DetailView: View {
                                     NewRouteView(dataService: dataService, tech: tech, day: day)
                                 } else if masterDataManager.modifyRoute {
                                     if let reucrringRoute = masterDataManager.selectedRecurringRoute {
-                                       ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: reucrringRoute)
+//                                       ModifyRecurringRoute(dataService: dataService, tech: tech, day: day, recurringRoute: reucrringRoute)
+                                        NewRouteView(dataService: dataService, tech: tech, day: day)
+
                                     } else {
                                         Text("ModifyRecurringRoute")
                                     }
@@ -323,7 +325,7 @@ struct DetailView: View {
                         EmptyView()
                     case .jobTemplates:
                         if let jobTemplate = masterDataManager.selectedJobTemplate {
-                            JobTemplateDetailView(template: jobTemplate)
+                            JobTemplateDetailView(template: jobTemplate, dataService: dataService)
                         } else {
                             Text("Please Select An Job Template")
                         }

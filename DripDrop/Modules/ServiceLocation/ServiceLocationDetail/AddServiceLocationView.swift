@@ -276,11 +276,9 @@ extension AddServiceLocationView {
                 Button(action: {
                     addFirstBodyOfWater.toggle()
                 }, label: {
-                    Text(bodyOfWaterList.isEmpty ? "Add First Body Of Water": "Add Another")
-                        .padding(8)
-                        .background(Color.poolBlue)
-                        .foregroundColor(Color.white)
-                        .cornerRadius(8)
+                
+                    Label(bodyOfWaterList.isEmpty ? "Add First Body Of Water": "Add Another", systemImage: "plus.circle")
+                        .frame(maxWidth: .infinity)
                 })
                 .sheet(
                     isPresented: $addFirstBodyOfWater,

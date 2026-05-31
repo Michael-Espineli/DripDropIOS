@@ -28,7 +28,7 @@ struct AddNewRateSheet: View {
 
 struct AddNewRateSheet_Previews: PreviewProvider {
     static var previews: some View {
-        AddNewRateSheet(template: JobTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), rate: "", color: ""))
+        AddNewRateSheet(template: JobTemplate(companyId: "", name: "", createdByUserId: ""))
     }
 }
 

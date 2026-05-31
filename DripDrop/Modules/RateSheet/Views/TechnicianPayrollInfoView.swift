@@ -276,7 +276,7 @@ struct TechnicianPayrollInfoView: View {
             lineItemsSection
             statementsSection
             currentRatesSection
-            rateHistorySection
+            payrollHistoryNavigationSection
         }
         .navigationTitle("Payroll Info")
         .navigationBarTitleDisplayMode(.inline)
@@ -460,25 +460,41 @@ struct TechnicianPayrollInfoView: View {
         }
     }
 
-    private var rateHistorySection: some View {
+    private var payrollHistoryNavigationSection: some View {
         Section {
-            if viewModel.recentRateHistory.isEmpty {
-                ContentUnavailableView(
-                    "No Rate History",
-                    systemImage: "clock.arrow.circlepath",
-                    description: Text("Rate changes will appear here.")
+            NavigationLink {
+                TechnicianPayrollHistoryDetailView(
+                    companyUser: viewModel.companyUser,
+                    rates: viewModel.recentRateHistory,
+                    workTypes: viewModel.workTypes
                 )
-            } else {
-                ForEach(viewModel.recentRateHistory.prefix(8)) { rate in
-                    TechnicianPayrollRateRow(
-                        rate: rate,
-                        workTypeName: viewModel.workTypeName(for: rate),
-                        workTypeIcon: viewModel.workTypeIcon(for: rate)
-                    )
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .frame(width: 28)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Rate History")
+                            .font(.headline)
+
+                        Text("View previous rates, raises, scheduled rates, and notes.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Text("\(viewModel.recentRateHistory.count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(.thinMaterial, in: Capsule())
                 }
+                .padding(.vertical, 4)
             }
         } header: {
-            Text("Recent Rate History")
+            Text("History")
         }
     }
 }

@@ -22,11 +22,27 @@ extension ProductionDataService {
      func workOrderDocument(workOrderId:String,companyId:String)-> DocumentReference{
         workOrderCollection(companyId: companyId).document(workOrderId)
     }
+
+    func workOrderCommentsCollection(companyId: String, workOrderId: String) -> CollectionReference {
+        workOrderDocument(workOrderId: workOrderId, companyId: companyId)
+            .collection("comments")
+    }
     
     //CREATE
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws {
         try workOrderDocument(workOrderId: workOrder.id, companyId: companyId).setData(from:workOrder, merge: false)
     }
+    
+    func addWorkOrderComment(
+        companyId: String,
+        workOrderId: String,
+        comment: JobComment
+    ) async throws {
+        try workOrderCommentsCollection(companyId: companyId, workOrderId: workOrderId)
+            .document(comment.id)
+            .setData(from: comment, merge: false)
+    }
+    
     func addPurchaseItemsToWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
         
         let itemRef = workOrderDocument(workOrderId: workOrder.id, companyId: companyId)
@@ -64,6 +80,13 @@ extension ProductionDataService {
             .getDocument(as: Job.self)
         
     }
+    
+    func getWorkOrderComments(companyId: String, workOrderId: String) async throws -> [JobComment] {
+        try await workOrderCommentsCollection(companyId: companyId, workOrderId: workOrderId)
+            .order(by: "date", descending: true)
+            .getDocuments(as: JobComment.self)
+    }
+    
     func getAllJobsOpenedCount(companyId: String) async throws -> Int {
         let status:[String] = [
             JobOperationStatus.estimatePending.rawValue,
@@ -152,11 +175,21 @@ extension ProductionDataService {
             .getDocuments(as:Job.self)
     }
     func getAllWorkOrdersFinished(companyId: String,finished:Bool) async throws -> [Job] {
-        
-        return try await workOrderCollection(companyId: companyId)
-            .order(by: "dateCreated", descending: true)
-            .whereField("billingStatus", notIn: ["Invoiced","Paid"])
-            .getDocuments(as:Job.self)
+        if finished {
+            return try await workOrderCollection(companyId: companyId)
+                .order(by: "dateCreated", descending: true)
+                .whereField("operationStatus", in: ["Finished"])
+                    .whereField("billingStatus", in: ["Invoiced","Paid","Expired"])
+                .getDocuments(as:Job.self)
+            
+        } else {
+            return try await workOrderCollection(companyId: companyId)
+                .order(by: "dateCreated", descending: true)
+                .whereField("operationStatus", in: ["Estimate Pending","Unscheduled","Scheduled","In Progress","Waiting for Parts"])
+                    .whereField("billingStatus", in: ["Draft","Estimate","Accepted","In Progress"])
+                .getDocuments(as:Job.self)
+            
+        }
     }
     
     func getAllJobsByCustomer(companyId: String,customerId:String) async throws -> [Job] {
@@ -443,9 +476,9 @@ extension ProductionDataService {
             "operationStatus": operationStatus.rawValue,
         ])
     }
-    func updateJobBillingStatus(companyId:String,jobId:String,billingStatus:JobBillingStatus) async throws{
+    func updateJobBillingStatus(companyId:String,jobId:String,billingStatus:JobBillingStatus)  throws{
         let ref = workOrderDocument(workOrderId: jobId, companyId: companyId)
-        try await ref.updateData([
+        try ref.updateData([
             "billingStatus": billingStatus.rawValue,
         ])
     }
@@ -474,17 +507,29 @@ extension ProductionDataService {
         //            }
         //        }
     }
-    func updateJobDateEstimateAccepted(companyId: String, jobId: String, date: Date) async throws{
-        try await workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["dateEstimateAccepted": date])
+    
+    func updateWorkOrderCommentResolved(
+        companyId: String,
+        workOrderId: String,
+        commentId: String,
+        resolved: Bool
+    ) async throws {
+        try await workOrderCommentsCollection(companyId: companyId, workOrderId: workOrderId)
+            .document(commentId)
+            .updateData(["resolved": resolved])
     }
-    func updateJobEstiamteAcceptedById(companyId: String, jobId: String, id: String) async throws{
-        try await workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["receivedLaborContractId": id])
+    
+    func updateJobDateEstimateAccepted(companyId: String, jobId: String, date: Date) throws{
+        workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["dateEstimateAccepted": date])
     }
-    func updateJobEstiamteAcceptedByType(companyId: String, jobId: String, type: JobEstiamteAcceptanceType) async throws{
-        try await workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["estimateAcceptType": type.rawValue])
+    func updateJobEstiamteAcceptedById(companyId: String, jobId: String, id: String) throws{
+         workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["estimateAcceptedById": id])
     }
-    func updateJobEstimateAcceptedNotes(companyId: String, jobId: String, notes: String) async throws {
-        try await workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["estimateAcceptedNotes": notes])
+    func updateJobEstiamteAcceptedByType(companyId: String, jobId: String, type: JobEstiamteAcceptanceType) throws{
+        try  workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["estimateAcceptType": type.rawValue])
+    }
+    func updateJobEstimateAcceptedNotes(companyId: String, jobId: String, notes: String) throws {
+        try workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["estimateAcceptedNotes": notes])
     }
     func updateJobInvoiceDate(companyId: String, jobId: String, date: Date) async throws{
         try await workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(["invoiceDate": date])

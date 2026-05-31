@@ -112,34 +112,11 @@ final class MyCompanyViewModel:ObservableObject{
         self.isLoading = true
         //Returns Items Mainly For Company Overview SnapShot
         //Chart Snap Shot
-
-//        for i in 0...3 {
-//
-//            var date:Date = Date()
-//            if i != 0 {
-//                date = Calendar.current.date(byAdding: .month, value: -i, to: Date())!
-//            }
-//            print("Month - \(i) - \(date)")
-//            if category == "Operations" {
-//                self.buildActivities.append(BuildActivity(date: date, name: "Jobs", numberOfUnits: Int.random(in: 1..<50)))
-//                self.buildActivities.append(BuildActivity(date: date, name: "Repair Requests", numberOfUnits: Int.random(in: 1..<50)))
-//                self.buildActivities.append(BuildActivity(date: date, name: "Items Purchased", numberOfUnits: Int.random(in: 1..<50)))
-//            } else if category == "Finance"{
-//                self.buildActivities.append(BuildActivity(date: date, name: "Jobs", numberOfUnits: Int.random(in: 10..<5000)))
-//                self.buildActivities.append(BuildActivity(date: date, name: "Items Purchased", numberOfUnits: Int.random(in: -500..<10)))
-//                self.buildActivities.append(BuildActivity(date: date, name: "Monthly Service", numberOfUnits: Int.random(in: 1..<500)))
-//                self.buildActivities.append(BuildActivity(date: date, name: "Labor", numberOfUnits: Int.random(in: -500..<10)))
-//            } else if category == "Management"{
-//                self.buildActivities.append(BuildActivity(date: date, name: "Customers", numberOfUnits: Int.random(in: 1..<500)))
-//                self.buildActivities.append(BuildActivity(date: date, name: "Technicians", numberOfUnits: Int.random(in: 10..<50)))
-//            } else {
-//                print("No Snap Shot")
-//            }
-//        }
-
+        print("  [MyCompanyViewModel][onLoad] 1")
         //Alerts
         self.alertCount = try await dataService.getDripDropAlertsCount(companyId: companyId)
         
+        print("  [MyCompanyViewModel][onLoad] \(alertCount)")
         //Routes
         for day in DaysOfWeek.allCases {
             let count = try await dataService.getRecurringRouteByDayCount(companyId: companyId, day: day)
@@ -147,6 +124,8 @@ final class MyCompanyViewModel:ObservableObject{
                 daysAndRoutes[day] = count
             }
         }
+        
+        print("  [MyCompanyViewModel][onLoad] Routes")
         //Users
         let roles = try await dataService.getAllCompanyRoles(companyId: companyId)
         let users = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
@@ -155,6 +134,7 @@ final class MyCompanyViewModel:ObservableObject{
             let count = users.filter({$0.roleId == role.id}).count
             self.techsByRoles[role] = count
         }
+        print("  [MyCompanyViewModel][onLoad] Users")
         //Labor Contracts
         self.laborContractList = try await dataService.getLaborContractsSnapShot(companyId: companyId)
         
@@ -166,17 +146,17 @@ final class MyCompanyViewModel:ObservableObject{
         
         self.sentLaborContractCount = (sentAcceptedLaborContractCount ?? 0) + (sentPendingLaborContractCount ?? 0) + (sentPastLaborContractCount ?? 0)
         
+        print("  [MyCompanyViewModel][onLoad] Sent Labor Contracts")
         self.receivedAcceptedLaborContractCount = try await dataService.getLaborContractsSentCountByStatus(companyId: companyId, status: LaborContractStatus.accepted)
         
         self.receivedPendingLaborContractCount = try await dataService.getLaborContractsSentCountByStatus(companyId: companyId, status: LaborContractStatus.pending)
 
         self.receivedPastLaborContractCount = try await dataService.getLaborContractsSentCountByStatus(companyId: companyId, status: LaborContractStatus.finished)
-        
+        print("  [MyCompanyViewModel][onLoad] Received Labor Contracts")
+
         self.receivedLaborContractCount = (sentLaborContractCount ?? 0) + (receivedPendingLaborContractCount ?? 0) + (receivedPastLaborContractCount ?? 0)
 
         //Contracts
-        
-        
         
         //Total Active Customers
         self.totalCustomers = try await dataService.checkCustomerCount(companyId: companyId)
@@ -185,12 +165,14 @@ final class MyCompanyViewModel:ObservableObject{
         
         //Total Comerical
         self.totalComericalAccounts = 15
-        
+
         //10 Most Recent Customers.
         self.customers = try await dataService.getMostRecentCustomers(companyId: companyId, number: 10)
+        print("  [MyCompanyViewModel][onLoad] Customers")
         
         //Get 10 Most Recent Purchases
         self.purchasedItems = try await PurchasedItemsManager.shared.getMostRecentPurchases(companyId: companyId, number: 10)
+        print("  [MyCompanyViewModel][onLoad] Purchased Items")
         
         //Details
         let result = try await PurchasedItemsManager.shared.getNumberOfItemsPurchasedIn30Days(companyId: companyId)
@@ -208,31 +190,43 @@ final class MyCompanyViewModel:ObservableObject{
         self.totalSoldInDollars = result.totalSoldInDollars
         self.totalProfitInDollars = result.totalSoldInDollars - result.TotalSpentBillable
         
+        print("  [MyCompanyViewModel][onLoad] Purchased Items Results")
         //Fleet
         self.listOfVehicals = try await dataService.getCompanyFleetSnapShot(companyId: companyId)
         self.vehicalCount = try await dataService.getAllVehicalsCount(companyId: companyId)
         
+        print("  [MyCompanyViewModel][onLoad] Fleet")
 
         // Jobs
         self.jobs = try await dataService.getRecentWorkOrders(companyId: companyId)
+        print("  [MyCompanyViewModel][onLoad] Jobs 1")
         self.recentlyFinishedJobs = try await dataService.getRecentlyFinishedCount(companyId: companyId)
+        print("  [MyCompanyViewModel][onLoad] Jobs 2")
         self.openJobs = try await dataService.getAllJobsOpenedCount(companyId: companyId)
         
+        print("  [MyCompanyViewModel][onLoad] Jobs 3")
         //Shopping List Item
         
         self.listOfShoppingListItems = try await dataService.getAllShoppingListItemsSnapShotByCompany(companyId: companyId)
         
+        print("  [MyCompanyViewModel][onLoad] Shopping List Items")
         // Equipment
         self.listOfEquipment = try await EquipmentManager.shared.getEquipmentSnapShot(companyId: companyId)
 
         //DEVELOPER
         
+        print("  [MyCompanyViewModel][onLoad] Equipment")
+        
         self.listOfRepairRequests = try await dataService.getAllRepairRequests(companyId: companyId)
+        print("  [MyCompanyViewModel][onLoad] Repair Requests")
 //        self.companyUsers = try await CompanyUserManager.shared.getAllCompanyUsers(companyId: companyId)
         self.companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
+        print("  [MyCompanyViewModel][onLoad] Company Users")
         self.isLoading = false
         self.listOfVenders = try await dataService.getAllStores(companyId: companyId)
         self.venderCount = try await dataService.getAllVenderCount(companyId: companyId)
+        
+        print("  [MyCompanyViewModel][onLoad] Venders")
 
         //Companies
 //        let companyAccess = try await dataService.getAllUserAvailableCompanies(userId: userId)

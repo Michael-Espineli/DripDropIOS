@@ -79,9 +79,12 @@ final class AllViewModel:ObservableObject{
         print("Repair Requests List Count \(String(describing: repairRequestCount))")
         
         //Purchase Count
-        self.purchaseCount = try await dataService.getPurchasesCountForTechId(companyId: companyId, userId: user.id)
-        print("Purchase List Count \(String(describing: purchaseCount))")
-        
+        //Deve add in later
+#warning("DEVELOPER: Purchase Count Error to fix")
+
+//        self.purchaseCount = try await dataService.getPurchasesCountForTechId(companyId: companyId, userId: user.id)
+//        print("Purchase List Count \(String(describing: purchaseCount))")
+//        
         self.isAlertLoading = false
         dataService.addListenerForUnreadChats(userId: user.id) { [weak self] chats in
             self?.unreadChatCount = chats.count
@@ -109,6 +112,7 @@ final class AllViewModel:ObservableObject{
         
         self.companyUser = companyUsers.first(where: {$0.userId == user.id})
         print("[loadCompanyWorkPreview] 2")
+        
         self.role = try await dataService.getSpecificRole(companyId: companyId, roleId: userAccess.roleId)
         print("[loadCompanyWorkPreview] 3")
         
@@ -164,19 +168,21 @@ final class AllViewModel:ObservableObject{
                                                 durationMin: duration,
                                                 distanceMiles: 69,
                                                 status: .didNotStart,
-                                                totalStops: serviceStopList.count,
+                                                totalStops: serviceStopListFromToday.count,
                                                 finishedStops:finishedCount,
                                                 vehicalId: "")
                         do {
-                            try await dataService.uploadRoute(companyId: companyId,
-                                                              activeRoute: route)
+                            let syncedRoute = try await dataService.uploadRoute(
+                                companyId: companyId,
+                                activeRoute: route
+                            )
+                            self.activeRoute = syncedRoute
                         } catch {
                             print("Error 1 All ViewModel")
                             throw MobileDisplayError.failedToUpload
                         }
-                        self.activeRoute = route
                         self.serviceStopList = serviceStopListFromToday
-                        self.totalStops = serviceStopList.count
+                        self.totalStops = serviceStopListFromToday.count
                         self.finishedStops = finishedCount
                         self.routeToday = true
                         
@@ -268,20 +274,22 @@ final class AllViewModel:ObservableObject{
                                                 durationMin: duration,
                                                 distanceMiles: 69,
                                                 status: .didNotStart,
-                                                totalStops: serviceStopList.count,
+                                                totalStops: serviceStopListFromToday.count,
                                                 finishedStops:finishedCount,
                                                 vehicalId: "")
                         do {
-                            try await dataService.uploadRoute(companyId: companyId,
-                                                              activeRoute: route)
+                            let syncedRoute = try await dataService.uploadRoute(
+                                companyId: companyId,
+                                activeRoute: route
+                            )
+                            self.activeRoute = syncedRoute
                         } catch {
                             print("Error 3 All ViewModel")
                             
                             throw MobileDisplayError.failedToUpload
                         }
-                        self.activeRoute = route
                         self.serviceStopList = serviceStopListFromToday
-                        self.totalStops = serviceStopList.count
+                        self.totalStops = serviceStopListFromToday.count
                         self.finishedStops = finishedCount
                         self.routeToday = true
                         

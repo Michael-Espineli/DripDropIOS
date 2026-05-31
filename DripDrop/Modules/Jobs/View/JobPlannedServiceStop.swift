@@ -2,6 +2,9 @@
 //  JobPlannedServiceStop.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
+
 
 import Foundation
 
@@ -24,6 +27,9 @@ struct JobPlannedServiceStop: Identifiable, Codable, Hashable {
     var sortOrder: Int
 
     var taskIds: [String]
+    
+    var plannedLaborCostCents: Int?
+    var plannedLaborNotes: String?
 
     var createdAt: Date
     var createdByUserId: String
@@ -41,6 +47,8 @@ struct JobPlannedServiceStop: Identifiable, Codable, Hashable {
         estimatedMinutes: Int,
         sortOrder: Int,
         taskIds: [String] = [],
+        plannedLaborCostCents: Int? = nil,
+        plannedLaborNotes: String? = nil,
         createdAt: Date = Date(),
         createdByUserId: String
     ) {
@@ -56,6 +64,8 @@ struct JobPlannedServiceStop: Identifiable, Codable, Hashable {
         self.estimatedMinutes = estimatedMinutes
         self.sortOrder = sortOrder
         self.taskIds = taskIds
+        self.plannedLaborCostCents = plannedLaborCostCents
+        self.plannedLaborNotes = plannedLaborNotes
         self.createdAt = createdAt
         self.createdByUserId = createdByUserId
     }

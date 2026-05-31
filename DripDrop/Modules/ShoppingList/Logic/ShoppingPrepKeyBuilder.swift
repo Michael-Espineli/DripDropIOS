@@ -1,4 +1,9 @@
-import Foundation
+//
+//  ShoppingPrepKeyBuilder.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 5/26/26.
+//import Foundation
 
 enum ShoppingPrepKeyBuilder {
 
@@ -48,9 +53,11 @@ enum ShoppingPrepKeyBuilder {
         serviceStops: [ServiceStop],
         userId: String
     ) -> [String] {
-        var keys: [String] = [
-            user(userId)
-        ]
+        var keys: [String] = []
+
+        if !userId.isEmpty {
+            keys.append(user(userId))
+        }
 
         for stop in serviceStops {
             keys.append(contentsOf: keysForServiceStop(stop))
@@ -79,5 +86,27 @@ enum ShoppingPrepKeyBuilder {
         }
 
         return Array(Set(keys))
+    }
+
+    static func keysForCustomerItem(
+        customerId: String,
+        serviceLocationId: String? = nil
+    ) -> [String] {
+        var keys: [String] = []
+
+        if !customerId.isEmpty {
+            keys.append(customer(customerId))
+        }
+
+        if let serviceLocationId, !serviceLocationId.isEmpty {
+            keys.append(serviceLocation(serviceLocationId))
+        }
+
+        return Array(Set(keys))
+    }
+
+    static func keysForPersonalItem(userId: String) -> [String] {
+        guard !userId.isEmpty else { return [] }
+        return [user(userId)]
     }
 }

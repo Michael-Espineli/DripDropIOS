@@ -76,6 +76,7 @@ final class AddRepairRequestViewModel:ObservableObject{
     @Published var loadImages:Bool = true
     @Published var screenLoading:Bool = false
     @Published var selectedDripDropPhotos:[DripDropImage] = []
+    @Published var savedDripDropPhotos:[DripDropStoredImage] = []
     @Published var description:String = ""
     @Published var showCustomerSelector:Bool = false
     @Published var showLocationSelector:Bool = false

@@ -53,6 +53,9 @@ struct JobListView: View{
     
     @State var selectedStatus:[JobOperationStatus] = [.scheduled, .unscheduled, .estimatePending, .inProgress]
     @State var techIds:[String] = []
+    @State private var showCreateJobOptions: Bool = false
+    @State private var showCreateBlankJob: Bool = false
+    @State private var showCreateFromTemplate: Bool = false
     var body: some View{
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -318,18 +321,35 @@ extension JobListView {
                     if let role = masterDataManager.role {
                         if role.permissionIdList.contains("22") {
                             Button(action: {
-                                showCustomerPicker.toggle()
+                                showCreateJobOptions = true
                             }, label: {
                                 Image(systemName: "plus")
                                     .modifier(PlusIconModifer())
                             })
                             .padding(10)
-                            .sheet(isPresented: $showCustomerPicker, content: {
-                                VStack{
-                                    
-                                    AddNewJobView(dataService: dataService, customerId: nil)
+                            .sheet(isPresented: $showCreateJobOptions) {
+                                createJobOptionsSheet
+                                    .presentationDetents([.medium])
+                            }
+                            .sheet(isPresented: $showCreateBlankJob, onDismiss: {
+                                reloadJobs()
+                            }) {
+                                AddNewJobView(dataService: dataService, customerId: nil)
+                            }
+                            .sheet(isPresented: $showCreateFromTemplate, onDismiss: {
+                                reloadJobs()
+                            }) {
+                                if let company = masterDataManager.currentCompany {
+                                    JobTemplatePickerCreateJobSheet(
+                                        companyId: company.id,
+                                        dataService: dataService
+                                    )
+                                    .presentationDetents([.large])
+                                } else {
+                                    Text("Missing company.")
+                                        .presentationDetents([.medium])
                                 }
-                            })
+                            }
                         }
                     }
                     Button(action: {
@@ -358,5 +378,154 @@ extension JobListView {
             }
             
         }
+    }
+    // MARK: createJobOptionsSheet
+    var createJobOptionsSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                VStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Create Job")
+                                    .font(.title3.weight(.semibold))
+
+                                Text("Start blank or use a reusable template.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "plus.circle")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 36, height: 36)
+                                .background(.thinMaterial, in: Circle())
+                        }
+                    }
+                    .jobCreateOptionCard()
+
+                    Button {
+                        showCreateJobOptions = false
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            showCreateBlankJob = true
+                        }
+                    } label: {
+                        jobCreateOptionRow(
+                            title: "Blank Job",
+                            subtitle: "Build a job manually from scratch.",
+                            systemImage: "doc.badge.plus"
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        showCreateJobOptions = false
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            showCreateFromTemplate = true
+                        }
+                    } label: {
+                        jobCreateOptionRow(
+                            title: "From Template",
+                            subtitle: "Create a job using planned stops, tasks, materials, and pricing.",
+                            systemImage: "square.stack.3d.up"
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+                }
+                .padding(14)
+            }
+            .navigationTitle("New Job")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showCreateJobOptions = false
+                    }
+                }
+            }
+        }
+    }
+        // MARK: jobCreateOptionRow
+
+    func jobCreateOptionRow(
+        title: String,
+        subtitle: String,
+        systemImage: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func reloadJobs() {
+        Task {
+            guard let company = masterDataManager.currentCompany else { return }
+
+            do {
+                techIds = []
+
+                try await companyUserVM.getAllCompanyUsersByStatus(
+                    companyId: company.id,
+                    status: "Active"
+                )
+
+                for companyUser in companyUserVM.companyUsers {
+                    techIds.append(companyUser.userId)
+                }
+
+                startDate = Calendar.current.date(byAdding: .day, value: -300, to: Date()) ?? Date()
+
+                jobVM.removeListenerForJob()
+                jobVM.addListenerForAllJobsOperations(
+                    companyId: company.id,
+                    status: selectedStatus,
+                    requesterIds: techIds,
+                    startDate: startDate,
+                    endDate: endDate
+                )
+            } catch {
+                print("[][JobListView reloadJobs] Error \(error)")
+            }
+        }
+    }
+}
+
+//MARK: Extension View
+private extension View {
+    func jobCreateOptionCard() -> some View {
+        self
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }

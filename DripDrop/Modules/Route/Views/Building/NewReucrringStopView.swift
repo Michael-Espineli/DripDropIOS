@@ -30,13 +30,7 @@ struct NewReucrringStopView: View {
     @State var tech:DBUser? = nil
     @State var day:String? = nil
     
-    @State var jobType:JobTemplate = JobTemplate(id: "",
-                                                 name: "Job Template",
-                                                 type: "",
-                                                 typeImage: "",
-                                                 dateCreated: Date(),
-                                                 rate: "",
-                                                 color: "")
+    @State var jobType:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @State var customer:Customer = Customer(
         id: "",
         firstName: "Ron",
@@ -183,7 +177,7 @@ extension NewReucrringStopView {
                         return
                     }
                     let jobName = jobType.name
-                    let jobImage = jobType.typeImage
+                    let jobImage = ""
                     
                     if customer.id == "" || customer.firstName == "" ||  customer.lastName == ""{
                         alertMessage = "No Customer Selected"

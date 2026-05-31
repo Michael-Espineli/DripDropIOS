@@ -1,7 +1,10 @@
 //
-//  TechnicianRateMatrixView.swift
+//  TechnicianRateMatrixRow.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/20/26.
+//
+
 
 import SwiftUI
 
@@ -78,7 +81,7 @@ struct TechnicianRateEditorRoute: Identifiable {
 
 @MainActor
 final class TechnicianRateMatrixViewModel: ObservableObject {
-
+    
     @Published var workTypes: [CompanyWorkType] = []
     @Published var technicians: [CompanyUser] = []
     @Published var rates: [TechnicianRate] = []
@@ -93,18 +96,15 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
 
-    let companyId: String
 
     private let currentUserId: String
     private let dataService: any ProductionDataServiceProtocol
     private var hasLoaded = false
 
     init(
-        companyId: String,
         currentUserId: String,
         dataService: any ProductionDataServiceProtocol
     ) {
-        self.companyId = companyId
         self.currentUserId = currentUserId
         self.dataService = dataService
     }
@@ -158,12 +158,13 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
         rates.filter { rateIsCurrent($0, on: Date()) }.count
     }
 
-    var missingRateCellCount: Int {
+    func missingRateCellCount(companyId:String) -> Int {
         var missing = 0
 
         for row in matrixRows {
             for technician in visibleTechnicians {
                 if currentRate(
+                    companyId:companyId,
                     technicianId: technician.userId,
                     row: row
                 ) == nil {
@@ -175,9 +176,8 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
         return missing
     }
 
-    func load(forceRefresh: Bool = false) async {
+    func load(companyId:String,forceRefresh: Bool = false) async {
         guard forceRefresh || !hasLoaded else { return }
-
         isLoading = true
         defer {
             isLoading = false
@@ -201,6 +201,7 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
     }
 
     func currentRate(
+        companyId:String,
         technicianId: String,
         row: TechnicianRateMatrixRow,
         date: Date = Date()
@@ -225,6 +226,7 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
     }
 
     func saveRate(
+        companyId:String,
         technician: CompanyUser,
         row: TechnicianRateMatrixRow,
         existingRate: TechnicianRate?,
@@ -239,12 +241,12 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
             showAlert = true
             return
         }
-
+        
         isSaving = true
         defer { isSaving = false }
 
         do {
-            let ratePlan = try await activeOrCreateRatePlan()
+            let ratePlan = try await activeOrCreateRatePlan(companyId: companyId)
 
             let newStatus: RateStatus = effectiveStartDate > Date()
             ? .scheduled
@@ -295,9 +297,10 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
         technicianId: String,
         row: TechnicianRateMatrixRow
     ) -> [TechnicianRate] {
+        
         rates
             .filter {
-                $0.companyId == companyId &&
+//                $0.companyId == companyId &&
                 $0.technicianId == technicianId &&
                 $0.workTypeId == row.workTypeId
             }
@@ -306,14 +309,15 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
             }
     }
 
-    private func activeOrCreateRatePlan() async throws -> CompanyRatePlan {
+    private func activeOrCreateRatePlan(companyId:String) async throws -> CompanyRatePlan {
         if let activePlan = ratePlans
             .filter({ $0.status == .active })
             .sorted(by: { $0.effectiveStartDate > $1.effectiveStartDate })
             .first {
             return activePlan
         }
-
+    
+        
         let newPlan = CompanyRatePlan(
             id: PayrollIdFactory.companyRatePlanId(),
             companyId: companyId,
@@ -365,54 +369,105 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
 
 // MARK: - View
 
+// MARK: - Mobile Technician Rate Setup View
+
 struct TechnicianRateMatrixView: View {
+    @EnvironmentObject var masterDataManager: MasterDataManager
 
     @StateObject private var viewModel: TechnicianRateMatrixViewModel
     @State private var editorRoute: TechnicianRateEditorRoute?
-
-    private let firstColumnWidth: CGFloat = 220
-    private let techColumnWidth: CGFloat = 145
-    private let rowHeight: CGFloat = 78
+    @State private var selectedTechnicianId: String?
 
     init(
-        companyId: String,
         currentUserId: String,
         dataService: any ProductionDataServiceProtocol
     ) {
         _viewModel = StateObject(
             wrappedValue: TechnicianRateMatrixViewModel(
-                companyId: companyId,
                 currentUserId: currentUserId,
                 dataService: dataService
             )
         )
     }
 
+    private var selectedTechnician: CompanyUser? {
+        if let selectedTechnicianId,
+           let technician = viewModel.visibleTechnicians.first(where: { $0.userId == selectedTechnicianId }) {
+            return technician
+        }
+
+        return viewModel.visibleTechnicians.first
+    }
+
+    private var selectedTechnicianRates: [TechnicianRate] {
+        guard let selectedTechnician else { return [] }
+
+        return viewModel.rates
+            .filter { $0.technicianId == selectedTechnician.userId }
+            .sorted { $0.effectiveStartDate > $1.effectiveStartDate }
+    }
+
+    private var selectedCurrentRateCount: Int {
+        guard let currentCompany = masterDataManager.currentCompany,
+              let selectedTechnician else { return 0 }
+
+        return viewModel.matrixRows.filter { row in
+            viewModel.currentRate(
+                companyId: currentCompany.id,
+                technicianId: selectedTechnician.userId,
+                row: row
+            ) != nil
+        }
+        .count
+    }
+
+    private var selectedMissingRateCount: Int {
+        guard let currentCompany = masterDataManager.currentCompany,
+              let selectedTechnician else { return 0 }
+
+        return viewModel.matrixRows.filter { row in
+            viewModel.currentRate(
+                companyId: currentCompany.id,
+                technicianId: selectedTechnician.userId,
+                row: row
+            ) == nil
+        }
+        .count
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            controls
+        List {
+            overviewSection
+            technicianPickerSection
 
-            Divider()
-
-            if viewModel.visibleTechnicians.isEmpty {
-                emptyWorkersView
-            } else if viewModel.matrixRows.isEmpty {
-                emptyRowsView
+            if let selectedTechnician {
+                selectedTechnicianSummarySection(selectedTechnician)
+                rateRowsSection(selectedTechnician)
             } else {
-                matrixView
+                emptyWorkersSection
             }
         }
-        .navigationTitle("Rate Matrix")
+        .navigationTitle("Technician Rates")
         .searchable(text: $viewModel.searchText, prompt: "Search work types")
         .task {
-            await viewModel.load()
+            guard let currentCompany = masterDataManager.currentCompany else { return }
+            await viewModel.load(companyId: currentCompany.id)
+
+            if selectedTechnicianId == nil {
+                selectedTechnicianId = viewModel.visibleTechnicians.first?.userId
+            }
         }
         .refreshable {
-            await viewModel.load(forceRefresh: true)
+            guard let currentCompany = masterDataManager.currentCompany else { return }
+            await viewModel.load(companyId: currentCompany.id, forceRefresh: true)
+
+            if selectedTechnicianId == nil {
+                selectedTechnicianId = viewModel.visibleTechnicians.first?.userId
+            }
         }
         .overlay {
             if viewModel.isLoading {
-                ProgressView("Loading rate matrix...")
+                ProgressView("Loading rates...")
                     .padding()
                     .background(.thinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -429,7 +484,10 @@ struct TechnicianRateMatrixView: View {
                 )
             ) { amountCents, rateType, payBasis, effectiveStartDate, reason in
                 Task {
+                    guard let currentCompany = masterDataManager.currentCompany else { return }
+
                     await viewModel.saveRate(
+                        companyId: currentCompany.id,
                         technician: route.technician,
                         row: route.row,
                         existingRate: route.currentRate,
@@ -442,133 +500,328 @@ struct TechnicianRateMatrixView: View {
                 }
             }
         }
-        .alert("Technician Rate Matrix", isPresented: $viewModel.showAlert) {
+        .alert("Technician Rates", isPresented: $viewModel.showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.alertMessage)
         }
     }
 
-    private var controls: some View {
-        VStack(spacing: 10) {
-            HStack {
-                MatrixSummaryChip(
+    private var overviewSection: some View {
+        Section {
+            HStack(spacing: 10) {
+                TechnicianRateSetupSummaryChip(
                     title: "Workers",
-                    value: "\(viewModel.visibleTechnicians.count)"
+                    value: "\(viewModel.visibleTechnicians.count)",
+                    systemImage: "person.2"
                 )
 
-                MatrixSummaryChip(
-                    title: "Current Rates",
-                    value: "\(viewModel.activeRateCount)"
+                TechnicianRateSetupSummaryChip(
+                    title: "Rates",
+                    value: "\(viewModel.activeRateCount)",
+                    systemImage: "dollarsign.circle"
                 )
 
-                MatrixSummaryChip(
-                    title: "Missing",
-                    value: "\(viewModel.missingRateCellCount)"
-                )
+                if let currentCompany = masterDataManager.currentCompany {
+                    TechnicianRateSetupSummaryChip(
+                        title: "Missing",
+                        value: "\(viewModel.missingRateCellCount(companyId: currentCompany.id))",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                }
             }
-            .padding(.horizontal)
-            .padding(.top, 10)
 
-            HStack {
-                Toggle("Hourly row", isOn: $viewModel.showHourlyRow)
-                Spacer()
-                Toggle("Inactive workers", isOn: $viewModel.showInactiveWorkers)
-            }
-            .font(.caption)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
+            Toggle("Show hourly rate row", isOn: $viewModel.showHourlyRow)
+            Toggle("Show inactive workers", isOn: $viewModel.showInactiveWorkers)
+        } header: {
+            Text("Setup")
+        } footer: {
+            Text("Pick one technician at a time and set their rates by work type. This is easier to use on iPhone than a spreadsheet-style grid.")
         }
     }
 
-    private var matrixView: some View {
-        ScrollView([.horizontal, .vertical]) {
-            VStack(alignment: .leading, spacing: 0) {
-                headerRow
+    private var technicianPickerSection: some View {
+        Section {
+            if viewModel.visibleTechnicians.isEmpty {
+                ContentUnavailableView(
+                    "No Payroll Workers",
+                    systemImage: "person.2.slash",
+                    description: Text("Add active company users marked as Employee or Independent Contractor before creating technician rates.")
+                )
+            } else {
+                Picker("Technician", selection: selectedTechnicianBinding) {
+                    ForEach(viewModel.visibleTechnicians) { technician in
+                        Text(technician.payrollDisplayName)
+                            .tag(Optional(technician.userId))
+                    }
+                }
 
-                ForEach(viewModel.matrixRows) { row in
-                    HStack(spacing: 0) {
-                        RateMatrixWorkTypeCell(
-                            row: row,
-                            width: firstColumnWidth,
-                            height: rowHeight
-                        )
-
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
                         ForEach(viewModel.visibleTechnicians) { technician in
-                            let rate = viewModel.currentRate(
-                                technicianId: technician.userId,
-                                row: row
-                            )
-
                             Button {
-                                editorRoute = TechnicianRateEditorRoute(
-                                    row: row,
-                                    technician: technician,
-                                    currentRate: rate
-                                )
+                                selectedTechnicianId = technician.userId
                             } label: {
-                                RateMatrixRateCell(
-                                    rate: rate,
-                                    defaultRateType: row.defaultRateType,
-                                    width: techColumnWidth,
-                                    height: rowHeight
+                                TechnicianRateWorkerPill(
+                                    technician: technician,
+                                    isSelected: selectedTechnicianId == technician.userId ||
+                                    (selectedTechnicianId == nil && technician.userId == viewModel.visibleTechnicians.first?.userId)
                                 )
                             }
                             .buttonStyle(.plain)
                         }
                     }
-
-                    Divider()
+                    .padding(.vertical, 4)
                 }
             }
+        } header: {
+            Text("Technician")
         }
     }
 
-    private var headerRow: some View {
-        HStack(spacing: 0) {
-            Text("Work Type")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .frame(width: firstColumnWidth, height: 44, alignment: .leading)
-                .padding(.leading, 12)
-                .background(.thinMaterial)
+    private func selectedTechnicianSummarySection(_ technician: CompanyUser) -> some View {
+        Section {
+            HStack(spacing: 10) {
+                TechnicianRateSetupSummaryChip(
+                    title: "Current",
+                    value: "\(selectedCurrentRateCount)",
+                    systemImage: "checkmark.circle"
+                )
 
-            ForEach(viewModel.visibleTechnicians) { technician in
-                VStack(spacing: 2) {
-                    Text(technician.payrollDisplayName)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
+                TechnicianRateSetupSummaryChip(
+                    title: "Missing",
+                    value: "\(selectedMissingRateCount)",
+                    systemImage: "plus.circle"
+                )
 
-                    Text(technician.workerType.rawValue)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .frame(width: techColumnWidth, height: 44)
-                .background(.thinMaterial)
+                TechnicianRateSetupSummaryChip(
+                    title: "History",
+                    value: "\(selectedTechnicianRates.count)",
+                    systemImage: "clock.arrow.circlepath"
+                )
             }
+
+            HStack {
+                Label(technician.workerType.rawValue, systemImage: "person.crop.circle.badge.checkmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(technician.status.rawValue)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(technician.status == .active ? .green : .orange)
+            }
+        } header: {
+            Text(technician.payrollDisplayName)
         }
     }
 
-    private var emptyWorkersView: some View {
-        ContentUnavailableView(
-            "No Payroll Workers",
-            systemImage: "person.2.slash",
-            description: Text("Add active company users marked as Employee or Independent Contractor before creating technician rates.")
-        )
+    private func rateRowsSection(_ technician: CompanyUser) -> some View {
+        Section {
+            if viewModel.matrixRows.isEmpty {
+                ContentUnavailableView(
+                    "No Work Types",
+                    systemImage: "list.bullet.rectangle",
+                    description: Text("Create Company Work Types before setting technician rates.")
+                )
+            } else if let currentCompany = masterDataManager.currentCompany {
+                ForEach(viewModel.matrixRows) { row in
+                    let rate = viewModel.currentRate(
+                        companyId: currentCompany.id,
+                        technicianId: technician.userId,
+                        row: row
+                    )
+
+                    Button {
+                        editorRoute = TechnicianRateEditorRoute(
+                            row: row,
+                            technician: technician,
+                            currentRate: rate
+                        )
+                    } label: {
+                        TechnicianRateSetupRow(
+                            row: row,
+                            rate: rate
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } header: {
+            Text("Rates")
+        } footer: {
+            Text("Tap any work type to add a starting rate or create a rate increase. Existing rates are expired instead of overwritten.")
+        }
     }
 
-    private var emptyRowsView: some View {
-        ContentUnavailableView(
-            "No Work Types",
-            systemImage: "list.bullet.rectangle",
-            description: Text("Create Company Work Types before building the technician rate matrix.")
+    private var emptyWorkersSection: some View {
+        Section {
+            ContentUnavailableView(
+                "No Technician Selected",
+                systemImage: "person.crop.circle.badge.questionmark",
+                description: Text("Select a technician to edit their rates.")
+            )
+        }
+    }
+
+    private var selectedTechnicianBinding: Binding<String?> {
+        Binding(
+            get: {
+                selectedTechnician?.userId
+            },
+            set: { newValue in
+                selectedTechnicianId = newValue
+            }
         )
     }
 }
+// MARK: - Mobile Rate Setup Components
 
+struct TechnicianRateSetupSummaryChip: View {
+    var title: String
+    var value: String
+    var systemImage: String
+
+    var body: some View {
+        VStack(spacing: 5) {
+            Image(systemName: systemImage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.headline)
+
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+struct TechnicianRateWorkerPill: View {
+    var technician: CompanyUser
+    var isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: technician.workerType == .contractor ? "person.crop.circle.badge.checkmark" : "person.crop.circle")
+                .font(.caption)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(technician.payrollDisplayName)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+
+                Text(technician.workerType.rawValue)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            isSelected
+            ? Color.accentColor.opacity(0.18)
+            : Color.primary.opacity(0.05),
+            in: Capsule()
+        )
+        .overlay {
+            Capsule()
+                .stroke(
+                    isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.08),
+                    lineWidth: 1
+                )
+        }
+    }
+}
+
+struct TechnicianRateSetupRow: View {
+    var row: TechnicianRateMatrixRow
+    var rate: TechnicianRate?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: row.iconName)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(rate == nil ? .secondary : .primary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(row.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    if let rate {
+                        Text(RateMatrixMoneyFormatter.money(rate.amountCents))
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                    } else {
+                        Text("Set")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.accent)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                    }
+                }
+
+                Text(row.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                if let rate {
+                    HStack(spacing: 6) {
+                        Text(rate.payBasis.title)
+                        Text("•")
+                        Text(rate.rateType.title)
+                        Text("•")
+                        Text(rate.status.title)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                    Text("Effective \(RateMatrixDateFormatter.shortDate(rate.effectiveStartDate))")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+
+                    if let reason = rate.reason,
+                       !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(reason)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        Text(row.defaultPayBasis.title)
+                        Text("•")
+                        Text(row.defaultRateType.title)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                }
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.top, 6)
+        }
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+    }
+}
 // MARK: - Matrix Cells
 
 struct MatrixSummaryChip: View {
@@ -588,76 +841,6 @@ struct MatrixSummaryChip: View {
         .padding(.vertical, 8)
         .background(.thinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-}
-
-struct RateMatrixWorkTypeCell: View {
-    var row: TechnicianRateMatrixRow
-    var width: CGFloat
-    var height: CGFloat
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: row.iconName)
-                .frame(width: 28)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(row.title)
-                    .font(.headline)
-                    .lineLimit(1)
-
-                Text(row.subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                Text(row.defaultPayBasis.title)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer()
-        }
-        .frame(width: width, height: height, alignment: .leading)
-        .padding(.horizontal, 12)
-    }
-}
-
-struct RateMatrixRateCell: View {
-    var rate: TechnicianRate?
-    var defaultRateType: RateType
-    var width: CGFloat
-    var height: CGFloat
-
-    var body: some View {
-        VStack(spacing: 4) {
-            if let rate {
-                Text(RateMatrixMoneyFormatter.money(rate.amountCents))
-                    .font(.headline)
-
-                Text(rate.rateType.title)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                if rate.status == .scheduled {
-                    Text("Scheduled")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-            } else {
-                Image(systemName: "plus.circle")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-
-                Text(defaultRateType.title)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .frame(width: width, height: height)
-        .contentShape(Rectangle())
     }
 }
 
@@ -954,7 +1137,6 @@ enum RateMatrixDateFormatter {
 #Preview {
     NavigationStack {
         TechnicianRateMatrixView(
-            companyId: "com_mock_company",
             currentUserId: "mock_admin_user",
             dataService: MockDataService()
         )

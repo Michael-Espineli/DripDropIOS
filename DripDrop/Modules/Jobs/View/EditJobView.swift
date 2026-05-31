@@ -35,7 +35,7 @@ struct EditJobView: View {
     @State var viewList:[String] = ["Info","Customer","Parts","Schedule","Review"]
     @State var jobId:String = "J"
 //Body Of Water
-    @State var jobTemplate:JobTemplate = JobTemplate(id: "", name: "")
+    @State var jobTemplate:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @State var serviceStopTemplate:ServiceStopTemplate = ServiceStopTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), color: "")
 
     @State var dateCreated:Date = Date()
@@ -300,9 +300,6 @@ struct EditJobView: View {
             }
             @State var viewList:[String] = ["Info","Customer","Parts","Schedule","Review"]
 
-        })
-        .onChange(of: jobTemplate, perform: { template in
-            rate = template.rate ?? "0"
         })
         .onChange(
             of: customer,
@@ -879,7 +876,8 @@ extension EditJobView {
                     Text("Job Type")
                         .bold(true)
                     Picker("Job Type", selection: $jobTemplate) {
-                        Text("Pick Type").tag(JobTemplate(id: "", name: ""))
+                        Text("Pick Type").tag(JobTemplate(companyId: "", name: "", createdByUserId: ""))
+                        
                         ForEach(settingsVM.jobTemplates){ template in
                             Text(template.name).tag(template)
                         }

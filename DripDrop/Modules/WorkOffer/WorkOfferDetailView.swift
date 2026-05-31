@@ -2,6 +2,8 @@
 //  WorkOfferDetailView.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/22/26.
+//
 
 import SwiftUI
 
@@ -23,7 +25,9 @@ struct WorkOfferDetailView: View {
 
     @State private var showCancelConfirmation: Bool = false
     @State private var cancelReason: String = ""
-
+    
+    @State private var showScheduleSheet: Bool = false
+    
     private var selectedTasks: [JobTask] {
         jobTasks.filter { offer.jobTaskIds.contains($0.id) }
     }
@@ -71,6 +75,21 @@ struct WorkOfferDetailView: View {
         }
         .navigationTitle("Work Offer")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showScheduleSheet) {
+            ScheduleAcceptedWorkOfferView(
+                companyId: companyId,
+                currentUserId: currentUserId,
+                currentUserName: currentUserName,
+                offer: offer,
+                jobTasks: jobTasks,
+                dataService: dataService,
+                onScheduled: {
+                    onChanged()
+                    dismiss()
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
         .alert("Work Offer", isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -204,9 +223,16 @@ struct WorkOfferDetailView: View {
             }
 
             if !offer.serviceStopId.isEmpty {
-                WorkOfferDetailRow(title: "Service Stop", value: offer.serviceStopInternalId.isEmpty ? offer.serviceStopId : offer.serviceStopInternalId)
+                TechnicianWorkDetailRow(
+                    title: "Service Stop",
+                    value: offer.serviceStopInternalId.isEmpty ? offer.serviceStopId : offer.serviceStopInternalId
+                )
+            } else if offer.status == .accepted {
+                Text("Accepted. Waiting for admin to schedule the service stop.")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
             } else {
-                Text("No service stop is linked yet.")
+                Text("This offer is not linked to a scheduled service stop yet.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -254,11 +280,9 @@ struct WorkOfferDetailView: View {
 
             if canMarkScheduled {
                 Button {
-                    Task {
-                        await updateStatus(.scheduled)
-                    }
+                    showScheduleSheet = true
                 } label: {
-                    Label("Mark Scheduled", systemImage: "calendar.badge.checkmark")
+                    Label("Create Scheduled Service Stop", systemImage: "calendar.badge.plus")
                 }
                 .disabled(isSaving)
             }

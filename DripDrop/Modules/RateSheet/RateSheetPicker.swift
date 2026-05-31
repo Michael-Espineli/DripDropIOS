@@ -15,7 +15,7 @@ struct RateSheetPicker: View {
     
     @StateObject var companyUserVM = CompanyUserViewModel()
     @Binding var rateSheet:RateSheet
-    @State var template:JobTemplate = JobTemplate(id: "", name: "")
+    @State var template:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @State var rateStr:String = "0"
     @State var startDate:Date = Date()
     @State var showTemplatePicker:Bool = false

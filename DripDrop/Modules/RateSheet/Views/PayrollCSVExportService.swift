@@ -64,7 +64,7 @@ enum PayrollCSVExportService {
                 optionalDateTime(statement.approvedAt),
                 optionalDateTime(statement.paidAt),
                 optionalDateTime(statement.exportedAt),
-                statement.exportProvider ?? "",
+                statement.exportProvider?.rawValue ?? "",
                 statement.externalReferenceId ?? "",
                 statement.notes ?? ""
             ]
@@ -298,7 +298,7 @@ enum PayrollCSVExportService {
                 optionalDateTime(statement.approvedAt),
                 optionalDateTime(statement.paidAt),
                 optionalDateTime(statement.exportedAt),
-                statement.exportProvider ?? "",
+                statement.exportProvider?.rawValue ?? "",
                 statement.externalReferenceId ?? "",
                 statement.notes ?? ""
             ])

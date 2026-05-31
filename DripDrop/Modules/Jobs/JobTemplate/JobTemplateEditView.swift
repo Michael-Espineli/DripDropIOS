@@ -86,16 +86,13 @@ struct JobTemplateEditView: View {
         }
         .onAppear(perform: {
             name = jobTemplate.name
-            type = jobTemplate.type ?? ""
             color = jobTemplate.color ?? ""
-            rate = jobTemplate.rate ?? "0"
-            symbol = jobTemplate.typeImage ?? ""
         })
     }
 }
 
 struct JobTemplateEditView_Previews: PreviewProvider {
-    static let jobTemplate:JobTemplate = JobTemplate(id: UUID().uuidString, name: "Name")
+    static let jobTemplate:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     static var previews: some View {
         JobTemplateEditView(jobTemplate: jobTemplate)
     }

@@ -11,19 +11,224 @@ import FirebaseFirestoreSwift
 import Firebase
 import Darwin
 
-struct JobTemplate:Identifiable, Codable,Hashable{
-    
-    var id :String
+struct JobTemplate: Identifiable, Codable, Hashable {
+    var id: String
+    var companyId: String
+
     var name: String
-    var type: String?
-    var typeImage: String?
+    var description: String
 
-    var dateCreated : Date?
-    var rate : String?
+    var jobType: String
+    var jobTypeImage: String?
+
+    var defaultRateCents: Int
+    var defaultLaborCostCents: Int
+
     var color: String?
-    var locked: Bool?
+    var isActive: Bool
+    var locked: Bool
 
+    var createdAt: Date
+    var createdByUserId: String
+    var updatedAt: Date?
+
+    init(
+        id: String = "comp_job_template_" + UUID().uuidString,
+        companyId: String,
+        name: String,
+        description: String = "",
+        jobType: String = "",
+        jobTypeImage: String? = nil,
+        defaultRateCents: Int = 0,
+        defaultLaborCostCents: Int = 0,
+        color: String? = nil,
+        isActive: Bool = true,
+        locked: Bool = false,
+        createdAt: Date = Date(),
+        createdByUserId: String,
+        updatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.companyId = companyId
+        self.name = name
+        self.description = description
+        self.jobType = jobType
+        self.jobTypeImage = jobTypeImage
+        self.defaultRateCents = defaultRateCents
+        self.defaultLaborCostCents = defaultLaborCostCents
+        self.color = color
+        self.isActive = isActive
+        self.locked = locked
+        self.createdAt = createdAt
+        self.createdByUserId = createdByUserId
+        self.updatedAt = updatedAt
+    }
 }
+
+struct JobTemplatePlannedServiceStop: Identifiable, Codable, Hashable {
+    var id: String
+    var companyId: String
+    var templateId: String
+
+    var name: String
+    var description: String
+
+    var serviceStopTypeId: String
+    var serviceStopTypeName: String
+    var serviceStopTypeImage: String
+    var serviceStopTypeUseCaseRawValue: String
+
+    var estimatedMinutes: Int
+    var sortOrder: Int
+
+    var taskTemplateIds: [String]
+
+    var plannedLaborCostCents: Int?
+    var plannedLaborNotes: String?
+
+    init(
+        id: String = "comp_job_template_plan_stop_" + UUID().uuidString,
+        companyId: String,
+        templateId: String,
+        name: String,
+        description: String = "",
+        serviceStopTypeId: String,
+        serviceStopTypeName: String,
+        serviceStopTypeImage: String,
+        serviceStopTypeUseCaseRawValue: String,
+        estimatedMinutes: Int,
+        sortOrder: Int,
+        taskTemplateIds: [String] = [],
+        plannedLaborCostCents: Int? = nil,
+        plannedLaborNotes: String? = nil
+    ) {
+        self.id = id
+        self.companyId = companyId
+        self.templateId = templateId
+        self.name = name
+        self.description = description
+        self.serviceStopTypeId = serviceStopTypeId
+        self.serviceStopTypeName = serviceStopTypeName
+        self.serviceStopTypeImage = serviceStopTypeImage
+        self.serviceStopTypeUseCaseRawValue = serviceStopTypeUseCaseRawValue
+        self.estimatedMinutes = estimatedMinutes
+        self.sortOrder = sortOrder
+        self.taskTemplateIds = taskTemplateIds
+        self.plannedLaborCostCents = plannedLaborCostCents
+        self.plannedLaborNotes = plannedLaborNotes
+    }
+}
+
+struct JobTemplateTask: Identifiable, Codable, Hashable {
+    var id: String
+    var companyId: String
+    var templateId: String
+
+    var name: String
+    var type: JobTaskType
+    var description: String
+
+    var contractedRate: Int
+    var estimatedTime: Int
+    var customerApproval: Bool
+
+    var equipmentId: String?
+    var serviceLocationId: String?
+    var bodyOfWaterId: String?
+    var dataBaseItemId: String?
+
+    var sortOrder: Int
+
+    init(
+        id: String = "comp_job_template_task_" + UUID().uuidString,
+        companyId: String,
+        templateId: String,
+        name: String,
+        type: JobTaskType,
+        description: String = "",
+        contractedRate: Int,
+        estimatedTime: Int,
+        customerApproval: Bool = false,
+        equipmentId: String? = nil,
+        serviceLocationId: String? = nil,
+        bodyOfWaterId: String? = nil,
+        dataBaseItemId: String? = nil,
+        sortOrder: Int
+    ) {
+        self.id = id
+        self.companyId = companyId
+        self.templateId = templateId
+        self.name = name
+        self.type = type
+        self.description = description
+        self.contractedRate = contractedRate
+        self.estimatedTime = estimatedTime
+        self.customerApproval = customerApproval
+        self.equipmentId = equipmentId
+        self.serviceLocationId = serviceLocationId
+        self.bodyOfWaterId = bodyOfWaterId
+        self.dataBaseItemId = dataBaseItemId
+        self.sortOrder = sortOrder
+    }
+}
+
+struct JobTemplateShoppingItem: Identifiable, Codable, Hashable {
+    var id: String
+    var companyId: String
+    var templateId: String
+
+    var subCategory: ShoppingListSubCategory
+
+    var name: String
+    var description: String
+    var quantity: String
+
+    var dbItemId: String?
+    var genericItemId: String?
+
+    var plannedUnitCostCents: Int?
+    var plannedUnitPriceCents: Int?
+    var plannedTotalCostCents: Int?
+    var plannedTotalPriceCents: Int?
+
+    var billable: Bool
+    var sortOrder: Int
+
+    init(
+        id: String = "comp_job_template_shop_item_" + UUID().uuidString,
+        companyId: String,
+        templateId: String,
+        subCategory: ShoppingListSubCategory,
+        name: String,
+        description: String = "",
+        quantity: String,
+        dbItemId: String? = nil,
+        genericItemId: String? = nil,
+        plannedUnitCostCents: Int? = nil,
+        plannedUnitPriceCents: Int? = nil,
+        plannedTotalCostCents: Int? = nil,
+        plannedTotalPriceCents: Int? = nil,
+        billable: Bool,
+        sortOrder: Int
+    ) {
+        self.id = id
+        self.companyId = companyId
+        self.templateId = templateId
+        self.subCategory = subCategory
+        self.name = name
+        self.description = description
+        self.quantity = quantity
+        self.dbItemId = dbItemId
+        self.genericItemId = genericItemId
+        self.plannedUnitCostCents = plannedUnitCostCents
+        self.plannedUnitPriceCents = plannedUnitPriceCents
+        self.plannedTotalCostCents = plannedTotalCostCents
+        self.plannedTotalPriceCents = plannedTotalPriceCents
+        self.billable = billable
+        self.sortOrder = sortOrder
+    }
+}
+// I dont think I use this anywhere
 struct ServiceStopTemplate:Identifiable, Codable,Hashable{
     
     var id :String
@@ -328,19 +533,7 @@ final class SettingsManager {
 
         let startUpEstimateId = "2"
 
-        let InitialTemplates:[JobTemplate] = [
-  
-            JobTemplate(id: weeklyCleaningId, name: "Weekly Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "red",locked: true),
-            JobTemplate(id: filterCleaningId, name: "Filter Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "120", color: "orange"),
-            JobTemplate(id: saltCellId, name: "Salt Cell Cleaning", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "85", color: "yellow"),
-            JobTemplate(id: esitmateId, name: "Weekly Cleaning Estimate", type: "Estimate", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "green"),
-            JobTemplate(id: serviceCallId, name: "Service Call", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "blue"),
-            JobTemplate(id: DrainandfillID, name: "Drain and Fill", type: "Maintenance", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "purple"),
-            JobTemplate(id: isntallId, name: "Installation", type: "Installation", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "pink"),
-            
-            JobTemplate(id: repairID, name: "Repair", type: "Repair", typeImage: "wrench", dateCreated: Date(), rate: "0", color: "white"),
-            JobTemplate(id: startUpEstimateId, name: "Start Up Estimate", type: "Estimate", typeImage: "list.clipboard", dateCreated: Date(), rate: "0", color: "black",locked: true)
-        ]
+        let InitialTemplates:[JobTemplate] = []
         let InitialServiceStopTemplates:[ServiceStopTemplate] = [
   
             ServiceStopTemplate(id: serviceStopEstiamteId, name: "Estimate", type: "Estimate" , typeImage: "list.clipboard", dateCreated: Date(), color: "red"),

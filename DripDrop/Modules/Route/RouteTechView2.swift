@@ -77,7 +77,7 @@ struct RouteTechView2: View {
                 .padding(.horizontal, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemBackground))
+                        .fill(Color(.systemBackground).opacity(0.75))
                 )
                 if let selectedRoute = VM.selectedRoute, selectedRoute.id == route.id {
                     ForEach(route.order) { order in

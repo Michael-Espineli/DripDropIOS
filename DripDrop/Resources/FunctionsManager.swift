@@ -20,6 +20,7 @@ final class FunctionsManager {
     
     static let shared = FunctionsManager()
     private init(){}
+    // MARK: updateServiceStopPermanently
     func updateServiceStopPermanently(companyId:String,serviceStopList:[ServiceStop],newTech:CompanyUser,newDay:DaysOfWeek){
         let payload: [String: Any] = [
             "companyId": companyId,
@@ -42,6 +43,7 @@ final class FunctionsManager {
             }
         }
     }
+        // MARK: updateRecurringRouteOrderPermanently
     func updateRecurringRouteOrderPermanently(companyId:String, routeId:String, recurringRouteOrder:[recurringRouteOrder],serviceStopOrders:[ServiceStopOrder]){
         let payload: [String: Any] = [
             "companyId": companyId,
@@ -65,6 +67,7 @@ final class FunctionsManager {
             }
         }
     }
+        // MARK: sendServiceReportOnFinish
     func sendServiceReportOnFinish(companyId:String, stopId:String) async throws {
         let payload: [String: Any]  = [
             "companyId":companyId,
@@ -88,6 +91,7 @@ final class FunctionsManager {
         print("    [FunctionsManager][sendServiceReportOnFinish] Sent Email 1 and 2")
 
     }
+        // MARK: createFirstRecurringServiceStop
     func createFirstRecurringServiceStop(companyId:String, recurringServiceStop: RecurringServiceStop) async throws {
         let payload: [String: Any]  = [
             "companyId": companyId,
@@ -120,9 +124,9 @@ final class FunctionsManager {
                 "serviceLocationId": recurringServiceStop.serviceLocationId,
                 "estimatedTime": recurringServiceStop.estimatedTime,
                 "otherCompany": recurringServiceStop.otherCompany,
-                "laborContractId": recurringServiceStop.laborContractId ?? nil,
-                "contractedCompanyId": recurringServiceStop.contractedCompanyId ?? nil,
-                "mainCompanyId": recurringServiceStop.mainCompanyId ?? nil
+                "laborContractId": recurringServiceStop.laborContractId ?? "",
+                "contractedCompanyId": recurringServiceStop.contractedCompanyId ?? "",
+                "mainCompanyId": recurringServiceStop.mainCompanyId ?? ""
                 
             ] as [String: Any],
             
@@ -141,16 +145,50 @@ final class FunctionsManager {
         guard let d = date else { return NSNull() }
         return Int64(d.timeIntervalSince1970 * 1000)
     }
+    
+        // MARK: updateRecurringServiceStop
+    func updateRecurringServiceStop(companyId:String, recurringServiceStop:RecurringServiceStop) async throws {
+        let recurringServiceStopData = try recurringServiceStop.asDictionary()
+
+        let payload: [String: Any]  = [
+            "companyId":companyId,
+            "recurringServiceStop":recurringServiceStopData,
+        ]
+        print("  [FunctionsManager][updateRecurringServiceStop]recurringServiceStopData: ")
+        print(recurringServiceStopData)
+        print("")
+        let callable = functions.httpsCallable("updateRecurringServiceStop")
+        let result = try await callable.call(payload)
+        guard let json = result.data as? [String: Any] else {
+            print("      [FunctionsManager][updateRecurringServiceStop] Error: Unable to read JSON from function response.")
+            throw FireBaseRead.unableToRead
+        }
+    }
+        // MARK: deleteRecurringServiceStop
     func deleteRecurringServiceStop(companyId:String, stopId:String) async throws {
         let payload: [String: Any]  = [
             "companyId":companyId,
-            "recurringServiceStop":stopId,
+            "stopId":stopId,
         ]
         let callable = functions.httpsCallable("deleteRecurringServiceStop")
         let result = try await callable.call(payload)
         guard let json = result.data as? [String: Any] else {
-            print("      [FunctionsManager][sendServiceReportOnFinish] Error: Unable to read JSON from function response.")
+            print("      [FunctionsManager][deleteRecurringServiceStop] Error: Unable to read JSON from function response.")
             throw FireBaseRead.unableToRead
         }
     }
+        // MARK: sendJobEstimate
+    
+func sendJobEstimate(companyId:String, jobId:String) async throws {
+    let payload: [String: Any]  = [
+        "companyId":companyId,
+        "jobId":jobId,
+    ]
+    let callable = functions.httpsCallable("deleteRecurringServiceStop")
+    let result = try await callable.call(payload)
+    guard let json = result.data as? [String: Any] else {
+        print("      [FunctionsManager][sendJobEstimate] Error: Unable to read JSON from function response.")
+        throw FireBaseRead.unableToRead
+    }
+}
 }

@@ -76,15 +76,7 @@ final class ReassignRouteViewModel:ObservableObject{
     @Published private(set) var customers: [Customer] = []
     @Published private(set) var companyUsers: [CompanyUser] = []
     @Published private(set) var jobTemplates: [JobTemplate] = []
-    @Published private(set) var jobType:JobTemplate = JobTemplate(
-        id: "",
-        name: "Job Template",
-        type: "",
-        typeImage: "",
-        dateCreated: Date(),
-        rate: "",
-        color: ""
-    )
+    @Published private(set) var jobType:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
 
     func onLoad(companyId:String) async throws {
         

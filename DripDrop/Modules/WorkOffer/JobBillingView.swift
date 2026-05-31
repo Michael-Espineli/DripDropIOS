@@ -2,6 +2,8 @@
 //  JobBillingView.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/23/26.
+//
 
 import SwiftUI
 
@@ -380,6 +382,8 @@ struct JobBillingView: View {
             return 4
         case .paid:
             return 5
+        case .expired:
+            return 6
         }
     }
 }

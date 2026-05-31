@@ -105,7 +105,7 @@ extension ProductionDataService {
         
         print("Getting All Service Stops By Tech For \(tech.firstName) \(tech.lastName) and Day by \(fullDate(date: date)) - [Data Service]")
         return try await serviceStopCollection(companyId: companyId)
-            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThan: date.startOfDay())
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: date.endOfDay())
             .whereField(ServiceStop.CodingKeys.techId.stringValue, isEqualTo: tech.id)
             .getDocuments(as:ServiceStop.self)
@@ -114,7 +114,7 @@ extension ProductionDataService {
     func getAllServiceStopsByTechAndDate(companyId: String,date:Date,tech:CompanyUser) async throws -> [ServiceStop] {
         print("Getting All Service Stops By Tech For \(tech.userName)and Day by \(fullDate(date: date))- [Data Service]")
         return try await serviceStopCollection(companyId: companyId)
-            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThan: date.startOfDay())
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: date.endOfDay())
             .whereField(ServiceStop.CodingKeys.techId.stringValue, isEqualTo: tech.userId)
             .getDocuments(as:ServiceStop.self)
@@ -123,7 +123,7 @@ extension ProductionDataService {
     func getAllServiceStopsByTechAndDateCount(companyId: String,date:Date,tech:DBUser) async throws -> Int{
         //MEMORY LEAK
         return try await serviceStopCollection(companyId: companyId)
-            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThan: date.startOfDay())
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: date.endOfDay())
             .whereField(ServiceStop.CodingKeys.techId.stringValue, isEqualTo: tech.id)
             .count.getAggregation(source: .server).count as! Int
@@ -132,7 +132,7 @@ extension ProductionDataService {
     }
     func getAllServiceStopsByTechAndDateAndFinishedCount(companyId: String,date:Date,tech:DBUser) async throws -> Int{
         return try await serviceStopCollection(companyId: companyId)
-            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThan: date.startOfDay())
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: date.endOfDay())
             .whereField(ServiceStop.CodingKeys.techId.stringValue, isEqualTo: tech.id)
             .whereField(ServiceStop.CodingKeys.operationStatus.stringValue, isEqualTo: ServiceStopOperationStatus.finished.rawValue)
@@ -310,7 +310,7 @@ extension ProductionDataService {
         let end = calendar.date(byAdding: .day, value: 1, to: start)!
         
         return try await serviceStopCollection(companyId: companyId)
-            .whereField("serviceDate", isGreaterThan: start)
+            .whereField("serviceDate", isGreaterThanOrEqualTo: start)
             .whereField("serviceDate", isLessThan: end)
             .whereField("techId", isEqualTo: techId)
             .getDocuments(as:ServiceStop.self)
@@ -420,6 +420,20 @@ extension ProductionDataService {
             ServiceStop.CodingKeys.techId.rawValue: companyUser.userId,
             ServiceStop.CodingKeys.tech.rawValue: companyUser.userName,
         ])
+
+        _ = try? await syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: serviceStop.serviceDate,
+            techId: serviceStop.techId,
+            techName: serviceStop.tech
+        )
+
+        _ = try? await syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: serviceDate,
+            techId: companyUser.userId,
+            techName: companyUser.userName
+        )
     }
     func updateServiceStopIsInvoiced(companyId:String,serviceStopId:String,isInvoiced:Bool) async throws{
         let ref = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
@@ -455,9 +469,17 @@ extension ProductionDataService {
         print("Company Id : \(companyId)")
             let itemRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
             
-            try await itemRef.updateData([
-                ServiceStop.CodingKeys.operationStatus.rawValue:operationStatus.rawValue
-            ])
+        try await itemRef.updateData([
+            ServiceStop.CodingKeys.operationStatus.rawValue:operationStatus.rawValue
+        ])
+
+        let updatedStop = try await itemRef.getDocument(as: ServiceStop.self)
+        _ = try? await syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: updatedStop.serviceDate,
+            techId: updatedStop.techId,
+            techName: updatedStop.tech
+        )
     }
     func updateServiceStopStartTime(companyId:String,serviceStopId:String,startTime:Date) async throws{
         let itemRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)

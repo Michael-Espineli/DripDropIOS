@@ -1,4 +1,12 @@
 //
+//  EquipmentServiceActionViewModel.swift
+//  DripDrop
+//
+//  Created by Michael Espineli on 5/16/26.
+//
+
+
+//
 //  EquipmentServiceActionViews.swift
 //  ThePoolApp
 //
@@ -98,25 +106,25 @@ final class EquipmentServiceActionViewModel: ObservableObject {
     func removePartName(_ value: String) {
         partNames.removeAll { $0 == value }
     }
-
+    
     func calculateNextServiceDate(from date: Date, equipment: Equipment) -> Date? {
-        guard let frequencyString = equipment.serviceFrequency,
-              let every = equipment.serviceFrequencyEvery,
-              let frequency = Int(frequencyString) else {
+        guard let frequency = equipment.serviceFrequency,
+              let every = equipment.serviceFrequencyEvery else {
             return nil
         }
 
         switch every {
-        case "Day":
+        case .daily:
             return Calendar.current.date(byAdding: .day, value: frequency, to: date)
-        case "Week":
+
+        case .weekly:
             return Calendar.current.date(byAdding: .day, value: frequency * 7, to: date)
-        case "Month":
+
+        case .monthly:
             return Calendar.current.date(byAdding: .month, value: frequency, to: date)
-        case "Year":
+
+        case .yearly:
             return Calendar.current.date(byAdding: .year, value: frequency, to: date)
-        default:
-            return nil
         }
     }
 
@@ -134,9 +142,11 @@ final class EquipmentServiceActionViewModel: ObservableObject {
         case .company:
             performedTechId = selectedTech.userId
             performedTechName = selectedTech.userName
+
         case .customer:
             performedTechId = ""
             performedTechName = customerPerformerName
+
         default:
             performedTechId = selectedTech.userId
             performedTechName = selectedTech.userName
@@ -163,7 +173,10 @@ final class EquipmentServiceActionViewModel: ObservableObject {
         )
 
         if type == .maintenance {
-            let nextDate = calculateNextServiceDate(from: serviceDate, equipment: equipment)
+            let nextDate = calculateNextServiceDate(
+                from: serviceDate,
+                equipment: equipment
+            )
 
             try await dataService.updateEquipmentServiceDates(
                 companyId: companyId,
@@ -173,7 +186,7 @@ final class EquipmentServiceActionViewModel: ObservableObject {
             )
         }
     }
-
+    
     func createRepairParts(
         companyId: String,
         equipmentId: String
@@ -195,7 +208,32 @@ final class EquipmentServiceActionViewModel: ObservableObject {
 
         return ids
     }
+// Scheule Maintance / job Repair Work Flow
+    /*
+     Schedule maintenance/repair job
+     → create Job
+     → optionally create ServiceStop
+     → create EquipmentScheduledWork
+     → EquipmentDetailView shows Scheduled Work
+     → work gets completed
+     → create EquipmentServiceHistory
+     → update EquipmentScheduledWork to Completed
+     → EquipmentDetailView no longer shows it in active scheduled work
+     
+     try await dataService.uploadEquipmentServiceHistory(
+         companyId: companyId,
+         equipmentId: equipment.id,
+         history: record
+     )
 
+     try await dataService.updateEquipmentScheduledWorkStatus(
+         companyId: companyId,
+         equipmentId: equipment.id,
+         scheduledWorkId: scheduledWorkId,
+         status: .completed,
+         dateCompleted: Date()
+     )
+     */
     func createJobAndOptionalServiceStop(
         companyId: String,
         equipment: Equipment,
@@ -302,6 +340,27 @@ final class EquipmentServiceActionViewModel: ObservableObject {
             try await dataService.uploadServiceStop(
                 companyId: companyId,
                 serviceStop: serviceStop
+            )
+            let scheduledWork = EquipmentScheduledWork(
+                name: "\(jobType.rawValue) Job",
+                type: jobType,
+                serviceDate: shouldScheduleServiceStop ? jobDate : nil,
+                techId: shouldScheduleServiceStop ? selectedTech.userId : "",
+                techName: shouldScheduleServiceStop ? selectedTech.userName : "",
+                serviceStopId: shouldScheduleServiceStop ? serviceStopIds.first ?? "" : "",
+                serviceStopInternalId: serviceStopInternalId,
+                jobId: jobId,
+                jobInternalId: jobInternalId,
+                status: shouldScheduleServiceStop ? .scheduled : .estimatePending,
+                description: jobDescription,
+                dateCreated: Date(),
+                dateCompleted: nil
+            )
+
+            try await dataService.uploadEquipmentScheduledWork(
+                companyId: companyId,
+                equipmentId: equipment.id,
+                scheduledWork: scheduledWork
             )
         }
 

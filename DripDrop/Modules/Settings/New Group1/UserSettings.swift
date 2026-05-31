@@ -148,6 +148,9 @@ extension UserSettings {
                                         print("Comapny Not Nill")
                                         masterDataManager.currentCompany = changedCompany
                                         try await VM.updateRecentlySelectedCompany(user: user,companyId: changedCompany.id)
+                                        let userAccess = try await UserAccessManager.shared.getUserAccessCompanies(userId: user.id,companyId: changedCompany.id)
+                                            masterDataManager.role = try await RoleManager.shared.getSpecificRole(companyId: changedCompany.id, roleId: userAccess.roleId)
+                                        
                                     } else {
                                         print("Comapny Nill")
                                         masterDataManager.currentCompany = nil

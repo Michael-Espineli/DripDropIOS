@@ -4,167 +4,620 @@
 //
 //  Created by Michael Espineli on 12/14/23.
 //
-
 import SwiftUI
 
 struct ShoppingListView: View {
-    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var dataService: ProductionDataService
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    @EnvironmentObject var navigationManager: NavigationStateManager
 
-    @EnvironmentObject var navigationManager : NavigationStateManager
-    @EnvironmentObject var masterDataManager : MasterDataManager
+    @StateObject var shoppingVM: ShoppingListViewModel
+    @StateObject private var routeVM: MobileDailyRouteDisplayViewModel
 
-    @StateObject var shoppingVM : ShoppingListViewModel
+    init(dataService: any ProductionDataServiceProtocol) {
+        _shoppingVM = StateObject(
+            wrappedValue: ShoppingListViewModel(dataService: dataService)
+        )
 
-    init(dataService:any ProductionDataServiceProtocol){
-        _shoppingVM = StateObject(wrappedValue: ShoppingListViewModel(dataService: dataService))
+        _routeVM = StateObject(
+            wrappedValue: MobileDailyRouteDisplayViewModel(dataService: dataService)
+        )
     }
-    @State var showAddNewShoppingListItem:Bool = false
+
+    @State private var selectedTab: ShoppingCenterTab = .routePrep
+    @State private var showAddNewShoppingListItem: Bool = false
+    @State private var isLoading: Bool = false
+    @State private var includeAllOutstanding: Bool = false
+
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            ScrollView{
-                personalItemList
-                customerItemList
-                jobItemList
-                Text("")                
-                    .sheet(isPresented: $showAddNewShoppingListItem,onDismiss: {
-                    Task{
-                        if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
-                      
-                            do{
-                                try await shoppingVM.getAllShoppingListItemsByUserForPersonal(companyId: company.id, userId: user.id)
-                                try await shoppingVM.getAllShoppingListItemsByUserForCustomers(companyId: company.id, userId: user.id)
-                                try await shoppingVM.getAllShoppingListItemsByCompanyForJobs(companyId: company.id)
-                            } catch {
-                                print("failed to get All Shopping List Items By User For Personal")
-                            }
-                        }
-                    }
-                }, content: {
-                    ZStack{
-                        Color.listColor.ignoresSafeArea()
-                        VStack{
-                            HStack{
-                                Spacer()
-                                Button(action: {
-                                    showAddNewShoppingListItem.toggle()
-                                }, label: {
-                                    Text("X")
-                                        .modifier(DismissButtonModifier())
-                                })
-                            }
-                            .padding(.horizontal,8)
-                            AddNewItemToShoppingList(dataService: dataService)
-                        }
-                    }
-                })
-            }
-        }
-        .fontDesign(.monospaced)
-        .toolbar{
-            ToolbarItem{
-                Button(action: {
-                    showAddNewShoppingListItem.toggle()
-                }, label: {
-                    Text("Add")
-                        .fontDesign(.monospaced)
-                    
-                })
 
-            }
-        }
-        .task {
-            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
-            
-                do{
-                    try await shoppingVM.getAllShoppingListItemsByUserForPersonal(companyId: company.id, userId: user.id)
-                    try await shoppingVM.getAllShoppingListItemsByUserForCustomers(companyId: company.id, userId: user.id)
-                    try await shoppingVM.getAllShoppingListItemsByCompanyForJobs(companyId: company.id)
-                } catch {
-                    print("failed to get All Shopping List Items By User")
-                    print(error)
+            VStack(spacing: 0) {
+                tabBar
 
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        headerCard
+
+                        switch selectedTab {
+                        case .routePrep:
+                            routePrepSection
+
+                        case .outstanding:
+                            outstandingSection
+
+                        case .myItems:
+                            itemSection(
+                                title: "My Items",
+                                subtitle: "Personal or truck-stock items assigned to you.",
+                                systemImage: "person.crop.circle",
+                                items: shoppingVM.myItems,
+                                emptyTitle: "No personal prep items.",
+                                emptyMessage: "Personal shopping items for this route will appear here."
+                            )
+
+                        case .customers:
+                            groupedByCustomerSection
+
+                        case .jobs:
+                            groupedByJobSection
+
+                        case .purchased:
+                            itemSection(
+                                title: "Purchased",
+                                subtitle: "Items purchased but not yet installed or completed.",
+                                systemImage: "cart.badge.checkmark",
+                                items: shoppingVM.purchasedButNotInstalledItems,
+                                emptyTitle: "No purchased items need action.",
+                                emptyMessage: "Purchased items that still need install/delivery will appear here."
+                            )
+                        }
+
+                        Color.clear.frame(height: 90)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
                 }
             }
+
+            if isLoading {
+                loadingOverlay
+            }
+        }
+        .navigationTitle("Shopping Center")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem {
+                Button {
+                    showAddNewShoppingListItem.toggle()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                }
+            }
+        }
+        .sheet(isPresented: $showAddNewShoppingListItem, onDismiss: {
+            Task {
+                await reloadShoppingCenter()
+            }
+        }) {
+            NavigationStack {
+                AddNewItemToShoppingList(dataService: dataService)
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .task {
+            await startRouteContextIfNeeded()
+            await reloadShoppingCenter()
+        }
+        .refreshable {
+            await reloadShoppingCenter()
         }
     }
 }
 extension ShoppingListView {
-    var personalItemList: some View {
-        ShoppingList(list: shoppingVM.personalShoppingItems, header: "List of Personal Items",icon:"figure.stand.line.dotted.figure.stand")
-    }
-    var customerItemList: some View {
-        ShoppingList(list: shoppingVM.customerShoppingItems, header: "List of Items for Customers",icon:"testtube.2")
-    }
-    var jobItemList: some View {
-        VStack{
-            HStack{
-                Image(systemName: "spigot.fill")
-                Spacer()
-                Text("List of Items for Jobs")
+
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: selectedTab.systemImage)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 52, height: 52)
+                    .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Shopping Center")
+                        .font(.title3.weight(.semibold))
+
+                    Text(headerSubtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Spacer()
             }
-                .font(.headline)
-            Divider()
-            ForEach(Array(shoppingVM.jobShoppingItems.keys)){ key in
-                VStack{
-                    JobIdCardView(dataService: dataService, jobId: key.id)
-                    if let shoppingListItems = shoppingVM.jobShoppingItems[key] {
-                        ForEach(shoppingListItems){ data in
-                            if UIDevice.isIPhone {
-                                NavigationLink(value: Route.shoppingListDetail(item:data,dataService: dataService), label: {
-                                    ShoppingListItemCardView(dataService: dataService, shoppingListItem: data)
-                                })
-                            } else {
-                                Button(action: {
-                                    masterDataManager.selectedShoppingListItem = data
-                                }, label: {
-                                    ShoppingListItemCardView(dataService: dataService, shoppingListItem: data)
-                                })
-                            }
-                        }
+
+            HStack(spacing: 8) {
+                headerPill(
+                    title: "\(shoppingVM.routePrepItems.count)",
+                    label: "Route",
+                    systemImage: "map"
+                )
+
+                headerPill(
+                    title: "\(shoppingVM.outstandingItems.count)",
+                    label: "Open",
+                    systemImage: "exclamationmark.circle"
+                )
+
+                headerPill(
+                    title: "\(shoppingVM.myItems.count)",
+                    label: "Mine",
+                    systemImage: "person"
+                )
+
+                Spacer()
+            }
+        }
+        .shoppingCenterCard(material: true)
+    }
+
+    private var routePrepSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                title: "Route Prep",
+                subtitle: "Items connected to today’s route, jobs, customers, service locations, or your personal list.",
+                systemImage: "map",
+                count: shoppingVM.routePrepItems.count
+            )
+
+            if routeVM.serviceStopList.isEmpty {
+                routeContextEmptyCard
+            }
+
+            if shoppingVM.routePrepItems.isEmpty {
+                emptyState(
+                    title: "No route prep items.",
+                    message: "No open shopping actions were found for your current route.",
+                    systemImage: "checkmark.circle"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(shoppingVM.routePrepItems) { item in
+                        shoppingItemLink(item)
                     }
                 }
             }
         }
+        .shoppingCenterCard()
     }
-  
-}
-struct ShoppingList: View {
-    //Enviromental
-    @EnvironmentObject var dataService: ProductionDataService
-    @EnvironmentObject var masterDataManager : MasterDataManager
 
-    //Received
-    let list:[ShoppingListItem]
-    let header:String
-    let icon:String
+    private var outstandingSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                sectionHeader(
+                    title: "Outstanding",
+                    subtitle: "Open shopping actions. Use company-wide mode for planning ahead.",
+                    systemImage: "exclamationmark.circle",
+                    count: shoppingVM.outstandingItems.count
+                )
 
-    var body: some View {
-        VStack{
-            HStack{
-                Image(systemName: icon)
-                Spacer()
-                Text(header)
                 Spacer()
             }
-                .font(.headline)
-            Divider()
-            ForEach(list){ item in
-                if UIDevice.isIPhone {
-                    NavigationLink(value: Route.shoppingListDetail(item:item,dataService: dataService), label: {
-                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
-                    })
-                } else {
-                    Button(action: {
-                        masterDataManager.selectedShoppingListItem = item
-                    }, label: {
-                        ShoppingListItemCardView(dataService: dataService, shoppingListItem: item)
-                    })
+
+            Toggle(isOn: $includeAllOutstanding) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Company-wide planning")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("Show outstanding items beyond this route.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Divider()
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onChange(of: includeAllOutstanding) { _ in
+                Task {
+                    await reloadShoppingCenter()
+                }
+            }
+
+            if shoppingVM.outstandingItems.isEmpty {
+                emptyState(
+                    title: "No outstanding items.",
+                    message: "Items that need purchase or install action will appear here.",
+                    systemImage: "checkmark.circle"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(shoppingVM.outstandingItems) { item in
+                        shoppingItemLink(item)
+                    }
+                }
             }
         }
+        .shoppingCenterCard()
+    }
+
+    private var groupedByCustomerSection: some View {
+        groupedSection(
+            title: "Customer Items",
+            subtitle: "Open customer-specific shopping actions for the route context.",
+            systemImage: "person.text.rectangle",
+            items: shoppingVM.customerItems,
+            groupTitle: { item in
+                item.customerName ?? "Unknown Customer"
+            },
+            emptyTitle: "No customer items.",
+            emptyMessage: "Customer-specific shopping actions will appear here."
+        )
+    }
+
+    private var groupedByJobSection: some View {
+        groupedSection(
+            title: "Job Items",
+            subtitle: "Open job material items connected to this route context.",
+            systemImage: "briefcase",
+            items: shoppingVM.jobItems,
+            groupTitle: { item in
+                item.jobId ?? "Unknown Job"
+            },
+            emptyTitle: "No job items.",
+            emptyMessage: "Job materials needing route prep will appear here."
+        )
+    }
+
+    private var routeContextEmptyCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("No route context loaded", systemImage: "map")
+                .font(.subheadline.weight(.semibold))
+
+            Text("Route Prep works best when today’s service stops are loaded. You can still use Outstanding to plan ahead.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+extension ShoppingListView {
+
+    private func itemSection(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        items: [ShoppingListItem],
+        emptyTitle: String,
+        emptyMessage: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                title: title,
+                subtitle: subtitle,
+                systemImage: systemImage,
+                count: items.count
+            )
+
+            if items.isEmpty {
+                emptyState(
+                    title: emptyTitle,
+                    message: emptyMessage,
+                    systemImage: systemImage
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(items) { item in
+                        shoppingItemLink(item)
+                    }
+                }
+            }
+        }
+        .shoppingCenterCard()
+    }
+
+    private func groupedSection(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        items: [ShoppingListItem],
+        groupTitle: @escaping (ShoppingListItem) -> String,
+        emptyTitle: String,
+        emptyMessage: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                title: title,
+                subtitle: subtitle,
+                systemImage: systemImage,
+                count: items.count
+            )
+
+            if items.isEmpty {
+                emptyState(
+                    title: emptyTitle,
+                    message: emptyMessage,
+                    systemImage: systemImage
+                )
+            } else {
+                let grouped = Dictionary(grouping: items, by: groupTitle)
+                let keys = grouped.keys.sorted()
+
+                VStack(spacing: 12) {
+                    ForEach(keys, id: \.self) { key in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(key)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+
+                                Spacer()
+
+                                Text("\(grouped[key]?.count ?? 0)")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(.thinMaterial, in: Capsule())
+                            }
+
+                            VStack(spacing: 8) {
+                                ForEach(grouped[key] ?? []) { item in
+                                    shoppingItemLink(item)
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                }
+            }
+        }
+        .shoppingCenterCard()
+    }
+}
+extension ShoppingListView {
+
+    private func startRouteContextIfNeeded() async {
+        guard let company = masterDataManager.currentCompany,
+              let user = masterDataManager.user else {
+            return
+        }
+
+        routeVM.start(
+            companyId: company.id,
+            user: user,
+            date: Date()
+        )
+    }
+
+    private func reloadShoppingCenter() async {
+        guard let company = masterDataManager.currentCompany,
+              let user = masterDataManager.user else {
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await shoppingVM.loadRoutePrepShoppingItems(
+                companyId: company.id,
+                userId: user.id,
+                serviceStops: routeVM.serviceStopList
+            )
+
+            if includeAllOutstanding {
+                try await shoppingVM.loadOutstandingShoppingItems(
+                    companyId: company.id,
+                    limit: 100
+                )
+            } else {
+                // In normal technician mode, outstanding mirrors route-prep scope.
+                // This avoids a company-wide outstanding read.
+                shoppingVM.setOutstandingItemsForCurrentContext(
+                    shoppingVM.routePrepItems
+                )
+            }
+        } catch {
+            print("[ShoppingListView][reloadShoppingCenter] Error")
+            print(error)
+        }
+    }
+}
+extension ShoppingListView {
+
+    private var tabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(ShoppingCenterTab.allCases) { tab in
+                    Button {
+                        selectedTab = tab
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: tab.systemImage)
+                            Text(tab.rawValue)
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
+                        .background(
+                            selectedTab == tab
+                            ? Color.accentColor.opacity(0.16)
+                            : Color.primary.opacity(0.06),
+                            in: Capsule()
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(
+                                    selectedTab == tab
+                                    ? Color.accentColor.opacity(0.28)
+                                    : Color.primary.opacity(0.08),
+                                    lineWidth: 1
+                                )
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .background(.regularMaterial)
+    }
+
+    private var headerSubtitle: String {
+        switch selectedTab {
+        case .routePrep:
+            return "Prep materials before leaving for today’s route."
+        case .outstanding:
+            return "Plan ahead using open shopping actions."
+        case .myItems:
+            return "Truck stock and personal assigned shopping items."
+        case .customers:
+            return "Customer-specific items connected to route prep."
+        case .jobs:
+            return "Job materials connected to route prep."
+        case .purchased:
+            return "Purchased items that still need follow-up."
+        }
+    }
+
+    private func sectionHeader(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        count: Int
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline.weight(.semibold))
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Text("\(count)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(.thinMaterial, in: Capsule())
+        }
+    }
+
+    private func emptyState(
+        title: String,
+        message: String,
+        systemImage: String
+    ) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func headerPill(
+        title: String,
+        label: String,
+        systemImage: String
+    ) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: systemImage)
+            Text(title)
+                .fontWeight(.bold)
+            Text(label)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.thinMaterial, in: Capsule())
+    }
+
+    private var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.08)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView()
+
+                Text("Loading shopping center...")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(22)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+}
+extension ShoppingListView {
+
+    @ViewBuilder
+    private func shoppingItemLink(_ item: ShoppingListItem) -> some View {
+        if UIDevice.isIPhone {
+            NavigationLink(
+                value: Route.shoppingListDetail(
+                    item: item,
+                    dataService: dataService
+                )
+            ) {
+                ShoppingListItemCardView(
+                    dataService: dataService,
+                    shoppingListItem: item
+                )
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button {
+                masterDataManager.selectedShoppingListItem = item
+            } label: {
+                ShoppingListItemCardView(
+                    dataService: dataService,
+                    shoppingListItem: item
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+private extension View {
+    func shoppingCenterCard(material: Bool = false) -> some View {
+        self
+            .padding(16)
+            .background(
+                material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
     }
 }

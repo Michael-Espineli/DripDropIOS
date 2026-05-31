@@ -164,7 +164,7 @@ final class RouteBuilderViewModel:ObservableObject{
                         internalId: RSS.internalId,
                         type: job.name,
                         typeId: job.id,
-                        typeImage: job.typeImage ?? "bubbles.and.sparkles.fill",
+                        typeImage: "bubbles.and.sparkles.fill",
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,

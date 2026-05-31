@@ -141,9 +141,7 @@ final class RepairRequestDetailViewModel:ObservableObject{
                 do {
                     if let companyId{
                         if job.id != "" {
-                                //Function
-                            print("Add Job Selector Logic")
-                            
+                            jobIdList.append(job.id)
                             try await dataService.updateRepairRequestJobList(companyId: companyId, repairRequestId: repairRequest.id, jobId: job.id)
                         }
                     }
@@ -337,11 +335,10 @@ extension RepairRequestDetailView {
                     showJobConfirmation.toggle()
                 }, label: {
                     Text("Add Job")
-                        .foregroundColor(Color.basicFontText)
-                        .padding(5)
-                        .background(Color.poolBlue)
-                        .cornerRadius(5)
-                        .padding(5)
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 })
                 .confirmationDialog("Select Type", isPresented: self.$showJobConfirmation, actions: {
                     Button(action: {
@@ -356,10 +353,17 @@ extension RepairRequestDetailView {
                         Text("Connect Existing Job")
                     })
                 })
-                .sheet(isPresented: $showCustomer, onDismiss: {
-                    VM.onDissmissShowCustomer(companyId:masterDataManager.currentCompany?.id)
-                }, content: {
-                    AddNewJobFromRepairRequest(customer:VM.customer,dataService: dataService,returnJobId: $VM.jobId)
+                .sheet(
+                    isPresented: $showCustomer,
+                    onDismiss: {
+                        VM.onDissmissShowCustomer(companyId:masterDataManager.currentCompany?.id)
+                    },
+                    content: {
+                        AddNewJobFromRepairRequest(
+                            repairRequest:repairRequest,
+                            dataService: dataService,
+                            returnJobId: $VM.jobId
+                        )
                 })
             }
         }
@@ -381,10 +385,16 @@ extension RepairRequestDetailView {
     }
     var currentPhotos: some View {
         VStack{
-            Text("Current Photos")
-            DripDropStoredImageRow(images:VM.photoUrls)
             PhotoContentView(selectedImages: $VM.newPhotoUrls)
+            if !VM.newPhotoUrls.isEmpty {
+                HStack{
+                    ProgressView()
+                    Text("Loading...")
+                }
+            }
+            DripDropStoredImageRow(images:VM.photoUrls)
         }
+        
     }
     var info: some View {
         ZStack{

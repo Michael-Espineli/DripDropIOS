@@ -29,7 +29,7 @@ struct EditRateSheet: View {
 
 struct EditRateSheet_Previews: PreviewProvider {
     static var previews: some View {
-        EditRateSheet(template: JobTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), rate: "", color: ""), rateSheet: RateSheet(id: "", templateName: "", templateId: "", rate: 0, dateImplemented: Date(), status: .active, laborType: .hour))
+        EditRateSheet(template: JobTemplate(companyId: "", name: "", createdByUserId: ""), rateSheet: RateSheet(id: "", templateName: "", templateId: "", rate: 0, dateImplemented: Date(), status: .active, laborType: .hour))
     }
 }
 

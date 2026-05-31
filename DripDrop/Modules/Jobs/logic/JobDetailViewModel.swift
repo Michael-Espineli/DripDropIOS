@@ -12,13 +12,29 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 import MapKit
 
+enum JobCommentFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case open = "Open"
+    case resolved = "Resolved"
+    
+    var id: String { rawValue }
+}
+
 @MainActor
 final class JobDetailViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
+    @Published var isPresentWorkOffer: Bool = false
+    @Published private(set) var workOffers: [WorkOffer] = []
+    
+    @Published var plannedServiceStops: [JobPlannedServiceStop] = []
+    @Published var isAddPlannedServiceStop: Bool = false
+    @Published var plannedServiceStopToDelete: JobPlannedServiceStop?
+    @Published var showDeletePlannedServiceStopConfirmation: Bool = false
     //Sheet Variables
+    
     @Published var isPresentingMarkEstiamteAsAccepted: Bool = false
     @Published var isPresentingMarkJobAsInvoiced: Bool = false
 
@@ -37,13 +53,33 @@ final class JobDetailViewModel:ObservableObject{
     @Published var taskGroupItems : [JobTaskGroupItem] = []
     @Published var description: String = "Tasks"
 
-    @Published private(set) var chosenView: String = "Tasks"
-    @Published private(set) var viewOptionList:[String] = ["Tasks","Shopping","Schedule","Info"]
+    @Published private(set) var chosenView: String = "Info"
+    @Published private(set) var viewOptionList:[String] = [
+        "Info",
+        "Tasks",
+        "Offers",
+        "Schedule",
+        "Materials",
+        "Actual",
+        "Comments",
+        "Billing"
+    ]
     @Published private(set) var jobTaskList:[JobTask] = []
-    @Published var shoppingItemList:[ShoppingListItem] = []
+    @Published private(set) var comments: [JobComment] = []
+    @Published var commentFilter: JobCommentFilter = .all
+    @Published var newComment: String = ""
+    @Published private(set) var commentsLoading: Bool = false
+    @Published private(set) var addingComment: Bool = false
+    
     @Published private(set) var taskTypes:[String] = []
     @Published private(set) var serviceStopIds:[String] = []
+    
+    @Published var shoppingItemList:[ShoppingListItem] = []
+    @Published private(set) var purchasedItems: [PurchasedItem] = []
+    
     @Published private(set) var serviceStops:[ServiceStop] = []
+    @Published private(set) var actualPayLineItems: [TechnicianPayLineItem] = []
+
     @Published private(set) var laborContracts:[LaborContract] = []
 
     @Published private(set) var jobTemplates:[JobTemplate] = []
@@ -91,9 +127,22 @@ final class JobDetailViewModel:ObservableObject{
     @Published var invoiceType: JobInvoiceType? = nil
 
     //Alert Info
-    @State var alertMessage:String = ""
-    @State var showAlert:Bool = false
+    @Published var alertMessage:String = ""
+    @Published var showAlert:Bool = false
+    
     //Functions
+    var filteredComments: [JobComment] {
+        switch commentFilter {
+        case .all:
+            return comments
+        case .open:
+            return comments.filter { !$0.resolved }
+        case .resolved:
+            return comments.filter { $0.resolved }
+        }
+    }
+    
+
     
     func onLoad(companyId:String,serviceLocationId:String,job:Job) async throws {
         print("")
@@ -104,7 +153,10 @@ final class JobDetailViewModel:ObservableObject{
         if job.billingStatus == .invoiced {
             self.isInvoiced = true
         }
-        
+        self.plannedServiceStops = try await dataService.fetchJobPlannedServiceStops(
+            companyId: companyId,
+            jobId: job.id
+        )
         self.description = job.description
         self.jobTaskList = try await dataService.getJobTasks(companyId: companyId, jobId: job.id)
         print("jobTaskList \(jobTaskList.count)")
@@ -167,14 +219,14 @@ final class JobDetailViewModel:ObservableObject{
         self.taskTypes = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
         
         //Labor Contractor Id and Service Stop Id
-        self.serviceStopIds = []
+        self.serviceStopIds = job.serviceStopIds
         self.laborContractIds = []
         self.serviceStops = []
         self.laborContracts = []
         
         print("Received \(jobTaskList.count) Tasks")
         for task in jobTaskList {
-            print("Task: \(task)")
+            print("Task: \(task)") 
             self.serviceStopIds.append(task.serviceStopId.id)
             self.laborContractIds.append(task.laborContractId)
             updatedLaborCost = updatedLaborCost + task.contractedRate
@@ -219,10 +271,116 @@ final class JobDetailViewModel:ObservableObject{
         
         self.techList = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
 
-        //D ont know if i Need these Developer
+        //
+#warning(" Dont know if i Need these Developer")
+
 //        self.jobTemplates = try await SettingsManager.shared.getAllWorkOrderTemplates(companyId: companyId)
 //        self.serviceStopTemplates = try await SettingsManager.shared.getAllServiceStopTemplates(companyId: companyId)
-
+        
+        self.workOffers = try await dataService.fetchWorkOffers(
+            companyId: companyId,
+            jobId: job.id
+        )
+        
+        self.actualPayLineItems = try await fetchActualPayLineItemsForLoadedStops(
+            companyId: companyId
+        )
+        
+        try await getPurchaseCost(
+            companyId: companyId,
+            purchaseIds: job.purchasedItemsIds ?? []
+        )
+        
+        await loadComments(companyId: companyId, jobId: job.id)
+    }
+    
+    func loadComments(companyId: String, jobId: String) async {
+        commentsLoading = true
+        defer { commentsLoading = false }
+        
+        do {
+            comments = try await dataService.getWorkOrderComments(
+                companyId: companyId,
+                workOrderId: jobId
+            )
+        } catch {
+            print("[][load job comments] Error \(error)")
+            alertMessage = "Could not load comments."
+            showAlert = true
+        }
+    }
+    
+    func addComment(
+        companyId: String,
+        jobId: String,
+        userId: String,
+        userName: String
+    ) async {
+        let trimmedComment = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard !trimmedComment.isEmpty else {
+            alertMessage = "Write a comment first."
+            showAlert = true
+            return
+        }
+        
+        guard !userId.isEmpty else {
+            alertMessage = "Missing signed-in user."
+            showAlert = true
+            return
+        }
+        
+        addingComment = true
+        defer { addingComment = false }
+        
+        let commentId = "comp_wo_com_" + UUID().uuidString
+        let jobComment = JobComment(
+            id: commentId,
+            jobId: jobId,
+            companyId: companyId,
+            userId: userId,
+            userName: userName,
+            authorId: userId,
+            authorName: userName,
+            date: Date(),
+            comment: trimmedComment,
+            resolved: false
+        )
+        
+        do {
+            try await dataService.addWorkOrderComment(
+                companyId: companyId,
+                workOrderId: jobId,
+                comment: jobComment
+            )
+            newComment = ""
+            await loadComments(companyId: companyId, jobId: jobId)
+        } catch {
+            print("[][add job comment] Error \(error)")
+            alertMessage = "Could not add comment."
+            showAlert = true
+        }
+    }
+    
+    func setCommentResolved(
+        companyId: String,
+        jobId: String,
+        commentId: String,
+        resolved: Bool
+    ) async {
+        do {
+            try await dataService.updateWorkOrderCommentResolved(
+                companyId: companyId,
+                workOrderId: jobId,
+                commentId: commentId,
+                resolved: resolved
+            )
+            await loadComments(companyId: companyId, jobId: jobId)
+        } catch {
+            print("[][update job comment resolved] Error \(error)")
+            alertMessage = "Could not update comment."
+            showAlert = true
+        }
     }
     
     func onDismissOfScheduleServiceStop(companyId:String,serviceLocationId:String,job:Job) async throws {
@@ -284,6 +442,15 @@ final class JobDetailViewModel:ObservableObject{
         print("got Labor Contracts")
         
         self.techList = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
+        
+        self.workOffers = try await dataService.fetchWorkOffers(
+            companyId: companyId,
+            jobId: job.id
+        )
+
+        self.actualPayLineItems = try await fetchActualPayLineItemsForLoadedStops(
+            companyId: companyId
+        )
 
     }
     
@@ -429,17 +596,32 @@ final class JobDetailViewModel:ObservableObject{
             )
         }
     }
+    
     func updateDescription(companyId: String, jobId: String) async throws {
         try await dataService.updateJobDescription(companyId: companyId, jobId: jobId, description: description)
     }
-    func getPurchaseCost(companyId:String,purchaseIds:[String]) async throws {
-        var total:Double = 0
+    
+    func getPurchaseCost(
+        companyId: String,
+        purchaseIds: [String]
+    ) async throws {
+        var total: Double = 0
+        var items: [PurchasedItem] = []
+
         for id in purchaseIds {
-            let purchase = try await dataService.getSingleItem(itemId: id, companyId: companyId)
+            let purchase = try await dataService.getSingleItem(
+                itemId: id,
+                companyId: companyId
+            )
+
+            items.append(purchase)
             total += purchase.totalAfterTax
         }
+
+        self.purchasedItems = items.sorted { $0.date > $1.date }
         self.purchasedPartCost = total
     }
+    
     func getShoppingListTotal() {
         
     }
@@ -540,8 +722,7 @@ final class JobDetailViewModel:ObservableObject{
      
             if operationStatus != updatingJob.operationStatus {
                 print("Change in Operation Status")
-                try await dataService.updateJobOperationStatus(companyId: companyId, jobId: updatingJob.id, operationStatus: operationStatus)
-            }
+                try await dataService.updateJobOperationStatus(companyId: companyId, jobId: updatingJob.id, operationStatus: operationStatus)            }
             if billingStatus != updatingJob.billingStatus {
                 print("Change in Billing Status")
                 try await dataService.updateJobBillingStatus(companyId: companyId, jobId: updatingJob.id, billingStatus: billingStatus)
@@ -759,8 +940,8 @@ final class JobDetailViewModel:ObservableObject{
     }
     func markJobAsUnFinished(companyId: String, job: Job) async throws {
         //Update Data Model
-        try await dataService.updateJobOperationStatus(companyId: companyId, jobId: job.id, operationStatus: .finished)
-        self.operationStatus = .finished
+        try await dataService.updateJobOperationStatus(companyId: companyId, jobId: job.id, operationStatus: .inProgress)
+        self.operationStatus = .inProgress
         
         //See if is other company
         if job.otherCompany {
@@ -790,6 +971,8 @@ final class JobDetailViewModel:ObservableObject{
         //Update Data Model
         //Call Function that Both Sends email and Sends Alert To Customer
         try await dataService.updateJobBillingStatus(companyId: companyId, jobId: job.id, billingStatus: .estimate)
+        self.billingStatus = .estimate
+        try await FunctionsManager.shared.sendJobEstimate(companyId: companyId, jobId: job.id)
     }
     
     func sendInvoiceToCustomer(companyId:String,job:Job) async throws {
@@ -874,23 +1057,18 @@ final class JobDetailViewModel:ObservableObject{
     
     func markEstimateAsAccepted(companyId:String,job:Job) async throws {
         let newJob = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: job.id)
-        //Check To make sure if is sender company
-        if job.otherCompany {
-            if job.senderId == companyId {
-                
-                //Check if already accepted
-                if let dateAccepted = newJob.dateEstimateAccepted {
-                    self.alertMessage = "Already Accepted \(shortDate(date:dateAccepted))"
-                    self.showAlert.toggle()
-                    throw FireBaseRead.unableToRead
-                } else {
-                    try await dataService.updateJobDateEstimateAccepted(companyId: companyId, jobId: job.id, date: estiamtedAcceptedDate)
-                    try await dataService.updateJobEstiamteAcceptedById(companyId: companyId, jobId: job.id, id: companyId)
-                    try await dataService.updateJobEstiamteAcceptedByType(companyId: companyId, jobId: job.id, type: .company)
-                    try await dataService.updateJobEstimateAcceptedNotes(companyId: companyId, jobId: job.id, notes: estimateAcceptedNotes)
-                    try await dataService.updateJobBillingStatus(companyId: companyId, jobId: job.id, billingStatus: .accepted)
-                }
-            }
+        //Check if already accepted
+        if let dateAccepted = newJob.dateEstimateAccepted {
+            self.alertMessage = "Already Accepted \(shortDate(date:dateAccepted))"
+            self.showAlert.toggle()
+            throw FireBaseRead.unableToRead
+        } else {
+            try dataService.updateJobDateEstimateAccepted(companyId: companyId, jobId: job.id, date: estiamtedAcceptedDate)
+            try dataService.updateJobEstiamteAcceptedById(companyId: companyId, jobId: job.id, id: companyId)
+            try dataService.updateJobEstiamteAcceptedByType(companyId: companyId, jobId: job.id, type: .company)
+            try dataService.updateJobEstimateAcceptedNotes(companyId: companyId, jobId: job.id, notes: estimateAcceptedNotes)
+            try dataService.updateJobBillingStatus(companyId: companyId, jobId: job.id, billingStatus: .accepted)
+            self.billingStatus = .accepted
         }
     }
     
@@ -925,17 +1103,21 @@ final class JobDetailViewModel:ObservableObject{
         laborContractIds:[String]
     ) async throws {
         //DEVELOPER BUILD GUARD STATEMENTS
+        print("  [JobDetailViewModel][Delete] Start")
+        try await dataService.deleteJob(companyId: companyId, jobId: jobId)
+        print("  [JobDetailViewModel][Delete] Job")
+
+        //only not finished service stops
         for stopId in serviceStopIds {
             try await dataService.deleteServiceStopById(companyId: companyId, serviceStopId: stopId)
         }
-        for id in laborContractIds{
-//            try await dataService.deleteServiceStopById(companyId: companyId, serviceStopId: stopId)
-        }
-        try await dataService.deleteJob(companyId: companyId, jobId: jobId)
+        
+        print("  [JobDetailViewModel][Delete] Service Stops")
         //Delete Items
         
         //Tasks get deleted with job
         
+              
     }
     
     func deleteJobTaskItem(companyId:String,jobId:String,task:JobTask) {
@@ -956,5 +1138,317 @@ final class JobDetailViewModel:ObservableObject{
                 print("[][deleteShoppingListItem] Error \(error)")
             }
         }
+    }
+}
+
+// MARK: - WORK OFFERS EXTENSION
+extension JobDetailViewModel {
+    func reloadWorkOffers(
+        companyId: String,
+        jobId: String
+    ) async {
+        do {
+            self.workOffers = try await dataService.fetchWorkOffers(
+                companyId: companyId,
+                jobId: jobId
+            )
+            self.actualPayLineItems = try await fetchActualPayLineItemsForLoadedStops(
+                companyId: companyId
+            )
+        } catch {
+            print("[][reloadWorkOffers] Error \(error)")
+        }
+    }
+}
+// MARK: - ACTUAL WORK / PAYROLL EXTENSION
+
+extension JobDetailViewModel {
+
+    func reloadActualPayLineItems(
+        companyId: String
+    ) async {
+        do {
+            self.actualPayLineItems = try await fetchActualPayLineItemsForLoadedStops(
+                companyId: companyId
+            )
+        } catch {
+            print("[][reloadActualPayLineItems] Error \(error)")
+            self.actualPayLineItems = []
+        }
+    }
+
+    func fetchActualPayLineItemsForLoadedStops(
+        companyId: String
+    ) async throws -> [TechnicianPayLineItem] {
+        let stopIds = Set(serviceStops.map { $0.id })
+
+        guard !stopIds.isEmpty else {
+            return []
+        }
+
+        let dates = serviceStops.map { $0.serviceDate }
+
+        guard let minDate = dates.min(),
+              let maxDate = dates.max() else {
+            return []
+        }
+
+        let startDate = Calendar.current.date(
+            byAdding: .day,
+            value: -1,
+            to: minDate
+        ) ?? minDate
+
+        let endDate = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: maxDate
+        ) ?? maxDate
+
+        let items = try await dataService.fetchTechnicianPayLineItems(
+            companyId: companyId,
+            startDate: startDate,
+            endDate: endDate
+        )
+
+        return items
+            .filter { item in
+                guard let serviceStopId = item.serviceStopId else {
+                    return false
+                }
+
+                return stopIds.contains(serviceStopId)
+            }
+            .sorted {
+                if $0.completedDate == $1.completedDate {
+                    return ($0.workTypeName ?? "") < ($1.workTypeName ?? "")
+                }
+
+                return $0.completedDate > $1.completedDate
+            }
+    }
+
+    var actualPayrollTotalCents: Int {
+        actualPayLineItems.reduce(0) { $0 + $1.totalAmountCents }
+    }
+
+    var actualPayrollCalculatedCents: Int {
+        actualPayLineItems
+            .filter {
+                $0.calculationStatus == .calculated ||
+                $0.calculationStatus == .approved ||
+                $0.calculationStatus == .paid
+            }
+            .reduce(0) { $0 + $1.totalAmountCents }
+    }
+
+    var actualPayrollNeedsReviewCount: Int {
+        actualPayLineItems
+            .filter { $0.calculationStatus == .needsReview }
+            .count
+    }
+
+    var finishedServiceStops: [ServiceStop] {
+        serviceStops
+            .filter { $0.operationStatus == .finished }
+            .sorted { $0.serviceDate > $1.serviceDate }
+    }
+
+    var unfinishedServiceStops: [ServiceStop] {
+        serviceStops
+            .filter { $0.operationStatus != .finished }
+            .sorted { $0.serviceDate > $1.serviceDate }
+    }
+
+    var plannedLaborTotalCents: Int {
+        jobTaskList.reduce(0) { $0 + $1.contractedRate }
+    }
+    
+    var plannedTaskLaborCents: Int {
+        plannedLaborTotalCents
+    }
+    
+    var plannedServiceStopLaborCents: Int {
+        plannedServiceStops.reduce(0) { total, plannedStop in
+            total + (plannedStop.plannedLaborCostCents ?? 0)
+        }
+    }
+
+    var plannedTotalLaborCents: Int {
+        plannedTaskLaborCents + plannedServiceStopLaborCents
+    }
+
+    func estimatedPlannedStopCostCents(_ stop: JobPlannedServiceStop) -> Int {
+        // V1 fallback:
+        // Until you plug in full TechnicianRate / WorkTypeMapping estimating,
+        // use 0 here or add a manual planned cost field later.
+        0
+    }
+    var plannedLaborMinutes: Int {
+        jobTaskList.reduce(0) { $0 + $1.estimatedTime }
+    }
+
+    var actualServiceStopMinutes: Int {
+        serviceStops.reduce(0) { $0 + $1.duration }
+    }
+    
+    var plannedServiceStopMinutes: Int {
+        plannedServiceStops.reduce(0) { $0 + $1.estimatedMinutes }
+    }
+}
+// MARK: - MATERIALS EXTENSION
+
+extension JobDetailViewModel {
+
+    var plannedMaterialCostCents: Int {
+        shoppingItemList.reduce(0) { partial, item in
+            partial + (item.plannedTotalCostCents ?? 0)
+        }
+    }
+
+    var plannedMaterialPriceCents: Int {
+        shoppingItemList.reduce(0) { partial, item in
+            partial + (item.plannedTotalPriceCents ?? 0)
+        }
+    }
+
+    var actualPurchasedMaterialCostCents: Int {
+        Int((purchasedItems.reduce(0.0) { $0 + $1.totalAfterTax } * 100).rounded())
+    }
+
+    var purchasedItemsNotInvoiced: [PurchasedItem] {
+        purchasedItems.filter { !$0.invoiced }
+    }
+
+    var billablePurchasedItems: [PurchasedItem] {
+        purchasedItems.filter { $0.billable }
+    }
+
+    var billablePurchasedMaterialPriceCents: Int {
+        Int((billablePurchasedItems.reduce(0.0) { partial, item in
+            let rate = item.billingRate ?? item.price
+            return partial + (rate * item.quantity)
+        } * 100).rounded())
+    }
+
+    var shoppingItemsNeedPurchase: [ShoppingListItem] {
+        shoppingItemList.filter { $0.status == .needToPurchase }
+    }
+
+    var shoppingItemsPurchased: [ShoppingListItem] {
+        shoppingItemList.filter { $0.status == .purchased }
+    }
+
+    var shoppingItemsInstalled: [ShoppingListItem] {
+        shoppingItemList.filter { $0.status == .installed }
+    }
+}
+// MARK: - JOB DASHBOARD EXTENSION
+
+extension JobDetailViewModel {
+
+    func dashboardSummary(for job: Job) -> JobDashboardSummary {
+        JobDashboardSummary(
+            jobRateCents: job.rate,
+            plannedTaskLaborCents: plannedTaskLaborCents,
+            plannedServiceStopLaborCents: plannedServiceStopLaborCents,
+            actualPayrollCents: actualPayrollTotalCents,
+            plannedMaterialCostCents: plannedMaterialCostCents,
+            plannedMaterialPriceCents: plannedMaterialPriceCents,
+            actualMaterialCostCents: actualPurchasedMaterialCostCents,
+            actualMaterialBillableCents: billablePurchasedMaterialPriceCents,
+            serviceStopCount: serviceStops.count,
+            finishedServiceStopCount: finishedServiceStops.count,
+            openOfferCount: workOffers.filter { $0.status.isOpen }.count,
+            acceptedOfferCount: workOffers.filter { $0.status == .accepted }.count,
+            acceptedOffersReadyToScheduleCount: workOffers.acceptedReadyToScheduleCount,
+            payrollNeedsReviewCount: actualPayrollNeedsReviewCount
+        )
+    }
+
+    var openServiceStopCount: Int {
+        serviceStops.filter { $0.operationStatus != .finished }.count
+    }
+
+    var scheduledServiceStopCount: Int {
+        serviceStops.count
+    }
+
+    var openWorkOffers: [WorkOffer] {
+        workOffers.filter { $0.status.isOpen }
+    }
+
+    var acceptedWorkOffers: [WorkOffer] {
+        workOffers.filter { $0.status == .accepted }
+    }
+
+    var scheduledWorkOffers: [WorkOffer] {
+        workOffers.filter {
+            $0.status == .scheduled ||
+            $0.status == .inProgress ||
+            $0.status == .completed ||
+            !$0.serviceStopId.isEmpty
+        }
+    }
+    var acceptedOffersReadyToSchedule: [WorkOffer] {
+        workOffers
+            .filter {
+                $0.status == .accepted &&
+                $0.serviceStopId.isEmpty
+            }
+            .sorted {
+                ($0.acceptedAt ?? $0.createdAt) > ($1.acceptedAt ?? $1.createdAt)
+            }
+    }
+
+    var acceptedOffersReadyToScheduleCount: Int {
+        acceptedOffersReadyToSchedule.count
+    }
+
+    var adminWorkOfferAttentionCount: Int {
+        workOffers.acceptedReadyToScheduleCount
+    }
+    
+    //Health Checks
+    func workflowHealthReport(for job: Job) -> JobWorkflowHealthReport {
+        JobWorkflowHealthBuilder.buildReport(
+            job: job,
+            jobTasks: jobTaskList,
+            serviceStops: serviceStops,
+            workOffers: workOffers,
+            payLineItems: actualPayLineItems,
+            shoppingItems: shoppingItemList,
+            purchasedItems: purchasedItems,
+            plannedLaborCents: plannedTotalLaborCents,
+            actualPayrollCents: actualPayrollTotalCents,
+            plannedMaterialCostCents: plannedMaterialCostCents,
+            actualMaterialCostCents: actualPurchasedMaterialCostCents
+        )
+    }
+    
+}
+// MARK: Planned Service Stops
+extension JobDetailViewModel {
+    func reloadPlannedServiceStops(
+        companyId: String,
+        jobId: String
+    ) async throws {
+        plannedServiceStops = try await dataService.fetchJobPlannedServiceStops(
+            companyId: companyId,
+            jobId: jobId
+        )
+    }
+
+    func deletePlannedServiceStop(
+        companyId: String,
+        plannedStop: JobPlannedServiceStop
+    ) async throws {
+        try await dataService.deleteJobPlannedServiceStop(
+            companyId: companyId,
+            jobId: plannedStop.jobId,
+            plannedServiceStopId: plannedStop.id
+        )
+
+        plannedServiceStops.removeAll { $0.id == plannedStop.id }
     }
 }

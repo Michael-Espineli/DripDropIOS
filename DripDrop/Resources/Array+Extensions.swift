@@ -31,3 +31,14 @@ extension Array where Element == ShoppingListItem {
         return result
     }
 }
+extension Array where Element == ShoppingListItem {
+    func sortedForShoppingPrep() -> [ShoppingListItem] {
+        self.sorted { lhs, rhs in
+            if lhs.status.rawValue != rhs.status.rawValue {
+                return lhs.status.rawValue < rhs.status.rawValue
+            }
+
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+}

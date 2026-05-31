@@ -2,6 +2,14 @@
 //  CreateJobFromTemplateSheet.swift
 //  DripDrop
 //
+//  Created by Michael Espineli on 5/24/26.
+//
+
+
+//
+//  CreateJobFromTemplateSheet.swift
+//  DripDrop
+//
 
 import SwiftUI
 
@@ -230,9 +238,10 @@ struct CreateJobFromTemplateSheet: View {
                     selectedServiceLocation = emptyServiceLocation()
                 }
             }) {
-                CustomerPickerView(
+                CustomerAndLocationPicker(
                     dataService: dataService,
-                    customer: $selectedCustomer
+                    customer: $selectedCustomer,
+                    location: $selectedServiceLocation
                 )
             }
 
@@ -251,10 +260,10 @@ struct CreateJobFromTemplateSheet: View {
                 showServiceLocationSelector = true
             }
             .sheet(isPresented: $showServiceLocationSelector) {
-                ServiceLocationPickerView(
+                ServiceLocationPicker(
                     dataService: dataService,
                     customerId: selectedCustomer.id,
-                    serviceLocation: $selectedServiceLocation
+                    location: $selectedServiceLocation
                 )
             }
 

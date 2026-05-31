@@ -46,12 +46,22 @@ struct CreateCompanyView: View {
                     .multilineTextAlignment(.center)
 
                 if !vm.errorMessage.isEmpty {
-                    Text(vm.errorMessage)
-                        .foregroundColor(.red)
-                        .padding(8)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.red.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    if vm.errorMessage == "Successfully Created Company" {
+                        Text(vm.errorMessage)
+                            .foregroundColor(.green)
+                            .padding(8)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.green.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        
+                    } else {
+                        Text(vm.errorMessage)
+                            .foregroundColor(.red)
+                            .padding(8)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
                 }
 
                 Group {
@@ -180,13 +190,15 @@ struct CreateCompanyView: View {
             )
         }
         .onChange(of: vm.didSucceed, perform: { success in
-            
+            print("[CreateCompanyView][vm.didSucceed] Sucess")
             guard success, let id = vm.recentlySelectedCompanyId else { return }
             // Navigate or dismiss + callback
+            print("[CreateCompanyView][vm.didSucceed] Sucess 2")
             onSuccessNavigate?(id)
             if let user = masterDataManager.user {
-                vm.updateRecentlySelectedCompany(user: user,companyId: id)
-                masterDataManager.currentCompany = vm.newCompany
+//                vm.updateRecentlySelectedCompany(user: user,companyId: id)
+//                masterDataManager.currentCompany = vm.newCompany
+                navigationManger.goBack()
             }
         })
 //        .onChange(of: vm.didSucceed) { _, success in
