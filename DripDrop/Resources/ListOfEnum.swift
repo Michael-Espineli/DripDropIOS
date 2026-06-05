@@ -139,8 +139,36 @@ enum JobBillingStatus:String, CaseIterable,Codable {
 enum RepairRequestStatus:String,Codable, CaseIterable{
     case resolved = "Resolved"
     case unresolved = "Unresolved"
-    case inprogress = "In Progress"
+    case convertedToJob = "Converted To Job"
     case cancelled = "Cancelled"
+    case inprogress = "In Progress"
+    case legacyPending = "pending"
+    case legacyPendingCapitalized = "Pending"
+
+    static var allCases: [RepairRequestStatus] {
+        [.unresolved, .convertedToJob, .resolved, .cancelled]
+    }
+
+    static var defaultOpenCases: [RepairRequestStatus] {
+        [.unresolved]
+    }
+
+    var selectableValue: RepairRequestStatus {
+        switch self {
+        case .legacyPending, .legacyPendingCapitalized:
+            return .unresolved
+        default:
+            return self
+        }
+    }
+
+    var displayName: String {
+        selectableValue.rawValue
+    }
+
+    var isOpenWorkQueueItem: Bool {
+        selectableValue == .unresolved
+    }
 }
 
 enum RateSheetStatus:String ,Codable{
@@ -177,6 +205,20 @@ enum EquipmentStatus:String, Codable, CaseIterable, Identifiable{
     case nonoperational = "Nonoperational"
     case needsRepair = "Needs Repair"
     case needsMaintenance = "Needs Maintenance"
+    case replaced = "Replaced"
+
+    static var operationalStatusCases: [EquipmentStatus] {
+        [.operational, .needsRepair, .nonoperational, .needsMaintenance]
+    }
+
+    var displayName: String {
+        switch self {
+        case .nonoperational:
+            return "Non-Operational"
+        default:
+            return rawValue
+        }
+    }
     
 }
 enum EquipmentFrequency:String, Codable, CaseIterable, Identifiable{
@@ -219,6 +261,11 @@ enum ServicePerformaceType:String,Codable,CaseIterable {
 enum ServiceRecordType:String,Codable,CaseIterable {
     case manual = "Manual"
     case auto = "Auto" //From Job
+}
+
+enum BodyOfWaterHistoryType: String, Codable, CaseIterable {
+    case fill = "Fill"
+    case empty = "Empty"
 }
 
 enum VehicalStatus:String, Codable,CaseIterable {

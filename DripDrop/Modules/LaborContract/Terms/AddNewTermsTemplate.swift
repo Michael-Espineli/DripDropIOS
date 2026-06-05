@@ -102,6 +102,7 @@ struct AddNewTermsTemplate: View {
         }
         
         let trimmedName = templateName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDescription = templateDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
             alertMessage = "Please enter a valid template name."
             showAlert = true
@@ -123,7 +124,7 @@ struct AddNewTermsTemplate: View {
         let newTemplate = TermsTemplate(
             id: newTemplateId,
             name: trimmedName,
-            description: ""
+            description: trimmedDescription
             // Add other required properties with defaults if needed
         )
         

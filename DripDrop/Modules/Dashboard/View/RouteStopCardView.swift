@@ -52,8 +52,6 @@ struct RouteStopCardView: View {
     }
 
     @State var customer: Customer? = nil
-    @State var color: Color = .gray
-    @State var foreGroundColor: Color = .black
     @State var showPhoneNumberPicker: Bool = false
     @State var phoneNumberPickerType: PhoneNumberPickerType? = nil
     @State var stop: ServiceStop
@@ -168,14 +166,14 @@ extension RouteStopCardView {
     private func card() -> some View {
         HStack(spacing: 12) {
             Rectangle()
-                .fill(color.opacity(0.6))
-                .frame(width: 4)
-                .cornerRadius(2)
+                .fill(statusAccentColor)
+                .frame(width: stop.operationStatus == .notFinished ? 4 : 7)
+                .cornerRadius(3)
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
                     Image(systemName: "\(index + 1).square.fill")
                         .font(.title2)
-                        .foregroundColor(color)
+                        .foregroundColor(statusAccentColor)
                     homeNav
 //                            if let weather = VM.weather {
 //                                WeatherSnapShotView(weather: weather)
@@ -195,6 +193,17 @@ extension RouteStopCardView {
             }
         }
 
+    }
+
+    private var statusAccentColor: Color {
+        switch stop.operationStatus {
+        case .finished:
+            return .poolGreen
+        case .notFinished:
+            return .gray
+        case .skipped:
+            return .orange
+        }
     }
     var message: some View {
         Group {

@@ -50,7 +50,7 @@ struct WorkPreviewBasedOnCompany: View {
         }
         .sheet(isPresented: $mobileDailyVM.showEndMilage) {
             endMilageView
-                .presentationDetents([.fraction(0.5), .fraction(0.6)])
+                .presentationDetents([.fraction(0.5), .fraction(0.6), .large])
         }
         .task {
             if let user = masterDataManager.user {
@@ -256,7 +256,10 @@ extension WorkPreviewBasedOnCompany {
 
                 Button {
                     mobileDailyVM.resumeActiveRoute(
-                        companyId: masterDataManager.currentCompany?.id
+                        companyId: masterDataManager.currentCompany?.id,
+                        companyName: masterDataManager.currentCompany?.name,
+                        user: masterDataManager.user,
+                        route: route
                     )
                     showPreviousWork = false
                 } label: {
@@ -627,7 +630,7 @@ extension WorkPreviewBasedOnCompany {
                 case .contractor:
                     if UIDevice.isIPhone {
                         NavigationLink(
-                            value: Route.mainDailyDisplayView(dataService: dataService)
+                            value: Route.employeeMainDailyDisplayView(dataService: dataService)
                         ) {
                             routePreview
                         }
@@ -661,7 +664,7 @@ extension WorkPreviewBasedOnCompany {
                 case .notAssigned:
                     if UIDevice.isIPhone {
                         NavigationLink(
-                            value: Route.mainDailyDisplayView(dataService: dataService)
+                            value: Route.employeeMainDailyDisplayView(dataService: dataService)
                         ) {
                             routePreview
                         }
@@ -803,7 +806,9 @@ extension WorkPreviewBasedOnCompany {
         case .onBreak:
             Button {
                 mobileDailyVM.resumeActiveRoute(
-                    companyId: masterDataManager.currentCompany?.id
+                    companyId: masterDataManager.currentCompany?.id,
+                    companyName: masterDataManager.currentCompany?.name,
+                    user: masterDataManager.user
                 )
             } label: {
                 routeControlButton(
@@ -835,7 +840,9 @@ extension WorkPreviewBasedOnCompany {
 
                 Button {
                     mobileDailyVM.resumeActiveRoute(
-                        companyId: masterDataManager.currentCompany?.id
+                        companyId: masterDataManager.currentCompany?.id,
+                        companyName: masterDataManager.currentCompany?.name,
+                        user: masterDataManager.user
                     )
                 } label: {
                     routeControlButton(
@@ -1114,20 +1121,24 @@ extension WorkPreviewBasedOnCompany {
                 VStack(spacing: 14) {
                     mileageHeaderCard(
                         title: "End Mileage",
-                        message: "Enter the ending mileage when the route is complete.",
+                        message: mobileDailyVM.selectedVehical.id.isEmpty
+                        ? "Enter the ending mileage to finish the route. Vehicle selection is optional for routes that started without one."
+                        : "Enter the ending mileage when the route is complete.",
                         systemImage: "flag.checkered"
                     )
                     
-                    if !mobileDailyVM.selectedVehical.id.isEmpty {
-                        endMileageInputCard
-                    } else {
+                    if mobileDailyVM.selectedVehical.id.isEmpty {
                         emptyStateRow(
-                            title: "No vehicle selected",
-                            message: "Select a vehicle before entering end mileage.",
+                            title: "No vehicle on this route",
+                            message: "You can still finish the route. Pick a vehicle only if you want to attach one now.",
                             systemImage: "car"
                         )
                         .workPreviewCard()
+                        
+                        vehiclePickerCard
                     }
+                    
+                    endMileageInputCard
                     
                     Spacer()
                 }
@@ -1262,7 +1273,21 @@ extension WorkPreviewBasedOnCompany {
     }
         //MARK: endMileageInputCard
     private var endMileageInputCard: some View {
+        
         VStack(alignment: .leading, spacing: 14) {
+            
+            Button {
+                submitEndMileageAndStopRoute()
+            } label: {
+                Label("Submit End Mileage", systemImage: "checkmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSubmitEndMileage)
+            .opacity(canSubmitEndMileage ? 1.0 : 0.55)
             sectionHeader("Mileage", systemImage: "number")
             
             HStack {
@@ -1301,18 +1326,6 @@ extension WorkPreviewBasedOnCompany {
                     .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             
-            Button {
-                submitEndMileageAndStopRoute()
-            } label: {
-                Label("Submit End Mileage", systemImage: "checkmark.circle")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(!canSubmitEndMileage)
-            .opacity(canSubmitEndMileage ? 1.0 : 0.55)
         }
         .workPreviewCard()
     }
@@ -1350,21 +1363,26 @@ extension WorkPreviewBasedOnCompany {
 
     private func submitEndMileageAndStopRoute() {
         guard canSubmitEndMileage else { return }
+        guard let route = routeBeingEnded else { return }
 
         mobileDailyVM.updateRouteEndtMilage(
-            companyId: masterDataManager.currentCompany?.id
+            companyId: masterDataManager.currentCompany?.id,
+            route: route,
+            syncSelectedVehicle: route.id == mobileDailyVM.activeRoute?.id
         )
 
         mobileDailyVM.stopActiveRoute(
             companyId: masterDataManager.currentCompany?.id,
             companyName: masterDataManager.currentCompany?.name,
-            user: masterDataManager.user
+            user: masterDataManager.user,
+            route: route
         )
 
         routePendingEnd = nil
         mobileDailyVM.showEndMilage = false
 
         Task {
+            try? await Task.sleep(nanoseconds: 700_000_000)
             await loadPreviousWork()
         }
     }
@@ -1555,10 +1573,11 @@ extension WorkPreviewBasedOnCompany {
 private extension View {
     func workPreviewCard(material: Bool = false) -> some View {
         self
-            .padding(16)
-            .background(
-                material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
-                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-            )
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
     }
 }

@@ -835,6 +835,14 @@ extension ProductionDataService {
             .count.getAggregation(source: .server).count as! Int
         //        return 0
     }
+    func getShoppingListItemByUserAndStatusCount(companyId: String, userId:String, status: ShoppingListStatus) async throws -> Int {
+        return try await shoppingListCollection(companyId: companyId)
+            .whereField("purchaserId", isEqualTo: userId)
+            .whereField("status", isEqualTo: status.rawValue)
+            .count.getAggregation(source: .server).count as! Int
+        
+    }
+
     func getAllShoppingListItemsByUserForCategory(companyId: String, userId: String,category:String) async throws -> [ShoppingListItem] {
         return try await shoppingListCollection(companyId: companyId)
             .whereField("purchaserId", isEqualTo: userId)

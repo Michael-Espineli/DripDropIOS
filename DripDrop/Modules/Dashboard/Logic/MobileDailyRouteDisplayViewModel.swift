@@ -526,24 +526,37 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     }
     
 
-    func stopActiveRoute(companyId: String?,companyName:String? , user:DBUser?){
+    func stopActiveRoute(
+        companyId: String?,
+        companyName:String?,
+        user:DBUser?,
+        route routeToStop: ActiveRoute? = nil
+    ){
         guard let companyId else {return}
         guard let companyName else {return}
         guard let user else {return}
-        guard let activeRoute else {return}
+        guard var route = routeToStop ?? activeRoute else {return}
             //Change Status
-        dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: .finished)
+        let endTime = routeEndTime(for: route)
+        route.status = .finished
+        route.endTime = endTime
+
+        dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: route.id, status: .finished)
         
-        Task { @MainActor in
-            if let companyId = self.cachedCompanyId, let activeId = self.activeRoute?.id {
-                await closeCurrentSummaryLog(companyId: companyId, activeRouteId: activeId)
+        if route.id == activeRoute?.id {
+            self.activeRoute = route
+            Task { @MainActor in
+                if let companyId = self.cachedCompanyId, let activeId = self.activeRoute?.id {
+                    await closeCurrentSummaryLog(companyId: companyId, activeRouteId: activeId)
+                }
             }
+
+            // Stop location tracking at end of route
+            routeLocationManager.stopTracking()
+            stopRouteLogTimer(companyId: companyId, activeRouteId: route.id, user: user, companyName: companyName)
         }
 
-        dataService.updateActiveRouteEndTime(companyId: companyId, activeRouteId: activeRoute.id, endTime: Date())
-        // Stop location tracking at end of route
-        routeLocationManager.stopTracking()
-        stopRouteLogTimer(companyId: companyId, activeRouteId: activeRoute.id, user: user, companyName: companyName)
+        dataService.updateActiveRouteEndTime(companyId: companyId, activeRouteId: route.id, endTime: endTime)
 
     }
     func pauseActiveRoute(companyId: String?,companyName:String? , user:DBUser?){
@@ -566,20 +579,36 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         stopRouteLogTimer(companyId: companyId, activeRouteId: activeRoute.id, user: user, companyName: companyName)
 
     }
-    func resumeActiveRoute(companyId: String?){
+    func resumeActiveRoute(
+        companyId: String?,
+        companyName: String?,
+        user: DBUser?,
+        route routeToResume: ActiveRoute? = nil
+    ) {
         guard let companyId else {return}
-        guard let activeRoute else {return}
+        guard let companyName else {return}
+        guard let user else {return}
+        guard var activeRoute = routeToResume ?? activeRoute else {return}
+        if activeRoute.id == "" { return }
+        
+        self.cachedCompanyId = companyId
+        self.cachedCompanyName = companyName
+        self.cachedUser = user
             //Change Status
+        activeRoute.status = .inProgress
+        if let existingStartTime = activeRoute.startTime {
+            self.startTime = existingStartTime
+        }
+        self.activeRoute = activeRoute
+
         dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: .inProgress)
         // Resume location tracking when route resumes
         routeLocationManager.startTracking()
         
         Task { @MainActor in
-            if let companyId = self.cachedCompanyId, let companyName = self.cachedCompanyName, let user = self.cachedUser, let activeId = self.activeRoute?.id {
-                await closeCurrentSummaryLog(companyId: companyId, activeRouteId: activeId)
-                await openSummaryLog(type: .working, companyId: companyId, companyName: companyName, activeRouteId: activeId, user: user)
-                startRouteLogTimer(companyId: companyId, activeRouteId: activeId, user: user, companyName: companyName)
-            }
+            await closeCurrentSummaryLog(companyId: companyId, activeRouteId: activeRoute.id)
+            await openSummaryLog(type: .working, companyId: companyId, companyName: companyName, activeRouteId: activeRoute.id, user: user)
+            startRouteLogTimer(companyId: companyId, activeRouteId: activeRoute.id, user: user, companyName: companyName)
         }
     }
     
@@ -624,21 +653,15 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         }
     }
     
-    func updateRouteStartMilage(companyId: String?){
-        print("  [MobileDailyRouteDisplayViewModel][updateRouteStartMilage]")
-        guard let companyId else {return}
-        guard let activeRoute else {return}
-        guard let milage = Double(inputStartMilage) else {return}
-        if selectedVehical.id == "" {return}
-        //Update Route
-        dataService.updateActiveRouteStartMilage(companyId: companyId, activeRouteId: activeRoute.id, startMilage: milage)
+    private func updateActiveRouteSelectedVehicle(companyId: String, activeRouteId: String, miles: Double? = nil) {
+        guard !selectedVehical.id.isEmpty else { return }
         
         if selectedVehicleIsPersonal {
-            if let personalVehicle = personalVehicleForCurrentUser(withMiles: milage),
+            if let personalVehicle = personalVehicleForCurrentUser(withMiles: miles),
                let ownerId = currentCompanyUser?.userId {
                 dataService.updateActiveRoutePersonalVehicle(
                     companyId: companyId,
-                    activeRouteId: activeRoute.id,
+                    activeRouteId: activeRouteId,
                     ownerId: ownerId,
                     personalVehicle: personalVehicle
                 )
@@ -648,39 +671,81 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         
         dataService.updateActiveRouteCompanyFleetVehicle(
             companyId: companyId,
-            activeRouteId: activeRoute.id,
+            activeRouteId: activeRouteId,
             vehical: selectedVehical
         )
+    }
+    
+    private func updateSelectedCompanyFleetMileage(companyId: String, miles: Double) {
+        guard !selectedVehical.id.isEmpty,
+              !selectedVehicleIsPersonal
+        else { return }
         
-        // Update Vehicle
-        Task{
+        Task {
             do {
-                try await dataService.updateVehicalMilage(companyId: companyId, vehicalId: selectedVehical.id, miles: milage)
+                try await dataService.updateVehicalMilage(companyId: companyId, vehicalId: selectedVehical.id, miles: miles)
             } catch {
                 print(error)
             }
         }
     }
+
+    private func routeEndTime(for route: ActiveRoute) -> Date {
+        if Calendar.current.isDate(route.date, inSameDayAs: Date()) {
+            return Date()
+        }
+
+        return Calendar.current.date(
+            byAdding: .second,
+            value: -1,
+            to: route.date.endOfDay()
+        ) ?? route.date
+    }
     
-    func updateRouteEndtMilage(companyId: String?) {
+    func updateRouteStartMilage(companyId: String?){
+        print("  [MobileDailyRouteDisplayViewModel][updateRouteStartMilage]")
+        guard let companyId else {return}
+        guard let activeRoute else {return}
+        guard let milage = Double(inputStartMilage) else {return}
+        //Update Route
+        dataService.updateActiveRouteStartMilage(companyId: companyId, activeRouteId: activeRoute.id, startMilage: milage)
+        updateActiveRouteSelectedVehicle(companyId: companyId, activeRouteId: activeRoute.id, miles: milage)
+        updateSelectedCompanyFleetMileage(companyId: companyId, miles: milage)
+    }
+    
+    func updateRouteEndtMilage(
+        companyId: String?,
+        route routeToUpdate: ActiveRoute? = nil,
+        syncSelectedVehicle: Bool = true
+    ) {
         print("  [MobileDailyRouteDisplayViewModel][updateRouteEndtMilage]")
 
         guard let companyId else { return }
-        guard let activeRoute else { return }
+        guard var route = routeToUpdate ?? activeRoute else { return }
         guard let milage = Double(inputEndMilage) else { return }
 
         dataService.updateActiveRouteEndMilage(
             companyId: companyId,
-            activeRouteId: activeRoute.id,
+            activeRouteId: route.id,
             endMilage: milage
         )
+        if syncSelectedVehicle {
+            updateActiveRouteSelectedVehicle(companyId: companyId, activeRouteId: route.id, miles: milage)
+            updateSelectedCompanyFleetMileage(companyId: companyId, miles: milage)
+        }
 
-        if let startMilage = activeRoute.startMilage {
+        if let startMilage = route.startMilage {
             dataService.updateActiveRouteDistnace(
                 companyId: companyId,
-                activeRouteId: activeRoute.id,
+                activeRouteId: route.id,
                 distance: milage - startMilage
             )
+        }
+
+        route.endMilage = milage
+        if route.id == activeRoute?.id {
+            activeRoute = route
+            endMilage = milage
         }
     }
     
@@ -867,11 +932,16 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 print(order)
             }
             
-            let orderLookup: [String: Int] = Dictionary(
-                uniqueKeysWithValues: serviceStopOrders.map {
-                    ($0.serviceStopId, $0.order)
+            var orderLookup: [String: Int] = [:]
+            for order in serviceStopOrders {
+                if let existingOrder = orderLookup[order.serviceStopId] {
+                    let keptOrder = min(existingOrder, order.order)
+                    orderLookup[order.serviceStopId] = keptOrder
+                    print("    [MobileDailyRouteDisplayViewModel][applyOrder] Duplicate serviceStopId \(order.serviceStopId) in order list. Keeping order \(keptOrder)")
+                } else {
+                    orderLookup[order.serviceStopId] = order.order
                 }
-            )
+            }
 
             print("    [MobileDailyRouteDisplayViewModel][applyOrder] 2")
             return serviceStops.sorted { lhs, rhs in
@@ -1602,7 +1672,11 @@ func initalLoad(companyId:String,user:DBUser,date:Date) async throws {
         print("1")
         //Status
         if workingActiveRoute.totalStops == workingActiveRoute.finishedStops {
-            workingActiveRoute.status = .finished
+            if workingActiveRoute.endMilage != nil && workingActiveRoute.endTime != nil {
+                workingActiveRoute.status = .finished
+            } else {
+                workingActiveRoute.status = .inProgress
+            }
         } else if workingActiveRoute.finishedStops == 0 {
             workingActiveRoute.status = .didNotStart
         } else {
@@ -1711,15 +1785,18 @@ func initalLoad(companyId:String,user:DBUser,date:Date) async throws {
                 
                 print(" - Stops equal total stops")
                 
-                if workingActiveRoute.status != .finished{
+                let routeHasCloseout = workingActiveRoute.endMilage != nil && workingActiveRoute.endTime != nil
+                let nextStatus: ActiveRouteStatus = routeHasCloseout ? .finished : .inProgress
+                
+                if workingActiveRoute.status != nextStatus{
                     
                     print("Updating Active Route Status")
                     
-                    dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: .finished)
+                    dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: workingActiveRoute.id, status: nextStatus)
                     
                 }
                 
-                if workingActiveRoute.endMilage == nil || workingActiveRoute.endTime == nil{
+                if !routeHasCloseout {
                     
                     print("Either endMilage or end time is optional")
                     

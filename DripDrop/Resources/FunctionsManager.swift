@@ -20,6 +20,30 @@ final class FunctionsManager {
     
     static let shared = FunctionsManager()
     private init(){}
+    
+        // MARK: acceptTechInvite
+    func acceptTechInvite(inviteId: String, userId: String) async throws {
+        let payload: [String: Any] = [
+            "inviteId": inviteId,
+            "userId": userId,
+        ]
+        
+        let callable = functions.httpsCallable("acceptTechInvite")
+        let result = try await callable.call(payload)
+        
+        guard let json = result.data as? [String: Any] else {
+            print("      [FunctionsManager][acceptTechInvite] Error: Unable to read JSON from function response.")
+            throw FireBaseRead.unableToRead
+        }
+        
+        let status = json["status"] as? Int ?? 500
+        guard status == 200 else {
+            let message = json["error"] as? String ?? "Invite could not be accepted."
+            print("      [FunctionsManager][acceptTechInvite] Error: \(message)")
+            throw NSError(domain: "AcceptTechInvite", code: status, userInfo: [NSLocalizedDescriptionKey: message])
+        }
+    }
+    
     // MARK: updateServiceStopPermanently
     func updateServiceStopPermanently(companyId:String,serviceStopList:[ServiceStop],newTech:CompanyUser,newDay:DaysOfWeek){
         let payload: [String: Any] = [
@@ -80,15 +104,7 @@ final class FunctionsManager {
             print("      [FunctionsManager][sendServiceReportOnFinish] Error: Unable to read JSON from function response.")
             throw FireBaseRead.unableToRead
         }
-        
-        
-        let callable2 = functions.httpsCallable("sendservicereportonfinish")
-        let result2 = try await callable2.call(payload)
-        guard let json = result2.data as? [String: Any] else {
-            print("      [FunctionsManager][sendServiceReportOnFinish][2] Error: Unable to read JSON from function response.")
-            throw FireBaseRead.unableToRead
-        }
-        print("    [FunctionsManager][sendServiceReportOnFinish] Sent Email 1 and 2")
+        print("    [FunctionsManager][sendServiceReportOnFinish] Sent Email \(json)")
 
     }
         // MARK: createFirstRecurringServiceStop

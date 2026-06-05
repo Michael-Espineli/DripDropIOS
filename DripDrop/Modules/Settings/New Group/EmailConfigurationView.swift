@@ -27,7 +27,7 @@ struct EmailConfigurationView: View {
                 header
                 ScrollView{
                     content
-                    if viewModel.emailIsOn {
+                    if viewModel.hasAnyCategoryEmailOn {
                         Rectangle()
                             .frame(height: 1)
                         customerList
@@ -50,9 +50,6 @@ struct EmailConfigurationView: View {
                 }
             }
         }
-        .onChange(of: viewModel.emailIsOn, perform: { on in
-            viewModel.checkChanges()
-        })
     }
 }
 
@@ -70,10 +67,7 @@ extension EmailConfigurationView {
             if viewModel.hasChanges {
                 HStack{
                     Button(action: {
-                        if let emailConfig = viewModel.emailConfig {
-                            viewModel.emailIsOn = emailConfig.emailIsOn
-                            viewModel.emailBody = emailConfig.emailBody
-                        }
+                        viewModel.resetChanges()
                     }, label: {
                         Text("Undo")
                             .modifier(DismissButtonModifier())
@@ -100,12 +94,31 @@ extension EmailConfigurationView {
                     .opacity(viewModel.isLoading ? 0.6 : 1)
                 }
             }
+            categorySettingsList
+        }
+        .padding(8)
+    }
+
+    var categorySettingsList: some View {
+        VStack(spacing: 12) {
+            ForEach(ServiceStopCategory.allCases) { category in
+                categorySettingsRow(for: category)
+            }
+        }
+    }
+
+    func categorySettingsRow(for category: ServiceStopCategory) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(category.title, systemImage: category.systemImage)
+                .font(.headline)
+
             HStack{
                 Button(action: {
-                    viewModel.emailIsOn.toggle()
+                    updateCategorySetting(for: category) { setting in
+                        setting.sendEmailOnFinish.toggle()
+                    }
                 }, label: {
-                    if viewModel.emailIsOn {
-                        
+                    if categorySetting(for: category).sendEmailOnFinish {
                         Image(systemName:"checkmark.square")
                             .modifier(SubmitButtonModifier())
                     } else {
@@ -116,81 +129,101 @@ extension EmailConfigurationView {
                 .disabled(viewModel.isLoading)
                 .opacity(viewModel.isLoading ? 0.6 : 1)
                 Spacer()
-                Text("Turn On Email Reports")
+                Text("Send Email When Finished")
             }
-            if viewModel.emailIsOn {
-                VStack{
-                    HStack{
-                        if let emailConfig = viewModel.emailConfig {
-                            if viewModel.emailBody != emailConfig.emailBody {
-                                
-                                Button(action: {
-                                    if let emailConfig = viewModel.emailConfig {
-                                        viewModel.emailIsOn = emailConfig.emailIsOn
-                                    }
-                                }, label: {
-                                    Image(systemName: "gobackward")
-                                        .modifier(DismissButtonModifier())
-                                })
-                            }
+
+            HStack{
+                Button(action: {
+                    updateCategorySetting(for: category) { setting in
+                        setting.requirePhotoOnFinish.toggle()
                     }
-                        Spacer()
-                        Text("Email Body")
-                        Spacer()
-                        if let emailConfig = viewModel.emailConfig {
-                            if viewModel.emailBody != emailConfig.emailBody {
-                                Button(action: {                            emailLabel = nil
-                                    Task{
-                                        if let currentCompany = masterDataManager.currentCompany {
-                                            do {
-                                                try await viewModel.saveChanges(companyId: currentCompany.id)
-                                            } catch {
-                                                print(error)
-                                            }
-                                        }
-                                        
-                                    }
-                                }, label: {
-                                    Text("Save")
-                                        .modifier(AddButtonModifier())
-                                })
-                            }
-                        }
+                }, label: {
+                    if categorySetting(for: category).requirePhotoOnFinish {
+                        Image(systemName:"checkmark.square")
+                            .modifier(SubmitButtonModifier())
+                    } else {
+                        Image(systemName:"square")
+                            .modifier(AddButtonModifier())
                     }
-                    TextField(
-                        "",
-                        text: $viewModel.emailBody,
-                        axis: .vertical
-                    )
-                    .padding(3)
-                    .background(Color.poolBlue.opacity(0.3))
-                    .cornerRadius(5.0)
-                    .padding(8)
-                    .focused($emailLabel, equals: .email)
-                    .submitLabel(.return)
-                }
-                HStack{
-                    Button(action: {
-                        viewModel.requiresPhoto.toggle()
-                    }, label: {
-                        if viewModel.requiresPhoto {
-                            
-                            Image(systemName:"checkmark.square")
-                                .modifier(SubmitButtonModifier())
-                        } else {
-                            Image(systemName:"square")
-                                .modifier(AddButtonModifier())
-                        }
-                    })
-                    .disabled(viewModel.isLoading)
-                    .opacity(viewModel.isLoading ? 0.6 : 1)
-                    Spacer()
-                    Text("Require Photo On Complete")
-                }
+                })
+                .disabled(viewModel.isLoading)
+                .opacity(viewModel.isLoading ? 0.6 : 1)
+                Spacer()
+                Text("Require Photo To Finish")
             }
+
+            Text("Subject")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            TextField(
+                "Subject",
+                text: categoryStringBinding(for: category, keyPath: \.emailSubject)
+            )
+            .padding(6)
+            .background(Color.poolBlue.opacity(0.3))
+            .cornerRadius(5.0)
+
+            Text("Body")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            TextField(
+                "",
+                text: categoryStringBinding(for: category, keyPath: \.emailBody),
+                axis: .vertical
+            )
+            .padding(6)
+            .background(Color.poolBlue.opacity(0.3))
+            .cornerRadius(5.0)
+            .submitLabel(.return)
+
+            Text("Footer")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            TextField(
+                "Footer",
+                text: categoryStringBinding(for: category, keyPath: \.emailFooter),
+                axis: .vertical
+            )
+            .padding(6)
+            .background(Color.poolBlue.opacity(0.3))
+            .cornerRadius(5.0)
+            .submitLabel(.return)
         }
-        .padding(8)
+        .padding(10)
+        .background(Color.white.opacity(0.45))
+        .cornerRadius(8)
     }
+
+    func categorySetting(for category: ServiceStopCategory) -> ServiceStopCategoryCompletionSettings {
+        viewModel.categorySettings[category.rawValue] ?? ServiceStopCategoryCompletionSettings.defaultSettings(for: category)
+    }
+
+    func updateCategorySetting(
+        for category: ServiceStopCategory,
+        update: (inout ServiceStopCategoryCompletionSettings) -> Void
+    ) {
+        var setting = categorySetting(for: category)
+        update(&setting)
+        viewModel.categorySettings[category.rawValue] = setting
+        viewModel.checkChanges()
+    }
+
+    func categoryStringBinding(
+        for category: ServiceStopCategory,
+        keyPath: WritableKeyPath<ServiceStopCategoryCompletionSettings, String>
+    ) -> Binding<String> {
+        Binding(
+            get: {
+                categorySetting(for: category)[keyPath: keyPath]
+            },
+            set: { newValue in
+                updateCategorySetting(for: category) { setting in
+                    setting[keyPath: keyPath] = newValue
+                }
+            }
+        )
+    }
+
     var customerList: some View {
         VStack{
             HStack{

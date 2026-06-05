@@ -196,7 +196,7 @@ struct EquipmentCard: View {
                     Button {
                         showEquipmentStatus.toggle()
                     } label: {
-                        Text(equipmentStatus.rawValue)
+                        Text(equipmentStatus.displayName)
                             .font(.caption.weight(.medium))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
@@ -248,6 +248,7 @@ struct EquipmentCard: View {
         case .nonoperational: return .red
         case .needsRepair: return .orange
         case .needsMaintenance: return .yellow
+        case .replaced: return .gray
         }
     }
     
@@ -539,17 +540,20 @@ private extension View {
                     }, label: {
                         switch equipmentStatus {
                         case .operational:
-                            Text(equipmentStatus.rawValue)
+                            Text(equipmentStatus.displayName)
                                 .modifier(BlueButtonModifier())
                         case .nonoperational:
-                            Text(equipmentStatus.rawValue)
+                            Text(equipmentStatus.displayName)
                                 .modifier(DismissButtonModifier())
                         case .needsRepair:
-                            Text(equipmentStatus.rawValue)
+                            Text(equipmentStatus.displayName)
                                 .modifier(OrangeButtonModifier())
                         case .needsMaintenance:
-                            Text(equipmentStatus.rawValue)
+                            Text(equipmentStatus.displayName)
                                 .modifier(YellowButtonModifier())
+                        case .replaced:
+                            Text(equipmentStatus.displayName)
+                                .modifier(DismissButtonModifier())
                         }
                     })
                     .sheet(isPresented: $showEquipmentStatus, content: {

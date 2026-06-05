@@ -87,6 +87,18 @@ extension ProductionDataService {
             ])
     }
 
+    func updateEmailConfigurationCategorySettings(
+        companyId:String,
+        categorySettings:[String: ServiceStopCategoryCompletionSettings]
+    ) async throws {
+        let settingsData = categorySettings.mapValues { $0.firestoreData }
+
+        try await CompanyEmailConfigurationDocument(companyId: companyId)
+            .setData([
+                "serviceStopCategorySettings": settingsData
+            ], merge: true)
+    }
+
     func editTermsTemplateName(companyId:String,termsTemplateId:String,termsTemplateName:String) async throws{
         let ref = termsTemplateDocument(companyId: companyId, templateId: termsTemplateId)
         try await ref
@@ -557,7 +569,15 @@ extension ProductionDataService {
         let itemRef = PurchaseItemDocument(purchaseItemId: currentItem.id, companyId: companyId)
         
         try await itemRef.updateData([
-            "workOrderId":workOrderId
+            "workOrderId": workOrderId,
+            "jobId": workOrderId,
+            "assignedJobId": workOrderId,
+            "assignedToJob": true,
+            "assignmentStatus": "assignedToJob",
+            "billingOwner": "job",
+            "jobBillingStatus": "handledByJob",
+            "jobBillable": currentItem.isJobBillable,
+            "jobBillingRate": currentItem.jobMaterialBillingRate
         ])
     }
     func updateCompanyUserFavorites(user:DBUser,updatingUser:DBUser,favorites:[String]) throws {

@@ -26,6 +26,9 @@ final class ServiceStopTaskViewModel: ObservableObject {
     @Published var pendingNextRecurringStopTasks: [JobTaskGroupItem] = []
 
     @Published var isSavingNewTask: Bool = false
+    @Published var showAttachJobTasks: Bool = false
+    @Published var attachableJobTasks: [JobTask] = []
+    @Published var selectedAttachJobTaskIds: Set<String> = []
 
     func finishServiceStopTask(
         companyId: String,
@@ -40,8 +43,11 @@ final class ServiceStopTaskViewModel: ObservableObject {
             status: status
         )
 
+        let historyCompanyId: String
+
         if serviceStop.otherCompany {
             if let mainCompanyId = serviceStop.mainCompanyId {
+                historyCompanyId = mainCompanyId
                 if serviceStop.jobId != "" {
                     try dataService.updateJobTaskStatus(
                         companyId: mainCompanyId,
@@ -52,8 +58,11 @@ final class ServiceStopTaskViewModel: ObservableObject {
                 } else {
                     // Update Sender RSS
                 }
+            } else {
+                historyCompanyId = companyId
             }
         } else {
+            historyCompanyId = companyId
             if serviceStop.jobId != "" {
                 try dataService.updateJobTaskStatus(
                     companyId: companyId,
@@ -64,6 +73,22 @@ final class ServiceStopTaskViewModel: ObservableObject {
             } else {
                 // Update Sender RSS
             }
+        }
+
+        if status == .finished {
+            try await EquipmentTaskHistoryService(dataService: dataService)
+                .recordServiceStopTaskCompletion(
+                    companyId: historyCompanyId,
+                    serviceStop: serviceStop,
+                    task: task
+                )
+
+            try await BodyOfWaterTaskHistoryService(dataService: dataService)
+                .recordServiceStopTaskCompletion(
+                    companyId: historyCompanyId,
+                    serviceStop: serviceStop,
+                    task: task
+                )
         }
     }
 
@@ -99,6 +124,135 @@ final class ServiceStopTaskViewModel: ObservableObject {
                     taskId: task.jobTaskId,
                     status: .scheduled
                 )
+            }
+        }
+    }
+
+    private func jobTaskCompanyId(companyId: String, serviceStop: ServiceStop) -> String {
+        if serviceStop.otherCompany, let mainCompanyId = serviceStop.mainCompanyId {
+            return mainCompanyId
+        }
+
+        return companyId
+    }
+
+    func loadAttachableJobTasks(
+        companyId: String,
+        serviceStop: ServiceStop,
+        currentTasks: [ServiceStopTask]
+    ) async throws {
+        guard !serviceStop.jobId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            attachableJobTasks = []
+            selectedAttachJobTaskIds = []
+            return
+        }
+
+        let jobCompanyId = jobTaskCompanyId(companyId: companyId, serviceStop: serviceStop)
+        let jobTasks = try await dataService.getJobTasks(
+            companyId: jobCompanyId,
+            jobId: serviceStop.jobId
+        )
+        let currentJobTaskIds = Set(currentTasks.compactMap { task in
+            task.jobTaskId.isEmpty ? nil : task.jobTaskId
+        })
+
+        attachableJobTasks = jobTasks.filter { task in
+            guard !currentJobTaskIds.contains(task.id) else { return false }
+            guard task.status != .finished else { return false }
+
+            let assignedStopId = task.serviceStopId.id.trimmingCharacters(in: .whitespacesAndNewlines)
+            return assignedStopId.isEmpty || assignedStopId == serviceStop.id
+        }
+        selectedAttachJobTaskIds = []
+    }
+
+    func attachSelectedJobTasksToCurrentStop(
+        companyId: String,
+        serviceStop: ServiceStop,
+        taskList: Binding<[ServiceStopTask]>
+    ) {
+        guard !selectedAttachJobTaskIds.isEmpty else { return }
+
+        Task {
+            do {
+                isSavingNewTask = true
+
+                let jobCompanyId = jobTaskCompanyId(companyId: companyId, serviceStop: serviceStop)
+                let job = try await dataService.getWorkOrderById(
+                    companyId: jobCompanyId,
+                    workOrderId: serviceStop.jobId
+                )
+                let selectedTasks = attachableJobTasks.filter { selectedAttachJobTaskIds.contains($0.id) }
+                var newStopTasks: [ServiceStopTask] = []
+
+                for jobTask in selectedTasks {
+                    let stopTask = makeServiceStopTask(
+                        from: jobTask,
+                        serviceStop: serviceStop,
+                        jobInternalId: job.internalId
+                    )
+
+                    try await dataService.uploadServiceStopTask(
+                        companyId: companyId,
+                        serviceStopId: serviceStop.id,
+                        task: stopTask
+                    )
+
+                    try dataService.updateJobTaskWorkerId(
+                        companyId: jobCompanyId,
+                        jobId: serviceStop.jobId,
+                        taskId: jobTask.id,
+                        workerId: serviceStop.techId
+                    )
+                    try dataService.updateJobTaskWorkerName(
+                        companyId: jobCompanyId,
+                        jobId: serviceStop.jobId,
+                        taskId: jobTask.id,
+                        workerName: serviceStop.tech
+                    )
+                    try dataService.updateJobTaskWorkerType(
+                        companyId: jobCompanyId,
+                        jobId: serviceStop.jobId,
+                        taskId: jobTask.id,
+                        workerType: .employee
+                    )
+                    try dataService.updateJobTaskServiceStopId(
+                        companyId: jobCompanyId,
+                        jobId: serviceStop.jobId,
+                        taskId: jobTask.id,
+                        serviceStopId: IdInfo(id: serviceStop.id, internalId: serviceStop.internalId)
+                    )
+                    try dataService.updateJobTaskStatus(
+                        companyId: jobCompanyId,
+                        jobId: serviceStop.jobId,
+                        taskId: jobTask.id,
+                        status: .scheduled
+                    )
+
+                    newStopTasks.append(stopTask)
+                }
+
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                    taskList.wrappedValue.append(contentsOf: newStopTasks)
+                }
+
+                attachableJobTasks.removeAll { selectedAttachJobTaskIds.contains($0.id) }
+                selectedAttachJobTaskIds = []
+                showAttachJobTasks = false
+                isSavingNewTask = false
+
+                #if os(iOS)
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                #endif
+            } catch {
+                isSavingNewTask = false
+                alertMessage = error.localizedDescription
+                showAlert = true
+                print(error)
+
+                #if os(iOS)
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                #endif
             }
         }
     }
@@ -250,6 +404,45 @@ final class ServiceStopTaskViewModel: ObservableObject {
             shoppingListItemId: ""
         )
     }
+
+    func makeServiceStopTask(
+        from jobTask: JobTask,
+        serviceStop: ServiceStop,
+        jobInternalId: String
+    ) -> ServiceStopTask {
+        ServiceStopTask(
+            id: "comp_ss_task_" + UUID().uuidString,
+            name: jobTask.name,
+            type: jobTask.type,
+            status: .scheduled,
+            contractedRate: jobTask.contractedRate,
+            estimatedTime: jobTask.estimatedTime,
+            customerApproval: jobTask.customerApproval,
+            actualTime: jobTask.actualTime,
+            workerId: serviceStop.techId,
+            workerType: .employee,
+            workerName: serviceStop.tech,
+            laborContractId: serviceStop.laborContractId,
+            serviceStopId: IdInfo(
+                id: serviceStop.id,
+                internalId: serviceStop.internalId
+            ),
+            jobId: IdInfo(
+                id: serviceStop.jobId,
+                internalId: jobInternalId
+            ),
+            recurringServiceStopId: IdInfo(
+                id: serviceStop.recurringServiceStopId,
+                internalId: ""
+            ),
+            jobTaskId: jobTask.id,
+            recurringServiceStopTaskId: "",
+            equipmentId: jobTask.equipmentId,
+            serviceLocationId: serviceStop.serviceLocationId,
+            bodyOfWaterId: jobTask.bodyOfWaterId,
+            shoppingListItemId: jobTask.dataBaseItemId
+        )
+    }
 }
 
 struct ServiceStopTaskView: View {
@@ -362,6 +555,15 @@ struct ServiceStopTaskView: View {
                 dataService: dataService,
                 tasks: $VM.pendingCurrentStopTasks
             )
+        }
+        .sheet(isPresented: $VM.showAttachJobTasks) {
+            if let currentCompany = masterDataService.currentCompany,
+               let serviceStop {
+                attachJobTasksSheet(
+                    companyId: currentCompany.id,
+                    serviceStop: serviceStop
+                )
+            }
         }
         .sheet(isPresented: $VM.showAddNextRecurringStopTask, onDismiss: {
             if let currentCompany = masterDataService.currentCompany,
@@ -530,6 +732,39 @@ struct ServiceStopTaskView: View {
 
         func addWorkSection(serviceStop: ServiceStop) -> some View {
             Section {
+                if !serviceStop.jobId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Button {
+                        Task {
+                            if let currentCompany = masterDataService.currentCompany {
+                                do {
+                                    try await VM.loadAttachableJobTasks(
+                                        companyId: currentCompany.id,
+                                        serviceStop: serviceStop,
+                                        currentTasks: taskList
+                                    )
+                                    VM.showAttachJobTasks = true
+                                } catch {
+                                    VM.alertMessage = error.localizedDescription
+                                    VM.showAlert = true
+                                    print(error)
+                                }
+                            }
+                        }
+                    } label: {
+                        addWorkButtonLabel(
+                            title: "Attach Job Tasks",
+                            subtitle: "Pull unscheduled tasks from the linked job into this stop.",
+                            systemImage: "link.badge.plus"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 4)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+
                 Button {
                     VM.showAddCurrentStopTask.toggle()
                 } label: {
@@ -602,6 +837,80 @@ struct ServiceStopTaskView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 4)
                     .textCase(nil)
+            }
+        }
+
+        func attachJobTasksSheet(
+            companyId: String,
+            serviceStop: ServiceStop
+        ) -> some View {
+            NavigationStack {
+                Group {
+                    if VM.attachableJobTasks.isEmpty {
+                        ContentUnavailableView(
+                            "No Job Tasks",
+                            systemImage: "checklist.unchecked",
+                            description: Text("Every available job task is already on this stop, finished, or assigned to another stop.")
+                        )
+                    } else {
+                        List {
+                            ForEach(VM.attachableJobTasks) { task in
+                                Button {
+                                    if VM.selectedAttachJobTaskIds.contains(task.id) {
+                                        VM.selectedAttachJobTaskIds.remove(task.id)
+                                    } else {
+                                        VM.selectedAttachJobTaskIds.insert(task.id)
+                                    }
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: VM.selectedAttachJobTaskIds.contains(task.id) ? "checkmark.circle.fill" : "circle")
+                                            .font(.title3)
+                                            .foregroundStyle(VM.selectedAttachJobTaskIds.contains(task.id) ? Color.poolGreen : .secondary)
+                                            .frame(width: 28, height: 28)
+
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(task.name)
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(.primary)
+
+                                            Text("\(task.type.rawValue) • \(task.status.rawValue)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        Spacer()
+
+                                        Text("\(task.estimatedTime) min")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                .navigationTitle("Attach Job Tasks")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            VM.showAttachJobTasks = false
+                        }
+                    }
+
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Attach") {
+                            VM.attachSelectedJobTasksToCurrentStop(
+                                companyId: companyId,
+                                serviceStop: serviceStop,
+                                taskList: $taskList
+                            )
+                        }
+                        .disabled(VM.selectedAttachJobTaskIds.isEmpty || VM.isSavingNewTask)
+                    }
+                }
             }
         }
 

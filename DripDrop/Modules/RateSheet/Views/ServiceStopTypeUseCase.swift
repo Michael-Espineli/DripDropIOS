@@ -10,6 +10,9 @@ import Foundation
 
 enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
     case jobVisit
+    case jobEstimate
+    case serviceAgreementEstimate
+    case customerRelationship
     case recurringRoute
     case routePlusSpa
     case serviceCall
@@ -24,16 +27,43 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
         case .jobVisit, .serviceCall:
             return PayrollSystemSourceIds.jobServiceStop
 
+        case .jobEstimate,
+             .estimate:
+            return PayrollSystemSourceIds.jobEstimateServiceStop
+
+        case .serviceAgreementEstimate,
+             .startup:
+            return PayrollSystemSourceIds.serviceAgreementEstimateServiceStop
+
+        case .customerRelationship:
+            return PayrollSystemSourceIds.customerRelationshipServiceStop
+
         case .recurringRoute,
              .routePlusSpa,
              .commercialRoute,
              .commercialMultiBow:
             return PayrollSystemSourceIds.recurringServiceStop
 
-        case .startup,
-             .estimate,
-             .unknown:
+        case .unknown:
             return PayrollSystemSourceIds.unknownServiceStop
+        }
+    }
+
+    var category: ServiceStopCategory {
+        switch self {
+        case .jobVisit, .serviceCall:
+            return .job
+        case .jobEstimate, .estimate:
+            return .jobEstimate
+        case .serviceAgreementEstimate, .startup:
+            return .serviceAgreementEstimate
+        case .customerRelationship, .unknown:
+            return .customerRelationship
+        case .recurringRoute,
+             .routePlusSpa,
+             .commercialRoute,
+             .commercialMultiBow:
+            return .route
         }
     }
 
@@ -41,6 +71,12 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
         switch self {
         case .jobVisit:
             return "Job Visit"
+        case .jobEstimate:
+            return "Job Estimate"
+        case .serviceAgreementEstimate:
+            return "Service Agreement Estimate"
+        case .customerRelationship:
+            return "Customer Relationship"
         case .recurringRoute:
             return "Recurring Service Stop"
         case .routePlusSpa:
@@ -54,7 +90,7 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
         case .startup:
             return "Startup"
         case .estimate:
-            return "Estimate"
+            return "Job Estimate"
         case .unknown:
             return "Unknown Service Stop"
         }
@@ -64,6 +100,12 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
         switch self {
         case .jobVisit:
             return "briefcase"
+        case .jobEstimate:
+            return "doc.text.magnifyingglass"
+        case .serviceAgreementEstimate:
+            return "list.clipboard"
+        case .customerRelationship:
+            return "person.wave.2"
         case .recurringRoute:
             return "figure.pool.swim"
         case .routePlusSpa:
@@ -75,7 +117,7 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
         case .commercialMultiBow:
             return "building.2.crop.circle"
         case .startup:
-            return "play.circle"
+            return "list.clipboard"
         case .estimate:
             return "doc.text.magnifyingglass"
         case .unknown:
@@ -87,8 +129,14 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
         switch self {
         case .jobVisit:
             return ["Job Visit", "Service Call", "Job"]
+        case .jobEstimate:
+            return ["Job Estimate", "Estimate For Job", "Estimate", "Bid Visit"]
+        case .serviceAgreementEstimate:
+            return ["Service Agreement Estimate", "Recurring Service Estimate", "New Service Estimate", "Startup", "Start Up", "New Pool"]
+        case .customerRelationship:
+            return ["Customer Relationship", "Customer Visit", "Follow Up", "Courtesy Visit", "Mistake Fix"]
         case .recurringRoute:
-            return ["Weekly Route", "Recurring Service Stop", "Route", "Routes"]
+            return ["Weekly Route", "Residential Route", "Recurring Service Stop", "Standard Route", "Pool Route", "Route", "Routes"]
         case .routePlusSpa:
             return ["Route + Spa", "Pool + Spa", "Weekly Route + Spa"]
         case .serviceCall:
@@ -98,9 +146,9 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
         case .commercialMultiBow:
             return ["Commercial Multi-BOW", "Commercial Multi BOW", "Commercial Multi Body of Water"]
         case .startup:
-            return ["Startup", "Start Up"]
+            return ["Service Agreement Estimate", "Startup", "Start Up", "New Service Estimate"]
         case .estimate:
-            return ["Estimate"]
+            return ["Job Estimate", "Estimate"]
         case .unknown:
             return []
         }
@@ -111,6 +159,16 @@ struct ServiceStopTypeFields {
     var typeId: String
     var type: String
     var typeImage: String
+    var category: ServiceStopCategory = .customerRelationship
+
+    var isSystemFallback: Bool {
+        typeId == PayrollSystemSourceIds.recurringServiceStop ||
+        typeId == PayrollSystemSourceIds.jobServiceStop ||
+        typeId == PayrollSystemSourceIds.jobEstimateServiceStop ||
+        typeId == PayrollSystemSourceIds.serviceAgreementEstimateServiceStop ||
+        typeId == PayrollSystemSourceIds.customerRelationshipServiceStop ||
+        typeId == PayrollSystemSourceIds.unknownServiceStop
+    }
 }
 
 enum ServiceStopTypeResolver {
@@ -138,15 +196,20 @@ enum ServiceStopTypeResolver {
         }
 
         for candidateName in useCase.candidateNames {
+            let candidateValue = normalized(candidateName)
             if let contains = activeTypes.first(where: {
-                normalized($0.name).contains(normalized(candidateName)) ||
-                normalized(candidateName).contains(normalized($0.name))
+                if shouldSkipCandidateMatch(typeName: $0.name, candidateValue: candidateValue, useCase: useCase) {
+                    return false
+                }
+
+                return normalized($0.name).contains(candidateValue) ||
+                candidateValue.contains(normalized($0.name))
             }) {
                 return contains
             }
         }
 
-        return activeTypes.first
+        return nil
     }
 
     static func serviceStopTypeFields(
@@ -157,14 +220,16 @@ enum ServiceStopTypeResolver {
             return ServiceStopTypeFields(
                 typeId: selectedType.id,
                 type: selectedType.name,
-                typeImage: selectedType.imageName ?? ""
+                typeImage: selectedType.imageName ?? "",
+                category: selectedType.resolvedCategory(fallback: useCase.category)
             )
         }
 
         return ServiceStopTypeFields(
             typeId: useCase.fallbackTypeId,
             type: useCase.fallbackName,
-            typeImage: useCase.fallbackImageName
+            typeImage: useCase.fallbackImageName,
+            category: useCase.category
         )
     }
 
@@ -177,5 +242,57 @@ enum ServiceStopTypeResolver {
             .replacingOccurrences(of: "-", with: "")
             .replacingOccurrences(of: "_", with: "")
             .replacingOccurrences(of: "&", with: "and")
+    }
+
+    private static func shouldSkipCandidateMatch(
+        typeName: String,
+        candidateValue: String,
+        useCase: ServiceStopTypeUseCase
+    ) -> Bool {
+        guard useCase == .recurringRoute else { return false }
+        guard candidateValue == "route" || candidateValue == "routes" else { return false }
+
+        return normalized(typeName).contains("commercial")
+    }
+}
+
+extension ProductionDataServiceProtocol {
+    func resolvedServiceStopTypeFields(
+        companyId: String,
+        useCase: ServiceStopTypeUseCase,
+        selectedType: CompanyServiceStopType? = nil,
+        context: String
+    ) async -> ServiceStopTypeFields {
+        if let selectedType {
+            return ServiceStopTypeResolver.serviceStopTypeFields(
+                selectedType: selectedType,
+                useCase: useCase
+            )
+        }
+
+        do {
+            let companyTypes = try await fetchCompanyServiceStopTypes(companyId: companyId)
+            let suggestedType = ServiceStopTypeResolver.suggestedType(
+                from: companyTypes,
+                useCase: useCase
+            )
+            let fields = ServiceStopTypeResolver.serviceStopTypeFields(
+                selectedType: suggestedType,
+                useCase: useCase
+            )
+
+            if suggestedType == nil {
+                print("[ServiceStopTypeResolver][fallback] context=\(context) companyId=\(companyId) useCase=\(useCase.rawValue) typeId=\(fields.typeId) type=\(fields.type)")
+            }
+
+            return fields
+        } catch {
+            let fields = ServiceStopTypeResolver.serviceStopTypeFields(
+                selectedType: nil,
+                useCase: useCase
+            )
+            print("[ServiceStopTypeResolver][error] context=\(context) companyId=\(companyId) useCase=\(useCase.rawValue) typeId=\(fields.typeId) type=\(fields.type) error=\(error.localizedDescription)")
+            return fields
+        }
     }
 }

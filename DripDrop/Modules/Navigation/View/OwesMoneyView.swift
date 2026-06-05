@@ -36,9 +36,21 @@ struct OwesMoneyView: View {
                 VStack(spacing: 14) {
                     headerCard
 
-                    if let role = masterDataManager.role {
-                        if role.permissionIdList.contains("400") {
+                    if !masterDataManager.featureFlagsLoaded {
+                        emptyState(
+                            title: "Loading feature flags.",
+                            message: "Sales availability will appear after feature flags load.",
+                            systemImage: "flag"
+                        )
+                    } else if let role = masterDataManager.role {
+                        if role.permissionIdList.contains("400") && masterDataManager.isFeatureEnabled(.sales) {
                             salesOverview
+                        } else if !masterDataManager.isFeatureEnabled(.sales) {
+                            emptyState(
+                                title: "Sales unavailable.",
+                                message: "Sales is currently turned off by feature flag 4.",
+                                systemImage: "flag.slash"
+                            )
                         } else {
                             emptyState(
                                 title: "No sales access.",
@@ -71,6 +83,7 @@ struct OwesMoneyView: View {
             }
         }
         .task {
+            await masterDataManager.loadFeatureFlags()
             await loadFinance()
         }
         .onChange(of: masterDataManager.currentCompany) { _ in
@@ -791,8 +804,12 @@ extension OwesMoneyView {
 
             preview()
         }
-        .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
     }
 
     func statRow(title: String, value: String, systemImage: String) -> some View {

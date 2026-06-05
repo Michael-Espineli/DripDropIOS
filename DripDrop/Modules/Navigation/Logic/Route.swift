@@ -53,6 +53,8 @@ enum Route {
     case employeeMainDailyDisplayView(dataService:any ProductionDataServiceProtocol)
     case jobs(dataService:any ProductionDataServiceProtocol)
     case billingJobs(dataService:any ProductionDataServiceProtocol)
+    case leads(dataService:any ProductionDataServiceProtocol)
+    case sales(dataService:any ProductionDataServiceProtocol)
 
     case serviceStops(dataService:any ProductionDataServiceProtocol)
     case purchases(dataService:any ProductionDataServiceProtocol)
@@ -342,6 +344,10 @@ extension Route:View {
             JobView(dataService: dataService)
         case .billingJobs(dataService: let dataService):
             BillingJobList(dataService: dataService)
+        case .leads(dataService: let dataService):
+            CompanyLeadsView(dataService: dataService)
+        case .sales(dataService: let dataService):
+            SalesFinanceView(dataService: dataService)
             
             
         case .managementTables(let dataService):

@@ -36,6 +36,8 @@ class MasterDataManager: ObservableObject {
     @Published var showPaymentSheet:Bool = false
     @Published var mainScreenDisplayType:MainScreenDisplayType = .compactList
     @Published var tabViewSelection : String = "Dashboard"
+    @Published private(set) var featureFlags: [String: FeatureFlag] = [:]
+    @Published private(set) var featureFlagsLoaded: Bool = false
     
     
     // User, Role, and Permission Verification
@@ -226,6 +228,20 @@ class MasterDataManager: ObservableObject {
     }
     func goToSettings() {
         
+    }
+    func loadFeatureFlags() async {
+        do {
+            let flags = try await dataService.getFeatureFlags()
+            featureFlags = Dictionary(uniqueKeysWithValues: flags.map { ($0.id, $0) })
+            featureFlagsLoaded = true
+        } catch {
+            print("[MasterDataManager][loadFeatureFlags]")
+            print(error)
+            featureFlagsLoaded = true
+        }
+    }
+    func isFeatureEnabled(_ feature: FeatureFlagKey) -> Bool {
+        featureFlags[feature.rawValue]?.enabled ?? false
     }
   func checkForSubscriptionStatus() {
       Task{

@@ -171,7 +171,7 @@ extension ProductionDataService {
     func getAllWorkOrders(companyId: String) async throws -> [Job] {
         
         return try await workOrderCollection(companyId: companyId)
-            .order(by: "dateCreated", descending: false)
+            .order(by: "dateCreated", descending: true)
             .getDocuments(as:Job.self)
     }
     func getAllWorkOrdersFinished(companyId: String,finished:Bool) async throws -> [Job] {

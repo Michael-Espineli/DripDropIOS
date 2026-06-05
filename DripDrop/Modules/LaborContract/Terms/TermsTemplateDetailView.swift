@@ -53,8 +53,15 @@ extension TermsTemplateDetailView {
     var header: some View {
         HStack{
             if let termsTemplate {
-                Text("\(termsTemplate.name)")
-                    .fontWeight(.bold)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(termsTemplate.name)")
+                        .fontWeight(.bold)
+                    if !termsTemplate.description.isEmpty {
+                        Text(termsTemplate.description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer()
                 Button(action: {
                     showEditTermsTemplate.toggle()

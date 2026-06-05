@@ -130,6 +130,7 @@ struct CompanyServiceStopType: Identifiable, Codable, Hashable {
     var imageName: String?
     var isActive: Bool
     var sortOrder: Int
+    var category: ServiceStopCategory? = nil
 
     // Example:
     // Weekly Route -> [Routes]
@@ -139,6 +140,29 @@ struct CompanyServiceStopType: Identifiable, Codable, Hashable {
 
     var createdAt: Date
     var createdByUserId: String
+}
+
+extension CompanyServiceStopType {
+    func resolvedCategory(fallback: ServiceStopCategory = .customerRelationship) -> ServiceStopCategory {
+        if let category {
+            return category
+        }
+
+        let inferredCategory = ServiceStopCategory.inferred(
+            explicitCategory: nil,
+            typeId: id,
+            recurringServiceStopId: "",
+            jobId: "",
+            type: name,
+            description: ""
+        )
+
+        if inferredCategory == .customerRelationship {
+            return fallback
+        }
+
+        return inferredCategory
+    }
 }
 
 /*
@@ -405,6 +429,7 @@ struct TechnicianPayLineItem: Identifiable, Codable, Hashable {
     var rateAmountCents: Int
 
     var rateType: RateType
+    var payBasis: PayBasis?
     var quantity: Double
     var quantityUnit: PayQuantityUnit
 
@@ -451,6 +476,7 @@ struct TechnicianPayLineItem: Identifiable, Codable, Hashable {
     
     var taskName: String?
     var serviceStopTypeName: String?
+    var serviceStopCategory: ServiceStopCategory?
     
 }
 enum PayrollReferenceFormatter {

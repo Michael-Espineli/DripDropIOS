@@ -15,6 +15,10 @@ import MapKit
 
 protocol ProductionDataServiceProtocol: Equatable {
     var id:String { get }
+    func getFeatureFlags() async throws -> [FeatureFlag]
+    func getFeatureFlag(flagId: String) async throws -> FeatureFlag?
+    func isFeatureFlagEnabled(_ flagId: String) async throws -> Bool
+
     func getActiveRoutesForDate(
         companyId: String,
         date: Date
@@ -424,6 +428,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     ) async throws ->(String?)
     func updateBodyOfWaterPhotoURLs(companyId: String, bodyOfWaterId: String, photoUrls: [DripDropStoredImage]) async throws
     func updateBodyOfWaterLastFilledDate(companyId: String, bodyOfWaterId: String, lastFilled: Date) async throws
+    func getBodyOfWaterHistory(companyId: String, bodyOfWaterId: String) async throws -> [BodyOfWaterHistory]
+    func uploadBodyOfWaterHistory(companyId: String, bodyOfWaterId: String, history: BodyOfWaterHistory) async throws
     func updateServiceLocationPhotoURLs(companyId: String, serviceLocationId: String, photoUrls: [DripDropStoredImage]) async throws
     func addPersonalAlert(userId:String,dripDropAlert:DripDropAlert) async throws
     func getPersonalAlertsCount(userId:String) async throws -> Int
@@ -509,6 +515,12 @@ protocol ProductionDataServiceProtocol: Equatable {
     func uploadCustomerContact(companyId:String,customerId:String,contact:Contact) async throws
     func getCustomerContactById(companyId:String,customerId : String,contactId:String) async throws -> Contact
     func getAllContactsByCustomer(companyId:String,customerId:String) async throws -> [Contact]
+    
+    // MARK: - Shared Sales Billing
+    func getSalesAgreements(companyId:String,customerId:String) async throws -> [SalesAgreement]
+    func getSalesBillingSubscriptions(companyId:String,customerId:String) async throws -> [SalesBillingSubscription]
+    func getSalesInvoices(companyId:String,customerId:String) async throws -> [SalesInvoice]
+    func getSalesPayments(companyId:String,customerId:String) async throws -> [SalesPayment]
     //----------------------------------------------------
     //                    CREATE Functions
     //----------------------------------------------------
@@ -521,6 +533,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateCompanyUser(user:DBUser,updatingUser:DBUser) throws
     func updateCompanyUserRole(companyId:String,companyUserId:String,roleId:String,roleName:String) async throws
     func updateCompanyUserWorkerType(companyId:String,companyUserId:String,workerType:WorkerTypeEnum) async throws
+    func updateCompanyUserPersonalVehicle(companyId:String,companyUserId:String,allowPersonalVehicle:Bool,personalVehicle:PersonalVehicle) async throws
     func addNewVehical(companyId:String,vehical:Vehical) async throws
 
     func uploadUserAccess(userId : String,companyId:String,userAccess:UserAccess) async throws
@@ -784,6 +797,7 @@ protocol ProductionDataServiceProtocol: Equatable {
 
     func getAllShoppingListItemsByUser(companyId: String, userId: String) async throws -> [ShoppingListItem]
     func getAllShoppingListItemsByUserCount(companyId: String, userId: String) async throws -> Int
+    func getShoppingListItemByUserAndStatusCount(companyId: String, userId:String, status: ShoppingListStatus) async throws -> Int
     func getAllShoppingListItemsByUserForCategory(companyId: String, userId: String,category:String) async throws -> [ShoppingListItem]
     func getAllShoppingListItemsByUserForJob(companyId: String, jobId: String,category:String) async throws -> [ShoppingListItem]
 
@@ -1252,6 +1266,10 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateEmailConfigurationBody(companyId:String,newBody:String) async throws
     func updateEmailConfigurationIsOn(companyId:String,emailIsOn:Bool) async throws
     func updateEmailConfigurationRequirePhoto(companyId:String,requirePhoto:Bool) async throws
+    func updateEmailConfigurationCategorySettings(
+        companyId:String,
+        categorySettings:[String: ServiceStopCategoryCompletionSettings]
+    ) async throws
     func updateCustomerEmailConfig(companyId:String,customerEmailConfigId:String,emailIsOn:Bool) async throws
     
     func markChatAsRead(userId:String, chat: Chat) async throws

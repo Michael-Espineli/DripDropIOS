@@ -75,6 +75,29 @@ extension ProductionDataService {
             BodyOfWater.CodingKeys.lastFilled.rawValue: lastFilled
         ])
     }
+    func getBodyOfWaterHistory(
+        companyId: String,
+        bodyOfWaterId: String
+    ) async throws -> [BodyOfWaterHistory] {
+        let snapshot = try await bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWaterId)
+            .collection("waterHistory")
+            .order(by: BodyOfWaterHistory.CodingKeys.date.rawValue, descending: true)
+            .getDocuments()
+
+        return try snapshot.documents.map { document in
+            try document.data(as: BodyOfWaterHistory.self)
+        }
+    }
+    func uploadBodyOfWaterHistory(
+        companyId: String,
+        bodyOfWaterId: String,
+        history: BodyOfWaterHistory
+    ) async throws {
+        try bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWaterId)
+            .collection("waterHistory")
+            .document(history.id)
+            .setData(from: history, merge: true)
+    }
     //Delete
     func deleteBodyOfWater(companyId:String,bodyOfWaterId:String) async throws {
         try await bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWaterId)

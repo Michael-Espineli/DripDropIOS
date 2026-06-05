@@ -303,6 +303,11 @@ final class EquipmentServiceActionViewModel: ObservableObject {
 
             let serviceStopId = "comp_ss_" + UUID().uuidString
             let serviceStopInternalId = "SS" + String(serviceStopCount)
+            let serviceStopTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: companyId,
+                useCase: .serviceCall,
+                context: "EquipmentServiceActionViewModel.createJobAndOptionalServiceStop"
+            )
 
             let serviceStop = ServiceStop(
                 id: serviceStopId,
@@ -321,9 +326,9 @@ final class EquipmentServiceActionViewModel: ObservableObject {
                 recurringServiceStopId: "",
                 description: jobDescription,
                 serviceLocationId: equipment.serviceLocationId,
-                typeId: "",
-                type: jobType.rawValue,
-                typeImage: "",
+                typeId: serviceStopTypeFields.typeId,
+                type: serviceStopTypeFields.type,
+                typeImage: serviceStopTypeFields.typeImage,
                 jobId: jobId,
                 operationStatus: .notFinished,
                 billingStatus: .notInvoiced,
@@ -399,6 +404,155 @@ final class EquipmentServiceActionViewModel: ObservableObject {
             companyId: companyId,
             workOrder: finalJob
         )
+    }
+}
+
+struct EquipmentTaskHistoryService {
+    let dataService: any ProductionDataServiceProtocol
+
+    func recordJobTaskCompletion(
+        companyId: String,
+        task: JobTask,
+        jobId: String,
+        completedAt: Date = Date()
+    ) async throws {
+        guard let type = serviceHistoryType(for: task.type),
+              !task.equipmentId.isEmpty else {
+            return
+        }
+
+        let equipment = try await dataService.getSinglePieceOfEquipment(
+            companyId: companyId,
+            equipmentId: task.equipmentId
+        )
+
+        let history = EquipmentServiceHistory(
+            id: historyId(for: task.id),
+            name: historyName(taskName: task.name, taskType: task.type),
+            type: type,
+            date: completedAt,
+            description: "Auto-created from finished \(task.type.rawValue) task.",
+            performedBy: performedBy(for: task.workerType),
+            addedBy: .auto,
+            techId: task.workerId,
+            techName: task.workerName,
+            jobId: jobId,
+            partIds: []
+        )
+
+        try await save(history, for: equipment, companyId: companyId)
+    }
+
+    func recordServiceStopTaskCompletion(
+        companyId: String,
+        serviceStop: ServiceStop,
+        task: ServiceStopTask,
+        completedAt: Date = Date()
+    ) async throws {
+        guard let type = serviceHistoryType(for: task.type),
+              !task.equipmentId.isEmpty else {
+            return
+        }
+
+        let equipment = try await dataService.getSinglePieceOfEquipment(
+            companyId: companyId,
+            equipmentId: task.equipmentId
+        )
+
+        let sourceId = task.jobTaskId.isEmpty ? task.id : task.jobTaskId
+        let techId = task.workerId.isEmpty ? serviceStop.techId : task.workerId
+        let techName = task.workerName.isEmpty ? serviceStop.tech : task.workerName
+        let jobId = task.jobId.id.isEmpty ? serviceStop.jobId : task.jobId.id
+
+        let history = EquipmentServiceHistory(
+            id: historyId(for: sourceId),
+            name: historyName(taskName: task.name, taskType: task.type),
+            type: type,
+            date: completedAt,
+            description: "Auto-created from finished \(task.type.rawValue) service stop task.",
+            performedBy: performedBy(for: task.workerType),
+            addedBy: .auto,
+            techId: techId,
+            techName: techName,
+            jobId: jobId,
+            partIds: []
+        )
+
+        try await save(history, for: equipment, companyId: companyId)
+    }
+
+    private func save(
+        _ history: EquipmentServiceHistory,
+        for equipment: Equipment,
+        companyId: String
+    ) async throws {
+        try await dataService.uploadEquipmentServiceHistory(
+            companyId: companyId,
+            equipmentId: equipment.id,
+            history: history
+        )
+
+        guard history.type == .maintenance else { return }
+
+        try await dataService.updateEquipmentServiceDates(
+            companyId: companyId,
+            equipmentId: equipment.id,
+            lastServiceDate: history.date,
+            nextServiceDate: nextServiceDate(from: history.date, equipment: equipment)
+        )
+    }
+
+    private func serviceHistoryType(for taskType: JobTaskType) -> EquipmentServiceType? {
+        switch taskType {
+        case .cleanFilter, .maintenance:
+            return .maintenance
+        case .repair, .replace:
+            return .repair
+        case .basic, .clean, .emptyWater, .fillWater, .inspection, .install, .remove:
+            return nil
+        }
+    }
+
+    private func performedBy(for workerType: WorkerTypeEnum) -> ServicePerformaceType {
+        switch workerType {
+        case .contractor:
+            return .contractor
+        case .employee:
+            return .company
+        case .notAssigned:
+            return .unknown
+        }
+    }
+
+    private func historyName(taskName: String, taskType: JobTaskType) -> String {
+        let trimmedName = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedName.isEmpty ? taskType.rawValue : trimmedName
+    }
+
+    private func historyId(for sourceId: String) -> String {
+        let cleanedId = sourceId
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+
+        return "auto_equ_sh_\(cleanedId)"
+    }
+
+    private func nextServiceDate(from date: Date, equipment: Equipment) -> Date? {
+        guard let frequency = equipment.serviceFrequency,
+              let every = equipment.serviceFrequencyEvery else {
+            return nil
+        }
+
+        switch every {
+        case .daily:
+            return Calendar.current.date(byAdding: .day, value: frequency, to: date)
+        case .weekly:
+            return Calendar.current.date(byAdding: .day, value: frequency * 7, to: date)
+        case .monthly:
+            return Calendar.current.date(byAdding: .month, value: frequency, to: date)
+        case .yearly:
+            return Calendar.current.date(byAdding: .year, value: frequency, to: date)
+        }
     }
 }
 

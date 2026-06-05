@@ -29,9 +29,10 @@ extension ProductionDataService {
     }
     func serviceStopDocument(serviceStopId:String,companyId:String)-> DocumentReference{
        serviceStopCollection(companyId: companyId).document(serviceStopId)
-   }
+    }
     //CREATE
     func uploadServiceStop(companyId:String,serviceStop : ServiceStop) async throws {
+        print("[ServiceStopTypeDebug][uploadServiceStop] companyId=\(companyId) serviceStopId=\(serviceStop.id) typeId=\(serviceStop.typeId) type=\(serviceStop.type) typeImage=\(serviceStop.typeImage) jobId=\(serviceStop.jobId) recurringServiceStopId=\(serviceStop.recurringServiceStopId) techId=\(serviceStop.techId)")
         try serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).setData(from:serviceStop, merge: false)
         let homeOwnerServiceStopId = companyId + "-" + serviceStop.id
         var homeOwnerServiceStop = serviceStop
@@ -41,8 +42,9 @@ extension ProductionDataService {
     //READ
     
     func getServiceStopByJobId(companyId: String, jobId: String) async throws -> [ServiceStop] {
-        //DEVELOPER
-        return []
+        try await serviceStopCollection(companyId: companyId)
+            .whereField(ServiceStop.CodingKeys.jobId.rawValue, isEqualTo: jobId)
+            .getDocuments(as: ServiceStop.self)
     }
     func getServiceStopBySomething(companyId:String,count:Int,lastDocument:DocumentSnapshot?) async throws -> (serviceStops:[ServiceStop],lastDocument:DocumentSnapshot?) {
         
@@ -454,7 +456,8 @@ extension ProductionDataService {
             ServiceStop.CodingKeys.estimatedDuration.rawValue: estimatedDuration,
             ServiceStop.CodingKeys.typeId.rawValue: serviceStopTypeFields.typeId,
             ServiceStop.CodingKeys.type.rawValue: serviceStopTypeFields.type,
-            ServiceStop.CodingKeys.typeImage.rawValue: serviceStopTypeFields.typeImage
+            ServiceStop.CodingKeys.typeImage.rawValue: serviceStopTypeFields.typeImage,
+            ServiceStop.CodingKeys.category.rawValue: serviceStopTypeFields.category.rawValue
         ])
 
         _ = try? await syncActiveRouteForServiceStops(
@@ -541,6 +544,7 @@ extension ProductionDataService {
     //Delete
 
     func deleteServiceStop(companyId:String,serviceStop:ServiceStop)async throws {
+        try await deleteServiceStopRelatedData(companyId: companyId, serviceStopId: serviceStop.id)
         try await serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).delete()
         _ = try? await syncActiveRouteForServiceStops(
             companyId: companyId,
@@ -553,6 +557,7 @@ extension ProductionDataService {
     func deleteServiceStopById(companyId:String,serviceStopId:String)async throws {
         let ref = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
         let serviceStop = try? await ref.getDocument(as: ServiceStop.self)
+        try await deleteServiceStopRelatedData(companyId: companyId, serviceStopId: serviceStopId)
         try await ref.delete()
 
         if let serviceStop {
@@ -564,5 +569,34 @@ extension ProductionDataService {
             )
         }
 
+    }
+
+    private func deleteServiceStopRelatedData(companyId: String, serviceStopId: String) async throws {
+        let batch = db.batch()
+        let stopRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+
+        let tasks = try await stopRef.collection("tasks").getDocuments()
+        for document in tasks.documents {
+            batch.deleteDocument(document.reference)
+        }
+
+        let stores = try await stopRef.collection("stores").getDocuments()
+        for document in stores.documents {
+            batch.deleteDocument(document.reference)
+        }
+
+        let history = try await stopRef.collection("history").getDocuments()
+        for document in history.documents {
+            batch.deleteDocument(document.reference)
+        }
+
+        let stopData = try await stopDataCollection(companyId: companyId)
+            .whereField("serviceStopId", isEqualTo: serviceStopId)
+            .getDocuments()
+        for document in stopData.documents {
+            batch.deleteDocument(document.reference)
+        }
+
+        try await batch.commit()
     }
 }

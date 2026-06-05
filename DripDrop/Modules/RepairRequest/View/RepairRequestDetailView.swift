@@ -18,6 +18,7 @@ final class RepairRequestDetailViewModel:ObservableObject{
     @Published private(set) var customer: Customer? = nil
     
     @Published var status:RepairRequestStatus = .unresolved
+    @Published var equipmentStatus: EquipmentStatus = .operational
     @Published var photoUrls:[DripDropStoredImage] = []
     
     @Published var newPhotoUrls:[DripDropImage] = []
@@ -61,7 +62,7 @@ final class RepairRequestDetailViewModel:ObservableObject{
 
     func onLoad(companyId: String?){
         Task{
-            self.status = repairRequest.status
+            self.status = repairRequest.status.selectableValue
             self.photoUrls = repairRequest.photoUrls
             self.jobIdList = repairRequest.jobIds
             self.description = repairRequest.description
@@ -69,6 +70,10 @@ final class RepairRequestDetailViewModel:ObservableObject{
                     if let companyId {
                         if repairRequest.customerId != "" {
                             self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: repairRequest.customerId)
+                        }
+                        if let equipmentId = repairRequest.equipmentId, !equipmentId.isEmpty {
+                            let equipment = try await dataService.getSinglePieceOfEquipment(companyId: companyId, equipmentId: equipmentId)
+                            self.equipmentStatus = equipment.status
                         }
                     }
                 } catch {
@@ -114,11 +119,33 @@ final class RepairRequestDetailViewModel:ObservableObject{
                 if let companyId {
                     if status != repairRequest.status {
                         try await dataService.updateRepairRequestStatus(companyId: companyId, repairRequestId: repairRequest.id, status: status)
+                        if status == .resolved, let equipmentId = repairRequest.equipmentId, !equipmentId.isEmpty {
+                            try dataService.updateEquipmentStatus(
+                                companyId: companyId,
+                                equipmentId: equipmentId,
+                                status: equipmentStatus
+                            )
+                        }
                         print("[RepairRequestViewModel][updateRepairRequestNotes] Updated Status")
                     }
                 }
             } catch {
                 print("[RepairRequestViewModel][updateStatus] Error \(error)")
+            }
+        }
+    }
+    func updateEquipmentStatus(companyId:String?) {
+        Task {
+            do {
+                if let companyId, let equipmentId = repairRequest.equipmentId, !equipmentId.isEmpty {
+                    try dataService.updateEquipmentStatus(
+                        companyId: companyId,
+                        equipmentId: equipmentId,
+                        status: equipmentStatus
+                    )
+                }
+            } catch {
+                print("[RepairRequestViewModel][updateEquipmentStatus] Error: \(error)")
             }
         }
     }
@@ -249,6 +276,9 @@ struct RepairRequestDetailView: View {
         .onChange(of: VM.status, perform: { stat in
             VM.updateStatus(companyId: masterDataManager.currentCompany?.id)
         })
+        .onChange(of: VM.equipmentStatus, perform: { _ in
+            VM.updateEquipmentStatus(companyId: masterDataManager.currentCompany?.id)
+        })
     }
 }
 extension RepairRequestDetailView {
@@ -268,7 +298,7 @@ extension RepairRequestDetailView {
             LabeledContent("Status") {
                 Picker("Status", selection: $VM.status) {
                     ForEach(RepairRequestStatus.allCases,id: \.self){ stat in
-                        Text(stat.rawValue).tag(stat)
+                        Text(stat.displayName).tag(stat)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -308,6 +338,14 @@ extension RepairRequestDetailView {
                 }
                 if let id = repairRequest.equipmentId {
                     LabeledContent("Equipment ID") { Text(id).foregroundStyle(.secondary) }
+                    LabeledContent("Equipment Status") {
+                        Picker("Equipment Status", selection: $VM.equipmentStatus) {
+                            ForEach(EquipmentStatus.operationalStatusCases, id: \.self) { status in
+                                Text(status.displayName).tag(status)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
                 }
             }
 
@@ -404,7 +442,7 @@ extension RepairRequestDetailView {
                     HStack{
                         Picker("Status", selection: $VM.status) {
                             ForEach(RepairRequestStatus.allCases,id: \.self){ stat in
-                                Text(stat.rawValue).tag(stat)
+                                Text(stat.displayName).tag(stat)
                             }
                         }
                     }

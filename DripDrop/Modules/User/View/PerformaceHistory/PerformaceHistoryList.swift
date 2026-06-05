@@ -18,7 +18,7 @@ struct PerformaceHistoryList: View {
     }
     var body: some View {
         ScrollView{
-            Text("Performace History List")
+            Text("Performance History List")
             Rectangle()
                 .frame(height: 4)
             ForEach(performaceReviewVM.performaceHistoryList){ performace in

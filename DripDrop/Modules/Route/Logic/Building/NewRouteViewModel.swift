@@ -359,6 +359,11 @@ final class NewRouteViewModel:ObservableObject{
             print(" - Creating Route with \(recurringStopsList.count) stops for \(techFullName) - \(day)")
             var binder:[recurringRouteOrder] = []
             var count:Int = 1
+            let routeTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: companyId,
+                useCase: .recurringRoute,
+                context: "NewRouteViewModel.createNewRecurringRouteWithVerification"
+            )
             for RSS in recurringStopsList {
                 let rssCount = try await dataService.getRecurringServiceStopCount(companyId: companyId)
 
@@ -368,9 +373,9 @@ final class NewRouteViewModel:ObservableObject{
                     recurringServiceStop: RecurringServiceStop(
                         id: "comp_rss_" + UUID().uuidString,
                         internalId: "RSS" + String(rssCount),
-                        type: job.name,
-                        typeId: job.id,
-                        typeImage: "bubbles.and.sparkles.fill",
+                        type: routeTypeFields.type,
+                        typeId: routeTypeFields.typeId,
+                        typeImage: routeTypeFields.typeImage,
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,
@@ -425,12 +430,16 @@ final class NewRouteViewModel:ObservableObject{
         }
         let techFullName = (techEntity.userName)
         print("[NewRouteViewModel][onDismissOfCustomerPicker] techFullName: \(techFullName)")
+        let fallbackTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
+            selectedType: nil,
+            useCase: .recurringRoute
+        )
 
         listOfRecurringStops.append(RecurringServiceStop(id: UUID().uuidString,
                                                          internalId: "", //DEVELOPER
-                                                         type: jobType.name,
-                                                         typeId: jobType.id,
-                                                         typeImage: "gear",
+                                                         type: fallbackTypeFields.type,
+                                                         typeId: fallbackTypeFields.typeId,
+                                                         typeImage: fallbackTypeFields.typeImage,
                                                          customerName: location.customerName,
                                                          customerId: location.customerId,
                                                          address: location.address,

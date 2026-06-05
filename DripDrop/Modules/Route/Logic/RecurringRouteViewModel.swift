@@ -69,6 +69,11 @@ final class RecurringRouteViewModel:ObservableObject{
             var binder:[recurringRouteOrder] = []
             var count:Int = 1
             var accountedFor:Bool = false
+            let routeTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: companyId,
+                useCase: .recurringRoute,
+                context: "RecurringRouteViewModel.createAndUploadRecurringRouteWithOutAddingNewServiceStops"
+            )
             for RSS in recurringStopsList {
                 accountedFor = false
                 print("Creating RSS for \(RSS.customerName) - \(RSS.id) - \(RSS.frequency)")
@@ -83,9 +88,9 @@ final class RecurringRouteViewModel:ObservableObject{
                                     recurringServiceStop: RecurringServiceStop(
                                         id: UUID().uuidString,
                                         internalId: RSS.internalId,
-                                        type: job.name,
-                                        typeId: job.id,
-                                        typeImage: "bubbles.and.sparkles.fill",
+                                        type: routeTypeFields.type,
+                                        typeId: routeTypeFields.typeId,
+                                        typeImage: routeTypeFields.typeImage,
                                         customerName: RSS.customerName,
                                         customerId: RSS.customerId,
                                         address: RSS.address,
@@ -125,9 +130,9 @@ final class RecurringRouteViewModel:ObservableObject{
                         recurringServiceStop: RecurringServiceStop(
                             id: UUID().uuidString,
                             internalId: RSS.internalId,
-                            type: job.name,
-                            typeId: job.id,
-                            typeImage: "bubbles.and.sparkles.fill",
+                            type: routeTypeFields.type,
+                            typeId: routeTypeFields.typeId,
+                            typeImage: routeTypeFields.typeImage,
                             customerName: RSS.customerName,
                             customerId: RSS.customerId,
                             address: RSS.address,
@@ -201,6 +206,11 @@ final class RecurringRouteViewModel:ObservableObject{
             print("Making Route with \(recurringStopsList.count) stops for \(techFullName) - \(day)")
             var binder:[recurringRouteOrder] = []
             var count:Int = 1
+            let routeTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: companyId,
+                useCase: .recurringRoute,
+                context: "RecurringRouteViewModel.createAndUploadRecurringRoute"
+            )
             for RSS in recurringStopsList {
                 print("Creating RSS for \(RSS.customerName) - \(RSS.id) - \(RSS.frequency)")
                 let locationId = RSS.serviceLocationId
@@ -209,9 +219,9 @@ final class RecurringRouteViewModel:ObservableObject{
                     recurringServiceStop: RecurringServiceStop(
                         id: UUID().uuidString,
                         internalId: RSS.internalId,
-                        type: job.name,
-                        typeId: job.id,
-                        typeImage: "bubbles.and.sparkles.fill",
+                        type: routeTypeFields.type,
+                        typeId: routeTypeFields.typeId,
+                        typeImage: routeTypeFields.typeImage,
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,
@@ -292,6 +302,11 @@ final class RecurringRouteViewModel:ObservableObject{
             print(" - Creating Route with \(recurringStopsList.count) stops for \(techFullName) - \(day)")
             var binder:[recurringRouteOrder] = []
             var count:Int = 1
+            let routeTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: companyId,
+                useCase: .recurringRoute,
+                context: "RecurringRouteViewModel.createNewRecurringRouteWithVerification"
+            )
             for RSS in recurringStopsList {
                 print(" - Creating Recurring Service Stop Id >>  \(RSS.id) - \(RSS.customerName) - \(RSS.frequency)")
                 let locationId = RSS.serviceLocationId
@@ -300,9 +315,9 @@ final class RecurringRouteViewModel:ObservableObject{
                     recurringServiceStop: RecurringServiceStop(
                         id: UUID().uuidString,
                         internalId: RSS.internalId,
-                        type: job.name,
-                        typeId: job.id,
-                        typeImage: "bubbles.and.sparkles.fill",
+                        type: routeTypeFields.type,
+                        typeId: routeTypeFields.typeId,
+                        typeImage: routeTypeFields.typeImage,
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,

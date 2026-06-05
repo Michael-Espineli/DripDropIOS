@@ -11,6 +11,7 @@ final class VehicalPickerViewModel: ObservableObject {
     @Published private(set) var vehicals: [Vehical] = []
     @Published var selectedVehical: Vehical? = nil
     @Published var isLoading: Bool = false
+    @Published var isSavingPersonalVehicle: Bool = false
 
     func onLoad(companyId: String) async throws {
         isLoading = true
@@ -22,6 +23,22 @@ final class VehicalPickerViewModel: ObservableObject {
         if selectedVehical == nil {
             selectedVehical = vehical
         }
+    }
+    
+    func savePersonalVehicle(
+        companyId: String,
+        companyUser: CompanyUser,
+        personalVehicle: PersonalVehicle
+    ) async throws {
+        isSavingPersonalVehicle = true
+        defer { isSavingPersonalVehicle = false }
+        
+        try await dataService.updateCompanyUserPersonalVehicle(
+            companyId: companyId,
+            companyUserId: companyUser.id,
+            allowPersonalVehicle: true,
+            personalVehicle: personalVehicle
+        )
     }
 }
 
@@ -45,6 +62,8 @@ struct VehicalPickerView: View {
     }
 
     @State var addVehical: Bool = false
+    @State private var editPersonalVehicle: Bool = false
+    @State private var savedPersonalVehicle: PersonalVehicle? = nil
     @State var search: String = ""
     @State var customers: [Customer] = []
 
@@ -65,10 +84,14 @@ struct VehicalPickerView: View {
         }
     }
     
+    private var effectivePersonalVehicle: PersonalVehicle? {
+        savedPersonalVehicle ?? companyUser?.personalVehicle
+    }
+    
     private var personalVehical: Vehical? {
-        guard companyUser?.allowPersonalVehicle == true,
-              let companyUser,
-              let personalVehicle = companyUser.personalVehicle
+        guard let companyUser,
+              let personalVehicle = effectivePersonalVehicle,
+              companyUser.allowPersonalVehicle == true || savedPersonalVehicle != nil
         else { return nil }
         
         return personalVehicle.asVehical(ownerId: companyUser.userId)
@@ -105,6 +128,7 @@ struct VehicalPickerView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
                         headerCard
+                        personalVehicleCard
                         listCard
                     }
                     .padding(.horizontal, 14)
@@ -128,6 +152,14 @@ struct VehicalPickerView: View {
             }
         }) {
             AddNewVehical(dataService: dataService)
+        }
+        .sheet(isPresented: $editPersonalVehicle) {
+            PersonalVehicleEditorSheet(
+                initialVehicle: effectivePersonalVehicle,
+                isSaving: VM.isSavingPersonalVehicle
+            ) { personalVehicle in
+                await savePersonalVehicle(personalVehicle)
+            }
         }
     }
 }
@@ -245,6 +277,67 @@ extension VehicalPickerView {
                         .buttonStyle(.plain)
                     }
                 }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+    
+    var personalVehicleCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                sectionHeader("My Personal Vehicle", systemImage: "person.crop.circle.badge.checkmark")
+                
+                Spacer()
+                
+                Button {
+                    editPersonalVehicle = true
+                } label: {
+                    Label(personalVehical == nil ? "Add Mine" : "Edit", systemImage: personalVehical == nil ? "plus" : "pencil")
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.blue.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(companyUser == nil)
+                .opacity(companyUser == nil ? 0.5 : 1)
+            }
+            
+            if let personalVehical {
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                        VM.selectedVehical = personalVehical
+                    }
+                    
+                    #if os(iOS)
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    #endif
+                } label: {
+                    vehicalRow(personalVehical, sourceLabel: "Personal")
+                }
+                .buttonStyle(.plain)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(companyUser == nil ? "Sign in as a company user to add a personal vehicle." : "Add your own car or truck here so it is available when starting or ending active routes.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    
+                    if companyUser != nil {
+                        Button {
+                            editPersonalVehicle = true
+                        } label: {
+                            Label("Add My Personal Vehicle", systemImage: "plus.circle")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 11)
+                                .background(Color.blue.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
         .padding(16)
@@ -412,5 +505,122 @@ extension VehicalPickerView {
         #endif
 
         dismiss()
+    }
+    
+    func savePersonalVehicle(_ personalVehicle: PersonalVehicle) async {
+        guard let currentCompany = masterDataManager.currentCompany,
+              let companyUser
+        else { return }
+        
+        do {
+            try await VM.savePersonalVehicle(
+                companyId: currentCompany.id,
+                companyUser: companyUser,
+                personalVehicle: personalVehicle
+            )
+            
+            savedPersonalVehicle = personalVehicle
+            VM.selectedVehical = personalVehicle.asVehical(ownerId: companyUser.userId)
+            
+            #if os(iOS)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            #endif
+        } catch {
+            print("[VehicalPickerView][savePersonalVehicle] \(error)")
+        }
+    }
+}
+
+private struct PersonalVehicleEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    let isSaving: Bool
+    let onSave: (PersonalVehicle) async -> Void
+    
+    @State private var nickName: String
+    @State private var vehicalType: VehicalType
+    @State private var year: String
+    @State private var make: String
+    @State private var model: String
+    @State private var color: String
+    @State private var plate: String
+    @State private var miles: String
+    
+    init(
+        initialVehicle: PersonalVehicle?,
+        isSaving: Bool,
+        onSave: @escaping (PersonalVehicle) async -> Void
+    ) {
+        self.isSaving = isSaving
+        self.onSave = onSave
+        _nickName = State(initialValue: initialVehicle?.nickName ?? "")
+        _vehicalType = State(initialValue: VehicalType(rawValue: initialVehicle?.vehicalType ?? "") ?? .car)
+        _year = State(initialValue: initialVehicle?.year ?? "")
+        _make = State(initialValue: initialVehicle?.make ?? "")
+        _model = State(initialValue: initialVehicle?.model ?? "")
+        _color = State(initialValue: initialVehicle?.color ?? "")
+        _plate = State(initialValue: initialVehicle?.plate ?? "")
+        _miles = State(initialValue: initialVehicle?.miles.map { String($0) } ?? "")
+    }
+    
+    private var canSave: Bool {
+        !make.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !plate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !nickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Vehicle") {
+                    TextField("Nickname", text: $nickName)
+                    Picker("Type", selection: $vehicalType) {
+                        ForEach(VehicalType.allCases, id: \.self) { type in
+                            Text(type.rawValue).tag(type)
+                        }
+                    }
+                    TextField("Year", text: $year)
+                        .keyboardType(.numberPad)
+                    TextField("Make", text: $make)
+                    TextField("Model", text: $model)
+                    TextField("Color", text: $color)
+                    TextField("Plate", text: $plate)
+                        .textInputAutocapitalization(.characters)
+                    TextField("Current mileage", text: $miles)
+                        .keyboardType(.decimalPad)
+                }
+            }
+            .navigationTitle("Personal Vehicle")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isSaving ? "Saving..." : "Save") {
+                        Task {
+                            await onSave(
+                                PersonalVehicle(
+                                    nickName: nickName.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    vehicalType: vehicalType.rawValue,
+                                    year: year.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    make: make.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    model: model.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    color: color.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    plate: plate.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+                                    miles: Double(miles.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+                                )
+                            )
+                            dismiss()
+                        }
+                    }
+                    .disabled(!canSave || isSaving)
+                }
+            }
+        }
     }
 }

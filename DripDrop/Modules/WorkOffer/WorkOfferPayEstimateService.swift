@@ -413,7 +413,21 @@ struct WorkOfferPayEstimateService {
             return uniqueIds(selectedServiceStopType.defaultWorkTypeIds)
         }
 
-        return []
+        if let selectedServiceStopType {
+            let mappedIds = mappedWorkTypeIds(
+                sourceType: .serviceStopType,
+                sourceId: selectedServiceStopType.id
+            )
+
+            if !mappedIds.isEmpty {
+                return mappedIds
+            }
+        }
+
+        return mappedWorkTypeIds(
+            sourceType: .serviceStopType,
+            sourceId: serviceStopTypeUseCase.fallbackTypeId
+        )
     }
 
     private func mappedWorkTypeIds(

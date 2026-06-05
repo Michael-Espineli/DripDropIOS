@@ -10,7 +10,10 @@ import SwiftUI
 struct JobCardView: View {
 
     @EnvironmentObject var masterDataManager: MasterDataManager
+    @EnvironmentObject var dataService: ProductionDataService
     let job: Job
+    
+    @State private var unresolvedCommentCount: Int = 0
 
     var body: some View {
 
@@ -40,6 +43,7 @@ struct JobCardView: View {
                     // Top row
                     HStack {
                         Text(job.customerName)
+                            .foregroundStyle(.primary)
                             .font(.headline)
                             .lineLimit(2)
 
@@ -68,6 +72,10 @@ struct JobCardView: View {
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    
+                    if unresolvedCommentCount > 0 {
+                        unresolvedCommentsBadge
+                    }
 
                     // Conditional rows (keep same functionality)
                     switch masterDataManager.mainScreenDisplayType {
@@ -87,18 +95,34 @@ struct JobCardView: View {
 
                 Spacer()
             }
-            .padding(14)
+            .padding(.leading,8)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
-        )
-        .padding(.horizontal, 12)
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .task(id: job.id) {
+            await loadUnresolvedCommentCount()
+        }
     }
 }
 
 extension JobCardView {
+    
+    var unresolvedCommentsBadge: some View {
+        Label(
+            "\(unresolvedCommentCount) unresolved \(unresolvedCommentCount == 1 ? "comment" : "comments")",
+            systemImage: "text.bubble.fill"
+        )
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(Color.orange)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Color.orange.opacity(0.12), in: Capsule())
+        .accessibilityLabel("\(unresolvedCommentCount) unresolved job comments")
+    }
 
     var infoRow: some View {
         HStack(spacing: 12) {
@@ -117,6 +141,21 @@ extension JobCardView {
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
+    }
+    
+    func loadUnresolvedCommentCount() async {
+        guard let companyId = masterDataManager.currentCompany?.id else { return }
+        
+        do {
+            let comments = try await dataService.getWorkOrderComments(
+                companyId: companyId,
+                workOrderId: job.id
+            )
+            unresolvedCommentCount = comments.filter { !$0.resolved }.count
+        } catch {
+            print("[JobCardView][loadUnresolvedCommentCount] \(error)")
+            unresolvedCommentCount = 0
+        }
     }
 }
 

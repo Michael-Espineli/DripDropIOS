@@ -154,6 +154,11 @@ final class RouteBuilderViewModel:ObservableObject{
             print(" - Creating Route with \(recurringStopsList.count) stops for \(techFullName) - \(day)")
             var binder:[recurringRouteOrder] = []
             var count:Int = 1
+            let routeTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: companyId,
+                useCase: .recurringRoute,
+                context: "RouteBuilderViewModel.createNewRecurringRouteWithVerification"
+            )
             for RSS in recurringStopsList {
                 print(" - Creating Recurring Service Stop Id >>  \(RSS.id) - \(RSS.customerName) - \(RSS.frequency)")
                 let locationId = RSS.serviceLocationId
@@ -162,9 +167,9 @@ final class RouteBuilderViewModel:ObservableObject{
                     recurringServiceStop: RecurringServiceStop(
                         id: UUID().uuidString,
                         internalId: RSS.internalId,
-                        type: job.name,
-                        typeId: job.id,
-                        typeImage: "bubbles.and.sparkles.fill",
+                        type: routeTypeFields.type,
+                        typeId: routeTypeFields.typeId,
+                        typeImage: routeTypeFields.typeImage,
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,

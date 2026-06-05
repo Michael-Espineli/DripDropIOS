@@ -96,6 +96,164 @@ struct BodyOfWater:Identifiable, Codable,Equatable,Hashable{
 
         }
 }
+
+struct BodyOfWaterHistory: Identifiable, Codable, Equatable, Hashable {
+    var id: String
+    var type: BodyOfWaterHistoryType
+    var date: Date
+    var description: String
+    var addedBy: ServiceRecordType
+    var performedBy: ServicePerformaceType
+    var techId: String
+    var techName: String
+    var jobId: String
+    var serviceStopId: String
+    var taskId: String
+    var gallons: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case type
+        case date
+        case description
+        case addedBy
+        case performedBy
+        case techId
+        case techName
+        case jobId
+        case serviceStopId
+        case taskId
+        case gallons
+    }
+}
+
+struct BodyOfWaterTaskHistoryService {
+    let dataService: any ProductionDataServiceProtocol
+
+    func recordJobTaskCompletion(
+        companyId: String,
+        task: JobTask,
+        jobId: String,
+        completedAt: Date = Date()
+    ) async throws {
+        guard let type = waterHistoryType(for: task.type),
+              !task.bodyOfWaterId.isEmpty else {
+            return
+        }
+
+        let bodyOfWater = try await dataService.getSpecificBodyOfWater(
+            companyId: companyId,
+            bodyOfWaterId: task.bodyOfWaterId
+        )
+
+        let history = BodyOfWaterHistory(
+            id: historyId(for: task.id),
+            type: type,
+            date: completedAt,
+            description: "Auto-created from finished \(task.type.rawValue) task.",
+            addedBy: .auto,
+            performedBy: performedBy(for: task.workerType),
+            techId: task.workerId,
+            techName: task.workerName,
+            jobId: jobId,
+            serviceStopId: task.serviceStopId.id,
+            taskId: task.id,
+            gallons: bodyOfWater.gallons
+        )
+
+        try await save(history, companyId: companyId, bodyOfWaterId: task.bodyOfWaterId)
+    }
+
+    func recordServiceStopTaskCompletion(
+        companyId: String,
+        serviceStop: ServiceStop,
+        task: ServiceStopTask,
+        completedAt: Date = Date()
+    ) async throws {
+        guard let type = waterHistoryType(for: task.type),
+              !task.bodyOfWaterId.isEmpty else {
+            return
+        }
+
+        let bodyOfWater = try await dataService.getSpecificBodyOfWater(
+            companyId: companyId,
+            bodyOfWaterId: task.bodyOfWaterId
+        )
+
+        let sourceId = task.jobTaskId.isEmpty ? task.id : task.jobTaskId
+        let techId = task.workerId.isEmpty ? serviceStop.techId : task.workerId
+        let techName = task.workerName.isEmpty ? serviceStop.tech : task.workerName
+        let jobId = task.jobId.id.isEmpty ? serviceStop.jobId : task.jobId.id
+
+        let history = BodyOfWaterHistory(
+            id: historyId(for: sourceId),
+            type: type,
+            date: completedAt,
+            description: "Auto-created from finished \(task.type.rawValue) service stop task.",
+            addedBy: .auto,
+            performedBy: performedBy(for: task.workerType),
+            techId: techId,
+            techName: techName,
+            jobId: jobId,
+            serviceStopId: serviceStop.id,
+            taskId: sourceId,
+            gallons: bodyOfWater.gallons
+        )
+
+        try await save(history, companyId: companyId, bodyOfWaterId: task.bodyOfWaterId)
+    }
+
+    private func save(
+        _ history: BodyOfWaterHistory,
+        companyId: String,
+        bodyOfWaterId: String
+    ) async throws {
+        try await dataService.uploadBodyOfWaterHistory(
+            companyId: companyId,
+            bodyOfWaterId: bodyOfWaterId,
+            history: history
+        )
+
+        if history.type == .fill {
+            try await dataService.updateBodyOfWaterLastFilledDate(
+                companyId: companyId,
+                bodyOfWaterId: bodyOfWaterId,
+                lastFilled: history.date
+            )
+        }
+    }
+
+    private func waterHistoryType(for taskType: JobTaskType) -> BodyOfWaterHistoryType? {
+        switch taskType {
+        case .fillWater:
+            return .fill
+        case .emptyWater:
+            return .empty
+        case .basic, .clean, .cleanFilter, .maintenance, .repair, .inspection, .install, .remove, .replace:
+            return nil
+        }
+    }
+
+    private func performedBy(for workerType: WorkerTypeEnum) -> ServicePerformaceType {
+        switch workerType {
+        case .contractor:
+            return .contractor
+        case .employee:
+            return .company
+        case .notAssigned:
+            return .unknown
+        }
+    }
+
+    private func historyId(for sourceId: String) -> String {
+        let cleanedId = sourceId
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+
+        return "auto_bow_hist_\(cleanedId)"
+    }
+}
+
 protocol BodyOfWaterManagerProtocol {
 
     //----------------------------------------------------

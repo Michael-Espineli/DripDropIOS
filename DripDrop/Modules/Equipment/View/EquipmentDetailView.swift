@@ -26,6 +26,7 @@
         @Published private(set) var maintenanceHistory: [EquipmentServiceHistory] = []
         @Published private(set) var repairHistory: [EquipmentServiceHistory] = []
         @Published private(set) var scheduledWork: [EquipmentScheduledWork] = []
+        @Published private(set) var outstandingRepairRequests: [RepairRequest] = []
         func getAllBodiesOfWaterByServiceLocation(
             companyId: String,
             serviceLocation: ServiceLocation
@@ -68,6 +69,18 @@
                 let rhs = $1.serviceDate ?? $1.dateCreated
                 return lhs < rhs
             }
+        }
+        func getOutstandingRepairRequests(
+            companyId: String,
+            equipmentId: String
+        ) async throws {
+            let requests = try await dataService.getAllRepairRequests(companyId: companyId)
+
+            self.outstandingRepairRequests = requests
+                .filter { request in
+                    request.equipmentId == equipmentId && request.status.isOpenWorkQueueItem
+                }
+                .sorted { $0.date > $1.date }
         }
         func updatePhotoUrl(companyId: String, equipmentId: String) {
             Task {
@@ -150,6 +163,7 @@
                             if UIDevice.isIPhone {
                                 VStack(spacing: 14) {
                                     info
+                                    outstandingRepairRequestsSection
                                     scheduledWorkSection
                                     serviceHistoryOverviewSection
                                     maintenanceHistorySection
@@ -166,6 +180,7 @@
 
                                     VStack(spacing: 14) {
                                         partsSection
+                                        outstandingRepairRequestsSection
                                         scheduledWorkSection
                                         serviceHistoryOverviewSection
                                         maintenanceHistorySection
@@ -294,6 +309,10 @@
                         equipmentId: activeEquipment.id
                     )
                     try await VM.getScheduledWorkForEquipment(
+                        companyId: company.id,
+                        equipmentId: activeEquipment.id
+                    )
+                    try await VM.getOutstandingRepairRequests(
                         companyId: company.id,
                         equipmentId: activeEquipment.id
                     )
@@ -621,32 +640,39 @@
             Group {
                 switch activeEquipment.status {
                 case .operational:
-                    Label(activeEquipment.status.rawValue, systemImage: "checkmark.circle")
+                    Label(activeEquipment.status.displayName, systemImage: "checkmark.circle")
                         .foregroundStyle(Color.poolGreen)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(Color.poolGreen.opacity(0.12), in: Capsule())
 
                 case .nonoperational:
-                    Label(activeEquipment.status.rawValue, systemImage: "xmark.circle")
+                    Label(activeEquipment.status.displayName, systemImage: "xmark.circle")
                         .foregroundStyle(Color.red)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(Color.red.opacity(0.12), in: Capsule())
 
                 case .needsRepair:
-                    Label(activeEquipment.status.rawValue, systemImage: "cross.case")
+                    Label(activeEquipment.status.displayName, systemImage: "cross.case")
                         .foregroundStyle(Color.orange)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(Color.orange.opacity(0.12), in: Capsule())
 
                 case .needsMaintenance:
-                    Label(activeEquipment.status.rawValue, systemImage: "wrench.and.screwdriver")
+                    Label(activeEquipment.status.displayName, systemImage: "wrench.and.screwdriver")
                         .foregroundStyle(Color.yellow)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(Color.yellow.opacity(0.16), in: Capsule())
+
+                case .replaced:
+                    Label(activeEquipment.status.displayName, systemImage: "arrow.triangle.2.circlepath")
+                        .foregroundStyle(Color.gray)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Color.gray.opacity(0.16), in: Capsule())
                 }
             }
             .font(.caption.weight(.semibold))
@@ -1248,6 +1274,76 @@ extension EquipmentDetailView {
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var outstandingRepairRequestsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionHeader("Outstanding Repair Requests", systemImage: "exclamationmark.triangle")
+
+                Spacer()
+
+                Text("\(VM.outstandingRepairRequests.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            if VM.outstandingRepairRequests.isEmpty {
+                emptyState(
+                    title: "No outstanding repair requests.",
+                    message: "Unresolved repair requests tied to this equipment will show here.",
+                    systemImage: "exclamationmark.triangle"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(VM.outstandingRepairRequests.prefix(5)) { request in
+                        NavigationLink(
+                            value: Route.repairRequest(
+                                repairRequest: request,
+                                dataService: dataService
+                            )
+                        ) {
+                            outstandingRepairRequestRow(request)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    func outstandingRepairRequestRow(_ request: RepairRequest) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "wrench.and.screwdriver")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(request.description.isEmpty ? "Repair Request" : request.description)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text("\(request.status.displayName) • \(shortDate(date: request.date))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
     
     func equipmentScheduledWorkRow(_ work: EquipmentScheduledWork) -> some View {

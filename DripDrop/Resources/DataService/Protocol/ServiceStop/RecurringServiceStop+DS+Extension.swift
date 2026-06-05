@@ -140,7 +140,7 @@ extension ProductionDataService {
     }
     //CREATE - More in below Extension
     func uploadRecurringServiceStop(companyId:String,recurringServiceStop : RecurringServiceStop) async throws {
-        
+        print("[ServiceStopTypeDebug][uploadRecurringServiceStop] companyId=\(companyId) recurringServiceStopId=\(recurringServiceStop.id) typeId=\(recurringServiceStop.typeId) type=\(recurringServiceStop.type) typeImage=\(recurringServiceStop.typeImage) techId=\(recurringServiceStop.techId) serviceLocationId=\(recurringServiceStop.serviceLocationId)")
         try recurringServiceStopDocument(recurringServiceStopId: recurringServiceStop.id,companyId: companyId).setData(from:recurringServiceStop, merge: true)
     }
 

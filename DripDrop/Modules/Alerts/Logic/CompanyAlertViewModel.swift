@@ -82,7 +82,7 @@ final class CompanyAlertViewModel:ObservableObject{
             if UIDevice.isIPhone {
                 if alert.route.hasItem() {
                     switch alert.route {
-                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .activeRouteOverView, .managementTables:
+                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .leads, .sales, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .activeRouteOverView, .managementTables:
                         print("No Item To Get")
                         
                     case .editUser:
@@ -410,6 +410,10 @@ final class CompanyAlertViewModel:ObservableObject{
                      self.route = Route.serviceStops(dataService: dataService)
                 case .jobs:
                      self.route = Route.jobs(dataService: dataService)
+                case .leads:
+                     self.route = Route.leads(dataService: dataService)
+                case .sales:
+                     self.route = Route.sales(dataService: dataService)
                 case .contracts:
                      self.route = Route.contracts(dataService: dataService)
                 case .purchases:
@@ -518,7 +522,7 @@ final class CompanyAlertViewModel:ObservableObject{
             if UIDevice.isIPhone {
                 if recentActivity.route.hasItem() {
                     switch recentActivity.route {
-                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .banks, .transactions, .activeRouteOverView, .managementTables:
+                    case .operation, .finace, .managment , .dashBoard, .customers, .toDoDetail, .repairRequestList, .toDoList, .pendingJobs, .shoppingList, .purchasedItemsList, .map, .dailyDisplay, .calendar, .profile, .routeBuilder, .pnl, .companyRouteOverView, .reports, .fleet, .mainDailyDisplayView, .serviceStops, .jobs, .leads, .sales, .contracts, .purchases, .receipts, .databaseItems, .genericItems, .venders, .users, .userRoles, .readingsAndDosages, .marketPlace, .jobPosing, .feed, .chats, .equipmentList, .routes, .settings, .userSettings, .companySettings, .jobTemplates, .accountsPayableList, .accountsReceivableList, .businesses, .alerts, .cart, .recentActivity, .laborContracts, .companyAlerts, .externalRouteOverView, .banks, .transactions, .activeRouteOverView, .managementTables:
                         print("No Item To Get")
                         
                     case .editUser:
@@ -840,6 +844,10 @@ final class CompanyAlertViewModel:ObservableObject{
                      self.route = Route.serviceStops(dataService: dataService)
                 case .jobs:
                      self.route = Route.jobs(dataService: dataService)
+                case .leads:
+                     self.route = Route.leads(dataService: dataService)
+                case .sales:
+                     self.route = Route.sales(dataService: dataService)
                 case .contracts:
                      self.route = Route.contracts(dataService: dataService)
                 case .purchases:

@@ -61,6 +61,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
     
     @Published var loadedImages:[DripDropStoredImage] = []
     @Published var selectedDripDropPhotos:[DripDropImage] = []
+    @Published private(set) var isUploadingPhotos: Bool = false
     
     @Published var currentWeather: Weather?
 
@@ -268,6 +269,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
     
     func updateServicestopOperationStatus(companyId:String,currentUserId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
         let oldStop = stop
+        let completionSettings = await loadCompletionSettings(companyId: companyId, stop: stop)
 
         var updatedStop = stop
         updatedStop.operationStatus = operationStatus
@@ -277,12 +279,31 @@ final class ServiceStopDetailViewModel:ObservableObject{
         //Just update the current Service Stop but
         //let the function check if the service stop should be from another company
         //let the function finish the other service stop on the sender side
+        if operationStatus == .finished {
+            try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: stop.id)
+
+            let hasUploadedPhoto = !loadedImages.isEmpty || !(stop.photoUrls ?? []).isEmpty
+            if completionSettings.requirePhotoOnFinish && !hasUploadedPhoto {
+                throw NSError(
+                    domain: "ServiceStopCompletion",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "A photo is required before this service stop can be finished."
+                    ]
+                )
+            }
+        }
+
         print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] - Finishing Service Stop")
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
         try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: stop.id, endTime: Date())
         if operationStatus == .finished {
-            try? await FunctionsManager.shared.sendServiceReportOnFinish(companyId: companyId, stopId: stop.id)
-            print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Sending Email")
+            if completionSettings.sendEmailOnFinish {
+                try? await FunctionsManager.shared.sendServiceReportOnFinish(companyId: companyId, stopId: stop.id)
+                print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Sending Email")
+            } else {
+                print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Email off for category \(stop.resolvedCategory.rawValue)")
+            }
         } else {
             print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Service Stop Not Finished")
         }
@@ -360,30 +381,53 @@ final class ServiceStopDetailViewModel:ObservableObject{
     }
     
     func updatePhotoUrl(companyId:String,serviceStopId:String) {
-        let photosToUpload = selectedDripDropPhotos
-
-        guard !photosToUpload.isEmpty else { return }
-
         Task {
             do {
-                let uploadedImages = try await dataService.uploadServiceStopImages(
-                    companyId: companyId,
-                    serviceStopId: serviceStopId,
-                    images: photosToUpload
-                )
-
-                loadedImages.append(contentsOf: uploadedImages)
-
-                try await dataService.updateServiceStopPhotoURLs(
-                    companyId: companyId,
-                    serviceStopId: serviceStopId,
-                    photoUrls: uploadedImages
-                )
-
-                selectedDripDropPhotos = []
+                try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: serviceStopId)
             } catch {
                 print("Photo upload failed:", error)
             }
         }
+    }
+
+    private func loadCompletionSettings(
+        companyId: String,
+        stop: ServiceStop
+    ) async -> ServiceStopCategoryCompletionSettings {
+        do {
+            let emailConfiguration = try await dataService.getEmailConfigurationSettings(companyId: companyId)
+            return emailConfiguration.completionSettings(for: stop.resolvedCategory)
+        } catch {
+            print("Unable to load completion settings. Using defaults.", error)
+            return ServiceStopCategoryCompletionSettings.defaultSettings(for: stop.resolvedCategory)
+        }
+    }
+
+    private func uploadPendingPhotosIfNeeded(companyId:String,serviceStopId:String) async throws {
+        while isUploadingPhotos {
+            try await Task.sleep(nanoseconds: 200_000_000)
+        }
+
+        let photosToUpload = selectedDripDropPhotos
+        guard !photosToUpload.isEmpty else { return }
+
+        isUploadingPhotos = true
+        defer { isUploadingPhotos = false }
+
+        let uploadedImages = try await dataService.uploadServiceStopImages(
+            companyId: companyId,
+            serviceStopId: serviceStopId,
+            images: photosToUpload
+        )
+
+        loadedImages.append(contentsOf: uploadedImages)
+
+        try await dataService.updateServiceStopPhotoURLs(
+            companyId: companyId,
+            serviceStopId: serviceStopId,
+            photoUrls: uploadedImages
+        )
+
+        selectedDripDropPhotos = []
     }
 }

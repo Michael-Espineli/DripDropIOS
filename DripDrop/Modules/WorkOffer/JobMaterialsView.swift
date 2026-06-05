@@ -18,6 +18,7 @@ struct JobMaterialsView: View {
     let billablePurchasedMaterialPriceCents: Int
 
     let onAddShoppingItem: () -> Void
+    let onAttachPurchasedItem: () -> Void
     let onEditShoppingItem: (ShoppingListItem) -> Void
     let onDeleteShoppingItem: (ShoppingListItem) -> Void
 
@@ -40,11 +41,11 @@ struct JobMaterialsView: View {
     }
 
     private var uninvoicedPurchasedItems: [PurchasedItem] {
-        purchasedItems.filter { !$0.invoiced }
+        purchasedItems
     }
 
     private var billablePurchasedItems: [PurchasedItem] {
-        purchasedItems.filter { $0.billable }
+        purchasedItems.filter { $0.isJobBillable }
     }
 
     private var materialCostDifferenceCents: Int {
@@ -248,6 +249,13 @@ struct JobMaterialsView: View {
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
                     .background(.thinMaterial, in: Capsule())
+
+                Button {
+                    onAttachPurchasedItem()
+                } label: {
+                    Label("Attach", systemImage: "link.badge.plus")
+                        .font(.caption.weight(.semibold))
+                }
             }
 
             if purchasedItems.isEmpty {
@@ -405,7 +413,7 @@ struct JobPurchasedMaterialRow: View {
     var item: PurchasedItem
 
     private var billablePrice: Double {
-        item.billingRate ?? item.price
+        item.jobMaterialBillingRate
     }
 
     private var billableTotal: Double {
@@ -414,7 +422,7 @@ struct JobPurchasedMaterialRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: item.billable ? "receipt.badge.plus" : "receipt")
+            Image(systemName: item.isJobBillable ? "receipt.badge.plus" : "receipt")
                 .font(.body.weight(.semibold))
                 .frame(width: 34, height: 34)
                 .background(.thinMaterial, in: Circle())
@@ -427,7 +435,7 @@ struct JobPurchasedMaterialRow: View {
 
                     Spacer()
 
-                    Text(JobMaterialsMoneyFormatter.moneyFromDollars(item.totalAfterTax))
+                    Text(JobMaterialsMoneyFormatter.money(Int(item.totalAfterTax.rounded())))
                         .font(.subheadline.weight(.semibold))
                 }
 
@@ -436,15 +444,15 @@ struct JobPurchasedMaterialRow: View {
                     .foregroundStyle(.secondary)
 
                 HStack(spacing: 8) {
-                    Text(item.billable ? "Billable" : "Not Billable")
+                    Text(item.isJobBillable ? "Job billable" : "Not job billable")
                     Text("•")
-                    Text(item.invoiced ? "Invoiced" : "Not Invoiced")
+                    Text("Billing by job")
                 }
                 .font(.caption2)
                 .foregroundStyle(item.billable && !item.invoiced ? .orange : .secondary)
 
                 if item.billable {
-                    Text("Billable total: \(JobMaterialsMoneyFormatter.moneyFromDollars(billableTotal))")
+                    Text("Job billable total: \(JobMaterialsMoneyFormatter.money(Int(billableTotal.rounded())))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

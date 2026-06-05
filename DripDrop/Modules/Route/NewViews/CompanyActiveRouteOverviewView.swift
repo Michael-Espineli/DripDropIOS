@@ -83,11 +83,19 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
             )
 
             self.activeRoutes = routes
+            self.serviceStopsByRouteId = [:]
+            self.logsByRouteId = [:]
+            self.locationsByRouteId = [:]
 
             async let usersTask: Void = loadCompanyUsers(companyId: companyId)
             async let routeDetailsTask: Void = loadRouteDetails(companyId: companyId, routes: routes)
 
-            _ = try await (usersTask, routeDetailsTask)
+            do {
+                _ = try await (usersTask, routeDetailsTask)
+            } catch {
+                print("[CompanyActiveRouteOverviewViewModel][load] Detail Error")
+                print(error)
+            }
         } catch {
             print("[CompanyActiveRouteOverviewViewModel][load] Error")
             print(error)
@@ -113,32 +121,41 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
         var locationsDict: [String: [ActiveRouteLocation]] = [:]
 
         for route in routes {
-            async let stops = dataService.getServiceStopsByIds(
-                companyId: companyId,
-                serviceStopIds: route.serviceStopsIds
-            )
+            do {
+                async let stops = dataService.getServiceStopsByIds(
+                    companyId: companyId,
+                    serviceStopIds: route.serviceStopsIds
+                )
 
-            async let logs = dataService.getActiveRouteLogs(
-                companyId: companyId,
-                activeRouteId: route.id
-            )
+                async let logs = dataService.getActiveRouteLogs(
+                    companyId: companyId,
+                    activeRouteId: route.id
+                )
 
-            async let locations = dataService.getActiveRouteLocations(
-                companyId: companyId,
-                activeRouteId: route.id
-            )
+                async let locations = dataService.getActiveRouteLocations(
+                    companyId: companyId,
+                    activeRouteId: route.id
+                )
 
-            let loadedStops = try await stops
-            let loadedLogs = try await logs
-            let loadedLocations = try await locations
+                let loadedStops = try await stops
+                let loadedLogs = try await logs
+                let loadedLocations = try await locations
 
-            stopsDict[route.id] = applyOrder(
-                stops: loadedStops,
-                order: route.order
-            )
+                stopsDict[route.id] = applyOrder(
+                    stops: loadedStops,
+                    order: route.order
+                )
 
-            logsDict[route.id] = loadedLogs
-            locationsDict[route.id] = loadedLocations
+                logsDict[route.id] = loadedLogs
+                locationsDict[route.id] = loadedLocations
+            } catch {
+                print("[CompanyActiveRouteOverviewViewModel][loadRouteDetails] Route \(route.id) Error")
+                print(error)
+
+                stopsDict[route.id] = []
+                logsDict[route.id] = []
+                locationsDict[route.id] = []
+            }
         }
 
         self.serviceStopsByRouteId = stopsDict
@@ -255,11 +272,14 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
             return stops.sorted { $0.serviceDate < $1.serviceDate }
         }
 
-        let lookup = Dictionary(
-            uniqueKeysWithValues: order.map {
-                ($0.serviceStopId, $0.order)
+        var lookup: [String: Int] = [:]
+        for stopOrder in order {
+            if let existingOrder = lookup[stopOrder.serviceStopId] {
+                lookup[stopOrder.serviceStopId] = min(existingOrder, stopOrder.order)
+            } else {
+                lookup[stopOrder.serviceStopId] = stopOrder.order
             }
-        )
+        }
 
         return stops.sorted { lhs, rhs in
             let lhsOrder = lookup[lhs.id]

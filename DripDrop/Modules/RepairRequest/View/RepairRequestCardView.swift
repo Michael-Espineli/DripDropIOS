@@ -81,8 +81,10 @@ struct RepairRequestCardView: View {
         switch status {
         case .resolved:
             color = Color.poolGreen
-        case .unresolved, .cancelled:
+        case .unresolved, .cancelled, .legacyPending, .legacyPendingCapitalized:
             color = Color.poolRed
+        case .convertedToJob:
+            color = Color.gray
         case .inprogress:
             color = Color.yellow
         }
@@ -93,7 +95,9 @@ struct RepairRequestCardView: View {
         switch status {
         case .resolved, .cancelled:
             color = Color.white
-        case .unresolved:
+        case .unresolved, .legacyPending, .legacyPendingCapitalized:
+            color = Color.white
+        case .convertedToJob:
             color = Color.white
         case .inprogress:
             color = Color.black
@@ -101,7 +105,7 @@ struct RepairRequestCardView: View {
         return color
     }
     private var statusChip: some View {
-        Text(repairRequest.status.rawValue)
+        Text(repairRequest.status.displayName)
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 8)
             .padding(.vertical, 4)

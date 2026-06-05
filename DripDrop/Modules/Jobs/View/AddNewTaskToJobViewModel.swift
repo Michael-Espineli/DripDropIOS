@@ -171,7 +171,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
             }
         }
         
-        let task : JobTask = JobTask(
+        var task : JobTask = JobTask(
             name: name,
             type: selectedTaskType,
             contractedRate: contractedRate,
@@ -190,15 +190,17 @@ final class AddNewTaskToJobViewModel:ObservableObject{
             dataBaseItemId: dataBaseItem.id
         )
         if selectedTaskType == .install || selectedTaskType == .replace {
+            let shoppingListItemId = "comp_sli_" + UUID().uuidString
+            task.shoppingListItemId = shoppingListItemId
             //Add Shopping List Item For Install and Replace
             let shoppingListItem = ShoppingListItem(
-                id: "comp_sli_" + UUID().uuidString,
+                id: shoppingListItemId,
                 category: .job,
                 subCategory: .dataBase,
                 status: .needToPurchase,
                 purchaserId: "",
                 purchaserName: "",
-                genericItemId: "",
+                genericItemId: dataBaseItem.id,
                 name: dataBaseItem.name,
                 description: dataBaseItem.description,
                 datePurchased: nil,
@@ -208,7 +210,12 @@ final class AddNewTaskToJobViewModel:ObservableObject{
                 customerName: "",
                 userId: nil,
                 userName: nil,
-                invoiced: true
+                dbItemId: dataBaseItem.id,
+                purchasedItem: nil,
+                invoiced: true,
+                linkedTaskId: task.id,
+                linkedTaskName: task.name,
+                linkedTaskType: task.type.rawValue
             )
             try await dataService.addNewShoppingListItem(companyId: companyId, shoppingListItem: shoppingListItem)
         }
@@ -298,7 +305,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
             }
         }
         
-        let task : JobTask = JobTask(
+        var task : JobTask = JobTask(
             name: name,
             type: selectedTaskType,
             contractedRate: contractedRate,
@@ -318,15 +325,17 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         )
         var shoppingListItem:ShoppingListItem? = nil
         if selectedTaskType == .install || selectedTaskType == .replace {
+            let shoppingListItemId = "comp_sli_" + UUID().uuidString
+            task.shoppingListItemId = shoppingListItemId
             //Add Shopping List Item For Install and Replace
             shoppingListItem = ShoppingListItem(
-                id: "comp_sli_" + UUID().uuidString,
+                id: shoppingListItemId,
                 category: .job,
                 subCategory: .dataBase,
                 status: .needToPurchase,
                 purchaserId: "",
                 purchaserName: "",
-                genericItemId: "",
+                genericItemId: dataBaseItem.id,
                 name: dataBaseItem.name,
                 description: dataBaseItem.description,
                 datePurchased: nil,
@@ -336,7 +345,12 @@ final class AddNewTaskToJobViewModel:ObservableObject{
                 customerName: "",
                 userId: nil,
                 userName: nil,
-                invoiced: true
+                dbItemId: dataBaseItem.id,
+                purchasedItem: nil,
+                invoiced: true,
+                linkedTaskId: task.id,
+                linkedTaskName: task.name,
+                linkedTaskType: task.type.rawValue
             )
         }
         
@@ -411,4 +425,3 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         }
     }
 }
-

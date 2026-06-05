@@ -84,7 +84,7 @@ final class PayrollGenerationService {
         async let companyUsersTask = dataService.fetchCompanyUsers(companyId: companyId)
 
         let settings = try await settingsTask
-            ?? CompanyPaySettings.defaultSettings()
+            ?? CompanyPaySettings.defaultSettings(companyId: companyId)
 
         let serviceStopTypes = try await serviceStopTypesTask
         let workTypes = try await workTypesTask
@@ -173,8 +173,12 @@ final class PayrollGenerationService {
         // If the company does not want recalculation, preserve unapproved existing lines too.
         if !settings.recalculateUnapprovedPayWhenRatesChange {
             switch existing.calculationStatus {
-            case .pending, .calculated, .needsReview, .adjusted:
+            case .pending, .calculated, .adjusted:
                 return true
+
+            case .needsReview:
+                // Missing-rate lines should be allowed to heal after rate setup or engine rules are fixed.
+                return false
 
             case .approved, .paid, .voided:
                 return false

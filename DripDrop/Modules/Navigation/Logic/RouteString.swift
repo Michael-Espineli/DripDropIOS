@@ -34,6 +34,8 @@ enum RouteString:String,Codable {
     case mainDailyDisplayView = "mainDailyDisplayView"
     case serviceStops  = "serviceStops"
     case jobs  = "jobs"
+    case leads = "leads"
+    case sales = "sales"
     case contracts  = "contracts"
     case purchases  = "purchases"
     case receipts  = "receipts"
@@ -158,6 +160,10 @@ extension RouteString {
         case .serviceStops:
             return false
         case .jobs:
+            return false
+        case .leads:
+            return false
+        case .sales:
             return false
         case .contracts:
             return false

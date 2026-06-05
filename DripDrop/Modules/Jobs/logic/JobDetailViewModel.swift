@@ -79,6 +79,10 @@ final class JobDetailViewModel:ObservableObject{
     
     @Published var shoppingItemList:[ShoppingListItem] = []
     @Published private(set) var purchasedItems: [PurchasedItem] = []
+    @Published var isPresentPurchasedItemSelector: Bool = false
+    @Published private(set) var availablePurchasedItems: [PurchasedItem] = []
+    @Published private(set) var availablePurchasedItemCategories: [String: DataBaseItemCategory] = [:]
+    @Published private(set) var isLoadingAvailablePurchasedItems: Bool = false
     
     @Published private(set) var serviceStops:[ServiceStop] = []
     @Published private(set) var actualPayLineItems: [TechnicianPayLineItem] = []
@@ -251,14 +255,7 @@ final class JobDetailViewModel:ObservableObject{
         }
         
         print("")
-        self.serviceStopIds.removeDuplicates()
-        self.serviceStopIds.remove("")
-        var serviceStopList:[ServiceStop] = []
-        print("serviceStopIds: \(serviceStopIds)")
-        for serviceStopId in serviceStopIds {
-            serviceStopList.append(try await dataService.getServiceStopById(serviceStopId: serviceStopId, companyId: companyId))
-        }
-        self.serviceStops = serviceStopList
+        try await loadServiceStopsForJob(companyId: companyId, job: job, jobTasks: jobTaskList)
         print("got Service Stops")
         
         
@@ -291,7 +288,8 @@ final class JobDetailViewModel:ObservableObject{
         
         try await getPurchaseCost(
             companyId: companyId,
-            purchaseIds: job.purchasedItemsIds ?? []
+            purchaseIds: job.purchasedItemsIds ?? [],
+            jobId: job.id
         )
         
         await loadComments(companyId: companyId, jobId: job.id)
@@ -423,14 +421,7 @@ final class JobDetailViewModel:ObservableObject{
         }
         
         print("")
-        self.serviceStopIds.removeDuplicates()
-        self.serviceStopIds.remove("")
-        var serviceStopList:[ServiceStop] = []
-        print("serviceStopIds: \(serviceStopIds)")
-        for serviceStopId in serviceStopIds {
-            serviceStopList.append(try await dataService.getServiceStopById(serviceStopId: serviceStopId, companyId: companyId))
-        }
-        self.serviceStops = serviceStopList
+        try await loadServiceStopsForJob(companyId: companyId, job: job, jobTasks: jobTaskList)
         print("got Service Stops")
         
         
@@ -494,14 +485,7 @@ final class JobDetailViewModel:ObservableObject{
         }
         
         print("")
-        self.serviceStopIds.removeDuplicates()
-        self.serviceStopIds.remove("")
-        var serviceStopList:[ServiceStop] = []
-        print("serviceStopIds: \(serviceStopIds)")
-        for serviceStopId in serviceStopIds {
-            serviceStopList.append(try await dataService.getServiceStopById(serviceStopId: serviceStopId, companyId: companyId))
-        }
-        self.serviceStops = serviceStopList
+        try await loadServiceStopsForJob(companyId: companyId, job: job, jobTasks: jobTaskList)
         print("got Service Stops")
         
         
@@ -604,12 +588,52 @@ final class JobDetailViewModel:ObservableObject{
         try await dataService.updateJobDescription(companyId: companyId, jobId: jobId, description: description)
     }
     
+    func loadServiceStopsForJob(
+        companyId: String,
+        job: Job,
+        jobTasks: [JobTask]
+    ) async throws {
+        var ids = job.serviceStopIds
+        ids.append(contentsOf: jobTasks.map { $0.serviceStopId.id })
+        ids.removeDuplicates()
+        ids.remove("")
+
+        var stopsById: [String: ServiceStop] = [:]
+        print("serviceStopIds: \(ids)")
+
+        for serviceStopId in ids {
+            do {
+                let stop = try await dataService.getServiceStopById(
+                    serviceStopId: serviceStopId,
+                    companyId: companyId
+                )
+                stopsById[stop.id] = stop
+            } catch {
+                print("[][loadServiceStopsForJob] Could not load stop \(serviceStopId): \(error)")
+            }
+        }
+
+        let jobIdStops = try await dataService.getServiceStopByJobId(
+            companyId: companyId,
+            jobId: job.id
+        )
+
+        for stop in jobIdStops {
+            stopsById[stop.id] = stop
+        }
+
+        self.serviceStops = Array(stopsById.values)
+            .sorted { $0.serviceDate > $1.serviceDate }
+        self.serviceStopIds = self.serviceStops.map(\.id)
+    }
+
     func getPurchaseCost(
         companyId: String,
-        purchaseIds: [String]
+        purchaseIds: [String],
+        jobId: String
     ) async throws {
         var total: Double = 0
-        var items: [PurchasedItem] = []
+        var itemsById: [String: PurchasedItem] = [:]
 
         for id in purchaseIds {
             let purchase = try await dataService.getSingleItem(
@@ -617,12 +641,132 @@ final class JobDetailViewModel:ObservableObject{
                 companyId: companyId
             )
 
-            items.append(purchase)
-            total += purchase.totalAfterTax
+            itemsById[purchase.id] = purchase
         }
 
+        let attachedPurchases = try await Firestore.firestore()
+            .collection("companies/\(companyId)/purchasedItems")
+            .whereField("jobId", isEqualTo: jobId)
+            .getDocuments(as: PurchasedItem.self)
+
+        for purchase in attachedPurchases {
+            itemsById[purchase.id] = purchase
+        }
+
+        let items = Array(itemsById.values)
         self.purchasedItems = items.sorted { $0.date > $1.date }
+        total = items.reduce(0) { $0 + $1.totalAfterTax }
         self.purchasedPartCost = total
+    }
+
+    func loadUnassignedPurchasedItems(
+        companyId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws {
+        isLoadingAvailablePurchasedItems = true
+        defer { isLoadingAvailablePurchasedItems = false }
+
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: startDate)
+        let endOfDay = calendar.date(
+            bySettingHour: 23,
+            minute: 59,
+            second: 59,
+            of: endDate
+        ) ?? endDate
+
+        let dateRangeItems = try await Firestore.firestore()
+            .collection("companies/\(companyId)/purchasedItems")
+            .whereField("date", isGreaterThanOrEqualTo: startOfDay)
+            .whereField("date", isLessThanOrEqualTo: endOfDay)
+            .order(by: "date", descending: true)
+            .getDocuments(as: PurchasedItem.self)
+        
+        let unassignedItems = dateRangeItems.filter { !$0.isAssignedToJob }
+        availablePurchasedItems = unassignedItems
+        availablePurchasedItemCategories = await categoryMapForPurchasedItems(
+            companyId: companyId,
+            items: unassignedItems
+        )
+    }
+
+    func attachPurchasedItemsToJob(
+        companyId: String,
+        job: Job,
+        items: [PurchasedItem]
+    ) async throws {
+        guard !items.isEmpty else { return }
+
+        let selectedIds = items.map(\.id)
+        let selectedIdSet = Set(selectedIds)
+
+        for item in items {
+            try await dataService.updatePurchasedWorkOrderId(
+                currentItem: item,
+                workOrderId: job.id,
+                companyId: companyId
+            )
+        }
+
+        try await Firestore.firestore()
+            .collection("companies/\(companyId)/workOrders")
+            .document(job.id)
+            .updateData([
+                "purchasedItemsIds": FieldValue.arrayUnion(selectedIds)
+            ])
+
+        let attachedItems = items.map { item in
+            var copy = item
+            copy.jobId = job.id
+            copy.workOrderId = job.id
+            copy.assignedJobId = job.id
+            copy.assignedToJob = true
+            copy.assignmentStatus = "assignedToJob"
+            copy.billingOwner = "job"
+            copy.jobBillingStatus = "handledByJob"
+            copy.jobBillable = item.isJobBillable
+            copy.jobBillingRate = item.jobMaterialBillingRate
+            return copy
+        }
+
+        purchasedItems = (attachedItems + purchasedItems.filter { !selectedIdSet.contains($0.id) })
+            .sorted { $0.date > $1.date }
+        purchasedPartCost = purchasedItems.reduce(0) { $0 + $1.totalAfterTax }
+        availablePurchasedItems.removeAll { selectedIdSet.contains($0.id) }
+        let selectedDatabaseItemIds = Set(items.map(\.itemId))
+        availablePurchasedItemCategories = availablePurchasedItemCategories.filter { key, _ in
+            !selectedIdSet.contains(key) && !selectedDatabaseItemIds.contains(key)
+        }
+    }
+
+    private func categoryMapForPurchasedItems(
+        companyId: String,
+        items: [PurchasedItem]
+    ) async -> [String: DataBaseItemCategory] {
+        let databaseItemIds = Set(items.map(\.itemId).filter { !$0.isEmpty })
+        var categoryByDatabaseItemId: [String: DataBaseItemCategory] = [:]
+
+        for databaseItemId in databaseItemIds {
+            do {
+                let databaseItem = try await dataService.getDataBaseItem(
+                    companyId: companyId,
+                    dataBaseItemId: databaseItemId
+                )
+                categoryByDatabaseItemId[databaseItemId] = databaseItem.category
+            } catch {
+                print("[JobDetailViewModel][categoryMapForPurchasedItems] Could not load database item \(databaseItemId): \(error)")
+            }
+        }
+
+        var categoryByPurchasedItemId: [String: DataBaseItemCategory] = [:]
+        for item in items {
+            guard let category = categoryByDatabaseItemId[item.itemId] else { continue }
+            categoryByPurchasedItemId[item.id] = category
+            categoryByPurchasedItemId[item.itemId] = category
+        }
+
+        return categoryByPurchasedItemId
     }
     
     func getShoppingListTotal() {
@@ -760,105 +904,63 @@ final class JobDetailViewModel:ObservableObject{
                     //Update Job Info
                     for task in jobTaskList {
                         try dataService.updateJobTaskStatus(companyId: senderId, jobId: contract.senderJobId.id, taskId: task.id, status: .finished)
-                        try await updateTaskHelperFunction(companyId: senderId, task: task)
+                        try await updateTaskHelperFunction(companyId: senderId, task: task, jobId: contract.senderJobId.id)
                     }
                 }
             }
         } else {
             for task in jobTaskList {
                 //Update Task
-                try await updateTaskHelperFunction(companyId: companyId, task: task)
+                try dataService.updateJobTaskStatus(companyId: companyId, jobId: job.id, taskId: task.id, status: .finished)
+                try await updateTaskHelperFunction(companyId: companyId, task: task, jobId: job.id)
             }
         }
     }
-    func updateTaskHelperFunction(companyId:String,task:JobTask) async throws {
+    func updateTaskHelperFunction(
+        companyId: String,
+        task: JobTask,
+        jobId: String = "",
+        recordEquipmentHistory: Bool = true
+    ) async throws {
         
         //Developer
         switch task.type {
         case .basic, .clean:
             print("Do nothing")
         case .cleanFilter:
-            print("Update Filter")
+            if recordEquipmentHistory {
+                try await EquipmentTaskHistoryService(dataService: dataService)
+                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
+            }
         case .maintenance:
-            print("Maintence")
+            if recordEquipmentHistory {
+                try await EquipmentTaskHistoryService(dataService: dataService)
+                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
+            }
         case .repair:
-            print("Add to Equipment History")
+            if recordEquipmentHistory {
+                try await EquipmentTaskHistoryService(dataService: dataService)
+                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
+            }
         case .emptyWater:
-            print("Update Body Of Water")
+            if recordEquipmentHistory {
+                try await BodyOfWaterTaskHistoryService(dataService: dataService)
+                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
+            }
         case .fillWater:
-            if task.bodyOfWaterId != "" {
-                try await dataService.updateBodyOfWaterLastFilledDate(companyId: companyId, bodyOfWaterId: task.bodyOfWaterId, lastFilled: Date())
+            if recordEquipmentHistory {
+                try await BodyOfWaterTaskHistoryService(dataService: dataService)
+                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
             }
         case .inspection:
             print("Something")
         case .install:
-            print("Add New Equipment")
-            if task.dataBaseItemId != "" && task.bodyOfWaterId != ""{
-                let DBItem = try await dataService.getDataBaseItem(companyId: companyId, dataBaseItemId: task.dataBaseItemId)
-                let BOW = try await dataService.getSpecificBodyOfWater(companyId: companyId, bodyOfWaterId: task.bodyOfWaterId)
-                let customer = try await dataService.getCustomerById(companyId: companyId, customerId: BOW.customerId)
-                let customerName = customer.firstName + " " + customer.lastName
-                var equipmentType:EquipmentCategory = .autoChlorinator
-                var equipmentNeedsService:Bool = false
-                var serviceFrequency: Int = 0
-                var serviceFrequencyInternval: EquipmentFrequency = .monthly
-                if DBItem.category == .equipment {
-                    switch DBItem.subCategory {
-                    case .pipe, .glue, .primer, .pipeExtender, .fittingExtender, .insideCoupler, .sweep, .street, .valve, .bushing, .tee, .elbow, .elbow45, .coupler, .union, .maleAdaptor, .nipple, .wire, .misc, .na:
-                        print("Developer I dont Think I do anything")
-                    case .heater:
-                        equipmentType = .heater
-                    case .filter:
-                        equipmentType = .filter
-                        equipmentNeedsService = true
-                        serviceFrequency = 6
-                        serviceFrequencyInternval = .monthly
-                    case .pump:
-                        equipmentType = .pump
-                    case .cleaner:
-                        equipmentType = .cleaner
-                    case .saltCell:
-                        equipmentType = .saltCell
-                        equipmentNeedsService = true
-                        serviceFrequency = 6
-                        serviceFrequencyInternval = .monthly
-                    case .light:
-                        equipmentType = .light
-                    case .controlSystem:
-                        equipmentType = .controlSystem
-                    case .autoChlorinator:
-                        equipmentType = .autoChlorinator
-                    }
-                }
-                let equipment = Equipment(
-                    id: "comp_equ_" + UUID().uuidString,
-                    name: DBItem.name,
-                    type: equipmentType,
-                    typeId: "",
-                    make: "",
-                    makeId: "",
-                    model: "",
-                    modelId: "",
-                    dateInstalled: Date(),
-                    status: .operational,
-                    needsService: equipmentNeedsService,
-                    cleanFilterPressure: nil,
-                    currentPressure: nil,
-                    lastServiceDate: Date(),
-                    serviceFrequency: serviceFrequency,
-                    serviceFrequencyEvery: serviceFrequencyInternval,
-                    nextServiceDate: nil,
-                    notes: "",
-                    customerName: customerName,
-                    customerId: BOW.customerId,
-                    serviceLocationId: BOW.serviceLocationId,
-                    bodyOfWaterId: BOW.id,
-                    photoUrls: [],
-                    isActive: true,
-                    dateUninstalled: nil
-                )
-                try await dataService.uploadEquipment(companyId: companyId, equipment: equipment)
-            }
+            try await completeEquipmentInstallOrReplacement(
+                companyId: companyId,
+                task: task,
+                jobId: jobId,
+                replacesExistingEquipment: false
+            )
         case .remove:
             if task.equipmentId != "" {
                 print("Make Equipment Inactive")
@@ -866,81 +968,427 @@ final class JobDetailViewModel:ObservableObject{
                 try dataService.updateEquipmentDateUninstalled(companyId: companyId, equipmentId: task.equipmentId, dateUninstalled: Date())
             }
         case .replace:
-            if task.equipmentId != "" {
-                
-                print("Make Equipment Inactive")
-                try dataService.updateEquipmentIsActive(companyId: companyId, equipmentId: task.equipmentId, isActive: false)
-                try dataService.updateEquipmentDateUninstalled(companyId: companyId, equipmentId: task.equipmentId, dateUninstalled: Date())
-            }
-            print("Add New Equipment")
-            if task.dataBaseItemId != "" && task.bodyOfWaterId != ""{
-                let DBItem = try await dataService.getDataBaseItem(companyId: companyId, dataBaseItemId: task.dataBaseItemId)
-                let BOW = try await dataService.getSpecificBodyOfWater(companyId: companyId, bodyOfWaterId: task.bodyOfWaterId)
-                let customer = try await dataService.getCustomerById(companyId: companyId, customerId: BOW.customerId)
-                let customerName = customer.firstName + " " + customer.lastName
-                var equipmentType:EquipmentCategory = .autoChlorinator
-                var equipmentNeedsService:Bool = false
-                var serviceFrequency: Int = 6
-                var serviceFrequencyInternval: EquipmentFrequency = .monthly
-                if DBItem.category == .equipment {
-                    switch DBItem.subCategory {
-                    case .pipe, .glue, .primer, .pipeExtender, .fittingExtender, .insideCoupler, .sweep, .street, .valve, .bushing, .tee, .elbow, .elbow45, .coupler, .union, .maleAdaptor, .nipple, .wire, .misc, .na:
-                        print("Developer I dont Think I do anything")
-                    case .heater:
-                        equipmentType = .heater
-                    case .filter:
-                        equipmentType = .filter
-                        equipmentNeedsService = true
-                        serviceFrequency = 6
-                        serviceFrequencyInternval = .monthly
-                    case .pump:
-                        equipmentType = .pump
-                    case .cleaner:
-                        equipmentType = .cleaner
-                    case .saltCell:
-                        equipmentType = .saltCell
-                        equipmentNeedsService = true
-                        serviceFrequency = 6
-                        serviceFrequencyInternval = .monthly
-                    case .light:
-                        equipmentType = .light
-                    case .controlSystem:
-                        equipmentType = .controlSystem
-                    case .autoChlorinator:
-                        equipmentType = .autoChlorinator
-                    }
-                }
-                let equipment = Equipment(
-                    id: "comp_equ_" + UUID().uuidString,
-                    name: DBItem.name,
-                    type: equipmentType,
-                    typeId: "",
-                    make: "",
-                    makeId: "",
-                    model: "",
-                    modelId: "",
-                    dateInstalled: Date(),
-                    status: .operational,
-                    needsService: equipmentNeedsService,
-                    cleanFilterPressure: nil,
-                    currentPressure: nil,
-                    lastServiceDate: Date(),
-                    serviceFrequency: serviceFrequency,
-                    serviceFrequencyEvery: serviceFrequencyInternval,
-                    nextServiceDate: nil,
-                    notes: "",
-                    customerName: customerName,
-                    customerId: BOW.customerId,
-                    serviceLocationId: BOW.serviceLocationId,
-                    bodyOfWaterId: BOW.id,
-                    photoUrls: [],
-                    isActive: true,
-                    dateUninstalled: nil
-                )
-                try await dataService.uploadEquipment(companyId: companyId, equipment: equipment)
+            try await completeEquipmentInstallOrReplacement(
+                companyId: companyId,
+                task: task,
+                jobId: jobId,
+                replacesExistingEquipment: true
+            )
+            if recordEquipmentHistory {
+                try await EquipmentTaskHistoryService(dataService: dataService)
+                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
             }
         }
     }
+
+    private struct EquipmentInstallSource {
+        let dataBaseItem: DataBaseItem
+        let shoppingListItem: ShoppingListItem?
+        let purchasedItem: PurchasedItem?
+    }
+
+    private func completeEquipmentInstallOrReplacement(
+        companyId: String,
+        task: JobTask,
+        jobId: String,
+        replacesExistingEquipment: Bool
+    ) async throws {
+        guard !task.bodyOfWaterId.isEmpty,
+              let source = try await resolveEquipmentInstallSource(
+                companyId: companyId,
+                task: task,
+                jobId: jobId
+              ),
+              source.dataBaseItem.category == .equipment else {
+            return
+        }
+
+        let bodyOfWater = try await dataService.getSpecificBodyOfWater(
+            companyId: companyId,
+            bodyOfWaterId: task.bodyOfWaterId
+        )
+        let customer = try await dataService.getCustomerById(
+            companyId: companyId,
+            customerId: bodyOfWater.customerId
+        )
+        let customerName = "\(customer.firstName) \(customer.lastName)"
+        let defaults = equipmentDefaults(for: source.dataBaseItem)
+        let installedAt = Date()
+        let existingEquipmentId = firstNonEmpty([
+            task.installedEquipmentId,
+            task.replacementEquipmentId
+        ])
+        let equipmentId = existingEquipmentId.isEmpty ? "comp_equ_" + UUID().uuidString : existingEquipmentId
+
+        let equipment = Equipment(
+            id: equipmentId,
+            name: source.dataBaseItem.name,
+            type: defaults.category,
+            typeId: source.dataBaseItem.equipmentTypeId ?? "",
+            make: source.dataBaseItem.equipmentMake ?? "",
+            makeId: source.dataBaseItem.equipmentMakeId ?? "",
+            model: source.dataBaseItem.equipmentModel ?? source.dataBaseItem.name,
+            modelId: source.dataBaseItem.equipmentModelId ?? source.dataBaseItem.universalEquipmentId ?? "",
+            dateInstalled: installedAt,
+            status: .operational,
+            needsService: defaults.needsService,
+            cleanFilterPressure: nil,
+            currentPressure: nil,
+            lastServiceDate: defaults.needsService ? installedAt : nil,
+            serviceFrequency: defaults.serviceFrequency,
+            serviceFrequencyEvery: defaults.serviceFrequencyEvery,
+            nextServiceDate: nil,
+            notes: source.purchasedItem?.notes ?? source.shoppingListItem?.description ?? "",
+            customerName: customerName,
+            customerId: bodyOfWater.customerId,
+            serviceLocationId: bodyOfWater.serviceLocationId,
+            bodyOfWaterId: bodyOfWater.id,
+            photoUrls: [],
+            isActive: true,
+            dateUninstalled: nil
+        )
+
+        try await dataService.uploadEquipment(companyId: companyId, equipment: equipment)
+
+        let db = Firestore.firestore()
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("equipment")
+            .document(equipment.id)
+            .setData([
+                "active": true,
+                "universalEquipmentId": source.dataBaseItem.universalEquipmentId ?? source.dataBaseItem.equipmentModelId ?? "",
+                "sourceDataBaseItemId": source.dataBaseItem.id,
+                "sourceShoppingListItemId": source.shoppingListItem?.id ?? task.shoppingListItemId ?? "",
+                "sourcePurchasedItemId": source.purchasedItem?.id ?? task.purchasedItemId ?? "",
+                "installedFromJobId": jobId,
+                "installedFromTaskId": task.id,
+                "replacesEquipmentId": replacesExistingEquipment ? task.equipmentId : ""
+            ], merge: true)
+
+        if replacesExistingEquipment, !task.equipmentId.isEmpty {
+            try dataService.updateEquipmentIsActive(
+                companyId: companyId,
+                equipmentId: task.equipmentId,
+                isActive: false
+            )
+            try dataService.updateEquipmentDateUninstalled(
+                companyId: companyId,
+                equipmentId: task.equipmentId,
+                dateUninstalled: installedAt
+            )
+            try dataService.updateEquipmentStatus(
+                companyId: companyId,
+                equipmentId: task.equipmentId,
+                status: .replaced
+            )
+            try await db
+                .collection("companies")
+                .document(companyId)
+                .collection("equipment")
+                .document(task.equipmentId)
+                .setData([
+                    "active": false,
+                    "replacedByEquipmentId": equipment.id,
+                    "replacementJobId": jobId,
+                    "replacementTaskId": task.id
+                ], merge: true)
+        }
+
+        try await syncInstalledEquipmentLinks(
+            companyId: companyId,
+            task: task,
+            jobId: jobId,
+            equipmentId: equipment.id,
+            source: source,
+            installedAt: installedAt,
+            replacesExistingEquipment: replacesExistingEquipment
+        )
+    }
+
+    private func resolveEquipmentInstallSource(
+        companyId: String,
+        task: JobTask,
+        jobId: String
+    ) async throws -> EquipmentInstallSource? {
+        let linkedShoppingItem = try await linkedShoppingListItem(
+            companyId: companyId,
+            task: task,
+            jobId: jobId
+        )
+        let explicitDataBaseItemId = task.dataBaseItemId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let shoppingDataBaseItemId = firstNonEmpty([
+            linkedShoppingItem?.dbItemId,
+            linkedShoppingItem?.genericItemId
+        ])
+        let dataBaseItemId = firstNonEmpty([explicitDataBaseItemId, shoppingDataBaseItemId])
+        let purchasedItem = try await linkedPurchasedItem(
+            companyId: companyId,
+            task: task,
+            jobId: jobId,
+            dataBaseItemId: dataBaseItemId,
+            shoppingListItem: linkedShoppingItem
+        )
+        let resolvedDataBaseItemId = firstNonEmpty([
+            dataBaseItemId,
+            purchasedItem?.itemId
+        ])
+
+        if !resolvedDataBaseItemId.isEmpty {
+            let dataBaseItem = try await dataService.getDataBaseItem(
+                companyId: companyId,
+                dataBaseItemId: resolvedDataBaseItemId
+            )
+            return EquipmentInstallSource(
+                dataBaseItem: dataBaseItem,
+                shoppingListItem: linkedShoppingItem,
+                purchasedItem: purchasedItem
+            )
+        }
+
+        return try await singlePurchasedEquipmentSource(
+            companyId: companyId,
+            jobId: jobId,
+            shoppingListItem: linkedShoppingItem
+        )
+    }
+
+    private func linkedShoppingListItem(
+        companyId: String,
+        task: JobTask,
+        jobId: String
+    ) async throws -> ShoppingListItem? {
+        if let shoppingListItemId = task.shoppingListItemId,
+           !shoppingListItemId.isEmpty {
+            return try? await dataService.getSpecificShoppingListItem(
+                companyId: companyId,
+                shoppingListItemId: shoppingListItemId
+            )
+        }
+
+        if let loadedItem = shoppingItemList.first(where: { item in
+            item.linkedTaskId == task.id
+        }) {
+            return loadedItem
+        }
+
+        let jobItems = try await dataService.getAllShoppingListItemsByUserForJob(
+            companyId: companyId,
+            jobId: jobId,
+            category: "Job"
+        )
+        return jobItems.first { item in
+            item.linkedTaskId == task.id
+        }
+    }
+
+    private func linkedPurchasedItem(
+        companyId: String,
+        task: JobTask,
+        jobId: String,
+        dataBaseItemId: String,
+        shoppingListItem: ShoppingListItem?
+    ) async throws -> PurchasedItem? {
+        let explicitPurchasedItemId = firstNonEmpty([
+            task.purchasedItemId,
+            shoppingListItem?.purchasedItem
+        ])
+
+        if !explicitPurchasedItemId.isEmpty {
+            return try? await dataService.getSingleItem(
+                itemId: explicitPurchasedItemId,
+                companyId: companyId
+            )
+        }
+
+        guard !dataBaseItemId.isEmpty else { return nil }
+
+        let candidates = try await purchasedItemCandidates(companyId: companyId, jobId: jobId)
+        return candidates.first { item in
+            item.itemId == dataBaseItemId || item.universalEquipmentId == dataBaseItemId
+        }
+    }
+
+    private func singlePurchasedEquipmentSource(
+        companyId: String,
+        jobId: String,
+        shoppingListItem: ShoppingListItem?
+    ) async throws -> EquipmentInstallSource? {
+        let candidates = try await purchasedItemCandidates(companyId: companyId, jobId: jobId)
+        var matches: [(DataBaseItem, PurchasedItem)] = []
+
+        for item in candidates {
+            guard !item.itemId.isEmpty,
+                  let dataBaseItem = try? await dataService.getDataBaseItem(
+                    companyId: companyId,
+                    dataBaseItemId: item.itemId
+                  ),
+                  dataBaseItem.category == .equipment else {
+                continue
+            }
+
+            matches.append((dataBaseItem, item))
+        }
+
+        guard matches.count == 1,
+              let match = matches.first else {
+            return nil
+        }
+
+        return EquipmentInstallSource(
+            dataBaseItem: match.0,
+            shoppingListItem: shoppingListItem,
+            purchasedItem: match.1
+        )
+    }
+
+    private func purchasedItemCandidates(
+        companyId: String,
+        jobId: String
+    ) async throws -> [PurchasedItem] {
+        if !purchasedItems.isEmpty {
+            return purchasedItems
+        }
+
+        var itemsById: [String: PurchasedItem] = [:]
+        let fields = ["jobId", "workOrderId", "assignedJobId"]
+
+        for field in fields {
+            let items = try await Firestore.firestore()
+                .collection("companies/\(companyId)/purchasedItems")
+                .whereField(field, isEqualTo: jobId)
+                .getDocuments(as: PurchasedItem.self)
+
+            for item in items {
+                itemsById[item.id] = item
+            }
+        }
+
+        return Array(itemsById.values)
+    }
+
+    private func syncInstalledEquipmentLinks(
+        companyId: String,
+        task: JobTask,
+        jobId: String,
+        equipmentId: String,
+        source: EquipmentInstallSource,
+        installedAt: Date,
+        replacesExistingEquipment: Bool
+    ) async throws {
+        let db = Firestore.firestore()
+        var taskUpdates: [String: Any] = [
+            "status": JobTaskStatus.finished.rawValue,
+            "installedEquipmentId": equipmentId,
+            "dataBaseItemId": source.dataBaseItem.id
+        ]
+
+        if replacesExistingEquipment {
+            taskUpdates["replacementEquipmentId"] = equipmentId
+        }
+
+        if let shoppingListItemId = source.shoppingListItem?.id ?? task.shoppingListItemId,
+           !shoppingListItemId.isEmpty {
+            taskUpdates["shoppingListItemId"] = shoppingListItemId
+            try await db
+                .collection("companies")
+                .document(companyId)
+                .collection("shoppingList")
+                .document(shoppingListItemId)
+                .setData([
+                    "status": ShoppingListStatus.installed.rawValue,
+                    "linkedTaskStatus": JobTaskStatus.finished.rawValue,
+                    "installedEquipmentId": equipmentId,
+                    "installedAt": installedAt
+                ], merge: true)
+        }
+
+        if let purchasedItem = source.purchasedItem {
+            taskUpdates["purchasedItemId"] = purchasedItem.id
+            try await db
+                .collection("companies")
+                .document(companyId)
+                .collection("purchasedItems")
+                .document(purchasedItem.id)
+                .setData([
+                    "installedEquipmentId": equipmentId,
+                    "installedAt": installedAt,
+                    "installationJobId": jobId,
+                    "installationTaskId": task.id,
+                    "assignmentStatus": "installed",
+                    "jobMaterialStatus": "Installed"
+                ], merge: true)
+        }
+
+        try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("workOrders")
+            .document(jobId)
+            .collection("tasks")
+            .document(task.id)
+            .setData(taskUpdates, merge: true)
+
+        if let index = jobTaskList.firstIndex(where: { $0.id == task.id }) {
+            jobTaskList[index].installedEquipmentId = equipmentId
+            jobTaskList[index].replacementEquipmentId = replacesExistingEquipment ? equipmentId : nil
+            jobTaskList[index].shoppingListItemId = source.shoppingListItem?.id ?? task.shoppingListItemId
+            jobTaskList[index].purchasedItemId = source.purchasedItem?.id ?? task.purchasedItemId
+            jobTaskList[index].dataBaseItemId = source.dataBaseItem.id
+            jobTaskList[index].status = .finished
+        }
+    }
+
+    private func equipmentDefaults(
+        for dataBaseItem: DataBaseItem
+    ) -> (category: EquipmentCategory, needsService: Bool, serviceFrequency: Int?, serviceFrequencyEvery: EquipmentFrequency?) {
+        let category: EquipmentCategory
+        var needsService = false
+        var serviceFrequency: Int? = nil
+        var serviceFrequencyEvery: EquipmentFrequency? = nil
+
+        if let rawType = dataBaseItem.equipmentType,
+           let mappedCategory = EquipmentCategory(rawValue: rawType) {
+            category = mappedCategory
+        } else {
+            switch dataBaseItem.subCategory {
+            case .heater:
+                category = .heater
+            case .filter:
+                category = .filter
+                needsService = true
+                serviceFrequency = 6
+                serviceFrequencyEvery = .monthly
+            case .pump:
+                category = .pump
+            case .cleaner:
+                category = .cleaner
+            case .saltCell:
+                category = .saltCell
+                needsService = true
+                serviceFrequency = 6
+                serviceFrequencyEvery = .monthly
+            case .light:
+                category = .light
+            case .controlSystem:
+                category = .controlSystem
+            case .autoChlorinator:
+                category = .autoChlorinator
+            default:
+                category = .autoChlorinator
+            }
+        }
+
+        return (category, needsService, serviceFrequency, serviceFrequencyEvery)
+    }
+
+    private func firstNonEmpty(_ values: [String?]) -> String {
+        values
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? ""
+    }
+
     func markJobAsUnFinished(companyId: String, job: Job) async throws {
         //Update Data Model
         try await dataService.updateJobOperationStatus(companyId: companyId, jobId: job.id, operationStatus: .inProgress)
@@ -957,14 +1405,14 @@ final class JobDetailViewModel:ObservableObject{
                     //Update Job Info
                     for task in jobTaskList {
                         try dataService.updateJobTaskStatus(companyId: senderId, jobId: contract.senderJobId.id, taskId: task.id, status: .finished)
-                        try await updateTaskHelperFunction(companyId: senderId, task: task)
+                        try await updateTaskHelperFunction(companyId: senderId, task: task, jobId: contract.senderJobId.id, recordEquipmentHistory: false)
                     }
                 }
             }
         } else {
             for task in jobTaskList {
                 //Update Task
-                try await updateTaskHelperFunction(companyId: companyId, task: task)
+                try await updateTaskHelperFunction(companyId: companyId, task: task, jobId: job.id, recordEquipmentHistory: false)
             }
         }
     }
@@ -1300,6 +1748,32 @@ extension JobDetailViewModel {
         actualPayLineItems.reduce(0) { $0 + $1.totalAmountCents }
     }
 
+    var scheduledServiceStopLaborEstimateCents: Int {
+        let stopIdsWithPayroll = Set(actualPayLineItems.compactMap { $0.serviceStopId })
+
+        return serviceStops.reduce(0) { total, stop in
+            if stopIdsWithPayroll.contains(stop.id) {
+                return total
+            }
+
+            if let estimatedPayCents = stop.estimatedPayCents,
+               estimatedPayCents > 0 {
+                print("[JobDetailViewModel][scheduledStopLaborEstimate] using saved service stop estimate stopId=\(stop.id) estimatedPayCents=\(estimatedPayCents) typeId=\(stop.typeId) payWorkTypeId=\(stop.payWorkTypeId ?? "nil") workTypeId=\(stop.workTypeId ?? "nil")")
+                return total + estimatedPayCents
+            }
+
+            let minutes = stop.duration > 0 ? stop.duration : stop.estimatedDuration
+            let estimatedCents = (Double(minutes) / 60.0) * employeeHourlyRate
+            let fallbackCents = Int(estimatedCents.rounded())
+            print("[JobDetailViewModel][scheduledStopLaborFallback] stopId=\(stop.id) jobId=\(stop.jobId) typeId=\(stop.typeId) type=\(stop.type) inferredSourceId=\(stop.inferredPayrollServiceStopSourceId) techId=\(stop.techId) estimatedPayCents=\(String(describing: stop.estimatedPayCents)) payWorkTypeId=\(stop.payWorkTypeId ?? "nil") payWorkTypeName=\(stop.payWorkTypeName ?? "nil") workTypeId=\(stop.workTypeId ?? "nil") workTypeName=\(stop.workTypeName ?? "nil") defaultWorkTypeIds=\(stop.defaultWorkTypeIds ?? []) duration=\(stop.duration) estimatedDuration=\(stop.estimatedDuration) fallbackHourlyRateCents=\(Int(employeeHourlyRate.rounded())) fallbackCents=\(fallbackCents)")
+            return total + fallbackCents
+        }
+    }
+
+    var actualLaborTotalCents: Int {
+        actualPayrollTotalCents + scheduledServiceStopLaborEstimateCents
+    }
+
     var actualPayrollCalculatedCents: Int {
         actualPayLineItems
             .filter {
@@ -1381,22 +1855,22 @@ extension JobDetailViewModel {
     }
 
     var actualPurchasedMaterialCostCents: Int {
-        Int((purchasedItems.reduce(0.0) { $0 + $1.totalAfterTax } * 100).rounded())
+        Int(purchasedItems.reduce(0.0) { $0 + $1.totalAfterTax }.rounded())
     }
 
     var purchasedItemsNotInvoiced: [PurchasedItem] {
-        purchasedItems.filter { !$0.invoiced }
+        purchasedItems
     }
 
     var billablePurchasedItems: [PurchasedItem] {
-        purchasedItems.filter { $0.billable }
+        purchasedItems.filter { $0.isJobBillable }
     }
 
     var billablePurchasedMaterialPriceCents: Int {
-        Int((billablePurchasedItems.reduce(0.0) { partial, item in
-            let rate = item.billingRate ?? item.price
+        Int(billablePurchasedItems.reduce(0.0) { partial, item in
+            let rate = item.jobMaterialBillingRate
             return partial + (rate * item.quantity)
-        } * 100).rounded())
+        }.rounded())
     }
 
     var shoppingItemsNeedPurchase: [ShoppingListItem] {
@@ -1420,7 +1894,7 @@ extension JobDetailViewModel {
             jobRateCents: job.rate,
             plannedTaskLaborCents: plannedTaskLaborCents,
             plannedServiceStopLaborCents: plannedServiceStopLaborCents,
-            actualPayrollCents: actualPayrollTotalCents,
+            actualPayrollCents: actualLaborTotalCents,
             plannedMaterialCostCents: plannedMaterialCostCents,
             plannedMaterialPriceCents: plannedMaterialPriceCents,
             actualMaterialCostCents: actualPurchasedMaterialCostCents,
@@ -1488,7 +1962,7 @@ extension JobDetailViewModel {
             shoppingItems: shoppingItemList,
             purchasedItems: purchasedItems,
             plannedLaborCents: plannedTotalLaborCents,
-            actualPayrollCents: actualPayrollTotalCents,
+            actualPayrollCents: actualLaborTotalCents,
             plannedMaterialCostCents: plannedMaterialCostCents,
             actualMaterialCostCents: actualPurchasedMaterialCostCents
         )

@@ -45,20 +45,55 @@ final class JobViewModel:ObservableObject{
     @Published var selectedFilter: FilterOption? = nil
     @Published var selectedDate: Date? = nil
     private var lastDocument: DocumentSnapshot? = nil
-    
+
+    private func newestFirst(_ jobs: [Job]) -> [Job] {
+        jobs.sorted { first, second in
+            if first.dateCreated == second.dateCreated {
+                return first.internalId > second.internalId
+            }
+            return first.dateCreated > second.dateCreated
+        }
+    }
+
+    private func setWorkOrders(_ jobs: [Job], sortedNewestFirst: Bool = true) {
+        self.workOrders = sortedNewestFirst ? newestFirst(jobs) : jobs
+        refreshFilteredWorkOrders()
+    }
+
+    private func refreshFilteredWorkOrders() {
+        let query = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else {
+            self.filteredWorkOrders = []
+            return
+        }
+
+        self.filteredWorkOrders = workOrders.filter { job in
+            let searchableFields = [
+                job.adminName,
+                job.type,
+                job.description,
+                job.customerName,
+                job.internalId,
+                job.id,
+                job.operationStatus.rawValue,
+                job.billingStatus.rawValue
+            ]
+            return searchableFields.contains { $0.lowercased().contains(query) }
+        }
+    }
     
 
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                             Get Jobs
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     func getAllJobSnapShot(companyId: String) async throws{
-        self.workOrders = try await dataService.getAllWorkOrders(companyId: companyId)
+        setWorkOrders(try await dataService.getAllWorkOrders(companyId: companyId))
     }
     func getAllWorkOrders(companyId: String) async throws{
-        self.workOrders = try await dataService.getAllWorkOrders(companyId: companyId)
+        setWorkOrders(try await dataService.getAllWorkOrders(companyId: companyId))
     }
     func getAllUnbilledJobs(companyId: String) async throws{
-        self.workOrders = try await dataService.getAllWorkOrdersFinished(companyId: companyId, finished: false)
+        setWorkOrders(try await dataService.getAllWorkOrdersFinished(companyId: companyId, finished: false))
     }
     func getSingleWorkOrder(companyId: String,WorkOrderId:String) async throws{
         self.workOrder = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: WorkOrderId)
@@ -69,7 +104,7 @@ final class JobViewModel:ObservableObject{
 
     }
     func getFiveServiceStops(companyId: String) async throws{
-        self.workOrders = try await dataService.getAllWorkOrdersSortedByTime(companyId: companyId, descending: true, count: 5)
+        setWorkOrders(try await dataService.getAllWorkOrdersSortedByTime(companyId: companyId, descending: true, count: 5), sortedNewestFirst: false)
     }
     
     enum FilterOption:String, CaseIterable{
@@ -80,13 +115,13 @@ final class JobViewModel:ObservableObject{
     func filterSelected(companyId: String,option: FilterOption) async throws{
         switch option{
         case .priceHigh:
-            self.workOrders = try await dataService.getAllWorkOrdersSortedByPrice(companyId: companyId, descending: true)
+            setWorkOrders(try await dataService.getAllWorkOrdersSortedByPrice(companyId: companyId, descending: true), sortedNewestFirst: false)
             break
         case .priceLow:
-            self.workOrders = try await dataService.getAllWorkOrdersSortedByPrice(companyId: companyId, descending: false)
+            setWorkOrders(try await dataService.getAllWorkOrdersSortedByPrice(companyId: companyId, descending: false), sortedNewestFirst: false)
             break
         case .noFilter:
-            self.workOrders = try await dataService.getAllWorkOrders(companyId: companyId)
+            setWorkOrders(try await dataService.getAllWorkOrders(companyId: companyId))
             break
         }
         self.selectedFilter = option
@@ -95,19 +130,11 @@ final class JobViewModel:ObservableObject{
     //Filter Service Locations
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     func filterWorkOrderList() {
-        var filteredWorkOrderList:[Job] = []
-        
-        for wo in workOrders {
-            if wo.adminName.lowercased().contains(searchTerm) || wo.type.lowercased().contains(searchTerm) || wo.description.lowercased().contains(searchTerm) || wo.customerName.lowercased().contains(searchTerm) || wo.internalId.lowercased().contains(searchTerm) {
-                
-                filteredWorkOrderList.append(wo)
-            }
-        }
-        self.filteredWorkOrders = filteredWorkOrderList
+        refreshFilteredWorkOrders()
     }
     
     func DateSelected(companyId: String,date: Date) async throws{
-        self.workOrders = try await dataService.getAllWorkOrdersByDate(companyId: companyId, date: date)
+        setWorkOrders(try await dataService.getAllWorkOrdersByDate(companyId: companyId, date: date))
 
     }
     //takes all the service stops and finds all unique techs in all of the service stops. only use on daily.
@@ -116,13 +143,14 @@ final class JobViewModel:ObservableObject{
         
     }
     func TechAndDate(companyId: String,date: Date,techId:String) async throws{
-        self.workOrders = try await dataService.getAllWorkOrdersByDayAndTech(companyId: companyId, date: date,techId:techId)
+        setWorkOrders(try await dataService.getAllWorkOrdersByDayAndTech(companyId: companyId, date: date,techId:techId))
         print(workOrders)
     }
     func getServiceStopBySomething(companyId: String){
         Task{
             let (newWorkOrders,lastDocument) = try await dataService.getWorkOrdersBySomething(companyId: companyId, count: 5, lastDocument: lastDocument)
-            self.workOrders.append(contentsOf: newWorkOrders)
+            self.lastDocument = lastDocument
+            setWorkOrders(self.workOrders + newWorkOrders)
         }
     }
     func addNewWorkOrder(companyId:String,workOrder:Job,workOrderTemplateType:JobTemplate) async throws{
@@ -293,7 +321,7 @@ final class JobViewModel:ObservableObject{
         
     }
     func getBillableServiceStopsByDate(companyId: String,startDate:Date,endDate:Date)async throws{
-        self.workOrders = try await dataService.getBillableWorkOrdersByDate(companyId: companyId, startDate: startDate,endDate: endDate)
+        setWorkOrders(try await dataService.getBillableWorkOrdersByDate(companyId: companyId, startDate: startDate,endDate: endDate))
         
     }
     func changeBillingStatusOfWorkOrder(workOrder:Job,billingStatus:Bool)async throws{
@@ -346,7 +374,7 @@ final class JobViewModel:ObservableObject{
         print("Company Id: \(companyId)")
         dataService.addListenerForAllJobsOperations(companyId: companyId, status: status, requesterIds: requesterIds, startDate: startDate, endDate: endDate){ [weak self] jobs in
             print("Jobs: \(jobs.count)")
-           self?.workOrders = jobs
+            self?.setWorkOrders(jobs)
        }
         
     }
@@ -357,7 +385,7 @@ final class JobViewModel:ObservableObject{
         print("Company Id: \(companyId)")
          dataService.addListenerForAllJobsBilling(companyId: companyId, status: status, requesterIds: requesterIds, startDate: startDate, endDate: endDate){ [weak self] jobs in
              print("Jobs: \(jobs.count)")
-            self?.workOrders = jobs
+             self?.setWorkOrders(jobs)
         }
     }
     func removeListenerForJob(){

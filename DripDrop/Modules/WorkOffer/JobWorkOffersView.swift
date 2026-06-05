@@ -186,7 +186,7 @@ struct JobWorkOffersView: View {
                 JobWorkOfferActionRow(
                     title: "Add New Task",
                     subtitle: "Create another task for this job, then offer it.",
-                    systemImage: "selection.reminders.checklist.badge.plus"
+                    systemImage: "text.badge.plus"
                 )
             }
             .buttonStyle(.plain)

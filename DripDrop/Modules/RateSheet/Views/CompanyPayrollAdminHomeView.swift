@@ -21,7 +21,7 @@ struct CompanyPayrollAdminHomeView: View {
             futureSetupSection
         }
         .navigationTitle("Payroll")
-        
+         
     }
 
     private var setupSection: some View {
@@ -49,7 +49,7 @@ struct CompanyPayrollAdminHomeView: View {
                         PayrollAdminNavRow(
                             iconName: "mappin.and.ellipse",
                             title: "Service Stop Types",
-                            subtitle: "Connect ServiceStop.typeId to real company-defined stop types"
+                            subtitle: "Choose the payroll work types each scheduled stop should use"
                         )
                     }
                 }
@@ -60,7 +60,7 @@ struct CompanyPayrollAdminHomeView: View {
                 } label: {
                     PayrollAdminNavRow(
                         iconName: "list.bullet.rectangle",
-                        title: "Company Work Types(Payroll Lines)",
+                        title: "Payroll Work Types",
                         subtitle: "The payroll rows that technicians can have rates for"
                     )
                 }
@@ -72,8 +72,8 @@ struct CompanyPayrollAdminHomeView: View {
                 } label: {
                     PayrollAdminNavRow(
                         iconName: "arrow.triangle.branch",
-                        title: "Work Type Mappings",
-                        subtitle: "Map route/job/task data to payroll work types"
+                        title: "Task & Source Mappings",
+                        subtitle: "Map payable task types and fallback stop sources to payroll work"
                     )
                 }
                 if let user = masterDataManager.user {

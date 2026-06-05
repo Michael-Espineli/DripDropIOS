@@ -196,14 +196,19 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
                 guard let estimatedTimeInt = Int(estimatedTime) else {return }
                 let rssCount = try await dataService.getRecurringServiceStopCount(companyId: companyId)
                 let internalRSSID = "RSS" + String(rssCount)
+                let receiverTypeFields = await dataService.resolvedServiceStopTypeFields(
+                    companyId: companyId,
+                    useCase: .recurringRoute,
+                    context: "GenerateRouteFromLaborContractViewModel.generateRecurringStopFromRecurringWork.receiver"
+                )
                 let RSSID = try await addNewRecurringServiceStopFromLaborContractHelper(
                     companyId: companyId,
                     recurringServiceStop: RecurringServiceStop(
                         id: "comp_rss_" + UUID().uuidString,
                         internalId: internalRSSID,
-                        type: self.jobType.name,
-                        typeId: self.jobType.id,
-                        typeImage: "",
+                        type: receiverTypeFields.type,
+                        typeId: receiverTypeFields.typeId,
+                        typeImage: receiverTypeFields.typeImage,
                         customerName: self.selectedRecurringWork.customerName,
                         customerId: self.selectedRecurringWork.customerId,
                         address: self.location.address, //DEVELOPER GET ADDRESS FOR RECURRING SERVICE STOP
@@ -323,6 +328,16 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
         func helpCreateWeeklyRecurringRoute(companyId:String,recurringServiceStop:RecurringServiceStop,
                                             noEndDate:Bool,startDate:Date,endDate:Date,senderCompanyId:String,receiverCompanyId:String) async throws{
             print("Create Weekly Recurring Route helper Function")
+            let senderTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: senderCompanyId,
+                useCase: .recurringRoute,
+                context: "GenerateRouteFromLaborContractViewModel.helpCreateWeeklyRecurringRoute.sender"
+            )
+            let receiverTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: receiverCompanyId,
+                useCase: .recurringRoute,
+                context: "GenerateRouteFromLaborContractViewModel.helpCreateWeeklyRecurringRoute.receiver"
+            )
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "EEEE"//String Day of the Week
             let dateDisplayFornmatter = DateFormatter()
@@ -416,9 +431,9 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
                     recurringServiceStopId: recurringServiceStop.id,
                     description: recurringServiceStop.description,
                     serviceLocationId: recurringServiceStop.serviceLocationId,
-                    typeId: recurringServiceStop.typeId,
-                    type: recurringServiceStop.type,
-                    typeImage: recurringServiceStop.typeImage,
+                    typeId: senderTypeFields.typeId,
+                    type: senderTypeFields.type,
+                    typeImage: senderTypeFields.typeImage,
                     jobId: "",
                     jobName: "",
                     operationStatus: .notFinished,
@@ -451,9 +466,9 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
                     recurringServiceStopId: recurringServiceStop.id,
                     description: recurringServiceStop.description,
                     serviceLocationId: recurringServiceStop.serviceLocationId,
-                    typeId: recurringServiceStop.typeId,
-                    type: recurringServiceStop.type,
-                    typeImage: recurringServiceStop.typeImage,
+                    typeId: receiverTypeFields.typeId,
+                    type: receiverTypeFields.type,
+                    typeImage: receiverTypeFields.typeImage,
                     jobId: "",
                     jobName: "",
                     operationStatus: .notFinished,
@@ -480,13 +495,20 @@ final class GenerateRouteFromLaborContractViewModel:ObservableObject{
             }
             print("Last Created: \(String(dateDisplayFornmatter.string(from:lastCreated)))")
             var pushRecurring = recurringServiceStop
+            pushRecurring.type = receiverTypeFields.type
+            pushRecurring.typeId = receiverTypeFields.typeId
+            pushRecurring.typeImage = receiverTypeFields.typeImage
             pushRecurring.lastCreated = lastCreated
+            var senderPushRecurring = pushRecurring
+            senderPushRecurring.type = senderTypeFields.type
+            senderPushRecurring.typeId = senderTypeFields.typeId
+            senderPushRecurring.typeImage = senderTypeFields.typeImage
             print("Adding Recurring Service Stop with id - \(pushRecurring.id) helpCreateWeeklyRecurringRoute - [GenerateRouteFromLaborContractViewModel]")
             
             //One For the receiver
             try await dataService.uploadRecurringServiceStop(companyId: companyId, recurringServiceStop: pushRecurring)
             //One for the sender
-            try await dataService.uploadRecurringServiceStop(companyId: senderCompanyId, recurringServiceStop: pushRecurring)
+            try await dataService.uploadRecurringServiceStop(companyId: senderCompanyId, recurringServiceStop: senderPushRecurring)
 
         }
         

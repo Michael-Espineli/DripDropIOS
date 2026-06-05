@@ -43,6 +43,9 @@ struct ProfileView: View {
                     Section {
                         VStack(spacing: 12) {
                             Divider().opacity(0)
+                            if masterDataManager.isFeatureEnabled(.companyUserProfileHistory) {
+                                companyUserHistoryLink
+                            }
                                 // ----------------------------------------
                                 // Add Back in During Roll out of Phase 2
                                 // ----------------------------------------
@@ -101,6 +104,232 @@ struct ProfileView: View {
     }
 }
 
+@MainActor
+final class CompanyUserProfileHistoryViewModel: ObservableObject {
+    @Published var routes: [ActiveRoute] = []
+    @Published var lineItems: [TechnicianPayLineItem] = []
+    @Published var statements: [TechnicianPayStatement] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    let company: Company
+    let companyUser: CompanyUser
+    let dataService: any ProductionDataServiceProtocol
+
+    init(
+        company: Company,
+        companyUser: CompanyUser,
+        dataService: any ProductionDataServiceProtocol
+    ) {
+        self.company = company
+        self.companyUser = companyUser
+        self.dataService = dataService
+    }
+
+    var totalMiles: Double {
+        routes.reduce(0) { $0 + $1.distanceMiles }
+    }
+
+    var totalStops: Int {
+        routes.reduce(0) { $0 + $1.finishedStops }
+    }
+
+    var totalPayCents: Int {
+        lineItems.reduce(0) { $0 + $1.totalAmountCents }
+    }
+
+    var unpaidPayCents: Int {
+        lineItems
+            .filter { $0.payStatementId == nil && $0.voidedAt == nil }
+            .reduce(0) { $0 + $1.totalAmountCents }
+    }
+
+    func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let endDate = Date()
+            let startDate = Calendar.current.date(byAdding: .day, value: -180, to: endDate) ?? endDate
+
+            async let routesTask = dataService.getRecentActiveRoutes(
+                companyId: company.id,
+                technicianId: companyUser.userId,
+                limit: 25
+            )
+            async let lineItemsTask = dataService.fetchTechnicianPayLineItems(
+                companyId: company.id,
+                startDate: startDate,
+                endDate: endDate
+            )
+            async let statementsTask = dataService.fetchTechnicianPayStatements(
+                companyId: company.id,
+                startDate: startDate,
+                endDate: endDate
+            )
+
+            let fetchedRoutes = try await routesTask
+            let fetchedLineItems = try await lineItemsTask
+            let fetchedStatements = try await statementsTask
+
+            routes = fetchedRoutes
+            lineItems = fetchedLineItems.filter {
+                $0.technicianId == companyUser.userId
+            }
+            statements = fetchedStatements.filter {
+                $0.technicianId == companyUser.userId
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+struct CompanyUserProfileHistoryView: View {
+    @StateObject private var viewModel: CompanyUserProfileHistoryViewModel
+
+    init(
+        company: Company,
+        companyUser: CompanyUser,
+        dataService: any ProductionDataServiceProtocol
+    ) {
+        _viewModel = StateObject(
+            wrappedValue: CompanyUserProfileHistoryViewModel(
+                company: company,
+                companyUser: companyUser,
+                dataService: dataService
+            )
+        )
+    }
+
+    var body: some View {
+        List {
+            Section {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    summaryTile(
+                        title: "Miles",
+                        value: Measurement(value: viewModel.totalMiles, unit: UnitLength.miles)
+                            .formatted(.measurement(width: .abbreviated, usage: .road)),
+                        systemImage: "road.lanes"
+                    )
+                    summaryTile(
+                        title: "Stops",
+                        value: "\(viewModel.totalStops)",
+                        systemImage: "checklist.checked"
+                    )
+                    summaryTile(
+                        title: "Work Items",
+                        value: "\(viewModel.lineItems.count)",
+                        systemImage: "wrench.and.screwdriver"
+                    )
+                    summaryTile(
+                        title: "Unpaid",
+                        value: centsCurrency(viewModel.unpaidPayCents),
+                        systemImage: "dollarsign.circle"
+                    )
+                }
+                .listRowInsets(EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+            } header: {
+                Text(viewModel.company.name)
+            }
+
+            Section("Paysheet") {
+                NavigationLink {
+                    TechnicianPayrollInfoView(
+                        companyId: viewModel.company.id,
+                        companyUser: viewModel.companyUser,
+                        dataService: viewModel.dataService
+                    )
+                } label: {
+                    HStack {
+                        Label("Open Paysheet", systemImage: "doc.text.magnifyingglass")
+                        Spacer()
+                        Text(centsCurrency(viewModel.totalPayCents))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section("Recent Routes") {
+                if viewModel.isLoading && viewModel.routes.isEmpty {
+                    ProgressView()
+                } else if viewModel.routes.isEmpty {
+                    Text("No recent routes found.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(viewModel.routes) { route in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(route.name)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text(route.status.rawValue)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            HStack(spacing: 12) {
+                                Label(route.date.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+                                Label("\(route.finishedStops)/\(route.totalStops)", systemImage: "checkmark.circle")
+                                Label(
+                                    Measurement(value: route.distanceMiles, unit: UnitLength.miles)
+                                        .formatted(.measurement(width: .abbreviated, usage: .road)),
+                                    systemImage: "road.lanes"
+                                )
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
+            if let errorMessage = viewModel.errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .navigationTitle("My Work History")
+        .task {
+            await viewModel.load()
+        }
+        .refreshable {
+            await viewModel.load()
+        }
+    }
+
+    func summaryTile(title: String, value: String, systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, minHeight: 94, alignment: .leading)
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    func centsCurrency(_ cents: Int) -> String {
+        (Double(cents) / 100.0).formatted(
+            .currency(code: "USD")
+            .precision(.fractionLength(2))
+        )
+    }
+}
+
 #Preview {
     ProfileView(dataService: MockDataService())
         .environmentObject(NavigationStateManager())
@@ -122,6 +351,49 @@ extension ProfileView {
                 .foregroundStyle(.black)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .accessibilityLabel("Edit Profile")
+            }
+        }
+    }
+
+    var companyUserHistoryLink: some View {
+        Group {
+            if let company = masterDataManager.currentCompany,
+               let companyUser = masterDataManager.companyUser {
+                NavigationLink {
+                    CompanyUserProfileHistoryView(
+                        company: company,
+                        companyUser: companyUser,
+                        dataService: dataService
+                    )
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 40, height: 40)
+                            .background(Color.accentColor.opacity(0.14), in: Circle())
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("My Work History")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                            Text(company.name)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(16)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -341,4 +613,3 @@ extension ProfileView {
         }
     }
 }
-

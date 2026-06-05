@@ -20,6 +20,88 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
 
     var storage = Storage.storage().reference()
     let id = UUID().uuidString
+
+    func getFeatureFlags() async throws -> [FeatureFlag] {
+        let snapshot = try await db
+            .collection("featureFlags")
+            .order(by: "index")
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            try? document.data(as: FeatureFlag.self)
+        }
+    }
+
+    func getFeatureFlag(flagId: String) async throws -> FeatureFlag? {
+        let snapshot = try await db
+            .collection("featureFlags")
+            .document(flagId)
+            .getDocument()
+
+        guard snapshot.exists else { return nil }
+
+        return try snapshot.data(as: FeatureFlag.self)
+    }
+
+    func isFeatureFlagEnabled(_ flagId: String) async throws -> Bool {
+        try await getFeatureFlag(flagId: flagId)?.enabled ?? false
+    }
+
+    private func getCustomerSalesDocuments<T: Decodable>(
+        collectionName: String,
+        companyId: String,
+        customerId: String,
+        as type: T.Type
+    ) async throws -> [T] {
+        guard !companyId.isEmpty, !customerId.isEmpty else { return [] }
+
+        let snapshot = try await db
+            .collection(collectionName)
+            .whereField("companyId", isEqualTo: companyId)
+            .whereField("customerId", isEqualTo: customerId)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            try? document.data(as: T.self)
+        }
+    }
+
+    func getSalesAgreements(companyId: String, customerId: String) async throws -> [SalesAgreement] {
+        try await getCustomerSalesDocuments(
+            collectionName: "salesAgreements",
+            companyId: companyId,
+            customerId: customerId,
+            as: SalesAgreement.self
+        )
+    }
+
+    func getSalesBillingSubscriptions(companyId: String, customerId: String) async throws -> [SalesBillingSubscription] {
+        try await getCustomerSalesDocuments(
+            collectionName: "salesBillingSubscriptions",
+            companyId: companyId,
+            customerId: customerId,
+            as: SalesBillingSubscription.self
+        )
+    }
+
+    func getSalesInvoices(companyId: String, customerId: String) async throws -> [SalesInvoice] {
+        try await getCustomerSalesDocuments(
+            collectionName: "salesInvoices",
+            companyId: companyId,
+            customerId: customerId,
+            as: SalesInvoice.self
+        )
+    }
+
+    func getSalesPayments(companyId: String, customerId: String) async throws -> [SalesPayment] {
+        try await getCustomerSalesDocuments(
+            collectionName: "salesPayments",
+            companyId: companyId,
+            customerId: customerId,
+            as: SalesPayment.self
+        )
+    }
+
     func getNextPayStatementNumber(companyId: String) async throws -> Int {
         return try await getNextCompanyIncrement(
             companyId: companyId,
@@ -577,11 +659,16 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func ensureCompanyPaySettings(
         companyId: String
     ) async throws -> CompanyPaySettings {
-//        if let settings = try await fetchCompanyPaySettings(companyId: companyId) {
-//            return settings
-//        }
+        if var settings = try await fetchCompanyPaySettings(companyId: companyId) {
+            if settings.companyId.isBlank {
+                settings.companyId = companyId
+                try await saveCompanyPaySettings(companyId: companyId, settings)
+            }
 
-        let defaultSettings = CompanyPaySettings.defaultSettings()
+            return settings
+        }
+
+        let defaultSettings = CompanyPaySettings.defaultSettings(companyId: companyId)
         try await saveCompanyPaySettings(companyId: companyId, defaultSettings)
 
         return defaultSettings
@@ -611,8 +698,14 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         )
         .getDocuments()
 
-        return try snapshot.documents
-            .map { try $0.data(as: ServiceStopTask.self) }
+        return try snapshot.documents.map { document in
+            do {
+                return try document.data(as: ServiceStopTask.self)
+            } catch {
+                print("[Payroll Debug][fetchServiceStopTasks][decodeError] companyId=\(companyId) serviceStopId=\(serviceStopId) taskDocId=\(document.documentID) data=\(document.data()) error=\(error)")
+                throw error
+            }
+        }
     }
 
     // MARK: - Pay Settings
@@ -1593,10 +1686,10 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         //                    bodiesOfWater Collections
 
     func termsTemplateCollection(companyId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/termsTemplate")
+        db.collection("companies/\(companyId)/termsTemplates")
     }
     func termsCollection(companyId:String,termsTempalteId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/termsTemplate/\(termsTempalteId)/terms")
+        db.collection("companies/\(companyId)/termsTemplates/\(termsTempalteId)/terms")
     }
     func alertCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/alerts")
@@ -3294,7 +3387,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
 //                .whereField("adminId", in: requesterIds)
                 .whereField("dateCreated", isGreaterThan: startDate.startOfDay())
                 .whereField("dateCreated", isLessThan: endDate.endOfDay())
-                .order(by: "dateCreated", descending: false)
+                .order(by: "dateCreated", descending: true)
                 .addSnapshotListener { querySnapshot, error in
                     guard let documents = querySnapshot?.documents else {
                         print("There are no documents in the Job Collection")

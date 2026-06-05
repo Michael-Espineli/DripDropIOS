@@ -111,6 +111,88 @@ enum ServiceStopBillingStatus: String, Identifiable, Hashable, CaseIterable, Cod
     }
 }
 
+enum ServiceStopCategory: String, Identifiable, Hashable, CaseIterable, Codable {
+    case route = "Route"
+    case job = "Job"
+    case jobEstimate = "Job Estimate"
+    case serviceAgreementEstimate = "Service Agreement Estimate"
+    case customerRelationship = "Customer Relationship"
+
+    var id: String { rawValue }
+
+    var title: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .route:
+            return "point.topleft.down.curvedto.point.bottomright.up"
+        case .job:
+            return "briefcase"
+        case .jobEstimate:
+            return "doc.text.magnifyingglass"
+        case .serviceAgreementEstimate:
+            return "list.clipboard"
+        case .customerRelationship:
+            return "person.wave.2"
+        }
+    }
+
+    static func inferred(
+        explicitCategory: ServiceStopCategory?,
+        typeId: String = "",
+        recurringServiceStopId: String,
+        jobId: String,
+        type: String,
+        description: String
+    ) -> ServiceStopCategory {
+        if let explicitCategory {
+            return explicitCategory
+        }
+
+        switch typeId.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case PayrollSystemSourceIds.recurringServiceStop:
+            return .route
+        case PayrollSystemSourceIds.jobServiceStop:
+            return .job
+        case PayrollSystemSourceIds.jobEstimateServiceStop:
+            return .jobEstimate
+        case PayrollSystemSourceIds.serviceAgreementEstimateServiceStop:
+            return .serviceAgreementEstimate
+        case PayrollSystemSourceIds.customerRelationshipServiceStop:
+            return .customerRelationship
+        default:
+            break
+        }
+
+        if !recurringServiceStopId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .route
+        }
+
+        if !jobId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return .job
+        }
+
+        let searchableText = (type + " " + description)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        if searchableText.contains("service agreement") ||
+            searchableText.contains("recurring service estimate") ||
+            searchableText.contains("new pool") ||
+            searchableText.contains("new service") ||
+            searchableText.contains("startup") ||
+            searchableText.contains("start up") {
+            return .serviceAgreementEstimate
+        }
+
+        if searchableText.contains("estimate") {
+            return .jobEstimate
+        }
+
+        return .customerRelationship
+    }
+}
+
 enum ShoppingListCategory:String,Codable,CaseIterable {
     case personal = "Personal"
     case customer = "Customer"

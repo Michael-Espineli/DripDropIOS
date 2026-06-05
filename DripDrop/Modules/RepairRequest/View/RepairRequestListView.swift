@@ -26,7 +26,7 @@ struct RepairRequestListView: View {
     @State var showSearch:Bool = false
     @State var showAddNewRequest:Bool = false
     @State var requestList:[RepairRequest] = []
-    @State var selectedStatus:[RepairRequestStatus] = [.inprogress,.unresolved]
+    @State var selectedStatus:[RepairRequestStatus] = RepairRequestStatus.defaultOpenCases
     @State var techIds:[String] = []
 
     @State var startDate:Date = Date()
@@ -157,11 +157,11 @@ var icons: some View{
                                                     selectedStatus.append(status)
                                                 }
                                             }, label: {
-                                                Text("\(status.rawValue) \(selectedStatus.contains(status) ? "✓" : "")")
+                                                Text("\(status.displayName) \(selectedStatus.contains(status) ? "✓" : "")")
                                             })
                                         }
                                         Button(action: {
-                                            techIds = []
+                                            selectedStatus = []
                                         }, label: {
                                             Text("Clear \(selectedStatus == [] ? "✓" : "")")
                                         })

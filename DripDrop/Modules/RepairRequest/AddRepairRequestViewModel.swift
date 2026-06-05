@@ -19,6 +19,28 @@ final class AddRepairRequestViewModel:ObservableObject{
     init(dataService:any ProductionDataServiceProtocol){
         self.dataService = dataService
     }
+
+    private static var emptyEquipment: Equipment {
+        Equipment(
+            id: "",
+            name: "",
+            type: .filter,
+            typeId: "",
+            make: "",
+            makeId: "",
+            model: "",
+            modelId: "",
+            dateInstalled: Date(),
+            status: .operational,
+            needsService: false,
+            notes: "",
+            customerName: "",
+            customerId: "",
+            serviceLocationId: "",
+            bodyOfWaterId: "",
+            isActive: true
+        )
+    }
     
     @Published var selectedCustomer: Customer = Customer(
         id: "",
@@ -69,6 +91,15 @@ final class AddRepairRequestViewModel:ObservableObject{
     @Published var customerList: [Customer] = []
     @Published var serviceLocationList: [ServiceLocation] = []
     @Published var bodyOfWaterList: [BodyOfWater] = []
+    @Published var equipmentList: [Equipment] = []
+    @Published var selectedEquipment: Equipment = AddRepairRequestViewModel.emptyEquipment {
+        didSet {
+            if selectedEquipment.id != "" {
+                selectedEquipmentStatus = selectedEquipment.status == .operational ? .needsRepair : selectedEquipment.status
+            }
+        }
+    }
+    @Published var selectedEquipmentStatus: EquipmentStatus = .needsRepair
 
     //Form
     @Published var repairRequestId: String = ""
@@ -81,6 +112,8 @@ final class AddRepairRequestViewModel:ObservableObject{
     @Published var showCustomerSelector:Bool = false
     @Published var showLocationSelector:Bool = false
     @Published var showBodyOfWaterSelector:Bool = false
+    @Published var showEquipmentSelector: Bool = false
+    @Published var showEquipmentStatusSelector: Bool = false
 
     @Published var showAddPhoto:Bool = false
 //    @Published var pickerType:photoPickerType? = nil
@@ -113,6 +146,9 @@ final class AddRepairRequestViewModel:ObservableObject{
             if let firstBodyOfWater = self.bodyOfWaterList.first {
                 self.selectedBodyOfWater = firstBodyOfWater
             }
+            self.equipmentList = try await dataService.getEquipmentByServiceLocationId(companyId: companyId, serviceLocationId: location.id)
+            self.selectedEquipment = AddRepairRequestViewModel.emptyEquipment
+            self.selectedEquipmentStatus = .needsRepair
         }
     }
     func uploadRepairRequestWithValidation(
@@ -161,6 +197,10 @@ final class AddRepairRequestViewModel:ObservableObject{
         if selectedBodyOfWater.id != "" {
             pushBodyOfWaterId = selectedBodyOfWater.id
         }
+        var pushEquipmentId = ""
+        if selectedEquipment.id != "" {
+            pushEquipmentId = selectedEquipment.id
+        }
         
         // Images
 
@@ -202,9 +242,16 @@ final class AddRepairRequestViewModel:ObservableObject{
                 photoUrls: photoUrls,
                 locationId: pushServiceLocationId,
                 bodyOfWaterId: pushBodyOfWaterId,
-                equipmentId: ""
+                equipmentId: pushEquipmentId
             )
         )
+        if pushEquipmentId != "" {
+            try dataService.updateEquipmentStatus(
+                companyId: companyId,
+                equipmentId: pushEquipmentId,
+                status: selectedEquipmentStatus
+            )
+        }
         self.repairRequestId = ""
     }
     

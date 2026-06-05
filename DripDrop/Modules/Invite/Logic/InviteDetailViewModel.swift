@@ -9,7 +9,6 @@
 import Foundation
 import SwiftUI
 import StripePaymentSheet
-import FirebaseFunctions
 
 @MainActor
 final class InviteDetailViewModel: ObservableObject{
@@ -39,18 +38,9 @@ final class InviteDetailViewModel: ObservableObject{
     }
     func acceptInvite(user:DBUser?,invite:Invite) async {
         guard let user else {return}
-        if invite.status != "pending"{return}
+        if invite.status.lowercased() != "pending"{return}
         do {
-            //Accept Invite
-            try await dataService.updateInviteStatus(invite: invite.id, status: "accepted")
-            //Update Status
-            let data:[String:Any] = [
-                "inviteId": invite.id,
-                "userId": user.id,
-            ]
-            print(data)
-            let result = try await Functions.functions().httpsCallable("acceptTechInvite").call(data)
-            print(result)
+            try await FunctionsManager.shared.acceptTechInvite(inviteId: invite.id, userId: user.id)
             self.updatedInvite = Invite(
                 id: invite.id,
                 userId: invite.userId,
@@ -61,11 +51,11 @@ final class InviteDetailViewModel: ObservableObject{
                 companyId: invite.companyId,
                 roleId: invite.roleId,
                 roleName: invite.roleName,
-                status: "accepted",
+                status: "Accepted",
                 workerType: invite.workerType,
                 currentUser: invite.currentUser
             )
-            self.alertMessage = "Invite Rejected"
+            self.alertMessage = "Invite Accepted"
             self.showAlert.toggle()
         } catch {
             print("Accept Invite Error: ")

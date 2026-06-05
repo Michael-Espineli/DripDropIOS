@@ -16,6 +16,34 @@ import MapKit
 
 @MainActor
 final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
+    func getFeatureFlags() async throws -> [FeatureFlag] {
+        FeatureFlag.defaultFlags()
+    }
+
+    func getFeatureFlag(flagId: String) async throws -> FeatureFlag? {
+        FeatureFlag.defaultFlags().first { $0.id == flagId }
+    }
+
+    func isFeatureFlagEnabled(_ flagId: String) async throws -> Bool {
+        try await getFeatureFlag(flagId: flagId)?.enabled ?? false
+    }
+    
+    func getSalesAgreements(companyId: String, customerId: String) async throws -> [SalesAgreement] {
+        return []
+    }
+    
+    func getSalesBillingSubscriptions(companyId: String, customerId: String) async throws -> [SalesBillingSubscription] {
+        return []
+    }
+    
+    func getSalesInvoices(companyId: String, customerId: String) async throws -> [SalesInvoice] {
+        return []
+    }
+    
+    func getSalesPayments(companyId: String, customerId: String) async throws -> [SalesPayment] {
+        return []
+    }
+
     func getActiveRoutesForDate(
         companyId: String,
         date: Date
@@ -302,11 +330,16 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func ensureCompanyPaySettings(
         companyId: String
     ) async throws -> CompanyPaySettings {
-//        if let settings = try await fetchCompanyPaySettings(companyId: companyId) {
-//            return settings
-//        }
+        if var settings = try await fetchCompanyPaySettings(companyId: companyId) {
+            if settings.companyId.isBlank {
+                settings.companyId = companyId
+                try await saveCompanyPaySettings(companyId: companyId, settings)
+            }
 
-        let defaultSettings = CompanyPaySettings.defaultSettings()
+            return settings
+        }
+
+        let defaultSettings = CompanyPaySettings.defaultSettings(companyId: companyId)
         try await saveCompanyPaySettings(companyId: companyId, defaultSettings)
 
         return defaultSettings
@@ -1555,7 +1588,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return []
     }
     func getEmailConfigurationSettings(companyId:String) async throws -> CompanyEmailConfiguration {
-        return CompanyEmailConfiguration(emailIsOn: false, emailBody: "", requirePhoto: false)
+        return CompanyEmailConfiguration(
+            emailIsOn: false,
+            emailBody: "",
+            requirePhoto: false,
+            serviceStopCategorySettings: ServiceStopCategory.allCases.reduce(into: [:]) { settings, category in
+                settings[category.rawValue] = ServiceStopCategoryCompletionSettings.defaultSettings(for: category)
+            }
+        )
     }
     func getCustomerEmailConfigurationSettings(companyId:String) async throws -> [CustomerEmailConfiguration] {
         return []
@@ -1565,6 +1605,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateEmailConfigurationRequirePhoto(companyId:String,requirePhoto:Bool) async throws {
         
+    }
+
+    func updateEmailConfigurationCategorySettings(
+        companyId:String,
+        categorySettings:[String: ServiceStopCategoryCompletionSettings]
+    ) async throws {
+
     }
     
     func uploadReadingTemplate(readingTemplate: SavedReadingsTemplate, companyId: String) async throws {
@@ -1945,6 +1992,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateBodyOfWaterLastFilledDate(companyId: String, bodyOfWaterId: String, lastFilled: Date) async throws {
  
+    }
+    func getBodyOfWaterHistory(companyId: String, bodyOfWaterId: String) async throws -> [BodyOfWaterHistory] {
+        return []
+    }
+    func uploadBodyOfWaterHistory(companyId: String, bodyOfWaterId: String, history: BodyOfWaterHistory) async throws {
+
     }
     func updateServiceLocationPhotoURLs(companyId: String, serviceLocationId: String, photoUrls: [DripDropStoredImage]) async throws {
     }
@@ -2507,7 +2560,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         db.collection("companies/\(companyId)/settings/trainingTemplates/trainingTemplates")
     }
     private func WorkOrderTemplateCollection(companyId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/settings/workOrders/workOrders")
+        db.collection("companies/\(companyId)/jobTemplates")
     }
         //                    repairRequests Collections
     private func repairRequestCollection(companyId:String) -> CollectionReference{
@@ -2823,6 +2876,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateCompanyUserRole(companyId:String,companyUserId:String,roleId:String,roleName:String) async throws{
     }
     func updateCompanyUserWorkerType(companyId:String,companyUserId:String,workerType:WorkerTypeEnum) async throws {
+    }
+    func updateCompanyUserPersonalVehicle(companyId:String,companyUserId:String,allowPersonalVehicle:Bool,personalVehicle:PersonalVehicle) async throws {
     }
         //DEVELOPER MAKE SURE THIS IS NOT NEEDED
         //    func createNewUser(user:DBUser) async throws{
@@ -3550,13 +3605,37 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func upLoadInitialGenericRoles(companyId:String) async throws {
+        let allPermissionIds = [
+            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "40","42","44","46","50","52","54","56","60","62","64","66",
+            "200","210","220","230","232","234","236","240","242","244","246",
+            "250","252","254","256","260","262","264","266","280","282","284","286",
+            "290","292","294","296",
+            "400","410","412","414","416",
+            "600","610","612","614","616","620","622","624","626",
+            "800","810","812","814","816","820","822","824","826","830","832","834","836",
+            "840","842","844","846","850","852","854","856","860","862","864","866",
+            "870","872","874","876","880","882","884","886",
+            "890","892","894","896"
+        ]
+        let managerPermissionIds = [
+            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "200","210","220","230","232","234","236","240","242","244","246",
+            "250","252","254","256","260","262","264","266","280","282","284","286",
+            "290","292","294","296",
+            "400",
+            "600","610","612","614","616","620","622","624","626",
+            "800","810","812","814","816","820","822","824","826","830","832","834","836",
+            "840","842","844","846","850","852","854","856","860","862","864","866",
+            "870","872","874","876","880","882","884","886"
+        ]
         let roles:[Role] = [
-            Role(id: "1", name: "Owner", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
+            Role(id: "1", name: "Owner", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
             
-            Role(id: UUID().uuidString, name: "Tech", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Techs"),
-            Role(id: UUID().uuidString, name: "Manager", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Manager"),
-            Role(id: UUID().uuidString, name: "Admin", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
-            Role(id: UUID().uuidString, name: "Office", permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"], listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Office Personal")
+            Role(id: UUID().uuidString, name: "Tech", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Techs"),
+            Role(id: UUID().uuidString, name: "Manager", permissionIdList: managerPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Manager"),
+            Role(id: UUID().uuidString, name: "Admin", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
+            Role(id: UUID().uuidString, name: "Office", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Office Personal")
         ]
         print("Adding Work Order Templates")
         for role in roles {
@@ -5218,6 +5297,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return Int(try await shoppingListCollection(companyId: companyId)
             .whereField("purchaserId", isEqualTo: userId)
             .count.getAggregation(source: .server).count)
+    }
+    
+    func getShoppingListItemByUserAndStatusCount(companyId: String, userId:String, status: ShoppingListStatus) async throws -> Int {
+        return 67
+        
     }
     func getAllShoppingListItemsByUserForCategory(companyId: String, userId: String,category:String) async throws -> [ShoppingListItem] {
         return try await shoppingListCollection(companyId: companyId)
@@ -7151,7 +7235,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let itemRef = PurchaseItemDocument(purchaseItemId: currentItem.id, companyId: companyId)
         
         itemRef.updateData([
-            "workOrderId":workOrderId
+            "workOrderId": workOrderId,
+            "jobId": workOrderId,
+            "assignedJobId": workOrderId,
+            "assignedToJob": true,
+            "assignmentStatus": "assignedToJob",
+            "billingOwner": "job",
+            "jobBillingStatus": "handledByJob",
+            "jobBillable": currentItem.isJobBillable,
+            "jobBillingRate": currentItem.jobMaterialBillingRate
             
             
         ]) { err in

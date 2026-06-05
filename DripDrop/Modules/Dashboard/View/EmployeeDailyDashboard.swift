@@ -43,12 +43,13 @@ struct EmployeeDailyDashboard: View {
     @State private var selectedMapStop: ServiceStop? = nil
     @State private var routeMapCameraPosition: MapCameraPosition = .automatic
     @State private var expandedRouteMapCameraPosition: MapCameraPosition = .automatic
+    @State private var routeCloseoutPromptedRouteId: String? = nil
 
 
 
     
     @State var duration: Int = 0
-    @State var listOfShoppingListItems: Int = 3
+    @State var listOfShoppingListItems: Int = 0
 
     @State var idItem: IdInfo? = nil
 
@@ -70,7 +71,7 @@ struct EmployeeDailyDashboard: View {
                             noRouteCard
                         } else {
                             routeInfo
-                            routeMapCard
+//                            routeMapCard
 
                             if VM.ArOrderIsDifferentThanRrORder {
                                 routeOrderDifferenceCard
@@ -109,7 +110,8 @@ struct EmployeeDailyDashboard: View {
                 loadingOverlay
             }
         }
-        .navigationTitle("Employee Dash")
+        
+//        .navigationTitle("Employee Dash")
         .navigationBarBackButtonHidden(true)
         .onReceive(timer) { _ in
             if var duration1 = VM.duration, duration1 > -1 {
@@ -122,13 +124,32 @@ struct EmployeeDailyDashboard: View {
                let user = masterDataManager.user {
                 VM.start(companyId: company.id, user: user, date: VM.selectedDate)
             }
+            refreshShoppingListBadge()
+        }
+        .onAppear {
+            refreshShoppingListBadge()
+            presentRouteCloseoutIfNeeded()
+        }
+        .onChange(of: masterDataManager.currentCompany?.id) { _, _ in
+            refreshShoppingListBadge()
+        }
+        .onChange(of: masterDataManager.user?.id) { _, _ in
+            refreshShoppingListBadge()
         }
         .onChange(of: VM.serviceStopList) { _, _ in
             updateRouteMapCamera()
+            presentRouteCloseoutIfNeeded()
+        }
+        .onChange(of: VM.activeRoute) { _, _ in
+            presentRouteCloseoutIfNeeded()
         }
         .sheet(isPresented: $showExpandedRouteMap) {
             expandedRouteMapSheet
                 .presentationDetents([.large])
+        }
+        .sheet(isPresented: $VM.showEndMilage) {
+            routeEndMileageSheet
+                .presentationDetents([.fraction(0.45), .fraction(0.6), .large])
         }
         .onDisappear {
             VM.selectedDate = Date()
@@ -148,6 +169,28 @@ struct EmployeeDailyDashboard: View {
         default: return .gray
         }
     }
+
+    private func refreshShoppingListBadge() {
+        guard let company = masterDataManager.currentCompany,
+              let user = masterDataManager.user else {
+            listOfShoppingListItems = 0
+            return
+        }
+
+        Task {
+            do {
+                listOfShoppingListItems = try await dataService.getShoppingListItemByUserAndStatusCount(
+                    companyId: company.id,
+                    userId: user.id,
+                    status: .needToPurchase
+                )
+            } catch {
+                listOfShoppingListItems = 0
+                print("[EmployeeDailyDashboard][refreshShoppingListBadge] Error", error)
+            }
+        }
+    }
+
     private var selectedStopsPreviewCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
@@ -251,7 +294,19 @@ extension EmployeeDailyDashboard {
             }
 
             Spacer()
-
+            Button {
+                expandedRouteMapCameraPosition = routeMapCameraPosition
+                showExpandedRouteMap = true
+            } label: {
+                Image(systemName: "map")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 34, height: 34)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(routeMapPoints.isEmpty)
+            .opacity(routeMapPoints.isEmpty ? 0.45 : 1)
             NavigationLink(value: Route.createRepairRequest(dataService: dataService)) {
                 dashboardToolbarIcon(
                     systemImage: "wrench.adjustable.fill",
@@ -391,6 +446,10 @@ extension EmployeeDailyDashboard {
 
                 Divider().opacity(0.35)
 
+                if routeNeedsCloseout(activeRoute) {
+                    routeCloseoutCard(activeRoute)
+                }
+
                 routeActionButtons
             }
         }
@@ -519,6 +578,212 @@ extension EmployeeDailyDashboard {
                 })
             }
         }
+    }
+}
+
+// MARK: - Route Closeout
+extension EmployeeDailyDashboard {
+    private func routeNeedsCloseout(_ route: ActiveRoute) -> Bool {
+        route.totalStops > 0 &&
+        route.finishedStops == route.totalStops &&
+        (route.endMilage == nil || route.endTime == nil)
+    }
+
+    private func presentRouteCloseoutIfNeeded() {
+        guard let route = VM.activeRoute, routeNeedsCloseout(route) else { return }
+        guard routeCloseoutPromptedRouteId != route.id else { return }
+
+        routeCloseoutPromptedRouteId = route.id
+        prepareEndMileageInput(for: route)
+        VM.showEndMilage = true
+    }
+
+    private func prepareEndMileageInput(for route: ActiveRoute) {
+        if let endMilage = route.endMilage {
+            VM.inputEndMilage = String(endMilage)
+        } else if let startMilage = route.startMilage {
+            VM.inputEndMilage = String(startMilage)
+        } else if VM.startMilage > 0 {
+            VM.inputEndMilage = String(VM.startMilage)
+        } else {
+            VM.inputEndMilage = ""
+        }
+    }
+
+    private func routeCloseoutCard(_ route: ActiveRoute) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "flag.checkered")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 34, height: 34)
+                    .background(Color.orange.opacity(0.13), in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Finish Route Mileage")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("All stops are complete. Enter ending mileage to close this route.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+            }
+
+            Button {
+                prepareEndMileageInput(for: route)
+                VM.showEndMilage = true
+            } label: {
+                actionButton(
+                    title: "Enter End Mileage",
+                    systemImage: "gauge.with.dots.needle.bottom.50percent",
+                    tint: .orange
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var routeEndMileageSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            sectionHeader(
+                                title: "End Mileage",
+                                subtitle: "Enter the ending mileage to finish the route.",
+                                systemImage: "flag.checkered"
+                            )
+                        }
+                        .employeeDashCard(material: true)
+
+                        routeEndMileageInputCard
+                    }
+                    .padding(14)
+                }
+            }
+            .navigationTitle("End Mileage")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        VM.showEndMilage = false
+                    }
+                }
+            }
+        }
+    }
+
+    private var routeEndMileageInputCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Route Start")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(
+                    Measurement(
+                        value: displayedStartMileageForCloseout,
+                        unit: UnitLength.miles
+                    )
+                    .formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("End Mileage")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                MilesField(text: $VM.inputEndMilage)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            if let routeEndMileageWarningText {
+                Text(routeEndMileageWarningText)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            Button {
+                submitActiveRouteEndMileage()
+            } label: {
+                Label("Submit End Mileage", systemImage: "checkmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSubmitActiveRouteEndMileage)
+            .opacity(canSubmitActiveRouteEndMileage ? 1.0 : 0.55)
+        }
+        .employeeDashCard()
+    }
+
+    private var displayedStartMileageForCloseout: Double {
+        VM.activeRoute?.startMilage ?? VM.startMilage
+    }
+
+    private var parsedActiveRouteEndMileage: Double? {
+        Double(VM.inputEndMilage.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private var canSubmitActiveRouteEndMileage: Bool {
+        guard let endMileage = parsedActiveRouteEndMileage else { return false }
+
+        if displayedStartMileageForCloseout > 0 {
+            return endMileage >= displayedStartMileageForCloseout
+        }
+
+        return endMileage >= 0
+    }
+
+    private var routeEndMileageWarningText: String? {
+        guard let endMileage = parsedActiveRouteEndMileage else {
+            return "Enter a valid ending mileage."
+        }
+
+        if displayedStartMileageForCloseout > 0,
+           endMileage < displayedStartMileageForCloseout {
+            return "Ending mileage cannot be less than starting mileage."
+        }
+
+        return nil
+    }
+
+    private func submitActiveRouteEndMileage() {
+        guard canSubmitActiveRouteEndMileage else { return }
+        guard let route = VM.activeRoute else { return }
+
+        VM.updateRouteEndtMilage(
+            companyId: masterDataManager.currentCompany?.id,
+            route: route
+        )
+
+        VM.stopActiveRoute(
+            companyId: masterDataManager.currentCompany?.id,
+            companyName: masterDataManager.currentCompany?.name,
+            user: masterDataManager.user,
+            route: route
+        )
+
+        VM.showEndMilage = false
+        routeCloseoutPromptedRouteId = nil
     }
 }
 
@@ -961,6 +1226,12 @@ extension EmployeeDailyDashboard {
                     .foregroundStyle(.secondary)
                     .padding(10)
             }
+
+            if stop.operationStatus != .notFinished {
+                statusBadge(stop)
+                    .padding(.top, isSelected ? 42 : 10)
+                    .padding(.trailing, 10)
+            }
         }
         .padding(6)
         .background(
@@ -971,9 +1242,15 @@ extension EmployeeDailyDashboard {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(
                     isSelected ? Color.accentColor.opacity(0.35) : stopBorderColor(stop),
-                    lineWidth: 1
+                    lineWidth: stop.operationStatus == .notFinished ? 1 : 2
                 )
         )
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(stopAccentColor(stop))
+                .frame(width: stop.operationStatus == .notFinished ? 4 : 7)
+                .padding(.vertical, 12)
+        }
     }
 
     private func stopBackgroundColor(
@@ -986,27 +1263,51 @@ extension EmployeeDailyDashboard {
 
         switch stop.operationStatus {
         case .finished:
-            return Color.green.opacity(0.10)
+            return Color.poolGreen.opacity(colorScheme == .dark ? 0.32 : 0.22)
 
         case .notFinished:
             return Color.primary.opacity(0.035)
 
         case .skipped:
-            return Color.orange.opacity(0.10)
+            return Color.orange.opacity(colorScheme == .dark ? 0.34 : 0.24)
         }
     }
 
     private func stopBorderColor(_ stop: ServiceStop) -> Color {
         switch stop.operationStatus {
         case .finished:
-            return Color.green.opacity(0.22)
+            return Color.poolGreen.opacity(0.82)
 
         case .notFinished:
             return Color.primary.opacity(0.06)
 
         case .skipped:
-            return Color.orange.opacity(0.22)
+            return Color.orange.opacity(0.88)
         }
+    }
+
+    private func stopAccentColor(_ stop: ServiceStop) -> Color {
+        switch stop.operationStatus {
+        case .finished:
+            return .poolGreen
+        case .notFinished:
+            return .secondary.opacity(0.35)
+        case .skipped:
+            return .orange
+        }
+    }
+
+    private func statusBadge(_ stop: ServiceStop) -> some View {
+        Label(
+            stop.operationStatus.rawValue,
+            systemImage: stop.operationStatus == .finished ? "checkmark.circle.fill" : "forward.end.fill"
+        )
+        .font(.caption2.weight(.bold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 6)
+        .background(stopAccentColor(stop), in: Capsule())
+        .shadow(color: .black.opacity(0.12), radius: 5, y: 2)
     }
 
     private func sectionHeader(

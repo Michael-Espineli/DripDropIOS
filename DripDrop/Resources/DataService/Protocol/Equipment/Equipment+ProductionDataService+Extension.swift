@@ -132,6 +132,91 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             case isActive = "isActive"
             case dateUninstalled = "dateUninstalled"
         }
+
+    private enum LegacyCodingKeys: String, CodingKey {
+        case active
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
+
+        func decodeFlexibleInt(_ key: CodingKeys) -> Int? {
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return Int(value)
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return Int(value)
+            }
+
+            return nil
+        }
+
+        func normalizeFrequencyUnit(_ value: String) -> EquipmentFrequency? {
+            switch value {
+            case EquipmentFrequency.daily.rawValue, "Days":
+                return .daily
+            case EquipmentFrequency.weekly.rawValue, "Weeks":
+                return .weekly
+            case EquipmentFrequency.monthly.rawValue, "Months":
+                return .monthly
+            case EquipmentFrequency.yearly.rawValue, "Years":
+                return .yearly
+            default:
+                return EquipmentFrequency(rawValue: value)
+            }
+        }
+
+        self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? "com_equ_" + UUID().uuidString
+        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+
+        let typeRaw = try container.decodeIfPresent(String.self, forKey: .type) ?? EquipmentCategory.autoChlorinator.rawValue
+        self.type = EquipmentCategory(rawValue: typeRaw) ?? .autoChlorinator
+
+        self.typeId = try container.decodeIfPresent(String.self, forKey: .typeId) ?? ""
+        self.make = try container.decodeIfPresent(String.self, forKey: .make) ?? ""
+        self.makeId = try container.decodeIfPresent(String.self, forKey: .makeId) ?? ""
+        self.model = try container.decodeIfPresent(String.self, forKey: .model) ?? ""
+        self.modelId = try container.decodeIfPresent(String.self, forKey: .modelId) ?? ""
+        self.dateInstalled = try container.decodeIfPresent(Date.self, forKey: .dateInstalled) ?? Date()
+
+        let statusRaw = try container.decodeIfPresent(String.self, forKey: .status) ?? EquipmentStatus.operational.rawValue
+        self.status = EquipmentStatus(rawValue: statusRaw) ?? .operational
+
+        self.needsService = try container.decodeIfPresent(Bool.self, forKey: .needsService) ?? false
+        self.cleanFilterPressure = decodeFlexibleInt(.cleanFilterPressure)
+        self.currentPressure = decodeFlexibleInt(.currentPressure)
+        self.lastServiceDate = try container.decodeIfPresent(Date.self, forKey: .lastServiceDate)
+
+        let decodedServiceFrequency = decodeFlexibleInt(.serviceFrequency)
+        let decodedLegacyFrequency = decodeFlexibleInt(.serviceFrequencyEvery)
+        self.serviceFrequency = decodedServiceFrequency ?? decodedLegacyFrequency
+
+        if let rawEvery = try container.decodeIfPresent(String.self, forKey: .serviceFrequencyEvery) {
+            self.serviceFrequencyEvery = normalizeFrequencyUnit(rawEvery)
+        } else if let rawLegacyEvery = try container.decodeIfPresent(String.self, forKey: .serviceFrequency) {
+            self.serviceFrequencyEvery = normalizeFrequencyUnit(rawLegacyEvery)
+        } else {
+            self.serviceFrequencyEvery = nil
+        }
+
+        self.nextServiceDate = try container.decodeIfPresent(Date.self, forKey: .nextServiceDate)
+        self.notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        self.customerName = try container.decodeIfPresent(String.self, forKey: .customerName) ?? ""
+        self.customerId = try container.decodeIfPresent(String.self, forKey: .customerId) ?? ""
+        self.serviceLocationId = try container.decodeIfPresent(String.self, forKey: .serviceLocationId) ?? ""
+        self.bodyOfWaterId = try container.decodeIfPresent(String.self, forKey: .bodyOfWaterId) ?? ""
+        self.photoUrls = try container.decodeIfPresent([DripDropStoredImage].self, forKey: .photoUrls)
+        self.isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive)
+            ?? legacyContainer.decodeIfPresent(Bool.self, forKey: .active)
+            ?? true
+        self.dateUninstalled = try container.decodeIfPresent(Date.self, forKey: .dateUninstalled)
+    }
 }
 // MARK: - Maybe update
 /*struct EquipmentServiceHistory: Identifiable, Codable, Equatable, Hashable {
@@ -261,6 +346,30 @@ struct EquipmentServiceHistory:Identifiable,Codable,Equatable,Hashable{
         case techName = "techName"
         case jobId = "jobId"
         case partIds = "partIds"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? "com_equ_sh_" + UUID().uuidString
+        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+
+        let typeRaw = try container.decodeIfPresent(String.self, forKey: .type) ?? EquipmentServiceType.maintenance.rawValue
+        self.type = EquipmentServiceType(rawValue: typeRaw) ?? .maintenance
+
+        self.date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+        self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+
+        let performedByRaw = try container.decodeIfPresent(String.self, forKey: .performedBy) ?? ServicePerformaceType.unknown.rawValue
+        self.performedBy = ServicePerformaceType(rawValue: performedByRaw) ?? .unknown
+
+        let addedByRaw = try container.decodeIfPresent(String.self, forKey: .addedBy) ?? ServiceRecordType.manual.rawValue
+        self.addedBy = ServiceRecordType(rawValue: addedByRaw) ?? .manual
+
+        self.techId = try container.decodeIfPresent(String.self, forKey: .techId) ?? ""
+        self.techName = try container.decodeIfPresent(String.self, forKey: .techName) ?? ""
+        self.jobId = try container.decodeIfPresent(String.self, forKey: .jobId) ?? ""
+        self.partIds = try container.decodeIfPresent([String].self, forKey: .partIds) ?? []
     }
 }
 struct EquipmentScheduledWork: Identifiable, Codable, Equatable, Hashable {

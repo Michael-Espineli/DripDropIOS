@@ -168,15 +168,12 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
             self.showAlert = true
             return
         }
-        let jobId = jobType.name
         if jobType.name == "" {
             self.alertMessage = "No Job title Available, selected different job or update job title"
             print(self.alertMessage)
             self.showAlert = true
             return
         }
-        let jobName = jobType.name
-        let jobImage = "gear"
         
         if customer.id == "" || customer.firstName == "" ||  customer.lastName == ""{
             self.alertMessage = "No Customer Selected"
@@ -211,13 +208,18 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
         
         guard let pushEstimatedTime = Int(estimatedTime) else {return}
         let rssCount = try await dataService.getRecurringServiceStopCount(companyId: companyId)
+        let serviceStopTypeFields = await dataService.resolvedServiceStopTypeFields(
+            companyId: companyId,
+            useCase: .recurringRoute,
+            context: "NewRecurringServiceStopViewModel.addNewRecurringServiceStop"
+        )
         
         _ = try await dataService.addNewRecurringServiceStop(companyId: companyId, recurringServiceStop: RecurringServiceStop(
             id: UUID().uuidString,
             internalId: "RSS_" + String(rssCount),
-            type: jobName,
-            typeId: jobId ,
-            typeImage: jobImage ?? "",
+            type: serviceStopTypeFields.type,
+            typeId: serviceStopTypeFields.typeId,
+            typeImage: serviceStopTypeFields.typeImage,
             customerName: customerName,
             customerId: customerId,
             address: address,

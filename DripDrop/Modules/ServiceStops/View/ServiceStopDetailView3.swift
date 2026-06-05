@@ -21,6 +21,7 @@ struct ServiceStopDetailView3: View {
 
     @StateObject private var VM: ServiceStopDetailViewModel
 
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var masterDataManager: MasterDataManager
     @EnvironmentObject private var dataService: ProductionDataService
 
@@ -43,6 +44,8 @@ struct ServiceStopDetailView3: View {
     @State private var selectedTab: OfficeServiceStopDetailTab = .overview
     @State private var showEditSheet: Bool = false
     @State private var isSaving: Bool = false
+    @State private var isDeleting: Bool = false
+    @State private var showDeleteConfirmation: Bool = false
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
 
@@ -81,15 +84,42 @@ struct ServiceStopDetailView3: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let stop = serviceStop {
-                    Button {
-                        prepareEditState(from: stop)
-                        showEditSheet = true
+                    Menu {
+                        Button {
+                            prepareEditState(from: stop)
+                            showEditSheet = true
+                        } label: {
+                            Label("Edit", systemImage: "square.and.pencil")
+                        }
+
+                        Button(role: .destructive) {
+                            showDeleteConfirmation = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        .disabled(isDeleting)
                     } label: {
-                        Image(systemName: "square.and.pencil")
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("Edit service stop")
+                    .accessibilityLabel("Service stop actions")
                 }
             }
+        }
+        .confirmationDialog(
+            "Delete this service stop?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            if let stop = serviceStop {
+                Button(isDeleting ? "Deleting..." : "Delete Service Stop", role: .destructive) {
+                    deleteServiceStop(stop)
+                }
+                .disabled(isDeleting)
+            }
+
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will delete the service stop and its task/readings history. This cannot be undone.")
         }
         .sheet(isPresented: $showEditSheet) {
             if let stop = serviceStop {
@@ -591,6 +621,28 @@ extension ServiceStopDetailView3 {
                 alertMessage = "Unable to update this service stop."
                 showAlert = true
                 print("ServiceStopDetailView3 save error", error)
+            }
+        }
+    }
+
+    private func deleteServiceStop(_ stop: ServiceStop) {
+        guard let company = masterDataManager.currentCompany else {
+            alertMessage = "Missing company context."
+            showAlert = true
+            return
+        }
+
+        Task {
+            isDeleting = true
+            defer { isDeleting = false }
+
+            do {
+                try await dataService.deleteServiceStop(companyId: company.id, serviceStop: stop)
+                dismiss()
+            } catch {
+                alertMessage = "Unable to delete this service stop."
+                showAlert = true
+                print("ServiceStopDetailView3 delete error", error)
             }
         }
     }

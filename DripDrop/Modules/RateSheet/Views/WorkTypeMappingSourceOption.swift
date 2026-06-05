@@ -26,7 +26,7 @@ struct WorkTypeMappingSourceOption: Identifiable, Hashable {
 
 enum WorkTypeMappingListFilter: String, CaseIterable, Identifiable {
     case all = "All"
-    case serviceStops = "Stops"
+    case serviceStops = "Fallbacks"
     case tasks = "Tasks"
     case other = "Other"
 
@@ -88,7 +88,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
     }
 
     var serviceStopSourceOptions: [WorkTypeMappingSourceOption] {
-        var options: [WorkTypeMappingSourceOption] = [
+        [
             WorkTypeMappingSourceOption(
                 sourceType: .serviceStopType,
                 sourceId: PayrollSystemSourceIds.recurringServiceStop,
@@ -105,34 +105,33 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             ),
             WorkTypeMappingSourceOption(
                 sourceType: .serviceStopType,
+                sourceId: PayrollSystemSourceIds.jobEstimateServiceStop,
+                title: "Job Estimate",
+                subtitle: "Fallback for estimate visits tied to job work",
+                systemImage: "doc.text.magnifyingglass"
+            ),
+            WorkTypeMappingSourceOption(
+                sourceType: .serviceStopType,
+                sourceId: PayrollSystemSourceIds.serviceAgreementEstimateServiceStop,
+                title: "Service Agreement Estimate",
+                subtitle: "Fallback for fact-finding visits before recurring service",
+                systemImage: "list.clipboard"
+            ),
+            WorkTypeMappingSourceOption(
+                sourceType: .serviceStopType,
+                sourceId: PayrollSystemSourceIds.customerRelationshipServiceStop,
+                title: "Customer Relationship",
+                subtitle: "Fallback for open-ended customer visits",
+                systemImage: "person.wave.2"
+            ),
+            WorkTypeMappingSourceOption(
+                sourceType: .serviceStopType,
                 sourceId: PayrollSystemSourceIds.unknownServiceStop,
                 title: "Unknown Service Stop",
                 subtitle: "Fallback when stop type cannot be inferred",
                 systemImage: "questionmark.circle"
             )
         ]
-
-        let realServiceStopTypeOptions = serviceStopTypes
-            .sorted {
-                if $0.sortOrder == $1.sortOrder {
-                    return $0.name < $1.name
-                }
-
-                return $0.sortOrder < $1.sortOrder
-            }
-            .map { type in
-                WorkTypeMappingSourceOption(
-                    sourceType: .serviceStopType,
-                    sourceId: type.id,
-                    title: type.name,
-                    subtitle: "Company service stop type",
-                    systemImage: type.imageName ?? "mappin.and.ellipse"
-                )
-            }
-
-        options.append(contentsOf: realServiceStopTypeOptions)
-
-        return options
     }
 
     var jobTaskSourceOptions: [WorkTypeMappingSourceOption] {
@@ -300,7 +299,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             }
         }
 
-        // Current service stop fallbacks.
+        // System service stop fallbacks.
         appendMappingIfPossible(
             sourceType: .serviceStopType,
             sourceId: PayrollSystemSourceIds.recurringServiceStop,
@@ -312,6 +311,27 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             sourceType: .serviceStopType,
             sourceId: PayrollSystemSourceIds.jobServiceStop,
             candidateNames: ["Service Call", "Job", "Job Visit", "Repair"],
+            category: .serviceCall
+        )
+
+        appendMappingIfPossible(
+            sourceType: .serviceStopType,
+            sourceId: PayrollSystemSourceIds.jobEstimateServiceStop,
+            candidateNames: ["Job Estimate", "Estimate", "Bid Visit"],
+            category: .serviceCall
+        )
+
+        appendMappingIfPossible(
+            sourceType: .serviceStopType,
+            sourceId: PayrollSystemSourceIds.serviceAgreementEstimateServiceStop,
+            candidateNames: ["Service Agreement Estimate", "Recurring Service Estimate", "Startup"],
+            category: .serviceCall
+        )
+
+        appendMappingIfPossible(
+            sourceType: .serviceStopType,
+            sourceId: PayrollSystemSourceIds.customerRelationshipServiceStop,
+            candidateNames: ["Customer Relationship", "Customer Visit", "Follow Up"],
             category: .serviceCall
         )
 
@@ -384,6 +404,18 @@ final class WorkTypeMappingsViewModel: ObservableObject {
 
             if mapping.sourceId == PayrollSystemSourceIds.jobServiceStop {
                 return "Job Service Stop"
+            }
+
+            if mapping.sourceId == PayrollSystemSourceIds.jobEstimateServiceStop {
+                return "Job Estimate"
+            }
+
+            if mapping.sourceId == PayrollSystemSourceIds.serviceAgreementEstimateServiceStop {
+                return "Service Agreement Estimate"
+            }
+
+            if mapping.sourceId == PayrollSystemSourceIds.customerRelationshipServiceStop {
+                return "Customer Relationship"
             }
 
             if mapping.sourceId == PayrollSystemSourceIds.unknownServiceStop {
@@ -564,7 +596,7 @@ struct WorkTypeMappingsView: View {
             filterSection
             mappingsSection
         }
-        .navigationTitle("Work Type Mappings")
+        .navigationTitle("Task & Fallback Mappings")
         .searchable(text: $viewModel.searchText, prompt: "Search mappings")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -618,7 +650,7 @@ struct WorkTypeMappingsView: View {
     private var summarySection: some View {
         Section {
             HStack {
-                Label("Service Stop Mappings", systemImage: "mappin.and.ellipse")
+                Label("Fallback Stop Mappings", systemImage: "mappin.and.ellipse")
                 Spacer()
                 Text("\(viewModel.serviceStopMappingCount)")
                     .fontWeight(.semibold)
@@ -647,13 +679,13 @@ struct WorkTypeMappingsView: View {
                     }
                 }
             } label: {
-                Label("Add Suggested Pool Mappings", systemImage: "sparkles")
+                Label("Add Suggested Task & Fallback Mappings", systemImage: "sparkles")
             }
             .disabled(viewModel.isSaving || viewModel.activeWorkTypes.isEmpty)
         } header: {
             Text("Setup")
         } footer: {
-            Text("Mappings tell payroll which Company Work Type should be used for a service stop source or task type. Do not map normal checklist tasks unless they should create extra pay.")
+            Text("Service Stop Types are the primary place to choose stop pay work types. These mappings cover fallback stop sources and task types that should create extra pay.")
         }
     }
 
@@ -768,7 +800,7 @@ struct WorkTypeMappingsEmptyState: View {
             Text("No mappings yet")
                 .font(.headline)
 
-            Text("Add suggested mappings or create a mapping manually. Payroll needs mappings before completed stops and tasks can become real pay line items.")
+            Text("Add suggested mappings or create a mapping manually. Service stop types handle normal stop pay; these mappings handle fallback stop sources and payable tasks.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -984,8 +1016,8 @@ struct WorkTypeMappingEditorView: View {
                 Text("Examples")
                     .font(.headline)
 
-                Text("system_recurring_service_stop → Routes")
-                Text("system_job_service_stop → Service Call")
+            Text("system_recurring_service_stop -> Routes")
+            Text("system_job_service_stop -> Service Call")
                 Text("Clean Filter → Clean Filter")
                 Text("Repair → Repair")
                 Text("Install → Installation")

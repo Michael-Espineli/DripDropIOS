@@ -7,6 +7,7 @@ final class AddNewServiceStopViewModel: ObservableObject {
 
     @Published var serviceDate: Date = Date()
     @Published var description: String = ""
+    @Published var selectedCompanyServiceStopType: CompanyServiceStopType?
     
     @Published var selectedLocation: ServiceLocation = ServiceLocation(
         id: "",
@@ -81,6 +82,10 @@ final class AddNewServiceStopViewModel: ObservableObject {
         let serviceStopCount: Int = try await dataService.getServiceOrderCount(companyId: companyId)
         let internalId = "SS" + String(serviceStopCount)
         let serviceStopId = "comp_ss_" + UUID().uuidString
+        let typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
+            selectedType: selectedCompanyServiceStopType,
+            useCase: .customerRelationship
+        )
 
         let serviceStop = ServiceStop(
             id: serviceStopId,
@@ -99,9 +104,10 @@ final class AddNewServiceStopViewModel: ObservableObject {
             recurringServiceStopId: "",
             description: description,
             serviceLocationId: selectedLocation.id,
-            typeId: "",
-            type: "",
-            typeImage: "",
+            typeId: typeFields.typeId,
+            type: typeFields.type,
+            typeImage: typeFields.typeImage,
+            category: typeFields.category,
             jobId: jobId,
             operationStatus: .notFinished,
             billingStatus: .notInvoiced,
@@ -204,6 +210,16 @@ extension AddNewServiceStop {
                     Text("Description").bold(true)
                     TextField("Description", text: $VM.description).modifier(PlainTextFieldModifier())
                 }
+
+                if let currentCompany = masterDataManager.currentCompany {
+                    CompanyServiceStopTypePickerView(
+                        companyId: currentCompany.id,
+                        dataService: dataService,
+                        selectedType: $VM.selectedCompanyServiceStopType,
+                        useCase: .customerRelationship,
+                        subtitle: "Choose what kind of one-time stop this is. Payroll can use this to resolve the correct work type."
+                    )
+                }
             }
             Button(action: {
                 Task {
@@ -220,4 +236,3 @@ extension AddNewServiceStop {
         }
     }
 }
-

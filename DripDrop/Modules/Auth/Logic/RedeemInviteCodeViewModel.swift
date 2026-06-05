@@ -110,69 +110,14 @@ final class RedeemInviteCodeViewModel:ObservableObject{
         try await DBUserManager.shared.createNewUser(user: user)
 
         print("User Created")
-        
-        let userAccess = UserAccess(id: invite.companyId,
-                                    companyId: invite.companyId,
-                                    companyName: invite.companyName,
-                                    roleId: invite.roleId,
-                                    roleName: invite.roleName,
-                                    dateCreated: Date())
-        try await dataService.uploadUserAccess(userId: userId, companyId: invite.companyId, userAccess: userAccess)
-        print("Created Company User Access")
-
-        try await dataService.addCompanyUser(
-            companyId: invite.companyId,
-            companyUser: CompanyUser(
-                id: UUID().uuidString,
-                userId: userId,
-                userName: firstName + " " + lastName,
-                roleId: invite.roleId,
-                roleName: invite.roleName,
-                dateCreated: Date(),
-                status: .active,
-                workerType: invite.workerType
-            )
-        )
-        
-        print("User Access Created")
-        try await dataService.markInviteAsAccepted(invite: invite)
+        try await FunctionsManager.shared.acceptTechInvite(inviteId: invite.id, userId: userId)
         print("Invite Accepted")
 
         sleep(1)
     }
     func joinCompanyWithInviteCode(invite:Invite) async throws {
         print("User Created")
-        let userAccess = UserAccess(id: invite.companyId,
-                                    companyId: invite.companyId,
-                                    companyName: invite.companyName,
-                                    roleId: invite.roleId,
-                                    roleName: invite.roleName,
-                                    dateCreated: Date())
-        try await dataService.uploadUserAccess(
-            userId: invite.userId,
-            companyId: invite.companyId,
-            userAccess: userAccess
-        )
-        print("Created Company User Access")
-
-        try await dataService.addCompanyUser(
-            companyId: invite.companyId,
-            companyUser: CompanyUser(
-                id: UUID().uuidString,
-                userId: invite.userId,
-                userName: invite.firstName + " " + invite.lastName,
-                roleId: invite.roleId,
-                roleName: invite.roleName,
-                dateCreated: Date(),
-                status: .active,
-                workerType: invite.workerType,
-                linkedCompanyId: invite.companyId,
-                linkedCompanyName: invite.companyName
-            )
-        )
-        
-        print("User Access Created")
-        try await dataService.markInviteAsAccepted(invite: invite)
+        try await FunctionsManager.shared.acceptTechInvite(inviteId: invite.id, userId: invite.userId)
         print("Invite Accepted")
 
         self.inviteCode = ""
@@ -189,7 +134,7 @@ final class RedeemInviteCodeViewModel:ObservableObject{
     func getSelectedInvite(inviteId:String) async throws{
         self.invite = try await InviteManager.shared.getSpecificInvite(inviteId: inviteId)
         if let invite = self.invite {
-            if invite.status == "Accepted" {
+            if invite.status.lowercased() == "accepted" {
                 self.inviteCode = ""
                 self.errorCode = "Invite Already Accepted"
                 print(self.errorCode)

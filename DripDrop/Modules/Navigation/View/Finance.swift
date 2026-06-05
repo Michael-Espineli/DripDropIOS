@@ -69,6 +69,7 @@ struct Finance: View {
             }
         }
         .task {
+            await masterDataManager.loadFeatureFlags()
             await loadFinance()
         }
         .onChange(of: masterDataManager.currentCompany) { _ in
@@ -168,17 +169,20 @@ extension Finance {
                 Spacer()
             }
 
+            if masterDataManager.isFeatureEnabled(.sales) {
+                sales
+            }
             payroll
-            finishedJobs
-            invoices
             purchases
             receipts
-            accountsPayable
-            accountsReceivable
             vendors
 
             /*
              Roll these back in when they are ready for production:
+             invoices
+
+             accountsPayable
+             accountsReceivable
              contracts
              recurringContracts
              sentLaborContract
@@ -216,6 +220,55 @@ extension Finance {
 // MARK: - Finance Cards
 
 extension Finance {
+
+    var sales: some View {
+        financeCard(
+            title: "Sales",
+            subtitle: "Customer billing for monthly service and one-off jobs.",
+            systemImage: "dollarsign.arrow.circlepath",
+            countText: nil,
+            seeMore: {
+                AnyView(
+                    NavigationLink(value: Route.sales(dataService: dataService)) {
+                        seeMoreLabel
+                    }
+                    .buttonStyle(.plain)
+                )
+            },
+            stats: {
+                VStack(spacing: 8) {
+                    statRow(
+                        title: "Recurring Billing",
+                        value: "Monthly",
+                        systemImage: "calendar"
+                    )
+
+                    statRow(
+                        title: "One-Off Billing",
+                        value: "Jobs",
+                        systemImage: "briefcase"
+                    )
+                }
+            },
+            preview: {
+                if shouldShowFullPreview {
+                    horizontalPreviewList {
+                        previewTile(
+                            title: "Service Agreements",
+                            subtitle: "Monthly pool service",
+                            systemImage: "repeat.circle.fill"
+                        )
+
+                        previewTile(
+                            title: "Job Billing",
+                            subtitle: "Materials and labor",
+                            systemImage: "doc.text.fill"
+                        )
+                    }
+                }
+            }
+        )
+    }
 
     var payroll: some View {
         financeCard(
@@ -807,6 +860,134 @@ extension Finance {
     }
 }
 
+struct SalesFinanceView: View {
+    let dataService: any ProductionDataServiceProtocol
+
+    private let recurringItems = [
+        "Service agreements",
+        "Monthly billing runs",
+        "Draft invoice review",
+        "Payment status"
+    ]
+
+    private let oneOffItems = [
+        "Job billing lifecycle",
+        "Service stop labor",
+        "Assigned purchased items",
+        "Job-owned invoice totals"
+    ]
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    header
+                    billingSection(
+                        title: "Recurring Billing",
+                        subtitle: "Monthly pool service",
+                        systemImage: "calendar",
+                        tint: .green,
+                        items: recurringItems
+                    )
+                    billingSection(
+                        title: "One-Off Billing",
+                        subtitle: "Job detail billing",
+                        systemImage: "briefcase",
+                        tint: .blue,
+                        items: oneOffItems
+                    )
+                    roadmap
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+            }
+        }
+        .navigationTitle("Sales")
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Feature Flag 4", systemImage: "flag")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(.thinMaterial, in: Capsule())
+
+            Text("Sales")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text("Customer billing starts here, split between monthly service agreements and one-off job invoices.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func billingSection(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        tint: Color,
+        items: [String]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 36, height: 36)
+                    .background(tint.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline.weight(.semibold))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            ForEach(items, id: \.self) { item in
+                HStack(spacing: 10) {
+                    Image(systemName: "checkmark.circle")
+                        .foregroundStyle(tint)
+                    Text(item)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var roadmap: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Next Build Pieces", systemImage: "list.bullet.rectangle")
+                .font(.headline.weight(.semibold))
+
+            Text("Billing accounts, service agreements, billing runs, invoices, and invoice line items.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
 // MARK: - Optional Future Finance Cards
 
 extension Finance {
@@ -976,8 +1157,12 @@ extension Finance {
 
             preview()
         }
-        .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
     }
 
     func statRow(title: String, value: String, systemImage: String) -> some View {

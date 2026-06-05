@@ -26,7 +26,7 @@ struct IndividualRepairRequestList: View {
     @State var showSearch:Bool = false
     @State var showAddNewRequest:Bool = false
     @State var requestList:[RepairRequest] = []
-    @State var selectedStatus:[RepairRequestStatus] = [.inprogress,.unresolved]
+    @State var selectedStatus:[RepairRequestStatus] = RepairRequestStatus.defaultOpenCases
     @State var techIds:[String] = []
     @State var startDate:Date = Date()
     @State var endDate:Date = Date()
@@ -157,9 +157,7 @@ extension IndividualRepairRequestList{
                                 Menu("Change") {
                                     Button(action: {
                                         print("All Selected")
-                                        for status in RepairRequestStatus.allCases {
-                                            selectedStatus.append(status)
-                                        }
+                                        selectedStatus = RepairRequestStatus.allCases
                                         
                                     }, label: {
                                         Text("All \(selectedStatus == RepairRequestStatus.allCases ? "✓" : "")")
@@ -176,11 +174,11 @@ extension IndividualRepairRequestList{
                                                 selectedStatus.append(status)
                                             }
                                         }, label: {
-                                            Text("\(status.rawValue) \(selectedStatus.contains(status) ? "✓" : "")")
+                                            Text("\(status.displayName) \(selectedStatus.contains(status) ? "✓" : "")")
                                         })
                                     }
                                     Button(action: {
-                                        techIds = []
+                                        selectedStatus = []
                                     }, label: {
                                         Text("Clear \(selectedStatus == [] ? "✓" : "")")
                                     })

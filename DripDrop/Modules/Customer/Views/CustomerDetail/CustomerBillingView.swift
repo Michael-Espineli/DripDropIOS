@@ -13,7 +13,10 @@ final class CustomerBillingViewModel:ObservableObject{
         self.dataService = dataService
     }
     @Published private(set) var listOfContrats:[RecurringContract] = []
-    @Published private(set) var invoices:[StripeInvoice] = []
+    @Published private(set) var salesAgreements:[SalesAgreement] = []
+    @Published private(set) var salesBillingSubscriptions:[SalesBillingSubscription] = []
+    @Published private(set) var salesInvoices:[SalesInvoice] = []
+    @Published private(set) var salesPayments:[SalesPayment] = []
 
     @Published private(set) var total:Double = 0
     
@@ -23,49 +26,72 @@ final class CustomerBillingViewModel:ObservableObject{
     
     func onLoad(companyId:String,customerId:String) async throws {
         self.listOfContrats = try await dataService.getContractsByCustomer(companyId: companyId, customerId: customerId)
-        for contract in listOfContrats {
-            self.total = total + Double(contract.rate)/100 // Convert Rate in cents into Dollars
+        self.total = listOfContrats.reduce(0) { partialResult, contract in
+            partialResult + Double(contract.rate) / 100
         }
-        self.invoices = [
-            StripeInvoice(
-                id: "",
-                internalIdenifier: "",
-                senderId: "",
-                senderName: "",
-                receiverId: "",
-                receiverName: "",
-                dateSent: Date(),
-                total: 14700,
-                terms: .net15,
-                paymentStatus: .unpaid,
-                paymentType: .check,
-                paymentRefrence: "",
-                paymentDate: nil,
-                lineItems: [
-                ]
-            ),
-            StripeInvoice(
-                id: "",
-                internalIdenifier: "",
-                senderId: "",
-                senderName: "",
-                receiverId: "",
-                receiverName: "",
-                dateSent: Date(),
-                total: 500,
-                terms: .net15,
-                paymentStatus: .unpaid,
-                paymentType: .check,
-                paymentRefrence: "",
-                paymentDate: nil,
-                lineItems: [
-                ]
-            )
-        ]
+        self.salesAgreements = try await dataService.getSalesAgreements(companyId: companyId, customerId: customerId)
+            .sorted { agreementDate($0) > agreementDate($1) }
+        self.salesBillingSubscriptions = try await dataService.getSalesBillingSubscriptions(companyId: companyId, customerId: customerId)
+            .sorted { subscriptionDate($0) > subscriptionDate($1) }
+        self.salesInvoices = try await dataService.getSalesInvoices(companyId: companyId, customerId: customerId)
+            .sorted { invoiceDate($0) > invoiceDate($1) }
+        self.salesPayments = try await dataService.getSalesPayments(companyId: companyId, customerId: customerId)
+            .sorted { paymentDate($0) > paymentDate($1) }
     }
     func onChangeBillingNotes(companyId:String,customerId:String) async throws {
         try await dataService.updateCustomerBillingNotes(companyId: companyId, customerId: customerId, billingNotes: billingNotes)
         print("Update Billing Notes - \(billingNotes)")
+    }
+    
+    var acceptedAgreementCount: Int {
+        salesAgreements.filter { $0.status == .accepted }.count
+    }
+    
+    var openInvoices: [SalesInvoice] {
+        salesInvoices.filter { invoice in
+            [.open, .partiallyPaid, .overdue].contains(invoice.status)
+        }
+    }
+    
+    var openInvoiceTotalCents: Int {
+        openInvoices.reduce(0) { partialResult, invoice in
+            partialResult + (invoice.amountDueCents ?? invoice.totalAmountCents)
+        }
+    }
+    
+    var recentlyPaidTotalCents: Int {
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        return salesPayments
+            .filter { $0.status == .posted && ($0.receivedAt ?? $0.createdAt ?? Date.distantPast) >= thirtyDaysAgo }
+            .reduce(0) { $0 + $1.amountCents }
+    }
+    
+    var activeSubscriptionCount: Int {
+        salesBillingSubscriptions.filter { subscription in
+            subscription.status == .active || subscription.stripeStatus.lowercased() == "active" || subscription.stripeStatus.lowercased() == "trialing"
+        }.count
+    }
+    
+    var serviceAgreementTotalCents: Int {
+        salesAgreements.reduce(0) { partialResult, agreement in
+            partialResult + (agreement.totalAmountCents ?? agreement.rateAmountCents)
+        }
+    }
+    
+    private func agreementDate(_ agreement: SalesAgreement) -> Date {
+        agreement.updatedAt ?? agreement.sentAt ?? agreement.acceptedAt ?? agreement.createdAt ?? agreement.startDate ?? Date.distantPast
+    }
+    
+    private func subscriptionDate(_ subscription: SalesBillingSubscription) -> Date {
+        subscription.updatedAt ?? subscription.createdAt ?? subscription.currentPeriodStart ?? Date.distantPast
+    }
+    
+    private func invoiceDate(_ invoice: SalesInvoice) -> Date {
+        invoice.updatedAt ?? invoice.sentAt ?? invoice.dueDate ?? invoice.createdAt ?? Date.distantPast
+    }
+    
+    private func paymentDate(_ payment: SalesPayment) -> Date {
+        payment.receivedAt ?? payment.updatedAt ?? payment.createdAt ?? Date.distantPast
     }
 }
 struct CustomerBillingView: View {
@@ -245,6 +271,9 @@ extension CustomerBillingView {
             billingStats
             Rectangle()
                 .frame(height: 1)
+            serviceAgreements
+            Rectangle()
+                .frame(height: 1)
             contracts
             Rectangle()
                 .frame(height: 1)
@@ -260,6 +289,9 @@ extension CustomerBillingView {
                 billingInfoLarge
                 billingStats
             }
+            serviceAgreements
+            Rectangle()
+                .frame(height: 1)
             contracts
             Rectangle()
                 .frame(height: 1)
@@ -312,22 +344,34 @@ extension CustomerBillingView {
             HStack{
                 Text("Total Outstanding : ")
                 Spacer()
-                Text("\(1001, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                Text("\(Double(VM.openInvoiceTotalCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
             }
             HStack{
                 Text("Recently Paid (30 Days) : ")
                 Spacer()
-                Text("\(1200, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                Text("\(Double(VM.recentlyPaidTotalCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
 
             }
             HStack{
-                Text("Total Of Contracts : ")
+                Text("Accepted Agreements : ")
                 Spacer()
-                Text("\(VM.listOfContrats.count)")
+                Text("\(VM.acceptedAgreementCount)")
 
             }
             HStack{
-                Text("Contract Total : ")
+                Text("Active Subscriptions : ")
+                Spacer()
+                Text("\(VM.activeSubscriptionCount)")
+
+            }
+            HStack{
+                Text("Agreement Total : ")
+                Spacer()
+                Text("\(Double(VM.serviceAgreementTotalCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+
+            }
+            HStack{
+                Text("Legacy Contract Total : ")
                 Spacer()
                 Text(" \(VM.total, format: .currency(code: "USD").precision(.fractionLength(2)))")
 
@@ -335,13 +379,62 @@ extension CustomerBillingView {
             
         }
     }
+    var serviceAgreements: some View {
+        VStack(alignment: .leading, spacing: 10){
+            HStack{
+                Spacer()
+                Text("Service Agreements")
+                    .font(.headline)
+                Spacer()
+            }
+            
+            if VM.salesAgreements.isEmpty {
+                Text("No service agreements yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(Array(VM.salesAgreements.prefix(5))){ agreement in
+                    VStack(alignment: .leading, spacing: 6){
+                        HStack{
+                            VStack(alignment: .leading, spacing: 2){
+                                Text(agreement.title.isEmpty ? "Service Agreement" : agreement.title)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(agreement.status.rawValue.capitalized)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text("\(Double(agreement.totalAmountCents ?? agreement.rateAmountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        HStack{
+                            Text(agreement.serviceCadence.isEmpty ? "Cadence not set" : agreement.serviceCadence)
+                            Spacer()
+                            if let sentAt = agreement.sentAt {
+                                Text("Sent \(sentAt.formatted(date: .abbreviated, time: .omitted))")
+                            } else if let acceptedAt = agreement.acceptedAt {
+                                Text("Accepted \(acceptedAt.formatted(date: .abbreviated, time: .omitted))")
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 6)
+                    Divider()
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+    
     var contracts: some View {
         VStack{
             ScrollView(showsIndicators: false){
                 
                 HStack{
                     Spacer()
-                    Text("Contracts")
+                    Text("Legacy Recurring Contracts")
                         .font(.headline)
                     
                     Spacer()
@@ -397,7 +490,7 @@ extension CustomerBillingView {
         VStack{
             HStack{
                 Spacer()
-                Text("Out Standing Invoices")
+                Text("Outstanding Invoices")
                     .font(.headline)
                 Spacer()
                 
@@ -408,19 +501,26 @@ extension CustomerBillingView {
                 Text("Amount")
             }
             Divider()
-            ForEach(VM.invoices){  invoice in
-                HStack{
-                    Text(fullDate(date: invoice.dateSent))
-                    Text("Monthly Service")
-                    Spacer()
-                    Text("\(Double(invoice.total)/100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                    Button(action: {
-                        
-                    }, label: {
-                        Image(systemName: "chevron.right")
-                    })
+            if VM.openInvoices.isEmpty {
+                Text("No outstanding Sales invoices.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(VM.openInvoices){ invoice in
+                    HStack{
+                        Text(invoice.dueDate?.formatted(date: .abbreviated, time: .omitted) ?? "No due date")
+                        Text(invoice.memo ?? invoice.invoiceNumber)
+                        Spacer()
+                        Text("\(Double(invoice.amountDueCents ?? invoice.totalAmountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                        Button(action: {
+                            
+                        }, label: {
+                            Image(systemName: "chevron.right")
+                        })
+                    }
+                    .padding(.vertical,4)
                 }
-                .padding(.vertical,4)
             }
         }
     }
@@ -433,6 +533,23 @@ extension CustomerBillingView {
                 
                 Spacer()
                 
+            }
+            if VM.salesPayments.isEmpty {
+                Text("No Sales payments recorded.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(Array(VM.salesPayments.prefix(5))){ payment in
+                    HStack{
+                        Text(payment.receivedAt?.formatted(date: .abbreviated, time: .omitted) ?? "No date")
+                        Text(payment.method.rawValue.capitalized)
+                        Spacer()
+                        Text("\(Double(payment.amountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                    }
+                    .font(.caption)
+                    .padding(.vertical, 4)
+                }
             }
         }
     }

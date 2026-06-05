@@ -26,6 +26,7 @@ struct MyCompany: View {
     }
     
     @State var showOperations:Bool = false //DEVELOPER LATER MAKE THIS TRUE
+    @State var showSales:Bool = false
     @State var showFinace:Bool = false //DEVELOPER LATER MAKE THIS TRUE
     @State var showManagement:Bool = false //DEVELOPER LATER MAKE THIS TRUE
     @State var showCompanySettings:Bool = false
@@ -56,6 +57,7 @@ struct MyCompany: View {
         .onAppear(perform: {
             if !UIDevice.isIPhone {
                 showOperations = true
+                showSales = true
                 showFinace = true
                 showManagement = true
                 showCompanySettings = true
@@ -235,6 +237,10 @@ extension MyCompany{
                     if role.permissionIdList.contains("0") {
                         operations
                     }
+                    if masterDataManager.isFeatureEnabled(.sales) &&
+                        (role.permissionIdList.contains("610") || role.permissionIdList.contains("612") || role.permissionIdList.contains("614") || role.permissionIdList.contains("616")) {
+                        sales
+                    }
                     if role.permissionIdList.contains("200") {
                         
                         management
@@ -327,6 +333,25 @@ extension MyCompany{
         .foregroundColor(Color.basicFontText)
         .fontDesign(.monospaced)
     }
+    var sales: some View {
+        VStack{
+            Button(action: {
+                showSales.toggle()
+            }, label: {
+                HStack{
+                    Text("Sales")
+                    Spacer()
+                    Image(systemName: showSales ? "chevron.down" : "chevron.right")
+                }
+                .modifier(HeaderModifier())
+            })
+            
+            if showSales {
+                leads
+            }
+        }
+    }
+    
     var operations: some View {
         VStack{
             
@@ -364,6 +389,49 @@ extension MyCompany{
 //                businesses
                 Divider()
                 serviceStops
+            }
+        }
+    }
+    
+    var leads: some View {
+        VStack{
+            HStack{
+                Text("Leads")
+                    .font(.headline)
+                    .fontDesign(.monospaced)
+                    .foregroundColor(Color.basicFontText)
+                Spacer()
+                NavigationLink(value: Route.leads(
+                    dataService: dataService
+                ), label: {
+                    HStack{
+                        Text("See More")
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.footnote)
+                    .padding(3)
+                    .foregroundColor(Color.poolRed)
+                })
+            }
+            
+            if masterDataManager.mainScreenDisplayType == .fullPreview  || masterDataManager.mainScreenDisplayType == .preview {
+                HStack{
+                    VStack{
+                        Divider()
+                            .frame(width: 200)
+                    }
+                    Spacer()
+                }
+                HStack{
+                    VStack(alignment: .leading,spacing: 3){
+                        Text("Incoming homeowner service requests")
+                        Text("Track, filter, and follow up")
+                    }
+                    Spacer()
+                }
+                .fontDesign(.monospaced)
+                .font(.footnote)
+                .padding(.horizontal,16)
             }
         }
     }
@@ -2808,6 +2876,295 @@ extension MyCompany{
     }
     
     
+}
+
+struct CompanyLeadSummary: Identifiable {
+    let id: String
+    let homeownerName: String
+    let homeownerEmail: String
+    let homeownerPhone: String
+    let customerId: String
+    let customerName: String
+    let homeownerId: String
+    let companyServiceLocationId: String
+    let homeownerServiceLocationId: String
+    let streetAddress: String
+    let city: String
+    let status: String
+    let source: String
+    let createdAt: Date?
+    
+    init(document: QueryDocumentSnapshot) {
+        let data = document.data()
+        let address = data["serviceLocationAddress"] as? [String: Any]
+        
+        id = document.documentID
+        homeownerName = data["homeownerName"] as? String ?? "Unknown Homeowner"
+        homeownerEmail = data["homeownerEmail"] as? String ?? ""
+        homeownerPhone = data["homeownerPhone"] as? String ?? ""
+        customerId = data["customerId"] as? String ?? ""
+        customerName = data["customerName"] as? String ?? ""
+        homeownerId = data["homeownerId"] as? String ?? ""
+        companyServiceLocationId = data["serviceLocationId"] as? String ?? ""
+        homeownerServiceLocationId = data["homeownerserviceLocationId"] as? String ?? ""
+        streetAddress = address?["streetAddress"] as? String ?? "No street address"
+        city = address?["city"] as? String ?? ""
+        status = data["status"] as? String ?? "Pending"
+        source = data["source"] as? String ?? "Customer"
+        createdAt = CompanyLeadSummary.date(from: data["createdAt"])
+    }
+    
+    static func date(from value: Any?) -> Date? {
+        if let timestamp = value as? Timestamp {
+            return timestamp.dateValue()
+        }
+        if let date = value as? Date {
+            return date
+        }
+        if let string = value as? String {
+            return ISO8601DateFormatter().date(from: string)
+        }
+        return nil
+    }
+    
+    var normalizedSource: String {
+        source == "Manual" ? "Manual" : "Customer"
+    }
+    
+    var connectionLabel: String {
+        if !customerId.isEmpty {
+            return "Customer linked"
+        }
+        if !homeownerId.isEmpty {
+            return "Client request"
+        }
+        return "Unlinked"
+    }
+    
+    var connectionDetail: String {
+        if !customerId.isEmpty {
+            return customerName.isEmpty ? customerId : customerName
+        }
+        if !homeownerId.isEmpty {
+            return homeownerId
+        }
+        return "Needs customer/client link"
+    }
+}
+
+struct CompanyLeadsView: View {
+    let dataService: any ProductionDataServiceProtocol
+    
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    
+    @State private var leads: [CompanyLeadSummary] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    @State private var searchTerm = ""
+    @State private var statusFilter = "All"
+    @State private var sourceFilter = "All"
+    @State private var listener: ListenerRegistration?
+    
+    private let statusOptions = ["All", "Pending", "In Progress", "Completed", "Cancelled"]
+    private let sourceOptions = ["All", "Customer", "Manual"]
+    
+    var filteredLeads: [CompanyLeadSummary] {
+        let term = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        
+        return leads.filter { lead in
+            let matchesSearch = term.isEmpty || [
+                lead.homeownerName,
+                lead.homeownerEmail,
+                lead.homeownerPhone,
+                lead.customerName,
+                lead.customerId,
+                lead.homeownerId,
+                lead.companyServiceLocationId,
+                lead.homeownerServiceLocationId,
+                lead.streetAddress,
+                lead.city,
+                lead.status,
+                lead.normalizedSource,
+                lead.id
+            ].contains(where: { $0.lowercased().contains(term) })
+            let matchesStatus = statusFilter == "All" || lead.status == statusFilter
+            let matchesSource = sourceFilter == "All" || lead.normalizedSource == sourceFilter
+            
+            return matchesSearch && matchesStatus && matchesSource
+        }
+    }
+    
+    var pendingCount: Int {
+        leads.filter { $0.status == "Pending" }.count
+    }
+    
+    var inProgressCount: Int {
+        leads.filter { $0.status == "In Progress" }.count
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                leadStat(title: "Pending", value: pendingCount)
+                leadStat(title: "In Progress", value: inProgressCount)
+                leadStat(title: "Visible", value: filteredLeads.count)
+            }
+            .padding(.horizontal)
+            
+            HStack {
+                Picker("Status", selection: $statusFilter) {
+                    ForEach(statusOptions, id: \.self) { status in
+                        Text(status).tag(status)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                Picker("Source", selection: $sourceFilter) {
+                    ForEach(sourceOptions, id: \.self) { source in
+                        Text(source).tag(source)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                Spacer()
+            }
+            .padding(.horizontal)
+            
+            if isLoading {
+                Spacer()
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                Spacer()
+            } else if let errorMessage {
+                Spacer()
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity)
+                Spacer()
+            } else if filteredLeads.isEmpty {
+                Spacer()
+                Text("No leads found.")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                Spacer()
+            } else {
+                List(filteredLeads) { lead in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(lead.homeownerName)
+                                .font(.headline)
+                            Spacer()
+                            Text(lead.status)
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(statusColor(lead.status).opacity(0.18))
+                                .foregroundColor(statusColor(lead.status))
+                                .cornerRadius(8)
+                        }
+                        
+                        Text(lead.streetAddress)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Text(lead.normalizedSource)
+                            if let createdAt = lead.createdAt {
+                                Text(createdAt.formatted(date: .abbreviated, time: .omitted))
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(lead.connectionLabel)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                            Text(lead.connectionDetail)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle("Leads")
+        .searchable(text: $searchTerm, prompt: "Search leads")
+        .onAppear {
+            startListening()
+        }
+        .onDisappear {
+            listener?.remove()
+            listener = nil
+        }
+        .onChange(of: masterDataManager.currentCompany?.id, perform: { _ in
+            startListening()
+        })
+    }
+    
+    private func leadStat(title: String, value: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text("\(value)")
+                .font(.title2)
+                .fontWeight(.semibold)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.listColor)
+        .cornerRadius(8)
+    }
+    
+    private func statusColor(_ status: String) -> Color {
+        switch status {
+        case "Pending":
+            return .blue
+        case "In Progress":
+            return .orange
+        case "Completed":
+            return .green
+        case "Cancelled":
+            return .red
+        default:
+            return .gray
+        }
+    }
+    
+    private func startListening() {
+        listener?.remove()
+        errorMessage = nil
+        
+        guard let companyId = masterDataManager.currentCompany?.id else {
+            leads = []
+            isLoading = false
+            return
+        }
+        
+        isLoading = true
+        listener = Firestore.firestore()
+            .collection("homeownerServiceRequests")
+            .whereField("companyId", isEqualTo: companyId)
+            .addSnapshotListener { snapshot, error in
+                if let error {
+                    errorMessage = "Could not load leads: \(error.localizedDescription)"
+                    leads = []
+                    isLoading = false
+                    return
+                }
+                
+                leads = snapshot?.documents
+                    .map { CompanyLeadSummary(document: $0) }
+                    .sorted(by: { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }) ?? []
+                isLoading = false
+            }
+    }
 }
 
 struct MyCompany_Previews: PreviewProvider {

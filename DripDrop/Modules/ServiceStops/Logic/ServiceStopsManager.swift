@@ -36,6 +36,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     var typeId : String
     var type : String //Recurring Service Stop, Job, Start Up?
     var typeImage : String //
+    var category: ServiceStopCategory?
     
     var jobId : String //Seen
     var jobName : String? //Seen
@@ -53,6 +54,12 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     
     let mainCompanyId : String? //Actually Optional
     let isInvoiced : Bool
+    var estimatedPayCents: Int?
+    var payWorkTypeId: String?
+    var payWorkTypeName: String?
+    var workTypeId: String?
+    var workTypeName: String?
+    var defaultWorkTypeIds: [String]?
     
     init(
         id: String,
@@ -76,6 +83,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         typeId : String,
         type : String,
         typeImage : String,
+        category: ServiceStopCategory? = nil,
         jobId : String,
         jobName : String? = nil,
         operationStatus :ServiceStopOperationStatus,
@@ -87,7 +95,13 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         contractedCompanyId :String,
         photoUrls : [DripDropStoredImage]? = nil,
         mainCompanyId :String? = nil,
-        isInvoiced :Bool
+        isInvoiced :Bool,
+        estimatedPayCents: Int? = nil,
+        payWorkTypeId: String? = nil,
+        payWorkTypeName: String? = nil,
+        workTypeId: String? = nil,
+        workTypeName: String? = nil,
+        defaultWorkTypeIds: [String]? = nil
 
     ){
         
@@ -112,6 +126,14 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         self.typeId = typeId
         self.type = type
         self.typeImage = typeImage
+        self.category = ServiceStopCategory.inferred(
+            explicitCategory: category,
+            typeId: typeId,
+            recurringServiceStopId: recurringServiceStopId,
+            jobId: jobId,
+            type: type,
+            description: description
+        )
         self.jobId = jobId
         self.jobName = jobName
         self.operationStatus = operationStatus
@@ -124,6 +146,12 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         self.photoUrls = photoUrls
         self.mainCompanyId = mainCompanyId
         self.isInvoiced = isInvoiced
+        self.estimatedPayCents = estimatedPayCents
+        self.payWorkTypeId = payWorkTypeId
+        self.payWorkTypeName = payWorkTypeName
+        self.workTypeId = workTypeId
+        self.workTypeName = workTypeName
+        self.defaultWorkTypeIds = defaultWorkTypeIds
     }
     
         enum CodingKeys:String, CodingKey {
@@ -148,6 +176,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case typeId = "typeId"
             case type = "type"
             case typeImage = "typeImage"
+            case category = "category"
             case jobId = "jobId"
             case jobName = "jobName"
             case operationStatus = "operationStatus"
@@ -160,6 +189,12 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case photoUrls = "photoUrls"
             case mainCompanyId = "mainCompanyId"
             case isInvoiced = "isInvoiced"
+            case estimatedPayCents = "estimatedPayCents"
+            case payWorkTypeId = "payWorkTypeId"
+            case payWorkTypeName = "payWorkTypeName"
+            case workTypeId = "workTypeId"
+            case workTypeName = "workTypeName"
+            case defaultWorkTypeIds = "defaultWorkTypeIds"
         }
     static func == (lhs: ServiceStop, rhs: ServiceStop) -> Bool {
         return lhs.id == rhs.id &&
@@ -170,6 +205,19 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         lhs.serviceDate == rhs.serviceDate
     }
 
+}
+
+extension ServiceStop {
+    var resolvedCategory: ServiceStopCategory {
+        ServiceStopCategory.inferred(
+            explicitCategory: category,
+            typeId: typeId,
+            recurringServiceStopId: recurringServiceStopId,
+            jobId: jobId,
+            type: type,
+            description: description
+        )
+    }
 }
 
 struct ServiceStopTaskTemplate:Identifiable, Codable,Equatable, Hashable{
@@ -991,4 +1039,3 @@ final class ServiceStopManager:ServiceStopManagerProtocol {
     }
 }
 */
-

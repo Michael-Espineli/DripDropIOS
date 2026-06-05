@@ -25,6 +25,7 @@ struct CompanyServiceStopTypeSeed: Identifiable, Hashable {
 
     var name: String
     var imageName: String
+    var category: ServiceStopCategory
     var workTypeCandidateGroups: [[String]]
 }
 
@@ -34,6 +35,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Weekly Route",
             imageName: "figure.pool.swim",
+            category: .route,
             workTypeCandidateGroups: [
                 ["Routes", "Route", "Weekly Route"]
             ]
@@ -41,6 +43,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Route + Spa",
             imageName: "bubbles.and.sparkles",
+            category: .route,
             workTypeCandidateGroups: [
                 ["Routes", "Route", "Weekly Route"],
                 ["Spa Add-On", "Spa", "Pool + Spa"]
@@ -49,6 +52,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Extra Route",
             imageName: "plus.circle",
+            category: .route,
             workTypeCandidateGroups: [
                 ["Extra Route", "Extra Routes"],
                 ["Routes", "Route"]
@@ -57,6 +61,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Job Visit",
             imageName: "briefcase",
+            category: .job,
             workTypeCandidateGroups: [
                 ["Service Call", "Job Visit", "Job"]
             ]
@@ -64,6 +69,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Service Call",
             imageName: "phone",
+            category: .job,
             workTypeCandidateGroups: [
                 ["Service Call"]
             ]
@@ -71,6 +77,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Commercial Route",
             imageName: "building.2",
+            category: .route,
             workTypeCandidateGroups: [
                 ["Commercial Base", "Commercial", "Commercial Route"]
             ]
@@ -78,6 +85,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Commercial Multi-BOW",
             imageName: "building.2.crop.circle",
+            category: .route,
             workTypeCandidateGroups: [
                 ["Commercial Base", "Commercial", "Commercial Route"],
                 ["Commercial Additional Body of Water", "Additional Body of Water", "Additional BOW"]
@@ -86,6 +94,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Startup",
             imageName: "play.circle",
+            category: .serviceAgreementEstimate,
             workTypeCandidateGroups: [
                 ["Startup", "Start Up"]
             ]
@@ -93,6 +102,7 @@ enum CompanyServiceStopTypeDefaultSeeds {
         CompanyServiceStopTypeSeed(
             name: "Estimate",
             imageName: "doc.text.magnifyingglass",
+            category: .jobEstimate,
             workTypeCandidateGroups: []
         )
     ]
@@ -287,6 +297,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
                 imageName: seed.imageName,
                 isActive: true,
                 sortOrder: sortOrder,
+                category: seed.category,
                 defaultWorkTypeIds: defaultWorkTypeIds,
                 createdAt: Date(),
                 createdByUserId: currentUserId
@@ -718,6 +729,7 @@ struct CompanyServiceStopTypeEditorView: View {
     @State private var name: String
     @State private var imageName: String
     @State private var isActive: Bool
+    @State private var selectedCategory: ServiceStopCategory
     @State private var selectedWorkTypeIds: Set<String>
     @State private var sortOrderText: String
 
@@ -746,6 +758,7 @@ struct CompanyServiceStopTypeEditorView: View {
         _name = State(initialValue: originalServiceStopType?.name ?? "")
         _imageName = State(initialValue: originalServiceStopType?.imageName ?? "mappin.and.ellipse")
         _isActive = State(initialValue: originalServiceStopType?.isActive ?? true)
+        _selectedCategory = State(initialValue: originalServiceStopType?.resolvedCategory() ?? .customerRelationship)
         _selectedWorkTypeIds = State(initialValue: Set(originalServiceStopType?.defaultWorkTypeIds ?? []))
         _sortOrderText = State(initialValue: "\(originalServiceStopType?.sortOrder ?? defaultSortOrder)")
     }
@@ -786,11 +799,18 @@ struct CompanyServiceStopTypeEditorView: View {
         Section {
             TextField("Name", text: $name)
 
+            Picker("Category", selection: $selectedCategory) {
+                ForEach(ServiceStopCategory.allCases) { category in
+                    Label(category.title, systemImage: category.systemImage)
+                        .tag(category)
+                }
+            }
+
             Toggle("Active", isOn: $isActive)
         } header: {
             Text("Basic")
         } footer: {
-            Text("Examples: Weekly Route, Route + Spa, Job Visit, Commercial Multi-BOW.")
+            Text("Examples: Weekly Route, Job Visit, Job Estimate, Service Agreement Estimate, Customer Relationship.")
         }
     }
 
@@ -952,6 +972,7 @@ struct CompanyServiceStopTypeEditorView: View {
             imageName: finalImageName,
             isActive: isActive,
             sortOrder: sortOrder,
+            category: selectedCategory,
             defaultWorkTypeIds: sortedWorkTypeIds,
             createdAt: originalServiceStopType?.createdAt ?? Date(),
             createdByUserId: originalServiceStopType?.createdByUserId ?? currentUserId

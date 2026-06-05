@@ -17,6 +17,7 @@ final class BodyOfWaterDetailViewModel:ObservableObject{
     }
     
     @Published private(set) var equipmentList: [Equipment] = []
+    @Published private(set) var waterHistory: [BodyOfWaterHistory] = []
     @Published var loadedImages:[DripDropStoredImage] = []
     
     @Published var selectedDripDropPhotos:[DripDropImage] = []
@@ -24,6 +25,7 @@ final class BodyOfWaterDetailViewModel:ObservableObject{
     func onLoad(companyId:String,bodyOfWater:BodyOfWater) async throws {
 
                 self.equipmentList = try await dataService.getEquipmentByBodyOfWater(companyId: companyId, bodyOfWater: bodyOfWater)
+                self.waterHistory = try await dataService.getBodyOfWaterHistory(companyId: companyId, bodyOfWaterId: bodyOfWater.id)
          
     }
     func getAllBodiesOfWaterByServiceLocation(companyId: String,bodyOfWater:BodyOfWater) async throws {
@@ -95,6 +97,8 @@ struct BodyOfWaterDetailView: View {
                             photos
                                 .padding(12)
                             recentReadings
+                                .padding(12)
+                            waterHistory
                                 .padding(12)
                         Divider()
                             .opacity(0.15)
@@ -279,6 +283,67 @@ extension BodyOfWaterDetailView {
                     Text("See History")
                         .modifier(RedLinkModifier())
                 })
+            }
+        }
+        .ddCard()
+    }
+
+    var waterHistory: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Water History").ddSectionTitle()
+                Spacer()
+            }
+
+            if VM.waterHistory.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "drop")
+                        .foregroundStyle(.secondary)
+                    Text("No fill or empty history yet")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 6)
+            } else {
+                ForEach(VM.waterHistory.prefix(5)) { item in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: item.type == .fill ? "drop.fill" : "drop")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(item.type == .fill ? Color.blue : Color.orange)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(Color.primary.opacity(0.06)))
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.type.rawValue)
+                                .font(.subheadline.weight(.semibold))
+
+                            Text(item.date.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            if !item.description.isEmpty {
+                                Text(item.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+
+                        Spacer()
+
+                        if !item.techName.isEmpty {
+                            Text(item.techName)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .padding(.vertical, 4)
+
+                    if item.id != VM.waterHistory.prefix(5).last?.id {
+                        Divider().opacity(0.12)
+                    }
+                }
             }
         }
         .ddCard()

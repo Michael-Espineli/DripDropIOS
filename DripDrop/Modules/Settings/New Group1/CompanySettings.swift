@@ -336,8 +336,12 @@
                 .padding(12)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
         }
 
         var displayPrefrences: some View {
@@ -369,8 +373,12 @@
                 .padding(12)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
         }
 
         var settings: some View {
@@ -539,8 +547,12 @@
                     }
                 }
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
         }
 
         #if DEBUG
@@ -558,8 +570,12 @@
                         .modifier(BlueButtonModifier())
                 })
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
         }
         #endif
     }

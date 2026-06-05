@@ -170,6 +170,7 @@
 		6D38CFE32C194552003EB3DB /* JobPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE452C194552003EB3DB /* JobPickerScreen.swift */; };
 		6D38CFE42C194552003EB3DB /* JobView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE462C194552003EB3DB /* JobView.swift */; };
 		6D38CFE52C194552003EB3DB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE492C194552003EB3DB /* AppDelegate.swift */; };
+		6D38CFE52FCE0110003EB3DB /* JobPurchasedItemSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE482FCE0110003EB3DB /* JobPurchasedItemSelectorView.swift */; };
 		6D38CFE62C194552003EB3DB /* LocationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE4A2C194552003EB3DB /* LocationDelegate.swift */; };
 		6D38CFE72C194552003EB3DB /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE4B2C194552003EB3DB /* LocationManager.swift */; };
 		6D38CFE82C194552003EB3DB /* LocationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE4C2C194552003EB3DB /* LocationViewController.swift */; };
@@ -1010,6 +1011,7 @@
 		6D38CE442C194552003EB3DB /* JobNavigationLink.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobNavigationLink.swift; sourceTree = "<group>"; };
 		6D38CE452C194552003EB3DB /* JobPickerScreen.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobPickerScreen.swift; sourceTree = "<group>"; };
 		6D38CE462C194552003EB3DB /* JobView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobView.swift; sourceTree = "<group>"; };
+		6D38CE482FCE0110003EB3DB /* JobPurchasedItemSelectorView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobPurchasedItemSelectorView.swift; sourceTree = "<group>"; };
 		6D38CE492C194552003EB3DB /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		6D38CE4A2C194552003EB3DB /* LocationDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationDelegate.swift; sourceTree = "<group>"; };
 		6D38CE4B2C194552003EB3DB /* LocationManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
@@ -2345,6 +2347,7 @@
 				6D38CE402C194552003EB3DB /* JobCardView.swift */,
 				6D38CE412C194552003EB3DB /* JobDetailView.swift */,
 				6D38CE422C194552003EB3DB /* jobItemPicker.swift */,
+				6D38CE482FCE0110003EB3DB /* JobPurchasedItemSelectorView.swift */,
 				6D38CE432C194552003EB3DB /* JobListView.swift */,
 				6D38CE442C194552003EB3DB /* JobNavigationLink.swift */,
 				6D38CE452C194552003EB3DB /* JobPickerScreen.swift */,
@@ -4741,6 +4744,7 @@
 				6D38D18F2C19457D003EB3DB /* UploadDataBaseItemsFromComputer.swift in Sources */,
 				6D57CF1C2C3A053D0099C9CE /* TextFieldModifiers.swift in Sources */,
 				6D38CFE02C194552003EB3DB /* jobItemPicker.swift in Sources */,
+				6D38CFE52FCE0110003EB3DB /* JobPurchasedItemSelectorView.swift in Sources */,
 				6D6E0CA52C2BD2FD00AD2B67 /* PhotoContentView.swift in Sources */,
 				6DFBD8832F37EC1400D560EC /* RouteManagmentView2.swift in Sources */,
 				6DEFCECB2DD9A2530009A7DA /* TechnicianRouteSummaryCardView.swift in Sources */,
@@ -5390,7 +5394,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DripDrop/DripDrop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 42;
+				CURRENT_PROJECT_VERSION = 49;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"DripDrop/Preview Content\"";
 				DEVELOPMENT_TEAM = 2RP4R5T2XP;
@@ -5425,8 +5429,8 @@
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -5452,7 +5456,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DripDrop/DripDrop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 42;
+				CURRENT_PROJECT_VERSION = 49;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"DripDrop/Preview Content\"";
 				DEVELOPMENT_TEAM = 2RP4R5T2XP;
@@ -5487,8 +5491,8 @@
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -5581,7 +5585,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DripDrop/DripDrop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 42;
+				CURRENT_PROJECT_VERSION = 49;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"DripDrop/Preview Content\"";
 				DEVELOPMENT_TEAM = 2RP4R5T2XP;
@@ -5616,8 +5620,8 @@
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
@@ -5702,7 +5706,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DripDrop/DripDrop.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 42;
+				CURRENT_PROJECT_VERSION = 49;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"DripDrop/Preview Content\"";
 				DEVELOPMENT_TEAM = 2RP4R5T2XP;
@@ -5737,8 +5741,8 @@
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";

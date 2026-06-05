@@ -12,6 +12,10 @@ func convertRouteToString(route:Route) -> RouteString {
         return .jobs
     case .billingJobs(dataService: _):
         return .jobs
+    case .leads(dataService: _):
+        return .leads
+    case .sales(dataService: _):
+        return .sales
     case .employeeMainDailyDisplayView(dataService: _):
         return .employeeMainDailyDisplayView
 

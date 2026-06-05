@@ -217,7 +217,17 @@ extension ProductionDataService {
         finishedStops: Int
     ) -> ActiveRouteStatus {
         if totalStops > 0 && totalStops == finishedStops {
-            return .finished
+            if existingRoute?.endMilage != nil && existingRoute?.endTime != nil {
+                return .finished
+            }
+
+            if let existingRoute,
+               existingRoute.status == .traveling ||
+                existingRoute.status == .onBreak {
+                return existingRoute.status
+            }
+
+            return .inProgress
         }
 
         if let existingRoute,
@@ -787,7 +797,7 @@ extension ProductionDataService {
         date: Date
     ) async throws -> [ActiveRoute] {
         let routes = try await ActiveRouteCollection(companyId: companyId)
-            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThan: date.startOfDay())
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThanOrEqualTo: date.startOfDay())
             .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: date.endOfDay())
             .getDocuments(as: ActiveRoute.self)
 
@@ -832,11 +842,18 @@ extension ProductionDataService {
         companyId: String,
         serviceStopIds: [String]
     ) async throws -> [ServiceStop] {
-        guard !serviceStopIds.isEmpty else { return [] }
+        let uniqueServiceStopIds = serviceStopIds.reduce(into: [String]()) { ids, serviceStopId in
+            guard !serviceStopId.isEmpty,
+                  !ids.contains(serviceStopId) else { return }
+
+            ids.append(serviceStopId)
+        }
+
+        guard !uniqueServiceStopIds.isEmpty else { return [] }
 
         var allStops: [ServiceStop] = []
 
-        let chunks = serviceStopIds.chunked(into: 10)
+        let chunks = uniqueServiceStopIds.chunked(into: 10)
 
         for chunk in chunks {
             let snapshot = try await serviceStopCollection(companyId: companyId)

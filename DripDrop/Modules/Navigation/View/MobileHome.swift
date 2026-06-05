@@ -74,6 +74,13 @@ struct MobileHome: View {
                                 Label("Dashboard", systemImage: "list.dash")
                             }
                             .tag("Dashboard")
+                        if masterDataManager.isFeatureEnabled(.iosMessages) {
+                            ChatListView(dataService: dataService)
+                                .tabItem {
+                                    Label("Messages", systemImage: "message")
+                                }
+                                .tag("Messages")
+                        }
                         SettingsView(dataService: dataService)
                             .tabItem {
                                 Label("Settings", systemImage: "gear")
@@ -107,6 +114,7 @@ struct MobileHome: View {
         .task {
             #warning("Please add listeners to get user access and role")
 //            masterRoleManager.start(companyId: masterDataManager.currentCompany?.id, userId: masterDataManager.user?.id)
+            await masterDataManager.loadFeatureFlags()
             
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                 do{
@@ -345,28 +353,30 @@ extension MobileHome {
                                                 }
                                             })
                                         }
-                                        Button(action: {
-                                            masterDataManager.mobileHomeScreen = .sales
-                                        }, label: {
-                                            if masterDataManager.mobileHomeScreen == .sales {
-                                                HStack{
-                                                    Text("Sales")
+                                        if masterDataManager.isFeatureEnabled(.sales) {
+                                            Button(action: {
+                                                masterDataManager.mobileHomeScreen = .sales
+                                            }, label: {
+                                                if masterDataManager.mobileHomeScreen == .sales {
+                                                    HStack{
+                                                        Text("Sales")
+                                                    }
+                                                    .modifier(EditButtonModifier())
+                                                    .bold()
+                                                } else {
+                                                    HStack{
+                                                        Text("Sales")
+                                                    }
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .padding(.horizontal, 16)
+                                                    .padding(.vertical, 12)
+                                                    .background(Color.poolWhite)
+                                                    .foregroundColor(.poolBlack)
+                                                    .cornerRadius(12)
+                                                    .bold()
                                                 }
-                                                .modifier(EditButtonModifier())
-                                                .bold()
-                                            } else {
-                                                HStack{
-                                                    Text("Sales")
-                                                }
-                                                .font(.subheadline.weight(.semibold))
-                                                .padding(.horizontal, 16)
-                                                .padding(.vertical, 12)
-                                                .background(Color.poolWhite)
-                                                .foregroundColor(.poolBlack)
-                                                .cornerRadius(12)
-                                                .bold()
-                                            }
-                                        })
+                                            })
+                                        }
 //  MARK:                                         Update 2.1: Finance
 
                                         if role.permissionIdList.contains("200") {

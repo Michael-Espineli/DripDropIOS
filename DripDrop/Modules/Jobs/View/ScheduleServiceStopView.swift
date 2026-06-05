@@ -1396,7 +1396,20 @@ extension ScheduleServiceStopView {
         Task {
             if let currentCompany = masterDataManager.currentCompany {
                 do {
-                    let typeFields = resolvedServiceStopTypeFields
+                    let resolvedFields = resolvedServiceStopTypeFields
+                    let typeFields: ServiceStopTypeFields
+                    if resolvedFields.isSystemFallback,
+                       editingServiceStop == nil,
+                       VM.selectedPlannedServiceStop == nil,
+                       selectedCompanyServiceStopType == nil {
+                        typeFields = await dataService.resolvedServiceStopTypeFields(
+                            companyId: currentCompany.id,
+                            useCase: serviceStopTypeUseCase,
+                            context: "ScheduleServiceStopView.scheduleServiceStop"
+                        )
+                    } else {
+                        typeFields = resolvedFields
+                    }
                     let plannedEstimate = VM.selectedPlannedServiceStop?.estimatedMinutes
 
                     if let editingServiceStop {

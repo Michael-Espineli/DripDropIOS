@@ -71,7 +71,7 @@ extension ProductionDataService {
     }
     func getRepairRequestsByUserCount(companyId: String,userId:String) async throws ->Int?{
             //MEMORY LEAK
-        let status = [RepairRequestStatus.unresolved.rawValue,RepairRequestStatus.inprogress.rawValue]
+        let status = RepairRequestStatus.defaultOpenCases.map(\.rawValue)
         return try await repairRequestCollection(companyId: companyId)
             .whereField("status", in: status)
             .whereField("requesterId", isEqualTo: userId)

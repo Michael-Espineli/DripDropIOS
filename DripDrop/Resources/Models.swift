@@ -13,6 +13,469 @@ import SwiftUI
 
 //A
 
+struct FeatureFlag: Identifiable, Codable, Hashable {
+    var id: String
+    var key: String
+    var name: String
+    var description: String?
+    var enabled: Bool
+    var index: Int
+    var createdAt: Date?
+    var updatedAt: Date?
+
+    var displayName: String {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedName.isEmpty ? key : trimmedName
+    }
+
+    static func id(for index: Int) -> String {
+        "feature_flag_\(String(format: "%03d", index))"
+    }
+
+    static func defaultFlags(count: Int = 100) -> [FeatureFlag] {
+        (1...count).map { index in
+            let flagId = FeatureFlag.id(for: index)
+
+            return FeatureFlag(
+                id: flagId,
+                key: flagId,
+                name: FeatureFlag.defaultName(for: index),
+                description: FeatureFlag.defaultDescription(for: index),
+                enabled: false,
+                index: index,
+                createdAt: nil,
+                updatedAt: nil
+            )
+        }
+    }
+
+    static func defaultName(for index: Int) -> String {
+        switch index {
+        case 1:
+            return "iOS Messages"
+        case 2:
+            return "Company User Profile History"
+        case 3:
+            return "Management Technician Performance History"
+        case 4:
+            return "Sales"
+        case 5:
+            return "Turn on real emails"
+        case 6:
+            return "Payroll"
+        default:
+            return ""
+        }
+    }
+
+    static func defaultDescription(for index: Int) -> String {
+        switch index {
+        case 1:
+            return "Enables the iOS Messages experience."
+        case 2:
+            return "Enables company user profile history views."
+        case 3:
+            return "Enables management technician performance history."
+        case 4:
+            return "Enables the Sales slice: dashboard, catalog items, service agreements, and sales billing workflows."
+        case 5:
+            return "When off, service agreement and invoice emails are routed to the internal test inbox instead of homeowners."
+        case 6:
+            return "Enables Payroll and Payroll Setup under company Finance."
+        default:
+            return ""
+        }
+    }
+}
+
+enum FeatureFlagKey: String, CaseIterable {
+    case iosMessages = "feature_flag_001"
+    case companyUserProfileHistory = "feature_flag_002"
+    case managementTechnicianPerformanceHistory = "feature_flag_003"
+    case sales = "feature_flag_004"
+    case realEmails = "feature_flag_005"
+    case payroll = "feature_flag_006"
+}
+
+enum SalesAgreementStatus: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case draft = "draft"
+    case sent = "sent"
+    case revised = "revised"
+    case accepted = "accepted"
+    case rejected = "rejected"
+    case expired = "expired"
+    case canceled = "canceled"
+}
+
+enum SalesAgreementSourceType: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case recurringService = "recurringService"
+    case oneOffJob = "oneOffJob"
+    case workOffer = "workOffer"
+    case manual = "manual"
+}
+
+enum SalesBillingSubscriptionStatus: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case notStarted = "notStarted"
+    case pendingPaymentMethod = "pendingPaymentMethod"
+    case pendingStripe = "pendingStripe"
+    case active = "active"
+    case pastDue = "pastDue"
+    case paused = "paused"
+    case canceled = "canceled"
+}
+
+enum SalesInvoiceStatus: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case draft = "draft"
+    case open = "open"
+    case partiallyPaid = "partiallyPaid"
+    case paid = "paid"
+    case overdue = "overdue"
+    case void = "void"
+    case uncollectible = "uncollectible"
+}
+
+enum SalesInvoiceType: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case subscription = "subscription"
+    case oneTime = "oneTime"
+    case manual = "manual"
+    case adjustment = "adjustment"
+}
+
+enum SalesInvoiceDeliveryMethod: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case customerPortal = "customerPortal"
+    case stripeHostedInvoice = "stripeHostedInvoice"
+    case email = "email"
+    case print = "print"
+    case none = "none"
+}
+
+enum SalesPaymentStatus: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case pending = "pending"
+    case posted = "posted"
+    case failed = "failed"
+    case refunded = "refunded"
+    case void = "void"
+}
+
+enum SalesPaymentMethod: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case stripeCard = "stripeCard"
+    case stripeAch = "stripeAch"
+    case cash = "cash"
+    case check = "check"
+    case externalCard = "externalCard"
+    case bankTransfer = "bankTransfer"
+    case other = "other"
+}
+
+enum SalesBillingMode: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case connectedAccountDirectCharge = "connectedAccountDirectCharge"
+    case connectedAccountDestinationCharge = "connectedAccountDestinationCharge"
+}
+
+enum SalesCatalogItemType: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case service = "service"
+    case recurringService = "recurringService"
+    case labor = "labor"
+    case material = "material"
+    case fee = "fee"
+    case discount = "discount"
+    case tax = "tax"
+    case manual = "manual"
+}
+
+enum SalesCatalogBillingBehavior: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case oneTime = "oneTime"
+    case recurring = "recurring"
+    case manualOnly = "manualOnly"
+}
+
+enum SalesCatalogSourceType: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+
+    case manual = "manual"
+    case serviceStopType = "serviceStopType"
+    case workType = "workType"
+    case task = "task"
+    case databaseItem = "databaseItem"
+    case shoppingListItem = "shoppingListItem"
+    case stripeProductPrice = "stripeProductPrice"
+}
+
+struct SalesCatalogItem: Identifiable, Codable, Hashable {
+    var id: String = "sci_" + UUID().uuidString
+    var companyId: String
+    var name: String
+    var description: String
+    var type: SalesCatalogItemType
+    var billingBehavior: SalesCatalogBillingBehavior
+    var sourceType: SalesCatalogSourceType
+    var sourceId: String
+    var unitAmountCents: Int
+    var unitCostCents: Int
+    var defaultQuantity: Int
+    var taxable: Bool
+    var active: Bool
+    var currency: String
+    var stripeConnectedAccountId: String
+    var stripeProductId: String
+    var stripePriceId: String
+    var stripeRecurringInterval: String
+    var stripeRecurringIntervalCount: Int
+    var metadata: [String: String]?
+    var createdAt: Date?
+    var updatedAt: Date?
+}
+
+struct SalesBillingProfile: Identifiable, Codable, Hashable {
+    var id: String = "sbp_" + UUID().uuidString
+    var companyId: String
+    var customerId: String
+    var customerUserId: String?
+    var customerName: String
+    var email: String
+    var phoneNumber: String
+    var serviceLocationIds: [String]
+    var stripeConnectedAccountId: String
+    var stripeCustomerId: String
+    var defaultPaymentMethodId: String
+    var invoiceDeliveryMethod: String
+    var paymentTerms: String
+    var currency: String
+    var taxExempt: String
+    var status: String
+    var createdAt: Date?
+    var updatedAt: Date?
+}
+
+struct SalesAgreementServiceLocationSnapshot: Identifiable, Codable, Hashable {
+    var id: String
+    var nickName: String?
+    var streetAddress: String?
+    var address02: String?
+    var city: String?
+    var state: String?
+    var zip: String?
+}
+
+struct SalesAgreementEmailDelivery: Codable, Hashable {
+    var provider: String?
+    var templateId: String?
+    var to: String?
+    var intendedTo: String?
+    var from: String?
+    var replyTo: String?
+    var messageId: String?
+    var agreementUrl: String?
+    var testMode: Bool?
+    var realEmailsFeatureFlagId: String?
+    var realEmailsEnabled: Bool?
+    var lastSentAt: Date?
+}
+
+struct SalesAgreement: Identifiable, Codable, Hashable {
+    var id: String = "sa_" + UUID().uuidString
+    var companyId: String
+    var companyName: String
+    var customerId: String
+    var customerUserId: String?
+    var customerName: String
+    var email: String
+    var serviceLocationIds: [String]
+    var sourceType: SalesAgreementSourceType
+    var sourceId: String
+    var title: String
+    var description: String
+    var terms: String
+    var termsTemplateId: String?
+    var termsTemplateName: String?
+    var termsTemplateDescription: String?
+    var termsList: [String]?
+    var lineItems: [SalesInvoiceLineItem]?
+    var serviceLocationSnapshots: [SalesAgreementServiceLocationSnapshot]?
+    var status: SalesAgreementStatus
+    var billingProfileId: String
+    var billingSubscriptionId: String
+    var rateAmountCents: Int
+    var subtotalAmountCents: Int?
+    var taxAmountCents: Int?
+    var totalAmountCents: Int?
+    var rateType: String
+    var serviceCadence: String
+    var serviceCadenceCount: Int
+    var paymentTerms: String?
+    var invoiceDeliveryMethod: SalesInvoiceDeliveryMethod?
+    var includedServices: [String]
+    var excludedServices: [String]
+    var startDate: Date?
+    var endDate: Date?
+    var expiresAt: Date?
+    var atWill: Bool
+    var createdByUserId: String
+    var createdAt: Date?
+    var updatedAt: Date?
+    var sentAt: Date?
+    var sentByUserId: String?
+    var emailDelivery: SalesAgreementEmailDelivery?
+    var acceptedAt: Date?
+    var acceptedByUserId: String?
+    var acceptedByUserName: String?
+    var acceptedByEmail: String?
+    var acceptedSource: String?
+    var acceptedNote: String?
+    var acceptedSnapshot: [String: String]?
+}
+
+struct SalesBillingSubscription: Identifiable, Codable, Hashable {
+    var id: String = "sbs_" + UUID().uuidString
+    var companyId: String
+    var customerId: String
+    var customerUserId: String?
+    var agreementId: String
+    var billingProfileId: String
+    var stripeConnectedAccountId: String
+    var stripeCustomerId: String
+    var stripeProductId: String
+    var stripePriceId: String
+    var stripeSubscriptionId: String
+    var stripeSubscriptionItemId: String
+    var stripeLatestInvoiceId: String
+    var stripeDefaultPaymentMethodId: String
+    var billingMode: SalesBillingMode
+    var status: SalesBillingSubscriptionStatus
+    var stripeStatus: String
+    var amountCents: Int
+    var currency: String
+    var interval: String
+    var intervalCount: Int
+    var currentPeriodStart: Date?
+    var currentPeriodEnd: Date?
+    var cancelAtPeriodEnd: Bool
+    var canceledAt: Date?
+    var applicationFeePercent: Double?
+    var createdAt: Date?
+    var updatedAt: Date?
+}
+
+struct SalesInvoiceLineItem: Identifiable, Codable, Hashable {
+    var id: String = "sili_" + UUID().uuidString
+    var catalogItemId: String?
+    var sourceType: String
+    var sourceId: String
+    var description: String
+    var name: String?
+    var quantity: Int
+    var unitAmountCents: Int
+    var totalAmountCents: Int
+    var taxable: Bool
+    var type: String?
+    var stripeProductId: String?
+    var stripePriceId: String?
+    var metadata: [String: String]?
+}
+
+struct SalesInvoice: Identifiable, Codable, Hashable {
+    var id: String = "si_" + UUID().uuidString
+    var companyId: String
+    var customerId: String
+    var customerUserId: String?
+    var agreementId: String
+    var jobId: String
+    var billingSubscriptionId: String
+    var stripeConnectedAccountId: String
+    var stripeInvoiceId: String
+    var stripePaymentIntentId: String
+    var stripeHostedInvoiceUrl: String?
+    var stripeInvoicePdfUrl: String?
+    var invoiceNumber: String
+    var type: SalesInvoiceType?
+    var status: SalesInvoiceStatus
+    var deliveryMethod: SalesInvoiceDeliveryMethod?
+    var currency: String
+    var billingPeriodStart: Date?
+    var billingPeriodEnd: Date?
+    var dueDate: Date?
+    var subtotalAmountCents: Int
+    var discountAmountCents: Int
+    var taxAmountCents: Int
+    var totalAmountCents: Int
+    var amountPaidCents: Int?
+    var amountDueCents: Int?
+    var writeOffAmountCents: Int?
+    var memo: String?
+    var lineItems: [SalesInvoiceLineItem]
+    var createdAt: Date?
+    var updatedAt: Date?
+    var sentAt: Date?
+    var paidAt: Date?
+    var lastPaymentAt: Date?
+}
+
+struct SalesPayment: Identifiable, Codable, Hashable {
+    var id: String = "sp_" + UUID().uuidString
+    var companyId: String
+    var customerId: String
+    var customerUserId: String?
+    var invoiceId: String
+    var billingProfileId: String
+    var billingSubscriptionId: String
+    var stripeConnectedAccountId: String
+    var stripePaymentIntentId: String
+    var stripeChargeId: String
+    var stripeInvoiceId: String
+    var method: SalesPaymentMethod
+    var status: SalesPaymentStatus
+    var amountCents: Int
+    var currency: String
+    var referenceNumber: String
+    var memo: String
+    var receiptUrl: String
+    var recordedByUserId: String
+    var receivedAt: Date?
+    var createdAt: Date?
+    var updatedAt: Date?
+    var voidedAt: Date?
+}
+
+struct SalesPaymentEvent: Identifiable, Codable, Hashable {
+    var id: String = "spe_" + UUID().uuidString
+    var companyId: String
+    var customerId: String
+    var customerUserId: String?
+    var invoiceId: String
+    var billingSubscriptionId: String
+    var stripeConnectedAccountId: String
+    var stripeEventId: String
+    var stripeObjectId: String
+    var type: String
+    var amountCents: Int
+    var currency: String
+    var status: String
+    var receivedAt: Date?
+    var processedAt: Date?
+}
+
 
 struct Address:Codable, Hashable{
     var streetAddress :String
@@ -236,6 +699,14 @@ struct DataBaseItem:Identifiable,Codable,Hashable{
     var tracking : String?
     var sellPrice:Double? //What to charge customer
     var timesPurchased:Int?
+    var universalEquipmentId: String?
+    var equipmentTypeId: String?
+    var equipmentType: String?
+    var equipmentMakeId: String?
+    var equipmentMake: String?
+    var equipmentModelId: String?
+    var equipmentModel: String?
+    var manualPdfLink: String?
 
 }
 struct CSVDataBaseItem{
@@ -421,6 +892,19 @@ struct PurchasedItem:Identifiable,Codable,Equatable,Hashable{
     var sku : String
     var notes : String
     var jobId: String
+    var workOrderId: String?
+    var assignedJobId: String?
+    var assignedToJob: Bool?
+    var assignmentStatus: String?
+    var billingOwner: String?
+    var jobBillingStatus: String?
+    var jobBillable: Bool?
+    var jobBillingRate: Double?
+    var universalEquipmentId: String?
+    var installedEquipmentId: String?
+    var installationJobId: String?
+    var installationTaskId: String?
+    var installedAt: Date?
     
     var quantity : Double{
         Double(quantityString) ?? 0.00
@@ -433,6 +917,15 @@ struct PurchasedItem:Identifiable,Codable,Equatable,Hashable{
         total * 1.085
     }
     var billingRate:Double? //What to charge customer
+    var isAssignedToJob: Bool {
+        assignedToJob ?? !jobId.isEmpty || !(workOrderId ?? "").isEmpty || assignmentStatus == "assignedToJob"
+    }
+    var isJobBillable: Bool {
+        jobBillable ?? billable
+    }
+    var jobMaterialBillingRate: Double {
+        jobBillingRate ?? billingRate ?? price
+    }
     static func == (lhs: PurchasedItem, rhs: PurchasedItem) -> Bool {
         return lhs.id == rhs.id &&
         lhs.name == rhs.name &&

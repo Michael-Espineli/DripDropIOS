@@ -36,10 +36,13 @@ final class CompanyPaySettingsViewModel: ObservableObject {
         }
 
         do {
-            if let existingSettings = try await dataService.fetchCompanyPaySettings(companyId: companyId) {
+            if var existingSettings = try await dataService.fetchCompanyPaySettings(companyId: companyId) {
+                if existingSettings.companyId.isBlank {
+                    existingSettings.companyId = companyId
+                }
                 settings = existingSettings
             } else {
-                settings = .defaultSettings()
+                settings = .defaultSettings(companyId: companyId)
             }
         } catch {
             alertMessage = "Could not load pay settings. \(error.localizedDescription)"
@@ -52,7 +55,10 @@ final class CompanyPaySettingsViewModel: ObservableObject {
         defer { isSaving = false }
 
         do {
-            try await dataService.saveCompanyPaySettings(companyId: companyId, settings)
+            var settingsToSave = settings
+            settingsToSave.companyId = companyId
+            try await dataService.saveCompanyPaySettings(companyId: companyId, settingsToSave)
+            settings = settingsToSave
             alertMessage = "Pay settings saved."
             showAlert = true
         } catch {
@@ -62,7 +68,7 @@ final class CompanyPaySettingsViewModel: ObservableObject {
     }
 
     func applyProductionDefaults(companyId:String) {
-        settings = .dripDropProductionDefault()
+        settings = .dripDropProductionDefault(companyId: companyId)
     }
 
     func applyHourlyDefaults(companyId:String) {

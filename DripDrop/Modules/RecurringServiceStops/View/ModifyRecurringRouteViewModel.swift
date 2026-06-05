@@ -190,11 +190,15 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
             return
         }
         let techFullName = (selectedCompanyUser.userName)
+        let fallbackTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
+            selectedType: nil,
+            useCase: .recurringRoute
+        )
         listOfRecurringStops.append(RecurringServiceStop(id: UUID().uuidString,
                                                          internalId: "", //Developer Maybe
-                                                         type: selectedJobTemplate.name,
-                                                         typeId: selectedJobTemplate.id,
-                                                         typeImage: "gear",
+                                                         type: fallbackTypeFields.type,
+                                                         typeId: fallbackTypeFields.typeId,
+                                                         typeImage: fallbackTypeFields.typeImage,
                                                          customerName: selectedLocation.customerName,
                                                          customerId: selectedLocation.customerId,
                                                          address: selectedLocation.address,
@@ -313,17 +317,32 @@ final class ModifyRecurringRouteViewModel:ObservableObject{
             print("Making Route with \(self.listOfRecurringStops.count) stops for \(techFullName) - \(self.selectedDay)")
             var binder:[recurringRouteOrder] = []
             var count:Int = 1
+            let routeTypeFields = await dataService.resolvedServiceStopTypeFields(
+                companyId: companyId,
+                useCase: .recurringRoute,
+                context: "ModifyRecurringRouteViewModel.modifyRecurringRouteWithVerification"
+            )
             for RSS in listOfRecurringStops {
                 print("Creating RSS for \(RSS.customerName) - \(RSS.id) - \(RSS.frequency)")
                 let locationId = RSS.serviceLocationId
+                let typeFields: ServiceStopTypeFields
+                if RSS.typeId.isBlank || RSS.typeId == selectedJobTemplate.id {
+                    typeFields = routeTypeFields
+                } else {
+                    typeFields = ServiceStopTypeFields(
+                        typeId: RSS.typeId,
+                        type: RSS.type,
+                        typeImage: RSS.typeImage
+                    )
+                }
                 let rssId = try await dataService.addNewRecurringServiceStop(
                     companyId: companyId,
                     recurringServiceStop: RecurringServiceStop(
                         id: UUID().uuidString,
                         internalId: RSS.internalId,
-                        type: "",
-                        typeId: "",
-                        typeImage: "bubbles.and.sparkles.fill",
+                        type: typeFields.type,
+                        typeId: typeFields.typeId,
+                        typeImage: typeFields.typeImage,
                         customerName: RSS.customerName,
                         customerId: RSS.customerId,
                         address: RSS.address,

@@ -34,14 +34,14 @@ struct EquipmentStatusPicker: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                ForEach(EquipmentStatus.allCases){ datum in
+                ForEach(EquipmentStatus.operationalStatusCases){ datum in
                     Button(action: {
                         status = datum
                         dismiss()
                     }, label: {
                         HStack{
                             Spacer()
-                                Text("\(datum.rawValue)")
+                                Text("\(datum.displayName)")
                             Spacer()
                         }
                         .padding(.horizontal,8)

@@ -178,6 +178,11 @@ extension Managment {
                     users
                 }
 
+                if role.permissionIdList.contains("260"),
+                   masterDataManager.isFeatureEnabled(.managementTechnicianPerformanceHistory) {
+                    technicianPerformanceHistory
+                }
+
                 if role.permissionIdList.contains("290") {
                     fleet
                 }
@@ -410,6 +415,72 @@ extension Managment {
                                     }
                                     .buttonStyle(.plain)
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    var technicianPerformanceHistory: some View {
+        managementCard(
+            title: "Technician Performance",
+            subtitle: "Review technician work history, miles, route completion, and paysheets.",
+            systemImage: "chart.xyaxis.line",
+            countText: VM.companyUsers.isEmpty ? nil : "\(VM.companyUsers.count)",
+            seeMore: {
+                AnyView(
+                    NavigationLink {
+                        TechnicianPerformanceHistoryManagementView(
+                            companyUsers: VM.companyUsers,
+                            dataService: dataService
+                        )
+                    } label: {
+                        seeMoreLabel
+                    }
+                    .buttonStyle(.plain)
+                )
+            },
+            stats: {
+                VStack(spacing: 8) {
+                    if VM.companyUsers.isEmpty {
+                        statRow(
+                            title: "Technicians",
+                            value: "0",
+                            systemImage: "person.3"
+                        )
+                    } else {
+                        ForEach(VM.companyUsers.prefix(5)) { user in
+                            statRow(
+                                title: user.userName,
+                                value: user.roleName,
+                                systemImage: "person.crop.circle.badge.checkmark"
+                            )
+                        }
+                    }
+                }
+            },
+            preview: {
+                if shouldShowFullPreview {
+                    if VM.companyUsers.isEmpty {
+                        emptyPreviewTile("No Technicians", systemImage: "person.slash")
+                    } else {
+                        horizontalPreviewList {
+                            ForEach(VM.companyUsers.prefix(10)) { user in
+                                NavigationLink {
+                                    CompanyUserDetailView(
+                                        dataService: dataService,
+                                        companyUserId: user.id
+                                    )
+                                } label: {
+                                    previewTile(
+                                        title: user.userName,
+                                        subtitle: user.roleName,
+                                        systemImage: "chart.xyaxis.line"
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -806,8 +877,12 @@ extension Managment {
 
             preview()
         }
-        .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
     }
 
     func statRow(title: String, value: String, systemImage: String) -> some View {
@@ -1009,5 +1084,53 @@ extension Managment {
             .currency(code: "USD")
             .precision(.fractionLength(0))
         )
+    }
+}
+
+struct TechnicianPerformanceHistoryManagementView: View {
+    let companyUsers: [CompanyUser]
+    let dataService: any ProductionDataServiceProtocol
+
+    var body: some View {
+        List {
+            if companyUsers.isEmpty {
+                ContentUnavailableView(
+                    "No Technicians",
+                    systemImage: "person.slash",
+                    description: Text("Technician performance history will appear after company users load.")
+                )
+            } else {
+                Section("Technicians") {
+                    ForEach(companyUsers) { user in
+                        NavigationLink {
+                            CompanyUserDetailView(
+                                dataService: dataService,
+                                companyUserId: user.id
+                            )
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.crop.circle.badge.checkmark")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 36, height: 36)
+                                    .background(.thinMaterial, in: Circle())
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(user.userName)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+
+                                    Text(user.roleName)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Technician Performance")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

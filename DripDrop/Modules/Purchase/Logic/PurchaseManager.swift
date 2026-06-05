@@ -354,7 +354,15 @@ final class PurchasedItemsManager {
         let itemRef = PurchaseItemDocument(purchaseItemId: currentItem.id, companyId: companyId)
         
         itemRef.updateData([
-            "jobId":workOrderId
+            "workOrderId": workOrderId,
+            "jobId": workOrderId,
+            "assignedJobId": workOrderId,
+            "assignedToJob": true,
+            "assignmentStatus": "assignedToJob",
+            "billingOwner": "job",
+            "jobBillingStatus": "handledByJob",
+            "jobBillable": currentItem.isJobBillable,
+            "jobBillingRate": currentItem.jobMaterialBillingRate
         ]) { err in
             if let err = err {
                 print("Error updating document: \(err)")

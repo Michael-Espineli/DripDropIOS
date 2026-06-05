@@ -14,6 +14,10 @@ extension Route {
             return "Jobs"
         case .billingJobs:
             return "Billing Jobs"
+        case .leads:
+            return "Leads"
+        case .sales:
+            return "Sales"
         case .employeeMainDailyDisplayView:
             return "Employee Dashboard"
         case .operation:
@@ -292,4 +296,3 @@ extension Route {
         }
     }
 }
-

@@ -58,6 +58,12 @@ struct ShoppingListItem: Identifiable, Codable, Hashable {
     var dbItemId: String?
     var purchasedItem: String?
     var invoiced: Bool
+    var linkedTaskId: String?
+    var linkedTaskName: String?
+    var linkedTaskType: String?
+    var linkedTaskStatus: String?
+    var installedEquipmentId: String?
+    var installedAt: Date?
 
     // Planned material pricing snapshot
     var plannedUnitCostCents: Int?

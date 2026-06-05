@@ -38,6 +38,7 @@
         @State var showSkipReason: Bool = false
         @State var skipReason: String = ""
         @State var isLoading: Bool = true
+        @State private var finishErrorMessage: String? = nil
 
         // Photos
         @State var pickerType: photoPickerType? = nil
@@ -77,6 +78,23 @@
             } message: {
                 Text("Will send to customer and manager")
                     .font(.footnote)
+            }
+            .alert(
+                "Unable To Finish",
+                isPresented: Binding(
+                    get: { finishErrorMessage != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            finishErrorMessage = nil
+                        }
+                    }
+                )
+            ) {
+                Button("OK", role: .cancel) {
+                    finishErrorMessage = nil
+                }
+            } message: {
+                Text(finishErrorMessage ?? "")
             }
             .onAppear {
                 opStatus = serviceStop.operationStatus
@@ -291,13 +309,13 @@
                                             stop: serviceStop,
                                             operationStatus: .finished
                                         )
+                                        navigationManager.goBack()
                                     } catch {
                                         print("Failed To Updated Finish Stops \(serviceStop.id)")
                                         print(error)
+                                        finishErrorMessage = error.localizedDescription
                                         print("")
                                     }
-
-                                    navigationManager.goBack()
                                 } else {
                                     print("Either Invalid Company or active Route")
                                 }

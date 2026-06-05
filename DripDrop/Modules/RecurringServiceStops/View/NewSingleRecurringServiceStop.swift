@@ -196,13 +196,15 @@ struct NewSingleRecurringServiceStop: View {
         
         ZStack{
             Color.listColor.ignoresSafeArea()
-            VStack{
-                form
-                Divider()
-                snapshot
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    form
+                    snapshot
+                    Color.clear.frame(height: 12)
+                }
+                .padding(12)
+                .padding(.horizontal, 8)
             }
-            .padding(8)
-            .padding(.horizontal,16)
 
         }
         .task{
@@ -233,9 +235,10 @@ struct NewSingleRecurringServiceStop: View {
         }
         
         .sheet(isPresented: $VM.showServiceLocationPicker) {
-            CompanyUserPicker(
+            ServiceLocationPicker(
                 dataService: dataService,
-                companyUser: $VM.selectedUser
+                customerId: customerId,
+                location: $VM.selectedLocation
             )
         }
     }
@@ -246,32 +249,32 @@ struct NewSingleRecurringServiceStop: View {
 }
 extension NewSingleRecurringServiceStop {
     var form : some View {
-        VStack{
+        VStack(alignment: .leading, spacing: 12) {
             
             Text("Add New Recurring Service Stop")
-                .font(.headline)
-            Divider()
-            ScrollView{
-                detailsCard
-                serviceStopTypeCard
-                Button(
-                    action: {
-                        if let currentCompany = masterDataManager.currentCompany {
-                            
-                            let typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
-                                selectedType: selectedCompanyServiceStopType,
-                                useCase: serviceStopTypeUseCase
-                            )
-                            
-                            VM.submit(
-                                companyId: currentCompany.id,
-                                customerId: customerId,
-                                serviceStopTypeFields: typeFields
-                            )
-                            dismiss()
-                        }
-                    },
-                    label: {
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            detailsCard
+            serviceStopTypeCard
+            Button(
+                action: {
+                    if let currentCompany = masterDataManager.currentCompany {
+                        
+                        let typeFields = ServiceStopTypeResolver.serviceStopTypeFields(
+                            selectedType: selectedCompanyServiceStopType,
+                            useCase: serviceStopTypeUseCase
+                        )
+                        
+                        VM.submit(
+                            companyId: currentCompany.id,
+                            customerId: customerId,
+                            serviceStopTypeFields: typeFields
+                        )
+                        dismiss()
+                    }
+                },
+                label: {
                     HStack{
                         Spacer()
                         Text("Add")
@@ -279,13 +282,12 @@ extension NewSingleRecurringServiceStop {
                     }
                     .modifier(AddButtonModifier())
                 })
-            }
         }
     }
     var snapshot : some View {
-        ScrollView{
+        VStack(alignment: .leading, spacing: 12) {
             HStack{
-                Text("Route Snapshot")
+                sectionHeader("Route Snapshot", systemImage: "list.bullet.rectangle")
                 Spacer()
                 Button(action: {
                     VM.showSnapshot.toggle()
@@ -294,13 +296,31 @@ extension NewSingleRecurringServiceStop {
                         .modifier(ListButtonModifier())
                 })
             }
+
             if VM.showSnapshot {
-                ForEach(VM.RSSList){ rss in
-                    Text("\(rss.customerName)")
-                        .modifier(ListButtonModifier())
+                if VM.RSSList.isEmpty {
+                    Text("No recurring stops on this route yet.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                } else {
+                    LazyVStack(spacing: 8) {
+                        ForEach(VM.RSSList){ rss in
+                            snapshotRow(rss)
+                        }
+                    }
                 }
+            } else {
+                Text("\(VM.RSSList.count) stop(s) for \(VM.selectedUser.userName) on \(VM.selectedDay.rawValue)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
         }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }
 
@@ -320,7 +340,7 @@ extension NewSingleRecurringServiceStop {
             
             pickerButtonRow(
                 title: "Location",
-                value: VM.selectedUser.id == "" ? "Select Location" : "\(VM.selectedLocation.nickName) - \(VM.selectedLocation.address.streetAddress) ",
+                value: VM.selectedLocation.id == "" ? "Select Location" : "\(VM.selectedLocation.nickName) - \(VM.selectedLocation.address.streetAddress)",
                 systemImage: "route",
                 isSelected: VM.selectedLocation.id != ""
             ) {
@@ -485,6 +505,44 @@ extension NewSingleRecurringServiceStop {
             }
 
             Spacer()
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    func snapshotRow(_ rss: RecurringServiceStop) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: rss.typeImage.isEmpty ? "mappin.and.ellipse" : rss.typeImage)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(rss.customerName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(rss.address.streetAddress)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Text(rss.type.isEmpty ? "Recurring Service Stop" : rss.type)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(rss.frequency.rawValue)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Capsule().fill(Color.primary.opacity(0.08)))
         }
         .padding(12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

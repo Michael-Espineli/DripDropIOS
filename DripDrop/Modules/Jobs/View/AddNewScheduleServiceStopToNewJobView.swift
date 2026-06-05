@@ -434,6 +434,17 @@ extension AddNewScheduleServiceStopToNewJobView {
         Task {
             if let currentCompany = masterDataManager.currentCompany {
                 do {
+                    let typeFields: ServiceStopTypeFields
+                    if VM.selectedPlannedServiceStop == nil {
+                        typeFields = await dataService.resolvedServiceStopTypeFields(
+                            companyId: currentCompany.id,
+                            useCase: .jobVisit,
+                            context: "AddNewScheduleServiceStopToNewJobView.scheduleServiceStop"
+                        )
+                    } else {
+                        typeFields = resolvedServiceStopTypeFields
+                    }
+
                     let values = try await VM.scheduleNewServiceStopNewJob(
                         companyId: currentCompany.id,
                         jobId: jobId,
@@ -441,7 +452,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                         customerName: customerName,
                         serviceLocationId: serviceLocationId,
                         estimatedDurationOverride: VM.selectedPlannedServiceStop?.estimatedMinutes,
-                        serviceStopTypeFields: resolvedServiceStopTypeFields
+                        serviceStopTypeFields: typeFields
                     )
 
                     serviceStops.append(values.0)

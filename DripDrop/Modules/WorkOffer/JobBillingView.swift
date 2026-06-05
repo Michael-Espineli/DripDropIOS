@@ -189,7 +189,7 @@ struct JobBillingView: View {
             Divider().opacity(0.2)
 
             JobBillingDetailRow(
-                title: "Actual Payroll",
+                title: "Actual Labor",
                 value: JobBillingMoneyFormatter.money(actualPayrollCents)
             )
 

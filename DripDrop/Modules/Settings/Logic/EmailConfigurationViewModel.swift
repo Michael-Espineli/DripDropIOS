@@ -9,11 +9,109 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
+
+struct ServiceStopCategoryCompletionSettings: Identifiable, Codable, Equatable {
+    var category: String
+    var sendEmailOnFinish: Bool
+    var requirePhotoOnFinish: Bool
+    var emailSubject: String
+    var emailBody: String
+    var emailFooter: String
+    var sendGridTemplateId: String?
+
+    var id: String { category }
+
+    static func defaultSettings(
+        for category: ServiceStopCategory,
+        companyName: String = "your pool company"
+    ) -> ServiceStopCategoryCompletionSettings {
+        let subject: String
+        let body: String
+
+        switch category {
+        case .route:
+            subject = "\(companyName) Service Report"
+            body = "Thank you for letting \(companyName) service your pool. Here is a summary of today's visit."
+        case .job:
+            subject = "\(companyName) Job Visit Summary"
+            body = "Thank you for choosing \(companyName). Here is a summary of the work completed during this visit."
+        case .jobEstimate:
+            subject = "\(companyName) Estimate Visit Recap"
+            body = "Thank you for meeting with \(companyName). Here is a recap of the information gathered for your estimate."
+        case .serviceAgreementEstimate:
+            subject = "\(companyName) Service Agreement Visit Recap"
+            body = "Thank you for considering \(companyName) for recurring service. Here is a recap of the service location information we gathered."
+        case .customerRelationship:
+            subject = "\(companyName) Visit Recap"
+            body = "Thank you for taking the time to meet with \(companyName). Here is a recap of the visit and any follow-up notes."
+        }
+
+        return ServiceStopCategoryCompletionSettings(
+            category: category.rawValue,
+            sendEmailOnFinish: false,
+            requirePhotoOnFinish: false,
+            emailSubject: subject,
+            emailBody: body,
+            emailFooter: "Please contact us with any questions.",
+            sendGridTemplateId: nil
+        )
+    }
+
+    var firestoreData: [String: Any] {
+        var data: [String: Any] = [
+            "category": category,
+            "sendEmailOnFinish": sendEmailOnFinish,
+            "requirePhotoOnFinish": requirePhotoOnFinish,
+            "emailSubject": emailSubject,
+            "emailBody": emailBody,
+            "emailFooter": emailFooter
+        ]
+
+        if let sendGridTemplateId, !sendGridTemplateId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            data["sendGridTemplateId"] = sendGridTemplateId
+        }
+
+        return data
+    }
+}
+
 struct CompanyEmailConfiguration:Identifiable,Codable {
     var id : String = UUID().uuidString
     var emailIsOn: Bool
     var emailBody : String
     var requirePhoto : Bool
+    var serviceStopCategorySettings: [String: ServiceStopCategoryCompletionSettings]? = nil
+}
+
+extension CompanyEmailConfiguration {
+    func resolvedCategorySettings(companyName: String = "your pool company") -> [String: ServiceStopCategoryCompletionSettings] {
+        var settings = serviceStopCategorySettings ?? [:]
+
+        for category in ServiceStopCategory.allCases {
+            if settings[category.rawValue] == nil {
+                var defaultSettings = ServiceStopCategoryCompletionSettings.defaultSettings(
+                    for: category,
+                    companyName: companyName
+                )
+                defaultSettings.sendEmailOnFinish = emailIsOn
+                defaultSettings.requirePhotoOnFinish = requirePhoto
+                if !emailBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    defaultSettings.emailBody = emailBody
+                }
+                settings[category.rawValue] = defaultSettings
+            }
+        }
+
+        return settings
+    }
+
+    func completionSettings(
+        for category: ServiceStopCategory,
+        companyName: String = "your pool company"
+    ) -> ServiceStopCategoryCompletionSettings {
+        resolvedCategorySettings(companyName: companyName)[category.rawValue]
+        ?? ServiceStopCategoryCompletionSettings.defaultSettings(for: category, companyName: companyName)
+    }
 }
 struct CustomerEmailConfiguration:Identifiable,Codable {
     var id : String = UUID().uuidString
@@ -35,10 +133,15 @@ final class EmailConfigurationViewModel: ObservableObject {
     @Published var allCustomersSelected:Bool = false
 
     @Published var emailBody:String = "false"
+    @Published var categorySettings: [String: ServiceStopCategoryCompletionSettings] = [:]
     @Published private(set) var emailConfig:CompanyEmailConfiguration? = nil
     @Published private(set) var customerConfigList:[CustomerEmailConfiguration] = []
     @Published private(set) var customers:[Customer] = []
     @Published var hasChanges:Bool = false
+
+    var hasAnyCategoryEmailOn: Bool {
+        categorySettings.values.contains { $0.sendEmailOnFinish }
+    }
 
     func onLoad(companyId:String) async throws {
         self.isLoading = true
@@ -49,6 +152,8 @@ final class EmailConfigurationViewModel: ObservableObject {
         if let emailConfig = self.emailConfig {
             self.emailIsOn = emailConfig.emailIsOn
             self.emailBody = emailConfig.emailBody
+            self.requiresPhoto = emailConfig.requirePhoto
+            self.categorySettings = emailConfig.resolvedCategorySettings()
         }
         var customerList = try await dataService.getCustomersActive(companyId: companyId, active: true)
         customerList.sort(by: {$0.lastName < $1.lastName})
@@ -77,8 +182,9 @@ final class EmailConfigurationViewModel: ObservableObject {
         self.isLoading = true
 
         if let emailConfig = self.emailConfig {
-            if emailConfig.emailIsOn != self.emailIsOn {
-                try await dataService.updateEmailConfigurationIsOn(companyId: companyId, emailIsOn: self.emailIsOn)
+            let derivedEmailIsOn = hasAnyCategoryEmailOn
+            if emailConfig.emailIsOn != derivedEmailIsOn {
+                try await dataService.updateEmailConfigurationIsOn(companyId: companyId, emailIsOn: derivedEmailIsOn)
             }
             if emailConfig.emailBody != self.emailBody {
                 try await dataService.updateEmailConfigurationBody(companyId: companyId, newBody: self.emailBody)
@@ -86,11 +192,19 @@ final class EmailConfigurationViewModel: ObservableObject {
             if emailConfig.requirePhoto != self.requiresPhoto {
                 try await dataService.updateEmailConfigurationRequirePhoto(companyId: companyId, requirePhoto: self.requiresPhoto)
             }
+            if emailConfig.resolvedCategorySettings() != self.categorySettings {
+                try await dataService.updateEmailConfigurationCategorySettings(
+                    companyId: companyId,
+                    categorySettings: self.categorySettings
+                )
+            }
             self.emailConfig = try await dataService.getEmailConfigurationSettings(companyId: companyId)
             print("Got Email Config")
             if let emailConfig = self.emailConfig {
                 self.emailIsOn = emailConfig.emailIsOn
                 self.emailBody = emailConfig.emailBody
+                self.requiresPhoto = emailConfig.requirePhoto
+                self.categorySettings = emailConfig.resolvedCategorySettings()
             }
         }
         self.isLoading = false
@@ -98,13 +212,19 @@ final class EmailConfigurationViewModel: ObservableObject {
     func checkChanges(){
         print("Check Changes")
         if let emailConfig = self.emailConfig {
-            if emailConfig.emailIsOn != self.emailIsOn && emailConfig.emailBody != self.emailBody {
+            let derivedEmailIsOn = hasAnyCategoryEmailOn
+            let savedCategorySettings = emailConfig.resolvedCategorySettings()
+            if emailConfig.emailIsOn != derivedEmailIsOn && emailConfig.emailBody != self.emailBody {
                 self.hasChanges = true
-            } else if emailConfig.emailIsOn != self.emailIsOn {
+            } else if emailConfig.emailIsOn != derivedEmailIsOn {
                 print("Has Changes in email is on")
                 self.hasChanges = true
             } else if emailConfig.emailBody != self.emailBody {
                 print("Has Changes In Email Body ")
+                self.hasChanges = true
+            } else if emailConfig.requirePhoto != self.requiresPhoto {
+                self.hasChanges = true
+            } else if savedCategorySettings != self.categorySettings {
                 self.hasChanges = true
             } else {
                 self.hasChanges = false
@@ -119,6 +239,8 @@ final class EmailConfigurationViewModel: ObservableObject {
             
             self.emailIsOn = emailConfig.emailIsOn
             self.emailBody = emailConfig.emailBody
+            self.requiresPhoto = emailConfig.requirePhoto
+            self.categorySettings = emailConfig.resolvedCategorySettings()
             
             self.hasChanges = false
         }

@@ -209,6 +209,42 @@ extension AddNewRepairRequest {
                     bodyOfWater: $VM.selectedBodyOfWater
                 )
             }
+
+            pickerRow(
+                title: "Equipment",
+                value: VM.selectedEquipment.id == "" ? "Select Equipment" : VM.selectedEquipment.name,
+                systemImage: "wrench.and.screwdriver",
+                isSelected: VM.selectedEquipment.id != ""
+            ) {
+                if VM.selectedLocation.id != "" {
+                    VM.showEquipmentSelector.toggle()
+                }
+            }
+            .sheet(isPresented: $VM.showEquipmentSelector) {
+                EquipmentPickerByServiceLocationId(
+                    dataService: dataService,
+                    serviceLocationId: VM.selectedLocation.id,
+                    equipment: $VM.selectedEquipment
+                )
+            }
+
+            if VM.selectedEquipment.id != "" {
+                pickerRow(
+                    title: "Equipment Status",
+                    value: VM.selectedEquipmentStatus.displayName,
+                    systemImage: "gauge.with.dots.needle.bottom.50percent",
+                    isSelected: true
+                ) {
+                    VM.showEquipmentStatusSelector.toggle()
+                }
+                .sheet(isPresented: $VM.showEquipmentStatusSelector) {
+                    EquipmentStatusPicker(
+                        dataService: dataService,
+                        status: $VM.selectedEquipmentStatus
+                    )
+                    .presentationDetents([.fraction(0.3), .fraction(0.5)])
+                }
+            }
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))

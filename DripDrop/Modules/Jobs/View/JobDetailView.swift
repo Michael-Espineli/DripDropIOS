@@ -9,6 +9,7 @@
 
 
 import SwiftUI
+
 struct JobDetailView: View {
     init(job:Job,dataService:any ProductionDataServiceProtocol){
         _VM = StateObject(wrappedValue: JobDetailViewModel(dataService: dataService))
@@ -26,7 +27,7 @@ struct JobDetailView: View {
 
     @State var view:String = "Info"
     @State var jobId:String = "J"
-    
+
     @State private var showAdminSelector: Bool = false
     @State private var showOperationStatusSelector: Bool = false
     @State private var showBillingStatusSelector: Bool = false
@@ -361,8 +362,6 @@ struct JobDetailView: View {
                         laborCost = String(job.laborCost)
                         
                         try await VM.onLoad(companyId: company.id, serviceLocationId: job.serviceLocationId, job: job)
-                        
-                        try await VM.getPurchaseCost(companyId: company.id, purchaseIds: job.purchasedItemsIds ?? [])
                     }
                 } catch {
                     
@@ -873,8 +872,8 @@ extension JobDetailView {
                 )
 
                 JobEditInfoMoneyRow(
-                    title: "Actual Payroll",
-                    cents: VM.actualPayrollTotalCents
+                    title: "Actual Labor",
+                    cents: VM.actualLaborTotalCents
                 )
 
                 JobEditInfoMoneyRow(
@@ -2361,6 +2360,9 @@ extension JobDetailView {
                 onAddShoppingItem: {
                     VM.isAddShoppingList.toggle()
                 },
+                onAttachPurchasedItem: {
+                    VM.isPresentPurchasedItemSelector.toggle()
+                },
                 onEditShoppingItem: { item in
                     VM.editShoppingItem = item
                 },
@@ -2427,6 +2429,31 @@ extension JobDetailView {
             )
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $VM.isPresentPurchasedItemSelector) {
+            JobPurchasedItemSelectorView(
+                items: VM.availablePurchasedItems,
+                categoryByPurchasedItemId: VM.availablePurchasedItemCategories,
+                isLoading: VM.isLoadingAvailablePurchasedItems,
+                onLoad: { startDate, endDate in
+                    guard let currentCompany = masterDataManager.currentCompany else { return }
+                    try await VM.loadUnassignedPurchasedItems(
+                        companyId: currentCompany.id,
+                        startDate: startDate,
+                        endDate: endDate
+                    )
+                },
+                onAttach: { items in
+                    guard let currentCompany = masterDataManager.currentCompany else { return }
+                    try await VM.attachPurchasedItemsToJob(
+                        companyId: currentCompany.id,
+                        job: job,
+                        items: items
+                    )
+                    job.purchasedItemsIds = Array(Set((job.purchasedItemsIds ?? []) + items.map(\.id)))
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
         .sheet(item: $VM.editShoppingItem, onDismiss: {
             if let currentCompany = masterDataManager.currentCompany {
                 VM.onDismissAddShoppingListItem(
@@ -2448,7 +2475,7 @@ extension JobDetailView {
         JobBillingView(
             job: job,
             plannedLaborCents: VM.plannedTotalLaborCents,
-            actualPayrollCents: VM.actualPayrollTotalCents,
+            actualPayrollCents: VM.actualLaborTotalCents,
             plannedMaterialCostCents: VM.plannedMaterialCostCents,
             actualMaterialCostCents: VM.actualPurchasedMaterialCostCents,
             plannedMaterialPriceCents: VM.plannedMaterialPriceCents,
@@ -3277,7 +3304,7 @@ extension JobDetailView {
             Button {
                 view = "Info"
             } label: {
-                Label("Review", systemImage: "chevron.right")
+                Label("Info", systemImage: "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)

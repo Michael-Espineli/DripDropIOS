@@ -26,6 +26,7 @@ struct ServiceStopDetailView2: View {
     @State private var isSaving = false
     @State var showSkipReason:Bool = false
     @State var skipReason:String = ""
+    @State private var finishErrorMessage:String? = nil
     @State var expandScreenSelector:Bool = false
     @State var selectedScreen:serviceStopScreen = .waterDetails
     @State var stopData:StopData = StopData(
@@ -62,37 +63,7 @@ struct ServiceStopDetailView2: View {
             VStack(spacing: 0){
                 if let stop = serviceStop {
                     TabView(selection: $selectedTab) {
-                        ServiceStopInfoView(dataService: dataService, serviceStopId: serviceStopId)
-                             .tabItem {
-                                 Image(systemName: "info.circle")
-                                 Text("Info")
-                             }
-                             .tag("Info")
-                        ServiceStopTaskView(dataService: dataService,taskList:$VM.taskList, serviceStopId: serviceStopId)
-                             .tabItem {
-                                 Image(systemName: "chart.bar.doc.horizontal")
-                                 Text("Tasks")
-                             }
-                             .tag("Tasks")
-
-                        ServiceStopUtilityView(stopData: $stopData,serviceStopId:serviceStopId)
-                             .tabItem {
-                                 Image(systemName: "spigot.fill")
-                                 Text("Water")
-                             }
-                             .tag("Water")
-                        ServiceStopEquipmentView(serviceStop:stop, stopData: $stopData)
-                             .tabItem {
-                                 Image(systemName: "wrench.and.screwdriver.fill")
-                                 Text("Equipment")
-                             }
-                             .tag("Equipment")
-                        recap
-                             .tabItem {
-                                 Image(systemName: "checkerboard.rectangle")
-                                 Text("Finish")
-                             }
-                             .tag("Finish")
+                        categoryTabs(for: stop)
                      }
                     
                 }
@@ -105,6 +76,7 @@ struct ServiceStopDetailView2: View {
             if let stop = serviceStop {
                 
                 opStatus = stop.operationStatus
+                selectedTab = defaultTab(for: stop)
             }
         }
         .task {
@@ -166,6 +138,23 @@ struct ServiceStopDetailView2: View {
             Text("Will send to customer and manager")
                 .font(.footnote)
         }
+        .alert(
+            "Unable To Finish",
+            isPresented: Binding(
+                get: { finishErrorMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        finishErrorMessage = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                finishErrorMessage = nil
+            }
+        } message: {
+            Text(finishErrorMessage ?? "")
+        }
     }
     func submitSkipReason() {
         if skipReason == "" {
@@ -189,6 +178,93 @@ struct ServiceStopDetailView2: View {
         print("[ServiceStopDetailView2][updateServiceStopStatus]")
         isSaving = false
         
+    }
+}
+
+private extension ServiceStopDetailView2 {
+    func defaultTab(for stop: ServiceStop) -> String {
+        switch stop.resolvedCategory {
+        case .route, .serviceAgreementEstimate:
+            return "Water"
+        case .job, .jobEstimate, .customerRelationship:
+            return "Info"
+        }
+    }
+
+    @ViewBuilder
+    func categoryTabs(for stop: ServiceStop) -> some View {
+        switch stop.resolvedCategory {
+        case .route:
+            infoTab
+            taskTab
+            waterTab
+            equipmentTab(for: stop)
+            finishTab
+        case .job:
+            infoTab
+            taskTab
+            equipmentTab(for: stop)
+            finishTab
+        case .jobEstimate:
+            infoTab
+            taskTab
+            equipmentTab(for: stop)
+            finishTab
+        case .serviceAgreementEstimate:
+            infoTab
+            waterTab
+            equipmentTab(for: stop)
+            finishTab
+        case .customerRelationship:
+            infoTab
+            taskTab
+            finishTab
+        }
+    }
+
+    var infoTab: some View {
+        ServiceStopInfoView(dataService: dataService, serviceStopId: serviceStopId)
+            .tabItem {
+                Image(systemName: "info.circle")
+                Text("Info")
+            }
+            .tag("Info")
+    }
+
+    var taskTab: some View {
+        ServiceStopTaskView(dataService: dataService, taskList: $VM.taskList, serviceStopId: serviceStopId)
+            .tabItem {
+                Image(systemName: "chart.bar.doc.horizontal")
+                Text("Tasks")
+            }
+            .tag("Tasks")
+    }
+
+    var waterTab: some View {
+        ServiceStopUtilityView(stopData: $stopData, serviceStopId: serviceStopId)
+            .tabItem {
+                Image(systemName: "spigot.fill")
+                Text("Water")
+            }
+            .tag("Water")
+    }
+
+    func equipmentTab(for stop: ServiceStop) -> some View {
+        ServiceStopEquipmentView(serviceStop: stop, stopData: $stopData)
+            .tabItem {
+                Image(systemName: "wrench.and.screwdriver.fill")
+                Text("Equipment")
+            }
+            .tag("Equipment")
+    }
+
+    var finishTab: some View {
+        recap
+            .tabItem {
+                Image(systemName: "checkerboard.rectangle")
+                Text("Finish")
+            }
+            .tag("Finish")
     }
 }
 extension ServiceStopDetailView2 {
@@ -476,15 +552,16 @@ extension ServiceStopDetailView2 {
                                         print("-----------------")
                                         
                                         try await VM.updateServicestopOperationStatus(companyId: company.id,currentUserId: user.id, stop: serviceStop, operationStatus: .finished)
+                                        navigationManager.goBack()
                                     } catch {
                                         print("Failed To Updated Finish Stops \(serviceStop.id)")
                                         print(error)
+                                        finishErrorMessage = error.localizedDescription
                                         print("")
                                     }
                                     
                                     // Add Observations
                                     //Add Data
-                                    navigationManager.goBack()
                                 } else {
                                     print("Either Invalid Company or active Route")
                                 }

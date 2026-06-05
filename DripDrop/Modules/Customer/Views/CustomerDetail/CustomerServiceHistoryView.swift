@@ -7,6 +7,420 @@
 ///There are a whole Bunch of duplicate functions in here if I call one it calls them all, so fix that
 import SwiftUI
 
+enum CustomerTimelineEventKind: String, CaseIterable {
+    case serviceStop = "Service Stop"
+    case chemistry = "Readings & Dosages"
+    case equipmentMaintenance = "Maintenance"
+    case equipmentRepair = "Repair"
+    case waterFill = "Water Fill"
+    case waterEmpty = "Water Empty"
+    case workOrder = "Work Order"
+    case note = "Note"
+
+    var systemImage: String {
+        switch self {
+        case .serviceStop: return "checklist"
+        case .chemistry: return "testtube.2"
+        case .equipmentMaintenance: return "wrench.and.screwdriver"
+        case .equipmentRepair: return "cross.case"
+        case .waterFill: return "drop.fill"
+        case .waterEmpty: return "drop"
+        case .workOrder: return "briefcase"
+        case .note: return "text.bubble"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .serviceStop: return .blue
+        case .chemistry: return .cyan
+        case .equipmentMaintenance: return .orange
+        case .equipmentRepair: return .red
+        case .waterFill: return .indigo
+        case .waterEmpty: return .orange
+        case .workOrder: return .purple
+        case .note: return .green
+        }
+    }
+}
+
+enum CustomerTimelineFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case service = "Service"
+    case jobs = "Jobs"
+    case notes = "Notes"
+    case chemistry = "Chemistry"
+    case equipment = "Equipment"
+    case water = "Water"
+
+    var id: String { rawValue }
+
+    func contains(_ kind: CustomerTimelineEventKind) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .service:
+            return kind == .serviceStop
+        case .jobs:
+            return kind == .workOrder
+        case .notes:
+            return kind == .note
+        case .chemistry:
+            return kind == .chemistry
+        case .equipment:
+            return kind == .equipmentMaintenance || kind == .equipmentRepair
+        case .water:
+            return kind == .waterFill || kind == .waterEmpty
+        }
+    }
+}
+
+struct CustomerTimelineEvent: Identifiable, Hashable {
+    let id: String
+    let kind: CustomerTimelineEventKind
+    let title: String
+    let subtitle: String
+    let detail: String
+    let date: Date
+}
+
+@MainActor
+final class CustomerTimelineViewModel: ObservableObject {
+    @Published private(set) var events: [CustomerTimelineEvent] = []
+    @Published private(set) var isLoading = false
+
+    private let dataService: any ProductionDataServiceProtocol
+
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
+    }
+
+    func load(companyId: String, customer: Customer) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            async let serviceStopEvents = loadServiceStopEvents(companyId: companyId, customer: customer)
+            async let stopDataEvents = loadStopDataEvents(companyId: companyId, customerId: customer.id)
+            async let equipmentEvents = loadEquipmentEvents(companyId: companyId, customerId: customer.id)
+            async let waterEvents = loadWaterEvents(companyId: companyId, customerId: customer.id)
+            async let jobEvents = loadJobEvents(companyId: companyId, customerId: customer.id)
+
+            let loadedServiceStops = try await serviceStopEvents
+            let loadedStopData = try await stopDataEvents
+            let loadedEquipment = try await equipmentEvents
+            let loadedWater = try await waterEvents
+            let loadedJobs = try await jobEvents
+            let combined = loadedServiceStops + loadedStopData + loadedEquipment + loadedWater + loadedJobs
+            events = combined.sorted { $0.date > $1.date }
+        } catch {
+            print("[CustomerTimelineViewModel][load] error: \(error)")
+            events = []
+        }
+    }
+
+    private func loadServiceStopEvents(companyId: String, customer: Customer) async throws -> [CustomerTimelineEvent] {
+        let startDate = Calendar.current.date(byAdding: .year, value: -2, to: Date()) ?? Date()
+        let endDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
+        let stops = try await dataService.getServiceStopsBetweenDatesAndByCustomer(
+            companyId: companyId,
+            startDate: startDate,
+            endDate: endDate,
+            customer: customer
+        )
+
+        return stops.map { stop in
+            CustomerTimelineEvent(
+                id: "service-stop-\(stop.id)",
+                kind: .serviceStop,
+                title: stop.type.isEmpty ? (stop.jobName ?? "Service stop") : stop.type,
+                subtitle: [stop.tech, stop.operationStatus.rawValue, stop.billingStatus.rawValue]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " • "),
+                detail: stop.description,
+                date: stop.serviceDate
+            )
+        }
+    }
+
+    private func loadStopDataEvents(companyId: String, customerId: String) async throws -> [CustomerTimelineEvent] {
+        let stopData = try await dataService.getStopDataByCustomer(companyId: companyId, customerId: customerId)
+        return stopData
+            .filter { !$0.readings.isEmpty || !$0.dosages.isEmpty || !$0.observation.isEmpty }
+            .map { data in
+                let readingPreview = data.readings.prefix(3).compactMap { reading -> String? in
+                    guard let name = reading.name, !name.isEmpty else { return nil }
+                    return "\(name) \(reading.amount ?? "")\(reading.UOM.map { " \($0)" } ?? "")"
+                }.joined(separator: ", ")
+
+                let dosagePreview = data.dosages.prefix(3).compactMap { dosage -> String? in
+                    guard let name = dosage.name, !name.isEmpty else { return nil }
+                    return "\(name) \(dosage.amount ?? "")\(dosage.UOM.map { " \($0)" } ?? "")"
+                }.joined(separator: ", ")
+
+                return CustomerTimelineEvent(
+                    id: "stop-data-\(data.id)",
+                    kind: .chemistry,
+                    title: "Water readings recorded",
+                    subtitle: "\(data.readings.count) readings • \(data.dosages.count) dosages",
+                    detail: readingPreview.isEmpty ? dosagePreview : readingPreview,
+                    date: data.date
+                )
+            }
+    }
+
+    private func loadEquipmentEvents(companyId: String, customerId: String) async throws -> [CustomerTimelineEvent] {
+        let equipment = try await dataService.getAllEquipment(companyId: companyId)
+        let customerEquipment = equipment.filter { $0.customerId == customerId }
+
+        var events: [CustomerTimelineEvent] = []
+        for item in customerEquipment {
+            let history = try await dataService.getEquipmentServiceHistory(companyId: companyId, equipmentId: item.id)
+            events.append(contentsOf: history.map { record in
+                CustomerTimelineEvent(
+                    id: "equipment-\(item.id)-\(record.id)",
+                    kind: record.type == .repair ? .equipmentRepair : .equipmentMaintenance,
+                    title: record.name.isEmpty ? "\(item.name) \(record.type.rawValue)" : record.name,
+                    subtitle: [item.name, record.techName, record.performedBy.rawValue]
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " • "),
+                    detail: record.description,
+                    date: record.date
+                )
+            })
+        }
+
+        return events
+    }
+
+    private func loadWaterEvents(companyId: String, customerId: String) async throws -> [CustomerTimelineEvent] {
+        let locations = try await dataService.getAllCustomerServiceLocationsId(companyId: companyId, customerId: customerId)
+        var bodiesOfWater: [BodyOfWater] = []
+
+        for location in locations {
+            let locationBodies = try await dataService.getAllBodiesOfWaterByServiceLocationIdAndCustomerId(
+                serviceLocationId: location.id,
+                customerId: customerId,
+                companyId: companyId
+            )
+            bodiesOfWater.append(contentsOf: locationBodies)
+        }
+
+        var events: [CustomerTimelineEvent] = []
+        for bodyOfWater in bodiesOfWater {
+            let history = try await dataService.getBodyOfWaterHistory(companyId: companyId, bodyOfWaterId: bodyOfWater.id)
+            events.append(contentsOf: history.map { record in
+                CustomerTimelineEvent(
+                    id: "water-\(bodyOfWater.id)-\(record.id)",
+                    kind: record.type == .fill ? .waterFill : .waterEmpty,
+                    title: "\(record.type.rawValue) - \(bodyOfWater.name)",
+                    subtitle: [record.techName, record.gallons.map { "\($0) gal" } ?? ""]
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " • "),
+                    detail: record.description,
+                    date: record.date
+                )
+            })
+        }
+
+        return events
+    }
+
+    private func loadJobEvents(companyId: String, customerId: String) async throws -> [CustomerTimelineEvent] {
+        let jobs = try await dataService.getAllJobsByCustomer(companyId: companyId, customerId: customerId)
+        var events: [CustomerTimelineEvent] = jobs.map { job in
+            CustomerTimelineEvent(
+                id: "work-order-\(job.id)",
+                kind: .workOrder,
+                title: job.type.isEmpty ? "Work order" : job.type,
+                subtitle: [job.adminName, job.operationStatus.rawValue, job.billingStatus.rawValue]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " • "),
+                detail: job.description,
+                date: job.dateCreated
+            )
+        }
+
+        for job in jobs {
+            let comments = try await dataService.getWorkOrderComments(companyId: companyId, workOrderId: job.id)
+            events.append(contentsOf: comments.map { comment in
+                CustomerTimelineEvent(
+                    id: "work-order-comment-\(job.id)-\(comment.id)",
+                    kind: .note,
+                    title: comment.resolved ? "Work order comment resolved" : "Work order comment",
+                    subtitle: [comment.userName ?? comment.authorName ?? "", job.type]
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " • "),
+                    detail: comment.comment,
+                    date: comment.date ?? job.dateCreated
+                )
+            })
+        }
+
+        return events
+    }
+}
+
+struct CustomerTimelineView: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @StateObject private var VM: CustomerTimelineViewModel
+    @State private var selectedFilter: CustomerTimelineFilter = .all
+    let customer: Customer
+
+    private var visibleEvents: [CustomerTimelineEvent] {
+        VM.events.filter { selectedFilter.contains($0.kind) }
+    }
+
+    init(dataService: any ProductionDataServiceProtocol, customer: Customer) {
+        _VM = StateObject(wrappedValue: CustomerTimelineViewModel(dataService: dataService))
+        self.customer = customer
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Customer Timeline")
+                    .font(.headline.weight(.semibold))
+                Spacer()
+                if VM.isLoading {
+                    ProgressView()
+                }
+            }
+
+            if !VM.isLoading && !VM.events.isEmpty {
+                filterPicker
+            }
+
+            if VM.isLoading && VM.events.isEmpty {
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading customer history")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            } else if VM.events.isEmpty {
+                ContentUnavailableView(
+                    "No Timeline Yet",
+                    systemImage: "clock.arrow.circlepath",
+                    description: Text("Service, jobs, notes, readings, equipment, and water history will appear here.")
+                )
+                .padding(.vertical, 8)
+            } else if visibleEvents.isEmpty {
+                ContentUnavailableView(
+                    "No \(selectedFilter.rawValue) Events",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("Try another timeline filter.")
+                )
+                .padding(.vertical, 8)
+            } else {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(visibleEvents.prefix(25)).indices, id: \.self) { index in
+                        timelineRow(
+                            event: Array(visibleEvents.prefix(25))[index],
+                            isLast: index == min(visibleEvents.count, 25) - 1
+                        )
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+        )
+        .task(id: customer.id) {
+            if let company = masterDataManager.currentCompany {
+                await VM.load(companyId: company.id, customer: customer)
+            }
+        }
+    }
+
+    private func timelineRow(event: CustomerTimelineEvent, isLast: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .fill(event.kind.color.opacity(0.12))
+                        .frame(width: 34, height: 34)
+                    Image(systemName: event.kind.systemImage)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(event.kind.color)
+                }
+
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.2))
+                        .frame(width: 1)
+                        .frame(minHeight: 42)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top) {
+                    Text(event.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
+                    Text(event.kind.rawValue)
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .foregroundStyle(event.kind.color)
+                        .background(Capsule().fill(event.kind.color.opacity(0.12)))
+                }
+
+                Text(event.date.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if !event.subtitle.isEmpty {
+                    Text(event.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if !event.detail.isEmpty {
+                    Text(event.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            .padding(.bottom, isLast ? 0 : 14)
+        }
+    }
+
+    private var filterPicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(CustomerTimelineFilter.allCases) { filter in
+                    Button {
+                        selectedFilter = filter
+                    } label: {
+                        Text(filter.rawValue)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .foregroundStyle(selectedFilter == filter ? Color.primary : Color.secondary)
+                            .background(
+                                Capsule()
+                                    .fill(selectedFilter == filter ? Color(.secondarySystemBackground) : Color.clear)
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.secondary.opacity(selectedFilter == filter ? 0.25 : 0.15), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
 struct CustomerServiceHistoryView: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
 
@@ -244,10 +658,11 @@ extension CustomerServiceHistoryView{
             Picker("View", selection: $stringView) {
                 ForEach(viewList,id:\.self){
                     Text($0).tag($0)
-                }
             }
         }
     }
+
+}
     var serviceHistory: some View {
         VStack{
             

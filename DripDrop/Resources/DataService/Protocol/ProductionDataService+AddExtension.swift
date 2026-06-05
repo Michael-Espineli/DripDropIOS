@@ -23,7 +23,14 @@ extension ProductionDataService {
 
     func upLoadInitialEmailSettings(companyId:String) async throws {
         //Developer make this better
-        let initalEmailSettings: CompanyEmailConfiguration = CompanyEmailConfiguration( emailIsOn: false , emailBody: "Thank you for choosing us. We hope to continue to service your pool well.", requirePhoto: false)
+        let initalEmailSettings: CompanyEmailConfiguration = CompanyEmailConfiguration(
+            emailIsOn: false,
+            emailBody: "Thank you for choosing us. We hope to continue to service your pool well.",
+            requirePhoto: false,
+            serviceStopCategorySettings: ServiceStopCategory.allCases.reduce(into: [:]) { settings, category in
+                settings[category.rawValue] = ServiceStopCategoryCompletionSettings.defaultSettings(for: category)
+            }
+        )
          try CompanyEmailConfigurationDocument(companyId: companyId)
             .setData(from:initalEmailSettings, merge: false)
     }
@@ -110,6 +117,22 @@ extension ProductionDataService {
         let ref = companyUserDoc(companyId: companyId, companyUserId: companyUserId)
         try await ref.updateData([
             "workerType": workerType.rawValue
+        ])
+    }
+    func updateCompanyUserPersonalVehicle(companyId:String,companyUserId:String,allowPersonalVehicle:Bool,personalVehicle:PersonalVehicle) async throws {
+        let ref = companyUserDoc(companyId: companyId, companyUserId: companyUserId)
+        try await ref.updateData([
+            "allowPersonalVehicle": allowPersonalVehicle,
+            "personalVehicle": [
+                "nickName": personalVehicle.nickName ?? "",
+                "vehicalType": personalVehicle.vehicalType ?? "",
+                "year": personalVehicle.year ?? "",
+                "make": personalVehicle.make ?? "",
+                "model": personalVehicle.model ?? "",
+                "color": personalVehicle.color ?? "",
+                "plate": personalVehicle.plate ?? "",
+                "miles": personalVehicle.miles ?? 0
+            ]
         ])
     }
     //DEVELOPER MAKE SURE THIS IS NOT NEEDED
@@ -649,11 +672,35 @@ extension ProductionDataService {
     }
     
     func upLoadInitialGenericRoles(companyId:String) async throws {
+        let allPermissionIds = [
+            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "40","42","44","46","50","52","54","56","60","62","64","66",
+            "200","210","220","230","232","234","236","240","242","244","246",
+            "250","252","254","256","260","262","264","266","280","282","284","286",
+            "290","292","294","296",
+            "400","410","412","414","416",
+            "600","610","612","614","616","620","622","624","626",
+            "800","810","812","814","816","820","822","824","826","830","832","834","836",
+            "840","842","844","846","850","852","854","856","860","862","864","866",
+            "870","872","874","876","880","882","884","886",
+            "890","892","894","896"
+        ]
+        let managerPermissionIds = [
+            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "200","210","220","230","232","234","236","240","242","244","246",
+            "250","252","254","256","260","262","264","266","280","282","284","286",
+            "290","292","294","296",
+            "400",
+            "600","610","612","614","616","620","622","624","626",
+            "800","810","812","814","816","820","822","824","826","830","832","834","836",
+            "840","842","844","846","850","852","854","856","860","862","864","866",
+            "870","872","874","876","880","882","884","886"
+        ]
         let roles:[Role] = [
             Role(
                 id: "1",
                 name: "Owner",
-                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                permissionIdList: allPermissionIds,
                 listOfUserIdsToManage: [],
                 color: "red",
                 description: "All Permissions Enabled"
@@ -662,7 +709,7 @@ extension ProductionDataService {
             Role(
                 id: UUID().uuidString,
                 name: "Tech",
-                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","17","18","19","20","21"],
+                permissionIdList: allPermissionIds,
                 listOfUserIdsToManage: [],
                 color: "red",
                 description: "Basic Permissions For Techs"
@@ -670,7 +717,7 @@ extension ProductionDataService {
             Role(
                 id: UUID().uuidString,
                 name: "Manager",
-                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                permissionIdList: managerPermissionIds,
                 listOfUserIdsToManage: [],
                 color: "red",
                 description: "Basic Permissions For Manager"
@@ -678,7 +725,7 @@ extension ProductionDataService {
             Role(
                 id: UUID().uuidString,
                 name: "Admin",
-                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                permissionIdList: allPermissionIds,
                 listOfUserIdsToManage: [],
                 color: "red",
                 description: "Basic Permissions For Admin"
@@ -686,7 +733,7 @@ extension ProductionDataService {
             Role(
                 id: UUID().uuidString,
                 name: "Office",
-                permissionIdList: ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21"],
+                permissionIdList: allPermissionIds,
                 listOfUserIdsToManage: [],
                 color: "red",
                 description: "Basic Permissions For Office Personal"

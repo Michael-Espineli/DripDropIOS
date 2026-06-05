@@ -274,6 +274,10 @@ extension Route {
             return 132
         case .technicianWorkCenter:
             return 133
+        case .leads:
+            return 134
+        case .sales:
+            return 135
         }
     }
 
@@ -337,6 +341,10 @@ extension Route {
         case .employeeMainDailyDisplayView:
             break
         case .billingJobs:
+            break
+        case .leads:
+            break
+        case .sales:
             break
         case .serviceStops:
             break
@@ -581,6 +589,8 @@ extension Route {
              .mainDailyDisplayView,
              .employeeMainDailyDisplayView,
              .billingJobs,
+             .leads,
+             .sales,
              .serviceStops,
              .purchases,
              .receipts,

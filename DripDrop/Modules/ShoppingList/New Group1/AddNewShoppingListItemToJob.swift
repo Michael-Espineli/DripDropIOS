@@ -133,7 +133,7 @@ extension ShoppingListItemDraft {
             purchaserId: purchaserId,
             purchaserName: purchaserName,
             genericItemId: "",
-            name: "",
+            name: displayName,
             description: description,
             datePurchased: nil,
             quantity: quantity,
@@ -157,7 +157,7 @@ extension ShoppingListItemDraft {
             actionDate: Date(),
             assignedTechIds: [],
 
-            dbItemId: "",
+            dbItemId: selectedDataBaseItemId,
             purchasedItem: nil,
             invoiced: false,
 

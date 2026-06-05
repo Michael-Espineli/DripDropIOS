@@ -12,6 +12,9 @@ import Foundation
 enum PayrollSystemSourceIds {
 static let recurringServiceStop = "system_recurring_service_stop"
 static let jobServiceStop = "system_job_service_stop"
+static let jobEstimateServiceStop = "system_job_estimate_service_stop"
+static let serviceAgreementEstimateServiceStop = "system_service_agreement_estimate_service_stop"
+static let customerRelationshipServiceStop = "system_customer_relationship_service_stop"
 static let unknownServiceStop = "system_unknown_service_stop"
 }
 
@@ -20,12 +23,20 @@ static let unknownServiceStop = "system_unknown_service_stop"
 extension CompanyPaySettings {
 
 static func defaultSettings() -> CompanyPaySettings {
-    dripDropProductionDefault()
+    defaultSettings(companyId: "")
+}
+
+static func defaultSettings(companyId: String) -> CompanyPaySettings {
+    dripDropProductionDefault(companyId: companyId)
 }
 
 static func dripDropProductionDefault() -> CompanyPaySettings {
+    dripDropProductionDefault(companyId: "")
+}
+
+static func dripDropProductionDefault(companyId: String) -> CompanyPaySettings {
     CompanyPaySettings(
-        companyId: "",
+        companyId: companyId,
         payMode: .productionOnly,
         routePaySource: .serviceStopAndCompletedTasks,
         taskPaySource: .technicianRateThenTaskContractedRate,
@@ -92,15 +103,18 @@ var isFinishedForPay: Bool {
 }
 
 var inferredPayrollServiceStopSourceId: String {
-    if !recurringServiceStopId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+    switch resolvedCategory {
+    case .route:
         return PayrollSystemSourceIds.recurringServiceStop
-    }
-
-    if !jobId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+    case .job:
         return PayrollSystemSourceIds.jobServiceStop
+    case .jobEstimate:
+        return PayrollSystemSourceIds.jobEstimateServiceStop
+    case .serviceAgreementEstimate:
+        return PayrollSystemSourceIds.serviceAgreementEstimateServiceStop
+    case .customerRelationship:
+        return PayrollSystemSourceIds.customerRelationshipServiceStop
     }
-
-    return PayrollSystemSourceIds.unknownServiceStop
 }
 }
 
@@ -472,7 +486,7 @@ extension WorkTypeSource {
     var title: String {
         switch self {
         case .serviceStopType:
-            return "Service Stop Type"
+            return "Fallback Stop Source"
         case .jobTaskType:
             return "Job Task Type"
         case .recurringServiceStopTaskType:
@@ -489,7 +503,7 @@ extension WorkTypeSource {
     var helpText: String {
         switch self {
         case .serviceStopType:
-            return "Maps a service stop type or inferred stop source to payroll work."
+            return "Maps fallback service stop source IDs to payroll work. Real company service stop types should use their default payroll work types."
         case .jobTaskType:
             return "Maps ServiceStopTask.type values like Clean Filter, Repair, or Install."
         case .recurringServiceStopTaskType:

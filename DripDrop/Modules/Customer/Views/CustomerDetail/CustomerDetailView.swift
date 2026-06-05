@@ -96,10 +96,17 @@ struct CustomerDetailView: View {
                                         customerId: customerId
                                     )
                                 case .serviceHistory:
-                                    CustomerStopDataDetailView(
-                                        dataService: dataService,
-                                        customerId: customerId
-                                    )
+                                    VStack(spacing: 12) {
+                                        CustomerTimelineView(
+                                            dataService: dataService,
+                                            customer: customer
+                                        )
+
+                                        CustomerStopDataDetailView(
+                                            dataService: dataService,
+                                            customerId: customerId
+                                        )
+                                    }
                                         //Developer Figure out whats better
                                         //                                CustomerServiceHistoryView(
                                         //                                    dataService: dataService,

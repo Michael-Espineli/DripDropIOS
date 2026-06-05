@@ -115,7 +115,7 @@ final class EditRepairRequestViewModel: ObservableObject {
 
         // Editable mirrors
         self.date = repairRequest.date
-        self.status = repairRequest.status
+        self.status = repairRequest.status.selectableValue
         self.description = repairRequest.description
         self.locationId = repairRequest.locationId
         self.bodyOfWaterId = repairRequest.bodyOfWaterId
@@ -234,7 +234,7 @@ struct EditRepairRequest: View {
             LabeledContent("Status") {
                 Picker("Status", selection: $viewModel.status) {
                     ForEach(RepairRequestStatus.allCases, id: \.self) { status in
-                        Text(status.rawValue.capitalized).tag(status)
+                        Text(status.displayName).tag(status)
                     }
                 }
                 .pickerStyle(.segmented)

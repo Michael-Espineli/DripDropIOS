@@ -543,16 +543,7 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
             repairRequest.jobIds.append(jobId)
         }
 
-        /*
-         If your RepairRequestStatus enum has a case like .convertedToJob,
-         .jobCreated, .scheduled, or .inProgress, set it here.
-
-         Example:
-         repairRequest.status = .convertedToJob
-
-         I am leaving it unchanged so this compiles without needing
-         your exact enum cases.
-        */
+        repairRequest.status = .convertedToJob
 
         try await dataService.updateRepairRequest(
             companyId: companyId,

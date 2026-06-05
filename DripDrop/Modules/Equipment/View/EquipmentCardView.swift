@@ -25,17 +25,20 @@ struct EquipmentCardView: View {
             HStack{
                 switch equipment.status {
                 case .operational:
-                    Text(equipment.status.rawValue)
+                    Text(equipment.status.displayName)
                         .modifier(BlueButtonModifier())
                 case .nonoperational:
-                    Text(equipment.status.rawValue)
+                    Text(equipment.status.displayName)
                         .modifier(DismissButtonModifier())
                 case .needsRepair:
-                    Text(equipment.status.rawValue)
+                    Text(equipment.status.displayName)
                         .modifier(OrangeButtonModifier())
                 case .needsMaintenance:
-                    Text(equipment.status.rawValue)
+                    Text(equipment.status.displayName)
                         .modifier(YellowButtonModifier())
+                case .replaced:
+                    Text(equipment.status.displayName)
+                        .modifier(DismissButtonModifier())
                 }
                 
                 
