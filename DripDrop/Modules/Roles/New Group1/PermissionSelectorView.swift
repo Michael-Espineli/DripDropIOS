@@ -10,30 +10,115 @@ import SwiftUI
 struct PermissionSelectorView: View {
     var permission: PermissionModel
     @Binding var listOfPermissions: [String]
+    var allPermissions: [PermissionModel]
+    var showsCategory: Bool
+    var isChild: Bool
 
-    @State var selected: Bool = false
-    @State var loading: Bool = true
+    init(
+        permission: PermissionModel,
+        listOfPermissions: Binding<[String]>,
+        allPermissions: [PermissionModel] = [],
+        showsCategory: Bool = true,
+        isChild: Bool = false
+    ) {
+        self.permission = permission
+        _listOfPermissions = listOfPermissions
+        self.allPermissions = allPermissions.isEmpty ? [permission] : allPermissions
+        self.showsCategory = showsCategory
+        self.isChild = isChild
+    }
+
+    private var selectionState: PermissionSelectionState {
+        PermissionSelectionHelper.selectionState(
+            for: permission,
+            selectedIds: listOfPermissions,
+            permissions: allPermissions
+        )
+    }
+
+    private var isSelected: Bool {
+        selectionState == .selected
+    }
+
+    private var isPartial: Bool {
+        selectionState == .partial
+    }
+
+    private var isParentWithChildren: Bool {
+        !isChild && !PermissionSelectionHelper.children(for: permission, in: allPermissions).isEmpty
+    }
+
+    private var symbolName: String {
+        if isSelected {
+            return "checkmark.circle.fill"
+        }
+
+        if isPartial {
+            return "minus.circle.fill"
+        }
+
+        return "circle"
+    }
+
+    private var tintColor: Color {
+        if isSelected {
+            return Color.poolGreen
+        }
+
+        if isPartial {
+            return Color.accentColor
+        }
+
+        return .secondary
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        Button {
+            listOfPermissions = PermissionSelectionHelper.togglePermission(
+                permission,
+                selectedIds: listOfPermissions,
+                permissions: allPermissions
+            )
+        } label: {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(selected ? Color.poolGreen.opacity(0.14) : Color.primary.opacity(0.06))
-                        .frame(width: 34, height: 34)
+                        .fill(tintColor.opacity(isSelected || isPartial ? 0.14 : 0.08))
+                        .frame(width: isChild ? 28 : 34, height: isChild ? 28 : 34)
 
                     Text(permission.id)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(selected ? Color.poolGreen : .secondary)
+                        .font((isChild ? Font.caption2 : Font.caption).weight(.semibold))
+                        .foregroundStyle(tintColor)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(permission.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 6) {
+                        Text(permission.name)
+                            .font(isChild ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
 
-                    if !permission.category.isEmpty {
+                        if isPartial {
+                            Text("Partial")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Color.accentColor)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(Color.accentColor.opacity(0.12), in: Capsule())
+                        }
+
+                        if isParentWithChildren {
+                            Text("View")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 4)
+                                .background(Color.primary.opacity(0.06), in: Capsule())
+                        }
+                    }
+
+                    if showsCategory && !permission.category.isEmpty {
                         Text(permission.category)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
@@ -47,83 +132,59 @@ struct PermissionSelectorView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     }
                 }
 
                 Spacer(minLength: 0)
 
-                Toggle("", isOn: $selected)
-                    .labelsHidden()
-                    .tint(Color.poolGreen)
+                Image(systemName: symbolName)
+                    .font(isChild ? .body.weight(.semibold) : .title3)
+                    .foregroundStyle(tintColor)
+                    .padding(.top, 2)
             }
-
-            if permission.id == "2" {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "info.circle")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 2)
-
-                    Text("List of Users To Manage?")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(10)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
+            .padding(isChild ? 10 : 12)
+            .background(
+                rowBackground,
+                in: RoundedRectangle(cornerRadius: isChild ? 14 : 16, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: isChild ? 14 : 16, style: .continuous)
+                    .stroke(tintColor.opacity(isSelected || isPartial ? 0.24 : 0.08), lineWidth: 1)
+            )
         }
-        .padding(12)
-        .background(
-            selected ? Color.poolGreen.opacity(0.08) : Color.primary.opacity(0.035),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(selected ? Color.poolGreen.opacity(0.22) : Color.primary.opacity(0.06), lineWidth: 1)
-        )
-        .onAppear {
-            loading = true
+        .buttonStyle(.plain)
+    }
 
-            if listOfPermissions.contains(permission.id) {
-                selected = true
-            } else {
-                selected = false
-            }
-
-            loading = false
+    private var rowBackground: Color {
+        if isSelected {
+            return Color.poolGreen.opacity(0.08)
         }
-        .onChange(of: selected) { select in
-            if !loading {
-                if select {
-                    if !listOfPermissions.contains(permission.id) {
-                        listOfPermissions.append(permission.id)
-                        print("Added Permission: \(permission.id)")
-                    }
-                } else {
-                    listOfPermissions.removeAll(where: { $0 == permission.id })
-                    print("Removed Permission: \(permission.id)")
-                }
 
-                print(listOfPermissions)
-            } else {
-                loading = false
-            }
+        if isPartial {
+            return Color.accentColor.opacity(0.08)
         }
+
+        return Color.primary.opacity(0.035)
     }
 }
 
 struct PermissionSelectorView_Previews: PreviewProvider {
     static var previews: some View {
         @State var listOfPermissions: [String] = []
+        let permissions = [
+            PermissionModel(
+                id: "230",
+                name: "Routes",
+                description: "",
+                category: "Management"
+            )
+        ]
 
         PermissionSelectorView(
-            permission: PermissionModel(
-                id: "1",
-                name: "ADD USERS",
-                description: "",
-                category: "User"
-            ),
-            listOfPermissions: $listOfPermissions
+            permission: permissions[0],
+            listOfPermissions: $listOfPermissions,
+            allPermissions: permissions
         )
         .padding()
         .background(Color.listColor)

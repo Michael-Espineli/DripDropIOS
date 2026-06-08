@@ -29,6 +29,7 @@ struct CustomerLocationView: View {
     @State var isLoading:Bool = false
     @State var showAddSheet:Bool = false
     @State var showNewLocationType:Bool = false
+    @State private var pendingSelectedLocationId:String? = nil
     var body: some View {
         ZStack{
             if isLoading {
@@ -56,8 +57,15 @@ struct CustomerLocationView: View {
                                         Text("Manually")
                                     })
                                 })
-                                .sheet(isPresented: $showAddSheet, content: {
-                                    AddServiceLocationView(dataService: dataService, customer: customer)
+                                .sheet(isPresented: $showAddSheet, onDismiss: {
+                                    Task {
+                                        await refreshLocations(selecting: pendingSelectedLocationId)
+                                        pendingSelectedLocationId = nil
+                                    }
+                                }, content: {
+                                    AddServiceLocationView(dataService: dataService, customer: customer) { newLocationId in
+                                        pendingSelectedLocationId = newLocationId
+                                    }
                                 })
                                 if locations.count == 0 {
                                     Button(action: {
@@ -84,55 +92,29 @@ struct CustomerLocationView: View {
                     if selectedLocation == nil {
                         Text("Please select a location")
                     } else {
-                            ServiceLocationDetailView(dataService: dataService, location: selectedLocation!)
+                            ServiceLocationDetailView(
+                                dataService: dataService,
+                                location: selectedLocation!,
+                                onSave: { updatedLocation in
+                                    upsertLocation(updatedLocation, select: true)
+                                },
+                                onDelete: { deletedLocationId in
+                                    removeLocation(deletedLocationId)
+                                }
+                            )
                     }
                 }
             }
         }
         .task{
-            do {
-                
-                try await locationVM.getAllCustomerServiceLocationsById(companyId:masterDataManager.currentCompany!.id,customerId: customerId)
-                locations = locationVM.serviceLocations
-                if locations.count != 0 {
-                    selectedLocation = locations.first
-                    masterDataManager.selectedServiceLocation = selectedLocation
-                    print("")
-                    print("[CustomerLocationView][task] locationVM.serviceLocations Count: \(locationVM.serviceLocations.count)")
-                } else {
-                    selectedLocation = nil
-                    masterDataManager.selectedServiceLocation = selectedLocation
-                    print("")
-                    print("[CustomerLocationView][task] locationVM.serviceLocations Count: \(locationVM.serviceLocations.count)")
-                }
-                print("Successfully Loaded All Customer Locations")
-
-            } catch{
-                print("")
-                print("[CustomerLocationView][task] Error: \(error)")
-            }
+            await refreshLocations()
         }
         .onChange(of: masterDataManager.selectedCustomer, perform: { cus in
             Task{
                 if let customer = cus{
                     
                     isLoading = true
-                    do {
-                        try await locationVM.getAllCustomerServiceLocationsById(companyId:masterDataManager.currentCompany!.id,customerId: customer.id)
-                        locations = locationVM.serviceLocations
-                        if locations.count != 0 {
-                            selectedLocation = locations.first!
-                            masterDataManager.selectedServiceLocation = locations.first!
-
-                        } else {
-                            selectedLocation = nil
-                            masterDataManager.selectedServiceLocation = selectedLocation
-                        }
-                        print("Successfully Loaded All Customer Locations")
-                    } catch{
-                        print("Error Loading Customer Locations")
-                        print(error)
-                    }
+                    await refreshLocations(for: customer.id)
                     isLoading = false
                 }
             }
@@ -140,3 +122,49 @@ struct CustomerLocationView: View {
     }
 }
 
+extension CustomerLocationView {
+    @MainActor
+    private func refreshLocations(for refreshedCustomerId:String? = nil, selecting preferredLocationId:String? = nil) async {
+        guard let companyId = masterDataManager.currentCompany?.id else { return }
+        let resolvedCustomerId = refreshedCustomerId ?? customerId
+
+        do {
+            try await locationVM.getAllCustomerServiceLocationsById(companyId: companyId, customerId: resolvedCustomerId)
+            locations = locationVM.serviceLocations
+
+            let selected = locations.first { $0.id == preferredLocationId }
+                ?? locations.first { $0.id == selectedLocation?.id }
+                ?? locations.first
+
+            selectedLocation = selected
+            masterDataManager.selectedServiceLocation = selected
+
+            print("")
+            print("[CustomerLocationView][refreshLocations] locationVM.serviceLocations Count: \(locationVM.serviceLocations.count)")
+            print("Successfully Loaded All Customer Locations")
+        } catch {
+            print("")
+            print("[CustomerLocationView][refreshLocations] Error: \(error)")
+        }
+    }
+
+    private func upsertLocation(_ location:ServiceLocation, select:Bool) {
+        if let index = locations.firstIndex(where: { $0.id == location.id }) {
+            locations[index] = location
+        } else {
+            locations.append(location)
+        }
+
+        if select {
+            selectedLocation = location
+            masterDataManager.selectedServiceLocation = location
+        }
+    }
+
+    private func removeLocation(_ locationId:String) {
+        locations.removeAll { $0.id == locationId }
+        let nextLocation = locations.first
+        selectedLocation = nextLocation
+        masterDataManager.selectedServiceLocation = nextLocation
+    }
+}

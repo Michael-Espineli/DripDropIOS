@@ -13,10 +13,19 @@ struct EditServiceLocationView: View {
     @EnvironmentObject private var masterDataManager : MasterDataManager
     @State var serviceLocation:ServiceLocation
     @StateObject var serviceLocationVM : ServiceLocationViewModel
+    let onSave: (ServiceLocation) -> Void
+    let onDelete: (String) -> Void
     
-    init(dataService:any ProductionDataServiceProtocol,serviceLocation:ServiceLocation){
+    init(
+        dataService:any ProductionDataServiceProtocol,
+        serviceLocation:ServiceLocation,
+        onSave: @escaping (ServiceLocation) -> Void = { _ in },
+        onDelete: @escaping (String) -> Void = { _ in }
+    ){
         _serviceLocationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: dataService ))
         _serviceLocation = State(wrappedValue: serviceLocation)
+        self.onSave = onSave
+        self.onDelete = onDelete
     }
         //Service Location
     @State var serviceLocationId: String = UUID().uuidString
@@ -53,6 +62,8 @@ struct EditServiceLocationView: View {
     @State var others:[String] = []
     @State var other:String = ""
     @State var requiresPreText:Bool = false
+    @State var isActive:Bool = true
+    @State var cleanupLinkedRecords:Bool = false
     
         //Alerts
     @State var showBodyOfWaterSheet:Bool = false
@@ -109,8 +120,19 @@ struct EditServiceLocationView: View {
                 title: Text("Alert"),
                 message: Text("\(serviceLocationVM.deleteConfirmationMessage)"),
                 primaryButton: .destructive(Text("Delete")) {
-                    serviceLocationVM.deleteLocation(companyId: masterDataManager.currentCompany?.id, locationId: serviceLocation.id)
-
+                    Task {
+                        do {
+                            try await serviceLocationVM.deleteLocationAndWait(
+                                companyId: masterDataManager.currentCompany?.id,
+                                locationId: serviceLocation.id
+                            )
+                            onDelete(serviceLocation.id)
+                            dismiss()
+                        } catch {
+                            serviceLocationVM.alertMessage = "Unable to delete service location"
+                            serviceLocationVM.showAlert = true
+                        }
+                    }
                 },
                 secondaryButton: .cancel()
             )
@@ -135,6 +157,8 @@ struct EditServiceLocationView: View {
             
             nickName = serviceLocation.nickName
             generalNotes = serviceLocation.notes ?? ""
+            requiresPreText = serviceLocation.preText ?? false
+            isActive = serviceLocation.isActive
             
         }
         .onChange(of: serviceLocationVM.coordinates, perform: { coor in
@@ -313,12 +337,40 @@ extension EditServiceLocationView {
                     .background(Color.gray.opacity(0.3))
                     .cornerRadius(3)
                 }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Location Notes")
+                        .bold(true)
+                    TextField(
+                        "Location Notes",
+                        text: $generalNotes,
+                        axis: .vertical
+                    )
+                    .lineLimit(3...6)
+                    .padding(3)
+                    .background(Color.gray.opacity(0.3))
+                    .cornerRadius(3)
+                }
                 Toggle(isOn: $requiresPreText, label: {
                     Text("Requires Pre Text")
                         .bold(true)
                 })
+                Toggle(isOn: $isActive, label: {
+                    Text("Active Service Location")
+                        .bold(true)
+                })
+                if !isActive {
+                    Toggle(isOn: $cleanupLinkedRecords, label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Clean Up Linked Records")
+                                .bold(true)
+                            Text("Marks bodies of water and equipment inactive, and deletes recurring service stops and service stops.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    })
+                }
                 Button(action: {
-                    serviceLocationVM.deleteConfirmationMessage = "Please, Confirm you want to delete this Equipment?"
+                    serviceLocationVM.deleteConfirmationMessage = "Please confirm you want to delete this service location and all linked bodies of water, equipment, recurring service stops, and service stops."
                     serviceLocationVM.showDeleteConfirmation.toggle()
                 }, label: {
                     Text("Delete")
@@ -452,50 +504,55 @@ extension EditServiceLocationView {
                             
                             throw ServiceLocationError.invalidTime
                         }
+                        let updatedLocation = ServiceLocation(
+                            id: serviceLocation.id,
+                            nickName: nickName,
+                            address: Address(
+                                streetAddress: serviceLocationAddressStreetAddress,
+                                city: serviceLocationAddressCity,
+                                state: serviceLocationAddressState,
+                                zip: serviceLocationAddressZip,
+                                latitude: latitude,
+                                longitude: longitude
+                            ),
+                            gateCode: gateCode,
+                            dogName: dogNames,
+                            estimatedTime: time,
+                            mainContact: Contact(
+                                id: serviceLocation.mainContact.id,
+                                name: serviceLocationMainContactName,
+                                phoneNumber: serviceLocationMainContactPhoneNumber,
+                                email: serviceLocationMainContactEmail,
+                                notes: serviceLocationMainContactNotes
+                            ),
+                            notes: generalNotes,
+                            bodiesOfWaterId: serviceLocation.bodiesOfWaterId,
+                            rateType: serviceLocation.rateType,
+                            laborType: serviceLocation.laborCost,
+                            chemicalCost: serviceLocation.chemicalCost,
+                            laborCost: serviceLocation.laborCost,
+                            rate: serviceLocation.rate,
+                            customerId: serviceLocation.customerId,
+                            customerName: serviceLocation.customerName,
+                            backYardTree: serviceLocation.backYardTree,
+                            backYardBushes: serviceLocation.backYardBushes,
+                            backYardOther: serviceLocation.backYardOther,
+                            preText: requiresPreText,
+                            verified: serviceLocation.verified,
+                            photoUrls: serviceLocation.photoUrls,
+                            isActive: isActive
+                        )
                         try await serviceLocationVM.updateCustomerServiceLocation(
                             companyId: company.id,
                             customerId: serviceLocation.customerId,
-                            serviceLocation: ServiceLocation(
-                                id: serviceLocation.id,
-                                nickName: nickName,
-                                address: Address(
-                                    streetAddress: serviceLocationAddressStreetAddress,
-                                    city: serviceLocationAddressCity,
-                                    state: serviceLocationAddressState,
-                                    zip: serviceLocationAddressZip,
-                                    latitude: latitude,
-                                    longitude: longitude
-                                ),
-                                gateCode: gateCode,
-                                dogName: dogNames,
-                                estimatedTime: time,
-                                mainContact: Contact(
-                                    id: serviceLocation.mainContact.id,
-                                    name: serviceLocationMainContactName,
-                                    phoneNumber: serviceLocationMainContactPhoneNumber,
-                                    email: serviceLocationMainContactEmail,
-                                    notes: serviceLocationMainContactNotes
-                                ),
-                                notes: serviceLocation.notes,
-                                bodiesOfWaterId: serviceLocation.bodiesOfWaterId,
-                                rateType: serviceLocation.rateType,
-                                laborType: serviceLocation.laborCost,
-                                chemicalCost: serviceLocation.chemicalCost,
-                                laborCost: serviceLocation.laborCost,
-                                rate: serviceLocation.rate,
-                                customerId: serviceLocation.customerId,
-                                customerName: serviceLocation.customerName,
-                                backYardTree: serviceLocation.backYardTree,
-                                backYardBushes: serviceLocation.backYardBushes,
-                                backYardOther: serviceLocation.backYardOther,
-                                preText: preText,
-                                isActive: true
-                            ),
-                            originalServiceLocation: serviceLocation
+                            serviceLocation: updatedLocation,
+                            originalServiceLocation: serviceLocation,
+                            cleanupLinkedRecords: cleanupLinkedRecords
                         )
                         serviceLocationVM.alertMessage = "Successfully Updated"
                         print(serviceLocationVM.alertMessage)
                         serviceLocationVM.showAlert = true
+                        onSave(updatedLocation)
                         dismiss()
                     } catch ServiceLocationError.invalidCustomerId{
                         serviceLocationVM.alertMessage = "Invalid Customer Selected"

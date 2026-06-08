@@ -160,7 +160,7 @@ extension AddNewChatView {
                                 if let user = masterDataManager.user {
                                     if let chat = chatVM.chat {
                                         let fullName = (user.firstName) + " " + (user.lastName)
-                                        try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, message: message, chatId: chat.id)
+                                        try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, senderCompanyId: masterDataManager.currentCompany?.id, senderCompanyName: masterDataManager.currentCompany?.name, message: message, chatId: chat.id)
                                         try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
                                         message = ""
                                     } else {
@@ -324,14 +324,14 @@ extension AddNewChatView {
                             //DEVELOPER CHANGE TO BE MORE ACCEPTING OF GROUP CHATS
                         recipientList = [user]
                         if recipientList.count != 0 {
-                            participants.append(BasicUserInfo(id: UUID().uuidString, userId: sender.id, userName: fullName, userImage: sender.photoUrl ?? ""))
+                            participants.append(BasicUserInfo(id: UUID().uuidString, userId: sender.id, userName: fullName, userImage: sender.photoUrl ?? "", companyId: company.id, companyName: company.name))
                             participantIds.append(sender.id)
                             for user in recipientList {
                                 participantIds.append(user.id)
                                 
                                 let userFullName = (user.firstName) + " " + (user.lastName)
                                 
-                                let participant = BasicUserInfo(id: UUID().uuidString, userId: user.id, userName: userFullName, userImage: user.photoUrl ?? "")
+                                let participant = BasicUserInfo(id: UUID().uuidString, userId: user.id, userName: userFullName, userImage: user.photoUrl ?? "", companyId: company.id, companyName: company.name)
                                 participants.append(participant)
                             }
                             try await chatVM.uploadChatandMessageWithValidation(userId: sender.id,
@@ -460,4 +460,3 @@ extension AddNewChatView {
         }
     }
 }
-

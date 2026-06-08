@@ -76,6 +76,7 @@ struct RouteRecurringStopPickerView: View {
 
     @State private var selectedCompanyServiceStopType: CompanyServiceStopType?
     @State private var showLocationPicker: Bool = false
+    @State private var hasPresentedInitialLocationPicker: Bool = false
 
     init(
         dataService: any ProductionDataServiceProtocol,
@@ -137,6 +138,9 @@ struct RouteRecurringStopPickerView: View {
             }
             .navigationTitle("Add Route Stop")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await presentInitialLocationPickerIfNeeded()
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -170,6 +174,17 @@ struct RouteRecurringStopPickerView: View {
         print("  [RouteRecurringStopPickerView][submit] selection")
         onSelect(selection)
         dismiss()
+    }
+
+    @MainActor
+    private func presentInitialLocationPickerIfNeeded() async {
+        guard !hasPresentedInitialLocationPicker, location.id.isEmpty else { return }
+
+        hasPresentedInitialLocationPicker = true
+        try? await Task.sleep(nanoseconds: 350_000_000)
+
+        guard !Task.isCancelled, location.id.isEmpty else { return }
+        showLocationPicker = true
     }
 }
 extension RouteRecurringStopPickerView {

@@ -122,19 +122,25 @@ struct AddNewCustomerView: View {
 
     var body: some View {
         ZStack{
+            Color(.systemGroupedBackground).ignoresSafeArea()
             ScrollView(showsIndicators: false){
-                
-                Text("Add Customer")
-                    .font(.title)
-                    .bold()
-                basicInfo
-                serviceLocationView
-                Rectangle()
-                    .frame(height: 1)
-                submitButton
-                
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Add Customer")
+                            .font(.largeTitle)
+                            .bold()
+                        Text("Create the customer, first service location, contact, pool, pump, and filter.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 4)
+                    
+                    basicInfo
+                    serviceLocationView
+                    submitButton
+                }
             }
-            .padding(.init(top: 8, leading: 16, bottom: 0, trailing: 16))
+            .padding(.init(top: 16, leading: 16, bottom: 0, trailing: 16))
             .onSubmit {
                    switch focusedField {
                    case .firstName:
@@ -404,7 +410,10 @@ struct AddNewCustomerView: View {
 extension AddNewCustomerView{
 
     var basicInfo: some View {
-        VStack{
+        VStack(alignment: .leading, spacing: 12){
+            Text("Customer Details")
+                .font(.title3)
+                .bold()
             HStack{
                 Text("First Name")
                 TextField(
@@ -498,36 +507,28 @@ extension AddNewCustomerView{
                 .focused($focusedField, equals: .email)
                      .submitLabel(.next)
             }
-        }
-    }
- 
-    var serviceLocationView: some View {
-        VStack{
-            HStack{
-                Spacer()
-                Toggle(isOn: $useDifferentBillingAddress, label: {
-                    Text("Use Different Billing Address")
-                })
-            }
+            Toggle(isOn: $useDifferentBillingAddress, label: {
+                Text("Use Different Billing Address")
+            })
             if useDifferentBillingAddress {
-                HStack{
-                    Text("Billing Address")
-                        .font(.title)
-                    Spacer()
-                }
                 AddressAutocompleteView(
                     text: $billingAddressQuery,
                     selectedAddress: $billingAddress
                 )
             }
-            
-            Rectangle()
-                .frame(height: 1)
-            VStack{
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+ 
+    var serviceLocationView: some View {
+        VStack(alignment: .leading, spacing: 16){
                 
-                VStack{
+                VStack(alignment: .leading, spacing: 12){
                     Text("Service Location")
-                        .font(.title)
+                        .font(.title3)
+                        .bold()
                     
                     AddressAutocompleteView(
         //                        text: $vm.addressQuery,
@@ -536,8 +537,9 @@ extension AddNewCustomerView{
                     )
                 }
                 Text("Service Location Info")
+                    .font(.headline)
 
-                VStack{
+                VStack(spacing: 10){
                     HStack{
                         Text("Nick Name")
                         TextField(
@@ -584,7 +586,7 @@ extension AddNewCustomerView{
                              .submitLabel(.next)
                     }
                 }
-                VStack{
+                VStack(alignment: .leading, spacing: 10){
                     Text("Service Location Contact")
                         .font(.headline)
                     HStack{
@@ -640,9 +642,10 @@ extension AddNewCustomerView{
                         }
                     }
                 }
-            }
-            
         }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
     
     var submitButton:some View {
@@ -840,4 +843,3 @@ extension AddNewCustomerView{
     }
 
 }
-

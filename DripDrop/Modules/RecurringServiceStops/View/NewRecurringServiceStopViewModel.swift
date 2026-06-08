@@ -214,7 +214,7 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
             context: "NewRecurringServiceStopViewModel.addNewRecurringServiceStop"
         )
         
-        _ = try await dataService.addNewRecurringServiceStop(companyId: companyId, recurringServiceStop: RecurringServiceStop(
+        let recurringServiceStop = RecurringServiceStop(
             id: UUID().uuidString,
             internalId: "RSS_" + String(rssCount),
             type: serviceStopTypeFields.type,
@@ -238,7 +238,57 @@ final class NewRecurringServiceStopViewModel:ObservableObject{
             otherCompany:true,
             laborContractId:"",
             contractedCompanyId:""
-        ))
+        )
+        let recurringServiceStopId = try await dataService.addNewRecurringServiceStop(companyId: companyId, recurringServiceStop: recurringServiceStop)
+        try await ensurePlannedRouteContainsRecurringServiceStop(
+            companyId: companyId,
+            recurringServiceStop: recurringServiceStop,
+            recurringServiceStopId: recurringServiceStopId ?? recurringServiceStop.id
+        )
   
+    }
+    private func ensurePlannedRouteContainsRecurringServiceStop(
+        companyId: String,
+        recurringServiceStop: RecurringServiceStop,
+        recurringServiceStopId: String
+    ) async throws {
+        var existingRoute = try await dataService.getSingleRouteFromTechIdAndDay(
+            companyId: companyId,
+            techId: recurringServiceStop.techId,
+            day: recurringServiceStop.day
+        )
+        let alreadyRouted = existingRoute?.order.contains(where: { $0.recurringServiceStopId == recurringServiceStopId }) ?? false
+        
+        if alreadyRouted {
+            return
+        }
+        
+        let nextOrder = (existingRoute?.order.map(\.order).max() ?? 0) + 1
+        let routeOrder = recurringRouteOrder(
+            id: UUID().uuidString,
+            order: nextOrder,
+            recurringServiceStopId: recurringServiceStopId,
+            customerId: recurringServiceStop.customerId,
+            customerName: recurringServiceStop.customerName,
+            locationId: recurringServiceStop.serviceLocationId
+        )
+        
+        if var route = existingRoute {
+            route.order.append(routeOrder)
+            existingRoute = route
+        } else {
+            existingRoute = RecurringRoute(
+                id: "com_rr_" + UUID().uuidString,
+                tech: recurringServiceStop.tech,
+                techId: recurringServiceStop.techId,
+                day: recurringServiceStop.day,
+                order: [routeOrder],
+                description: recurringServiceStop.description
+            )
+        }
+        
+        if let route = existingRoute {
+            try await dataService.uploadRoute(companyId: companyId, recurringRoute: route)
+        }
     }
 }

@@ -181,7 +181,7 @@ extension InviteExistingTechView {
                                         companyId: company.id,
                                         roleId: selectedRole.id,
                                         roleName: selectedRole.name,
-                                        status: "Pending",
+                                        status: InviteStatusValue.pending.rawValue,
                                         workerType: workerType,
                                         currentUser: true
                                     )

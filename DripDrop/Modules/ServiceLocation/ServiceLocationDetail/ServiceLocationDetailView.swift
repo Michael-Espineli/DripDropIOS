@@ -72,11 +72,20 @@ struct ServiceLocationDetailView: View {
     
         //received Variables
     @State var location:ServiceLocation
-    init(dataService:any ProductionDataServiceProtocol,location:ServiceLocation){
+    let onSave: (ServiceLocation) -> Void
+    let onDelete: (String) -> Void
+    init(
+        dataService:any ProductionDataServiceProtocol,
+        location:ServiceLocation,
+        onSave: @escaping (ServiceLocation) -> Void = { _ in },
+        onDelete: @escaping (String) -> Void = { _ in }
+    ){
         _VM = StateObject(wrappedValue: ServiceLocationDetailViewModel(dataService: dataService))
         
         _bodyOfWaterVM = StateObject(wrappedValue: BodyOfWaterViewModel(dataService: dataService))
         _location = State(wrappedValue: location)
+        self.onSave = onSave
+        self.onDelete = onDelete
         
     }
         //Variables for use
@@ -192,7 +201,18 @@ extension ServiceLocationDetailView {
                         .modifier(AddButtonModifier())
                 })
                 .sheet(isPresented: $showEditSheet, content: {
-                    EditServiceLocationView(dataService: dataService, serviceLocation: location)
+                    EditServiceLocationView(
+                        dataService: dataService,
+                        serviceLocation: location,
+                        onSave: { updatedLocation in
+                            self.location = updatedLocation
+                            masterDataManager.selectedServiceLocation = updatedLocation
+                            onSave(updatedLocation)
+                        },
+                        onDelete: { deletedLocationId in
+                            onDelete(deletedLocationId)
+                        }
+                    )
                 })
             }
         }

@@ -118,7 +118,7 @@ extension CompanyRoleDetailView {
 
     var canEditRole: Bool {
         if let currentUserRole = masterDataManager.role {
-            return currentUserRole.permissionIdList.contains("264")
+            return currentUserRole.permissionIdList.contains("864")
         }
 
         return false
@@ -178,7 +178,7 @@ extension CompanyRoleDetailView {
             }
 
             HStack(spacing: 8) {
-                Label("\(activeRole.permissionIdList.count) Permissions", systemImage: "checklist")
+                Label("\(activePermissionIds.count) Permissions", systemImage: "checklist")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 10)
@@ -248,7 +248,7 @@ extension CompanyRoleDetailView {
 
                 Spacer()
 
-                Text("\(activeRole.permissionIdList.count)/\(VM.standrdPermissions.count)")
+                Text("\(activePermissionIds.count)/\(VM.standrdPermissions.count)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 9)
@@ -256,17 +256,138 @@ extension CompanyRoleDetailView {
                     .background(.thinMaterial, in: Capsule())
             }
 
-            VStack(spacing: 8) {
-                ForEach(VM.standrdPermissions) { permission in
-                    PermissionDisplayView(
-                        permission: permission,
-                        listOfPermissions: activeRole.permissionIdList
-                    )
+            if selectedPermissionCategoryGroups.isEmpty {
+                emptyState(
+                    title: "No permissions assigned.",
+                    message: "This role does not currently grant any catalog permissions.",
+                    systemImage: "lock.slash"
+                )
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(selectedPermissionCategoryGroups) { categoryGroup in
+                        permissionCategoryDisplay(categoryGroup)
+                    }
                 }
             }
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var activePermissionIds: [String] {
+        PermissionSelectionHelper.normalizeSelection(
+            activeRole.permissionIdList,
+            permissions: VM.standrdPermissions
+        )
+    }
+
+    var permissionCategoryGroups: [PermissionCategoryGroup] {
+        PermissionSelectionHelper.categoryGroups(from: VM.standrdPermissions)
+    }
+
+    var selectedPermissionCategoryGroups: [PermissionCategoryGroup] {
+        permissionCategoryGroups.filter {
+            PermissionSelectionHelper.selectedCount(for: $0, selectedIds: activePermissionIds) > 0
+        }
+    }
+
+    func permissionCategoryDisplay(_ categoryGroup: PermissionCategoryGroup) -> some View {
+        let selectedCount = PermissionSelectionHelper.selectedCount(
+            for: categoryGroup,
+            selectedIds: activePermissionIds
+        )
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(categoryGroup.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text("\(selectedCount)/\(categoryGroup.permissions.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            VStack(spacing: 8) {
+                ForEach(categoryGroup.groups.filter { groupHasSelection($0) }) { group in
+                    permissionGroupDisplay(group)
+                }
+            }
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    func groupHasSelection(_ group: PermissionSelectionGroup) -> Bool {
+        activePermissionIds.contains(group.parent.id) ||
+        group.children.contains { activePermissionIds.contains($0.id) }
+    }
+
+    func permissionGroupDisplay(_ group: PermissionSelectionGroup) -> some View {
+        let parentSelected = activePermissionIds.contains(group.parent.id)
+        let selectedChildren = group.children.filter { activePermissionIds.contains($0.id) }
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: parentSelected ? "checkmark.circle.fill" : "minus.circle.fill")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(parentSelected ? Color.poolGreen : Color.accentColor)
+                    .padding(.top, 1)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(group.parent.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    if !group.parent.description.isEmpty {
+                        Text(group.parent.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Text(parentSelected ? "View" : "Actions")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(parentSelected ? Color.poolGreen : Color.accentColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(
+                        (parentSelected ? Color.poolGreen : Color.accentColor).opacity(0.12),
+                        in: Capsule()
+                    )
+            }
+
+            if !selectedChildren.isEmpty {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(selectedChildren) { child in
+                        Text(child.name)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.primary.opacity(0.06), in: Capsule())
+                    }
+                }
+                .padding(.leading, 28)
+            }
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
@@ -297,6 +418,26 @@ extension CompanyRoleDetailView {
             Spacer(minLength: 0)
         }
         .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    func emptyState(title: String, message: String, systemImage: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

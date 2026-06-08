@@ -33,7 +33,7 @@ final class RoleViewModel:ObservableObject{
     // CRUD           CREATE
     //----------------------------------------------------
     func createRole(companyId:String,role:Role) async throws {
-        try? await RoleManager.shared.uploadRole(companyId: companyId, role: role)
+        try await RoleManager.shared.uploadRole(companyId: companyId, role: role)
     }
     //----------------------------------------------------
     // CRUD           UPDATE

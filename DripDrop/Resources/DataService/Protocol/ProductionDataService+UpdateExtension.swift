@@ -223,7 +223,7 @@ extension ProductionDataService {
         
         // Set the "capital" field of the city 'DC'
         try await itemRef.updateData([
-            Invite.CodingKeys.status.rawValue:"Accepted"
+            Invite.CodingKeys.status.rawValue: InviteStatusValue.accepted.rawValue
             
         ])
     }
@@ -232,7 +232,7 @@ extension ProductionDataService {
         
         // Set the "capital" field of the city 'DC'
         try await itemRef.updateData([
-            Invite.CodingKeys.status.rawValue:"Rejected"
+            Invite.CodingKeys.status.rawValue: InviteStatusValue.rejected.rawValue
             
         ])
     }
@@ -320,13 +320,14 @@ extension ProductionDataService {
     }
     
     func markChatAsRead(userId:String, chat: Chat) async throws {
-        
-        var array:[String] = chat.participantIds
-        array.removeAll(where: {$0 == userId})
+        try await markChatAsRead(userId: userId, companyId: nil, chat: chat)
+    }
+    func markChatAsRead(userId:String, companyId:String?, chat: Chat) async throws {
         let chatRef = chatDocument(chatId: chat.id)
         
         try await chatRef.updateData([
-            "userWhoHaveNotRead": FieldValue.arrayRemove([userId])
+            "userWhoHaveNotRead": FieldValue.arrayRemove([userId]),
+            "readByUserIds": FieldValue.arrayUnion([userId])
         ])
     }
     func markChatAsUnread(userId:String,chat:Chat) async throws {
@@ -336,7 +337,8 @@ extension ProductionDataService {
         array.removeAll(where: {$0 == userId})
         let chatRef = chatDocument(chatId: chat.id)
         try await chatRef.updateData([
-            "userWhoHaveNotRead" : FieldValue.arrayUnion(array)
+            "userWhoHaveNotRead" : FieldValue.arrayUnion(array),
+            "readByUserIds": [userId]
         ])
     }
     func updateStore(companyId:String,store:Vender,name:String,streetAddress:String,city:String,state:String,zip:String) async throws {

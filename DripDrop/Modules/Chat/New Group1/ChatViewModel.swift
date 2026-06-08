@@ -44,21 +44,75 @@ final class ChatViewModel:ObservableObject{
     }
     func uploadChatandMessageWithValidation(userId:String,senderName:String,participantIds:[String],participants:[BasicUserInfo],companyId:String,message:String,mostRecentChat:Date) async throws {
         let chatId = UUID().uuidString
-        let chat = Chat(id: chatId,participantIds: participantIds, participants: participants, companyId: companyId,mostRecentChat: mostRecentChat, userWhoHaveNotRead: participantIds, lastMessage: message)
+        let chat = Chat(
+            id: chatId,
+            participantIds: participantIds,
+            participants: participants,
+            companyId: companyId,
+            mostRecentChat: mostRecentChat,
+            userWhoHaveNotRead: participantIds.filter { $0 != userId },
+            lastMessage: message,
+            visibility: .direct,
+            participantCompanyIds: [companyId],
+            companyIdsWhoHaveNotRead: [companyId],
+            readByUserIds: [userId]
+        )
         try await dataService.uploadChat(chat: chat)
         //Send Message
-        try await dataService.sendMessage(message: Message(id: UUID().uuidString, senderName: senderName, senderId: userId, message: message, read: false, dateSent: Date(), chatId: chatId))
+        try await dataService.sendMessage(message: Message(id: UUID().uuidString, senderName: senderName, senderId: userId, message: message, read: false, dateSent: Date(), chatId: chatId, senderCompanyId: companyId))
     }
     func sendNewMessage(userId:String,senderName:String,message:String,chatId:String) async throws {
         let message = Message(id: UUID().uuidString, senderName: senderName, senderId: userId, message: message, read: false, dateSent: Date(), chatId: chatId)
         try await dataService.sendMessage( message: message)
 
     }
+    func sendNewMessage(userId:String,senderName:String,senderCompanyId:String?,senderCompanyName:String?,message:String,chatId:String) async throws {
+        let message = Message(
+            id: UUID().uuidString,
+            senderName: senderName,
+            senderId: userId,
+            message: message,
+            read: false,
+            dateSent: Date(),
+            chatId: chatId,
+            senderCompanyId: senderCompanyId,
+            senderCompanyName: senderCompanyName
+        )
+        try await dataService.sendMessage(message: message)
+    }
+    func sendLinkedRecordMessage(
+        userId:String,
+        senderName:String,
+        senderCompanyId:String?,
+        senderCompanyName:String?,
+        chatId:String,
+        note:String,
+        link:ConversationLink
+    ) async throws {
+        let message = Message(
+            id: UUID().uuidString,
+            senderName: senderName,
+            senderId: userId,
+            message: note,
+            read: false,
+            dateSent: Date(),
+            chatId: chatId,
+            kind: .linkedRecord,
+            senderCompanyId: senderCompanyId,
+            senderCompanyName: senderCompanyName,
+            attachments: [link],
+            actionTitle: "Open"
+        )
+        try await dataService.sendMessage(message: message)
+    }
     //----------------------------------------------------
     //                    READ
     //----------------------------------------------------
     func getallChatsByUser(userId: String) async throws {
         self.listOfChats = try await dataService.getAllChatsByUser(userId: userId)
+    }
+    func getVisibleChats(userId: String, companyId:String?) async throws {
+        self.listOfChats = try await dataService.getVisibleChats(userId: userId, companyId: companyId)
     }
     func getSpecificChat(companyId: String,contractId:String) async throws {
         self.chat = try await dataService.getSpecificChat(chatId: contractId)
@@ -81,6 +135,9 @@ final class ChatViewModel:ObservableObject{
     func markChatAsRead(userId:String,chat: Chat) async throws {
         try await dataService.markChatAsRead(userId: userId, chat: chat)
     }
+    func markChatAsRead(userId:String,companyId:String?,chat: Chat) async throws {
+        try await dataService.markChatAsRead(userId: userId, companyId: companyId, chat: chat)
+    }
     func markChatAsUnRead(userId: String, chat:Chat) async throws {
         try await dataService.markChatAsUnread(userId: userId, chat: chat)
     }
@@ -99,10 +156,25 @@ final class ChatViewModel:ObservableObject{
             self?.listOfChats = chats
         }
     }
+    func addListenerForVisibleChats(userId:String, companyId:String?){
+        print("Adding Visible Chat Listener")
+
+         dataService.addListenerForVisibleChats(userId: userId, companyId: companyId) { [weak self] chats in
+            self?.listOfChats = chats
+        }
+    }
     func addListenForUnReadChats(userId:String){
         print("Adding Unread Chat Listener")
 
          dataService.addListenerForUnreadChats(userId: userId) { [weak self] chats in
+             self?.unreadChatCount = chats.count
+             self?.listOfUnreadChats = chats
+        }
+    }
+    func addListenForUnReadChats(userId:String, companyId:String?){
+        print("Adding Company-Aware Unread Chat Listener")
+
+         dataService.addListenerForUnreadChats(userId: userId, companyId: companyId) { [weak self] chats in
              self?.unreadChatCount = chats.count
              self?.listOfUnreadChats = chats
         }

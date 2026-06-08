@@ -920,6 +920,20 @@ extension ProductionDataService {
             .whereField("companyId", isEqualTo: companyId)
             .getDocuments(as:Chat.self)
     }
+    func getVisibleChats(userId:String, companyId:String?) async throws ->[Chat]{
+        var chats = try await getAllChatsByUser(userId: userId)
+        if let companyId {
+            let companyChats = try await chatCollection()
+                .whereField("participantCompanyIds", arrayContains: companyId)
+                .order(by: "mostRecentChat", descending: true)
+                .getDocuments(as:Chat.self)
+            chats.append(contentsOf: companyChats)
+        }
+
+        return Dictionary(grouping: chats, by: \.id)
+            .compactMap { $0.value.first }
+            .sorted { $0.mostRecentChat > $1.mostRecentChat }
+    }
     func getAllMessagesByChat(chatId: String) async throws ->[Message]{
         return try await messageCollection()
             .whereField("chatId", isEqualTo: chatId)
@@ -1225,7 +1239,7 @@ extension ProductionDataService {
     func getAllCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
             .whereField(Invite.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
-            .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: "Pending")
+            .whereField(Invite.CodingKeys.status.rawValue, in: InviteStatusValue.pending.queryVariants)
             .getDocuments(as:Invite.self)
     }
     func getUserInvitesByStatus(userId:String,status : String) async throws ->[Invite] {
@@ -1237,7 +1251,7 @@ extension ProductionDataService {
         } else {
             return try await inviteCollection()
                 .whereField(Invite.CodingKeys.userId.rawValue, isEqualTo: userId)
-                .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: status)
+                .whereField(Invite.CodingKeys.status.rawValue, in: InviteStatusValue.variants(for: status))
                 .getDocuments(as:Invite.self)
             
         }
@@ -1245,7 +1259,7 @@ extension ProductionDataService {
     func getAllAcceptedCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
             .whereField(Invite.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
-            .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: "Accepted")
+            .whereField(Invite.CodingKeys.status.rawValue, in: InviteStatusValue.accepted.queryVariants)
             .getDocuments(as:Invite.self)
     }
     func getSpecificInvite(inviteId : String) async throws ->Invite {

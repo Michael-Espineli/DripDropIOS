@@ -27,17 +27,11 @@ struct ChatListView: View {
         return chatVM.listOfChats.filter { chat in
             // Match by other participant name (derive from participants)
             let currentUserId = masterDataManager.user?.id
-            let otherParticipantName: String? = {
-                guard let currentId = currentUserId else { return nil }
-                if let other = chat.participants.first(where: { $0.userId != currentId }) {
-                    return other.userName
-                }
-                // If no distinct other participant, fallback to first participant's name
-                return chat.participants.first?.userName
-            }()
-            if let name = otherParticipantName?.lowercased(), name.contains(lower) { return true }
+            let title = chat.displayTitle(currentUserId: currentUserId).lowercased()
+            if title.contains(lower) { return true }
             // Fallback: search in last message
             if chat.lastMessage.lowercased().contains(lower) { return true }
+            if chat.contextLinks?.contains(where: { $0.title.lowercased().contains(lower) || $0.type.displayName.lowercased().contains(lower) }) == true { return true }
             return false
         }
     }
@@ -81,7 +75,7 @@ struct ChatListView: View {
         }
         .task {
             if let user = masterDataManager.user {
-                chatVM.addListenerForAllChats(userId: user.id)
+                chatVM.addListenerForVisibleChats(userId: user.id, companyId: masterDataManager.currentCompany?.id)
             } else{
                 print("No User")
             }
@@ -158,7 +152,7 @@ extension ChatListView {
     private func handleChatTap(_ chat: Chat) {
         Task {
             if let user = masterDataManager.user {
-                try await dataService.markChatAsRead(userId: user.id, chat: chat)
+                try await dataService.markChatAsRead(userId: user.id, companyId: masterDataManager.currentCompany?.id, chat: chat)
             }
             // Navigate by setting the selected chat in masterDataManager
             if UIDevice.isIPhone {
@@ -169,4 +163,3 @@ extension ChatListView {
         }
     }
 }
-

@@ -28,7 +28,7 @@ final class TechListViewModel:ObservableObject{
             self?.companyUsers = route
         }
         print("Company Users")
-        dataService.addInviteListener(companyId: companyId, status: "Pending",
+        dataService.addInviteListener(companyId: companyId, status: InviteStatusValue.pending.rawValue,
         ) { [weak self] route in
             self?.pendingInviteList = route
         }

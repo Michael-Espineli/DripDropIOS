@@ -58,7 +58,7 @@ struct RootView: View {
                 VM.isLoading = false
                 masterDataManager.showSignInView = false
             } catch {
-                print("Error Root View")
+                print("[RootView][task]Error Root View")
                 print(error)
                 VM.isLoading = false
                 masterDataManager.showSignInView = true
@@ -80,7 +80,7 @@ struct RootView: View {
                         VM.isLoading = false
                         masterDataManager.showSignInView = false
                     } catch {
-                        print("Error Root View")
+                        print("[RootView][OnChangeOfShowSigninView]Error Root View")
                         print(error)
                         VM.isLoading = false
                         masterDataManager.showSignInView = true

@@ -86,11 +86,11 @@ final class AllViewModel:ObservableObject{
 //        print("Purchase List Count \(String(describing: purchaseCount))")
 //        
         self.isAlertLoading = false
-        dataService.addListenerForUnreadChats(userId: user.id) { [weak self] chats in
+        dataService.addListenerForUnreadChats(userId: user.id, companyId: companyId) { [weak self] chats in
             self?.unreadChatCount = chats.count
             self?.listOfUnreadChats = chats
         }
-        dataService.addListenerForAllChats(userId: user.id) { [weak self] chats in
+        dataService.addListenerForVisibleChats(userId: user.id, companyId: companyId) { [weak self] chats in
             self?.listOfChats = chats
         }
         self.isChatLoading = false

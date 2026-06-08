@@ -83,7 +83,7 @@ extension MyCompanyPickerView {
                 print("Company set to nil")
                 dismiss()
             }, label: {
-                Text("Go To Main Hub")
+                Text("Return To Tech Hub")
             })
             Divider()
         }

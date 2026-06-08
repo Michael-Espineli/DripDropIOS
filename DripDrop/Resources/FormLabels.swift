@@ -143,7 +143,8 @@ enum ServiceStopCategory: String, Identifiable, Hashable, CaseIterable, Codable 
         recurringServiceStopId: String,
         jobId: String,
         type: String,
-        description: String
+        description: String,
+        defaultCategory: ServiceStopCategory = .route
     ) -> ServiceStopCategory {
         if let explicitCategory {
             return explicitCategory
@@ -185,11 +186,12 @@ enum ServiceStopCategory: String, Identifiable, Hashable, CaseIterable, Codable 
             return .serviceAgreementEstimate
         }
 
-        if searchableText.contains("estimate") {
+        if searchableText.contains("estimate") || searchableText.contains("estiamte") {
             return .jobEstimate
         }
 
-        return .customerRelationship
+        // Legacy service stops predate categories; keep them on the original route detail/payroll flow.
+        return defaultCategory
     }
 }
 

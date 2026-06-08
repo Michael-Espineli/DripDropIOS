@@ -50,7 +50,10 @@ struct CompanyRoleEditView: View {
         .navigationTitle("Edit Role")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            selectedPermissionList = role.permissionIdList
+            selectedPermissionList = PermissionSelectionHelper.normalizeSelection(
+                role.permissionIdList,
+                permissions: permissionVM.standrdPermissions
+            )
             name = role.name
             description = role.description
         }
@@ -147,47 +150,101 @@ extension CompanyRoleEditView {
                     .background(.thinMaterial, in: Capsule())
             }
 
-            permissionCategorySection("Operations")
-            permissionCategorySection("Administration")
-            permissionCategorySection("Finance")
-            permissionCategorySection("User")
+            ForEach(permissionCategoryGroups) { categoryGroup in
+                permissionCategorySection(categoryGroup)
+            }
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
-    func permissionCategorySection(_ category: String) -> some View {
-        let permissions = permissionVM.standrdPermissions.filter { $0.category == category }
+    var permissionCategoryGroups: [PermissionCategoryGroup] {
+        PermissionSelectionHelper.categoryGroups(from: permissionVM.standrdPermissions)
+    }
+
+    func permissionCategorySection(_ categoryGroup: PermissionCategoryGroup) -> some View {
+        let state = PermissionSelectionHelper.selectionState(
+            for: categoryGroup,
+            selectedIds: selectedPermissionList
+        )
+        let selectedCount = PermissionSelectionHelper.selectedCount(
+            for: categoryGroup,
+            selectedIds: selectedPermissionList
+        )
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(category)
+                Text(categoryGroup.name)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
 
                 Spacer()
 
-                Text("\(selectedCount(for: category))/\(permissions.count)")
+                Text("\(selectedCount)/\(categoryGroup.permissions.count)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(.thinMaterial, in: Capsule())
+
+                Button {
+                    selectedPermissionList = PermissionSelectionHelper.toggleCategory(
+                        categoryGroup,
+                        selectedIds: selectedPermissionList,
+                        permissions: permissionVM.standrdPermissions
+                    )
+                } label: {
+                    Label(
+                        state == .selected ? "Clear" : "All",
+                        systemImage: state == .selected ? "xmark.circle" : "checkmark.circle"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(state == .selected ? .secondary : Color.accentColor)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(.thinMaterial, in: Capsule())
+                }
+                .buttonStyle(.plain)
             }
 
-            if permissions.isEmpty {
+            if categoryGroup.permissions.isEmpty {
                 emptyState(
-                    title: "No \(category) permissions.",
+                    title: "No \(categoryGroup.name) permissions.",
                     message: "Permissions for this category will show here.",
                     systemImage: "lock.slash"
                 )
             } else {
-                VStack(spacing: 8) {
-                    ForEach(permissions) { permission in
-                        PermissionSelectorView(
-                            permission: permission,
-                            listOfPermissions: $selectedPermissionList
-                        )
+                VStack(spacing: 10) {
+                    ForEach(categoryGroup.groups) { group in
+                        VStack(alignment: .leading, spacing: 8) {
+                            PermissionSelectorView(
+                                permission: group.parent,
+                                listOfPermissions: $selectedPermissionList,
+                                allPermissions: permissionVM.standrdPermissions,
+                                showsCategory: false
+                            )
+
+                            if !group.children.isEmpty {
+                                VStack(spacing: 8) {
+                                    ForEach(group.children) { child in
+                                        PermissionSelectorView(
+                                            permission: child,
+                                            listOfPermissions: $selectedPermissionList,
+                                            allPermissions: permissionVM.standrdPermissions,
+                                            showsCategory: false,
+                                            isChild: true
+                                        )
+                                    }
+                                }
+                                .padding(.leading, 18)
+                                .overlay(alignment: .leading) {
+                                    Rectangle()
+                                        .fill(Color.primary.opacity(0.10))
+                                        .frame(width: 1)
+                                        .padding(.vertical, 4)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -241,7 +298,10 @@ extension CompanyRoleEditView {
             if let currentCompany = masterDataManager.currentCompany {
                 let pushDescription = description
                 let pushName = name
-                let pushSelectedPermissionList = selectedPermissionList
+                let pushSelectedPermissionList = PermissionSelectionHelper.normalizeSelection(
+                    selectedPermissionList,
+                    permissions: permissionVM.standrdPermissions
+                )
 
                 print(pushSelectedPermissionList)
 
@@ -275,13 +335,6 @@ extension CompanyRoleEditView {
 // MARK: - Reusable UI
 
 extension CompanyRoleEditView {
-
-    func selectedCount(for category: String) -> Int {
-        permissionVM.standrdPermissions
-            .filter { $0.category == category }
-            .filter { selectedPermissionList.contains($0.id) }
-            .count
-    }
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)

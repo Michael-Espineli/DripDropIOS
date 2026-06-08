@@ -34,6 +34,207 @@ struct PermissionModel:Identifiable,Codable,Equatable,Hashable{
 
         }
 }
+
+enum PermissionSelectionState {
+    case empty
+    case partial
+    case selected
+}
+
+struct PermissionSelectionGroup: Identifiable {
+    let parent: PermissionModel
+    let children: [PermissionModel]
+
+    var id: String { parent.id }
+    var permissions: [PermissionModel] { [parent] + children }
+}
+
+struct PermissionCategoryGroup: Identifiable {
+    let name: String
+    let groups: [PermissionSelectionGroup]
+
+    var id: String { name }
+    var permissions: [PermissionModel] { groups.flatMap { $0.permissions } }
+}
+
+enum PermissionSelectionHelper {
+    private static let childPrefixes = ["Create", "Update", "Delete", "Respond"]
+
+    static func categoryGroups(from permissions: [PermissionModel]) -> [PermissionCategoryGroup] {
+        var categoryNames: [String] = []
+
+        for permission in permissions {
+            if !categoryNames.contains(permission.category) {
+                categoryNames.append(permission.category)
+            }
+        }
+
+        return categoryNames.map { category in
+            let categoryPermissions = permissions.filter { $0.category == category }
+            let childIds = Set(
+                categoryPermissions.compactMap { permission -> String? in
+                    guard let parent = parent(for: permission, in: permissions),
+                          parent.category == category else {
+                        return nil
+                    }
+
+                    return permission.id
+                }
+            )
+
+            let groups = categoryPermissions
+                .filter { !childIds.contains($0.id) }
+                .map { permission in
+                    PermissionSelectionGroup(
+                        parent: permission,
+                        children: children(for: permission, in: permissions).filter { $0.category == category }
+                    )
+                }
+
+            return PermissionCategoryGroup(name: category, groups: groups)
+        }
+    }
+
+    static func parent(for permission: PermissionModel, in permissions: [PermissionModel]) -> PermissionModel? {
+        guard let parentName = parentName(for: permission) else {
+            return nil
+        }
+
+        let normalizedParentName = normalizedName(parentName)
+
+        return permissions.first { normalizedName($0.name) == normalizedParentName }
+    }
+
+    static func children(for permission: PermissionModel, in permissions: [PermissionModel]) -> [PermissionModel] {
+        permissions.filter { candidate in
+            parent(for: candidate, in: permissions)?.id == permission.id
+        }
+    }
+
+    static func selectionState(
+        for permission: PermissionModel,
+        selectedIds: [String],
+        permissions: [PermissionModel]
+    ) -> PermissionSelectionState {
+        let selected = Set(selectedIds)
+        let children = children(for: permission, in: permissions)
+
+        if selected.contains(permission.id) {
+            return .selected
+        }
+
+        if children.isEmpty {
+            return .empty
+        }
+
+        let childIds = children.map(\.id)
+        let selectedChildCount = childIds.filter { selected.contains($0) }.count
+
+        if selectedChildCount > 0 {
+            return .partial
+        }
+
+        return .empty
+    }
+
+    static func selectionState(
+        for categoryGroup: PermissionCategoryGroup,
+        selectedIds: [String]
+    ) -> PermissionSelectionState {
+        let selected = Set(selectedIds)
+        let categoryIds = categoryGroup.permissions.map(\.id)
+        let selectedCount = categoryIds.filter { selected.contains($0) }.count
+
+        if selectedCount == 0 {
+            return .empty
+        }
+
+        if selectedCount == categoryIds.count {
+            return .selected
+        }
+
+        return .partial
+    }
+
+    static func selectedCount(
+        for categoryGroup: PermissionCategoryGroup,
+        selectedIds: [String]
+    ) -> Int {
+        let selected = Set(selectedIds)
+        return categoryGroup.permissions.filter { selected.contains($0.id) }.count
+    }
+
+    static func togglePermission(
+        _ permission: PermissionModel,
+        selectedIds: [String],
+        permissions: [PermissionModel]
+    ) -> [String] {
+        var selected = Set(selectedIds)
+
+        if selected.contains(permission.id) {
+            selected.remove(permission.id)
+        } else {
+            selected.insert(permission.id)
+        }
+
+        return orderedIds(from: selected, permissions: permissions)
+    }
+
+    static func toggleCategory(
+        _ categoryGroup: PermissionCategoryGroup,
+        selectedIds: [String],
+        permissions: [PermissionModel]
+    ) -> [String] {
+        var selected = Set(selectedIds)
+        let shouldSelectCategory = selectionState(for: categoryGroup, selectedIds: selectedIds) != .selected
+
+        for permission in categoryGroup.permissions {
+            if shouldSelectCategory {
+                selected.insert(permission.id)
+            } else {
+                selected.remove(permission.id)
+            }
+        }
+
+        return normalizeSelection(Array(selected), permissions: permissions)
+    }
+
+    static func normalizeSelection(_ ids: [String], permissions: [PermissionModel]) -> [String] {
+        orderedIds(from: Set(ids), permissions: permissions)
+    }
+
+    private static func parentName(for permission: PermissionModel) -> String? {
+        let lowercaseName = permission.name.lowercased()
+
+        for prefix in childPrefixes {
+            let lowercasePrefix = "\(prefix) ".lowercased()
+
+            if lowercaseName.hasPrefix(lowercasePrefix) {
+                return String(permission.name.dropFirst(prefix.count))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+
+        return nil
+    }
+
+    private static func normalizedName(_ value: String) -> String {
+        value.lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static func orderedIds(from selected: Set<String>, permissions: [PermissionModel]) -> [String] {
+        let knownIds = Set(permissions.map(\.id))
+        let orderedKnownIds = permissions
+            .filter { selected.contains($0.id) }
+            .map(\.id)
+        let unknownIds = selected
+            .filter { !knownIds.contains($0) }
+            .sorted()
+
+        return orderedKnownIds + unknownIds
+    }
+}
+
 @MainActor
 final class PermissionViewModel:ObservableObject{
     @Published private(set) var permission: PermissionModel? = nil

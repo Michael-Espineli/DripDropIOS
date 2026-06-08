@@ -836,6 +836,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getChatBySenderAndReceiver(senderId:String,receiverId:String) async throws ->Chat?
 
     func getChatsByCompany(companyId: String) async throws ->[Chat]
+    func getVisibleChats(userId:String, companyId:String?) async throws ->[Chat]
     func getAllMessagesByChat(chatId: String) async throws ->[Message]
     func getNewestMessage(chatId: String) async throws ->Message?
 
@@ -1227,6 +1228,9 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateServiceLocationEstimatedTime(companyId:String,serviceLocationId:String,estimatedTime:Int)async throws
     func updateServiceLocationNotes(companyId:String,serviceLocationId:String,notes:String)async throws
     func updateServiceLocationContact(companyId:String,serviceLocationId:String,contact:Contact)async throws
+    func updateServiceLocationPreText(companyId:String,serviceLocationId:String,preText:Bool)async throws
+    func updateServiceLocationIsActive(companyId:String,serviceLocationId:String,isActive:Bool)async throws
+    func deactivateServiceLocationRelatedRecords(companyId:String,serviceLocationId:String)async throws
 
     
     func updateCustomer(companyId:String,currentCustomer:Customer,customerWithUpdates:Customer) async throws
@@ -1273,6 +1277,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateCustomerEmailConfig(companyId:String,customerEmailConfigId:String,emailIsOn:Bool) async throws
     
     func markChatAsRead(userId:String, chat: Chat) async throws
+    func markChatAsRead(userId:String, companyId:String?, chat: Chat) async throws
     func markChatAsUnread(userId:String,chat:Chat) async throws
     
     //----------------------------------------------------
@@ -1354,6 +1359,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func addListenerForAllJobsOperations(companyId:String,status:[JobOperationStatus],requesterIds:[String],startDate:Date,endDate:Date,completion:@escaping (_ serviceStops:[Job]) -> Void)
 
     func addListenerForAllChats(userId:String,completion:@escaping (_ serviceStops:[Chat]) -> Void)
+    func addListenerForVisibleChats(userId:String,companyId:String?,completion:@escaping (_ serviceStops:[Chat]) -> Void)
+    func addListenerForUnreadChats(userId:String,companyId:String?,completion:@escaping (_ serviceStops:[Chat]) -> Void)
     func addListenerForAllServiceStops(companyId:String,completion:@escaping (_ serviceStops:[ServiceStop]) -> Void)
     
     func addListenerForFutureCustomerServiceStops(companyId:String,customerId:String,completion:@escaping (_ serviceStops:[ServiceStop]) -> Void)

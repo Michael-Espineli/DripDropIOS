@@ -106,7 +106,7 @@ struct InviteNewTechView: View {
                                                                                       companyId: company.id,
                                                                                       roleId: selectedRole.id,
                                                                                       roleName: selectedRole.name,
-                                                                                      status: "Pending",
+                                                                                      status: InviteStatusValue.pending.rawValue,
                                                                                       workerType: workerType,
                                                                                       currentUser: false))
                                         alertMesage = "Successfully Sending Invite"
@@ -153,4 +153,3 @@ struct InviteNewTechView: View {
         }
     }
 }
-

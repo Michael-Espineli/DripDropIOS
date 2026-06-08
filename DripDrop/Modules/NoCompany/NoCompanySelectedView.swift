@@ -233,7 +233,7 @@ struct InvitesWidgetPlaceholder: View {
                     VStack(alignment: .leading) {
                         Text("\(idx.companyName)").font(.subheadline).bold()
                         HStack{
-                            Text(idx.status)
+                            Text(idx.displayStatus)
                             Text("Tap to view details").font(.caption).foregroundStyle(.secondary)
                         }
                     }

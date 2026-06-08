@@ -29,6 +29,13 @@ struct Customer:Identifiable, Codable,Hashable{
     var billingNotes : String
     var tags : [String]?
     var linkedCustomerIds : [String]? //only one
+    var linkedCustomerUserId : String? = nil
+    var linkedHomeownerUserId : String? = nil
+    var relationshipId : String? = nil
+    var customerCompanyRelationshipId : String? = nil
+    var linkedStatus : String? = nil
+    var linkedEmail : String? = nil
+    var linkedAt : Date? = nil
     var linkedInviteId : String
 
     init(
@@ -82,6 +89,13 @@ struct Customer:Identifiable, Codable,Hashable{
             case billingNotes = "billingNotes"
             case tags = "tags"
             case linkedCustomerIds = "linkedCustomerIds"
+            case linkedCustomerUserId = "linkedCustomerUserId"
+            case linkedHomeownerUserId = "linkedHomeownerUserId"
+            case relationshipId = "relationshipId"
+            case customerCompanyRelationshipId = "customerCompanyRelationshipId"
+            case linkedStatus = "linkedStatus"
+            case linkedEmail = "linkedEmail"
+            case linkedAt = "linkedAt"
             case linkedInviteId = "linkedInviteId"
         }
     func hash(into hasher: inout Hasher) {
@@ -1571,4 +1585,3 @@ final class CustomerManager:customerManagerProtocol {
     
 }
  */
-

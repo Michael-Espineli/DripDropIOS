@@ -429,7 +429,7 @@ extension ProductionDataService {
         let customerRef = inviteDoc(inviteId: invite)
         
         try await customerRef.updateData([
-            Invite.CodingKeys.status.rawValue:status,
+            Invite.CodingKeys.status.rawValue: InviteStatusValue.normalized(status),
         ])
     }
     func updateCustomer(companyId:String,currentCustomer:Customer,customerWithUpdates:Customer) async  throws {

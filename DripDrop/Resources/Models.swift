@@ -253,6 +253,8 @@ struct SalesBillingProfile: Identifiable, Codable, Hashable {
     var companyId: String
     var customerId: String
     var customerUserId: String?
+    var relationshipId: String? = nil
+    var customerCompanyRelationshipId: String? = nil
     var customerName: String
     var email: String
     var phoneNumber: String
@@ -288,6 +290,14 @@ struct SalesAgreementEmailDelivery: Codable, Hashable {
     var replyTo: String?
     var messageId: String?
     var agreementUrl: String?
+    var customerActionUrl: String?
+    var customerPortalUrl: String?
+    var claimAccountUrl: String?
+    var homeownerSignInUrl: String?
+    var homeownerSignUpUrl: String?
+    var primaryCustomerUrl: String?
+    var hasLinkedCustomerAccount: Bool?
+    var shouldShowClaimAccountLink: Bool?
     var testMode: Bool?
     var realEmailsFeatureFlagId: String?
     var realEmailsEnabled: Bool?
@@ -300,6 +310,8 @@ struct SalesAgreement: Identifiable, Codable, Hashable {
     var companyName: String
     var customerId: String
     var customerUserId: String?
+    var relationshipId: String? = nil
+    var customerCompanyRelationshipId: String? = nil
     var customerName: String
     var email: String
     var serviceLocationIds: [String]
@@ -352,6 +364,11 @@ struct SalesBillingSubscription: Identifiable, Codable, Hashable {
     var companyId: String
     var customerId: String
     var customerUserId: String?
+    var relationshipId: String? = nil
+    var customerCompanyRelationshipId: String? = nil
+    var customerName: String? = nil
+    var email: String? = nil
+    var serviceLocationIds: [String]? = nil
     var agreementId: String
     var billingProfileId: String
     var stripeConnectedAccountId: String
@@ -398,8 +415,15 @@ struct SalesInvoiceLineItem: Identifiable, Codable, Hashable {
 struct SalesInvoice: Identifiable, Codable, Hashable {
     var id: String = "si_" + UUID().uuidString
     var companyId: String
+    var companyName: String? = nil
     var customerId: String
     var customerUserId: String?
+    var relationshipId: String? = nil
+    var customerCompanyRelationshipId: String? = nil
+    var customerName: String? = nil
+    var email: String? = nil
+    var serviceLocationIds: [String]? = nil
+    var serviceLocationSnapshots: [SalesAgreementServiceLocationSnapshot]? = nil
     var agreementId: String
     var jobId: String
     var billingSubscriptionId: String
@@ -437,6 +461,10 @@ struct SalesPayment: Identifiable, Codable, Hashable {
     var companyId: String
     var customerId: String
     var customerUserId: String?
+    var relationshipId: String? = nil
+    var customerCompanyRelationshipId: String? = nil
+    var customerName: String? = nil
+    var email: String? = nil
     var invoiceId: String
     var billingProfileId: String
     var billingSubscriptionId: String
@@ -463,6 +491,10 @@ struct SalesPaymentEvent: Identifiable, Codable, Hashable {
     var companyId: String
     var customerId: String
     var customerUserId: String?
+    var relationshipId: String? = nil
+    var customerCompanyRelationshipId: String? = nil
+    var customerName: String? = nil
+    var email: String? = nil
     var invoiceId: String
     var billingSubscriptionId: String
     var stripeConnectedAccountId: String

@@ -286,7 +286,8 @@ final class ServiceLocationViewModel:ObservableObject{
         companyId: String,
         customerId:String,
         serviceLocation:ServiceLocation,
-        originalServiceLocation:ServiceLocation
+        originalServiceLocation:ServiceLocation,
+        cleanupLinkedRecords: Bool = false
     ) async throws {
         // Get Service Stop by Service Location Id
         let serviceStops = try await dataService.getServiceStopByServiceLocationId(companyId: companyId, serviceLocationId: originalServiceLocation.id)
@@ -363,6 +364,26 @@ final class ServiceLocationViewModel:ObservableObject{
                 contact: serviceLocation.mainContact
             )
         }
+        if serviceLocation.preText != originalServiceLocation.preText {
+            try await dataService.updateServiceLocationPreText(
+                companyId: companyId,
+                serviceLocationId: originalServiceLocation.id,
+                preText: serviceLocation.preText ?? false
+            )
+        }
+        if serviceLocation.isActive != originalServiceLocation.isActive {
+            try await dataService.updateServiceLocationIsActive(
+                companyId: companyId,
+                serviceLocationId: originalServiceLocation.id,
+                isActive: serviceLocation.isActive
+            )
+        }
+        if serviceLocation.isActive == false && cleanupLinkedRecords {
+            try await dataService.deactivateServiceLocationRelatedRecords(
+                companyId: companyId,
+                serviceLocationId: originalServiceLocation.id
+            )
+        }
 
     }
     //----------------------------------------------------
@@ -377,6 +398,10 @@ final class ServiceLocationViewModel:ObservableObject{
                 print("    [ServiceLocationViewModel][deleteLocation]")
             }
         }
+    }
+    func deleteLocationAndWait(companyId: String?, locationId:String) async throws {
+        guard let companyId else { return }
+        try await dataService.deleteLocation(companyId: companyId, serviceLocationId: locationId)
     }
     //----------------------------------------------------
     //                    FUNCTIONS

@@ -158,6 +158,7 @@ struct ChatInitiationView: View {
             print(errorText as Any)
             return
         }
+        let currentCompany = masterDataManager.currentCompany
 
         let trimmed = newMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -172,6 +173,7 @@ struct ChatInitiationView: View {
             // Return the chatId so we can navigate.
             let chat = try await createChatAndFirstMessage(
                 currentUser: user,
+                currentCompany: currentCompany,
                 participant: participantInfo,
                 firstMessage: trimmed
             )
@@ -195,28 +197,34 @@ struct ChatInitiationView: View {
         return BasicUserInfo(id: UUID().uuidString, userId: participantId, userName: fullName, userImage: user.profileImagePath ?? "")
     }
 
-    private func createChatAndFirstMessage(currentUser: DBUser, participant: BasicUserInfo, firstMessage: String) async throws -> Chat {
+    private func createChatAndFirstMessage(currentUser: DBUser, currentCompany: Company?, participant: BasicUserInfo, firstMessage: String) async throws -> Chat {
         // TODO:
         let chatId = "chat_" + UUID().uuidString
         let currentUserInfo = BasicUserInfo(
             id: UUID().uuidString,
             userId: currentUser.id,
             userName: currentUser.firstName + " " + currentUser.lastName,
-            userImage: currentUser.profileImagePath ?? ""
+            userImage: currentUser.profileImagePath ?? "",
+            companyId: currentCompany?.id,
+            companyName: currentCompany?.name
         )
         print("[createChatAndFirstMessage] currentUserInfo: \(currentUserInfo)")
         let chat = Chat(
             id: chatId,
             participantIds: [participant.userId, currentUserInfo.userId],
             participants: [participant,currentUserInfo],
-            companyId: "",
+            companyId: currentCompany?.id,
             mostRecentChat: Date(),
             userWhoHaveNotRead: [participant.userId],
-            lastMessage: firstMessage
+            lastMessage: firstMessage,
+            visibility: .direct,
+            participantCompanyIds: currentCompany.map { [$0.id] },
+            companyIdsWhoHaveNotRead: currentCompany.map { [$0.id] },
+            readByUserIds: [currentUser.id]
         )
         print("[createChatAndFirstMessage] chat: \(chat)")
         
-        let message = Message(id: "msg_" + UUID().uuidString, senderName: currentUserInfo.userName, senderId: currentUserInfo.userId, message: firstMessage, read: false, dateSent: Date(), chatId: chatId)
+        let message = Message(id: "msg_" + UUID().uuidString, senderName: currentUserInfo.userName, senderId: currentUserInfo.userId, message: firstMessage, read: false, dateSent: Date(), chatId: chatId, senderCompanyId: currentCompany?.id, senderCompanyName: currentCompany?.name)
         print("[createChatAndFirstMessage] message: \(message)")
 
         // 1) Create chat doc with id = chat_<uuid>

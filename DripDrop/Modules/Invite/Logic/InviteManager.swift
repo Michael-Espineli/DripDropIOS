@@ -9,6 +9,57 @@ import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
 
+enum InviteStatusValue: String, CaseIterable, Identifiable {
+    case pending = "pending"
+    case accepted = "accepted"
+    case rejected = "rejected"
+
+    var id: String { rawValue }
+
+    var title: String {
+        rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+    }
+
+    var queryVariants: [String] {
+        switch self {
+        case .pending:
+            return ["pending", "Pending"]
+        case .accepted:
+            return ["accepted", "Accepted"]
+        case .rejected:
+            return ["rejected", "Rejected", "declined", "Declined"]
+        }
+    }
+
+    static func normalized(_ value: String) -> String {
+        let status = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if status == "declined" { return rejected.rawValue }
+        if status == accepted.rawValue { return accepted.rawValue }
+        if status == rejected.rawValue { return rejected.rawValue }
+        return pending.rawValue
+    }
+
+    static func display(_ value: String) -> String {
+        let normalized = normalized(value)
+        return normalized.prefix(1).uppercased() + normalized.dropFirst()
+    }
+
+    static func variants(for value: String) -> [String] {
+        switch normalized(value) {
+        case accepted.rawValue:
+            return accepted.queryVariants
+        case rejected.rawValue:
+            return rejected.queryVariants
+        default:
+            return pending.queryVariants
+        }
+    }
+
+    static func isPending(_ value: String) -> Bool {
+        normalized(value) == pending.rawValue
+    }
+}
+
 struct Invite:Identifiable,Codable,Equatable,Hashable{
     var id : String
     var userId : String
@@ -23,6 +74,14 @@ struct Invite:Identifiable,Codable,Equatable,Hashable{
     var workerType : WorkerTypeEnum //Employee Independent Contractor
     var currentUser : Bool
 //Date Created
+
+    var normalizedStatus: String {
+        InviteStatusValue.normalized(status)
+    }
+
+    var displayStatus: String {
+        InviteStatusValue.display(status)
+    }
 
     init(
         id: String,
@@ -153,13 +212,13 @@ final class InviteManager {
     func getAllCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
             .whereField(Invite.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
-            .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: "Pending")
+            .whereField(Invite.CodingKeys.status.rawValue, in: InviteStatusValue.pending.queryVariants)
             .getDocuments(as:Invite.self)
     }
     func getAllAcceptedCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
             .whereField(Invite.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
-            .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: "Accepted")
+            .whereField(Invite.CodingKeys.status.rawValue, in: InviteStatusValue.accepted.queryVariants)
             .getDocuments(as:Invite.self)
     }
     func getSpecificInvite(inviteId : String) async throws ->Invite {
@@ -175,7 +234,7 @@ final class InviteManager {
         
         // Set the "capital" field of the city 'DC'
         itemRef.updateData([
-            Invite.CodingKeys.status.rawValue:"Accepted"
+            Invite.CodingKeys.status.rawValue: InviteStatusValue.accepted.rawValue
             
         ]) { err in
             if let err = err {

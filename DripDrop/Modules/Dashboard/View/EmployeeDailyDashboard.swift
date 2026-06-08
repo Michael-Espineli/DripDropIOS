@@ -220,12 +220,7 @@ struct EmployeeDailyDashboard: View {
                             
                             Spacer()
                             
-                            Text(stop.operationStatus.rawValue)
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                                .background(.thinMaterial, in: Capsule())
+                            selectedStopStatusPill(stop)
                         }
                         .padding(12)
                         .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -235,6 +230,19 @@ struct EmployeeDailyDashboard: View {
         }
         .employeeDashCard()
     }
+
+    private func selectedStopStatusPill(_ stop: ServiceStop) -> some View {
+        Label(
+            stop.operationStatus.rawValue,
+            systemImage: stop.operationStatus == .notFinished ? "circle.dotted" : "checkmark.circle.fill"
+        )
+        .font(.caption2.weight(.bold))
+        .foregroundColor(stopAccentColor(stop))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(stopAccentColor(stop).opacity(0.12), in: Capsule())
+    }
+
     private func modeBanner(
         title: String,
         message: String,
@@ -502,80 +510,10 @@ extension EmployeeDailyDashboard {
                         .modifier(SubmitButtonModifier())
                 })
                 .disabled(VM.selectedServiceStops.isEmpty)
-                .sheet(isPresented: $confirmMove, onDismiss: {
-                    
-                }, content: {
-                    VStack{
-                        
-                        Picker("Employee", selection: $VM.moveType) {
-                            Text("One Time").tag("One Time")
-                            Text("Permanent").tag("Permanent")
-                        }
-                        .pickerStyle(.segmented)
-                        if VM.moveType == "One Time" {
-                            HStack{
-                                Spacer()
-                                Button(action: {
-                                    VM.moveServiceStops(companyId: masterDataManager.currentCompany?.id)
-                                    print("Confirm submit Logic")
-                                    
-                                }, label: {
-                                    Text("Submit")
-                                        .modifier(SubmitButtonModifier())
-                                })
-                            }
-                            DatePicker("Date Selected", selection: $VM.moveDate, in: Date()...,displayedComponents: .date)
-                        } else {
-                            HStack{
-                                Spacer()
-                                Button(action: {
-                                    VM.moveServiceStopsPermanently(companyId: masterDataManager.currentCompany?.id)
-                                    print("Confirm submit Logic")
-                                    
-                                }, label: {
-                                    Text("Submit")
-                                        .modifier(SubmitButtonModifier())
-                                })
-                            }
-                            HStack {
-                                Text("Day Of Week").bold(true)
-                                Picker("Day Of Week", selection: $VM.newDay) {
-                                    ForEach(DaysOfWeek.allCases) { day in
-                                        Text(day.rawValue).tag(day)
-                                        
-                                    }
-                                }
-                            }
-                            Text("If Day has already passed this week. Changes will apply next week")
-                                .font(.footnote)
-                        }
-                            HStack {
-                                Text("Employee").bold(true)
-                                Picker("Employee", selection: $VM.selectedTech) {
-                                    Text("Select User").tag(CompanyUser(
-                                        id: "",
-                                        userId: "",
-                                        userName: "",
-                                        roleId: "",
-                                        roleName: "",
-                                        dateCreated: Date(),
-                                        status: .active,
-                                        workerType: .notAssigned
-                                    ))
-                                    ForEach(VM.companyUsers) { user in
-                                        Text(user.userName).tag(user)
-                                    }
-                                }
-                            }
-                            Text("Stops")
-                            Divider()
-                            ForEach(VM.selectedServiceStops){ stop in
-                                Text("\(VM.serviceStopList.firstIndex(of: stop) ?? 0)) \(stop.customerName)")
-                            }
-                    }
-                    .padding()
-                    .presentationDetents([.medium,.large])
-                })
+                .sheet(isPresented: $confirmMove) {
+                    moveConfirmationSheet
+                        .presentationDetents([.large])
+                }
             }
         }
     }
@@ -869,33 +807,24 @@ extension EmployeeDailyDashboard {
                     VStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 12) {
                             sectionHeader(
-                                title: "Move Stops",
-                                subtitle: "Choose whether this move is one-time or permanent.",
-                                systemImage: "arrowshape.turn.up.right"
+                                title: "Move Selected Stops",
+                                subtitle: "\(VM.selectedServiceStops.count) selected for \(VM.selectedTech.id.isEmpty ? "reassignment" : VM.selectedTech.userName).",
+                                systemImage: "arrow.triangle.swap"
                             )
 
-                            Picker("Move Type", selection: $VM.moveType) {
-                                Text("One Time").tag("One Time")
-                                Text("Permanent").tag("Permanent")
-                            }
-                            .pickerStyle(.segmented)
+                            moveTypeSelector
                         }
                         .employeeDashCard(material: true)
 
                         if VM.moveType == "One Time" {
                             VStack(alignment: .leading, spacing: 12) {
                                 sectionHeader(
-                                    title: "One Time Move",
-                                    subtitle: "Move the selected stops to another date and technician.",
+                                    title: "One-Time Move",
+                                    subtitle: "Move only this route occurrence.",
                                     systemImage: "calendar"
                                 )
 
-                                DatePicker(
-                                    "Date Selected",
-                                    selection: $VM.moveDate,
-                                    in: Date()...,
-                                    displayedComponents: .date
-                                )
+                                moveDatePickerRow
 
                                 employeePickerRow
 
@@ -909,22 +838,11 @@ extension EmployeeDailyDashboard {
                             VStack(alignment: .leading, spacing: 12) {
                                 sectionHeader(
                                     title: "Permanent Move",
-                                    subtitle: "Update the recurring route assignment going forward.",
+                                    subtitle: "Update the recurring route going forward.",
                                     systemImage: "repeat"
                                 )
 
-                                HStack {
-                                    Text("Day of Week")
-                                        .font(.subheadline.weight(.semibold))
-
-                                    Spacer()
-
-                                    Picker("Day Of Week", selection: $VM.newDay) {
-                                        ForEach(DaysOfWeek.allCases) { day in
-                                            Text(day.rawValue).tag(day)
-                                        }
-                                    }
-                                }
+                                permanentDayPickerRow
 
                                 Text("If the selected day has already passed this week, changes will apply next week.")
                                     .font(.caption)
@@ -956,13 +874,115 @@ extension EmployeeDailyDashboard {
             }
         }
     }
-    private var employeePickerRow: some View {
-        HStack {
-            Text("Employee")
+
+    private var moveTypeSelector: some View {
+        HStack(spacing: 10) {
+            moveTypeButton(
+                title: "One Time",
+                subtitle: "This route only",
+                systemImage: "calendar.badge.clock"
+            )
+
+            moveTypeButton(
+                title: "Permanent",
+                subtitle: "Future route",
+                systemImage: "repeat.circle"
+            )
+        }
+    }
+
+    private func moveTypeButton(
+        title: String,
+        subtitle: String,
+        systemImage: String
+    ) -> some View {
+        let isSelected = VM.moveType == title
+
+        return Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                VM.moveType = title
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.headline.weight(.semibold))
+                    .frame(width: 30, height: 30)
+                    .foregroundColor(isSelected ? .white : Color.accentColor)
+                    .background(
+                        isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color.accentColor.opacity(0.12)),
+                        in: Circle()
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(.caption2.weight(.medium))
+                        .foregroundColor(isSelected ? Color.white.opacity(0.86) : Color.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 70)
+            .background(
+                isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.thinMaterial),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.55) : Color.primary.opacity(0.06), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var moveDatePickerRow: some View {
+        moveFieldRow(title: "Move Date", systemImage: "calendar") {
+            DatePicker(
+                "Move Date",
+                selection: $VM.moveDate,
+                in: Date()...,
+                displayedComponents: .date
+            )
+            .labelsHidden()
+        }
+    }
+
+    private var permanentDayPickerRow: some View {
+        moveFieldRow(title: "Day of Week", systemImage: "calendar.badge.plus") {
+            Picker("Day of Week", selection: $VM.newDay) {
+                ForEach(DaysOfWeek.allCases) { day in
+                    Text(day.rawValue).tag(day)
+                }
+            }
+            .pickerStyle(.menu)
+        }
+    }
+
+    private func moveFieldRow<Content: View>(
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 12) {
+            Label(title, systemImage: systemImage)
                 .font(.subheadline.weight(.semibold))
 
-            Spacer()
+            Spacer(minLength: 8)
 
+            content()
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var employeePickerRow: some View {
+        moveFieldRow(title: "Employee", systemImage: "person.crop.circle") {
             Picker("Employee", selection: $VM.selectedTech) {
                 Text("Select User").tag(CompanyUser(
                     id: "",
@@ -979,9 +999,8 @@ extension EmployeeDailyDashboard {
                     Text(user.userName).tag(user)
                 }
             }
+            .pickerStyle(.menu)
         }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     
@@ -991,11 +1010,15 @@ extension EmployeeDailyDashboard {
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .foregroundColor(canSubmitMove ? .white : .secondary)
+                .background(canSubmitMove ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.thinMaterial), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(VM.selectedTech.id.isEmpty || VM.selectedServiceStops.isEmpty)
-        .opacity(VM.selectedTech.id.isEmpty || VM.selectedServiceStops.isEmpty ? 0.55 : 1)
+        .disabled(!canSubmitMove)
+    }
+
+    private var canSubmitMove: Bool {
+        !VM.selectedTech.id.isEmpty && !VM.selectedServiceStops.isEmpty
     }
 }
 extension EmployeeDailyDashboard {

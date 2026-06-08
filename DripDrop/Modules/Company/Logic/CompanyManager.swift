@@ -41,6 +41,7 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
     let email : String
     let phoneNumber : String
     let verified : Bool
+    let hideFromBrowse: Bool?
     let serviceZipCodes:[String]
     let services:[String]
     let accountType : CompanyAccountType
@@ -61,6 +62,7 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
         email : String,
         phoneNumber : String,
         verified : Bool,
+        hideFromBrowse: Bool? = false,
         serviceZipCodes : [String],
         services : [String],
         accountType : CompanyAccountType,
@@ -81,6 +83,7 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
         self.email = email
         self.phoneNumber = phoneNumber
         self.verified = verified
+        self.hideFromBrowse = hideFromBrowse
         self.serviceZipCodes = serviceZipCodes
         self.services = services
         self.accountType = accountType
@@ -102,6 +105,7 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
         case email = "email"
         case phoneNumber = "phoneNumber"
         case verified = "verified"
+        case hideFromBrowse = "hideFromBrowse"
         case serviceZipCodes = "serviceZipCodes"
         case services = "services"
         case accountType = "accountType"

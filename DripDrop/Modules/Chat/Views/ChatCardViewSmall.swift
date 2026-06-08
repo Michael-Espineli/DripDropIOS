@@ -21,7 +21,7 @@ struct ChatCardViewSmall: View {
     var body: some View {
         HStack{
             if let user = masterDataManager.user {
-                if chat.userWhoHaveNotRead.contains(where: {$0 == user.id}) {
+                if chat.isUnread(for: user.id, companyId: masterDataManager.currentCompany?.id) {
                     Image(systemName: "circle")
                         .foregroundColor(Color.red)
                 } else {
@@ -69,16 +69,9 @@ struct ChatCardViewSmall: View {
             }
             VStack(alignment: .leading){
                 HStack{
-                    ForEach(chat.participants){ participant in
-                        if let user = masterDataManager.user {
-                            if user.id != participant.userId {
-                                
-                                Text(participant.userName)
-                                Image(systemName: "building.columns.fill")
-                            }
-                        } else {
-                            Text("Invalid User")
-                        }
+                    Text(chat.displayTitle(currentUserId: masterDataManager.user?.id))
+                    if chat.visibility == .company || chat.visibility == .companyToCompany {
+                        Image(systemName: "building.2.fill")
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
@@ -88,7 +81,7 @@ struct ChatCardViewSmall: View {
                 .lineLimit(1)
                 Text(shortDate(date:chatVM.newestMessage?.dateSent))
                     .font(.footnote)
-                Text(chatVM.newestMessage?.message ?? "")
+                Text(chatVM.newestMessage?.previewText ?? chat.lastMessage)
                     .lineLimit(2, reservesSpace: true)
                     .font(.footnote)
             }

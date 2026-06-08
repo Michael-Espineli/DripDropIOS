@@ -9,11 +9,12 @@ import SwiftUI
 import Firebase
 import FirebaseFirestore
 enum Tab: String, CaseIterable, Identifiable {
-    case pending = "Pending"
-    case accepted = "Accepted"
-    case rejected = "Rejected"
+    case pending = "pending"
+    case accepted = "accepted"
+    case rejected = "rejected"
     var id: String { rawValue }
-    var title: String { rawValue }
+    var title: String { InviteStatusValue.display(rawValue) }
+    var statusVariants: [String] { InviteStatusValue.variants(for: rawValue) }
 }
 @MainActor
 final class TechInviteListViewModel: ObservableObject{
@@ -26,19 +27,22 @@ final class TechInviteListViewModel: ObservableObject{
     @Published var isLoading: Bool = true
     @Published var invites: [Invite] = []
     @Published var selectedTab: Tab = .pending
+    @Published var actionInviteId: String? = nil
 
     func loadInvites(userEmail: String? = nil) async {
         self.isLoading = true
         defer { self.isLoading = false }
-        // If you want invites by email for a tech, query by `email == userEmail` and status.
-        // If you want invites by company for a manager, query by `companyId`.
-        // Below is an example that uses `email` if available; adjust as needed.
+        let normalizedEmail = (userEmail ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalizedEmail.isEmpty else {
+            self.invites = []
+            return
+        }
 
         do {
             let snapshot = try await Firestore.firestore()
                 .collection("invites")
-                .whereField("email", isEqualTo: userEmail ?? "")
-                .whereField("status", isEqualTo: selectedTab.rawValue)
+                .whereField("email", isEqualTo: normalizedEmail)
+                .whereField("status", in: selectedTab.statusVariants)
                 .getDocuments()
 
             let fetched: [Invite] = try snapshot.documents.compactMap { doc in
@@ -55,45 +59,27 @@ final class TechInviteListViewModel: ObservableObject{
     func onAccept(invite: Invite, user:DBUser?) {
         Task{
             guard let user else { return }
+            guard actionInviteId == nil else { return }
+            actionInviteId = invite.id
+            defer { actionInviteId = nil }
             do {
-                let userAccess = UserAccess(id: invite.companyId,
-                                            companyId: invite.companyId,
-                                            companyName: invite.companyName,
-                                            roleId: invite.roleId,
-                                            roleName: invite.roleName,
-                                            dateCreated: Date())
-                try await dataService.uploadUserAccess(userId: user.id, companyId: invite.companyId, userAccess: userAccess)
-                print("Created Company User Access")
-
-                try await dataService.addCompanyUser(
-                    companyId: invite.companyId,
-                    companyUser: CompanyUser(
-                        id: UUID().uuidString,
-                        userId: user.id,
-                        userName: user.firstName + " " + user.lastName,
-                        roleId: invite.roleId,
-                        roleName: invite.roleName,
-                        dateCreated: Date(),
-                        status: .active,
-                        workerType: .contractor
-                    )
-                )
-                
-                print("User Access Created")
-                try await dataService.markInviteAsAccepted(invite: invite)
+                try await FunctionsManager.shared.acceptTechInvite(inviteId: invite.id, userId: user.id)
                 print("Invite Accepted")
-                await loadInvites()
+                await loadInvites(userEmail: user.email)
             } catch {
                 print("[][onAccept] error \(error)")
             }
         }
        
     }
-    func onReject(invite: Invite) {
+    func onReject(invite: Invite, userEmail: String?) {
         Task{
+            guard actionInviteId == nil else { return }
+            actionInviteId = invite.id
+            defer { actionInviteId = nil }
             do {
                 try await dataService.markInviteAsRejected(invite: invite)
-                await loadInvites()
+                await loadInvites(userEmail: userEmail)
             } catch {
                 print("[][onReject] error \(error)")
             }
@@ -102,8 +88,10 @@ final class TechInviteListViewModel: ObservableObject{
 }
 struct TechInviteListView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
+    let dataService: any ProductionDataServiceProtocol
     @StateObject var VM : TechInviteListViewModel
     init( dataService:any ProductionDataServiceProtocol){
+        self.dataService = dataService
         _VM = StateObject(wrappedValue: TechInviteListViewModel(dataService: dataService))
     }
 
@@ -165,11 +153,14 @@ struct TechInviteListView: View {
                                 InviteRow(
                                     invite: invite,
                                     isPendingTab: VM.selectedTab == .pending,
+                                    isActionLoading: VM.actionInviteId == invite.id,
+                                    isActionDisabled: VM.actionInviteId != nil,
+                                    detailsRoute: Route.inviteDetailView(dataService: dataService, invite: invite),
                                     onAccept: {
                                         VM.onAccept(invite: invite, user: user)
                                     },
                                     onReject: {
-                                        VM.onReject(invite: invite)
+                                        VM.onReject(invite: invite, userEmail: userEmail)
                                     }
                                 )
                             }
@@ -222,32 +213,65 @@ private struct LoadingSkeleton: View {
 private struct InviteRow: View {
     let invite: Invite
     let isPendingTab: Bool
+    let isActionLoading: Bool
+    let isActionDisabled: Bool
+    let detailsRoute: Route
     let onAccept: () -> Void
     let onReject: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .center) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(invite.companyName)
                         .font(.headline)
-                    Text("Sent by: \(invite.firstName) \(invite.lastName)")
+                    Text("Invited as \(invite.roleName)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Text(invite.displayStatus)
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(statusColor.opacity(0.14), in: Capsule())
+                        .foregroundStyle(statusColor)
                 }
                 Spacer()
-                if isPendingTab {
-                    HStack(spacing: 8) {
-                        Button("Accept", action: onAccept)
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-                        Button("Reject", action: onReject)
-                            .buttonStyle(.bordered)
-                            .tint(.red)
-                    }
+                NavigationLink(value: detailsRoute) {
+                    Label("Details", systemImage: "info.circle")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+            }
+
+            if isPendingTab {
+                HStack(spacing: 8) {
+                    Button(isActionLoading ? "Accepting" : "Accept", action: onAccept)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                        .disabled(isActionDisabled)
+                    Button(isActionLoading ? "Rejecting" : "Reject", action: onReject)
+                        .buttonStyle(.bordered)
+                        .tint(.red)
+                        .disabled(isActionDisabled)
                 }
             }
         }
-        .padding(.vertical, 6)
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.gray.opacity(0.16), lineWidth: 1)
+        }
+    }
+
+    private var statusColor: Color {
+        switch invite.normalizedStatus {
+        case InviteStatusValue.accepted.rawValue:
+            return .green
+        case InviteStatusValue.rejected.rawValue:
+            return .red
+        default:
+            return .orange
+        }
     }
 }

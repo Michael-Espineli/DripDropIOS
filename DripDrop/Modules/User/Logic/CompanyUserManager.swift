@@ -141,10 +141,13 @@ final class CompanyUserManager {
     }
 
     func getCompanyUserByDBUserId(companyId:String,userId:String) async throws -> CompanyUser {
-        return try await companyUsersCollection(companyId: companyId)
+        if let user = try await companyUsersCollection(companyId: companyId)
             .whereField("userId", isEqualTo: userId)
-            .getDocuments(as:CompanyUser.self).first! // DEVELOPER PROPPERLY UNWRAP
-        
+            .getDocuments(as:CompanyUser.self).first {// DEVELOPER PROPPERLY UNWRAP
+            return user
+        }else {
+            throw FireBaseRead.unableToRead
+        }
     }
     
     func getAllRateSheetByCompanyUserId(companyId: String, companyUserId: String) async throws -> [RateSheet]{

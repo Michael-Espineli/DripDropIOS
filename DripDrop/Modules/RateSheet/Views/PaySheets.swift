@@ -154,12 +154,9 @@ extension CompanyServiceStopType {
             recurringServiceStopId: "",
             jobId: "",
             type: name,
-            description: ""
+            description: "",
+            defaultCategory: fallback
         )
-
-        if inferredCategory == .customerRelationship {
-            return fallback
-        }
 
         return inferredCategory
     }

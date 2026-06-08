@@ -223,8 +223,10 @@ extension ProductionDataService {
     }
     //DELETE
     func deleteRecurringServiceStop(companyId:String,recurringServiceStopId : String) async throws {
-        try await recurringServiceStopDocument(recurringServiceStopId: recurringServiceStopId, companyId: companyId)
-            .delete()
+        try await FunctionsManager.shared.deleteRecurringServiceStop(
+            companyId: companyId,
+            stopId: recurringServiceStopId
+        )
         
     }
 }

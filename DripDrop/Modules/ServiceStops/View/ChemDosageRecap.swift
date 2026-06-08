@@ -30,8 +30,8 @@ struct ChemDosageRecap: View {
         VStack{
                 ForEach(templates) { template in
                     HStack{
-                        if let stopData = VM.serviceLocationStopData.first(where: {$0.bodyOfWaterId == self.BOW.id}), let reading = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId}) {
-                            Text("\(reading.amount ?? "-")")
+                        if let stopData = VM.serviceLocationStopData.first(where: {$0.bodyOfWaterId == self.BOW.id}), let dosage = dosage(for: template, in: stopData) {
+                            Text(formattedAmount(dosage.amount, unit: dosage.UOM))
                             
                         } else {
                             Text(" - ")
@@ -40,6 +40,45 @@ struct ChemDosageRecap: View {
                 }
             
         }
+    }
+
+    private func dosage(for template: SavedDosageTemplate, in stopData: StopData) -> Dosage? {
+        let templateKeys = [
+            template.id,
+            template.dosageTemplateId,
+            template.name ?? ""
+        ]
+
+        return stopData.dosages.first { dosage in
+            templateKeys.contains { key in
+                matches(key, dosage.templateId) ||
+                matches(key, dosage.universalTemplateId) ||
+                matches(key, dosage.name)
+            }
+        }
+    }
+
+    private func matches(_ lhs: String?, _ rhs: String?) -> Bool {
+        let left = normalizedKey(lhs)
+        let right = normalizedKey(rhs)
+
+        return !left.isEmpty && left == right
+    }
+
+    private func normalizedKey(_ value: String?) -> String {
+        (value ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    private func formattedAmount(_ amount: String?, unit: String?) -> String {
+        let value = (amount ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let unit = (unit ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !value.isEmpty else { return "-" }
+        guard !unit.isEmpty else { return value }
+
+        return "\(value) \(unit)"
     }
 }
 
@@ -63,4 +102,3 @@ struct ChemDosageRecap_Previews: PreviewProvider {
         )
     }
 }
-

@@ -96,7 +96,9 @@ struct MobileHome: View {
             .environmentObject(routeBoardVM)
             .environmentObject(customerVM)
             .environmentObject(customerProfileVM)
+                if masterDataManager.currentCompany != nil {
                 routeDashboardFloatingButton
+                }
             }
         .toolbar{
             ToolbarItem{

@@ -50,7 +50,8 @@ final class BrowseCompaniesViewModel: ObservableObject {
         loading = true
         do {
 //            guard let userId else {return}
-            self.companies  = try await dataService.getAllCompanies()
+            self.companies = try await dataService.getAllCompanies()
+                .filter { !($0.hideFromBrowse ?? false) }
         } catch {
             print("Error fetching companies: \(error)")
         }

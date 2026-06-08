@@ -3545,6 +3545,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func sendMessage(message: Message) async throws {
         try messageDocument(messageId: message.id)
             .setData(from:message, merge: false)
+        let chatRef = chatDocument(chatId: message.chatId)
+        if let chat = try? await chatRef.getDocument(as: Chat.self) {
+            let userTargets = chat.participantIds.filter { $0 != message.senderId }
+            let companyTargets = chat.participantCompanyIds ?? chat.companyId.map { [$0] } ?? []
+            try await chatRef.updateData([
+                "lastMessage": message.previewText,
+                "mostRecentChat": message.dateSent,
+                "userWhoHaveNotRead": FieldValue.arrayUnion(userTargets),
+                "companyIdsWhoHaveNotRead": FieldValue.arrayUnion(companyTargets),
+                "readByUserIds": [message.senderId]
+            ])
+        }
     }
     func uploadRepairRequest(companyId:String,repairRequest:RepairRequest) async throws {
         
@@ -5388,6 +5400,20 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .whereField("companyId", isEqualTo: companyId)
             .getDocuments(as:Chat.self)
     }
+    func getVisibleChats(userId:String, companyId:String?) async throws ->[Chat]{
+        var chats = try await getAllChatsByUser(userId: userId)
+        if let companyId {
+            let companyChats = try await chatCollection()
+                .whereField("participantCompanyIds", arrayContains: companyId)
+                .order(by: "mostRecentChat", descending: true)
+                .getDocuments(as:Chat.self)
+            chats.append(contentsOf: companyChats)
+        }
+
+        return Dictionary(grouping: chats, by: \.id)
+            .compactMap { $0.value.first }
+            .sorted { $0.mostRecentChat > $1.mostRecentChat }
+    }
     func getAllMessagesByChat(chatId: String) async throws ->[Message]{
         return try await messageCollection()
             .whereField("chatId", isEqualTo: chatId)
@@ -5929,13 +5955,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getAllCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
             .whereField(Invite.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
-            .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: "Pending")
+            .whereField(Invite.CodingKeys.status.rawValue, in: InviteStatusValue.pending.queryVariants)
             .getDocuments(as:Invite.self)
     }
     func getAllAcceptedCompanyInvites(comapnyId : String) async throws ->[Invite] {
         return try await inviteCollection()
             .whereField(Invite.CodingKeys.companyId.rawValue, isEqualTo: comapnyId)
-            .whereField(Invite.CodingKeys.status.rawValue, isEqualTo: "Accepted")
+            .whereField(Invite.CodingKeys.status.rawValue, in: InviteStatusValue.accepted.queryVariants)
             .getDocuments(as:Invite.self)
     }
     func getSpecificInvite(inviteId : String) async throws ->Invite {
@@ -6130,14 +6156,16 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
             // Set the "capital" field of the city 'DC'
         try await itemRef.updateData([
-            Invite.CodingKeys.status.rawValue:"Accepted"
+            Invite.CodingKeys.status.rawValue: InviteStatusValue.accepted.rawValue
             
         ])
     }
     func updateVehical(companyId:String,vehicle:Vehical,newVehical:Vehical) async throws {
     }
     func markInviteAsRejected(invite:Invite) async throws {
-        
+        try await inviteDoc(inviteId: invite.id).updateData([
+            Invite.CodingKeys.status.rawValue: InviteStatusValue.rejected.rawValue
+        ])
     }
 
     func endRecurringServiceStop(companyId:String,recurringServiceStopId:String,endDate:Date) async throws {
@@ -6669,13 +6697,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return ("","")
     }
     func markChatAsRead(userId:String, chat: Chat) async throws {
-        
-        var array:[String] = chat.participantIds
-        array.removeAll(where: {$0 == userId})
+        try await markChatAsRead(userId: userId, companyId: nil, chat: chat)
+    }
+    func markChatAsRead(userId:String, companyId:String?, chat: Chat) async throws {
         let chatRef = chatDocument(chatId: chat.id)
         
         chatRef.updateData([
-            "userWhoHaveNotRead": FieldValue.arrayRemove([userId])
+            "userWhoHaveNotRead": FieldValue.arrayRemove([userId]),
+            "readByUserIds": FieldValue.arrayUnion([userId])
         ]) { err in
             if let err = err {
                 print("Error updating document: \(err)")
@@ -6691,7 +6720,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         array.removeAll(where: {$0 == userId})
         let chatRef = chatDocument(chatId: chat.id)
         chatRef.updateData([
-            "userWhoHaveNotRead" : FieldValue.arrayUnion(array)
+            "userWhoHaveNotRead" : FieldValue.arrayUnion(array),
+            "readByUserIds": [userId]
         ]) { err in
             if let err = err {
                 print("Error updating document: \(err)")
@@ -6966,6 +6996,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     func updateServiceLocationContact(companyId: String, serviceLocationId: String, contact: Contact) async throws {
         
+    }
+    func updateServiceLocationPreText(companyId: String, serviceLocationId: String, preText: Bool) async throws {
+
+    }
+    func updateServiceLocationIsActive(companyId: String, serviceLocationId: String, isActive: Bool) async throws {
+
+    }
+    func deactivateServiceLocationRelatedRecords(companyId: String, serviceLocationId: String) async throws {
+
     }
     func updateServiceLocation(companyId:String,currentCustomerId:String,serviceLocation:ServiceLocation) async throws {
         
@@ -8381,6 +8420,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
         self.chatListener = listener
     }
+    func addListenerForUnreadChats(userId:String,companyId:String?,completion:@escaping (_ serviceStops:[Chat]) -> Void){
+        Task {
+            let chats = (try? await getVisibleChats(userId: userId, companyId: companyId)) ?? []
+            completion(chats.filter { $0.isUnread(for: userId, companyId: companyId) })
+        }
+    }
     func addListenerForAllMessages(chatId: String,amount:Int, completion: @escaping ([Message]) -> Void) {
         print("For Chat - \(chatId)")
         let listener = messageCollection()
@@ -8435,6 +8480,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 completion(chats)
             }
         self.chatListener = listener
+    }
+    func addListenerForVisibleChats(userId:String,companyId:String?,completion:@escaping (_ serviceStops:[Chat]) -> Void){
+        Task {
+            completion((try? await getVisibleChats(userId: userId, companyId: companyId)) ?? [])
+        }
     }
     func addSavedCompanyListener(userId:String,completion:@escaping (_ savedCompanies:[AssociatedBusiness]) -> Void) {
         

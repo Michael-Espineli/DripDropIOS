@@ -87,265 +87,190 @@ struct AddNewTaskToNewJob: View {
 //    AddNewTaskToJob(jobId: "J123456789",taskTypes: [])
 //}
 extension AddNewTaskToNewJob {
-    var formView : some View {
-        VStack{
-            HStack{
-                Text("Name")
-                    .bold(true)
-                TextField(
-                    "Name...",
-                    text: $VM.name
-                )
-                .modifier(TextFieldModifier())
-            }
-            HStack{
-                Text("Contracted Rate")
-                    .bold(true)
-                TextField(
-                    "Contracted Rate",
-                    text: $VM.contractedRateString
-                )
-                .keyboardType(.decimalPad)
-                .modifier(TextFieldModifier())
-            }
-            HStack{
-                Text("Estimated Time")
-                    .bold(true)
-                TextField(
-                    "Estimated Time",
-                    text: $VM.estimatedTimeString
-                )
-                .keyboardType(.decimalPad)
-                .modifier(TextFieldModifier())
-            }
-            HStack{
-                Button(action: {
-                    VM.showTaskTypePicker.toggle()
-                }, label: {
-                    Text(VM.selectedTaskType.rawValue)
-                        .modifier(BlueButtonModifier())
-                })
-                .sheet(isPresented: $VM.showTaskTypePicker, content: {
-                    JobTaskTypePicker(taskType: $VM.selectedTaskType)
-                        .presentationDetents([.large, .medium])
-                })
-            }
+    var formView: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Add Task")
+                        .font(.title3.weight(.semibold))
+                    Text("Build the task with the records it needs before this job is saved.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .draftTaskCard()
 
-            VStack{
-                switch VM.selectedTaskType {
-                    case .basic, .clean:
-                        Text("No Extra Details Needed")
-                    case .cleanFilter:
-                        Button(action: {
-                            VM.showEquipmentPicker.toggle()
-                        }, label: {
-                            if VM.selectedEquipment.id != "" {
-                                
-                                Text("Select Equipment")
-                            } else {
-                                Text(VM.selectedEquipment.name)
-                            }
-                        })
-                        .sheet(isPresented: $VM.showEquipmentPicker, content: {
-                            EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
-                        })
-                    
-                    case .emptyWater:
-                        Button(action: {
-                            VM.showEquipmentPicker.toggle()
-                        }, label: {
-                            if VM.selectedBodyOfWater.id != "" {
-                                
-                                Text("Select Body Of Water")
-                            } else {
-                                Text(VM.selectedBodyOfWater.name)
-                            }
-                        })
-                        .sheet(isPresented: $VM.showBOWPicker, content: {
-                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
-                        })
-                    case .fillWater:
-                        Button(action: {
-                            VM.showBOWPicker.toggle()
-                        }, label: {
-                            if VM.selectedBodyOfWater.id != "" {
-                                
-                                Text("Select Body Of Water")
-                            } else {
-                                Text(VM.selectedBodyOfWater.name)
-                            }
-                        })
-                        .sheet(isPresented: $VM.showBOWPicker, content: {
-                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
-                        })
-                    case .inspection:
-                        Text("Inspection")
-                    case .install:
-                        Button(action: {
-                            VM.showBOWPicker.toggle()
-                        }, label: {
-                            if VM.selectedBodyOfWater.id != "" {
-                                
-                                Text("Select Body Of Water")
-                            } else {
-                                Text(VM.selectedBodyOfWater.name)
-                            }
-                        })
-                        .sheet(isPresented: $VM.showBOWPicker, content: {
-                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
-                        })
-                        Button(action: {
-                            VM.showItemPicker.toggle()
-                        }, label: {
-                            if VM.dataBaseItem.id == "" {
-                                Text("Select Item")
-                                    .modifier(BlueButtonModifier())
-                            } else {
-                                Text(VM.dataBaseItem.name)
-                                    .modifier(BlueButtonModifier())
-                            }
-                        })
-                        .sheet(isPresented: $VM.showItemPicker, onDismiss: {
-                            
-                        }, content: {
-                            DataBaseItemPicker(dataService: dataService, DBItem: $VM.dataBaseItem, category: .equipment)
-                        })
-                    
-                        HStack{
-                            Text("Quantity")
-                                .bold(true)
-                            TextField(
-                                "Quantity",
-                                text: $VM.quantityString
-                            )
-                            .modifier(TextFieldModifier())
-                        }
-                    case .remove:
-                        Button(action: {
-                            VM.showEquipmentPicker.toggle()
-                        }, label: {
-                            if VM.selectedEquipment.id != "" {
-                                
-                                Text("Select Equipment")
-                            } else {
-                                Text(VM.selectedEquipment.name)
-                            }
-                        })
-                        .sheet(isPresented: $VM.showEquipmentPicker, content: {
-                            EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
-                        })
-                    case .replace:
-                        Button(action: {
-                            VM.showEquipmentPicker.toggle()
-                        }, label: {
-                            if VM.selectedEquipment.id != "" {
-                                
-                                Text("Select Equipment")
-                            } else {
-                                Text(VM.selectedEquipment.name)
-                            }
-                        })
-                        .sheet(isPresented: $VM.showEquipmentPicker, content: {
-                            EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
-                        })
-                        Button(action: {
-                            VM.showEquipmentPicker.toggle()
-                        }, label: {
-                            if VM.selectedBodyOfWater.id != "" {
-                                
-                                Text("Select Body Of Water")
-                            } else {
-                                Text(VM.selectedBodyOfWater.name)
-                            }
-                        })
-                        .sheet(isPresented: $VM.showBOWPicker, content: {
-                            BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
-                        })
-                        Divider()
-                        Text("Install")
-                        Button(action: {
-                            VM.showItemPicker.toggle()
-                        }, label: {
-                            if VM.dataBaseItem.id == "" {
-                                Text("Select Item")
-                                    .modifier(BlueButtonModifier())
-                            } else {
-                                Text(VM.dataBaseItem.name)
-                                    .modifier(BlueButtonModifier())
-                            }
-                        })
-                        .sheet(isPresented: $VM.showItemPicker, onDismiss: {
-                            
-                        }, content: {
-                            DataBaseItemPicker(dataService: dataService, DBItem: $VM.dataBaseItem, category: .equipment)
-                        })
-                        HStack{
-                            Text("Quantity")
-                                .bold(true)
-                            TextField(
-                                "Quantity",
-                                text: $VM.quantityString
-                            )
-                            .modifier(TextFieldModifier())
-                        }
-                case .maintenance:
-                    Button(action: {
-                        VM.showEquipmentPicker.toggle()
-                    }, label: {
-                        if VM.selectedEquipment.id != "" {
-                            
-                            Text("Select Equipment")
-                        } else {
-                            Text(VM.selectedEquipment.name)
-                        }
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Task Details")
+                        .font(.headline.weight(.semibold))
+
+                    draftTaskField(title: "Name", placeholder: "Name", text: $VM.name)
+                    draftTaskField(title: "Contracted Rate", placeholder: "Contracted Rate", text: $VM.contractedRateString)
+                    draftTaskField(title: "Estimated Time", placeholder: "Estimated Time", text: $VM.estimatedTimeString)
+
+                    Divider().opacity(0.15)
+
+                    Text("Task Type")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Button(action: { VM.showTaskTypePicker.toggle() }, label: {
+                        draftPickerRow(title: "Type", value: VM.selectedTaskType.rawValue)
+                    })
+                    .sheet(isPresented: $VM.showTaskTypePicker, content: {
+                        JobTaskTypePicker(taskType: $VM.selectedTaskType)
+                            .presentationDetents([.large, .medium])
+                    })
+
+                    Divider().opacity(0.15)
+
+                    extraDetailsSection
+                }
+                .draftTaskCard()
+
+                addTaskButton
+            }
+            .padding(12)
+        }
+    }
+
+    var extraDetailsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Extra Details")
+                .font(.headline.weight(.semibold))
+
+            switch VM.selectedTaskType {
+            case .basic, .clean, .inspection:
+                Text("No extra details needed.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+            case .cleanFilter, .remove, .maintenance, .repair:
+                Button(action: { VM.showEquipmentPicker.toggle() }, label: {
+                    draftPickerRow(
+                        title: "Equipment",
+                        value: VM.selectedEquipment.id.isEmpty ? "Select Equipment" : VM.selectedEquipment.name
+                    )
+                })
+                .sheet(isPresented: $VM.showEquipmentPicker, content: {
+                    EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
+                })
+
+            case .emptyWater, .fillWater, .install, .replace:
+                Button(action: { VM.showBOWPicker.toggle() }, label: {
+                    draftPickerRow(
+                        title: "Body Of Water",
+                        value: VM.selectedBodyOfWater.id.isEmpty ? "Select Body Of Water" : VM.selectedBodyOfWater.name
+                    )
+                })
+                .sheet(isPresented: $VM.showBOWPicker, content: {
+                    BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
+                })
+
+                if VM.selectedTaskType == .replace {
+                    Button(action: { VM.showEquipmentPicker.toggle() }, label: {
+                        draftPickerRow(
+                            title: "Equipment",
+                            value: VM.selectedEquipment.id.isEmpty ? "Select Equipment" : VM.selectedEquipment.name
+                        )
                     })
                     .sheet(isPresented: $VM.showEquipmentPicker, content: {
                         EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: serviceLocationId, equipment: $VM.selectedEquipment)
                     })
-                case .repair:
-                    Button(action: {
-                        VM.showEquipmentPicker.toggle()
-                    }, label: {
-                        if VM.selectedBodyOfWater.id != "" {
-                            
-                            Text("Select Body Of Water")
-                        } else {
-                            Text(VM.selectedBodyOfWater.name)
-                        }
+                }
+
+                if VM.selectedTaskType == .install || VM.selectedTaskType == .replace {
+                    Button(action: { VM.showItemPicker.toggle() }, label: {
+                        draftPickerRow(
+                            title: "Item",
+                            value: VM.dataBaseItem.id.isEmpty ? "Select Item" : VM.dataBaseItem.name
+                        )
                     })
-                    .sheet(isPresented: $VM.showBOWPicker, content: {
-                        BodyOfWaterPicker(dataService: dataService, serviceLocationId: serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
+                    .sheet(isPresented: $VM.showItemPicker, content: {
+                        DataBaseItemPicker(dataService: dataService, DBItem: $VM.dataBaseItem, category: .equipment)
                     })
+
+                    draftTaskField(title: "Quantity", placeholder: "Quantity", text: $VM.quantityString)
                 }
             }
-            Button(action: {
-                Task{
-                    if let company = masterDataManager.currentCompany {
-                        do {
-                            let values = try await VM.addNewTaskToJobTaskList(companyId: company.id, jobId: jobId, serviceLocationId: serviceLocationId)
-                            tasks.append(values.0)
-                            if let item = values.1 {
-                                
-                                shoppingList.append(item)
-                            }
-                        } catch let error {
-                            print(error)
-                            let myError: AddNewTaskToJobError = error as! AddNewTaskToJobError
-                            VM.alertMessage = myError.errorDescription
-                            VM.showAlert.toggle()
-                            
+        }
+    }
+
+    var addTaskButton: some View {
+        Button(action: {
+            Task {
+                if let company = masterDataManager.currentCompany {
+                    do {
+                        let values = try await VM.addNewTaskToJobTaskList(companyId: company.id, jobId: jobId, serviceLocationId: serviceLocationId)
+                        tasks.append(values.0)
+                        if let item = values.1 {
+                            shoppingList.append(item)
                         }
+                    } catch let error {
+                        print(error)
+                        let myError: AddNewTaskToJobError = error as! AddNewTaskToJobError
+                        VM.alertMessage = myError.errorDescription
+                        VM.showAlert.toggle()
                     }
                 }
-            }, label: {
-                HStack{
-                    Spacer()
-                    Text("Add New Task")
-                    Spacer()
-                }
-                .modifier(SubmitButtonModifier())
-            })
+            }
+        }, label: {
+            HStack {
+                Spacer()
+                Text("Add New Task")
+                Spacer()
+            }
+            .modifier(SubmitButtonModifier())
+        })
+    }
+
+    func draftTaskField(title: String, placeholder: String, text: Binding<String>) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 130, alignment: .leading)
+            TextField(placeholder, text: text)
+                .modifier(TextFieldModifier())
         }
-        .padding(8)
+    }
+
+    func draftPickerRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(value.hasPrefix("Select") ? .secondary : .primary)
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+        )
+    }
+}
+
+private extension View {
+    func draftTaskCard() -> some View {
+        self
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
     }
 }

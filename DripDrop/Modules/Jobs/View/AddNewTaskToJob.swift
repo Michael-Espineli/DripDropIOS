@@ -189,7 +189,7 @@ extension AddNewTaskToJob {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-            case .cleanFilter, .remove, .maintenance:
+            case .cleanFilter, .remove, .maintenance, .repair:
                 Button(action: { VM.showEquipmentPicker.toggle() }, label: {
                     pickerRow(
                         title: "Equipment",
@@ -204,7 +204,7 @@ extension AddNewTaskToJob {
                     )
                 }
 
-            case .emptyWater, .fillWater, .install, .replace, .repair:
+            case .emptyWater, .fillWater, .install, .replace:
                 // Body of Water picker
                 Button(action: { VM.showBOWPicker.toggle() }, label: {
                     pickerRow(

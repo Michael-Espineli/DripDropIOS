@@ -62,6 +62,21 @@ import CoreLocation
 @MainActor
 final class MobileDailyRouteDisplayViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
+    private static let emptyMoveTech = CompanyUser(
+        id: "",
+        userId: "",
+        userName: "",
+        roleId: "",
+        roleName: "",
+        dateCreated: Date(),
+        status: .active,
+        workerType: .notAssigned
+    )
+
+    private var defaultMoveTech: CompanyUser {
+        companyUsers.first ?? Self.emptyMoveTech
+    }
+
     // Location Tracking
     private let routeLocationManager: RouteLocationManager
 
@@ -103,16 +118,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     //Move Stops Variables
     @Published var selectedServiceStops:[ServiceStop] = []
     @Published var moveDate: Date = Date()
-    @Published var selectedTech: CompanyUser = CompanyUser(
-        id: "",
-        userId: "",
-        userName: "",
-        roleId: "",
-        roleName: "",
-        dateCreated: Date(),
-        status: .active,
-        workerType: .notAssigned
-    )
+    @Published var selectedTech: CompanyUser = MobileDailyRouteDisplayViewModel.emptyMoveTech
     @Published var selectedDate: Date = Date()
     @Published var enableMove: Bool = false
     @Published var moveType: String = "One Time"
@@ -328,6 +334,10 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         ) { [weak self] route in
             self?.companyUsers = route
             self?.currentCompanyUser = route.first { $0.userId == user.id }
+
+            if self?.selectedTech.id.isEmpty == true, let firstTech = route.first {
+                self?.selectedTech = firstTech
+            }
         }
         //For date change reset Variables so that No other variables carry over
         self.activeRoute = nil
@@ -752,15 +762,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     func cancelMove(){
         self.selectedServiceStops = []
         self.moveDate = Date()
-        self.selectedTech = CompanyUser(
-            id: "",
-            userId: "",
-            userName: "",
-            roleId: "",
-            roleName: "",
-            dateCreated: Date(),
-            status: .active,
-            workerType: .notAssigned)
+        self.selectedTech = defaultMoveTech
         self.newDay = .monday
     }
     func moveServiceStops(companyId: String?){
@@ -791,16 +793,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 //Finishing Function Actions
                 self.selectedServiceStops = []
                 self.moveDate = Date()
-                self.selectedTech = CompanyUser(
-                    id: "",
-                    userId: "",
-                    userName: "",
-                    roleId: "",
-                    roleName: "",
-                    dateCreated: Date(),
-                    status: .active,
-                    workerType: .notAssigned
-                )
+                self.selectedTech = defaultMoveTech
                 self.enableMove = false
                 if triedToMoveFinished {
                     self.alertMessage = "Some service stops were not moved because they are already finished."
@@ -816,24 +809,26 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     
     func moveServiceStopsPermanently(companyId: String?){
         guard let companyId else {return}
+        let movableStops = selectedServiceStops.filter { $0.operationStatus == .notFinished }
+        guard !movableStops.isEmpty else {
+            alertMessage = "Select at least one unfinished stop to move."
+            showAlert = true
+            return
+        }
+
         FunctionsManager.shared.updateServiceStopPermanently(
             companyId: companyId,
-            serviceStopList: serviceStopList,
+            serviceStopList: movableStops,
             newTech: selectedTech,
             newDay: newDay
         )
         self.selectedServiceStops = []
         self.moveDate = Date()
-        self.selectedTech = CompanyUser(
-            id: "",
-            userId: "",
-            userName: "",
-            roleId: "",
-            roleName: "",
-            dateCreated: Date(),
-            status: .active,
-            workerType: .notAssigned)
+        self.selectedTech = defaultMoveTech
         self.newDay = .monday
+        self.enableMove = false
+        self.alertMessage = "Permanent move submitted."
+        self.showAlert = true
     }
     func updateOrderList(companyId:String,activeRouteId:String,newOrderList:[ServiceStopOrder]) async throws {
         print("**  [MobileDailyRouteDisplayViewModel][Updating Order List]")

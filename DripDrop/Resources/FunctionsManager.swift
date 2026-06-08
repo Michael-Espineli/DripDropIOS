@@ -23,9 +23,19 @@ final class FunctionsManager {
     
         // MARK: acceptTechInvite
     func acceptTechInvite(inviteId: String, userId: String) async throws {
+        guard let currentUser = auth.currentUser else {
+            throw NSError(
+                domain: "AcceptTechInvite",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "You must be signed in to accept an invite"]
+            )
+        }
+
+        let idToken = try await currentUser.getIDToken()
         let payload: [String: Any] = [
             "inviteId": inviteId,
             "userId": userId,
+            "idToken": idToken,
         ]
         
         let callable = functions.httpsCallable("acceptTechInvite")
@@ -43,13 +53,51 @@ final class FunctionsManager {
             throw NSError(domain: "AcceptTechInvite", code: status, userInfo: [NSLocalizedDescriptionKey: message])
         }
     }
-    
+
+    // MARK: convertHomeownerServiceRequestToCompanyCustomer
+    func convertHomeownerServiceRequestToCompanyCustomer(companyId: String, leadId: String, payload: [String: Any] = [:]) async throws -> [String: Any] {
+        var requestPayload = payload
+        requestPayload["companyId"] = companyId
+        requestPayload["leadId"] = leadId
+
+        let callable = functions.httpsCallable("convertHomeownerServiceRequestToCompanyCustomer")
+        let result = try await callable.call(requestPayload)
+
+        guard let json = result.data as? [String: Any] else {
+            print("      [FunctionsManager][convertHomeownerServiceRequestToCompanyCustomer] Error: Unable to read JSON from function response.")
+            throw FireBaseRead.unableToRead
+        }
+
+        let status = json["status"] as? Int ?? 500
+        guard status == 200 else {
+            let message = json["error"] as? String ?? "Service request could not be converted."
+            print("      [FunctionsManager][convertHomeownerServiceRequestToCompanyCustomer] Error: \(message)")
+            throw NSError(domain: "ConvertHomeownerServiceRequest", code: status, userInfo: [NSLocalizedDescriptionKey: message])
+        }
+
+        return json
+    }
+
     // MARK: updateServiceStopPermanently
     func updateServiceStopPermanently(companyId:String,serviceStopList:[ServiceStop],newTech:CompanyUser,newDay:DaysOfWeek){
+        let serviceStopsPayload = serviceStopList.map { stop in
+            [
+                "id": stop.id,
+                "recurringServiceStopId": stop.recurringServiceStopId,
+                "operationStatus": stop.operationStatus.rawValue,
+            ]
+        }
+
+        let newTechPayload: [String: Any] = [
+            "id": newTech.id,
+            "userId": newTech.userId,
+            "userName": newTech.userName,
+        ]
+
         let payload: [String: Any] = [
             "companyId": companyId,
-            "serviceStopList": serviceStopList,
-            "newTech": newTech,
+            "serviceStopList": serviceStopsPayload,
+            "newTech": newTechPayload,
             "newDay": newDay.rawValue,
         ]
         
@@ -200,7 +248,7 @@ func sendJobEstimate(companyId:String, jobId:String) async throws {
         "companyId":companyId,
         "jobId":jobId,
     ]
-    let callable = functions.httpsCallable("deleteRecurringServiceStop")
+    let callable = functions.httpsCallable("sendJobEstimateEmail")
     let result = try await callable.call(payload)
     guard let json = result.data as? [String: Any] else {
         print("      [FunctionsManager][sendJobEstimate] Error: Unable to read JSON from function response.")

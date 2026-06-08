@@ -108,12 +108,12 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         if estimatedTimeString == "" {
             throw AddNewTaskToJobError.noEstimatedTime
         }
-        guard var contractedRate = Int(contractedRateString) else {
+        guard let contractedRateDouble = Double(contractedRateString) else {
             contractedRateString = "0"
 
             throw AddNewTaskToJobError.noContractedRate
         }
-        contractedRate = contractedRate*100
+        let contractedRate = Int((contractedRateDouble * 100).rounded())
         guard let estimatedTime = Int(estimatedTimeString) else {
             estimatedTimeString = "0"
 
@@ -122,52 +122,44 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         guard let quantity = Double(quantityString) else {
             throw AddNewTaskToJobError.noEstimatedTime
         }
+        _ = quantity
         switch self.selectedTaskType {
-        case .basic, .clean:
+        case .basic, .clean, .inspection:
             print("No Extra Details Needed")
         case .cleanFilter:
             print("Clean Filter")
             print("Select Filter")
             if self.selectedEquipment.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
+                throw AddNewTaskToJobError.noEquipmentSelected
             }
-        case .emptyWater:
+        case .emptyWater, .fillWater:
             print("Empty Water")
             if self.selectedBodyOfWater.id == "" {
                 throw AddNewTaskToJobError.noBowSelected
             }
-        case .fillWater:
-            print("Fill Water")
-            if self.selectedBodyOfWater.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
-            }
-        case .inspection:
-            print("Inspection")
         case .install:
             print("Install")
-            if self.dataBaseItem.id == "" && self.selectedEquipment.id == ""{
-                throw AddNewTaskToJobError.noShoppingListItem
-            }
-        case .remove:
-            print("Remove")
-            if self.selectedEquipment.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
-            }
-        case .replace:
-            print("Replace")
-            if self.selectedEquipment.id == "" {
+            if self.selectedBodyOfWater.id == "" {
                 throw AddNewTaskToJobError.noBowSelected
             }
             if self.dataBaseItem.id == "" {
                 throw AddNewTaskToJobError.noShoppingListItem
             }
-        case .maintenance:
+        case .remove, .maintenance, .repair:
+            print("Remove")
             if self.selectedEquipment.id == "" {
+                throw AddNewTaskToJobError.noEquipmentSelected
+            }
+        case .replace:
+            print("Replace")
+            if self.selectedEquipment.id == "" {
+                throw AddNewTaskToJobError.noEquipmentSelected
+            }
+            if self.selectedBodyOfWater.id == "" {
                 throw AddNewTaskToJobError.noBowSelected
             }
-        case .repair:
-            if self.selectedEquipment.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
+            if self.dataBaseItem.id == "" {
+                throw AddNewTaskToJobError.noShoppingListItem
             }
         }
         
@@ -228,6 +220,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         name = ""
         selectedEquipment.id = ""
         selectedBodyOfWater.id = ""
+        dataBaseItem.id = ""
         dataBaseItemId = ""
         estimatedTimeString = "0"
         contractedRateString = "0"
@@ -242,12 +235,12 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         if estimatedTimeString == "" {
             throw AddNewTaskToJobError.noEstimatedTime
         }
-        guard var contractedRate = Int(contractedRateString) else {
+        guard let contractedRateDouble = Double(contractedRateString) else {
             contractedRateString = "0"
 
             throw AddNewTaskToJobError.noContractedRate
         }
-        contractedRate = contractedRate*100
+        let contractedRate = Int((contractedRateDouble * 100).rounded())
         guard let estimatedTime = Int(estimatedTimeString) else {
             estimatedTimeString = "0"
 
@@ -256,52 +249,44 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         guard let quantity = Double(quantityString) else {
             throw AddNewTaskToJobError.noEstimatedTime
         }
+        _ = quantity
         switch self.selectedTaskType {
-        case .basic, .clean:
+        case .basic, .clean, .inspection:
             print("No Extra Details Needed")
         case .cleanFilter:
             print("Clean Filter")
             print("Select Filter")
             if self.selectedEquipment.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
+                throw AddNewTaskToJobError.noEquipmentSelected
             }
-        case .emptyWater:
+        case .emptyWater, .fillWater:
             print("Empty Water")
             if self.selectedBodyOfWater.id == "" {
                 throw AddNewTaskToJobError.noBowSelected
             }
-        case .fillWater:
-            print("Fill Water")
-            if self.selectedBodyOfWater.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
-            }
-        case .inspection:
-            print("Inspection")
         case .install:
             print("Install")
-            if self.dataBaseItem.id == "" && self.selectedEquipment.id == ""{
-                throw AddNewTaskToJobError.noShoppingListItem
-            }
-        case .remove:
-            print("Remove")
-            if self.selectedEquipment.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
-            }
-        case .replace:
-            print("Replace")
-            if self.selectedEquipment.id == "" {
+            if self.selectedBodyOfWater.id == "" {
                 throw AddNewTaskToJobError.noBowSelected
             }
             if self.dataBaseItem.id == "" {
                 throw AddNewTaskToJobError.noShoppingListItem
             }
-        case .maintenance:
+        case .remove, .maintenance, .repair:
+            print("Remove")
             if self.selectedEquipment.id == "" {
+                throw AddNewTaskToJobError.noEquipmentSelected
+            }
+        case .replace:
+            print("Replace")
+            if self.selectedEquipment.id == "" {
+                throw AddNewTaskToJobError.noEquipmentSelected
+            }
+            if self.selectedBodyOfWater.id == "" {
                 throw AddNewTaskToJobError.noBowSelected
             }
-        case .repair:
-            if self.selectedEquipment.id == "" {
-                throw AddNewTaskToJobError.noBowSelected
+            if self.dataBaseItem.id == "" {
+                throw AddNewTaskToJobError.noShoppingListItem
             }
         }
         
@@ -359,6 +344,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         name = ""
         selectedEquipment.id = ""
         selectedBodyOfWater.id = ""
+        dataBaseItem.id = ""
         dataBaseItemId = ""
         estimatedTimeString = "0"
         contractedRateString = "0"
@@ -369,6 +355,10 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         print("On Change of selected Task \(selectedTaskType) - companyId: \(companyId) - customerId: \(customerId) - serviceLocationId: \(serviceLocationId)")
         
             print("Type: \(selectedTaskType)")
+        selectedEquipment.id = ""
+        selectedBodyOfWater.id = ""
+        dataBaseItem.id = ""
+        dataBaseItemId = ""
         switch selectedTaskType {
             
         case .basic, .clean:
@@ -393,9 +383,9 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         case .inspection:
             print("Do Nothing Inspection")
         case .install:
-            self.equipmentList = try await dataService.getEquipmentByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
-            if let first = equipmentList.first{
-                self.selectedEquipment = first
+            self.bodyOfWaterList = try await dataService.getAllBodiesOfWaterByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
+            if let first = bodyOfWaterList.first{
+                self.selectedBodyOfWater = first
             }
         case .remove:
             self.equipmentList = try await dataService.getEquipmentByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
@@ -407,6 +397,10 @@ final class AddNewTaskToJobViewModel:ObservableObject{
             self.equipmentList = try await dataService.getEquipmentByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
             if let first = equipmentList.first{
                 self.selectedEquipment = first
+            }
+            self.bodyOfWaterList = try await dataService.getAllBodiesOfWaterByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
+            if let first = bodyOfWaterList.first{
+                self.selectedBodyOfWater = first
             }
             //Get Items
             self.installList = []

@@ -2885,9 +2885,12 @@ struct CompanyLeadSummary: Identifiable {
     let homeownerPhone: String
     let customerId: String
     let customerName: String
+    let customerUserId: String
     let homeownerId: String
     let companyServiceLocationId: String
     let homeownerServiceLocationId: String
+    let relationshipId: String
+    let customerCompanyRelationshipId: String
     let streetAddress: String
     let city: String
     let status: String
@@ -2904,9 +2907,12 @@ struct CompanyLeadSummary: Identifiable {
         homeownerPhone = data["homeownerPhone"] as? String ?? ""
         customerId = data["customerId"] as? String ?? ""
         customerName = data["customerName"] as? String ?? ""
-        homeownerId = data["homeownerId"] as? String ?? ""
-        companyServiceLocationId = data["serviceLocationId"] as? String ?? ""
-        homeownerServiceLocationId = data["homeownerserviceLocationId"] as? String ?? ""
+        customerUserId = data["customerUserId"] as? String ?? ""
+        homeownerId = data["homeownerId"] as? String ?? data["homeownerUserId"] as? String ?? customerUserId
+        companyServiceLocationId = data["companyServiceLocationId"] as? String ?? data["serviceLocationId"] as? String ?? ""
+        homeownerServiceLocationId = data["homeownerServiceLocationId"] as? String ?? data["homeownerserviceLocationId"] as? String ?? ""
+        relationshipId = data["relationshipId"] as? String ?? ""
+        customerCompanyRelationshipId = data["customerCompanyRelationshipId"] as? String ?? relationshipId
         streetAddress = address?["streetAddress"] as? String ?? "No street address"
         city = address?["city"] as? String ?? ""
         status = data["status"] as? String ?? "Pending"
@@ -2978,9 +2984,12 @@ struct CompanyLeadsView: View {
                 lead.homeownerPhone,
                 lead.customerName,
                 lead.customerId,
+                lead.customerUserId,
                 lead.homeownerId,
                 lead.companyServiceLocationId,
                 lead.homeownerServiceLocationId,
+                lead.relationshipId,
+                lead.customerCompanyRelationshipId,
                 lead.streetAddress,
                 lead.city,
                 lead.status,
@@ -3052,43 +3061,50 @@ struct CompanyLeadsView: View {
                 Spacer()
             } else {
                 List(filteredLeads) { lead in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(lead.homeownerName)
-                                .font(.headline)
-                            Spacer()
-                            Text(lead.status)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(statusColor(lead.status).opacity(0.18))
-                                .foregroundColor(statusColor(lead.status))
-                                .cornerRadius(8)
-                        }
-                        
-                        Text(lead.streetAddress)
-                            .font(.subheadline)
+                    NavigationLink {
+                        CompanyLeadConversionView(
+                            lead: lead,
+                            companyId: masterDataManager.currentCompany?.id ?? ""
+                        )
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(lead.homeownerName)
+                                    .font(.headline)
+                                Spacer()
+                                Text(lead.status)
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(statusColor(lead.status).opacity(0.18))
+                                    .foregroundColor(statusColor(lead.status))
+                                    .cornerRadius(8)
+                            }
+
+                            Text(lead.streetAddress)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+
+                            HStack {
+                                Text(lead.normalizedSource)
+                                if let createdAt = lead.createdAt {
+                                    Text(createdAt.formatted(date: .abbreviated, time: .omitted))
+                                }
+                            }
+                            .font(.caption)
                             .foregroundColor(.secondary)
-                        
-                        HStack {
-                            Text(lead.normalizedSource)
-                            if let createdAt = lead.createdAt {
-                                Text(createdAt.formatted(date: .abbreviated, time: .omitted))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(lead.connectionLabel)
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                Text(lead.connectionDetail)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
                             }
                         }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(lead.connectionLabel)
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                            Text(lead.connectionDetail)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
                 }
                 .listStyle(.plain)
             }
@@ -3106,7 +3122,7 @@ struct CompanyLeadsView: View {
             startListening()
         })
     }
-    
+
     private func leadStat(title: String, value: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
@@ -3121,7 +3137,7 @@ struct CompanyLeadsView: View {
         .background(Color.listColor)
         .cornerRadius(8)
     }
-    
+
     private func statusColor(_ status: String) -> Color {
         switch status {
         case "Pending":
@@ -3136,17 +3152,17 @@ struct CompanyLeadsView: View {
             return .gray
         }
     }
-    
+
     private func startListening() {
         listener?.remove()
         errorMessage = nil
-        
+
         guard let companyId = masterDataManager.currentCompany?.id else {
             leads = []
             isLoading = false
             return
         }
-        
+
         isLoading = true
         listener = Firestore.firestore()
             .collection("homeownerServiceRequests")
@@ -3158,12 +3174,282 @@ struct CompanyLeadsView: View {
                     isLoading = false
                     return
                 }
-                
+
                 leads = snapshot?.documents
                     .map { CompanyLeadSummary(document: $0) }
                     .sorted(by: { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }) ?? []
                 isLoading = false
             }
+    }
+}
+
+struct CompanyLeadConversionView: View {
+    let lead: CompanyLeadSummary
+    let companyId: String
+
+    @State private var displayAsCompany: Bool
+    @State private var firstName: String
+    @State private var lastName: String
+    @State private var companyName: String
+    @State private var email: String
+    @State private var phone: String
+    @State private var billingNotes = ""
+
+    @State private var addServiceLocation = true
+    @State private var serviceLocationNickName = "Main"
+    @State private var gateCode = ""
+    @State private var dogName = ""
+    @State private var serviceLocationNotes = ""
+    @State private var preText = false
+
+    @State private var addBodyOfWater = false
+    @State private var bodyOfWaterName = "Main Pool"
+    @State private var bodyOfWaterGallons = "15000"
+    @State private var bodyOfWaterMaterial = "Plaster"
+    @State private var bodyOfWaterWaterType = "Chlorine"
+    @State private var bodyOfWaterNotes = ""
+
+    @State private var addEquipment = false
+    @State private var pumpName = "Pump"
+    @State private var pumpNeedsService = false
+    @State private var filterName = "Filter"
+    @State private var filterNeedsService = true
+
+    @State private var isSubmitting = false
+    @State private var conversionComplete = false
+    @State private var alertMessage: String?
+
+    init(lead: CompanyLeadSummary, companyId: String) {
+        self.lead = lead
+        self.companyId = companyId
+
+        let nameParts = lead.homeownerName
+            .split(separator: " ")
+            .map(String.init)
+
+        _displayAsCompany = State(initialValue: false)
+        _firstName = State(initialValue: nameParts.first ?? "")
+        _lastName = State(initialValue: nameParts.dropFirst().joined(separator: " "))
+        _companyName = State(initialValue: "")
+        _email = State(initialValue: lead.homeownerEmail)
+        _phone = State(initialValue: lead.homeownerPhone)
+    }
+
+    var body: some View {
+        Form {
+            Section("Lead") {
+                detailRow("Status", lead.status)
+                detailRow("Source", lead.normalizedSource)
+                detailRow("Address", lead.streetAddress)
+                if !lead.city.isEmpty {
+                    detailRow("City", lead.city)
+                }
+                if !lead.customerId.isEmpty {
+                    detailRow("Linked Customer", lead.connectionDetail)
+                }
+            }
+
+            Section("Customer") {
+                Toggle("Display as Company", isOn: $displayAsCompany)
+
+                if displayAsCompany {
+                    TextField("Company Name", text: $companyName)
+                } else {
+                    TextField("First Name", text: $firstName)
+                    TextField("Last Name", text: $lastName)
+                }
+
+                TextField("Email", text: $email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                TextField("Phone", text: $phone)
+                    .keyboardType(.phonePad)
+                TextField("Billing Notes", text: $billingNotes, axis: .vertical)
+                    .lineLimit(2...5)
+            }
+
+            Section("Service Location") {
+                Toggle("Add Service Location", isOn: $addServiceLocation)
+
+                if addServiceLocation {
+                    TextField("Nickname", text: $serviceLocationNickName)
+                    TextField("Gate Code", text: $gateCode)
+                    TextField("Dog Name", text: $dogName)
+                    TextField("Notes", text: $serviceLocationNotes, axis: .vertical)
+                        .lineLimit(2...5)
+                    Toggle("Pre-text before arrival", isOn: $preText)
+                }
+            }
+
+            if addServiceLocation {
+                Section("Body of Water") {
+                    Toggle("Add Body of Water", isOn: $addBodyOfWater)
+
+                    if addBodyOfWater {
+                        TextField("Name", text: $bodyOfWaterName)
+                        TextField("Gallons", text: $bodyOfWaterGallons)
+                            .keyboardType(.numberPad)
+                        TextField("Material", text: $bodyOfWaterMaterial)
+                        TextField("Water Type", text: $bodyOfWaterWaterType)
+                        TextField("Notes", text: $bodyOfWaterNotes, axis: .vertical)
+                            .lineLimit(2...5)
+                    }
+                }
+            }
+
+            if addBodyOfWater {
+                Section("Equipment") {
+                    Toggle("Add Equipment", isOn: $addEquipment)
+
+                    if addEquipment {
+                        TextField("Pump Name", text: $pumpName)
+                        Toggle("Pump needs service", isOn: $pumpNeedsService)
+                        TextField("Filter Name", text: $filterName)
+                        Toggle("Filter needs service", isOn: $filterNeedsService)
+                    }
+                }
+            }
+
+            Section {
+                Button {
+                    Task {
+                        await submitConversion()
+                    }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if isSubmitting {
+                            ProgressView()
+                        } else {
+                            Text(conversionComplete ? "Converted" : "Convert Lead")
+                                .fontWeight(.semibold)
+                        }
+                        Spacer()
+                    }
+                }
+                .disabled(isSubmitting || conversionComplete || companyId.isEmpty || !lead.customerId.isEmpty)
+            }
+        }
+        .navigationTitle("Convert Lead")
+        .alert("Lead Conversion", isPresented: alertBinding) {
+            Button("OK", role: .cancel) {
+                alertMessage = nil
+            }
+        } message: {
+            Text(alertMessage ?? "")
+        }
+    }
+
+    private var alertBinding: Binding<Bool> {
+        Binding(
+            get: { alertMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    alertMessage = nil
+                }
+            }
+        )
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(label)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value.isEmpty ? "-" : value)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    @MainActor
+    private func submitConversion() async {
+        guard !companyId.isEmpty else {
+            alertMessage = "Select a company before converting this lead."
+            return
+        }
+
+        guard lead.customerId.isEmpty else {
+            alertMessage = "This lead is already linked to a company customer."
+            return
+        }
+
+        guard displayAsCompany ? !companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty : !firstName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            alertMessage = "Add a customer name before converting this lead."
+            return
+        }
+
+        isSubmitting = true
+
+        do {
+            let response = try await FunctionsManager.shared.convertHomeownerServiceRequestToCompanyCustomer(
+                companyId: companyId,
+                leadId: lead.id,
+                payload: conversionPayload()
+            )
+            conversionComplete = true
+            alertMessage = "Converted to \(response["customerName"] as? String ?? "customer")."
+        } catch {
+            alertMessage = error.localizedDescription
+        }
+
+        isSubmitting = false
+    }
+
+    private func conversionPayload() -> [String: Any] {
+        [
+            "displayAsCompany": displayAsCompany,
+            "useDifferentBillingAddress": false,
+            "formData": [
+                "firstName": firstName,
+                "lastName": lastName,
+                "companyName": companyName,
+                "email": email,
+                "phone": phone,
+                "billingNotes": billingNotes,
+            ],
+            "serviceLocationData": [
+                "nickName": serviceLocationNickName,
+                "gateCode": gateCode,
+                "dogName": dogName,
+                "notes": serviceLocationNotes,
+                "preText": preText,
+            ],
+            "bodyOfWaterData": [
+                "name": bodyOfWaterName,
+                "gallons": bodyOfWaterGallons,
+                "material": bodyOfWaterMaterial,
+                "waterType": bodyOfWaterWaterType,
+                "notes": bodyOfWaterNotes,
+            ],
+            "equipmentData": equipmentPayload(),
+            "addServiceLocation": addServiceLocation,
+            "addBodyOfWater": addBodyOfWater,
+            "addEquipment": addEquipment,
+        ]
+    }
+
+    private func equipmentPayload() -> [[String: Any]] {
+        guard addEquipment else {
+            return []
+        }
+
+        return [
+            [
+                "name": pumpName,
+                "type": "Pump",
+                "needsService": pumpNeedsService,
+            ],
+            [
+                "name": filterName,
+                "type": "Filter",
+                "needsService": filterNeedsService,
+            ],
+        ].filter { item in
+            guard let name = item["name"] as? String else {
+                return false
+            }
+            return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
 }
 

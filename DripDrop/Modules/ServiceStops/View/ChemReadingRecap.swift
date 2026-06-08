@@ -28,15 +28,15 @@ struct ChemReadingRecap: View {
         VStack{
                 ForEach(templates) { template in
                     HStack{
-                        if let stopData = VM.serviceLocationStopData.first(where: {$0.bodyOfWaterId == self.BOW.id}), let reading = stopData.readings.first(where: {$0.templateId == template.readingsTemplateId})  {
+                        if let stopData = VM.serviceLocationStopData.first(where: {$0.bodyOfWaterId == self.BOW.id}), let reading = reading(for: template, in: stopData)  {
                             if Double(reading.amount ?? "0") ?? 1_000 > (template.highWarning ?? 1_000) {
-                                Text("\(reading.amount ?? "0")")
+                                Text(formattedAmount(reading.amount, unit: reading.UOM))
                                     .foregroundStyle(Color.poolRed)
                             } else  if Double(reading.amount ?? "0") ?? 0 < (template.lowWarning ?? 0) {
-                                    Text("\(reading.amount ?? "0")")
+                                Text(formattedAmount(reading.amount, unit: reading.UOM))
                                     .foregroundStyle(Color.poolRed)
                                 } else {
-                                    Text("\(reading.amount ?? "0")")
+                                    Text(formattedAmount(reading.amount, unit: reading.UOM))
                                 }
                         } else {
                             Text(" - ")
@@ -46,6 +46,45 @@ struct ChemReadingRecap: View {
                 }
             
         }
+    }
+
+    private func reading(for template: SavedReadingsTemplate, in stopData: StopData) -> Reading? {
+        let templateKeys = [
+            template.id,
+            template.readingsTemplateId,
+            template.name
+        ]
+
+        return stopData.readings.first { reading in
+            templateKeys.contains { key in
+                matches(key, reading.templateId) ||
+                matches(key, reading.universalTemplateId) ||
+                matches(key, reading.name)
+            }
+        }
+    }
+
+    private func matches(_ lhs: String?, _ rhs: String?) -> Bool {
+        let left = normalizedKey(lhs)
+        let right = normalizedKey(rhs)
+
+        return !left.isEmpty && left == right
+    }
+
+    private func normalizedKey(_ value: String?) -> String {
+        (value ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    private func formattedAmount(_ amount: String?, unit: String?) -> String {
+        let value = (amount ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let unit = (unit ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !value.isEmpty else { return "-" }
+        guard !unit.isEmpty else { return value }
+
+        return "\(value) \(unit)"
     }
 }
 

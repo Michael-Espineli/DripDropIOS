@@ -13,10 +13,12 @@ struct AddServiceLocationView: View {
     @EnvironmentObject private var masterDataManager : MasterDataManager
     @State var customer:Customer
     @StateObject var serviceLocationVM : ServiceLocationViewModel
+    let onSave: (String) -> Void
     
-    init(dataService:any ProductionDataServiceProtocol,customer:Customer){
+    init(dataService:any ProductionDataServiceProtocol,customer:Customer,onSave: @escaping (String) -> Void = { _ in }){
         _serviceLocationVM = StateObject(wrappedValue: ServiceLocationViewModel(dataService: dataService ))
         _customer = State(wrappedValue: customer)
+        self.onSave = onSave
     }
     //Service Location
     let serviceLocationId: String = UUID().uuidString
@@ -29,6 +31,9 @@ struct AddServiceLocationView: View {
     @State var serviceLocationMainContactPhoneNumber:String = ""
     @State var serviceLocationMainContactEmail:String = ""
     @State var serviceLocationMainContactNotes:String = ""
+    @State private var customerContacts: [Contact] = []
+    @State private var selectedContactId: String = ""
+    @State private var createNewContact: Bool = false
     
     
     @State var estimatedTime:String = "15"
@@ -79,192 +84,197 @@ struct AddServiceLocationView: View {
     
     @State var addFirstBodyOfWater:Bool = false
     @State var showCustomMeasurments:Bool = false
+    @State private var serviceLocationAddressQuery: String = ""
+    @State private var serviceLocationAddress: Address? = nil
 
     var body: some View {
-        VStack{
-            ScrollView{
+        ZStack {
+            Color(.systemGroupedBackground).ignoresSafeArea()
+            ScrollView(showsIndicators: false){
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Create Service Location")
+                            .font(.largeTitle)
+                            .bold()
+                        Text(customerDisplayName)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 4)
+                    
                 serviceLocation
                 bodyOfWater
                 submitButton
+                }
             }
             .padding()
         }
         .alert(alertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         }
+        .task {
+            await loadCustomerContacts()
+            seedDefaultLocationData()
+        }
     }
 }
 
 extension AddServiceLocationView {
+    private var customerDisplayName: String {
+        if customer.displayAsCompany, let company = customer.company, !company.isEmpty {
+            return company
+        }
+        return "\(customer.firstName) \(customer.lastName)"
+    }
+    
+    private func loadCustomerContacts() async {
+        guard let company = masterDataManager.currentCompany else { return }
+        do {
+            customerContacts = try await serviceLocationVM.dataService.getAllContactsByCustomer(companyId: company.id, customerId: customer.id)
+            if let firstContact = customerContacts.first {
+                selectedContactId = firstContact.id
+                createNewContact = false
+            } else {
+                createNewContact = true
+            }
+        } catch {
+            print("Failed to load customer contacts")
+            print(error)
+            createNewContact = true
+        }
+    }
+    
+    private func seedDefaultLocationData() {
+        if nickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            nickName = "Main"
+        }
+        
+        if serviceLocationMainContactName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            serviceLocationMainContactName = customerDisplayName
+            serviceLocationMainContactEmail = customer.email
+            serviceLocationMainContactPhoneNumber = customer.phoneNumber ?? ""
+        }
+        
+        if bodyOfWaterList.isEmpty {
+            bodyOfWaterList = [
+                BodyOfWater(
+                    id: UUID().uuidString,
+                    name: "Main",
+                    gallons: "16000",
+                    material: "Plaster",
+                    customerId: customer.id,
+                    serviceLocationId: serviceLocationId,
+                    notes: "",
+                    shape: "",
+                    length: [],
+                    depth: [],
+                    width: [],
+                    lastFilled: Date(),
+                    isActive: true
+                )
+            ]
+        }
+    }
+    
+    private var selectedMainContact: Contact {
+        if !createNewContact, let contact = customerContacts.first(where: { $0.id == selectedContactId }) {
+            return contact
+        }
+        
+        return Contact(
+            id: UUID().uuidString,
+            name: serviceLocationMainContactName.trimmingCharacters(in: .whitespacesAndNewlines),
+            phoneNumber: serviceLocationMainContactPhoneNumber.trimmingCharacters(in: .whitespacesAndNewlines),
+            email: serviceLocationMainContactEmail.trimmingCharacters(in: .whitespacesAndNewlines),
+            notes: serviceLocationMainContactNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+    
     var serviceLocation: some View {
-        VStack{
-            VStack{
+        VStack(alignment: .leading, spacing: 18){
+            VStack(alignment: .leading, spacing: 12){
                 HStack{
                     Text("Service Location Info")
-                        .font(.headline)
+                        .font(.title3)
+                        .bold()
                     Spacer()
                     Button(action: {
-                        nickName = customer.firstName + " " + customer.lastName
-                        serviceLocationAddressStreetAddress = customer.billingAddress.streetAddress
-                        serviceLocationAddressCity = customer.billingAddress.city
-                        serviceLocationAddressState = customer.billingAddress.state
-                        serviceLocationAddressZip = customer.billingAddress.zip
+                        nickName = "Main"
+                        serviceLocationAddress = customer.billingAddress
+                        serviceLocationAddressQuery = "\(customer.billingAddress.streetAddress) \(customer.billingAddress.city), \(customer.billingAddress.state) \(customer.billingAddress.zip)"
                     }, label: {
-                        Text("Use Customer")
-                            .padding(8)
-                            .background(Color.poolBlue)
-                            .cornerRadius(8)
-                            .foregroundColor(Color.white)
+                        Label("Use Billing", systemImage: "arrow.down.doc")
+                            .font(.subheadline.bold())
                     })
+                    .buttonStyle(.borderedProminent)
                 }
-                
-                HStack{
-                    Text("Nick Name")
-                    Spacer()
-                    
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Location Nickname")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     TextField(
-                        "Nick Name...",
+                        "Main",
                         text: $nickName
                     )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
+                    .textFieldStyle(.roundedBorder)
                 }
-                HStack{
-                    Text("Street Address")
-                    TextField(
-                        "Street Address...",
-                        text: $serviceLocationAddressStreetAddress
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
-                HStack{
-                    
-                    TextField(
-                        "City...",
-                        text: $serviceLocationAddressCity
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                    
-                    TextField(
-                        "State...",
-                        text: $serviceLocationAddressState
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                    
-                    TextField(
-                        "Zip...",
-                        text: $serviceLocationAddressZip
-                    )
-                    .keyboardType(.decimalPad)
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
+                AddressAutocompleteView(
+                    text: $serviceLocationAddressQuery,
+                    selectedAddress: $serviceLocationAddress
+                )
             }
-            VStack{
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            
+            VStack(alignment: .leading, spacing: 12){
                 HStack{
-                    Text("Contact Info")
-                        .font(.headline)
+                    Text("Main Contact")
+                        .font(.title3)
+                        .bold()
                     Spacer()
-                    Button(action: {
-                        serviceLocationMainContactName = customer.firstName + " " + customer.lastName
-                        serviceLocationMainContactEmail = customer.email
-                        serviceLocationMainContactPhoneNumber = customer.phoneNumber ?? ""
-
-                    }, label: {
-                        Text("Use Customer")
-                            .padding(8)
-                            .background(Color.poolBlue)
-                            .foregroundColor(Color.white)
-                            .cornerRadius(8)
-                    })
                 }
-                HStack{
-                    Text("Name:")
-                    Spacer()
-                    TextField(
-                        "Name...",
-                        text: $serviceLocationMainContactName
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
+                Picker("Contact Source", selection: $createNewContact) {
+                    Text("Existing").tag(false)
+                    Text("New").tag(true)
                 }
-                HStack{
-                    Text("Phone Number")
-                    Spacer()
-                    
-                    TextField(
-                        "Phone Number...",
-                        text: $serviceLocationMainContactPhoneNumber
-                    )
-                    .keyboardType(.phonePad)
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
+                .pickerStyle(.segmented)
+                .disabled(customerContacts.isEmpty)
+                
+                if !createNewContact, !customerContacts.isEmpty {
+                    Picker("Customer Contact", selection: $selectedContactId) {
+                        ForEach(customerContacts) { contact in
+                            Text(contact.name.isEmpty ? "Unnamed Contact" : contact.name).tag(contact.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } else {
+                    TextField("Name", text: $serviceLocationMainContactName)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Phone Number", text: $serviceLocationMainContactPhoneNumber)
+                        .keyboardType(.phonePad)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Email", text: $serviceLocationMainContactEmail)
+                        .keyboardType(.emailAddress)
+                        .textFieldStyle(.roundedBorder)
+                    TextField("Contact Notes", text: $serviceLocationMainContactNotes, axis: .vertical)
+                        .lineLimit(2...4)
+                        .textFieldStyle(.roundedBorder)
                 }
-                HStack{
-                    Text("Email:")
-                    Spacer()
-                    TextField(
-                        "Email...",
-                        text: $serviceLocationMainContactEmail
-                    )
-                    .keyboardType(.emailAddress)
-                    
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
-                HStack{
-                    Text("Esitmated Time:")
-                    TextField(
-                        "Minutes",
-                        text: $estimatedTime
-                    )
+                
+                TextField("Estimated Time", text: $estimatedTime)
                     .keyboardType(.decimalPad)
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
-                Toggle(isOn: $preText, label: {
-                    Text("Requires Pretext")
-                })
-                HStack{
-                    Text("Gate Code:")
-                    TextField(
-                        "Gate Code",
-                        text: $gateCode
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
-                HStack{
-                    Text("Notes:")
-                    Spacer()
-                    TextField(
-                        "Notes",
-                        text: $serviceLocationMainContactNotes,
-                        axis: .vertical
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                }
+                    .textFieldStyle(.roundedBorder)
+                Toggle("Requires Pre-Service Text", isOn: $preText)
+                TextField("Gate Code", text: $gateCode)
+                    .textFieldStyle(.roundedBorder)
+                TextField("Location Notes", text: $generalNotes, axis: .vertical)
+                    .lineLimit(2...4)
+                    .textFieldStyle(.roundedBorder)
             }
+            .padding()
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             
 //            yardInfo
             
@@ -512,29 +522,21 @@ extension AddServiceLocationView {
                         guard let company = masterDataManager.currentCompany else {
                             return
                         }
+                        guard let newServiceLocationAddress = serviceLocationAddress else {
+                            alertMessage = "Invalid Street Address"
+                            showAlert = true
+                            return
+                        }
                         try await serviceLocationVM.addNewCustomerServiceLocationWithValidation(
                             companyId: company.id,
                             customer: customer,
                             serviceLocationId:serviceLocationId,
                             nickName: nickName,
-                            address: Address(
-                                streetAddress: serviceLocationAddressStreetAddress,
-                                city: serviceLocationAddressCity,
-                                state: serviceLocationAddressState,
-                                zip: serviceLocationAddressZip,
-                                latitude: 0,
-                                longitude: 0
-                            ),
+                            address: newServiceLocationAddress,
                             gateCode: gateCode,
                             dogNames: dogNames,
                             estimatedTime: estimatedTime,
-                            mainContact: Contact(
-                                id: UUID().uuidString,
-                                name: serviceLocationMainContactName,
-                                phoneNumber: serviceLocationMainContactPhoneNumber,
-                                email: serviceLocationMainContactEmail,
-                                notes: serviceLocationMainContactNotes
-                            ),
+                            mainContact: selectedMainContact,
                             notes: generalNotes,
                             trees: trees,
                             bushes: bushes,
@@ -545,6 +547,7 @@ extension AddServiceLocationView {
                         alertMessage = "Successfully Updated"
                         print(alertMessage)
                         showAlert = true
+                        onSave(serviceLocationId)
                         dismiss()
                     } catch ServiceLocationError.invalidCustomerId{
                         alertMessage = "Invalid Customer Selected"

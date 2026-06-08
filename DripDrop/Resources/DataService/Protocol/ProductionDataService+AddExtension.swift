@@ -617,6 +617,18 @@ extension ProductionDataService {
     func sendMessage(message: Message) async throws {
         try messageDocument(messageId: message.id)
             .setData(from:message, merge: false)
+        let chatRef = chatDocument(chatId: message.chatId)
+        if let chat = try? await chatRef.getDocument(as: Chat.self) {
+            let userTargets = chat.participantIds.filter { $0 != message.senderId }
+            let companyTargets = chat.participantCompanyIds ?? chat.companyId.map { [$0] } ?? []
+            try await chatRef.updateData([
+                "lastMessage": message.previewText,
+                "mostRecentChat": message.dateSent,
+                "userWhoHaveNotRead": FieldValue.arrayUnion(userTargets),
+                "companyIdsWhoHaveNotRead": FieldValue.arrayUnion(companyTargets),
+                "readByUserIds": [message.senderId]
+            ])
+        }
     }
 
     func uploadGenericItem(companyId:String,workOrderTemplate : GenericItem) async throws {

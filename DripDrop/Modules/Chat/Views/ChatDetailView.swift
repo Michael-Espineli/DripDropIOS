@@ -23,6 +23,7 @@ struct ChatDetailView: View {
     @State var scrollToBottom:Bool = true
     @State var messagesToGet:Int = 25
     @State var participant:String = ""
+    @State private var showLinkComposer: Bool = false
     var body: some View {
         VStack{
             ScrollView(.vertical, showsIndicators: false) {
@@ -38,15 +39,9 @@ struct ChatDetailView: View {
                 chatVM.addListenerForAllMessages(chatId: chat.id,amount: messagesToGet)
                 
                 if let user = masterDataManager.user {
-                    var particiapntName:String = ""
-                    for participant in chat.participants {
-                        if participant.userId != user.id {
-                            particiapntName = particiapntName + " " + participant.userName
-                        }
-                    }
-                    participant = particiapntName
-                    if chat.userWhoHaveNotRead.contains(where: {$0 == user.id}) {
-                        try await chatVM.markChatAsRead(userId: user.id, chat: chat)
+                    participant = chat.displayTitle(currentUserId: user.id)
+                    if chat.isUnread(for: user.id, companyId: masterDataManager.currentCompany?.id) {
+                        try await chatVM.markChatAsRead(userId: user.id, companyId: masterDataManager.currentCompany?.id, chat: chat)
                     }
                 }
             } catch {
@@ -78,20 +73,10 @@ extension ChatDetailView {
                                 HStack{
                                     if item.senderId == user.id {
                                         Spacer()
-                                        Text("\(item.message)")
-                                            .padding(5)
-                                            .background(.blue)
-                                            .foregroundColor(Color.white)
-                                            .cornerRadius(5)
-                                            .padding(5)
+                                        ChatMessageContent(message: item, isCurrentUser: true)
                                     } else {
                                         
-                                        Text("\(item.message)")
-                                            .padding(5)
-                                            .background(.gray)
-                                            .foregroundColor(Color.white)
-                                            .cornerRadius(5)
-                                            .padding(5)
+                                        ChatMessageContent(message: item, isCurrentUser: false)
                                         
                                         Spacer()
                                     }
@@ -176,20 +161,10 @@ extension ChatDetailView {
                                     HStack{
                                         if i.senderId == user.id {
                                             Spacer()
-                                            Text("\(i.message)")
-                                                .padding(5)
-                                                .background(.blue)
-                                                .foregroundColor(Color.white)
-                                                .cornerRadius(5)
-                                                .padding(5)
+                                            ChatMessageContent(message: i, isCurrentUser: true)
                                         } else {
                                             
-                                            Text("\(i.message)")
-                                                .padding(5)
-                                                .background(.gray)
-                                                .foregroundColor(Color.white)
-                                                .cornerRadius(5)
-                                                .padding(5)
+                                            ChatMessageContent(message: i, isCurrentUser: false)
                                             
                                             Spacer()
                                         }
@@ -230,11 +205,18 @@ extension ChatDetailView {
     var newMessage: some View {
         HStack{
             Button(action: {
-                print("Does Nothing")
+                showLinkComposer = true
             }, label: {
                 Image(systemName: "plus")
                     .font(.headline)
             })
+            .sheet(isPresented: $showLinkComposer) {
+                ShareConversationLinkSheet { link, note in
+                    Task {
+                        await sendLink(link, note: note)
+                    }
+                }
+            }
             HStack{
                 TextField(
                     "Message",
@@ -251,7 +233,7 @@ extension ChatDetailView {
                             }
                             if let user = masterDataManager.user {
                                 let fullName = (user.firstName) + " " + (user.lastName)
-                                    try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, message: message, chatId: chat.id)
+                                    try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, senderCompanyId: masterDataManager.currentCompany?.id, senderCompanyName: masterDataManager.currentCompany?.name, message: message, chatId: chat.id)
                                     try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
                                     message = ""
                           
@@ -271,7 +253,7 @@ extension ChatDetailView {
                         do {
                             if let user = masterDataManager.user {
                                 let fullName = (user.firstName) + " " + (user.lastName)
-                                    try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, message: message, chatId: chat.id)
+                                    try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, senderCompanyId: masterDataManager.currentCompany?.id, senderCompanyName: masterDataManager.currentCompany?.name, message: message, chatId: chat.id)
                                     try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
                                     message = ""
                           
@@ -302,5 +284,160 @@ extension ChatDetailView {
         }
         .padding(8)
         .background(Color.gray.opacity(0.5))
+    }
+    
+    private func sendLink(_ link: ConversationLink, note: String) async {
+        do {
+            guard let user = masterDataManager.user else {
+                print("Invalid User")
+                return
+            }
+            let fullName = (user.firstName) + " " + (user.lastName)
+            try await chatVM.sendLinkedRecordMessage(
+                userId: user.id,
+                senderName: fullName,
+                senderCompanyId: masterDataManager.currentCompany?.id,
+                senderCompanyName: masterDataManager.currentCompany?.name,
+                chatId: chat.id,
+                note: note,
+                link: link
+            )
+            try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
+        } catch {
+            print("[ChatDetailView][sendLink] \(error)")
+        }
+    }
+}
+
+private struct ChatMessageContent: View {
+    let message: Message
+    let isCurrentUser: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !message.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(message.message)
+            }
+
+            ForEach(message.attachments ?? []) { link in
+                ConversationLinkCard(link: link)
+            }
+        }
+        .padding(8)
+        .background(isCurrentUser ? Color.blue : Color.gray)
+        .foregroundColor(Color.white)
+        .cornerRadius(8)
+        .padding(5)
+        .frame(maxWidth: 280, alignment: isCurrentUser ? .trailing : .leading)
+    }
+}
+
+private struct ConversationLinkCard: View {
+    let link: ConversationLink
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: link.type.systemImage)
+                .font(.headline)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(link.type.displayName)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .opacity(0.85)
+                Text(link.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                if let subtitle = link.subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.caption)
+                        .opacity(0.9)
+                }
+                HStack(spacing: 8) {
+                    if let status = link.status, !status.isEmpty {
+                        Text(status)
+                            .font(.caption2)
+                    }
+                    if let amountLabel = link.amountLabel, !amountLabel.isEmpty {
+                        Text(amountLabel)
+                            .font(.caption2)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .opacity(0.8)
+        }
+        .padding(8)
+        .background(Color.white.opacity(0.18))
+        .cornerRadius(8)
+    }
+}
+
+private struct ShareConversationLinkSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var type: ConversationLinkType = .serviceStop
+    @State private var title: String = ""
+    @State private var recordId: String = ""
+    @State private var subtitle: String = ""
+    @State private var status: String = ""
+    @State private var amountLabel: String = ""
+    @State private var note: String = ""
+
+    let onSend: (ConversationLink, String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Picker("Type", selection: $type) {
+                    ForEach(ConversationLinkType.allCases, id: \.self) { type in
+                        Label(type.displayName, systemImage: type.systemImage)
+                            .tag(type)
+                    }
+                }
+
+                TextField("Title", text: $title)
+                TextField("Record ID", text: $recordId)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                TextField("Subtitle", text: $subtitle)
+                TextField("Status", text: $status)
+                TextField("Amount", text: $amountLabel)
+                TextField("Note", text: $note, axis: .vertical)
+            }
+            .navigationTitle("Share")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Send") {
+                        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let trimmedRecordId = recordId.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let link = ConversationLink(
+                            id: UUID().uuidString,
+                            type: type,
+                            recordId: trimmedRecordId.isEmpty ? UUID().uuidString : trimmedRecordId,
+                            title: trimmedTitle.isEmpty ? type.displayName : trimmedTitle,
+                            subtitle: subtitle.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+                            status: status.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+                            amountLabel: amountLabel.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+                        )
+                        onSend(link, note.trimmingCharacters(in: .whitespacesAndNewlines))
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }

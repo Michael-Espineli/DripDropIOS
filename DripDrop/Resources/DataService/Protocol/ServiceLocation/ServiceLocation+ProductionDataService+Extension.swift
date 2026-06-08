@@ -290,6 +290,20 @@ extension ProductionDataService {
             ] as [String : Any]
         ])
     }
+    func updateServiceLocationPreText(companyId: String, serviceLocationId: String, preText: Bool) async throws {
+        let serviceLocationRef = serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocationId)
+
+        try await serviceLocationRef.updateData([
+            ServiceLocation.CodingKeys.preText.rawValue: preText,
+        ])
+    }
+    func updateServiceLocationIsActive(companyId: String, serviceLocationId: String, isActive: Bool) async throws {
+        let serviceLocationRef = serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocationId)
+
+        try await serviceLocationRef.updateData([
+            ServiceLocation.CodingKeys.isActive.rawValue: isActive,
+        ])
+    }
     func updateServiceLocationAddress(companyId:String,currentCustomerId:String,serviceLocationId:String,address:Address) async throws {
         let serviceLocationRef = serviceLocationDoc(companyId: companyId,serviceLocationId: serviceLocationId)
         
@@ -306,9 +320,72 @@ extension ProductionDataService {
             ]
         )
     }
+    
+    func deactivateServiceLocationRelatedRecords(companyId:String,serviceLocationId:String)async throws {
+        let equipmentSnapshot = try await equipmentCollection(companyId: companyId)
+            .whereField(Equipment.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in equipmentSnapshot.documents {
+            try await document.reference.updateData([
+                Equipment.CodingKeys.isActive.rawValue: false,
+                "active": false
+            ])
+        }
+
+        let bodyOfWaterSnapshot = try await bodyOfWaterCollection(companyId: companyId)
+            .whereField(BodyOfWater.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in bodyOfWaterSnapshot.documents {
+            try await document.reference.updateData([
+                BodyOfWater.CodingKeys.isActive.rawValue: false
+            ])
+        }
+
+        let recurringServiceStopSnapshot = try await recurringServiceStopCollection(companyId: companyId)
+            .whereField(RecurringServiceStop.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in recurringServiceStopSnapshot.documents {
+            try await document.reference.delete()
+        }
+
+        let serviceStopSnapshot = try await serviceStopCollection(companyId: companyId)
+            .whereField(ServiceStop.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in serviceStopSnapshot.documents {
+            try await document.reference.delete()
+        }
+    }
+
         //Delete
     func deleteLocation(companyId:String,serviceLocationId:String)async throws {
+        let equipmentSnapshot = try await equipmentCollection(companyId: companyId)
+            .whereField(Equipment.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in equipmentSnapshot.documents {
+            try await document.reference.delete()
+        }
+
+        let bodyOfWaterSnapshot = try await bodyOfWaterCollection(companyId: companyId)
+            .whereField(BodyOfWater.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in bodyOfWaterSnapshot.documents {
+            try await document.reference.delete()
+        }
+
+        let recurringServiceStopSnapshot = try await recurringServiceStopCollection(companyId: companyId)
+            .whereField(RecurringServiceStop.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in recurringServiceStopSnapshot.documents {
+            try await document.reference.delete()
+        }
+
+        let serviceStopSnapshot = try await serviceStopCollection(companyId: companyId)
+            .whereField(ServiceStop.CodingKeys.serviceLocationId.rawValue, isEqualTo: serviceLocationId)
+            .getDocuments()
+        for document in serviceStopSnapshot.documents {
+            try await document.reference.delete()
+        }
+
         try await serviceLocationDoc(companyId: companyId, serviceLocationId: serviceLocationId).delete()
-        
     }
 }

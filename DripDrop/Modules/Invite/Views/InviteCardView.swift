@@ -13,10 +13,10 @@ struct InviteCardView: View {
         HStack{
             VStack{
                 Text("\(invite.firstName) \(invite.lastName)")
-                Text("\(invite.status)")
+                Text(invite.displayStatus)
                     .font(.footnote)
                     .padding(5)
-                    .background(invite.status == "Pending" ? Color.realYellow:Color.green)
+                    .background(InviteStatusValue.isPending(invite.status) ? Color.realYellow:Color.green)
                     .cornerRadius(20)
                 
             }
