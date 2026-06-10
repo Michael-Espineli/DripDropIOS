@@ -333,6 +333,7 @@ extension ServiceLocationStartUpView {
                         if let selectedEquipmentCategory {
                             if selectedEquipmentCategory == category {
                                 EquipmentDetailStartUpView(
+                                    dataService: VM.dataService,
                                     equipmentList: $equipmentList,
                                     selectedEquipmentId: $selectedEquipmentId,
                                     photos:$equipmentImages

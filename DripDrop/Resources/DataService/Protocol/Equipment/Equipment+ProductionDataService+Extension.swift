@@ -24,6 +24,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
     var makeId :String //For Universal Equipment Says Custom If Not Selected
     var model : String //
     var modelId :String //For Universal equipment. Says Custom if not selected
+    var universalEquipmentId: String
+    var manualPdfLink: String
     var dateInstalled : Date
     var status : EquipmentStatus
     var needsService : Bool
@@ -53,6 +55,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         makeId : String,
         model : String,
         modelId : String,
+        universalEquipmentId: String = "",
+        manualPdfLink: String = "",
         dateInstalled  : Date,
         status:EquipmentStatus,
         needsService:Bool,
@@ -83,6 +87,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.makeId = makeId
         self.model = model
         self.modelId = modelId
+        self.universalEquipmentId = universalEquipmentId
+        self.manualPdfLink = manualPdfLink
         self.dateInstalled = dateInstalled
         self.status = status
         
@@ -113,6 +119,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             case makeId = "makeId"
             case model = "model"
             case modelId = "modelId"
+            case universalEquipmentId = "universalEquipmentId"
+            case manualPdfLink = "manualPdfLink"
             case dateInstalled = "dateInstalled"
             case status = "status"
             case needsService = "needsService"
@@ -183,6 +191,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.makeId = try container.decodeIfPresent(String.self, forKey: .makeId) ?? ""
         self.model = try container.decodeIfPresent(String.self, forKey: .model) ?? ""
         self.modelId = try container.decodeIfPresent(String.self, forKey: .modelId) ?? ""
+        self.universalEquipmentId = try container.decodeIfPresent(String.self, forKey: .universalEquipmentId) ?? self.modelId
+        self.manualPdfLink = try container.decodeIfPresent(String.self, forKey: .manualPdfLink) ?? ""
         self.dateInstalled = try container.decodeIfPresent(Date.self, forKey: .dateInstalled) ?? Date()
 
         let statusRaw = try container.decodeIfPresent(String.self, forKey: .status) ?? EquipmentStatus.operational.rawValue
@@ -564,6 +574,30 @@ extension ProductionDataService {
             Equipment.CodingKeys.model.stringValue:model
         ])
     }
+    func updateEquipmentCatalogDetails(
+        companyId:String,
+        equipmentId:String,
+        category:EquipmentCategory,
+        typeId:String,
+        make:String,
+        makeId:String,
+        model:String,
+        modelId:String,
+        universalEquipmentId:String,
+        manualPdfLink:String
+    ) throws {
+        let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        equipmentRef.updateData([
+            Equipment.CodingKeys.type.stringValue: category.rawValue,
+            Equipment.CodingKeys.typeId.stringValue: typeId,
+            Equipment.CodingKeys.make.stringValue: make,
+            Equipment.CodingKeys.makeId.stringValue: makeId,
+            Equipment.CodingKeys.model.stringValue: model,
+            Equipment.CodingKeys.modelId.stringValue: modelId,
+            Equipment.CodingKeys.universalEquipmentId.stringValue: universalEquipmentId,
+            Equipment.CodingKeys.manualPdfLink.stringValue: manualPdfLink
+        ])
+    }
     func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         equipmentRef.updateData([
@@ -650,11 +684,16 @@ extension ProductionDataService {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type,
+            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
+            Equipment.CodingKeys.makeId.stringValue:equipment.makeId,
             Equipment.CodingKeys.model.stringValue:equipment.model,
+            Equipment.CodingKeys.modelId.stringValue:equipment.modelId,
+            Equipment.CodingKeys.universalEquipmentId.stringValue:equipment.universalEquipmentId,
+            Equipment.CodingKeys.manualPdfLink.stringValue:equipment.manualPdfLink,
             Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
-            Equipment.CodingKeys.status.stringValue:equipment.status,
+            Equipment.CodingKeys.status.stringValue:equipment.status.rawValue,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,

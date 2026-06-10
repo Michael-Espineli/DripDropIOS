@@ -20,8 +20,21 @@ final class ServiceLocationStartUpViewModel:ObservableObject{
         self.dataService = dataService
     }
     @Published var isLoading:Bool = false
-    func createLocation(companyId:String,customerId:String,serviceLocationId:String,bodyOfWaterList:[BodyOfWater],equipmentList:[Equipment],bodyOfWaterImages:[String:[DripDropImage]],equipmentImages:[String:[DripDropImage]])async throws {
+    func createLocation(
+        companyId: String,
+        customerId: String,
+        serviceLocationId: String,
+        bodyOfWaterList: [BodyOfWater],
+        equipmentList: [Equipment],
+        bodyOfWaterImages: [String:[DripDropImage]],
+        equipmentImages: [String:[DripDropImage]],
+        locationNickName: String? = nil,
+        gateCode: String? = nil,
+        locationNotes: String? = nil,
+        serviceLocationPhotos: [DripDropImage] = []
+    ) async throws {
         self.isLoading = true
+        defer { self.isLoading = false }
         print("")
         print("Set up Service Location for \(serviceLocationId)")
         print("")
@@ -39,6 +52,51 @@ final class ServiceLocationStartUpViewModel:ObservableObject{
         print("")
         print("equipmentImages \(equipmentImages)")
         print("")
+
+        if let locationNickName {
+            try await dataService.updateServiceLocationNickName(
+                companyId: companyId,
+                serviceLocationId: serviceLocationId,
+                nickName: locationNickName
+            )
+        }
+
+        if let gateCode {
+            try await dataService.updateServiceLocationGateCode(
+                companyId: companyId,
+                serviceLocationId: serviceLocationId,
+                gateCode: gateCode
+            )
+        }
+
+        if let locationNotes {
+            try await dataService.updateServiceLocationNotes(
+                companyId: companyId,
+                serviceLocationId: serviceLocationId,
+                notes: locationNotes
+            )
+        }
+
+        if !serviceLocationPhotos.isEmpty {
+            var storedServiceLocationImages: [DripDropStoredImage] = []
+
+            for image in serviceLocationPhotos {
+                let result = try await dataService.uploadServiceLocationImage(
+                    companyId: companyId,
+                    serviceLocationId: serviceLocationId,
+                    image: image
+                )
+                storedServiceLocationImages.append(
+                    DripDropStoredImage(description: image.name, imageURL: result.path)
+                )
+            }
+
+            try await dataService.updateServiceLocationPhotoURLs(
+                companyId: companyId,
+                serviceLocationId: serviceLocationId,
+                photoUrls: storedServiceLocationImages
+            )
+        }
 
         for BOW in bodyOfWaterList {
             //Upload Body Of Water Images
@@ -86,7 +144,6 @@ final class ServiceLocationStartUpViewModel:ObservableObject{
 
                 try await dataService.uploadEquipment(companyId: companyId, equipment: uploadEquipment)
             }
-            self.isLoading = false
         }
     }
 }

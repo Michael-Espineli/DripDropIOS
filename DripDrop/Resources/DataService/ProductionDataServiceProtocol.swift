@@ -1045,6 +1045,18 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateEquipmentMake(companyId:String,equipmentId:String,make:String) throws
     
     func updateEquipmentModel(companyId:String,equipmentId:String,model:String) throws
+    func updateEquipmentCatalogDetails(
+        companyId:String,
+        equipmentId:String,
+        category:EquipmentCategory,
+        typeId:String,
+        make:String,
+        makeId:String,
+        model:String,
+        modelId:String,
+        universalEquipmentId:String,
+        manualPdfLink:String
+    ) throws
     func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws
     func updateEquipmentStatus(companyId:String,equipmentId:String,status:EquipmentStatus) throws
     func updateEquipmentCleanFilterPressure(companyId:String,equipmentId:String,cleanFilterPressure:Int) throws

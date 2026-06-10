@@ -1332,6 +1332,20 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateEquipmentModel(companyId:String,equipmentId:String,model:String) throws {
         
     }
+    func updateEquipmentCatalogDetails(
+        companyId:String,
+        equipmentId:String,
+        category:EquipmentCategory,
+        typeId:String,
+        make:String,
+        makeId:String,
+        model:String,
+        modelId:String,
+        universalEquipmentId:String,
+        manualPdfLink:String
+    ) throws {
+        
+    }
     func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:EquipmentFrequency) throws {
         
     }

@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct EquipmentDetailStartUpView: View {
+    let dataService: any ProductionDataServiceProtocol
     @Binding var equipmentList:[Equipment]
     @Binding var selectedEquipmentId:String
     @Binding var photos:[String:[DripDropImage]]
@@ -63,7 +64,16 @@ struct EquipmentDetailStartUpView: View {
                                     .bold(true)
                                 TextField(
                                     "make",
-                                    text: $equipment.make
+                                    text: Binding(
+                                        get: { equipment.make },
+                                        set: {
+                                            equipment.make = $0
+                                            equipment.makeId = ""
+                                            equipment.modelId = ""
+                                            equipment.universalEquipmentId = ""
+                                            equipment.manualPdfLink = ""
+                                        }
+                                    )
                                 )
                                 .padding(3)
                                 .background(Color.gray.opacity(0.3))
@@ -74,12 +84,32 @@ struct EquipmentDetailStartUpView: View {
                                     .bold(true)
                                 TextField(
                                     "model",
-                                    text: $equipment.model
+                                    text: Binding(
+                                        get: { equipment.model },
+                                        set: {
+                                            equipment.model = $0
+                                            equipment.modelId = ""
+                                            equipment.universalEquipmentId = ""
+                                            equipment.manualPdfLink = ""
+                                        }
+                                    )
                                 )
                                 .padding(3)
                                 .background(Color.gray.opacity(0.3))
                                 .cornerRadius(3)
                             }
+                            EquipmentCatalogSelectionControl(
+                                dataService: dataService,
+                                category: $equipment.type,
+                                typeId: $equipment.typeId,
+                                make: $equipment.make,
+                                makeId: $equipment.makeId,
+                                model: $equipment.model,
+                                modelId: $equipment.modelId,
+                                universalEquipmentId: $equipment.universalEquipmentId,
+                                manualPdfLink: $equipment.manualPdfLink,
+                                name: $equipment.name
+                            )
                             HStack{
                                 Text("Date Installed")
                                     .bold(true)
@@ -109,31 +139,29 @@ struct EquipmentDetailStartUpView: View {
                             }
                         }
                         VStack{
-                            Toggle(isOn: $needsService, label: {
+                            Toggle(isOn: $equipment.needsService, label: {
                                 Text("Needs Regular Service")
                             })
-                            if needsService {
+                            if equipment.needsService {
                                 HStack{
                                     Text("Last Serviced")
                                         .bold(true)
-                                    DatePicker(selection: $lastServiced, displayedComponents: .date) {
+                                    DatePicker(
+                                        selection: optionalDateBinding($equipment.lastServiceDate),
+                                        displayedComponents: .date
+                                    ) {
                                     }
                                 }
-                                .onChange(of: lastServiced, perform: { date in
-                                    equipment.lastServiceDate = date
-                                })
                                 HStack{
-                                    Picker("Every", selection: $equipment.serviceFrequencyEvery) {
-                                        Text("Every")
-                                        ForEach(0...100,id:\.self) {
-                                            Text(String($0)).tag(String($0))
+                                    Picker("Every", selection: optionalIntBinding($equipment.serviceFrequency, defaultValue: 1)) {
+                                        ForEach(1...100,id:\.self) {
+                                            Text(String($0)).tag($0)
                                         }
                                     }
-                                    Picker("Frequency", selection: $equipment.serviceFrequency) {
-                                        Text("Day").tag("Day")
-                                        Text("Week").tag("Week")
-                                        Text("Month").tag("Month")
-                                        Text("Year").tag("Year")
+                                    Picker("Frequency", selection: optionalFrequencyBinding($equipment.serviceFrequencyEvery)) {
+                                        ForEach(EquipmentFrequency.allCases) { frequency in
+                                            Text(frequency.rawValue).tag(frequency)
+                                        }
                                     }
                                 }
                             }
@@ -187,3 +215,26 @@ struct EquipmentDetailStartUpView: View {
 //#Preview {
 //    EquipmentDetailStartUpView()
 //}
+
+private extension EquipmentDetailStartUpView {
+    func optionalDateBinding(_ value: Binding<Date?>) -> Binding<Date> {
+        Binding(
+            get: { value.wrappedValue ?? Date() },
+            set: { value.wrappedValue = $0 }
+        )
+    }
+
+    func optionalIntBinding(_ value: Binding<Int?>, defaultValue: Int) -> Binding<Int> {
+        Binding(
+            get: { value.wrappedValue ?? defaultValue },
+            set: { value.wrappedValue = $0 }
+        )
+    }
+
+    func optionalFrequencyBinding(_ value: Binding<EquipmentFrequency?>) -> Binding<EquipmentFrequency> {
+        Binding(
+            get: { value.wrappedValue ?? .monthly },
+            set: { value.wrappedValue = $0 }
+        )
+    }
+}

@@ -92,6 +92,14 @@ enum CompanyServiceStopTypeDefaultSeeds {
             ]
         ),
         CompanyServiceStopTypeSeed(
+            name: "Service Agreement Estimate",
+            imageName: "list.clipboard",
+            category: .serviceAgreementEstimate,
+            workTypeCandidateGroups: [
+                ["Service Agreement Estimate", "Recurring Service Estimate", "Startup"]
+            ]
+        ),
+        CompanyServiceStopTypeSeed(
             name: "Startup",
             imageName: "play.circle",
             category: .serviceAgreementEstimate,
@@ -104,6 +112,14 @@ enum CompanyServiceStopTypeDefaultSeeds {
             imageName: "doc.text.magnifyingglass",
             category: .jobEstimate,
             workTypeCandidateGroups: []
+        ),
+        CompanyServiceStopTypeSeed(
+            name: "Customer Relationship",
+            imageName: "person.wave.2",
+            category: .customerRelationship,
+            workTypeCandidateGroups: [
+                ["Customer Relationship", "Customer Visit", "Follow Up"]
+            ]
         )
     ]
 }

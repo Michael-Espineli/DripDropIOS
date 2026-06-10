@@ -17,7 +17,7 @@ import MapKit
 
 @MainActor
 final class AddEquipmentViewModel: ObservableObject {
-    private var dataService: any ProductionDataServiceProtocol
+    let dataService: any ProductionDataServiceProtocol
     init(dataService: any ProductionDataServiceProtocol) {
         self.dataService = dataService
     }
@@ -35,11 +35,16 @@ final class AddEquipmentViewModel: ObservableObject {
     @Published var selectedUniversalEquipment: UniversalEquipment? = nil
 
     @Published var category: EquipmentCategory = .filter
+    @Published var typeId: String = ""
     @Published var name: String = ""
     @Published var showSelectEquipment: Bool = false
 
     @Published var make: String = ""
+    @Published var makeId: String = ""
     @Published var model: String = ""
+    @Published var modelId: String = ""
+    @Published var universalEquipmentId: String = ""
+    @Published var manualPdfLink: String = ""
     @Published var dateInstalled: Date = Date()
     @Published var status: EquipmentStatus = .operational
     @Published var notes: String = ""
@@ -93,11 +98,13 @@ final class AddEquipmentViewModel: ObservableObject {
                 id: bodyOfWaterId,
                 name: name,
                 type: category,
-                typeId: "",
+                typeId: typeId,
                 make: make,
-                makeId: "",
+                makeId: makeId,
                 model: model,
-                modelId: "",
+                modelId: modelId,
+                universalEquipmentId: universalEquipmentId,
+                manualPdfLink: manualPdfLink,
                 dateInstalled: dateInstalled,
                 status: status,
                 needsService: needsService,
@@ -124,8 +131,13 @@ final class AddEquipmentViewModel: ObservableObject {
 
         // reset
         self.name = ""
+        self.typeId = ""
         self.make = ""
+        self.makeId = ""
         self.model = ""
+        self.modelId = ""
+        self.universalEquipmentId = ""
+        self.manualPdfLink = ""
         self.dateInstalled = Date()
         self.notes = ""
         self.status = .operational
@@ -167,11 +179,6 @@ struct AddEquipmentView: View {
             }
         }
         .navigationBarHidden(true)
-        .sheet(isPresented: $VM.showSelectEquipment) {
-            EquipmentSelectorSheet(VM: VM)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
         .alert(VM.alertMessage ?? "", isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
@@ -238,66 +245,43 @@ extension AddEquipmentView {
                     }
                 }
 
-                // Quick selector to help populate make/model (and optionally name)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Equipment Finder")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                        .textCase(.uppercase)
-
-                    Button(action: { VM.showSelectEquipment.toggle() }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass")
-                            Text("Search equipment catalog")
-                                .fontWeight(.semibold)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-
-                    if let picked = VM.selectedUniversalEquipment {
-                        // purely aesthetic “preview” of selected item
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(picked.model)
-                                    .fontWeight(.semibold)
-                                Text("Selected from catalog")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            Spacer()
-                            Button("Use") {
-                                // light-touch: only populate empty fields (feel free to change behavior)
-                                if VM.model.isEmpty { VM.model = picked.model }
-                            }
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color.blue.opacity(0.12))
-                            .foregroundColor(.blue)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        }
-                        .padding(12)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                }
+                EquipmentCatalogSelectionControl(
+                    dataService: VM.dataService,
+                    category: $VM.category,
+                    typeId: $VM.typeId,
+                    make: $VM.make,
+                    makeId: $VM.makeId,
+                    model: $VM.model,
+                    modelId: $VM.modelId,
+                    universalEquipmentId: $VM.universalEquipmentId,
+                    manualPdfLink: $VM.manualPdfLink,
+                    name: $VM.name
+                )
 
                 GridRow2 {
                     Field(title: "Make") {
-                        TextField("Make", text: $VM.make)
+                        TextField("Make", text: Binding(
+                            get: { VM.make },
+                            set: {
+                                VM.make = $0
+                                VM.makeId = ""
+                                VM.modelId = ""
+                                VM.universalEquipmentId = ""
+                                VM.manualPdfLink = ""
+                            }
+                        ))
                             .textFieldStyle(.plain)
                     }
                     Field(title: "Model") {
-                        TextField("Model", text: $VM.model)
+                        TextField("Model", text: Binding(
+                            get: { VM.model },
+                            set: {
+                                VM.model = $0
+                                VM.modelId = ""
+                                VM.universalEquipmentId = ""
+                                VM.manualPdfLink = ""
+                            }
+                        ))
                             .textFieldStyle(.plain)
                     }
                 }
@@ -637,5 +621,308 @@ private struct StatusPill: View {
             .background(isOn ? Color.blue.opacity(0.14) : Color.gray.opacity(0.14))
             .foregroundColor(isOn ? .blue : .secondary)
             .clipShape(Capsule())
+    }
+}
+
+struct EquipmentCatalogSelectionControl: View {
+    let dataService: any ProductionDataServiceProtocol
+    @Binding var category: EquipmentCategory
+    @Binding var typeId: String
+    @Binding var make: String
+    @Binding var makeId: String
+    @Binding var model: String
+    @Binding var modelId: String
+    @Binding var universalEquipmentId: String
+    @Binding var manualPdfLink: String
+    @Binding var name: String
+
+    @State private var showCatalog = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Make & Model")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+
+            HStack(spacing: 10) {
+                Button(action: { showCatalog = true }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                        Text("Search equipment catalog")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: clearCatalogIds) {
+                    Text("Custom")
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(Color(.secondarySystemBackground))
+                        .foregroundColor(.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !modelId.isEmpty || !makeId.isEmpty {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text([make, model].filter { !$0.isEmpty }.joined(separator: " "))
+                            .fontWeight(.semibold)
+                        Text("Selected from catalog")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button("Clear") { clearCatalogIds() }
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                }
+                .padding(12)
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            if !manualPdfLink.isEmpty, let url = URL(string: manualPdfLink) {
+                Link("View catalog manual", destination: url)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.blue)
+            }
+        }
+        .sheet(isPresented: $showCatalog) {
+            EquipmentCatalogSelectionSheet(
+                dataService: dataService,
+                onCustom: {
+                    clearCatalogIds()
+                    showCatalog = false
+                },
+                onSelect: { selectedType, selectedMake, selectedModel in
+                    if let matchedCategory = EquipmentCategory(rawValue: selectedModel.type) ?? EquipmentCategory(rawValue: selectedType.name) {
+                        category = matchedCategory
+                    }
+                    typeId = selectedType.id
+                    make = selectedMake.name
+                    makeId = selectedMake.id
+                    model = selectedModel.model
+                    modelId = selectedModel.id
+                    universalEquipmentId = selectedModel.id
+                    manualPdfLink = selectedModel.manualPdfLink
+                    if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        name = selectedModel.name.isEmpty ? selectedModel.model : selectedModel.name
+                    }
+                    showCatalog = false
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func clearCatalogIds() {
+        typeId = ""
+        makeId = ""
+        modelId = ""
+        universalEquipmentId = ""
+        manualPdfLink = ""
+    }
+}
+
+private struct EquipmentCatalogSelectionSheet: View {
+    let dataService: any ProductionDataServiceProtocol
+    let onCustom: () -> Void
+    let onSelect: (UniversalEquipmentType, UniversalEquipmentMake, UniversalEquipment) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var equipmentTypes: [UniversalEquipmentType] = []
+    @State private var equipmentMakes: [UniversalEquipmentMake] = []
+    @State private var equipmentModels: [UniversalEquipment] = []
+    @State private var selectedType: UniversalEquipmentType?
+    @State private var selectedMake: UniversalEquipmentMake?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground).ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                HStack {
+                    Text("Equipment Catalog")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
+                ScrollView {
+                    VStack(spacing: 12) {
+                        Card {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    if selectedType != nil || selectedMake != nil {
+                                        Button(action: goBack) {
+                                            Label("Back", systemImage: "chevron.left")
+                                                .fontWeight(.semibold)
+                                        }
+                                    }
+                                    Spacer()
+                                    Button("Use custom make/model") {
+                                        onCustom()
+                                        dismiss()
+                                    }
+                                    .fontWeight(.semibold)
+                                }
+
+                                if let selectedType {
+                                    detailRow("Type", selectedType.name)
+                                }
+
+                                if let selectedMake {
+                                    detailRow("Make", selectedMake.name)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.subheadline)
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 16)
+                        }
+
+                        if isLoading {
+                            ProgressView()
+                                .padding(.top, 24)
+                        }
+
+                        VStack(spacing: 10) {
+                            if let selectedType {
+                                if let selectedMake {
+                                    listHeader("Models", count: equipmentModels.count)
+
+                                    ForEach(equipmentModels) { equipment in
+                                        RowButton(title: equipment.model) {
+                                            onSelect(selectedType, selectedMake, equipment)
+                                            dismiss()
+                                        }
+                                    }
+                                } else {
+                                    listHeader("Makes", count: equipmentMakes.count)
+
+                                    ForEach(equipmentMakes) { make in
+                                        RowButton(title: make.name) {
+                                            selectedMake = make
+                                            Task { await loadModels(type: selectedType, make: make) }
+                                        }
+                                    }
+                                }
+                            } else {
+                                listHeader("Categories", count: equipmentTypes.count)
+
+                                ForEach(equipmentTypes) { type in
+                                    RowButton(title: type.name) {
+                                        selectedType = type
+                                        Task { await loadMakes(type: type) }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                    }
+                }
+            }
+        }
+        .task {
+            await loadTypes()
+        }
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+            Spacer()
+            Text(value)
+                .fontWeight(.semibold)
+        }
+    }
+
+    private func listHeader(_ title: String, count: Int) -> some View {
+        HStack {
+            Text("\(title) • \(count)")
+                .font(.headline)
+            Spacer()
+        }
+        .padding(.top, 4)
+    }
+
+    private func goBack() {
+        errorMessage = nil
+        if selectedMake != nil {
+            selectedMake = nil
+            equipmentModels = []
+        } else {
+            selectedType = nil
+            equipmentMakes = []
+            equipmentModels = []
+        }
+    }
+
+    private func loadTypes() async {
+        guard equipmentTypes.isEmpty else { return }
+        isLoading = true
+        errorMessage = nil
+        do {
+            let loaded = try await dataService.getUniversalEquipmentTypes()
+            equipmentTypes = loaded.sorted { $0.name < $1.name }
+        } catch {
+            errorMessage = "Unable to load equipment categories."
+        }
+        isLoading = false
+    }
+
+    private func loadMakes(type: UniversalEquipmentType) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let loaded = try await dataService.getUniversalEquipmentBrandsByType(type: type)
+            equipmentMakes = loaded.sorted { $0.name < $1.name }
+        } catch {
+            errorMessage = "Unable to load equipment makes."
+        }
+        isLoading = false
+    }
+
+    private func loadModels(type: UniversalEquipmentType, make: UniversalEquipmentMake) async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let loaded = try await dataService.getUniversalEquipmentByTypeAndBrand(type: type, make: make)
+            equipmentModels = loaded.sorted { $0.model < $1.model }
+        } catch {
+            errorMessage = "Unable to load equipment models."
+        }
+        isLoading = false
     }
 }

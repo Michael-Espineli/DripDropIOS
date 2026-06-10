@@ -61,7 +61,7 @@ struct BodyOfWaterDetailStartUpView: View {
                                 .bold(true)
                             Picker("Pool Material", selection: $BOW.material, content: {
                                 ForEach(BodyOfWaterMaterial.allCases,id:\.self){ material in
-                                    Text(material.rawValue).tag(material)
+                                    Text(material.rawValue).tag(material.rawValue)
                                 }
                             })
                             Spacer()
@@ -69,7 +69,7 @@ struct BodyOfWaterDetailStartUpView: View {
                         HStack{
                             Text("Shape")
                                 .bold(true)
-                            Picker("Shape", selection: $BOW.shape) {
+                            Picker("Shape", selection: optionalStringBinding($BOW.shape)) {
                                 ForEach(shapes,id: \.self){ shape in
                                     Text(shape).tag(shape)
                                 }
@@ -94,77 +94,26 @@ struct BodyOfWaterDetailStartUpView: View {
                                     .modifier(AddButtonModifier())
                             })
                         }
+                        HStack(alignment: .top){
+                            Text("Notes")
+                                .bold(true)
+
+                            TextField("Notes", text: optionalStringBinding($BOW.notes), axis: .vertical)
+                                .lineLimit(2...5)
+                                .padding(5)
+                                .background(Color.white)
+                                .foregroundColor(Color.basicFontText)
+                                .cornerRadius(5)
+                                .padding(5)
+                        }
                         if showDimensions {
-                            if shape == "Kidney" {
-                                VStack{
-                                    HStack{
-                                        Text("length 1")
-                                            .bold(true)
-                                        TextField(
-                                            "length 1",
-                                            text: $length1
-                                        )
-                                        .padding(3)
-                                        .background(Color.gray.opacity(0.3))
-                                        .cornerRadius(3)
-                                    }
-                                    HStack{
-                                        Text("length 2")
-                                            .bold(true)
-                                        TextField(
-                                            "length 2",
-                                            text: $length2
-                                        )
-                                        .padding(3)
-                                        .background(Color.gray.opacity(0.3))
-                                        .cornerRadius(3)
-                                    }
-                                    HStack{
-                                        Text("depth 1")
-                                            .bold(true)
-                                        TextField(
-                                            "depth 1",
-                                            text: $depth1
-                                        )
-                                        .padding(3)
-                                        .background(Color.gray.opacity(0.3))
-                                        .cornerRadius(3)
-                                    }
-                                    HStack{
-                                        Text("depth 2")
-                                            .bold(true)
-                                        TextField(
-                                            "depth 2",
-                                            text: $depth2
-                                        )
-                                        .padding(3)
-                                        .background(Color.gray.opacity(0.3))
-                                        .cornerRadius(3)
-                                    }
-                                    HStack{
-                                        Text("width 1")
-                                            .bold(true)
-                                        TextField(
-                                            "width 1",
-                                            text: $width1
-                                        )
-                                        .padding(3)
-                                        .background(Color.gray.opacity(0.3))
-                                        .cornerRadius(3)
-                                    }
-                                    HStack{
-                                        Text("width 2")
-                                            .bold(true)
-                                        TextField(
-                                            "width 2",
-                                            text: $width2
-                                        )
-                                        .padding(3)
-                                        .background(Color.gray.opacity(0.3))
-                                        .cornerRadius(3)
-                                    }
-                                    
-                                }
+                            VStack{
+                                dimensionRow(title: "Length 1", text: dimensionBinding($BOW.length, index: 0))
+                                dimensionRow(title: "Length 2", text: dimensionBinding($BOW.length, index: 1))
+                                dimensionRow(title: "Depth 1", text: dimensionBinding($BOW.depth, index: 0))
+                                dimensionRow(title: "Depth 2", text: dimensionBinding($BOW.depth, index: 1))
+                                dimensionRow(title: "Width 1", text: dimensionBinding($BOW.width, index: 0))
+                                dimensionRow(title: "Width 2", text: dimensionBinding($BOW.width, index: 1))
                             }
                         }
                         PhotoContentView(selectedImages: $selectedPhotos)
@@ -215,3 +164,46 @@ struct BodyOfWaterDetailStartUpView: View {
 //#Preview {
 //    BodyOfWaterDetailStartUpView()
 //}
+
+private extension BodyOfWaterDetailStartUpView {
+    func optionalStringBinding(_ value: Binding<String?>) -> Binding<String> {
+        Binding(
+            get: { value.wrappedValue ?? "" },
+            set: { value.wrappedValue = $0 }
+        )
+    }
+
+    func dimensionBinding(_ values: Binding<[String]?>, index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard let dimensions = values.wrappedValue, dimensions.indices.contains(index) else {
+                    return ""
+                }
+
+                return dimensions[index]
+            },
+            set: { newValue in
+                var dimensions = values.wrappedValue ?? []
+
+                while dimensions.count <= index {
+                    dimensions.append("")
+                }
+
+                dimensions[index] = newValue
+                values.wrappedValue = dimensions
+            }
+        )
+    }
+
+    func dimensionRow(title: String, text: Binding<String>) -> some View {
+        HStack{
+            Text(title)
+                .bold(true)
+
+            TextField(title, text: text)
+                .padding(3)
+                .background(Color.gray.opacity(0.3))
+                .cornerRadius(3)
+        }
+    }
+}

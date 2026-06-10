@@ -212,8 +212,10 @@ private extension ServiceStopDetailView2 {
 
     func defaultTab(for stop: ServiceStop) -> String {
         switch stop.resolvedCategory {
-        case .route, .serviceAgreementEstimate:
+        case .route:
             return "Water"
+        case .serviceAgreementEstimate:
+            return "Survey"
         case .job, .jobEstimate, .customerRelationship:
             return "Info"
         }
@@ -240,6 +242,7 @@ private extension ServiceStopDetailView2 {
             finishTab
         case .serviceAgreementEstimate:
             infoTab
+            serviceAgreementSurveyTab(for: stop)
             waterTab
             equipmentTab(for: stop)
             finishTab
@@ -284,6 +287,21 @@ private extension ServiceStopDetailView2 {
                 Text("Equipment")
             }
             .tag("Equipment")
+    }
+
+    func serviceAgreementSurveyTab(for stop: ServiceStop) -> some View {
+        ServiceLocationStartUpViewInField(
+            dataService: dataService,
+            customerId: stop.customerId,
+            serviceLocationId: stop.serviceLocationId,
+            serviceStop: stop,
+            serviceLocation: VM.location
+        )
+        .tabItem {
+            Image(systemName: "list.clipboard")
+            Text("Survey")
+        }
+        .tag("Survey")
     }
 
     var finishTab: some View {

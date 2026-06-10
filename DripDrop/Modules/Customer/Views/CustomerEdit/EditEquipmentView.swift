@@ -10,15 +10,20 @@ import SwiftUI
 
 @MainActor
 final class EditEquipmentViewModel: ObservableObject {
-    private var dataService: any ProductionDataServiceProtocol
+    let dataService: any ProductionDataServiceProtocol
     init(dataService: any ProductionDataServiceProtocol) {
         self.dataService = dataService
     }
 
     @Published var category: EquipmentCategory = .pump
+    @Published var typeId: String = ""
     @Published var name: String = ""
     @Published var make: String = ""
+    @Published var makeId: String = ""
     @Published var model: String = ""
+    @Published var modelId: String = ""
+    @Published var universalEquipmentId: String = ""
+    @Published var manualPdfLink: String = ""
     @Published var dateInstalled: Date = Date()
     @Published var status: EquipmentStatus = .operational
     @Published var notes: String = ""
@@ -79,14 +84,28 @@ final class EditEquipmentViewModel: ObservableObject {
             // NOTE: your original code passed notes instead of name—kept logic, but corrected param.
             try dataService.updateEquipmentName(companyId: companyId, equipmentId: equipmentId, name: name)
         }
-        if equipment.type != category {
-            try dataService.updateEquipmentCategory(companyId: companyId, equipmentId: equipmentId, category: category)
-        }
-        if equipment.make != make {
-            try dataService.updateEquipmentMake(companyId: companyId, equipmentId: equipmentId, make: make)
-        }
-        if equipment.model != model {
-            try dataService.updateEquipmentModel(companyId: companyId, equipmentId: equipmentId, model: model)
+        let catalogChanged = equipment.type != category ||
+            equipment.typeId != typeId ||
+            equipment.make != make ||
+            equipment.makeId != makeId ||
+            equipment.model != model ||
+            equipment.modelId != modelId ||
+            equipment.universalEquipmentId != universalEquipmentId ||
+            equipment.manualPdfLink != manualPdfLink
+
+        if catalogChanged {
+            try dataService.updateEquipmentCatalogDetails(
+                companyId: companyId,
+                equipmentId: equipmentId,
+                category: category,
+                typeId: typeId,
+                make: make,
+                makeId: makeId,
+                model: model,
+                modelId: modelId,
+                universalEquipmentId: universalEquipmentId,
+                manualPdfLink: manualPdfLink
+            )
         }
         if equipment.status != status {
             try dataService.updateEquipmentStatus(companyId: companyId, equipmentId: equipmentId, status: status)
@@ -164,9 +183,14 @@ struct EditEquipmentView: View {
         }
         .task {
             VM.category = equipment.type
+            VM.typeId = equipment.typeId
             VM.name = equipment.name
             VM.make = equipment.make
+            VM.makeId = equipment.makeId
             VM.model = equipment.model
+            VM.modelId = equipment.modelId
+            VM.universalEquipmentId = equipment.universalEquipmentId
+            VM.manualPdfLink = equipment.manualPdfLink
             VM.dateInstalled = equipment.dateInstalled
             VM.status = equipment.status
             VM.notes = equipment.notes
@@ -256,12 +280,42 @@ extension EditEquipmentView {
 
                 GridRow2 {
                     Field(title: "Make") {
-                        TextField("Make", text: $VM.make).textFieldStyle(.plain)
+                        TextField("Make", text: Binding(
+                            get: { VM.make },
+                            set: {
+                                VM.make = $0
+                                VM.makeId = ""
+                                VM.modelId = ""
+                                VM.universalEquipmentId = ""
+                                VM.manualPdfLink = ""
+                            }
+                        )).textFieldStyle(.plain)
                     }
                     Field(title: "Model") {
-                        TextField("Model", text: $VM.model).textFieldStyle(.plain)
+                        TextField("Model", text: Binding(
+                            get: { VM.model },
+                            set: {
+                                VM.model = $0
+                                VM.modelId = ""
+                                VM.universalEquipmentId = ""
+                                VM.manualPdfLink = ""
+                            }
+                        )).textFieldStyle(.plain)
                     }
                 }
+
+                EquipmentCatalogSelectionControl(
+                    dataService: VM.dataService,
+                    category: $VM.category,
+                    typeId: $VM.typeId,
+                    make: $VM.make,
+                    makeId: $VM.makeId,
+                    model: $VM.model,
+                    modelId: $VM.modelId,
+                    universalEquipmentId: $VM.universalEquipmentId,
+                    manualPdfLink: $VM.manualPdfLink,
+                    name: $VM.name
+                )
 
                 GridRow2 {
                     Field(title: "Date Installed") {
