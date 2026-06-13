@@ -98,6 +98,94 @@ struct Customer:Identifiable, Codable,Hashable{
             case linkedAt = "linkedAt"
             case linkedInviteId = "linkedInviteId"
         }
+    private enum CompatibilityCodingKeys: String, CodingKey {
+        case isActive
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let compatibilityContainer = try decoder.container(keyedBy: CompatibilityCodingKeys.self)
+
+        func decodeString(_ key: CodingKeys) -> String {
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return String(value)
+            }
+
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return String(value)
+            }
+
+            if let value = try? container.decodeIfPresent(Bool.self, forKey: key) {
+                return value ? "true" : "false"
+            }
+
+            return ""
+        }
+
+        func decodeBool(_ key: CodingKeys, defaultValue: Bool) -> Bool {
+            if let value = try? container.decodeIfPresent(Bool.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if ["true", "yes", "1"].contains(normalized) {
+                    return true
+                }
+                if ["false", "no", "0"].contains(normalized) {
+                    return false
+                }
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return value != 0
+            }
+
+            return defaultValue
+        }
+
+        func decodeStringArray(_ key: CodingKeys) -> [String]? {
+            if let values = try? container.decodeIfPresent([String].self, forKey: key) {
+                return values
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? [] : [trimmed]
+            }
+
+            return nil
+        }
+
+        self.id = decodeString(.id)
+        self.firstName = decodeString(.firstName)
+        self.lastName = decodeString(.lastName)
+        self.email = decodeString(.email)
+        self.billingAddress = (try? container.decodeIfPresent(Address.self, forKey: .billingAddress)) ?? Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0)
+        self.phoneNumber = try? container.decodeIfPresent(String.self, forKey: .phoneNumber)
+        self.phoneLabel = try? container.decodeIfPresent(String.self, forKey: .phoneLabel)
+        let compatibilityActive = (try? compatibilityContainer.decodeIfPresent(Bool.self, forKey: .isActive)) ?? true
+        self.active = decodeBool(.active, defaultValue: compatibilityActive)
+        self.company = try? container.decodeIfPresent(String.self, forKey: .company)
+        self.displayAsCompany = decodeBool(.displayAsCompany, defaultValue: false)
+        self.hireDate = (try? container.decodeIfPresent(Date.self, forKey: .hireDate)) ?? Date(timeIntervalSince1970: 0)
+        self.billingNotes = decodeString(.billingNotes)
+        self.tags = decodeStringArray(.tags)
+        self.linkedCustomerIds = decodeStringArray(.linkedCustomerIds)
+        self.linkedCustomerUserId = try? container.decodeIfPresent(String.self, forKey: .linkedCustomerUserId)
+        self.linkedHomeownerUserId = try? container.decodeIfPresent(String.self, forKey: .linkedHomeownerUserId)
+        self.relationshipId = try? container.decodeIfPresent(String.self, forKey: .relationshipId)
+        self.customerCompanyRelationshipId = try? container.decodeIfPresent(String.self, forKey: .customerCompanyRelationshipId)
+        self.linkedStatus = try? container.decodeIfPresent(String.self, forKey: .linkedStatus)
+        self.linkedEmail = try? container.decodeIfPresent(String.self, forKey: .linkedEmail)
+        self.linkedAt = try? container.decodeIfPresent(Date.self, forKey: .linkedAt)
+        self.linkedInviteId = decodeString(.linkedInviteId)
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(firstName)

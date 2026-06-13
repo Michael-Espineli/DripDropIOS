@@ -1,532 +1,738 @@
-    //
-    //  ServiceStopInfoView.swift
-    //  ThePoolApp
-    //
-    //  Created by Michael Espineli on 12/30/23.
-    //
+//
+//  ServiceStopInfoView.swift
+//  ThePoolApp
+//
+//  Created by Michael Espineli on 12/30/23.
+//
 
-    import SwiftUI
+import SwiftUI
 
-    @MainActor
-    final class ServiceStopInfoViewModel: ObservableObject {
-        let dataService: any ProductionDataServiceProtocol
+@MainActor
+final class ServiceStopInfoViewModel: ObservableObject {
+    let dataService: any ProductionDataServiceProtocol
 
-        init(dataService: any ProductionDataServiceProtocol) {
-            self.dataService = dataService
-        }
-
-        @Published private(set) var workOrder: Job? = nil
-        @Published private(set) var customer: Customer? = nil
-
-        func onLoad(companyId: String, WorkOrderId: String) async throws {
-            self.workOrder = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: WorkOrderId)
-        }
-
-        func getCustomer(companyId: String, customerId: String) async throws {
-            self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: customerId)
-        }
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
     }
 
-    struct ServiceStopInfoView: View {
-        init(dataService: any ProductionDataServiceProtocol, serviceStopId: String) {
-            _VM = StateObject(wrappedValue: ServiceStopInfoViewModel(dataService: dataService))
-            _serviceStopId = State(wrappedValue: serviceStopId)
+    @Published private(set) var workOrder: Job? = nil
+    @Published private(set) var customer: Customer? = nil
+    @Published private(set) var otherCompany: Company? = nil
+
+    func onLoad(companyId: String, WorkOrderId: String) async throws {
+        self.workOrder = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: WorkOrderId)
+    }
+
+    func getCustomer(companyId: String, customerId: String) async throws {
+        self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: customerId)
+    }
+
+    func loadCustomerContext(companyId: String?, serviceStop: ServiceStop) async throws {
+        customer = nil
+        otherCompany = nil
+
+        if serviceStop.otherCompany {
+            guard let otherCompanyId = serviceStop.mainCompanyId else { return }
+            otherCompany = try await dataService.getCompany(companyId: otherCompanyId)
+            customer = try await dataService.getCustomerById(companyId: otherCompanyId, customerId: serviceStop.customerId)
+        } else if let companyId {
+            customer = try await dataService.getCustomerById(companyId: companyId, customerId: serviceStop.customerId)
         }
+    }
+}
 
-        @EnvironmentObject var navigationManager: NavigationStateManager
-        @EnvironmentObject var masterDataManager: MasterDataManager
-        @EnvironmentObject var dataService: ProductionDataService
-        @EnvironmentObject private var vm: MobileDailyRouteDisplayViewModel
+struct ServiceStopInfoView: View {
+    init(dataService: any ProductionDataServiceProtocol, serviceStopId: String) {
+        _viewModel = StateObject(wrappedValue: ServiceStopInfoViewModel(dataService: dataService))
+        self.serviceStopId = serviceStopId
+    }
 
-        @StateObject var VM: ServiceStopInfoViewModel
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @EnvironmentObject private var dataService: ProductionDataService
+    @EnvironmentObject private var routeViewModel: MobileDailyRouteDisplayViewModel
 
-        @State var serviceStopId: String
-        @State var taskList: [ServiceStopTask] = []
-        @State var showSheet: Bool = false
+    @StateObject private var viewModel: ServiceStopInfoViewModel
 
-        private var serviceStop: ServiceStop? {
-            vm.serviceStopList.first { $0.id == serviceStopId }
-        }
+    private let serviceStopId: String
 
-        var body: some View {
-            ZStack {
-                Color.listColor.ignoresSafeArea()
+    private var serviceStop: ServiceStop? {
+        routeViewModel.serviceStopList.first { $0.id == serviceStopId }
+    }
 
+    private var canOpenCustomerPage: Bool {
+        masterDataManager.role?.permissionIdList.contains("10") == true
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            if let serviceStop {
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        headerCard
-                        siteInfo
-
-                        if let serviceStop {
-                            contactCard(locationId: serviceStop.serviceLocationId)
-                        }
-
-                        stopInfo
+                    VStack(alignment: .leading, spacing: 12) {
+                        headerCard(serviceStop)
+                        linksSection(serviceStop)
+                        timingSection(serviceStop)
+                        workDetailsSection(serviceStop)
+                        contactSection(serviceStop)
+                        notesSection(serviceStop)
                     }
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, UIDevice.isIPhone ? 12 : 20)
                     .padding(.top, 12)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
                 }
+            } else {
+                ContentUnavailableView(
+                    "Service stop unavailable",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("The selected service stop could not be found in the current route.")
+                )
+                .padding()
             }
-            .textSelection(.enabled)
-            .task {
-                if let company = masterDataManager.currentCompany, let serviceStop {
-                    if serviceStop.jobId != "" {
-                        do {
-                            try await VM.onLoad(companyId: company.id, WorkOrderId: serviceStop.jobId)
-                        } catch {
-                            print(error)
-                        }
-                    }
+        }
+        .textSelection(.enabled)
+        .task(id: serviceStop?.id) {
+            await loadLinkedRecords()
+        }
+    }
+}
+
+private extension ServiceStopInfoView {
+    func loadLinkedRecords() async {
+        guard let serviceStop else { return }
+
+        if let company = masterDataManager.currentCompany, !serviceStop.jobId.isEmpty {
+            do {
+                try await viewModel.onLoad(companyId: company.id, WorkOrderId: serviceStop.jobId)
+            } catch {
+                print("[ServiceStopInfoView][loadLinkedRecords] Work order error \(error)")
+            }
+        }
+
+        do {
+            try await viewModel.loadCustomerContext(
+                companyId: masterDataManager.currentCompany?.id,
+                serviceStop: serviceStop
+            )
+        } catch {
+            print("[ServiceStopInfoView][loadLinkedRecords] Customer error \(error)")
+        }
+    }
+
+    func headerCard(_ stop: ServiceStop) -> some View {
+        ServiceStopInfoHero(
+            icon: stop.typeImage.isEmpty ? "mappin.and.ellipse" : stop.typeImage,
+            title: stop.customerName,
+            subtitle: subtitle(for: stop),
+            status: stop.operationStatus.rawValue,
+            statusColor: operationStatusColor(stop.operationStatus),
+            dateText: shortDate(date: stop.serviceDate),
+            techText: nonEmpty(stop.tech, fallback: "No tech assigned")
+        )
+    }
+
+    func linksSection(_ stop: ServiceStop) -> some View {
+        ServiceStopInfoSection(title: "Links & Location", systemImage: "link") {
+            customerLinkRow(stop)
+
+            if shouldShowRelatedWorkRow(for: stop) {
+                ServiceStopInfoDivider()
+                relatedWorkRow(stop)
+            }
+
+            ServiceStopInfoDivider()
+            addressNavigationLink(stop)
+        }
+    }
+
+    func timingSection(_ stop: ServiceStop) -> some View {
+        ServiceStopInfoSection(title: "Timing", systemImage: "clock") {
+            ServiceStopInfoLine(
+                icon: "calendar",
+                title: "Service Date",
+                value: fullDateAndDay(date: stop.serviceDate)
+            )
+
+            ServiceStopInfoDivider()
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 10),
+                    GridItem(.flexible(), spacing: 10)
+                ],
+                spacing: 10
+            ) {
+                ServiceStopInfoMetricTile(
+                    title: "Estimated",
+                    value: displayMinAsMinAndHour(min: stop.estimatedDuration),
+                    systemImage: "timer"
+                )
+
+                ServiceStopInfoMetricTile(
+                    title: "Duration",
+                    value: displayMinAsMinAndHour(min: stop.duration),
+                    systemImage: "hourglass"
+                )
+            }
+
+            ServiceStopInfoDivider()
+            startTimeRow(stop)
+
+            ServiceStopInfoDivider()
+            ServiceStopInfoLine(
+                icon: "stop.circle",
+                title: "End Time",
+                value: stop.endTime == nil ? "Not Finished Yet" : shortDateAndTime(date: stop.endTime),
+                isMuted: stop.endTime == nil
+            )
+        }
+    }
+
+    func workDetailsSection(_ stop: ServiceStop) -> some View {
+        ServiceStopInfoSection(title: "Work Details", systemImage: "doc.text") {
+            ServiceStopInfoLine(
+                icon: "number",
+                title: "Service Stop ID",
+                value: stop.internalId
+            )
+
+            ServiceStopInfoDivider()
+
+            ServiceStopInfoLine(
+                icon: "person.crop.circle",
+                title: "Tech",
+                value: nonEmpty(stop.tech, fallback: "No tech assigned"),
+                isMuted: stop.tech.isEmpty
+            )
+
+            ServiceStopInfoDivider()
+
+            ServiceStopInfoLine(
+                icon: "tag",
+                title: "Type",
+                value: nonEmpty(stop.type, fallback: "No service type"),
+                isMuted: stop.type.isEmpty
+            )
+        }
+    }
+
+    func contactSection(_ stop: ServiceStop) -> some View {
+        ServiceStopInfoSection(title: "Contact", systemImage: "phone") {
+            ServiceLocationContactInfo(dataService: dataService, locationId: stop.serviceLocationId)
+        }
+    }
+
+    func notesSection(_ stop: ServiceStop) -> some View {
+        ServiceStopInfoSection(title: "Description", systemImage: "text.alignleft") {
+            Text(nonEmpty(stop.description, fallback: "No description provided."))
+                .font(.subheadline)
+                .foregroundStyle(stop.description.isEmpty ? .secondary : .primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    func customerLinkRow(_ stop: ServiceStop) -> some View {
+        if canOpenCustomerPage, let customer = viewModel.customer {
+            NavigationLink(value: Route.customer(customer: customer, dataService: dataService)) {
+                ServiceStopActionLabel(
+                    icon: "person.crop.circle",
+                    title: "Customer",
+                    subtitle: customerDisplayName(customer),
+                    footnote: viewModel.otherCompany?.name,
+                    tint: .poolBlue,
+                    accessorySystemImage: "chevron.right"
+                )
+            }
+            .buttonStyle(.plain)
+        } else {
+            ServiceStopInfoLine(
+                icon: "person.crop.circle",
+                title: "Customer",
+                value: stop.customerName
+            )
+        }
+    }
+
+    @ViewBuilder
+    func relatedWorkRow(_ stop: ServiceStop) -> some View {
+        if UIDevice.isIPhone {
+            if let job = viewModel.workOrder {
+                NavigationLink(value: Route.job(job: job, dataService: dataService)) {
+                    ServiceStopActionLabel(
+                        icon: "briefcase",
+                        title: "Job",
+                        subtitle: job.internalId,
+                        footnote: nonEmpty(job.type, fallback: "Open job"),
+                        tint: .poolBlue,
+                        accessorySystemImage: "chevron.right"
+                    )
                 }
+                .buttonStyle(.plain)
+            } else if !stop.jobId.isEmpty {
+                ServiceStopInfoLine(
+                    icon: "briefcase",
+                    title: "Job ID",
+                    value: stop.jobId
+                )
+            }
+        } else {
+            Button {
+                if masterDataManager.currentCompany != nil {
+                    masterDataManager.selectedCategory = .customers
+                    masterDataManager.selectedID = stop.customerId
+                }
+            } label: {
+                ServiceStopActionLabel(
+                    icon: "sidebar.right",
+                    title: "Customer Workspace",
+                    subtitle: stop.customerName,
+                    footnote: "Open in the detail column",
+                    tint: .poolBlue,
+                    accessorySystemImage: "chevron.right"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    func addressNavigationLink(_ stop: ServiceStop) -> some View {
+        Button {
+            openMaps(for: stop.address)
+        } label: {
+            ServiceStopActionLabel(
+                icon: "map",
+                title: "Address",
+                subtitle: nonEmpty(stop.address.streetAddress, fallback: "No street address"),
+                footnote: cityStateZip(for: stop.address),
+                tint: .poolBlue,
+                accessorySystemImage: "arrow.triangle.turn.up.right.diamond"
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    func startTimeRow(_ stop: ServiceStop) -> some View {
+        ServiceStopInfoLine(
+            icon: "play.circle",
+            title: "Start Time",
+            value: stop.startTime == nil ? "Not Started Yet" : shortDateAndTime(date: stop.startTime),
+            isMuted: stop.startTime == nil
+        ) {
+            if stop.startTime != nil && stop.operationStatus != .finished {
+                Button {
+                    routeViewModel.startServiceStop(
+                        companyId: masterDataManager.currentCompany?.id,
+                        serviceStopId: stop.id
+                    )
+                } label: {
+                    Label("Restart", systemImage: "arrow.clockwise")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
     }
 
-    extension ServiceStopInfoView {
+    func shouldShowRelatedWorkRow(for stop: ServiceStop) -> Bool {
+        !UIDevice.isIPhone || viewModel.workOrder != nil || !stop.jobId.isEmpty
+    }
 
-        var headerCard: some View {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Service Stop Info")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.primary)
-
-                        if let serviceStop {
-                            Text(serviceStop.customerName)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        } else {
-                            Text("Review service stop details.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    if let serviceStop {
-                        Text(serviceStop.operationStatus.rawValue)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(.thinMaterial, in: Capsule())
-                    }
-                }
-
-                if let serviceStop {
-                    HStack(spacing: 8) {
-                        Label(shortDate(date: serviceStop.serviceDate), systemImage: "calendar")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(.thinMaterial, in: Capsule())
-
-                        Label(serviceStop.tech, systemImage: "person.crop.circle")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(.thinMaterial, in: Capsule())
-
-                        Spacer()
-                    }
-                }
-            }
-            .padding(16)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    func subtitle(for stop: ServiceStop) -> String {
+        if let jobName = stop.jobName, !jobName.isEmpty {
+            return jobName
         }
 
-        var siteInfo: some View {
-            VStack(alignment: .leading, spacing: 14) {
-                sectionHeader("Site Information", systemImage: "mappin.and.ellipse")
+        return nonEmpty(stop.type, fallback: "Service Stop")
+    }
 
-                customerPageLink
-                addressNavigationLink
-            }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    func customerDisplayName(_ customer: Customer) -> String {
+        nonEmpty("\(customer.firstName) \(customer.lastName)", fallback: "Customer")
+    }
+
+    func cityStateZip(for address: Address) -> String {
+        nonEmpty(
+            "\(address.city) \(address.state) \(address.zip)",
+            fallback: "No city, state, or ZIP"
+        )
+    }
+
+    func openMaps(for address: Address) {
+        let addressText = "\(address.streetAddress) \(address.city) \(address.state) \(address.zip)"
+        let encodedAddress = addressText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? addressText
+
+        guard let url = URL(string: "maps://?saddr=&daddr=\(encodedAddress)") else { return }
+
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
         }
+    }
 
-        func contactCard(locationId: String) -> some View {
-            VStack(alignment: .leading, spacing: 14) {
-                sectionHeader("Contact", systemImage: "phone")
+    func nonEmpty(_ text: String, fallback: String) -> String {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedText.isEmpty ? fallback : trimmedText
+    }
 
-                ServiceLocationContactInfo(dataService: dataService, locationId: locationId)
-            }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    func operationStatusColor(_ status: ServiceStopOperationStatus) -> Color {
+        switch status {
+        case .finished:
+            return .poolGreen
+        case .skipped:
+            return .orange
+        case .notFinished:
+            return .poolBlue
         }
+    }
+}
 
-        var stopInfo: some View {
-            VStack(alignment: .leading, spacing: 14) {
-                sectionHeader("Service Stop Information", systemImage: "doc.text")
+private struct ServiceStopInfoHero: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let status: String
+    let statusColor: Color
+    let dateText: String
+    let techText: String
 
-                if let serviceStop {
-                    detailRow(
-                        title: "Date",
-                        value: fullDateAndDay(date: serviceStop.serviceDate),
-                        systemImage: "calendar"
-                    )
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 48, height: 48)
+                    .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-                    HStack(alignment: .center, spacing: 12) {
-                        Image(systemName: "number")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 22)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Service Stop Id")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-
-                            Text(serviceStop.internalId)
-                                .font(.subheadline.weight(.semibold))
-                                .textSelection(.enabled)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                    jobPageLink
-
-                    detailRow(
-                        title: "Tech",
-                        value: serviceStop.tech,
-                        systemImage: "person.crop.circle"
-                    )
-
-                    detailRow(
-                        title: "Type",
-                        value: serviceStop.type,
-                        systemImage: "tag"
-                    )
-
-                    detailRow(
-                        title: "Estimated Duration",
-                        value: displayMinAsMinAndHour(min: serviceStop.estimatedDuration),
-                        systemImage: "timer"
-                    )
-
-                    startTimeRow(serviceStop: serviceStop)
-
-                    detailRow(
-                        title: "End Time",
-                        value: serviceStop.endTime == nil ? "Not Finished Yet" : shortDateAndTime(date: serviceStop.endTime!),
-                        systemImage: "stop.circle"
-                    )
-
-                    detailRow(
-                        title: "Duration",
-                        value: displayMinAsMinAndHour(min: serviceStop.duration),
-                        systemImage: "clock"
-                    )
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("Description", systemImage: "text.alignleft")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        Text(serviceStop.description.isEmpty ? "No description provided." : serviceStop.description)
-                            .font(.subheadline)
-                            .foregroundStyle(serviceStop.description.isEmpty ? .secondary : .primary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(12)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                }
-            }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        }
-
-        func startTimeRow(serviceStop: ServiceStop) -> some View {
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "play.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 22)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Start Time")
-                        .font(.caption)
+                    Text(subtitle)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
-
-                    if let startTime = serviceStop.startTime {
-                        Text(shortDateAndTime(date: startTime))
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                    } else {
-                        Text("Not Started Yet")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                        .lineLimit(2)
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                if serviceStop.startTime != nil && serviceStop.operationStatus != .finished {
-                    Button {
-                        vm.startServiceStop(
-                            companyId: masterDataManager.currentCompany?.id,
-                            serviceStopId: serviceStop.id
-                        )
-                    } label: {
-                        Text("Restart")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(Color.blue.opacity(0.12), in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
+                ServiceStopStatusPill(text: status, color: statusColor)
             }
-            .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
 
-        var jobPageLink: some View {
-            HStack {
-                if let serviceStop {
-                    if UIDevice.isIPhone {
-                        if let job = VM.workOrder {
-                            Image(systemName: "briefcase")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 22)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Job Id")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-
-                                NavigationLink(value: Route.job(job: job, dataService: dataService)) {
-                                    Text(job.internalId)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.primary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        } else if !serviceStop.jobId.isEmpty {
-                            detailRow(
-                                title: "Job Id",
-                                value: serviceStop.jobId,
-                                systemImage: "briefcase"
-                            )
-                        }
-                    } else {
-                        Button {
-                            Task {
-                                if masterDataManager.currentCompany != nil {
-                                    masterDataManager.selectedCategory = .customers
-                                    masterDataManager.selectedID = serviceStop.customerId
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "person.crop.circle")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 22)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Customer")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-
-                                    Text(serviceStop.customerName)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.primary)
-                                }
-
-                                Spacer()
-
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-
-        var customerPageLink: some View {
-            HStack {
-                if let serviceStop {
-                    if let role = masterDataManager.role {
-                        if role.permissionIdList.contains("10") {
-                            CustomerPageLink(
-                                serviceStop: serviceStop,
-                                job: nil
-                            )
-                        } else {
-                            Text(serviceStop.customerName)
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-
-                    Spacer()
-                }
-            }
-            .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-
-        var addressNavigationLink: some View {
-            ZStack {
-                if let serviceStop {
-                    Button {
-                        let address = "\(serviceStop.address.streetAddress) \(serviceStop.address.city) \(serviceStop.address.state) \(serviceStop.address.zip)"
-                        let urlText = address.replacingOccurrences(of: " ", with: "?")
-                        let url = URL(string: "maps://?saddr=&daddr=\(urlText)")
-
-                        if let url, UIApplication.shared.canOpenURL(url) {
-                            UIApplication.shared.open(url, options: [:], completionHandler: nil)
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "map")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 28, height: 28)
-                                .background(.thinMaterial, in: Circle())
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(serviceStop.address.streetAddress)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-
-                                Text("\(serviceStop.address.city) \(serviceStop.address.state) \(serviceStop.address.zip)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "arrow.triangle.turn.up.right.diamond")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(12)
-                        .background(Color.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
+            HStack(spacing: 8) {
+                ServiceStopMetaPill(systemImage: "calendar", text: dateText)
+                ServiceStopMetaPill(systemImage: "person.crop.circle", text: techText)
             }
         }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
 
-        func sectionHeader(_ title: String, systemImage: String) -> some View {
+private struct ServiceStopInfoSection<Content: View>: View {
+    let title: String
+    let systemImage: String
+    let content: Content
+
+    init(
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: systemImage)
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(.primary)
+
+            content
         }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
 
-        func detailRow(title: String, value: String, systemImage: String) -> some View {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.subheadline)
+private struct ServiceStopInfoLine<Trailing: View>: View {
+    let icon: String
+    let title: String
+    let value: String
+    let isMuted: Bool
+    let trailing: Trailing
+
+    init(
+        icon: String,
+        title: String,
+        value: String,
+        isMuted: Bool = false,
+        @ViewBuilder trailing: () -> Trailing
+    ) {
+        self.icon = icon
+        self.title = title
+        self.value = value
+        self.isMuted = isMuted
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(width: 22)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                Text(value)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(isMuted ? .secondary : .primary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            trailing
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private extension ServiceStopInfoLine where Trailing == EmptyView {
+    init(
+        icon: String,
+        title: String,
+        value: String,
+        isMuted: Bool = false
+    ) {
+        self.init(icon: icon, title: title, value: value, isMuted: isMuted) {
+            EmptyView()
+        }
+    }
+}
+
+private struct ServiceStopActionLabel: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let footnote: String?
+    let tint: Color
+    let accessorySystemImage: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 34, height: 34)
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(subtitle)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                if let footnote, !footnote.isEmpty {
+                    Text(footnote)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
 
-                    Text(value)
+            Spacer(minLength: 8)
+
+            Image(systemName: accessorySystemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
+private struct ServiceStopInfoMetricTile: View {
+    let title: String
+    let value: String
+    let systemImage: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.poolBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct ServiceStopStatusPill: View {
+    let text: String
+    let color: Color
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(color.opacity(0.13), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct ServiceStopMetaPill: View {
+    let systemImage: String
+    let text: String
+
+    var body: some View {
+        Label(text, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 7)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct ServiceStopInfoDivider: View {
+    var body: some View {
+        Divider()
+            .opacity(0.45)
+    }
+}
+
+private struct ServiceStopContactDetails: View {
+    let contact: Contact
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ServiceStopInfoLine(
+                icon: "person",
+                title: "Name",
+                value: fieldValue(contact.name, fallback: "No name")
+            )
+
+            ServiceStopInfoDivider()
+
+            ServiceStopInfoLine(
+                icon: "phone",
+                title: "Phone Number",
+                value: fieldValue(contact.phoneNumber, fallback: "No phone number"),
+                isMuted: contact.phoneNumber.isEmpty
+            )
+
+            ServiceStopInfoDivider()
+
+            ServiceStopInfoLine(
+                icon: "envelope",
+                title: "Email",
+                value: fieldValue(contact.email, fallback: "No email"),
+                isMuted: contact.email.isEmpty
+            )
+
+            ServiceStopInfoDivider()
+
+            ServiceStopInfoLine(
+                icon: "note.text",
+                title: "Notes",
+                value: fieldValue(contact.notes ?? "", fallback: "No notes"),
+                isMuted: contact.notes?.isEmpty ?? true
+            )
+        }
+    }
+
+    private func fieldValue(_ value: String, fallback: String) -> String {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedValue.isEmpty ? fallback : trimmedValue
+    }
+}
+
+@MainActor
+final class ServiceLocationContactInfoViewModel: ObservableObject {
+    let dataService: any ProductionDataServiceProtocol
+    let locationId: String
+
+    init(dataService: any ProductionDataServiceProtocol, locationId: String) {
+        self.dataService = dataService
+        self.locationId = locationId
+    }
+
+    @Published private(set) var serviceLocation: ServiceLocation?
+
+    func onLoad(companyId: String?) async {
+        guard let companyId else { return }
+
+        do {
+            self.serviceLocation = try await dataService.getServiceLocationById(companyId: companyId, locationId: locationId)
+        } catch {
+            print("[ServiceLocationContactInfoViewModel][onLoad] Error \(error)")
+        }
+    }
+}
+
+struct ServiceLocationContactInfo: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    @StateObject private var viewModel: ServiceLocationContactInfoViewModel
+
+    private let locationId: String
+
+    init(dataService: any ProductionDataServiceProtocol, locationId: String) {
+        _viewModel = StateObject(wrappedValue: ServiceLocationContactInfoViewModel(dataService: dataService, locationId: locationId))
+        self.locationId = locationId
+    }
+
+    var body: some View {
+        Group {
+            if let location = viewModel.serviceLocation {
+                ServiceStopContactDetails(contact: location.mainContact)
+            } else {
+                HStack(spacing: 10) {
+                    ProgressView()
+
+                    Text("Loading contact...")
                         .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.leading)
-                }
+                        .foregroundStyle(.secondary)
 
-                Spacer(minLength: 0)
-            }
-            .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-    }
-
-    @MainActor
-    final class ServiceLocationContactInfoViewModel: ObservableObject {
-        let dataService: any ProductionDataServiceProtocol
-        let locationId: String
-
-        init(dataService: any ProductionDataServiceProtocol, locationId: String) {
-            self.dataService = dataService
-            self.locationId = locationId
-        }
-
-        @Published private(set) var serviceLocation: ServiceLocation?
-
-        func onLoad(companyId: String?) {
-            guard let companyId else { return }
-
-            Task {
-                do {
-                    self.serviceLocation = try await dataService.getServiceLocationById(companyId: companyId, locationId: locationId)
-                } catch {
-                    print("[ServiceLocationContactInfoViewModel][onLoad] Error \(error)")
+                    Spacer()
                 }
             }
         }
-    }
-
-    struct ServiceLocationContactInfo: View {
-        @EnvironmentObject var navigationManager: NavigationStateManager
-        @EnvironmentObject var masterDataManager: MasterDataManager
-        @EnvironmentObject var dataService: ProductionDataService
-
-        @StateObject var VM: ServiceLocationContactInfoViewModel
-
-        init(dataService: any ProductionDataServiceProtocol, locationId: String) {
-            _VM = StateObject(wrappedValue: ServiceLocationContactInfoViewModel(dataService: dataService, locationId: locationId))
-            _locationId = State(wrappedValue: locationId)
-        }
-
-        @State var locationId: String
-        @State var taskList: [ServiceStopTask] = []
-        @State var showSheet: Bool = false
-
-        var body: some View {
-            ZStack {
-                if let location = VM.serviceLocation {
-                    ContactInfo(contact: location.mainContact)
-                        .padding(12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                } else {
-                    HStack(spacing: 10) {
-                        ProgressView()
-
-                        Text("Loading contact...")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        Spacer()
-                    }
-                    .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-            }
-            .onAppear {
-                VM.onLoad(companyId: masterDataManager.currentCompany?.id)
-            }
+        .task(id: locationId) {
+            await viewModel.onLoad(companyId: masterDataManager.currentCompany?.id)
         }
     }
+}

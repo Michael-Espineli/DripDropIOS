@@ -53,6 +53,9 @@ struct ServiceStopDetailView2: View {
     @State var selectedImage:UIImage? = nil
     @State var images:[UIImage] = []
     @State private var selectedTab = "Water"
+    @State private var serviceNotes = ""
+    @State private var lastSavedServiceNotes = ""
+    @State private var serviceNotesSaveMessage: String? = nil
     
     private var serviceStop: ServiceStop? {
         vm.serviceStopList.first { $0.id == serviceStopId }
@@ -82,11 +85,15 @@ struct ServiceStopDetailView2: View {
                 
                 opStatus = stop.operationStatus
                 selectedTab = defaultTab(for: stop)
+                serviceNotes = stop.serviceNotes ?? ""
+                lastSavedServiceNotes = stop.serviceNotes ?? ""
             }
         }
         .task {
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user, let serviceStop {
                 title = serviceStop.customerName
+                serviceNotes = serviceStop.serviceNotes ?? ""
+                lastSavedServiceNotes = serviceStop.serviceNotes ?? ""
                 do {
                     try await VM.onInitalLoad(companyId: company.id,  serviceStop: serviceStop, userId: user.id)
                     if let bodyOfWater = VM.selectedBOW {
@@ -124,6 +131,11 @@ struct ServiceStopDetailView2: View {
                         print(error)
                     }
                 }
+            }
+        })
+        .onChange(of: serviceNotes, perform: { notes in
+            if notes != lastSavedServiceNotes {
+                serviceNotesSaveMessage = nil
             }
         })
         .onChange(of: VM.selectedDripDropPhotos, perform: { photo in
@@ -500,6 +512,7 @@ extension ServiceStopDetailView2 {
                         VStack(alignment: .leading, spacing: 14) {
                             recapHeader(for: stop)
                             recapBody(for: stop)
+                            serviceNotesRecap(for: stop)
                             observationRecap
                             taskRecap
                             photos
@@ -525,6 +538,59 @@ extension ServiceStopDetailView2 {
             startUpRecap
         } else {
             waterRecap
+        }
+    }
+
+    private func serviceNotesRecap(for stop: ServiceStop) -> some View {
+        recapSection(title: "Service Notes", systemImage: "text.bubble.fill") {
+            VStack(alignment: .leading, spacing: 12) {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $serviceNotes)
+                        .font(.subheadline)
+                        .frame(minHeight: 120)
+                        .padding(8)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                        }
+
+                    if serviceNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Work performed, customer conversation, follow-up notes...")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 16)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if let serviceNotesSaveMessage {
+                        Text(serviceNotesSaveMessage)
+                            .font(.caption)
+                            .foregroundStyle(serviceNotesSaveMessage == "Saved" ? Color.poolGreen : Color.poolRed)
+                            .lineLimit(2)
+                    }
+
+                    Spacer()
+
+                    Button(action: {
+                        saveServiceNotes(for: stop)
+                    }) {
+                        if VM.isSavingServiceNotes {
+                            ProgressView()
+                                .frame(width: 20, height: 20)
+                        } else {
+                            Label(serviceNotes == lastSavedServiceNotes ? "Saved" : "Save", systemImage: "square.and.arrow.down")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(VM.isSavingServiceNotes || serviceNotes == lastSavedServiceNotes)
+                }
+            }
         }
     }
 
@@ -1112,6 +1178,8 @@ extension ServiceStopDetailView2 {
                     print("Finishing Screen")
                     print("-----------------")
 
+                    try await saveServiceNotesIfNeeded(companyId: company.id, stop: stop)
+
                     try await VM.updateServicestopOperationStatus(
                         companyId: company.id,
                         currentUserId: user.id,
@@ -1137,6 +1205,8 @@ extension ServiceStopDetailView2 {
                 opStatus = .notFinished
                 do {
                     print("")
+                    try await saveServiceNotesIfNeeded(companyId: company.id, stop: stop)
+
                     try await VM.updateServicestopOperationStatus(
                         companyId: company.id,
                         currentUserId: user.id,
@@ -1167,5 +1237,42 @@ extension ServiceStopDetailView2 {
                 print("Either Invalid Company or active Route")
             }
         }
+    }
+
+    private func saveServiceNotes(for stop: ServiceStop) {
+        guard let companyId = masterDataManager.currentCompany?.id else {
+            serviceNotesSaveMessage = "Unable to save"
+            return
+        }
+
+        let notesToSave = serviceNotes
+        serviceNotesSaveMessage = nil
+
+        Task {
+            do {
+                try await saveServiceNotesIfNeeded(companyId: companyId, stop: stop, notesToSave: notesToSave)
+            } catch {
+                serviceNotesSaveMessage = "Unable to save"
+                print("Failed to save service notes for \(stop.id)")
+                print(error)
+            }
+        }
+    }
+
+    private func saveServiceNotesIfNeeded(
+        companyId: String,
+        stop: ServiceStop,
+        notesToSave: String? = nil
+    ) async throws {
+        let serviceNotesToSave = notesToSave ?? serviceNotes
+        guard serviceNotesToSave != lastSavedServiceNotes else { return }
+
+        try await VM.updateServiceNotes(
+            companyId: companyId,
+            serviceStopId: stop.id,
+            serviceNotes: serviceNotesToSave
+        )
+        lastSavedServiceNotes = serviceNotesToSave
+        serviceNotesSaveMessage = "Saved"
     }
 }

@@ -363,11 +363,30 @@ extension ServiceStopDetailView3 {
     }
 
     private func serviceDescriptionSection(_ stop: ServiceStop) -> some View {
-        sectionCard(title: "Service Notes", systemImage: "text.alignleft") {
-            Text(blankAware(stop.description))
-                .font(.subheadline)
-                .foregroundStyle(stop.description.isEmpty ? .secondary : .primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        let noteText = (stop.serviceNotes ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return sectionCard(title: "Planned Work", systemImage: "text.alignleft") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(blankAware(stop.description))
+                    .font(.subheadline)
+                    .foregroundStyle(stop.description.isEmpty ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if !noteText.isEmpty {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Service Notes", systemImage: "text.bubble")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Text(noteText)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
         }
     }
 
@@ -531,7 +550,7 @@ extension ServiceStopDetailView3 {
                     }
                 }
 
-                Section("Service Notes") {
+                Section("Planned Work") {
                     TextEditor(text: $editDescription)
                         .frame(minHeight: 130)
                 }

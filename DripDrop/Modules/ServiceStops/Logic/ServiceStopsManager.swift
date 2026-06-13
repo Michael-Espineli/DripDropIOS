@@ -40,6 +40,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     
     var jobId : String //Seen
     var jobName : String? //Seen
+    var serviceNotes : String?
     
     var operationStatus : ServiceStopOperationStatus
     var billingStatus : ServiceStopBillingStatus
@@ -86,6 +87,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         category: ServiceStopCategory? = nil,
         jobId : String,
         jobName : String? = nil,
+        serviceNotes : String? = nil,
         operationStatus :ServiceStopOperationStatus,
         billingStatus: ServiceStopBillingStatus,
         includeReadings :Bool,
@@ -136,6 +138,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         )
         self.jobId = jobId
         self.jobName = jobName
+        self.serviceNotes = serviceNotes
         self.operationStatus = operationStatus
         self.billingStatus = billingStatus
         self.includeReadings = includeReadings
@@ -179,6 +182,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case category = "category"
             case jobId = "jobId"
             case jobName = "jobName"
+            case serviceNotes = "serviceNotes"
             case operationStatus = "operationStatus"
             case billingStatus = "billingStatus"
             case includeReadings = "includeReadings"

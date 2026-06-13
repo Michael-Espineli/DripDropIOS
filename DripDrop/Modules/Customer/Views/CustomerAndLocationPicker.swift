@@ -23,11 +23,10 @@ final class CustomerAndLocationPickerModel: ObservableObject {
     func onLoad(companyId: String) {
         Task {
             do {
-                self.customers = try await dataService.getCustomersActiveAndLastName(
-                    companyId: companyId,
-                    active: true,
-                    lastNameHigh: false
-                )
+                let allCustomers = try await dataService.getAllCustomers(companyId: companyId)
+                self.customers = allCustomers
+                    .filter { $0.active }
+                    .sorted { customerSortValue($0) < customerSortValue($1) }
                 print("[CustomerAndLocationPickerModel][onLoad] customers count: \(self.customers.count)")
                 self.displayCustomer = customers
             } catch {
@@ -78,7 +77,23 @@ final class CustomerAndLocationPickerModel: ObservableObject {
             companyId: companyId,
             customerId: customerId
         )
+        self.serviceLocations = self.serviceLocations.sorted {
+            locationSortValue($0) < locationSortValue($1)
+        }
         print("[CustomerAndLocationPickerModel][getAllCustomerServiceLocationsById] serviceLocations: \(self.serviceLocations.count)")
+    }
+
+    private func customerSortValue(_ customer: Customer) -> String {
+        let displayName = customer.displayAsCompany
+            ? (customer.company ?? "\(customer.firstName) \(customer.lastName)")
+            : "\(customer.lastName) \(customer.firstName)"
+
+        return displayName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func locationSortValue(_ location: ServiceLocation) -> String {
+        let displayName = location.nickName.isEmpty ? location.address.streetAddress : location.nickName
+        return displayName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 

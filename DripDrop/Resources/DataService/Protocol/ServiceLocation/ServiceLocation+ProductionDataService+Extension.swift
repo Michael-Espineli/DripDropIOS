@@ -119,6 +119,115 @@ struct ServiceLocation: Identifiable, Codable,Hashable{
             case photoUrls = "photoUrls"
             case isActive = "isActive"
         }
+    private enum CompatibilityCodingKeys: String, CodingKey {
+        case active
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let compatibilityContainer = try decoder.container(keyedBy: CompatibilityCodingKeys.self)
+
+        func decodeString(_ key: CodingKeys) -> String {
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return String(value)
+            }
+
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return String(value)
+            }
+
+            if let value = try? container.decodeIfPresent(Bool.self, forKey: key) {
+                return value ? "true" : "false"
+            }
+
+            return ""
+        }
+
+        func decodeBool(_ key: CodingKeys, defaultValue: Bool) -> Bool {
+            if let value = try? container.decodeIfPresent(Bool.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if ["true", "yes", "1"].contains(normalized) {
+                    return true
+                }
+                if ["false", "no", "0"].contains(normalized) {
+                    return false
+                }
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return value != 0
+            }
+
+            return defaultValue
+        }
+
+        func decodeInt(_ key: CodingKeys) -> Int? {
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return Int(value)
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return Int(value)
+            }
+
+            return nil
+        }
+
+        func decodeStringArray(_ key: CodingKeys) -> [String] {
+            if let values = try? container.decodeIfPresent([String].self, forKey: key) {
+                return values
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? [] : [trimmed]
+            }
+
+            return []
+        }
+
+        self.id = decodeString(.id)
+        self.nickName = decodeString(.nickName)
+        self.address = (try? container.decodeIfPresent(Address.self, forKey: .address)) ?? Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0)
+        self.gateCode = decodeString(.gateCode)
+        self.dogName = decodeStringArray(.dogName)
+        self.estimatedTime = decodeInt(.estimatedTime)
+        self.mainContact = (try? container.decodeIfPresent(Contact.self, forKey: .mainContact)) ?? Contact(id: "", name: "", phoneNumber: "", email: "")
+        self.notes = try? container.decodeIfPresent(String.self, forKey: .notes)
+        self.bodiesOfWaterId = decodeStringArray(.bodiesOfWaterId)
+        self.rateType = decodeString(.rateType)
+        self.laborType = decodeString(.laborType)
+        self.chemicalCost = decodeString(.chemicalCost)
+        self.laborCost = decodeString(.laborCost)
+        self.rate = decodeString(.rate)
+        self.customerId = decodeString(.customerId)
+        self.customerName = decodeString(.customerName)
+        self.backYardTree = decodeStringArray(.backYardTree)
+        self.backYardBushes = decodeStringArray(.backYardBushes)
+        self.backYardOther = decodeStringArray(.backYardOther)
+        self.preText = decodeBool(.preText, defaultValue: false)
+        self.verified = decodeBool(.verified, defaultValue: false)
+        if let decodedPhotoUrls = try? container.decodeIfPresent([DripDropStoredImage].self, forKey: .photoUrls) {
+            self.photoUrls = decodedPhotoUrls
+        } else {
+            self.photoUrls = nil
+        }
+        let compatibilityActive = (try? compatibilityContainer.decodeIfPresent(Bool.self, forKey: .active)) ?? true
+        self.isActive = decodeBool(.isActive, defaultValue: compatibilityActive)
+    }
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(nickName)

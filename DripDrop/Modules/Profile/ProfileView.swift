@@ -44,6 +44,7 @@ struct ProfileView: View {
                         VStack(spacing: 12) {
                             Divider().opacity(0)
                             if masterDataManager.isFeatureEnabled(.companyUserProfileHistory) {
+                                companyUserPaysheetLink
                                 companyUserHistoryLink
                             }
                                 // ----------------------------------------
@@ -153,10 +154,10 @@ final class CompanyUserProfileHistoryViewModel: ObservableObject {
             let endDate = Date()
             let startDate = Calendar.current.date(byAdding: .day, value: -180, to: endDate) ?? endDate
 
-            async let routesTask = dataService.getRecentActiveRoutes(
+            async let routesTask = dataService.getRecentActiveRouteForTech(
                 companyId: company.id,
-                technicianId: companyUser.userId,
-                limit: 25
+                techId: companyUser.userId,
+                days: 180
             )
             async let lineItemsTask = dataService.fetchTechnicianPayLineItems(
                 companyId: company.id,
@@ -173,7 +174,12 @@ final class CompanyUserProfileHistoryViewModel: ObservableObject {
             let fetchedLineItems = try await lineItemsTask
             let fetchedStatements = try await statementsTask
 
-            routes = fetchedRoutes
+            routes = Array(
+                fetchedRoutes
+                    .filter { $0.date < Date().startOfDay() }
+                    .sorted { $0.date > $1.date }
+                    .prefix(25)
+            )
             lineItems = fetchedLineItems.filter {
                 $0.technicianId == companyUser.userId
             }
@@ -375,6 +381,49 @@ extension ProfileView {
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("My Work History")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                            Text(company.name)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(16)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    var companyUserPaysheetLink: some View {
+        Group {
+            if let company = masterDataManager.currentCompany,
+               let companyUser = masterDataManager.companyUser {
+                NavigationLink {
+                    TechnicianPayrollInfoView(
+                        companyId: company.id,
+                        companyUser: companyUser,
+                        dataService: dataService
+                    )
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 40, height: 40)
+                            .background(Color.poolGreen.opacity(0.16), in: Circle())
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Pay Sheet")
                                 .font(.headline.weight(.semibold))
                                 .foregroundStyle(.primary)
 

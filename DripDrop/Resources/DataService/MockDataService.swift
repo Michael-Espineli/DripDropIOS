@@ -1497,6 +1497,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     func updateServiceStopAddress(companyId: String, serviceStopId: String, address: Address) async throws {
     }
+    func updateServiceStopServiceNotes(companyId: String, serviceStopId: String, serviceNotes: String) async throws {
+    }
     func updateServiceStopIsInvoiced(companyId:String,serviceStopId:String,isInvoiced:Bool) async throws{
         
     }

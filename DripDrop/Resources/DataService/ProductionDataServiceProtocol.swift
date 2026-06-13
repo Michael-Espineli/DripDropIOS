@@ -1212,6 +1212,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateScheduledJobServiceStop(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser,description:String,estimatedDuration:Int,serviceStopTypeFields:ServiceStopTypeFields) async throws
     func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,newServiceStop:ServiceStop) async throws // Developer Break Out into Induvidual and Delete
     func updateServiceStopAddress(companyId:String,serviceStopId:String,address:Address) async throws
+    func updateServiceStopServiceNotes(companyId:String,serviceStopId:String,serviceNotes:String) async throws
     func updateServicestopOperationStatus(companyId:String,serviceStopId:String,operationStatus:ServiceStopOperationStatus) async throws
     func updateServicestopBillingStatus(companyId:String,serviceStop:ServiceStop,billingStatus:ServiceStopBillingStatus) async throws
     func updateServiceStopStartTime(companyId:String,serviceStopId:String,startTime:Date) async throws

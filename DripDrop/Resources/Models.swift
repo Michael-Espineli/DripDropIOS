@@ -63,6 +63,14 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "Turn on real emails"
         case 6:
             return "Payroll"
+        case 8:
+            return "Migration"
+        case 9:
+            return "Skimmer previous dosages upload"
+        case 10:
+            return "Todo List"
+        case 11:
+            return "Alerts and Notifications"
         default:
             return ""
         }
@@ -82,6 +90,14 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "When off, service agreement and invoice emails are routed to the internal test inbox instead of homeowners."
         case 6:
             return "Enables Payroll and Payroll Setup under company Finance."
+        case 8:
+            return "Enables migration tooling for moving company CRM data into Drip Drop."
+        case 9:
+            return "Enables the Skimmer previous dosages Excel upload inside migration tooling."
+        case 10:
+            return "Enables the web Todo List for team tasks, specific assignments, linked records, due dates, and reminders."
+        case 11:
+            return "Enables the shared alerts and notifications framework for dashboard alerts and future iOS notification delivery."
         default:
             return ""
         }
@@ -95,6 +111,42 @@ enum FeatureFlagKey: String, CaseIterable {
     case sales = "feature_flag_004"
     case realEmails = "feature_flag_005"
     case payroll = "feature_flag_006"
+    case todoList = "feature_flag_010"
+    case alertsAndNotifications = "feature_flag_011"
+}
+
+struct AlertNotification: Identifiable, Codable, Hashable {
+    var id: String
+    var companyId: String?
+    var title: String?
+    var name: String?
+    var message: String?
+    var description: String?
+    var status: String?
+    var severity: String?
+    var source: String?
+    var sourceId: String?
+    var assignedToUserId: String?
+    var assignedToName: String?
+    var scheduledFor: Date?
+    var dueAt: Date?
+    var createdAt: Date?
+    var updatedAt: Date?
+    var readAt: Date?
+
+    var displayTitle: String {
+        let preferredTitle = title ?? name ?? "Alert"
+        return preferredTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Alert" : preferredTitle
+    }
+
+    var displayMessage: String {
+        message ?? description ?? ""
+    }
+
+    var isUnread: Bool {
+        let normalizedStatus = (status ?? "unread").lowercased()
+        return normalizedStatus != "read" && normalizedStatus != "archived" && readAt == nil
+    }
 }
 
 enum SalesAgreementStatus: String, Codable, CaseIterable, Identifiable {
@@ -542,6 +594,58 @@ struct Address:Codable, Hashable{
             case latitude = "latitude"
             case longitude = "longitude"
         }
+    private enum LegacyCodingKeys: String, CodingKey {
+        case zipCode
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
+
+        func decodeString(_ key: CodingKeys) -> String {
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return String(value)
+            }
+
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return String(value)
+            }
+
+            return ""
+        }
+
+        func decodeDouble(_ key: CodingKeys) -> Double {
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return Double(value)
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key),
+               let doubleValue = Double(value) {
+                return doubleValue
+            }
+
+            return 0
+        }
+
+        self.streetAddress = decodeString(.streetAddress)
+        self.city = decodeString(.city)
+        self.state = decodeString(.state)
+        self.zip = decodeString(.zip)
+        if self.zip.isEmpty,
+           let zipCode = try? legacyContainer.decodeIfPresent(String.self, forKey: .zipCode) {
+            self.zip = zipCode
+        }
+        self.latitude = decodeDouble(.latitude)
+        self.longitude = decodeDouble(.longitude)
+    }
 }
 //B
 struct BillingTemplate:Identifiable, Codable{
@@ -584,6 +688,32 @@ struct Contact:Identifiable, Codable,Hashable{
             case email = "email"
             case notes = "notes"
         }
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        func decodeString(_ key: CodingKeys) -> String {
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return String(value)
+            }
+
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return String(value)
+            }
+
+            return ""
+        }
+
+        self.id = decodeString(.id)
+        self.name = decodeString(.name)
+        self.phoneNumber = decodeString(.phoneNumber)
+        self.email = decodeString(.email)
+        self.notes = try? container.decodeIfPresent(String.self, forKey: .notes)
+    }
+
     static func == (lhs: Contact, rhs: Contact) -> Bool {
         return lhs.id == rhs.id &&
         lhs.name == rhs.name &&

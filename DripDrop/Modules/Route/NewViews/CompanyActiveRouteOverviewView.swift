@@ -172,7 +172,14 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
     }
 
     func locations(for route: ActiveRoute) -> [ActiveRouteLocation] {
-        locationsByRouteId[route.id] ?? []
+        (locationsByRouteId[route.id] ?? []).filter { location in
+            isValidCoordinate(
+                CLLocationCoordinate2D(
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                )
+            )
+        }
     }
 
     func latestLocation(for route: ActiveRoute) -> ActiveRouteLocation? {

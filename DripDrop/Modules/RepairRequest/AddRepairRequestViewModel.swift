@@ -95,11 +95,13 @@ final class AddRepairRequestViewModel:ObservableObject{
     @Published var selectedEquipment: Equipment = AddRepairRequestViewModel.emptyEquipment {
         didSet {
             if selectedEquipment.id != "" {
-                selectedEquipmentStatus = selectedEquipment.status == .operational ? .needsRepair : selectedEquipment.status
+                selectedEquipmentStatus = .needsRepair
+            } else {
+                selectedEquipmentStatus = nil
             }
         }
     }
-    @Published var selectedEquipmentStatus: EquipmentStatus = .needsRepair
+    @Published var selectedEquipmentStatus: EquipmentStatus? = nil
 
     //Form
     @Published var repairRequestId: String = ""
@@ -148,7 +150,7 @@ final class AddRepairRequestViewModel:ObservableObject{
             }
             self.equipmentList = try await dataService.getEquipmentByServiceLocationId(companyId: companyId, serviceLocationId: location.id)
             self.selectedEquipment = AddRepairRequestViewModel.emptyEquipment
-            self.selectedEquipmentStatus = .needsRepair
+            self.selectedEquipmentStatus = nil
         }
     }
     func uploadRepairRequestWithValidation(
@@ -202,22 +204,21 @@ final class AddRepairRequestViewModel:ObservableObject{
             pushEquipmentId = selectedEquipment.id
         }
         
-        // Images
-
         print("trying to upLoad \(selectedDripDropPhotos.count)Images")
         for image in selectedDripDropPhotos {
-            guard let data = image.image.pngData() else {
-                print("Error Converting Photo Picker Item to Data")
-                return
-            }
-            print("Converted Photo Picker Item to Data")
-            let (path,name) = try await StorageManager.shared.saveRepairRequestImage(companyId: companyId, requestId: repairRequestId, data: data)
-            print("SUCCESS 2")
-            print("Path \(path)")
-            print("Name \(name)")
-            let url = try await Storage.storage().reference(withPath: path).downloadURL() //DEVELOPER FIX This. EITHER MAKE INTO BACKGROUND TASK
+            let uploadedImage = try await dataService.uploadRepairRequestImage(
+                companyId: companyId,
+                requestId: repairRequestId,
+                image: image
+            )
             
-            photoUrls.append(DripDropStoredImage(description: image.name, imageURL: url.absoluteString))
+            photoUrls.append(
+                DripDropStoredImage(
+                    id: UUID().uuidString,
+                    description: image.name.isEmpty ? uploadedImage.name : image.name,
+                    imageURL: uploadedImage.path
+                )
+            )
         }
         if selectedDripDropPhotos.count == photoUrls.count {
             print("All photoUrls Uploaded")
@@ -245,7 +246,7 @@ final class AddRepairRequestViewModel:ObservableObject{
                 equipmentId: pushEquipmentId
             )
         )
-        if pushEquipmentId != "" {
+        if pushEquipmentId != "", let selectedEquipmentStatus {
             try dataService.updateEquipmentStatus(
                 companyId: companyId,
                 equipmentId: pushEquipmentId,

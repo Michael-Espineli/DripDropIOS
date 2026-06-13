@@ -50,6 +50,7 @@ final class RouteLocationManager: NSObject, CLLocationManagerDelegate {
         let status = manager.authorizationStatus
         switch status {
         case .authorizedAlways, .authorizedWhenInUse:
+            manager.requestLocation()
             manager.startUpdatingLocation()
             isTracking = true
         case .notDetermined:
@@ -87,6 +88,7 @@ final class RouteLocationManager: NSObject, CLLocationManagerDelegate {
         onAuthorizationChanged?(manager.authorizationStatus)
         // If permission was granted while we intended to be tracking, resume
         if isTracking && (manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse) {
+            manager.requestLocation()
             manager.startUpdatingLocation()
         }
     }

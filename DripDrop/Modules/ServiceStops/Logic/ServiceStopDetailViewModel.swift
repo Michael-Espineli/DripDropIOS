@@ -62,6 +62,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
     @Published var loadedImages:[DripDropStoredImage] = []
     @Published var selectedDripDropPhotos:[DripDropImage] = []
     @Published private(set) var isUploadingPhotos: Bool = false
+    @Published private(set) var isSavingServiceNotes: Bool = false
     
     @Published var currentWeather: Weather?
 
@@ -388,6 +389,17 @@ final class ServiceStopDetailViewModel:ObservableObject{
                 print("Photo upload failed:", error)
             }
         }
+    }
+
+    func updateServiceNotes(companyId:String,serviceStopId:String,serviceNotes:String) async throws {
+        isSavingServiceNotes = true
+        defer { isSavingServiceNotes = false }
+
+        try await dataService.updateServiceStopServiceNotes(
+            companyId: companyId,
+            serviceStopId: serviceStopId,
+            serviceNotes: serviceNotes
+        )
     }
 
     private func loadCompletionSettings(

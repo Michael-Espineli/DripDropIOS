@@ -27,7 +27,7 @@ struct BodyOfWaterDetailStartUpView: View {
     @State var width2:String = ""
     @State var selectedPhotos:[DripDropImage] = []
     @State var shape:String = ""
-    @State var showDimensions:Bool = false
+    @State var showDimensions:Bool = true
     
     var body: some View {
         VStack{
@@ -90,7 +90,7 @@ struct BodyOfWaterDetailStartUpView: View {
                             Button(action: {
                                 showDimensions.toggle()
                             }, label: {
-                                Text("Add Dimensions")
+                                Text(showDimensions ? "Hide Dimensions" : "Add Dimensions")
                                     .modifier(AddButtonModifier())
                             })
                         }
@@ -116,6 +116,7 @@ struct BodyOfWaterDetailStartUpView: View {
                                 dimensionRow(title: "Width 2", text: dimensionBinding($BOW.width, index: 1))
                             }
                         }
+                        poolVolumeGuide(for: $BOW)
                         PhotoContentView(selectedImages: $selectedPhotos)
                     }
                 }
@@ -154,9 +155,7 @@ struct BodyOfWaterDetailStartUpView: View {
             print("")
             print("Change Of Selected Photos")
             print(images)
-            if !images.isEmpty {
-                photos[selectedBodyOfWater.id] = images
-            }
+            photos[selectedBodyOfWater.id] = images
         })
     }
 }
@@ -166,6 +165,207 @@ struct BodyOfWaterDetailStartUpView: View {
 //}
 
 private extension BodyOfWaterDetailStartUpView {
+    var poolVolumePhotoSteps: [PoolVolumePhotoStep] {
+        [
+            PoolVolumePhotoStep(
+                number: 1,
+                title: "Shallow end overview",
+                instruction: "Stand centered at the shallow end and shoot straight down the pool length. Include both side walls and the waterline.",
+                systemImage: "arrow.up.forward"
+            ),
+            PoolVolumePhotoStep(
+                number: 2,
+                title: "Deep end overview",
+                instruction: "Stand centered at the deep end and shoot back toward the shallow end so the two overview photos connect.",
+                systemImage: "arrow.down.backward"
+            ),
+            PoolVolumePhotoStep(
+                number: 3,
+                title: "Long side profile",
+                instruction: "Stand halfway down the longest side. Capture curves, benches, attached spa edges, and the opposite wall.",
+                systemImage: "rectangle.compress.vertical"
+            ),
+            PoolVolumePhotoStep(
+                number: 4,
+                title: "Widest width view",
+                instruction: "Stand at the widest point and shoot across the pool. This helps confirm the width used in the estimate.",
+                systemImage: "arrow.left.and.right"
+            ),
+            PoolVolumePhotoStep(
+                number: 5,
+                title: "Depth reference",
+                instruction: "Take a close photo of depth markers, steps, tile line, or any known reference that supports the shallow and deep depth guess.",
+                systemImage: "ruler"
+            )
+        ]
+    }
+
+    func poolVolumeGuide(for bodyOfWater: Binding<BodyOfWater>) -> some View {
+        let estimate = estimatedGallons(for: bodyOfWater.wrappedValue)
+        let capturedPhotoCount = min(selectedPhotos.count, poolVolumePhotoSteps.count)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Pool Volume Guide", systemImage: "camera.viewfinder")
+                        .font(.headline)
+
+                    Text("Take the photos clockwise around the pool, then use the measurements above to calculate a starting gallon estimate.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Text("\(capturedPhotoCount)/\(poolVolumePhotoSteps.count)")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.accentColor.opacity(0.12))
+                    .cornerRadius(10)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(poolVolumePhotoSteps) { step in
+                    photoGuideRow(step, capturedPhotoCount: capturedPhotoCount)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                if let estimate {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Estimated gallons")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Text("\(estimate.formatted()) gal")
+                                .font(.title3.bold())
+                        }
+
+                        Spacer()
+
+                        Button {
+                            bodyOfWater.wrappedValue.gallons = "\(estimate)"
+                        } label: {
+                            Text("Use Estimate")
+                                .modifier(AddButtonModifier())
+                        }
+                    }
+                } else {
+                    Label("Enter length, width, and at least one depth to calculate gallons.", systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Text(volumeConfidenceText(for: bodyOfWater.wrappedValue, photoCount: selectedPhotos.count))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(10)
+            .background(Color.white.opacity(0.65))
+            .cornerRadius(10)
+        }
+        .padding(12)
+        .background(Color.gray.opacity(0.12))
+        .cornerRadius(12)
+    }
+
+    func photoGuideRow(_ step: PoolVolumePhotoStep, capturedPhotoCount: Int) -> some View {
+        let isCaptured = capturedPhotoCount >= step.number
+        let isNext = capturedPhotoCount + 1 == step.number
+
+        return HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(isCaptured ? Color.green.opacity(0.16) : Color.accentColor.opacity(isNext ? 0.18 : 0.08))
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: isCaptured ? "checkmark" : step.systemImage)
+                    .font(.caption.bold())
+                    .foregroundColor(isCaptured ? .green : .accentColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isCaptured ? "Captured" : (isNext ? "Next photo" : "Upcoming"))
+                    .font(.caption2.bold())
+                    .foregroundColor(isCaptured ? .green : .secondary)
+
+                Text("\(step.number). \(step.title)")
+                    .font(.subheadline.bold())
+
+                Text(step.instruction)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(8)
+        .background(isNext ? Color.accentColor.opacity(0.08) : Color.clear)
+        .cornerRadius(10)
+    }
+
+    func estimatedGallons(for bodyOfWater: BodyOfWater) -> Int? {
+        guard
+            let length = averageDimension(bodyOfWater.length),
+            let width = averageDimension(bodyOfWater.width),
+            let depth = averageDimension(bodyOfWater.depth),
+            length > 0,
+            width > 0,
+            depth > 0
+        else {
+            return nil
+        }
+
+        let shape = (bodyOfWater.shape ?? "").lowercased()
+        let surfaceArea: Double
+
+        if shape.contains("circular") {
+            surfaceArea = Double.pi * (length / 2) * (width / 2)
+        } else if shape.contains("kidney") {
+            surfaceArea = length * width * 0.8
+        } else {
+            surfaceArea = length * width
+        }
+
+        return Int((surfaceArea * depth * 7.48052).rounded())
+    }
+
+    func averageDimension(_ values: [String]?) -> Double? {
+        let dimensions = values?
+            .compactMap({ dimensionValue($0) })
+            .filter({ $0 > 0 }) ?? []
+
+        guard !dimensions.isEmpty else {
+            return nil
+        }
+
+        return dimensions.reduce(0, +) / Double(dimensions.count)
+    }
+
+    func dimensionValue(_ value: String) -> Double? {
+        let cleanedValue = value
+            .replacingOccurrences(of: ",", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return Double(cleanedValue)
+    }
+
+    func volumeConfidenceText(for bodyOfWater: BodyOfWater, photoCount: Int) -> String {
+        guard estimatedGallons(for: bodyOfWater) != nil else {
+            return "Confidence: Low until length, width, and depth are entered."
+        }
+
+        if photoCount >= poolVolumePhotoSteps.count {
+            return "Confidence: High for service setup. Photos and measurements are both captured."
+        }
+
+        if photoCount >= 3 {
+            return "Confidence: Medium. Add the remaining guided photos to support the estimate."
+        }
+
+        return "Confidence: Medium from measurements. Add guided photos before saving the visit."
+    }
+
     func optionalStringBinding(_ value: Binding<String?>) -> Binding<String> {
         Binding(
             get: { value.wrappedValue ?? "" },
@@ -205,5 +405,16 @@ private extension BodyOfWaterDetailStartUpView {
                 .background(Color.gray.opacity(0.3))
                 .cornerRadius(3)
         }
+    }
+}
+
+private struct PoolVolumePhotoStep: Identifiable {
+    let number: Int
+    let title: String
+    let instruction: String
+    let systemImage: String
+
+    var id: Int {
+        number
     }
 }

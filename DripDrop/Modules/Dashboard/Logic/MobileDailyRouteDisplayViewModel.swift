@@ -96,14 +96,22 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         }
         self.routeLocationManager.onLocationUpdate = { [weak self] location in
             Task { @MainActor in
-                self?.currentLocation = location
+                guard let self else { return }
+                guard Self.isFreshUsableRouteLocation(location) else {
+                    print("[RouteLocationManager] Ignoring stale or unusable location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+                    return
+                }
+
+                self.currentLocation = location
                 // Optional: Persist breadcrumb to Firestore here (throttle as needed)
-                if let self = self,
-                   let active = self.activeRoute,
+                if let active = self.activeRoute,
                    active.status == .inProgress,
                    let companyId = self.cachedCompanyId,
                    let companyName = self.cachedCompanyName,
                    let user = self.cachedUser {
+                    if self.currentSummaryLogId == nil, self.currentSummaryType == .working {
+                        await self.openSummaryLog(type: .working, companyId: companyId, companyName: companyName, activeRouteId: active.id, user: user)
+                    }
                     self.maybeUploadLocationBreadcrumb(companyId: companyId, activeRouteId: active.id, user: user, companyName: companyName)
                 }
             }
@@ -123,6 +131,31 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     @Published var enableMove: Bool = false
     @Published var moveType: String = "One Time"
     @Published var newDay: DaysOfWeek = .sunday
+    private static let maximumAcceptedLocationAge: TimeInterval = 300
+    private static let maximumAcceptedHorizontalAccuracy: CLLocationAccuracy = 500
+
+    private var currentRouteLocation: CLLocation? {
+        guard let location = currentLocation else { return nil }
+        guard Self.isUsableCoordinate(location.coordinate) else { return nil }
+        guard location.horizontalAccuracy >= 0 else { return nil }
+        return location
+    }
+
+    private static func isFreshUsableRouteLocation(_ location: CLLocation) -> Bool {
+        isUsableCoordinate(location.coordinate) &&
+        location.horizontalAccuracy >= 0 &&
+        location.horizontalAccuracy <= maximumAcceptedHorizontalAccuracy &&
+        abs(location.timestamp.timeIntervalSinceNow) <= maximumAcceptedLocationAge
+    }
+
+    private static func isUsableCoordinate(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        coordinate.latitude.isFinite &&
+        coordinate.longitude.isFinite &&
+        abs(coordinate.latitude) <= 90 &&
+        abs(coordinate.longitude) <= 180 &&
+        !(coordinate.latitude == 0 && coordinate.longitude == 0)
+    }
+
     var currentDay: DaysOfWeek{
         DaysOfWeek(rawValue: weekDay(date: Date()))!
         
@@ -503,31 +536,33 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 dataService.updateActiveRouteStartTime(companyId: companyId, activeRouteId: activeRoute.id, startTime: Date())
                 
                 //Upload Location
-                let startLat = self.currentLocation?.coordinate.latitude ?? 0
-                let startLon = self.currentLocation?.coordinate.longitude ?? 0
-                let log = ActiveRouteLog(
-                    id: "com_ar_log_" + UUID().uuidString,
-                    activeRouteId: activeRoute.id,
-                    startTime: Date(),
-                    startLatitude: startLat,
-                    startLongitude: startLon,
-                    type: .working,
-                    companyId: companyId,
-                    companyName: companyName,
-                    userId: user.id,
-                    userName: (user.firstName + " " + user.lastName),
-                    current: true
-                )
-                try await dataService.upLoadActiveRouteLog(companyId: companyId, activeRouteId: activeRoute.id, log: log)
-                
-                // Set current summary log state
-                self.currentSummaryLogId = log.id
-                self.currentSummaryType = .working
-                
-                // Begin location tracking for active route
-
-                //Turn on location
                 routeLocationManager.startTracking()
+
+                if let location = self.currentRouteLocation {
+                    let log = ActiveRouteLog(
+                        id: "com_ar_log_" + UUID().uuidString,
+                        activeRouteId: activeRoute.id,
+                        startTime: Date(),
+                        startLatitude: location.coordinate.latitude,
+                        startLongitude: location.coordinate.longitude,
+                        type: .working,
+                        companyId: companyId,
+                        companyName: companyName,
+                        userId: user.id,
+                        userName: (user.firstName + " " + user.lastName),
+                        current: true
+                    )
+                    try await dataService.upLoadActiveRouteLog(companyId: companyId, activeRouteId: activeRoute.id, log: log)
+
+                    // Set current summary log state
+                    self.currentSummaryLogId = log.id
+                    self.currentSummaryType = .working
+                } else {
+                    self.currentSummaryLogId = nil
+                    self.currentSummaryType = .working
+                    print("[RouteLog] No usable current location at route start; deferring start location log")
+                }
+
                 startRouteLogTimer(companyId: companyId, activeRouteId: activeRoute.id, user: user, companyName: companyName)
             } catch {
                 print("[MobileDailyRouteDisplayViewModel][startActiveRoute] Error \(error)")
@@ -1021,13 +1056,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         routeLogTimer?.invalidate()
         routeLogTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in
             Task { @MainActor in
-#if DEBUG
-
-                await self?.publishRandomRouteLocationTick(companyId: companyId, activeRouteId: activeRouteId, user: user, companyName: companyName)
-
-#else
                 await self?.publishRouteLocationTick(companyId: companyId, activeRouteId: activeRouteId, user: user, companyName: companyName)
-#endif
             }
         }
         // Fire an immediate tick if desired
@@ -1061,7 +1090,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     
     private func maybeUploadLocationBreadcrumb(companyId: String, activeRouteId: String, user: DBUser, companyName: String) {
         guard currentSummaryType == .working else { return }
-        guard let loc = currentLocation else { return }
+        guard currentRouteLocation != nil else { return }
         let now = Date()
         if let last = lastRouteLocationUpload, now.timeIntervalSince(last) < 600 { return }
         lastRouteLocationUpload = now
@@ -1073,13 +1102,18 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     // MARK: - Summary Log Helpers
     @MainActor
     private func openSummaryLog(type: WorkLogType, companyId: String, companyName: String, activeRouteId: String, user: DBUser) async {
-        let coord = currentLocation?.coordinate
+        guard let location = currentRouteLocation else {
+            currentSummaryType = type
+            print("    [SummaryLog] No usable current location; deferring \(type.rawValue) summary log")
+            return
+        }
+
         let log = ActiveRouteLog(
             id: "com_ar_log_" + UUID().uuidString,
             activeRouteId: activeRouteId,
             startTime: Date(),
-            startLatitude: coord?.latitude ?? 0,
-            startLongitude: coord?.longitude ?? 0,
+            startLatitude: location.coordinate.latitude,
+            startLongitude: location.coordinate.longitude,
             type: type,
             companyId: companyId,
             companyName: companyName,
@@ -1098,8 +1132,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
 
     @MainActor
     private func closeCurrentSummaryLog(companyId: String, activeRouteId: String) async {
-        guard let id = currentSummaryLogId else { return }
-        let coord = currentLocation?.coordinate
+        guard currentSummaryLogId != nil else { return }
         // TODO: Replace with your real dataService method to close a log
         // e.g., dataService.closeActiveRouteLog(...)
         do {
@@ -1115,8 +1148,8 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     // Writes an ActiveRouteLocation breadcrumb (every ~10 minutes)
     @MainActor
     private func publishRouteLog(companyId: String, activeRouteId: String, user: DBUser, companyName: String) async {
-        guard let loc = currentLocation else {
-            print("    [RouteLog] No current location yet; skipping tick")
+        guard let loc = currentRouteLocation else {
+            print("    [RouteLog] No usable current location yet; skipping tick")
             return
         }
 
@@ -1145,8 +1178,8 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     // Writes an ActiveRouteLocation breadcrumb (every ~10 minutes)
     @MainActor
     private func publishRouteLocationTick(companyId: String, activeRouteId: String, user: DBUser, companyName: String) async {
-        guard let loc = currentLocation else {
-            print("    [RouteLog] No current location yet; skipping tick")
+        guard let loc = currentRouteLocation else {
+            print("    [RouteLog] No usable current location yet; skipping tick")
             return
         }
 
@@ -1167,41 +1200,6 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             print("  [RouteLog] upload error: \(error)")
         }
     }
-    @MainActor
-    private func publishRandomRouteLocationTick(companyId: String, activeRouteId: String, user: DBUser, companyName: String) async {
-        guard let loc = currentLocation else {
-            print("    [RouteLog] No current location yet; skipping tick")
-            return
-        }
-//        32.943777
-//        
-//        32.546122
-//        
-        let minLat = 32.546122
-        let maxLat = 32.943777
-        
-        let minLon = -117.842707
-        let maxLon = -117.251974
-        
-        let randomLat:Double = Double.random(in: minLat...maxLat)
-        let randomLong:Double = Double.random(in: minLon...maxLon)
-        // Build the log (standalone breadcrumb style)
-        let location = ActiveRouteLocation(
-            id: "com_ar_loc_" + UUID().uuidString,
-            activeRouteId: activeRouteId,
-            time: Date(),
-            latitude: randomLat,
-            longitude: randomLong,
-            userId: user.id,
-            userName: (user.firstName + " " + user.lastName)
-        )
-        do {
-            try await dataService.upLoadActiveRouteLocation(companyId: companyId, activeRouteId: activeRouteId, location: location)
-        } catch {
-            print("  [RouteLog] upload error: \(error)")
-        }
-    }
-    
 
 }
 

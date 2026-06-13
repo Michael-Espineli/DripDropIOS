@@ -415,6 +415,12 @@ extension ProductionDataService {
             ]
         )
     }
+    func updateServiceStopServiceNotes(companyId: String, serviceStopId: String, serviceNotes: String) async throws {
+        let serviceStopRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+        try await serviceStopRef.updateData([
+            ServiceStop.CodingKeys.serviceNotes.rawValue: serviceNotes
+        ])
+    }
     func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws{
         let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
         try await ref.updateData([

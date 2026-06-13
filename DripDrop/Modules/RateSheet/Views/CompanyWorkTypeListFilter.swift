@@ -441,6 +441,12 @@ struct CompanyWorkTypesView: View {
             }
 
             Button {
+                editorRoute = CompanyWorkTypeEditorRoute(workType: nil)
+            } label: {
+                Label("New Payroll Work Type", systemImage: "plus.circle")
+            }
+
+            Button {
                 Task {
                     
                     if let currentCompany = masterDataManager.currentCompany {

@@ -559,6 +559,12 @@ struct CompanyServiceStopTypesView: View {
             }
 
             Button {
+                editorRoute = CompanyServiceStopTypeEditorRoute(serviceStopType: nil)
+            } label: {
+                Label("New Service Stop Type", systemImage: "plus.circle")
+            }
+
+            Button {
                 Task {
                     await viewModel.seedPoolCompanyDefaults()
                 }

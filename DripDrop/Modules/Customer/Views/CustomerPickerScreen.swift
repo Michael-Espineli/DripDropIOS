@@ -40,12 +40,7 @@ struct CustomerPickerScreen: View {
         .task {
             do {
                 if let company = masterDataManager.currentCompany {
-                    try await customerVM.filterAndSortSelected(
-                        companyId: company.id,
-                        filter: .active,
-                        sort: .lastNameLow
-                    )
-                    customers = customerVM.customers
+                    try await loadActiveCustomers(companyId: company.id)
                 }
             } catch {
                 print("Error")
@@ -56,12 +51,7 @@ struct CustomerPickerScreen: View {
                 Task {
                     do {
                         if let company = masterDataManager.currentCompany {
-                            try await customerVM.filterAndSortSelected(
-                                companyId: company.id,
-                                filter: .active,
-                                sort: .lastNameHigh
-                            )
-                            customers = customerVM.customers
+                            try await loadActiveCustomers(companyId: company.id)
                         }
                     } catch {
                         print("[][] Error: \(error)")
@@ -71,9 +61,9 @@ struct CustomerPickerScreen: View {
                 if let _ = masterDataManager.currentCompany {
                     customerVM.filterCustomerList(
                         filterTerm: term,
-                        customers: customerVM.customers
+                        customers: sortedActiveCustomers(customerVM.customers)
                     )
-                    customers = customerVM.filteredCustomers
+                    customers = sortedActiveCustomers(customerVM.filteredCustomers)
                     print("Received \(customers.count) Customers")
                 }
             }
@@ -82,6 +72,25 @@ struct CustomerPickerScreen: View {
 }
 
 extension CustomerPickerScreen {
+
+    func loadActiveCustomers(companyId: String) async throws {
+        try await customerVM.getAllCustomers(companyId: companyId)
+        customers = sortedActiveCustomers(customerVM.customers)
+    }
+
+    func sortedActiveCustomers(_ customerList: [Customer]) -> [Customer] {
+        customerList
+            .filter { $0.active }
+            .sorted { customerSortValue($0) < customerSortValue($1) }
+    }
+
+    func customerSortValue(_ datum: Customer) -> String {
+        let displayName = datum.displayAsCompany
+            ? (datum.company ?? "\(datum.firstName) \(datum.lastName)")
+            : "\(datum.lastName) \(datum.firstName)"
+
+        return displayName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
 
     var headerCard: some View {
         VStack(alignment: .leading, spacing: 14) {

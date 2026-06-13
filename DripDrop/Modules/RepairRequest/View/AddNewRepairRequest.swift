@@ -230,16 +230,15 @@ extension AddNewRepairRequest {
 
             if VM.selectedEquipment.id != "" {
                 pickerRow(
-                    title: "Equipment Status",
-                    value: VM.selectedEquipmentStatus.displayName,
+                    title: "Update Equipment Status",
+                    value: VM.selectedEquipmentStatus?.displayName ?? "Do Not Change",
                     systemImage: "gauge.with.dots.needle.bottom.50percent",
                     isSelected: true
                 ) {
                     VM.showEquipmentStatusSelector.toggle()
                 }
                 .sheet(isPresented: $VM.showEquipmentStatusSelector) {
-                    EquipmentStatusPicker(
-                        dataService: dataService,
+                    RepairRequestEquipmentStatusPicker(
                         status: $VM.selectedEquipmentStatus
                     )
                     .presentationDetents([.fraction(0.3), .fraction(0.5)])
@@ -479,5 +478,111 @@ extension AddNewRepairRequest {
         #if os(iOS)
         UINotificationFeedbackGenerator().notificationOccurred(.error)
         #endif
+    }
+}
+
+private struct RepairRequestEquipmentStatusPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var status: EquipmentStatus?
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Equipment Status")
+                            .font(.title3.weight(.semibold))
+
+                        Text("Choose the status to save with this request.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 34, height: 34)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(16)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 10) {
+                        statusRow(title: "Do Not Change", systemImage: "minus.circle", isSelected: status == nil) {
+                            status = nil
+                            dismiss()
+                        }
+
+                        ForEach(EquipmentStatus.operationalStatusCases) { option in
+                            statusRow(
+                                title: option.displayName,
+                                systemImage: statusIcon(for: option),
+                                isSelected: status == option
+                            ) {
+                                status = option
+                                dismiss()
+                            }
+                        }
+                    }
+                    .padding(.bottom, 12)
+                }
+            }
+            .padding(14)
+        }
+    }
+
+    func statusRow(title: String, systemImage: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundStyle(isSelected ? Color.white : Color.poolGreen)
+                    .frame(width: 34, height: 34)
+                    .background(
+                        isSelected ? Color.poolGreen : Color.poolGreen.opacity(0.12),
+                        in: Circle()
+                    )
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.headline)
+                        .foregroundStyle(Color.poolGreen)
+                }
+            }
+            .padding(12)
+            .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    func statusIcon(for status: EquipmentStatus) -> String {
+        switch status {
+        case .operational:
+            return "checkmark.circle"
+        case .nonoperational:
+            return "xmark.circle"
+        case .needsRepair:
+            return "cross.case"
+        case .needsMaintenance:
+            return "wrench.and.screwdriver"
+        case .replaced:
+            return "arrow.triangle.2.circlepath"
+        }
     }
 }
