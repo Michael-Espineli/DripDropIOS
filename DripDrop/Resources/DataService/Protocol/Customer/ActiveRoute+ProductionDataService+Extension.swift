@@ -108,38 +108,191 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
         self.vehicleModel = vehicleModel
         self.personalVehicle = personalVehicle
     }
-        enum CodingKeys:String, CodingKey {
-            case id = "id"
-            case name = "name"
-            case date = "date"
-            case startMilage = "startMilage"
-            case endMilage = "endMilage"
-            case serviceStopsIds = "serviceStopsIds"
-            case order = "order"
-            case startTime = "startTime"
-            case endTime = "endTime"
-            case techId = "techId"
-            case techName = "techName"
-            case traineeId = "traineeId"
-            case traineeName = "traineeName"
-            case durationMin = "durationSeconds"
-            case distanceMiles = "distanceMiles"
-            case status = "status"
-            case finishedStops = "finishedStops"
-            case totalStops = "totalStops"
-            case vehicalId = "vehicalId"
-            case vehicleSource = "vehicleSource"
-            case personalVehicleOwnerId = "personalVehicleOwnerId"
-            case vehicleLabel = "vehicleLabel"
-            case vehiclePlate = "vehiclePlate"
-            case vehicleKind = "vehicleKind"
-            case vehicleMake = "vehicleMake"
-            case vehicleModel = "vehicleModel"
-            case personalVehicle = "personalVehicle"
+    enum CodingKeys:String, CodingKey {
+        case id = "id"
+        case name = "name"
+        case date = "date"
+        case startMilage = "startMilage"
+        case endMilage = "endMilage"
+        case serviceStopsIds = "serviceStopsIds"
+        case order = "order"
+        case startTime = "startTime"
+        case endTime = "endTime"
+        case techId = "techId"
+        case techName = "techName"
+        case traineeId = "traineeId"
+        case traineeName = "traineeName"
+        case durationMin = "durationSeconds"
+        case distanceMiles = "distanceMiles"
+        case status = "status"
+        case finishedStops = "finishedStops"
+        case totalStops = "totalStops"
+        case vehicalId = "vehicalId"
+        case vehicleSource = "vehicleSource"
+        case personalVehicleOwnerId = "personalVehicleOwnerId"
+        case vehicleLabel = "vehicleLabel"
+        case vehiclePlate = "vehiclePlate"
+        case vehicleKind = "vehicleKind"
+        case vehicleMake = "vehicleMake"
+        case vehicleModel = "vehicleModel"
+        case personalVehicle = "personalVehicle"
+    }
+    private enum LegacyCodingKeys: String, CodingKey {
+        case durationMin = "durationMin"
+        case distance = "distance"
+        case startMileage = "startMileage"
+        case endMileage = "endMileage"
+        case vehicleId = "vehicleId"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
+
+        func decodeString(_ key: CodingKeys, default defaultValue: String = "") -> String {
+            (try? container.decodeIfPresent(String.self, forKey: key)) ?? defaultValue
         }
-    static func == (lhs: ActiveRoute, rhs: ActiveRoute) -> Bool {
-        return lhs.id == rhs.id &&
-        lhs.name == rhs.name &&
+
+        func decodeLegacyString(_ key: LegacyCodingKeys, default defaultValue: String = "") -> String {
+            (try? legacyContainer.decodeIfPresent(String.self, forKey: key)) ?? defaultValue
+        }
+
+        func decodeInt(_ key: CodingKeys, default defaultValue: Int = 0) -> Int {
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return Int(value)
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key),
+               let intValue = Int(value) {
+                return intValue
+            }
+
+            return defaultValue
+        }
+
+        func decodeLegacyInt(_ key: LegacyCodingKeys, default defaultValue: Int = 0) -> Int {
+            if let value = try? legacyContainer.decodeIfPresent(Int.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? legacyContainer.decodeIfPresent(Double.self, forKey: key) {
+                return Int(value)
+            }
+
+            if let value = try? legacyContainer.decodeIfPresent(String.self, forKey: key),
+               let intValue = Int(value) {
+                return intValue
+            }
+
+            return defaultValue
+        }
+
+        func decodeDouble(_ key: CodingKeys, default defaultValue: Double = 0) -> Double {
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return Double(value)
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key),
+               let doubleValue = Double(value) {
+                return doubleValue
+            }
+
+            return defaultValue
+        }
+
+        func decodeLegacyDouble(_ key: LegacyCodingKeys, default defaultValue: Double = 0) -> Double {
+            if let value = try? legacyContainer.decodeIfPresent(Double.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? legacyContainer.decodeIfPresent(Int.self, forKey: key) {
+                return Double(value)
+            }
+
+            if let value = try? legacyContainer.decodeIfPresent(String.self, forKey: key),
+               let doubleValue = Double(value) {
+                return doubleValue
+            }
+
+            return defaultValue
+        }
+
+        func decodeOptionalDouble(_ key: CodingKeys) -> Double? {
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return Double(value)
+            }
+
+            if let value = try? container.decodeIfPresent(String.self, forKey: key),
+               let doubleValue = Double(value) {
+                return doubleValue
+            }
+
+            return nil
+        }
+
+        func decodeLegacyOptionalDouble(_ key: LegacyCodingKeys) -> Double? {
+            if let value = try? legacyContainer.decodeIfPresent(Double.self, forKey: key) {
+                return value
+            }
+
+            if let value = try? legacyContainer.decodeIfPresent(Int.self, forKey: key) {
+                return Double(value)
+            }
+
+            if let value = try? legacyContainer.decodeIfPresent(String.self, forKey: key),
+               let doubleValue = Double(value) {
+                return doubleValue
+            }
+
+            return nil
+        }
+
+        let legacyDurationMinutes = decodeLegacyInt(.durationMin)
+
+        self.id = decodeString(.id)
+        self.name = decodeString(.name)
+        self.date = try container.decode(Date.self, forKey: .date)
+        self.startMilage = decodeOptionalDouble(.startMilage) ?? decodeLegacyOptionalDouble(.startMileage)
+        self.endMilage = decodeOptionalDouble(.endMilage) ?? decodeLegacyOptionalDouble(.endMileage)
+        self.serviceStopsIds = (try? container.decodeIfPresent([String].self, forKey: .serviceStopsIds)) ?? []
+        self.order = try? container.decodeIfPresent([ServiceStopOrder].self, forKey: .order)
+        self.startTime = try? container.decodeIfPresent(Date.self, forKey: .startTime)
+        self.endTime = try? container.decodeIfPresent(Date.self, forKey: .endTime)
+        self.techId = decodeString(.techId)
+        self.techName = decodeString(.techName)
+        self.traineeId = try? container.decodeIfPresent(String.self, forKey: .traineeId)
+        self.traineeName = try? container.decodeIfPresent(String.self, forKey: .traineeName)
+        self.durationMin = decodeInt(.durationMin, default: legacyDurationMinutes * 60)
+        self.distanceMiles = decodeDouble(.distanceMiles, default: decodeLegacyDouble(.distance))
+        self.status = (try? container.decodeIfPresent(ActiveRouteStatus.self, forKey: .status)) ?? .didNotStart
+        self.finishedStops = decodeInt(.finishedStops)
+        self.totalStops = decodeInt(.totalStops, default: serviceStopsIds.count)
+        self.vehicalId = decodeString(.vehicalId, default: decodeLegacyString(.vehicleId))
+        self.vehicleSource = try? container.decodeIfPresent(String.self, forKey: .vehicleSource)
+        self.personalVehicleOwnerId = try? container.decodeIfPresent(String.self, forKey: .personalVehicleOwnerId)
+        self.vehicleLabel = try? container.decodeIfPresent(String.self, forKey: .vehicleLabel)
+        self.vehiclePlate = try? container.decodeIfPresent(String.self, forKey: .vehiclePlate)
+        self.vehicleKind = try? container.decodeIfPresent(String.self, forKey: .vehicleKind)
+        self.vehicleMake = try? container.decodeIfPresent(String.self, forKey: .vehicleMake)
+        self.vehicleModel = try? container.decodeIfPresent(String.self, forKey: .vehicleModel)
+        self.personalVehicle = try? container.decodeIfPresent(PersonalVehicle.self, forKey: .personalVehicle)
+    }
+
+	    static func == (lhs: ActiveRoute, rhs: ActiveRoute) -> Bool {
+	        return lhs.id == rhs.id &&
+	        lhs.name == rhs.name &&
         lhs.date == rhs.date &&
         lhs.serviceStopsIds == rhs.serviceStopsIds &&
         lhs.startTime == rhs.startTime &&

@@ -43,7 +43,7 @@ struct Job: Identifiable, Codable, Hashable{
     
     //status
     var operationStatus : JobOperationStatus //Estimate Pending, Unscheduled, Scheduled, In Progress, Finished
-    var billingStatus : JobBillingStatus // Draft, Estimate, Accepted, InProgress, Invoiced, Paid
+    var billingStatus : JobBillingStatus // Draft, Estimate, Accepted, InProgress, Invoiced, Paid, Comped
     
     //refrences
     var customerId : String
@@ -1124,4 +1124,3 @@ final class JobManager:JobManagerProtocol {
         try await workOrderDocument(workOrderId: jobId, companyId: companyId).delete()
     }
 }
-

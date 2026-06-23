@@ -9,6 +9,31 @@ import SwiftUI
 import UniformTypeIdentifiers
 import MapKit
 
+private enum EmployeeDailyDashboardRouteViewMode: String, CaseIterable, Identifiable, Hashable {
+    case list
+    case calendar
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .list:
+            return "List"
+        case .calendar:
+            return "Calendar"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .list:
+            return "list.bullet.rectangle"
+        case .calendar:
+            return "calendar.day.timeline.left"
+        }
+    }
+}
+
 struct EmployeeDailyDashboard: View {
 
     @Environment(\.locale) private var locale
@@ -44,7 +69,11 @@ struct EmployeeDailyDashboard: View {
     @State private var routeMapCameraPosition: MapCameraPosition = .automatic
     @State private var expandedRouteMapCameraPosition: MapCameraPosition = .automatic
     @State private var routeCloseoutPromptedRouteId: String? = nil
+    @State private var showPreviousRouteReview: Bool = false
+    @State private var routePendingEnd: ActiveRoute? = nil
 
+    @AppStorage("employeeDailyDashboardRouteViewMode")
+    private var routeViewModeRawValue: String = EmployeeDailyDashboardRouteViewMode.list.rawValue
 
 
     
@@ -67,11 +96,19 @@ struct EmployeeDailyDashboard: View {
                     VStack(spacing: 14) {
                         dateSelectionView
 
+                        if shouldUseExperimentalRouteLayout && !VM.previousRoutesNeedingReview.isEmpty {
+                            previousRouteReviewSummaryCard
+                        }
+
                         if VM.serviceStopList.isEmpty {
                             noRouteCard
                         } else {
                             routeInfo
 //                            routeMapCard
+
+                            if shouldUseExperimentalRouteLayout && !enableReorder && !VM.enableMove {
+                                routeViewSelector
+                            }
 
                             if VM.ArOrderIsDifferentThanRrORder {
                                 routeOrderDifferenceCard
@@ -94,7 +131,7 @@ struct EmployeeDailyDashboard: View {
 
                                 listOfStops
                             } else {
-                                listOfStops
+                                selectedRouteViewContent
                             }
 
                             Color.clear.frame(height: 18)
@@ -128,13 +165,16 @@ struct EmployeeDailyDashboard: View {
         }
         .onAppear {
             refreshShoppingListBadge()
+            loadPreviousRouteReview()
             presentRouteCloseoutIfNeeded()
         }
         .onChange(of: masterDataManager.currentCompany?.id) { _, _ in
             refreshShoppingListBadge()
+            loadPreviousRouteReview()
         }
         .onChange(of: masterDataManager.user?.id) { _, _ in
             refreshShoppingListBadge()
+            loadPreviousRouteReview()
         }
         .onChange(of: VM.serviceStopList) { _, _ in
             updateRouteMapCamera()
@@ -147,12 +187,36 @@ struct EmployeeDailyDashboard: View {
             expandedRouteMapSheet
                 .presentationDetents([.large])
         }
-        .sheet(isPresented: $VM.showEndMilage) {
+        .sheet(isPresented: $VM.showEndMilage, onDismiss: {
+            routePendingEnd = nil
+        }) {
             routeEndMileageSheet
                 .presentationDetents([.fraction(0.45), .fraction(0.6), .large])
         }
+        .sheet(isPresented: $VM.showMilage) {
+            routeStartMileageSheet
+                .presentationDetents([.fraction(0.55), .fraction(0.7), .large])
+        }
+        .sheet(isPresented: $showPreviousRouteReview) {
+            previousRouteReviewSheet
+                .presentationDetents([.medium, .large])
+        }
         .onDisappear {
             VM.selectedDate = Date()
+        }
+        .alert(
+            "Would you like to start this stop?",
+            isPresented: serviceStopStartPromptPresentedBinding
+        ) {
+            Button("Start Stop") {
+                VM.confirmPendingServiceStopStart(companyId: masterDataManager.currentCompany?.id)
+            }
+
+            Button("Not Now", role: .cancel) {
+                VM.dismissPendingServiceStopStartPrompt()
+            }
+        } message: {
+            Text(serviceStopStartPromptMessage)
         }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
@@ -168,6 +232,48 @@ struct EmployeeDailyDashboard: View {
         case "Finished": return .poolGreen
         default: return .gray
         }
+    }
+
+    private var selectedRouteViewMode: EmployeeDailyDashboardRouteViewMode {
+        get {
+            EmployeeDailyDashboardRouteViewMode(rawValue: routeViewModeRawValue) ?? .list
+        }
+        nonmutating set {
+            routeViewModeRawValue = newValue.rawValue
+        }
+    }
+
+    private var selectedRouteViewModeBinding: Binding<EmployeeDailyDashboardRouteViewMode> {
+        Binding(
+            get: { selectedRouteViewMode },
+            set: { selectedRouteViewMode = $0 }
+        )
+    }
+
+    private var serviceStopStartPromptPresentedBinding: Binding<Bool> {
+        Binding(
+            get: { VM.pendingServiceStopStartPrompt != nil },
+            set: { isPresented in
+                if !isPresented {
+                    VM.dismissPendingServiceStopStartPrompt()
+                }
+            }
+        )
+    }
+
+    private var serviceStopStartPromptMessage: String {
+        guard let prompt = VM.pendingServiceStopStartPrompt else {
+            return ""
+        }
+
+        let serviceType = prompt.serviceType.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = serviceType.isEmpty ? prompt.customerName : "\(prompt.customerName) - \(serviceType)"
+
+        return "\(title)\nArrived at \(time(date: prompt.arrivalTime))."
+    }
+
+    private var shouldUseExperimentalRouteLayout: Bool {
+        masterDataManager.isFeatureEnabled(.iosReimaginedMain)
     }
 
     private func refreshShoppingListBadge() {
@@ -188,6 +294,24 @@ struct EmployeeDailyDashboard: View {
                 listOfShoppingListItems = 0
                 print("[EmployeeDailyDashboard][refreshShoppingListBadge] Error", error)
             }
+        }
+    }
+
+    private func loadPreviousRouteReview() {
+        guard shouldUseExperimentalRouteLayout else { return }
+        guard let company = masterDataManager.currentCompany else { return }
+
+        let technicianId =
+            masterDataManager.companyUser?.userId ??
+            masterDataManager.user?.id ?? ""
+
+        guard !technicianId.isEmpty else { return }
+
+        Task {
+            await VM.loadPreviousRouteReview(
+                companyId: company.id,
+                technicianId: technicianId
+            )
         }
     }
 
@@ -427,6 +551,228 @@ extension EmployeeDailyDashboard {
         .employeeDashCard(material: true)
     }}
 
+// MARK: - Route View Selector
+extension EmployeeDailyDashboard {
+    private var routeViewSelector: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: selectedRouteViewMode.systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, height: 34)
+                    .background(.thinMaterial, in: Circle())
+
+                Text("Route View")
+                    .font(.subheadline.weight(.semibold))
+
+                Spacer()
+            }
+
+            Picker("Route View", selection: selectedRouteViewModeBinding) {
+                ForEach(EmployeeDailyDashboardRouteViewMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .employeeDashCard(material: true)
+    }
+}
+
+// MARK: - Previous Route Review
+extension EmployeeDailyDashboard {
+    private var previousRouteReviewSummaryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "clock.badge.exclamationmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 38, height: 38)
+                    .background(Color.orange.opacity(0.13), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Previous Routes Need Review")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("\(VM.previousRoutesNeedingReview.count) previous route\(VM.previousRoutesNeedingReview.count == 1 ? "" : "s") need to be finished or reviewed.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                routeStatusBadge("\(VM.previousRoutesNeedingReview.count)")
+            }
+
+            Button {
+                showPreviousRouteReview = true
+            } label: {
+                actionButton(
+                    title: "Review Previous Routes",
+                    systemImage: "calendar.badge.clock",
+                    tint: .orange
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .employeeDashCard()
+    }
+
+    private var previousRouteReviewSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        sectionHeader(
+                            title: "Previous Routes",
+                            subtitle: "Finish older routes that were not stopped or are missing mileage.",
+                            systemImage: "clock.arrow.circlepath"
+                        )
+                        .employeeDashCard(material: true)
+
+                        if VM.previousRoutesNeedingReview.isEmpty {
+                            emptyStateRow(
+                                title: "No previous route issues",
+                                message: "Older routes that need closeout will appear here.",
+                                systemImage: "checkmark.circle"
+                            )
+                            .employeeDashCard()
+                        } else {
+                            VStack(spacing: 10) {
+                                ForEach(VM.previousRoutesNeedingReview) { route in
+                                    previousRouteReviewRow(route)
+                                }
+                            }
+                        }
+
+                        Color.clear.frame(height: 20)
+                    }
+                    .padding(14)
+                }
+            }
+            .navigationTitle("Previous Routes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        showPreviousRouteReview = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func previousRouteReviewRow(_ route: ActiveRoute) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: previousRouteIssueIcon(route))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 36, height: 36)
+                    .background(Color.orange.opacity(0.13), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(route.name.isEmpty ? "Previous Route" : route.name)
+                        .font(.subheadline.weight(.semibold))
+
+                    Text(fullDate(date: route.date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text(previousRouteIssueText(route))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                routeStatusBadge(route.status.rawValue)
+            }
+
+            routeMetricGrid(route)
+
+            HStack(spacing: 10) {
+                Button {
+                    openPreviousRouteDay(route)
+                } label: {
+                    actionButton(
+                        title: "Open Day",
+                        systemImage: "calendar",
+                        tint: .accentColor
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    prepareToEndPreviousRoute(route)
+                } label: {
+                    actionButton(
+                        title: "Complete",
+                        systemImage: "stop.circle",
+                        tint: .red
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.orange.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private func previousRouteIssueIcon(_ route: ActiveRoute) -> String {
+        if route.endMilage == nil {
+            return "gauge.with.dots.needle.bottom.50percent"
+        }
+
+        if route.endTime == nil {
+            return "clock.badge.exclamationmark"
+        }
+
+        return "exclamationmark.triangle"
+    }
+
+    private func previousRouteIssueText(_ route: ActiveRoute) -> String {
+        if route.status != .finished {
+            return "This previous route was not marked finished."
+        }
+
+        if route.endMilage == nil {
+            return "This route is missing ending mileage."
+        }
+
+        if route.endTime == nil {
+            return "This route is missing an end time."
+        }
+
+        return "This route needs review."
+    }
+
+    private func openPreviousRouteDay(_ route: ActiveRoute) {
+        showPreviousRouteReview = false
+        routePendingEnd = nil
+        VM.selectedDate = route.date
+    }
+
+    private func prepareToEndPreviousRoute(_ route: ActiveRoute) {
+        routePendingEnd = route
+        prepareEndMileageInput(for: route)
+        showPreviousRouteReview = false
+
+        Task { @MainActor in
+            await Task.yield()
+            VM.showEndMilage = true
+        }
+    }
+}
+
 // MARK: - Route Info
 extension EmployeeDailyDashboard {
     var routeInfo: some View {
@@ -454,6 +800,10 @@ extension EmployeeDailyDashboard {
 
                 Divider().opacity(0.35)
 
+                if routeNeedsStartMileage(activeRoute) {
+                    routeStartMileageCard(activeRoute)
+                }
+
                 if routeNeedsCloseout(activeRoute) {
                     routeCloseoutCard(activeRoute)
                 }
@@ -467,7 +817,6 @@ extension EmployeeDailyDashboard {
         HStack {
 
             if !VM.enableMove && !enableReorder {
-                
                 Button("Reorder") { enableReorder = true }
                 Spacer()
                 Button("Move") { VM.enableMove = true }
@@ -477,32 +826,28 @@ extension EmployeeDailyDashboard {
                 Button(action: { enableReorder = false}, label: {
                     Text("Cancel")
                         .modifier(DeleteButtonModifier())
-                    
                 })
                 Spacer()
-                
+
                 Button(action: {
                     VM.reorderServiceStops(companyId: masterDataManager.currentCompany?.id)
                     enableReorder = false
                 }, label: {
                     Text("Save")
                         .modifier(SubmitButtonModifier())
-                    
                 })
             }
 
             if VM.enableMove {
-                
                 Button(action: {
                     VM.cancelMove()
                     VM.enableMove = false
                 }, label: {
                     Text("Cancel")
                         .modifier(DeleteButtonModifier())
-                    
                 })
                 Spacer()
-                    
+
                 Button(action: {
                     confirmMove.toggle()
                 }, label: {
@@ -519,6 +864,284 @@ extension EmployeeDailyDashboard {
     }
 }
 
+// MARK: - Route Start
+extension EmployeeDailyDashboard {
+    private func routeNeedsStartMileage(_ route: ActiveRoute) -> Bool {
+        route.status == .didNotStart ||
+        (route.status != .finished && route.startMilage == nil)
+    }
+
+    private func routeStartMileageCard(_ route: ActiveRoute) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: route.status == .didNotStart ? "play.circle" : "gauge.with.dots.needle.bottom.50percent")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 34, height: 34)
+                    .background(Color.accentColor.opacity(0.13), in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(route.status == .didNotStart ? "Start Route" : "Add Start Mileage")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text(route.status == .didNotStart
+                         ? "Select a vehicle and enter starting mileage before beginning this route."
+                         : "This route is missing starting mileage. Add it before route closeout.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+            }
+
+            Button {
+                prepareStartMileageInput(for: route)
+                VM.showMilage = true
+            } label: {
+                actionButton(
+                    title: route.status == .didNotStart ? "Start Route" : "Enter Start Mileage",
+                    systemImage: route.status == .didNotStart ? "play.fill" : "gauge.with.dots.needle.bottom.50percent",
+                    tint: .accentColor
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var routeStartMileageSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        sectionHeader(
+                            title: VM.activeRoute?.status == .didNotStart ? "Start Route" : "Start Mileage",
+                            subtitle: "Choose the vehicle and enter the odometer reading for this route.",
+                            systemImage: "play.circle"
+                        )
+                        .employeeDashCard(material: true)
+
+                        routeStartVehiclePickerCard
+
+                        if VM.selectedVehical.id.isEmpty {
+                            routeStartEmptyVehicleCard
+                        } else {
+                            routeStartMileageInputCard
+                        }
+
+                        Color.clear.frame(height: 24)
+                    }
+                    .padding(14)
+                }
+            }
+            .navigationTitle(VM.activeRoute?.status == .didNotStart ? "Start Route" : "Start Mileage")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        VM.showMilage = false
+                    }
+                }
+            }
+        }
+    }
+
+    private var routeStartVehiclePickerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "Vehicle",
+                subtitle: "Attach the company or personal vehicle being used for the route.",
+                systemImage: "car"
+            )
+
+            Button {
+                VM.showVehicalPicker.toggle()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "car")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Selected Vehicle")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Text(
+                            VM.selectedVehical.id.isEmpty
+                            ? "Pick Vehicle"
+                            : "\(VM.selectedVehical.nickName) \(VM.selectedVehical.plate)"
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(12)
+                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $VM.showVehicalPicker) {
+                VehicalPickerView(
+                    dataService: dataService,
+                    vehical: $VM.selectedVehical,
+                    companyUser: VM.currentCompanyUser
+                )
+            }
+        }
+        .employeeDashCard()
+    }
+
+    private var routeStartEmptyVehicleCard: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "car")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Pick a vehicle first")
+                    .font(.subheadline.weight(.semibold))
+
+                Text("Starting mileage is tied to the selected vehicle.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var routeStartMileageInputCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                title: "Mileage",
+                subtitle: "Use the current odometer reading before the route begins.",
+                systemImage: "number"
+            )
+
+            HStack {
+                Text("Recent Mileage")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(
+                    Measurement(
+                        value: VM.selectedVehical.miles,
+                        unit: UnitLength.miles
+                    )
+                    .formatted(.measurement(width: .abbreviated))
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Start Mileage")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                MilesField(text: $VM.inputStartMilage)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            if let routeStartMileageWarningText {
+                Text(routeStartMileageWarningText)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+
+            Button {
+                submitActiveRouteStartMileage()
+            } label: {
+                Label(VM.activeRoute?.status == .didNotStart ? "Start Route" : "Submit Start Mileage", systemImage: "checkmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSubmitActiveRouteStartMileage)
+            .opacity(canSubmitActiveRouteStartMileage ? 1.0 : 0.55)
+        }
+        .employeeDashCard()
+    }
+
+    private func prepareStartMileageInput(for route: ActiveRoute) {
+        if let startMilage = route.startMilage {
+            VM.inputStartMilage = String(startMilage)
+        } else if !VM.selectedVehical.id.isEmpty {
+            VM.inputStartMilage = String(VM.selectedVehical.miles)
+        } else {
+            VM.inputStartMilage = ""
+        }
+    }
+
+    private var parsedActiveRouteStartMileage: Double? {
+        Double(VM.inputStartMilage.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private var canSubmitActiveRouteStartMileage: Bool {
+        guard !VM.selectedVehical.id.isEmpty,
+              let startMileage = parsedActiveRouteStartMileage else {
+            return false
+        }
+
+        return startMileage >= 0
+    }
+
+    private var routeStartMileageWarningText: String? {
+        if VM.selectedVehical.id.isEmpty {
+            return "Select a vehicle first."
+        }
+
+        guard let startMileage = parsedActiveRouteStartMileage else {
+            return "Enter a valid starting mileage."
+        }
+
+        return startMileage >= 0 ? nil : "Starting mileage cannot be negative."
+    }
+
+    private func submitActiveRouteStartMileage() {
+        guard canSubmitActiveRouteStartMileage else { return }
+        guard let route = VM.activeRoute else { return }
+
+        VM.updateRouteStartMilage(companyId: masterDataManager.currentCompany?.id)
+
+        if route.status == .didNotStart {
+            VM.startActiveRoute(
+                companyId: masterDataManager.currentCompany?.id,
+                companyName: masterDataManager.currentCompany?.name,
+                user: masterDataManager.user,
+                showMileageSheet: false
+            )
+        }
+
+        VM.showMilage = false
+    }
+}
+
 // MARK: - Route Closeout
 extension EmployeeDailyDashboard {
     private func routeNeedsCloseout(_ route: ActiveRoute) -> Bool {
@@ -531,6 +1154,7 @@ extension EmployeeDailyDashboard {
         guard let route = VM.activeRoute, routeNeedsCloseout(route) else { return }
         guard routeCloseoutPromptedRouteId != route.id else { return }
 
+        routePendingEnd = nil
         routeCloseoutPromptedRouteId = route.id
         prepareEndMileageInput(for: route)
         VM.showEndMilage = true
@@ -571,6 +1195,7 @@ extension EmployeeDailyDashboard {
             }
 
             Button {
+                routePendingEnd = nil
                 prepareEndMileageInput(for: route)
                 VM.showEndMilage = true
             } label: {
@@ -595,8 +1220,8 @@ extension EmployeeDailyDashboard {
                     VStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 10) {
                             sectionHeader(
-                                title: "End Mileage",
-                                subtitle: "Enter the ending mileage to finish the route.",
+                                title: routeEndMileageSheetTitle,
+                                subtitle: routeEndMileageSheetSubtitle,
                                 systemImage: "flag.checkered"
                             )
                         }
@@ -607,12 +1232,13 @@ extension EmployeeDailyDashboard {
                     .padding(14)
                 }
             }
-            .navigationTitle("End Mileage")
+            .navigationTitle(routeEndMileageSheetTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
                         VM.showEndMilage = false
+                        routePendingEnd = nil
                     }
                 }
             }
@@ -660,7 +1286,7 @@ extension EmployeeDailyDashboard {
             Button {
                 submitActiveRouteEndMileage()
             } label: {
-                Label("Submit End Mileage", systemImage: "checkmark.circle")
+                Label(routeEndMileageSubmitTitle, systemImage: "checkmark.circle")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -673,8 +1299,31 @@ extension EmployeeDailyDashboard {
         .employeeDashCard()
     }
 
+    private var routeBeingEnded: ActiveRoute? {
+        routePendingEnd ?? VM.activeRoute
+    }
+
+    private var isEditingFinishedRouteEndMileage: Bool {
+        guard let route = routeBeingEnded else { return false }
+        return route.status == .finished && route.endTime != nil && route.endMilage != nil
+    }
+
+    private var routeEndMileageSheetTitle: String {
+        isEditingFinishedRouteEndMileage ? "Edit End Mileage" : "End Mileage"
+    }
+
+    private var routeEndMileageSheetSubtitle: String {
+        isEditingFinishedRouteEndMileage
+        ? "Correct the ending mileage for this finished route."
+        : "Enter the ending mileage to finish the route."
+    }
+
+    private var routeEndMileageSubmitTitle: String {
+        isEditingFinishedRouteEndMileage ? "Save End Mileage" : "Submit End Mileage"
+    }
+
     private var displayedStartMileageForCloseout: Double {
-        VM.activeRoute?.startMilage ?? VM.startMilage
+        routeBeingEnded?.startMilage ?? VM.startMilage
     }
 
     private var parsedActiveRouteEndMileage: Double? {
@@ -706,27 +1355,48 @@ extension EmployeeDailyDashboard {
 
     private func submitActiveRouteEndMileage() {
         guard canSubmitActiveRouteEndMileage else { return }
-        guard let route = VM.activeRoute else { return }
+        guard let route = routeBeingEnded else { return }
+        let isCurrentRoute = route.id == VM.activeRoute?.id
+        let shouldStopRoute = route.status != .finished || route.endTime == nil
 
         VM.updateRouteEndtMilage(
             companyId: masterDataManager.currentCompany?.id,
-            route: route
+            route: route,
+            syncSelectedVehicle: isCurrentRoute
         )
 
-        VM.stopActiveRoute(
-            companyId: masterDataManager.currentCompany?.id,
-            companyName: masterDataManager.currentCompany?.name,
-            user: masterDataManager.user,
-            route: route
-        )
+        if shouldStopRoute {
+            VM.stopActiveRoute(
+                companyId: masterDataManager.currentCompany?.id,
+                companyName: masterDataManager.currentCompany?.name,
+                user: masterDataManager.user,
+                route: route
+            )
+        }
 
         VM.showEndMilage = false
+        routePendingEnd = nil
         routeCloseoutPromptedRouteId = nil
+        loadPreviousRouteReview()
     }
 }
 
 // MARK: - Stops List
 extension EmployeeDailyDashboard {
+    @ViewBuilder
+    private var selectedRouteViewContent: some View {
+        if !shouldUseExperimentalRouteLayout {
+            listOfStops
+        } else {
+            switch selectedRouteViewMode {
+            case .list:
+                listOfStops
+            case .calendar:
+                routeCalendarDashboard
+            }
+        }
+    }
+
     var listOfStops: some View {
         LazyVStack(spacing: 10) {
             ForEach(Array(VM.serviceStopList.enumerated()), id: \.element.id) { index, stop in
@@ -798,6 +1468,20 @@ extension EmployeeDailyDashboard {
             .padding(.horizontal)
         }
     }
+
+    private var routeCalendarDashboard: some View {
+        EmployeeRouteCalendarDashboard(
+            selectedDate: VM.selectedDate,
+            activeRoute: VM.activeRoute,
+            serviceStops: VM.serviceStopList
+        ) { stop in
+            navigationManager.push(to: Route.dailyDisplayStop(
+                dataService: dataService,
+                serviceStop: stop
+            ))
+        }
+    }
+
     private var moveConfirmationSheet: some View {
         NavigationStack {
             ZStack {
@@ -1065,12 +1749,7 @@ extension EmployeeDailyDashboard {
             }
 
             if let startMilage = activeRoute.startMilage {
-                metricRow(
-                    title: "Mileage",
-                    value: mileageRangeText(start: startMilage, end: activeRoute.endMilage),
-                    detail: mileageDifferenceText(start: startMilage, end: activeRoute.endMilage),
-                    systemImage: "gauge.with.dots.needle.bottom.50percent"
-                )
+                mileageMetricRow(activeRoute, startMilage: startMilage)
             }
 
             if activeRoute.durationMin > 0 {
@@ -1127,6 +1806,52 @@ extension EmployeeDailyDashboard {
         }
         .padding(12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func mileageMetricRow(_ activeRoute: ActiveRoute, startMilage: Double) -> some View {
+        let value = mileageRangeText(start: startMilage, end: activeRoute.endMilage)
+        let detail = mileageDifferenceText(start: startMilage, end: activeRoute.endMilage)
+        let systemImage = "gauge.with.dots.needle.bottom.50percent"
+
+        if canEditEndMileage(for: activeRoute) {
+            Button {
+                beginEditingEndMileage(for: activeRoute)
+            } label: {
+                metricRow(
+                    title: "Mileage",
+                    value: value,
+                    detail: detail,
+                    systemImage: systemImage
+                )
+                .overlay(alignment: .topTrailing) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(10)
+                        .accessibilityHidden(true)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit end mileage")
+        } else {
+            metricRow(
+                title: "Mileage",
+                value: value,
+                detail: detail,
+                systemImage: systemImage
+            )
+        }
+    }
+
+    private func canEditEndMileage(for route: ActiveRoute) -> Bool {
+        route.status == .finished && route.endMilage != nil
+    }
+
+    private func beginEditingEndMileage(for route: ActiveRoute) {
+        routePendingEnd = route
+        prepareEndMileageInput(for: route)
+        VM.showEndMilage = true
     }
 
     private func mileageRangeText(start: Double, end: Double?) -> String {
@@ -1871,6 +2596,421 @@ private struct TechnicianRouteMapPoint: Identifiable {
 
     var id: String { stop.id }
     var title: String { "#\(order) \(stop.customerName)" }
+}
+
+private struct EmployeeRouteCalendarDashboard: View {
+    let selectedDate: Date
+    let activeRoute: ActiveRoute?
+    let serviceStops: [ServiceStop]
+    let onSelectStop: (ServiceStop) -> Void
+
+    private let calendar = Calendar.current
+    private let slotMinutes: Int = 15
+    private let slotHeight: CGFloat = 56
+    private let interEventGapMinutes: Int = 5
+    private let timeColumnWidth: CGFloat = 54
+    private let eventLaneSpacing: CGFloat = 12
+    private let minimumEventHeight: CGFloat = 72
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            header
+
+            if entries.isEmpty {
+                emptyBoard
+            } else {
+                TimelineView(.periodic(from: Date(), by: 60)) { context in
+                    GeometryReader { proxy in
+                        timeline(width: proxy.size.width, now: context.date)
+                    }
+                    .frame(height: timelineHeight)
+                }
+            }
+        }
+        .employeeDashCard()
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "calendar.day.timeline.left")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Route Timeline")
+                    .font(.headline.weight(.semibold))
+
+                Text(boardSubtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+    }
+
+    private var emptyBoard: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "calendar.badge.exclamationmark")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text("No stops to schedule")
+                .font(.subheadline.weight(.semibold))
+
+            Text("Stops assigned to this date will appear on the day timeline.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func timeline(width: CGFloat, now: Date) -> some View {
+        let eventLaneWidth = max(width - timeColumnWidth - eventLaneSpacing, 0)
+
+        return ZStack(alignment: .topLeading) {
+            hourGrid
+
+            ForEach(entries) { entry in
+                Button {
+                    onSelectStop(entry.stop)
+                } label: {
+                    eventBlock(entry)
+                }
+                .buttonStyle(.plain)
+                .frame(width: eventLaneWidth, height: eventHeight(entry), alignment: .topLeading)
+                .offset(x: timeColumnWidth + eventLaneSpacing, y: yOffset(for: entry.start))
+            }
+
+            if shouldShowNowLine(now) {
+                nowLine(now: now, width: width)
+                    .offset(y: yOffset(for: now) - 8)
+            }
+        }
+        .frame(width: width, height: timelineHeight, alignment: .topLeading)
+        .clipped()
+    }
+
+    private var hourGrid: some View {
+        VStack(spacing: 0) {
+            ForEach(timelineSegments) { segment in
+                if segment.isDetailed {
+                    ForEach(0..<segment.slotCount, id: \.self) { slot in
+                        let date = calendar.date(
+                            byAdding: .minute,
+                            value: slot * slotMinutes,
+                            to: segment.start
+                        ) ?? segment.start
+                        gridLine(date: date, isHour: slot == 0)
+                    }
+                } else {
+                    gridLine(date: segment.start, isHour: true)
+                }
+            }
+        }
+    }
+
+    private func gridLine(date: Date, isHour: Bool) -> some View {
+        HStack(alignment: .top, spacing: eventLaneSpacing) {
+            Text(time(date: date))
+                .font(isHour ? .caption2.weight(.semibold) : .caption2)
+                .foregroundStyle(.secondary)
+                .frame(width: timeColumnWidth, alignment: .trailing)
+                .padding(.top, -5)
+                .opacity(isHour ? 1.0 : 0.72)
+
+            Rectangle()
+                .fill(Color.primary.opacity(isHour ? 0.10 : 0.045))
+                .frame(height: 1)
+                .padding(.top, 1)
+        }
+        .frame(height: slotHeight, alignment: .top)
+    }
+
+    private func eventBlock(_ entry: EmployeeRouteCalendarEntry) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(entry.accentColor)
+                .frame(width: 5)
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("#\(entry.index + 1)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(entry.accentColor)
+
+                    Text(entry.stop.customerName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 6)
+
+                    Text(entry.stop.operationStatus.rawValue)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(entry.accentColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(entry.accentColor.opacity(0.12), in: Capsule())
+                }
+
+                Text(entry.stop.address.streetAddress)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                HStack(spacing: 10) {
+                    Label(entry.timeRangeText, systemImage: "clock")
+                    Label(entry.durationText, systemImage: "timer")
+
+                    if entry.usesProjectedTime {
+                        Label("Projected", systemImage: "sparkles")
+                    }
+                }
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(entry.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(entry.accentColor.opacity(0.24), lineWidth: 1)
+        )
+    }
+
+    private func nowLine(now: Date, width: CGFloat) -> some View {
+        HStack(spacing: 6) {
+            Text(time(date: now))
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.red)
+                .frame(width: timeColumnWidth, alignment: .trailing)
+
+            Circle()
+                .fill(.red)
+                .frame(width: 8, height: 8)
+
+            Rectangle()
+                .fill(.red)
+                .frame(width: max(width - timeColumnWidth - eventLaneSpacing, 0), height: 2)
+        }
+    }
+
+    private var entries: [EmployeeRouteCalendarEntry] {
+        var nextAvailableStart = routeStartAnchor
+
+        return serviceStops.enumerated().map { index, stop in
+            let actualStart = sameDayDate(stop.startTime)
+            let preferredStart = actualStart ?? nextAvailableStart
+            let start = max(preferredStart, nextAvailableStart)
+            let end = endTime(for: stop, start: start)
+            nextAvailableStart = calendar.date(
+                byAdding: .minute,
+                value: interEventGapMinutes,
+                to: end
+            ) ?? end
+
+            return EmployeeRouteCalendarEntry(
+                index: index,
+                stop: stop,
+                start: start,
+                end: end,
+                usesProjectedTime: actualStart == nil
+            )
+        }
+    }
+
+    private var routeStartAnchor: Date {
+        if let startTime = sameDayDate(activeRoute?.startTime) {
+            return startTime
+        }
+
+        if let firstActualStart = serviceStops.compactMap({ sameDayDate($0.startTime) }).min() {
+            return firstActualStart
+        }
+
+        return calendar.date(bySettingHour: 8, minute: 0, second: 0, of: selectedDate) ?? selectedDate.startOfDay()
+    }
+
+    private var boardSubtitle: String {
+        guard let first = entries.first, let last = entries.last else {
+            return "No route blocks scheduled."
+        }
+
+        return "\(entries.count) stop\(entries.count == 1 ? "" : "s") - \(time(date: first.start)) to \(time(date: last.end))"
+    }
+
+    private var visibleStartHour: Int {
+        let dates = relevantTimelineDates
+        let earliestHour = dates.map { calendar.component(.hour, from: $0) }.min() ?? 8
+        return max(min(earliestHour - 1, 7), 0)
+    }
+
+    private var visibleEndHour: Int {
+        let dates = relevantTimelineDates
+        let latestHour = dates.map { calendar.component(.hour, from: $0) }.max() ?? 17
+        return min(max(latestHour + 2, 18), 24)
+    }
+
+    private var relevantTimelineDates: [Date] {
+        var dates = entries.flatMap { [$0.start, $0.end] }
+
+        if calendar.isDateInToday(selectedDate) {
+            dates.append(Date())
+        }
+
+        return dates.isEmpty ? [routeStartAnchor] : dates
+    }
+
+    private var timelineHeight: CGFloat {
+        timelineSegments.reduce(CGFloat.zero) { total, segment in
+            total + segment.height(slotHeight: slotHeight)
+        }
+    }
+
+    private var visibleTimelineStart: Date {
+        calendar.date(
+            bySettingHour: visibleStartHour,
+            minute: 0,
+            second: 0,
+            of: selectedDate
+        ) ?? selectedDate.startOfDay()
+    }
+
+    private var visibleTimelineEnd: Date {
+        calendar.date(
+            byAdding: .hour,
+            value: visibleEndHour - visibleStartHour,
+            to: visibleTimelineStart
+        ) ?? visibleTimelineStart
+    }
+
+    private var timelineSegments: [EmployeeRouteTimelineHourSegment] {
+        guard visibleEndHour > visibleStartHour else { return [] }
+
+        return (visibleStartHour..<visibleEndHour).compactMap { hour in
+            guard let start = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: selectedDate),
+                  let end = calendar.date(byAdding: .hour, value: 1, to: start) else {
+                return nil
+            }
+
+            let hasStopsInHour = entries.contains { entry in
+                entry.start < end && entry.end > start
+            }
+
+            return EmployeeRouteTimelineHourSegment(
+                hour: hour,
+                start: start,
+                end: end,
+                isDetailed: hasStopsInHour
+            )
+        }
+    }
+
+    private func endTime(for stop: ServiceStop, start: Date) -> Date {
+        if let endTime = sameDayDate(stop.endTime), endTime > start {
+            return endTime
+        }
+
+        return calendar.date(
+            byAdding: .minute,
+            value: plannedDurationMinutes(for: stop),
+            to: start
+        ) ?? start.addingTimeInterval(TimeInterval(plannedDurationMinutes(for: stop) * 60))
+    }
+
+    private func plannedDurationMinutes(for stop: ServiceStop) -> Int {
+        max(stop.duration, stop.estimatedDuration, 15)
+    }
+
+    private func yOffset(for date: Date) -> CGFloat {
+        var y: CGFloat = 0
+
+        for segment in timelineSegments {
+            if date >= segment.end {
+                y += segment.height(slotHeight: slotHeight)
+                continue
+            }
+
+            if date <= segment.start {
+                return y
+            }
+
+            let minutesIntoHour = max(date.timeIntervalSince(segment.start) / 60, 0)
+            let hourMinutes = max(segment.end.timeIntervalSince(segment.start) / 60, 1)
+            let progress = min(max(minutesIntoHour / hourMinutes, 0), 1)
+            return y + (segment.height(slotHeight: slotHeight) * CGFloat(progress))
+        }
+
+        return y
+    }
+
+    private func eventHeight(_ entry: EmployeeRouteCalendarEntry) -> CGFloat {
+        max(yOffset(for: entry.end) - yOffset(for: entry.start), minimumEventHeight)
+    }
+
+    private func shouldShowNowLine(_ now: Date) -> Bool {
+        guard calendar.isDate(now, inSameDayAs: selectedDate) else { return false }
+        guard now >= visibleTimelineStart, now <= visibleTimelineEnd else { return false }
+
+        let y = yOffset(for: now)
+        return y >= 0 && y <= timelineHeight
+    }
+
+    private func sameDayDate(_ date: Date?) -> Date? {
+        guard let date else { return nil }
+        return calendar.isDate(date, inSameDayAs: selectedDate) ? date : nil
+    }
+}
+
+private struct EmployeeRouteTimelineHourSegment: Identifiable {
+    let hour: Int
+    let start: Date
+    let end: Date
+    let isDetailed: Bool
+
+    var id: Int { hour }
+    var slotCount: Int { isDetailed ? 4 : 1 }
+
+    func height(slotHeight: CGFloat) -> CGFloat {
+        CGFloat(slotCount) * slotHeight
+    }
+}
+
+private struct EmployeeRouteCalendarEntry: Identifiable {
+    let index: Int
+    let stop: ServiceStop
+    let start: Date
+    let end: Date
+    let usesProjectedTime: Bool
+
+    var id: String { stop.id }
+
+    var accentColor: Color {
+        switch stop.operationStatus {
+        case .finished:
+            return .poolGreen
+        case .notFinished:
+            return .poolBlue
+        case .skipped:
+            return .orange
+        }
+    }
+
+    var timeRangeText: String {
+        "\(time(date: start)) - \(time(date: end))"
+    }
+
+    var durationText: String {
+        displayMinAsMinAndHour(min: max(Int(end.timeIntervalSince(start) / 60), 1))
+    }
 }
 
 private extension View {

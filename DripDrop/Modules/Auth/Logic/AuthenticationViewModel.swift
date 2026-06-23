@@ -330,6 +330,14 @@ final class AuthenticationViewModel: ObservableObject{
             throw FireBasePublish.unableToPublish
         }
     }
+
+    func sendPasswordReset(email:String) async throws {
+        if isValidEmail(email) {
+            try await AuthenticationManager.shared.sendPasswordReset(email: email)
+        } else {
+            throw FireBasePublish.unableToPublish
+        }
+    }
     
     func updateEmail(email:String,confimationEmail:String) throws {
         if email != confimationEmail {

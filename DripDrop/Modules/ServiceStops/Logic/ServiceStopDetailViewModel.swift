@@ -194,9 +194,19 @@ final class ServiceStopDetailViewModel:ObservableObject{
         let oldStop = stop
 
         var updatedStop = stop
-        updatedStop.operationStatus = .finished
+        let finishTime = Date()
+        updatedStop.operationStatus = operationStatus
+        if operationStatus == .finished {
+            updatedStop.endTime = finishTime
+            if let duration = serviceStopDurationMinutes(startTime: stop.startTime, endTime: finishTime) {
+                updatedStop.duration = duration
+            }
+        }
         // 1. Update the service stop operation status in your backend.
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
+        if operationStatus == .finished {
+            try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: stop.id, endTime: finishTime)
+        }
 
         // 2. Then update payroll based on the transition.
         let payrollCoordinator = ServiceStopPayrollCompletionCoordinator(
@@ -228,12 +238,22 @@ final class ServiceStopDetailViewModel:ObservableObject{
         let oldStop = stop
 
         var updatedStop = stop
-        updatedStop.operationStatus = .finished
+        let finishTime = Date()
+        updatedStop.operationStatus = operationStatus
+        if operationStatus == .finished {
+            updatedStop.endTime = finishTime
+            if let duration = serviceStopDurationMinutes(startTime: stop.startTime, endTime: finishTime) {
+                updatedStop.duration = duration
+            }
+        }
         
         // 1. Update the service stop operation status in your backend.
 
         //Finish Service Stop
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
+        if operationStatus == .finished {
+            try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: stop.id, endTime: finishTime)
+        }
         _ = try? await dataService.syncActiveRouteForServiceStops(
             companyId: companyId,
             date: stop.serviceDate,
@@ -274,6 +294,13 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
         var updatedStop = stop
         updatedStop.operationStatus = operationStatus
+        let finishTime = Date()
+        if operationStatus == .finished {
+            updatedStop.endTime = finishTime
+            if let duration = serviceStopDurationMinutes(startTime: stop.startTime, endTime: finishTime) {
+                updatedStop.duration = duration
+            }
+        }
         // 1. Update the service stop operation status in your backend.
 
         //Update Service Stop FB
@@ -297,8 +324,9 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
         print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] - Finishing Service Stop")
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
-        try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: stop.id, endTime: Date())
         if operationStatus == .finished {
+            try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: stop.id, endTime: finishTime)
+
             if completionSettings.sendEmailOnFinish {
                 try? await FunctionsManager.shared.sendServiceReportOnFinish(companyId: companyId, stopId: stop.id)
                 print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Sending Email")
@@ -400,6 +428,15 @@ final class ServiceStopDetailViewModel:ObservableObject{
             serviceStopId: serviceStopId,
             serviceNotes: serviceNotes
         )
+    }
+
+    private func serviceStopDurationMinutes(startTime: Date?, endTime: Date) -> Int? {
+        guard let startTime,
+              endTime > startTime else {
+            return nil
+        }
+
+        return max(1, Int(ceil(endTime.timeIntervalSince(startTime) / 60)))
     }
 
     private func loadCompletionSettings(

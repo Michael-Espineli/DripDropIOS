@@ -286,22 +286,6 @@ extension AddNewRepairRequest {
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            if descriptionField {
-                HStack {
-                    Spacer()
-
-                    Button {
-                        descriptionField = false
-                    } label: {
-                        Label("Done", systemImage: "keyboard.chevron.compact.down")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(.thinMaterial, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -330,31 +314,53 @@ extension AddNewRepairRequest {
                 .buttonStyle(.plain)
 
                 Button {
-                    submitRepairRequest()
+                    if descriptionField {
+                        descriptionField = false
+                    } else {
+                        submitRepairRequest()
+                    }
                 } label: {
                     HStack(spacing: 8) {
                         if VM.screenLoading {
                             ProgressView()
+                                .tint(.white)
+                        } else if descriptionField {
+                            Image(systemName: "keyboard.chevron.compact.down")
                         } else {
                             Image(systemName: "checkmark")
                         }
 
-                        Text(VM.screenLoading ? "Submitting" : "Submit")
+                        Text(primaryActionTitle)
                     }
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(
+                        VM.screenLoading ? Color.blue.opacity(0.65) : Color.blue,
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
                 }
                 .buttonStyle(.plain)
-                .disabled(descriptionField || VM.screenLoading)
-                .opacity((descriptionField || VM.screenLoading) ? 0.55 : 1)
+                .disabled(VM.screenLoading)
             }
             .padding(.horizontal, 14)
             .padding(.top, 12)
             .padding(.bottom, 12)
             .background(.regularMaterial)
         }
+    }
+
+    var primaryActionTitle: String {
+        if VM.screenLoading {
+            return "Submitting"
+        }
+
+        if descriptionField {
+            return "Done"
+        }
+
+        return "Submit"
     }
 
     var loadingOverlay: some View {
@@ -465,6 +471,7 @@ extension AddNewRepairRequest {
                 handleSubmitError("Add Request Error Images Not Loaded")
             } catch {
                 handleSubmitError("Add Request Error Other")
+                print(error)
             }
         }
     }

@@ -104,6 +104,17 @@ final class AuthenticationManager {
           // ...
         }
     }
+    func sendPasswordReset(email:String) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            Auth.auth().sendPasswordReset(withEmail: email) { error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: ())
+                }
+            }
+        }
+    }
     func updateEmail(email:String) throws {
         
         let user = Auth.auth().currentUser

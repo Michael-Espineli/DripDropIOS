@@ -5,346 +5,110 @@
 //  Created by Michael Espineli on 12/1/23.
 //
 
-
 import SwiftUI
 
 struct SettingsView: View {
-    init(dataService:any ProductionDataServiceProtocol){
-        _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
-        _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
-        _userSettingsViewModel = StateObject(wrappedValue: UserSettingsViewModel(dataService: dataService))
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
     }
 
-    @EnvironmentObject var dataService : ProductionDataService
-    @EnvironmentObject var masterDataManager : MasterDataManager
-    @EnvironmentObject var customerViewModel: CustomerViewModel
-    
-    @StateObject var userSettingsViewModel: UserSettingsViewModel
-
-    @StateObject private var VM : AuthenticationViewModel
-    @StateObject private var companyVM = CompanyViewModel()
-    @StateObject private var userAccessVM = UserAccessViewModel()
-    @StateObject private var customerVM : CustomerViewModel
-    @StateObject var roleVM = RoleViewModel()
-
-    @State var company:Company = Company(
-        id: "",
-        ownerId: "",
-        ownerName: "",
-        name: "",
-        photoUrl: "",
-        dateCreated: Date(),
-        email: "",
-        phoneNumber: "",
-        verified: false,
-        serviceZipCodes: [],
-        services: [],
-        accountType: .free,
-        paidUntil: Date(),
-        status: .free,
-        stripeConnectAccountStatus: .notStarted,
-        yelpURL : "",
-        websiteURL : ""
-    )
-    @State var companyIdList:[Company] = []
-    @State var showChangeEmailScreen:Bool = false
-    @State var isLoading = false
-    @State var showRedeemInviteCode = false
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    private let dataService: any ProductionDataServiceProtocol
 
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            ScrollView{
-            VStack(spacing: 8) {
-                if let user = masterDataManager.user {
-                    Text("Settings")
-                        .font(.headline)
-                        .bold()
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.center)
-                    
-                }
-                Text("Change your settings!")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 8)
-//                companySettings
-                UserSettings(dataService: dataService)
 
-//                settings
-//                
-//                Rectangle()
-//                    .frame(height: 1)
-                    //----------------------------------------
-                    //Add Back in During Roll out of Phase 2
-                    //----------------------------------------
-            }
-            .padding(8)
-        }
-        .fontDesign(.monospaced)
-        .task {
-            do {
-                if let user = masterDataManager.user {
-                    print("\(user.id)")
-                    try await companyVM.getCompaniesByUserAccessList(userId: user.id )
-                    print("Success")
-                } else {
-                    masterDataManager.showSignInView = true
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    headerCard
+
+                    UserSettings(dataService: dataService, isEmbedded: true)
                 }
-                if companyVM.listOfCompanies.count != 0 {
-                    if let selectedCompany = masterDataManager.currentCompany {
-                        company = companyVM.listOfCompanies.first(where: {$0.id == selectedCompany.id})!                        
-                    }
-                    companyIdList = companyVM.listOfCompanies
-                }
-            } catch {
-                print("Failed to get User Access List - Page: Settings View")
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
             }
         }
-        .onChange(of: company, perform: { change in
-            Task{
-            //Developer Change Role of Company On change of current company
-                if let selectedCompany = masterDataManager.currentCompany, let user = masterDataManager.user {
-                    try await userSettingsViewModel.updateRecentlySelectedCompanyWithCompanyId(user: user, companyId: change.id)
-
-                    if change.id != "" && selectedCompany.id != change.id{
-                        masterDataManager.currentCompany = change
-                        try await userAccessVM.getUserAccessCompanies(userId: user.id, companyId: company.id)
-                        if let access = userAccessVM.userAccess{
-                            print("Mobile Home Access >> \(access)")
-                            try await roleVM.getSpecificRole(companyId: company.id, roleId: access.roleId)
-                            if let role = roleVM.role {
-                                masterDataManager.role = role
-                            } else {
-                                masterDataManager.showSignInView = true
-                            }
-                        } else {
-                            masterDataManager.showSignInView = true
-                        }
-                    } else {
-                    }
-                } else {
-                    print("No selected Company or User")
-                }
-            }
-        })
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
-extension SettingsView {
-    var companySettings: some View {
-        VStack(alignment:.leading){
-            HStack{
-                Text("Company:")
-                    .fontWeight(.bold)
-                if companyVM.listOfCompanies.count != 0 {
-                    Picker("", selection: $company) {
-                        Text("Pick Company")
-                        ForEach(companyVM.listOfCompanies) {
-                            Text($0.name).tag($0)
-                        }
-                    }
-                    .modifier(ListButtonModifier())
-                } else {
-                    Text("Pick Company")
-                        .modifier(ListButtonModifier())
-                }
-                
+private extension SettingsView {
+    var headerCard: some View {
+        HStack(alignment: .center, spacing: 14) {
+            avatar
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayName)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Text(companyName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
-            Rectangle()
-                .frame(height: 1)
-            HStack{
-                Button(action: {
-                    showRedeemInviteCode.toggle()
-                }, label: {
-                    Text("Redeem Invite Code")
-                        .modifier(ListButtonModifier())
-                })
-                .sheet(isPresented: $showRedeemInviteCode, content: {
-                    RedeemInviteCode(dataService: dataService)
-                })
-                Spacer()
-            }
-            Rectangle()
-                .frame(height: 1)
+
+            Spacer(minLength: 0)
         }
-    }
-    var settings: some View {
-        VStack{
-            HStack{
-                Text("Settings")
-                    .fontDesign(.monospaced)
-                Spacer()
-//                if UIDevice.isIPhone {
-//                    NavigationLink(value: Route.settings(
-//                        dataService: dataService
-//                    ),label: {
-//                        HStack{
-//                            Text("See More")
-//                            Image(systemName: "chevron.right")
-//                        }
-//                        .padding(3)
-//                    })
-//                } else {
-//                    Button(action: {
-//                        masterDataManager.selectedCategory = .settings
-//                    }, label: {
-//                        
-//                        HStack{
-//                            Text("See More")
-//                            Image(systemName: "chevron.right")
-//                        }
-//                        .padding(3)
-//                    })
-//                }
-//                
-            }
-            .foregroundColor(Color.basicFontText)
-            if UIDevice.isIPhone {
-                ScrollView(showsIndicators: false){
-                    NavigationLink(value: Route.taskGroups(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Spacer()
-                            Text("Task Groups")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                        
-                    })
-                    NavigationLink(value: Route.readingsAndDosages(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Spacer()
-                            Text("Readings And Dosages")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                        
-                    })
-                    
-                    NavigationLink(value: Route.databaseItems(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Spacer()
-                            Text("Data Base")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                        
-                    })
-                    
-                    NavigationLink(value: Route.jobTemplates(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Spacer()
-                            Text("Jobs Templates")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                    })
-                    
-                    NavigationLink(value: Route.reports(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Spacer()
-                            Text("Reports")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                    })
-                    NavigationLink(value: Route.userRoles(
-                        dataService: dataService
-                    ),label: {
-                        HStack{
-                            Spacer()
-                            Text("User Roles")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                    })
-                }
-            } else {
-                
-                //Mac List
-                ScrollView(showsIndicators: false){
-                    Button(action: {
-                        masterDataManager.selectedCategory = .taskGroups
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("Task Groups")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                    })
-                    Button(action: {
-                        masterDataManager.selectedCategory = .readingsAndDosages
-                        
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("Readings And Dosages")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                    })
-                    Button(action: {
-                        masterDataManager.selectedCategory = .databaseItems
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("Data Base")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                    })
-                    Button(action: {
-                        masterDataManager.selectedCategory = .jobTemplates
-                        
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("Jobs Templates")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                        
-                    })
-                    Button(action: {
-                        masterDataManager.selectedCategory = .reports
-                        
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("Reports")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                        
-                    })
-                    Button(action: {
-                        masterDataManager.selectedCategory = .userRoles
-                    }, label: {
-                        HStack{
-                            Spacer()
-                            Text("User Roles")
-                            Spacer()
-                        }
-                        .modifier(HeaderModifier())
-                    })
-                }
-            }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         }
-        .foregroundColor(Color.white)
     }
 
+    var avatar: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.accentColor.opacity(0.14))
+                .frame(width: 56, height: 56)
+
+            Text(initials)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+        }
+        .accessibilityHidden(true)
+    }
+
+    var displayName: String {
+        guard let user = masterDataManager.user else {
+            return "Settings"
+        }
+
+        let name = "\(user.firstName) \(user.lastName)"
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return name.isEmpty ? user.email : name
+    }
+
+    var companyName: String {
+        if let company = masterDataManager.currentCompany {
+            return company.name
+        }
+
+        return "Tech Hub"
+    }
+
+    var initials: String {
+        guard let user = masterDataManager.user else {
+            return "DD"
+        }
+
+        let first = user.firstName.first.map(String.init) ?? ""
+        let last = user.lastName.first.map(String.init) ?? ""
+        let combined = "\(first)\(last)"
+
+        if combined.isEmpty {
+            return user.email.first.map { String($0).uppercased() } ?? "DD"
+        }
+
+        return combined.uppercased()
+    }
 }

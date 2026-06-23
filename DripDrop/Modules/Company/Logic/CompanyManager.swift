@@ -112,7 +112,7 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
         case paidUntil = "paidUntil"
         case status = "status"
         case stripeId = "stripeId"
-        case stripeConnectAccountId = "stripeConnectAccountId"
+        case stripeConnectAccountId = "stripeConnectedAccountId"
         case stripeConnectAccountStatus = "stripeConnectAccountStatus"
         case yelpURL = "yelpURL"
         case websiteURL = "websiteURL"

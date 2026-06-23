@@ -63,6 +63,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "Turn on real emails"
         case 6:
             return "Payroll"
+        case 7:
+            return "Marketing"
         case 8:
             return "Migration"
         case 9:
@@ -71,6 +73,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "Todo List"
         case 11:
             return "Alerts and Notifications"
+        case 14:
+            return "iOS Reimagined Main"
         default:
             return ""
         }
@@ -90,6 +94,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "When off, service agreement and invoice emails are routed to the internal test inbox instead of homeowners."
         case 6:
             return "Enables Payroll and Payroll Setup under company Finance."
+        case 7:
+            return "Enables Marketing tools such as leads and the public company page."
         case 8:
             return "Enables migration tooling for moving company CRM data into Drip Drop."
         case 9:
@@ -98,6 +104,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "Enables the web Todo List for team tasks, specific assignments, linked records, due dates, and reminders."
         case 11:
             return "Enables the shared alerts and notifications framework for dashboard alerts and future iOS notification delivery."
+        case 14:
+            return "Enables the reimagined iOS main dashboard with route calendar access, technician repair requests, and assigned admin jobs."
         default:
             return ""
         }
@@ -111,8 +119,11 @@ enum FeatureFlagKey: String, CaseIterable {
     case sales = "feature_flag_004"
     case realEmails = "feature_flag_005"
     case payroll = "feature_flag_006"
+    case marketing = "feature_flag_007"
+    case migration = "feature_flag_008"
     case todoList = "feature_flag_010"
     case alertsAndNotifications = "feature_flag_011"
+    case iosReimaginedMain = "feature_flag_014"
 }
 
 struct AlertNotification: Identifiable, Codable, Hashable {

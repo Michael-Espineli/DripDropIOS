@@ -16,11 +16,17 @@
 		</dict>
 		<dict/>
 	</array>
-	<key>NSCameraReactionEffectGesturesEnabledDefault</key>
-	<false/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
+		<key>NSCameraReactionEffectGesturesEnabledDefault</key>
+		<false/>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>DripDrop uses location while a route is active to track route progress and prompt technicians to start nearby service stops.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>DripDrop uses location while a route is active to track route progress and prompt technicians to start nearby service stops.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>DripDrop uses location while a route is active to track route progress and prompt technicians to start nearby service stops.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>location</string>
 	</array>
 </dict>
 </plist>

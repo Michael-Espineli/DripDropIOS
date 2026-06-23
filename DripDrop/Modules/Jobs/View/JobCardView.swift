@@ -224,6 +224,8 @@ extension JobCardView {
             color = Color.poolBlue
         case .paid:
             color = Color.green
+        case .comped:
+            color = Color.poolGreen
         case .expired:
             color = Color.poolRed
         }
@@ -233,7 +235,7 @@ extension JobCardView {
     func getForgroundColorBilling(status: JobBillingStatus) -> Color {
         var color: Color = Color.gray
         switch status {
-        case .draft, .estimate, .accepted, .invoiced, .expired:
+        case .draft, .estimate, .accepted, .invoiced, .comped, .expired:
             color = Color.poolWhite
         case .inProgress, .paid:
             color = Color.poolBlack

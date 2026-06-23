@@ -1068,7 +1068,9 @@ final class ServiceStopsViewModel:ObservableObject{
         
     }
     func finishServiceStop(companyId:String,serviceStop:ServiceStop) async throws{
+        let finishTime = Date()
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: serviceStop.id, operationStatus: .finished)
+        try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: serviceStop.id, endTime: finishTime)
         
     }
     func skipServiceStop(companyId:String,serviceStop:ServiceStop) async throws{

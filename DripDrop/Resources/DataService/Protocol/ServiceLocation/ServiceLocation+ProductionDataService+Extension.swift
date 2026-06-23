@@ -259,8 +259,12 @@ extension ProductionDataService {
     func serviceLocationDoc(companyId:String,serviceLocationId:String)-> DocumentReference{
         serviceLocationCollection(companyId: companyId).document(serviceLocationId)
     }    
-    func ServiceLocationImageRefrence(id:String)->StorageReference {
-        storage.child("serviceLocation").child(id)
+    func ServiceLocationImageRefrence(companyId:String,id:String)->StorageReference {
+        storage
+            .child("companies")
+            .child(companyId)
+            .child("serviceLocations")
+            .child(id)
     }
 
         //CREATE
@@ -285,7 +289,7 @@ extension ProductionDataService {
         meta.contentType = "image/jpeg"
         print("meta >> \(meta)")
         
-        let returnedMetaData = try await ServiceLocationImageRefrence(id: serviceLocationId).child(path)
+        let returnedMetaData = try await ServiceLocationImageRefrence(companyId: companyId, id: serviceLocationId).child(path)
             .putDataAsync(data,metadata: meta)
         print("returnedMetaData >> \(returnedMetaData)")
         

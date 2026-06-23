@@ -225,14 +225,15 @@ struct RepairRequestDetailView: View {
             Color.listColor.ignoresSafeArea()
             
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 14) {
                     header
                     formCard
                     jobList
                     currentPhotos
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
             }
         }
         .sheet(isPresented: $showEdit, onDismiss: {
@@ -283,19 +284,52 @@ struct RepairRequestDetailView: View {
 }
 extension RepairRequestDetailView {
     var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Repair Request")
-                .font(.title3.weight(.semibold))
-            Text("Customer: \(repairRequest.customerName) • Requester: \(repairRequest.requesterName)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Repair Request")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("Customer: \(repairRequest.customerName) • Requester: \(repairRequest.requesterName)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                statusChip
+            }
+
+            HStack(spacing: 8) {
+                contextChip(fullDate(date: repairRequest.date), systemImage: "calendar")
+
+                if !VM.jobIdList.isEmpty {
+                    contextChip("\(VM.jobIdList.count) Jobs", systemImage: "briefcase")
+                }
+
+                if !VM.photoUrls.isEmpty {
+                    contextChip("\(VM.photoUrls.count) Photos", systemImage: "photo")
+                }
+
+                Spacer(minLength: 0)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
+
     var formCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Status
-            LabeledContent("Status") {
+            sectionHeader("Request Details", systemImage: "person.text.rectangle")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Status", systemImage: "checklist")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
                 Picker("Status", selection: $VM.status) {
                     ForEach(RepairRequestStatus.allCases,id: \.self){ stat in
                         Text(stat.displayName).tag(stat)
@@ -303,42 +337,48 @@ extension RepairRequestDetailView {
                 }
                 .pickerStyle(.segmented)
             }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            // Date
-            LabeledContent("Request Date") {
-                Text(fullDate(date:repairRequest.date))
+            detailRow(
+                title: "Request Date",
+                value: fullDate(date:repairRequest.date),
+                systemImage: "calendar"
+            )
 
-            }
-
-            // Description
             VStack(alignment: .leading, spacing: 6) {
-                Text("Description")
+                Label("Description", systemImage: "text.alignleft")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                TextField("Description", text: $VM.description)
-                    .frame(minHeight: 120)
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.poolGray)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.black.opacity(0.06), lineWidth: 1)
-                    )
+
+                TextField("Description", text: $VM.description, axis: .vertical)
+                    .font(.subheadline)
+                    .lineLimit(5, reservesSpace: true)
+                    .padding(12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-            // Optional IDs
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
             Group {
-                LabeledContent("Customer") { Text(repairRequest.customerName).foregroundStyle(.secondary) }
+                detailRow(title: "Customer", value: repairRequest.customerName, systemImage: "person")
+
                 if let id = repairRequest.locationId {
-                    LabeledContent("Location ID") { Text(id).foregroundStyle(.secondary) }
+                    detailRow(title: "Location ID", value: id, systemImage: "mappin.and.ellipse")
                 }
+
                 if let id = repairRequest.bodyOfWaterId {
-                    LabeledContent("Body of Water ID") { Text(id).foregroundStyle(.secondary) }
+                    detailRow(title: "Body of Water ID", value: id, systemImage: "drop")
                 }
+
                 if let id = repairRequest.equipmentId {
-                    LabeledContent("Equipment ID") { Text(id).foregroundStyle(.secondary) }
-                    LabeledContent("Equipment Status") {
+                    detailRow(title: "Equipment ID", value: id, systemImage: "wrench.and.screwdriver")
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Equipment Status", systemImage: "gauge.with.dots.needle.bottom.50percent")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
                         Picker("Equipment Status", selection: $VM.equipmentStatus) {
                             ForEach(EquipmentStatus.operationalStatusCases, id: \.self) { status in
                                 Text(status.displayName).tag(status)
@@ -346,93 +386,203 @@ extension RepairRequestDetailView {
                         }
                         .pickerStyle(.menu)
                     }
+                    .padding(12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
             }
-
-            // Read-only context
         }
         .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
-        )
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     var jobIdListView: some View {
-        VStack{
-            HStack{
-                Text("Job List")
-                    .sheet(isPresented: $showAddJobToRepairRequest, onDismiss: {
-                        VM.updateRepairRequestJobList(companyId: masterDataManager.currentCompany?.id )
-                    }, content: {
-                        JobPickerScreen(dataService: dataService, job: $VM.job)
-                    })
-                Spacer()
+        HStack(spacing: 12) {
+            sectionHeader("Connected Jobs", systemImage: "briefcase")
+
+            Spacer()
+
+            Button(action: {
+                showJobConfirmation.toggle()
+            }, label: {
+                Label("Add Job", systemImage: "plus")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.blue, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            })
+            .buttonStyle(.plain)
+            .confirmationDialog("Select Type", isPresented: self.$showJobConfirmation, actions: {
                 Button(action: {
-                    showJobConfirmation.toggle()
+                    showCustomer.toggle()
                 }, label: {
-                    Text("Add Job")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    Text("Create Job")
                 })
-                .confirmationDialog("Select Type", isPresented: self.$showJobConfirmation, actions: {
-                    Button(action: {
-                        showCustomer.toggle()
-                    }, label: {
-                        Text("Create Job")
-                        
-                    })
-                    Button(action: {
-                        showAddJobToRepairRequest.toggle()
-                    }, label: {
-                        Text("Connect Existing Job")
-                    })
+                Button(action: {
+                    showAddJobToRepairRequest.toggle()
+                }, label: {
+                    Text("Connect Existing Job")
                 })
-                .sheet(
-                    isPresented: $showCustomer,
-                    onDismiss: {
-                        VM.onDissmissShowCustomer(companyId:masterDataManager.currentCompany?.id)
-                    },
-                    content: {
-                        AddNewJobFromRepairRequest(
-                            repairRequest:repairRequest,
-                            dataService: dataService,
-                            returnJobId: $VM.jobId
-                        )
-                })
-            }
+            })
+            .sheet(isPresented: $showAddJobToRepairRequest, onDismiss: {
+                VM.updateRepairRequestJobList(companyId: masterDataManager.currentCompany?.id )
+            }, content: {
+                JobPickerScreen(dataService: dataService, job: $VM.job)
+            })
+            .sheet(
+                isPresented: $showCustomer,
+                onDismiss: {
+                    VM.onDissmissShowCustomer(companyId:masterDataManager.currentCompany?.id)
+                },
+                content: {
+                    AddNewJobFromRepairRequest(
+                        repairRequest:repairRequest,
+                        dataService: dataService,
+                        returnJobId: $VM.jobId
+                    )
+            })
         }
     }
+
     var jobList: some View {
-        VStack{
+        VStack(alignment: .leading, spacing: 14) {
             jobIdListView
-            VStack{
-                ForEach(VM.jobIdList,id:\.self) { id in
-                    if let company = masterDataManager.currentCompany {
-                        if UIDevice.isIPhone {
+
+            if VM.jobIdList.isEmpty {
+                emptyState("No connected jobs.", systemImage: "briefcase")
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(VM.jobIdList,id:\.self) { id in
+                        if let company = masterDataManager.currentCompany, UIDevice.isIPhone {
                             JobNavigationLink(dataService: dataService, companyId: company.id, jobId: id)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            detailRow(title: "Job", value: id, systemImage: "briefcase")
                         }
                     }
                 }
             }
-            
         }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
+
     var currentPhotos: some View {
-        VStack{
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionHeader("Photos", systemImage: "camera")
+
+                Spacer()
+
+                Text("\(VM.photoUrls.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
             PhotoContentView(selectedImages: $VM.newPhotoUrls)
+
             if !VM.newPhotoUrls.isEmpty {
-                HStack{
+                HStack(spacing: 8) {
                     ProgressView()
                     Text("Loading...")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            DripDropStoredImageRow(images:VM.photoUrls)
+
+            if VM.photoUrls.isEmpty {
+                emptyState("No uploaded photos yet.", systemImage: "photo.on.rectangle.angled")
+            } else {
+                DripDropStoredImageRow(images:VM.photoUrls)
+            }
         }
-        
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var statusChip: some View {
+        let tint = statusTint(VM.status)
+
+        return Text(VM.status.displayName)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(tint.opacity(0.14), in: Capsule())
+    }
+
+    func sectionHeader(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+
+    func contextChip(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.thinMaterial, in: Capsule())
+    }
+
+    func detailRow(title: String, value: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(value.isEmpty ? "Not set" : value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(value.isEmpty ? .secondary : .primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    func emptyState(_ title: String, systemImage: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 22)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    func statusTint(_ status: RepairRequestStatus) -> Color {
+        switch status.selectableValue {
+        case .resolved:
+            return Color.poolGreen
+        case .convertedToJob:
+            return Color.gray
+        case .cancelled, .unresolved:
+            return Color.poolRed
+        case .inprogress, .legacyPending, .legacyPendingCapitalized:
+            return Color.yellow
+        }
     }
     var info: some View {
         ZStack{

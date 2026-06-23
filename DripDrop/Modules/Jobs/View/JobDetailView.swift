@@ -1978,8 +1978,9 @@ extension JobDetailView {
                             }
 
                             guard VM.billingStatus != .invoiced &&
-                                    VM.billingStatus != .paid else {
-                                VM.alertMessage = "This job is already invoiced or paid."
+                                    VM.billingStatus != .paid &&
+                                    VM.billingStatus != .comped else {
+                                VM.alertMessage = "This job is already invoiced, paid, or comped."
                                 VM.showAlert = true
                                 return
                             }
@@ -2699,6 +2700,8 @@ extension JobDetailView {
             return "doc.badge.plus"
         case .paid:
             return "dollarsign.circle"
+        case .comped:
+            return "giftcard"
         case .expired:
             return "xmark.circle"
         }
@@ -2765,6 +2768,9 @@ extension JobDetailView {
             }
 
         case .paid:
+            operationStatus = .finished
+
+        case .comped:
             operationStatus = .finished
 
         case .expired:
@@ -2979,6 +2985,8 @@ private struct JobBillingStatusSelectorSheet: View {
             return "doc.badge.plus"
         case .paid:
             return "dollarsign.circle"
+        case .comped:
+            return "giftcard"
         case .expired:
             return "xmark.circle"
         }
@@ -2998,6 +3006,8 @@ private struct JobBillingStatusSelectorSheet: View {
             return "The customer has been invoiced."
         case .paid:
             return "The customer has paid."
+        case .comped:
+            return "The company absorbed the cost; no customer invoice is expected."
         case .expired:
             return "The estimate or billing window has expired."
         }

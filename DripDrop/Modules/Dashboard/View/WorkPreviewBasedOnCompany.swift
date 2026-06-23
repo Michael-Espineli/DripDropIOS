@@ -48,7 +48,9 @@ struct WorkPreviewBasedOnCompany: View {
             startMilageView
                 .presentationDetents([.fraction(0.5), .fraction(0.6)])
         }
-        .sheet(isPresented: $mobileDailyVM.showEndMilage) {
+        .sheet(isPresented: $mobileDailyVM.showEndMilage, onDismiss: {
+            routePendingEnd = nil
+        }) {
             endMilageView
                 .presentationDetents([.fraction(0.5), .fraction(0.6), .large])
         }
@@ -104,6 +106,29 @@ struct WorkPreviewBasedOnCompany: View {
 
     private var displayedStartMileageForEnding: Double {
         routeBeingEnded?.startMilage ?? mobileDailyVM.startMilage
+    }
+
+    private var isEditingFinishedRouteEndMileage: Bool {
+        guard let route = routeBeingEnded else { return false }
+        return route.status == .finished && route.endTime != nil && route.endMilage != nil
+    }
+
+    private var endMileageSheetTitle: String {
+        isEditingFinishedRouteEndMileage ? "Edit End Mileage" : "End Mileage"
+    }
+
+    private var endMileageSheetMessage: String {
+        if isEditingFinishedRouteEndMileage {
+            return "Correct the ending mileage for this finished route."
+        }
+
+        return mobileDailyVM.selectedVehical.id.isEmpty
+        ? "Enter the ending mileage to finish the route. Vehicle selection is optional for routes that started without one."
+        : "Enter the ending mileage when the route is complete."
+    }
+
+    private var endMileageSubmitTitle: String {
+        isEditingFinishedRouteEndMileage ? "Save End Mileage" : "Submit End Mileage"
     }
 }
 
@@ -305,15 +330,7 @@ extension WorkPreviewBasedOnCompany {
 
     private func prepareToEndPreviousRoute(_ route: ActiveRoute) {
         routePendingEnd = route
-
-        if let endMilage = route.endMilage {
-            mobileDailyVM.inputEndMilage = String(endMilage)
-        } else if let startMilage = route.startMilage {
-            mobileDailyVM.inputEndMilage = String(startMilage)
-        } else {
-            mobileDailyVM.inputEndMilage = ""
-        }
-
+        prepareEndMileageInput(for: route)
         mobileDailyVM.showEndMilage = true
     }
     private var previousRoutesPlaceholderCard: some View {
@@ -923,18 +940,7 @@ extension WorkPreviewBasedOnCompany {
     private func routeMetricGrid(_ activeRoute: ActiveRoute) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if let startMilage = activeRoute.startMilage {
-                metricRow(
-                    title: "Mileage",
-                    value: mileageRangeText(
-                        start: startMilage,
-                        end: activeRoute.endMilage
-                    ),
-                    detail: mileageDifferenceText(
-                        start: startMilage,
-                        end: activeRoute.endMilage
-                    ),
-                    systemImage: "gauge.with.dots.needle.bottom.50percent"
-                )
+                mileageMetricRow(activeRoute, startMilage: startMilage)
             }
 
             if let startTime = activeRoute.startTime {
@@ -1008,6 +1014,61 @@ extension WorkPreviewBasedOnCompany {
             }
 
             Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder
+    private func mileageMetricRow(_ activeRoute: ActiveRoute, startMilage: Double) -> some View {
+        let value = mileageRangeText(start: startMilage, end: activeRoute.endMilage)
+        let detail = mileageDifferenceText(start: startMilage, end: activeRoute.endMilage)
+        let systemImage = "gauge.with.dots.needle.bottom.50percent"
+
+        if canEditEndMileage(for: activeRoute) {
+            Button {
+                beginEditingEndMileage(for: activeRoute)
+            } label: {
+                metricRow(
+                    title: "Mileage",
+                    value: value,
+                    detail: detail,
+                    systemImage: systemImage
+                )
+                .overlay(alignment: .topTrailing) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .accessibilityHidden(true)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit end mileage")
+        } else {
+            metricRow(
+                title: "Mileage",
+                value: value,
+                detail: detail,
+                systemImage: systemImage
+            )
+        }
+    }
+
+    private func canEditEndMileage(for route: ActiveRoute) -> Bool {
+        route.status == .finished && route.endMilage != nil
+    }
+
+    private func beginEditingEndMileage(for route: ActiveRoute) {
+        routePendingEnd = route
+        prepareEndMileageInput(for: route)
+        mobileDailyVM.showEndMilage = true
+    }
+
+    private func prepareEndMileageInput(for route: ActiveRoute) {
+        if let endMilage = route.endMilage {
+            mobileDailyVM.inputEndMilage = String(endMilage)
+        } else if let startMilage = route.startMilage {
+            mobileDailyVM.inputEndMilage = String(startMilage)
+        } else {
+            mobileDailyVM.inputEndMilage = ""
         }
     }
 
@@ -1120,10 +1181,8 @@ extension WorkPreviewBasedOnCompany {
                 
                 VStack(spacing: 14) {
                     mileageHeaderCard(
-                        title: "End Mileage",
-                        message: mobileDailyVM.selectedVehical.id.isEmpty
-                        ? "Enter the ending mileage to finish the route. Vehicle selection is optional for routes that started without one."
-                        : "Enter the ending mileage when the route is complete.",
+                        title: endMileageSheetTitle,
+                        message: endMileageSheetMessage,
                         systemImage: "flag.checkered"
                     )
                     
@@ -1144,7 +1203,7 @@ extension WorkPreviewBasedOnCompany {
                 }
                 .padding(14)
             }
-            .navigationTitle("End Mileage")
+            .navigationTitle(endMileageSheetTitle)
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -1279,7 +1338,7 @@ extension WorkPreviewBasedOnCompany {
             Button {
                 submitEndMileageAndStopRoute()
             } label: {
-                Label("Submit End Mileage", systemImage: "checkmark.circle")
+                Label(endMileageSubmitTitle, systemImage: "checkmark.circle")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -1364,6 +1423,7 @@ extension WorkPreviewBasedOnCompany {
     private func submitEndMileageAndStopRoute() {
         guard canSubmitEndMileage else { return }
         guard let route = routeBeingEnded else { return }
+        let shouldStopRoute = route.status != .finished || route.endTime == nil
 
         mobileDailyVM.updateRouteEndtMilage(
             companyId: masterDataManager.currentCompany?.id,
@@ -1371,12 +1431,14 @@ extension WorkPreviewBasedOnCompany {
             syncSelectedVehicle: route.id == mobileDailyVM.activeRoute?.id
         )
 
-        mobileDailyVM.stopActiveRoute(
-            companyId: masterDataManager.currentCompany?.id,
-            companyName: masterDataManager.currentCompany?.name,
-            user: masterDataManager.user,
-            route: route
-        )
+        if shouldStopRoute {
+            mobileDailyVM.stopActiveRoute(
+                companyId: masterDataManager.currentCompany?.id,
+                companyName: masterDataManager.currentCompany?.name,
+                user: masterDataManager.user,
+                route: route
+            )
+        }
 
         routePendingEnd = nil
         mobileDailyVM.showEndMilage = false

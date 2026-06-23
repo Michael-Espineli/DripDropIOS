@@ -8,214 +8,73 @@
 import SwiftUI
 
 struct SignUpView: View {
-    init( dataService:any ProductionDataServiceProtocol,services:[String],serviceZipCodes:[String]){
+    init(dataService:any ProductionDataServiceProtocol, services:[String], serviceZipCodes:[String]) {
+        self.authDataService = dataService
         _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
         _serviceZipCodes = State(wrappedValue: serviceZipCodes)
         _services = State(wrappedValue: services)
     }
-    
+
+    private let authDataService:any ProductionDataServiceProtocol
+
     @EnvironmentObject var masterDataManager : MasterDataManager
-    @EnvironmentObject var dataService : ProductionDataService
     @StateObject private var VM : AuthenticationViewModel
-    
-    @State var services:[String] = []
-    @State var serviceZipCodes:[String] = []
-    
-    @State var email:String = ""
-    @State var password:String = ""
-    @State var confirmPassword:String = ""
-    @State var passwordDisabled:Bool = true
-    
-    @State var firstName:String = ""
-    @State var lastName:String = ""
-    @State var company:String = ""
-    @State var position:String = ""
-    @State var showingAlert:Bool = false
-    @State var alertMessage:String = ""
-    
-    @State var isLoading:Bool = false
-    
-    @State var agreeToTerms:Bool = false
-    @State var agreeToPrivacyPolicy:Bool = false
-    
+
+    @State private var services:[String] = []
+    @State private var serviceZipCodes:[String] = []
+
+    @State private var email:String = ""
+    @State private var password:String = ""
+    @State private var confirmPassword:String = ""
+
+    @State private var firstName:String = ""
+    @State private var lastName:String = ""
+    @State private var company:String = ""
+    @State private var showingAlert:Bool = false
+    @State private var alertMessage:String = ""
+
+    @State private var isLoading:Bool = false
+
+    @State private var agreeToTerms:Bool = false
+    @State private var agreeToPrivacyPolicy:Bool = false
+
     @FocusState private var focusedField: SignUpFormLabels?
-    func submit(){
-        if password == confirmPassword {
-            Task{
-                do{
-                    isLoading = true
-                    if !agreeToTerms {
-                        
-                        alertMessage = "Please Agree to Terms and Conditions"
-                        print(alertMessage)
-                        showingAlert = true
-                        isLoading = false
-                        return
-                        
-                    }
-                    if !agreeToPrivacyPolicy{
-                        
-                        alertMessage = "Please Agree to Privacy Policy"
-                        print(alertMessage)
-                        showingAlert = true
-                        isLoading = false
-                        return
-                        
-                    }
-                    //Verifies all needed information is received
-                    if email == "" {
-                        alertMessage = "Email Field Empty"
-                        print(alertMessage)
-                        showingAlert = true
-                        isLoading = false
-                        return
-                    }
-                    if password == "" {
-                        alertMessage = "Password Field Empty"
-                        print(alertMessage)
-                        showingAlert = true
-                        isLoading = false
-                        return
-                    }
-                    if firstName == "" {
-                        alertMessage = "First Name Field Empty"
-                        print(alertMessage)
-                        showingAlert = true
-                        isLoading = false
-                        return
-                    }
-                    if lastName == "" {
-                        alertMessage = "Last Name Field Empty"
-                        print(alertMessage)
-                        showingAlert = true
-                        isLoading = false
-                        return
-                    }
-                    if company == "" {
-                        alertMessage = "Company Field Empty"
-                        print(alertMessage)
-                        showingAlert = true
-                        isLoading = false
-                        return
-                    }
-                    //Creates new company
-                    try await VM.signUpWithEmailAndCreateCompany(email: email, password: password, firstName: firstName, lastName: lastName, company: company, position: "Owner", serviceZipCodes: serviceZipCodes, services: services)
-                    isLoading = false
-                    
-                    masterDataManager.showSignInView = false
-                } catch {
-                    
-                    isLoading = false
-                    print("Sign Up View Error")
-                    print(error)
-                }
-            }
-        } else {
-            alertMessage = "Passwords Do Not Match"
-            print(alertMessage)
-            showingAlert = true
-        }
-    }
+
     var body: some View {
-        ZStack{
-            Color.listColor.ignoresSafeArea()
-            
-            if UIDevice.isIPhone {
-                ScrollView{
-                    form
-                        .padding(.horizontal, 8)
+        ZStack {
+            Color(.systemGray6).ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 28) {
+                    header
+                    signUpCard
                 }
-            } else {
-                VStack{
-                    form
-                        .padding(.horizontal, 32)
-                    Spacer()
-                }
+                .frame(maxWidth: 460)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+                .frame(maxWidth: .infinity)
             }
+
             if isLoading {
-                VStack{
-                    Spacer()
-                    GenericLoadingView()
-                    Spacer()
-                }
-                
-            }
-            
-        }
-        .fontDesign(.monospaced)
-        .navigationTitle("Welcome To Drip Drop")
-        .alert(isPresented:$showingAlert) {
-            Alert(
-                title: Text("Alert"),
-                message: Text("\(alertMessage)"),
-                primaryButton: .destructive(Text("Delete")) {
-                    print("Deleting...")
-                },
-                secondaryButton: .cancel()
-            )
-        }
-        .onChange(of: password, perform: { word in
-            print("")
-            print("Change in password")
-            
-            if word != "" {
-                passwordDisabled = false
+                Color.black.opacity(0.12).ignoresSafeArea()
 
-                if word.contains("!") || word.contains("#") || word.contains("@") || word.contains("$") || word.contains("^") || word.contains("*") || word.contains("(") || word.contains(")") || word.contains("+") || word.contains("=") {
-                    print("Contains Special Characters")
-                    passwordDisabled = false
-                } else {
-                    print("Does Not Contains Special Characters")
-                    passwordDisabled = true
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Creating Account...")
+                        .font(.subheadline)
+                        .foregroundStyle(Color(.secondaryLabel))
                 }
-                if word.count >= 8 {
-                    print("Greater than 8")
-                    passwordDisabled = false
-                } else {
-                    print("Less than 8")
-                    passwordDisabled = true
-                }
-                if word == confirmPassword {
-                    print("Equals confirmed Password")
-                    
-                    passwordDisabled = false
-                } else {
-                    print("Does not equal confirmed Password")
-                    passwordDisabled = true
-                }
+                .padding(24)
+                .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: Color.black.opacity(0.14), radius: 18, x: 0, y: 10)
             }
-        })
-        .onChange(of: confirmPassword, perform: { word in
-            print("")
-            print("Change in Confirm password")
-            
-            if word != "" {
-                passwordDisabled = false
-
-                if word.contains("!") || word.contains("#") || word.contains("@") || word.contains("$") || word.contains("^") || word.contains("*") || word.contains("(") || word.contains(")") || word.contains("+") || word.contains("=") {
-                    print("Contains Special Charecters")
-                    passwordDisabled = false
-                } else {
-                    print("Does Not Contains Special Charecters")
-                    passwordDisabled = true
-                }
-                if word.count >= 8 {
-                    print("Greater than 8")
-                    passwordDisabled = false
-                } else {
-                    print("Less than 8")
-                    passwordDisabled = true
-                }
-                if word == password {
-                    print("Equals confirmed Password")
-                    
-                    passwordDisabled = false
-                } else {
-                    print("Does not equal confirmed Password")
-                    passwordDisabled = true
-                }
-            }
-        })
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Alert", isPresented:$showingAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
         .onSubmit {
             switch focusedField {
             case .firstName:
@@ -231,183 +90,373 @@ struct SignUpView: View {
             case .confirmPassword:
                 submit()
             case .none:
-                focusedField = .lastName
+                focusedField = .firstName
             }
         }
     }
 }
-extension SignUpView {
-    var form: some View {
-        VStack{
-            VStack{
-                VStack{
-                    HStack{
-                        Text("First Name:")
-                            //                                .font(.footnote)
-                        Spacer()
-                    }
-                    TextField(
-                        "First Name",
-                        text: $firstName
-                    )
-                    .modifier(PlainTextFieldModifier())
-                    .focused($focusedField, equals: .firstName)
-                    .submitLabel(.next)
-                    HStack{
-                        Text("Last Name:")
-                            //                                .font(.footnote)
-                        Spacer()
-                    }
-                    TextField(
-                        "Last Name",
-                        text: $lastName
-                    )
-                    .modifier(PlainTextFieldModifier())
-                    .focused($focusedField, equals: .lastName)
-                    .submitLabel(.next)
-                    HStack{
-                        Text("Company Name:")
-                            //                                .font(.footnote)
-                        Spacer()
-                    }
-                    TextField(
-                        "Company",
-                        text: $company
-                    )
-                    .modifier(PlainTextFieldModifier())
-                    .focused($focusedField, equals: .companyName)
-                    .submitLabel(.next)
-                    
-                    VStack{
-                        HStack{
-                            Text("Email:")
-                                //                                    .font(.footnote)
-                            Spacer()
-                        }
-                        TextField(
-                            "Email",
-                            text: $email
-                        )
-                        .modifier(PlainTextFieldModifier())
-                        .focused($focusedField, equals: .email)
-                        .submitLabel(.next)
-                        HStack{
-                            Text("Password:")
-                                //                                    .font(.footnote)
-                            Spacer()
-                        }
-                        SecureField(
-                            "Password",
-                            text: $password
-                        )
-                        .modifier(PlainTextFieldModifier())
-                        .focused($focusedField, equals: .password)
-                        .submitLabel(.next)
-                        
-                    }
-                    HStack{
-                        Text("Confirm Password:")
-                            //                                .font(.footnote)
-                        Spacer()
-                    }
-                    SecureField(
-                        "Confirm Password",
-                        text: $confirmPassword
-                    )
-                    .modifier(PlainTextFieldModifier())
-                    .focused($focusedField, equals: .confirmPassword)
-                    .submitLabel(.done)
-                    
-                }
-                VStack(alignment: .leading){
-                    HStack{
-                        Button(action: {
-                            agreeToPrivacyPolicy.toggle()
-                        }, label: {
-                            if agreeToPrivacyPolicy {
-                                Image(systemName: "checkmark.square.fill")
-                            } else {
-                                Image(systemName: "square")
-                            }
-                        })
-                        if let url = URL(string: "https://dripdrop-poolapp.com/PrivacyPolicy"){
-                            Link("I agree to the Drip Drop Privacy Policy", destination: url)
-                                .font(.caption)
-                        }
-                    }
-                    HStack{
-                        Button(action: {
-                            agreeToTerms.toggle()
-                        }, label: {
-                            if agreeToTerms {
-                                Image(systemName: "checkmark.square.fill")
-                            } else {
-                                Image(systemName: "square")
-                            }
-                        })
-                        if let url = URL(string: "https://dripdrop-poolapp.com/TermsAndConditions"){
-                            Link("I agree to the Drop Drop Terms", destination: url)
-                                .font(.caption)
-                        }
-                    }
-                }
-                .padding(.trailing,8)
-                Button{
-                    submit()
-                } label: {
-                    HStack{
-                        Spacer()
-                        Text("Submit")
-                        Spacer()
-                    }
-                    .modifier(SubmitButtonModifier())
-                }
-                .disabled(passwordDisabled || !agreeToTerms || !agreeToPrivacyPolicy)
-                .opacity(passwordDisabled || !agreeToTerms || !agreeToPrivacyPolicy ? 0.6 : 1)
-            }
-            .padding(16)
-            .background(Color.darkGray.opacity(0.5))
-            .cornerRadius(8)
-            
-            VStack(alignment: .leading){
-                if password != "" {
-                    if password.contains("!") || password.contains("#") || password.contains("@") || password.contains("$") || password.contains("^") || password.contains("*") || password.contains("(") || password.contains(")") || password.contains("+") || password.contains("=") {
-                        HStack{
-                            Text("Contains Special Characters")
-                            Image(systemName: "checkmark.circle.fill")
-                        }
-                        .foregroundColor(Color.poolGreen)
-                    } else {
-                        Text("Must Contain Special Characters")
-                            .foregroundColor(Color.red)
-                    }
-                    if password.count >= 8 {
-                        HStack{
-                            Text("Must Be Longer than 8 Characters")
-                            Image(systemName: "checkmark.circle.fill")
-                        }
-                        .foregroundColor(Color.poolGreen)
-                    } else {
-                        Text("Must Be Longer than 8 Characters")
-                            .foregroundColor(Color.red)
-                    }
-                    if password == confirmPassword {
-                        HStack{
-                            Text("Passwords Match")
-                            Image(systemName: "checkmark.circle.fill")
-                        }
-                        .foregroundColor(Color.poolGreen)
-                    } else {
-                        Text("Passwords Must Match")
-                            .foregroundColor(Color.red)
-                    }
-                } else{
-                    Text("Password Must Be Longer than 8 Characters")
-                    Text("Password Must Contain Special Characters")
-                }
-            }
-            
-                .font(.caption)
+
+private extension SignUpView {
+    var header: some View {
+        HStack {
+            Text("Drip Drop")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundStyle(Color.blue)
+            Spacer()
         }
+    }
+
+    var signUpCard: some View {
+        VStack(spacing: 24) {
+            VStack(spacing: 8) {
+                Text("Create Your Company Account")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Color(.label))
+                    .multilineTextAlignment(.center)
+
+                Text("Account Information")
+                    .font(.subheadline)
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 16) {
+                nameFields
+
+                signUpTextField(
+                    placeholder: "Company Name",
+                    text: $company,
+                    focusedValue: .companyName,
+                    submitLabel: .next
+                )
+
+                signUpTextField(
+                    placeholder: "Email address",
+                    text: $email,
+                    focusedValue: .email,
+                    keyboardType: .emailAddress,
+                    textContentType: .emailAddress,
+                    submitLabel: .next
+                )
+
+                signUpSecureField(
+                    placeholder: "Password (8+ characters)",
+                    text: $password,
+                    focusedValue: .password,
+                    submitLabel: .next
+                )
+
+                signUpSecureField(
+                    placeholder: "Confirm Password",
+                    text: $confirmPassword,
+                    focusedValue: .confirmPassword,
+                    submitLabel: .done
+                )
+            }
+
+            passwordRequirements
+            agreements
+
+            Button {
+                submit()
+            } label: {
+                Text(isLoading ? "Creating Account..." : "Complete Sign Up")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(Color.white)
+                    .background(Color.blue, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .disabled(!canSubmit)
+            .opacity(canSubmit ? 1 : 0.6)
+
+            VStack(spacing: 12) {
+                VStack(spacing: 4) {
+                    Text("Already have an account?")
+                        .foregroundStyle(Color(.secondaryLabel))
+
+                    NavigationLink {
+                        SignInView(dataService: authDataService)
+                    } label: {
+                        Text("Sign In")
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.blue)
+                    }
+                }
+
+                VStack(spacing: 4) {
+                    Text("Have an invite code?")
+                        .foregroundStyle(Color(.secondaryLabel))
+
+                    NavigationLink {
+                        RedeemInviteCode(dataService:authDataService)
+                    } label: {
+                        Text("Redeem it here")
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.blue)
+                    }
+                }
+            }
+            .font(.footnote)
+            .multilineTextAlignment(.center)
+        }
+        .padding(28)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 10)
+    }
+
+    @ViewBuilder
+    var nameFields: some View {
+        if UIDevice.isIPhone {
+            VStack(spacing: 16) {
+                signUpTextField(
+                    placeholder: "First Name",
+                    text: $firstName,
+                    focusedValue: .firstName,
+                    textContentType: .givenName,
+                    submitLabel: .next
+                )
+
+                signUpTextField(
+                    placeholder: "Last Name",
+                    text: $lastName,
+                    focusedValue: .lastName,
+                    textContentType: .familyName,
+                    submitLabel: .next
+                )
+            }
+        } else {
+            HStack(spacing: 14) {
+                signUpTextField(
+                    placeholder: "First Name",
+                    text: $firstName,
+                    focusedValue: .firstName,
+                    textContentType: .givenName,
+                    submitLabel: .next
+                )
+
+                signUpTextField(
+                    placeholder: "Last Name",
+                    text: $lastName,
+                    focusedValue: .lastName,
+                    textContentType: .familyName,
+                    submitLabel: .next
+                )
+            }
+        }
+    }
+
+    var agreements: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            agreementRow(
+                isSelected: $agreeToPrivacyPolicy,
+                title: "I agree to the Drip Drop Privacy Policy",
+                url: "https://dripdrop-poolapp.com/PrivacyPolicy"
+            )
+
+            agreementRow(
+                isSelected: $agreeToTerms,
+                title: "I agree to the Drip Drop Terms",
+                url: "https://dripdrop-poolapp.com/TermsAndConditions"
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    var passwordRequirements: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            requirementRow("At least 8 characters", isMet: passwordIsLongEnough)
+            requirementRow("Contains a special character", isMet: passwordContainsSpecialCharacter)
+            requirementRow("Passwords match", isMet: passwordsMatch)
+        }
+        .font(.caption)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    func signUpTextField(
+        placeholder:String,
+        text:Binding<String>,
+        focusedValue:SignUpFormLabels,
+        keyboardType:UIKeyboardType = .default,
+        textContentType:UITextContentType? = nil,
+        submitLabel:SubmitLabel
+    ) -> some View {
+        TextField(placeholder, text: text)
+            .keyboardType(keyboardType)
+            .textContentType(textContentType)
+            .textInputAutocapitalization(keyboardType == .emailAddress ? .never : .words)
+            .autocorrectionDisabled(keyboardType == .emailAddress)
+            .submitLabel(submitLabel)
+            .focused($focusedField, equals: focusedValue)
+            .modifier(CompanySignUpInputModifier())
+    }
+
+    func signUpSecureField(
+        placeholder:String,
+        text:Binding<String>,
+        focusedValue:SignUpFormLabels,
+        submitLabel:SubmitLabel
+    ) -> some View {
+        SecureField(placeholder, text: text)
+            .textContentType(.password)
+            .submitLabel(submitLabel)
+            .focused($focusedField, equals: focusedValue)
+            .modifier(CompanySignUpInputModifier())
+    }
+
+    func agreementRow(isSelected:Binding<Bool>, title:String, url:String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Button {
+                isSelected.wrappedValue.toggle()
+            } label: {
+                Image(systemName: isSelected.wrappedValue ? "checkmark.square.fill" : "square")
+                    .font(.body)
+                    .foregroundStyle(isSelected.wrappedValue ? Color.blue : Color(.secondaryLabel))
+            }
+            .buttonStyle(.plain)
+
+            if let url = URL(string: url) {
+                Link(title, destination: url)
+                    .font(.caption)
+                    .foregroundStyle(Color.blue)
+            }
+        }
+    }
+
+    func requirementRow(_ title:String, isMet:Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: isMet ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(isMet ? Color.green : Color(.tertiaryLabel))
+            Text(title)
+                .foregroundStyle(isMet ? Color(.label) : Color(.secondaryLabel))
+            Spacer()
+        }
+    }
+
+    var passwordIsLongEnough: Bool {
+        password.count >= 8
+    }
+
+    var passwordContainsSpecialCharacter: Bool {
+        password.rangeOfCharacter(from: CharacterSet(charactersIn: "!#@$^*()+=")) != nil
+    }
+
+    var passwordsMatch: Bool {
+        !password.isEmpty && password == confirmPassword
+    }
+
+    var canSubmit: Bool {
+        passwordIsLongEnough &&
+        passwordContainsSpecialCharacter &&
+        passwordsMatch &&
+        agreeToTerms &&
+        agreeToPrivacyPolicy &&
+        !isLoading
+    }
+
+    func submit() {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFirstName = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedLastName = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCompany = company.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmedEmail.isEmpty {
+            showAlert("Please enter your email address.")
+            return
+        }
+
+        if password.isEmpty {
+            showAlert("Please enter a password.")
+            return
+        }
+
+        if !passwordIsLongEnough {
+            showAlert("Password must be at least 8 characters long.")
+            return
+        }
+
+        if !passwordContainsSpecialCharacter {
+            showAlert("Password must contain a special character.")
+            return
+        }
+
+        if password != confirmPassword {
+            showAlert("Passwords do not match.")
+            return
+        }
+
+        if trimmedFirstName.isEmpty {
+            showAlert("Please enter your first name.")
+            return
+        }
+
+        if trimmedLastName.isEmpty {
+            showAlert("Please enter your last name.")
+            return
+        }
+
+        if trimmedCompany.isEmpty {
+            showAlert("Please enter your company name.")
+            return
+        }
+
+        if !agreeToTerms {
+            showAlert("Please agree to the Terms and Conditions.")
+            return
+        }
+
+        if !agreeToPrivacyPolicy {
+            showAlert("Please agree to the Privacy Policy.")
+            return
+        }
+
+        Task {
+            do {
+                isLoading = true
+                defer { isLoading = false }
+
+                try await VM.signUpWithEmailAndCreateCompany(
+                    email: trimmedEmail,
+                    password: password,
+                    firstName: trimmedFirstName,
+                    lastName: trimmedLastName,
+                    company: trimmedCompany,
+                    position: "Owner",
+                    serviceZipCodes: serviceZipCodes,
+                    services: services
+                )
+
+                masterDataManager.showSignInView = false
+            } catch {
+                print("Sign Up View Error")
+                print(error)
+                showAlert("Unable to create account. Please try again.")
+            }
+        }
+    }
+
+    func showAlert(_ message:String) {
+        alertMessage = message
+        showingAlert = true
+    }
+}
+
+private struct CompanySignUpInputModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.body)
+            .foregroundStyle(Color(.label))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 13)
+            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color(.separator), lineWidth: 1)
+            )
     }
 }

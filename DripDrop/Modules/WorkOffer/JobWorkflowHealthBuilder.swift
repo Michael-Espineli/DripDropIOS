@@ -415,14 +415,17 @@ enum JobWorkflowHealthBuilder {
     ) {
         let finishedStops = serviceStops.filter { $0.operationStatus == .finished }
 
-        if job.operationStatus == .finished && job.billingStatus != .invoiced && job.billingStatus != .paid {
+        if job.operationStatus == .finished &&
+            job.billingStatus != .invoiced &&
+            job.billingStatus != .paid &&
+            job.billingStatus != .comped {
             issues.append(
                 JobWorkflowHealthIssue(
                     id: "billing_job_finished_not_invoiced",
                     severity: .warning,
                     category: .billing,
                     title: "Job finished but not invoiced",
-                    message: "This job is marked finished but has not been invoiced or paid.",
+                    message: "This job is marked finished but has not been invoiced, paid, or comped.",
                     actionTitle: "Go To Billing",
                     destinationTab: "Billing"
                 )

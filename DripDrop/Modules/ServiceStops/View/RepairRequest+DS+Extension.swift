@@ -40,8 +40,8 @@ extension ProductionDataService {
     func repairRequestDocument(companyId:String,repairRequestId:String)-> DocumentReference{
         repairRequestCollection(companyId: companyId).document(repairRequestId)
     }
-    func RepairRequestImageRefrence(id:String)->StorageReference {
-        storage.child("repair-request").child(id)
+    func RepairRequestImageRefrence(companyId:String,id:String)->StorageReference {
+        storage.child("companies").child(companyId).child("repairRequests").child(id)
     }
         //Create
     func uploadRepairRequest(companyId:String,repairRequest:RepairRequest) async throws {
@@ -127,7 +127,7 @@ extension ProductionDataService {
         meta.contentType = "image/jpeg"
         print("meta >> \(meta)")
         
-        let returnedMetaData = try await RepairRequestImageRefrence(id: requestId).child(path)
+        let returnedMetaData = try await RepairRequestImageRefrence(companyId: companyId, id: requestId).child(path)
             .putDataAsync(data,metadata: meta)
         print("returnedMetaData >> \(returnedMetaData)")
         

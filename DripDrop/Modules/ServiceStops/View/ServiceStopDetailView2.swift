@@ -60,6 +60,12 @@ struct ServiceStopDetailView2: View {
     private var serviceStop: ServiceStop? {
         vm.serviceStopList.first { $0.id == serviceStopId }
     }
+
+    private var currentContinuationGate: ServiceStopContinuationGate? {
+        guard let serviceStop else { return nil }
+        return continuationGate(for: serviceStop)
+    }
+
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
@@ -245,18 +251,18 @@ private extension ServiceStopDetailView2 {
         case .job:
             infoTab
             taskTab
+            jobCommentsTab(for: stop)
             equipmentTab(for: stop)
             finishTab
         case .jobEstimate:
             infoTab
             taskTab
+            jobCommentsTab(for: stop)
             equipmentTab(for: stop)
             finishTab
         case .serviceAgreementEstimate:
             infoTab
             serviceAgreementSurveyTab(for: stop)
-            waterTab
-            equipmentTab(for: stop)
             finishTab
         case .customerRelationship:
             infoTab
@@ -281,6 +287,15 @@ private extension ServiceStopDetailView2 {
                 Text("Tasks")
             }
             .tag("Tasks")
+    }
+
+    func jobCommentsTab(for stop: ServiceStop) -> some View {
+        ServiceStopJobCommentsView(dataService: dataService, serviceStop: stop)
+            .tabItem {
+                Image(systemName: "text.bubble")
+                Text("Comments")
+            }
+            .tag("Comments")
     }
 
     var waterTab: some View {
@@ -323,6 +338,313 @@ private extension ServiceStopDetailView2 {
                 Text("Finish")
             }
             .tag("Finish")
+    }
+}
+
+private struct ServiceStopJobCommentsView: View {
+    let dataService: any ProductionDataServiceProtocol
+    let serviceStop: ServiceStop
+
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    @State private var comments: [JobComment] = []
+    @State private var newComment: String = ""
+    @State private var isLoading: Bool = false
+    @State private var isAddingComment: Bool = false
+    @State private var message: String? = nil
+
+    private var jobId: String {
+        serviceStop.jobId.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var openComments: Int {
+        comments.filter { !$0.resolved }.count
+    }
+
+    private var currentUserDisplayName: String {
+        let first = masterDataManager.user?.firstName ?? ""
+        let last = masterDataManager.user?.lastName ?? ""
+        let name = "\(first) \(last)".trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return name.isEmpty ? "Technician" : name
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            if jobId.isEmpty {
+                ContentUnavailableView(
+                    "No Linked Job",
+                    systemImage: "briefcase",
+                    description: Text("This service stop is not attached to a job.")
+                )
+                .padding()
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        header
+                        composer
+                        commentList
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .task(id: jobId) {
+            await loadComments()
+        }
+        .refreshable {
+            await loadComments()
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "text.bubble.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 42, height: 42)
+                    .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Job Comments")
+                        .font(.title3.weight(.semibold))
+
+                    Text(serviceStop.jobName?.isEmpty == false ? serviceStop.jobName ?? serviceStop.type : serviceStop.type)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    Task { await loadComments() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Refresh job comments")
+            }
+
+            HStack(spacing: 8) {
+                commentMetric("\(comments.count)", title: "Total", systemImage: "text.bubble")
+                commentMetric("\(openComments)", title: "Open", systemImage: "exclamationmark.circle")
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var composer: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Add Field Note", systemImage: "square.and.pencil")
+                .font(.headline.weight(.semibold))
+
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $newComment)
+                    .font(.subheadline)
+                    .frame(minHeight: 112)
+                    .padding(8)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                    }
+
+                if newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("Add a job note for the admin, office, or next technician...")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 16)
+                        .allowsHitTesting(false)
+                }
+            }
+
+            HStack(spacing: 10) {
+                if let message {
+                    Text(message)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(message == "Comment added" ? Color.poolGreen : Color.poolRed)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Button {
+                    Task { await addComment() }
+                } label: {
+                    if isAddingComment {
+                        ProgressView()
+                            .frame(width: 20, height: 20)
+                    } else {
+                        Label("Add Comment", systemImage: "plus.message.fill")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isAddingComment || newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var commentList: some View {
+        if isLoading {
+            HStack {
+                Spacer()
+                ProgressView()
+                Spacer()
+            }
+            .padding(.vertical, 24)
+        } else if comments.isEmpty {
+            ContentUnavailableView(
+                "No Comments",
+                systemImage: "text.bubble",
+                description: Text("Comments added here will also appear on the linked job.")
+            )
+            .padding(.vertical, 20)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Recent Comments", systemImage: "clock.arrow.circlepath")
+                    .font(.headline.weight(.semibold))
+
+                ForEach(comments.sorted(by: commentSort)) { comment in
+                    commentRow(comment)
+                }
+            }
+            .padding(14)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+    }
+
+    private func commentMetric(_ value: String, title: String, systemImage: String) -> some View {
+        Label {
+            Text("\(value) \(title)")
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.thinMaterial, in: Capsule())
+    }
+
+    private func commentRow(_ comment: JobComment) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(comment.userName ?? comment.authorName ?? "Unknown")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text(commentDateText(comment.date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text(comment.resolved ? "Resolved" : "Open")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(comment.resolved ? Color.green : Color.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background((comment.resolved ? Color.green : Color.orange).opacity(0.12), in: Capsule())
+            }
+
+            Text(comment.comment)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func loadComments() async {
+        guard let companyId = masterDataManager.currentCompany?.id, !jobId.isEmpty else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            comments = try await dataService.getWorkOrderComments(
+                companyId: companyId,
+                workOrderId: jobId
+            )
+        } catch {
+            message = "Could not load comments"
+            print("[ServiceStopJobCommentsView][loadComments] \(error)")
+        }
+    }
+
+    private func addComment() async {
+        let trimmedComment = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedComment.isEmpty else { return }
+        guard let companyId = masterDataManager.currentCompany?.id else {
+            message = "Missing company"
+            return
+        }
+        guard let userId = masterDataManager.user?.id, !userId.isEmpty else {
+            message = "Missing signed-in user"
+            return
+        }
+
+        isAddingComment = true
+        defer { isAddingComment = false }
+
+        let comment = JobComment(
+            id: "comp_wo_com_" + UUID().uuidString,
+            jobId: jobId,
+            companyId: companyId,
+            userId: userId,
+            userName: currentUserDisplayName,
+            authorId: userId,
+            authorName: currentUserDisplayName,
+            date: Date(),
+            comment: trimmedComment,
+            resolved: false
+        )
+
+        do {
+            try await dataService.addWorkOrderComment(
+                companyId: companyId,
+                workOrderId: jobId,
+                comment: comment
+            )
+            newComment = ""
+            message = "Comment added"
+            await loadComments()
+        } catch {
+            message = "Could not add comment"
+            print("[ServiceStopJobCommentsView][addComment] \(error)")
+        }
+    }
+
+    private func commentSort(_ lhs: JobComment, _ rhs: JobComment) -> Bool {
+        (lhs.date ?? .distantPast) > (rhs.date ?? .distantPast)
+    }
+
+    private func commentDateText(_ date: Date?) -> String {
+        guard let date else { return "Pending" }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }
 extension ServiceStopDetailView2 {
@@ -523,11 +845,14 @@ extension ServiceStopDetailView2 {
                     }
                 }
 
-                statusActionBar
+                if currentContinuationGate == nil {
+                    statusActionBar
+                }
             }
             .disabled(vm.activeRoute?.status != .inProgress)
             .disabled(serviceStop?.startTime == nil)
-
+        }
+        .safeAreaInset(edge: .bottom) {
             finishGateOverlay
         }
     }
@@ -536,8 +861,8 @@ extension ServiceStopDetailView2 {
     private func recapBody(for stop: ServiceStop) -> some View {
         if stop.typeId == "2" {
             startUpRecap
-        } else {
-            waterRecap
+        } else if stop.includeReadings || stop.includeDosages {
+            waterRecap(for: stop)
         }
     }
 
@@ -711,41 +1036,45 @@ extension ServiceStopDetailView2 {
 
     private var finishGateOverlay: some View {
         Group {
-            if let activeRoute = vm.activeRoute {
-                if activeRoute.status == .didNotStart || activeRoute.status == .onBreak || activeRoute.status == .traveling || activeRoute.status == .finished {
-                    Button(action: {
-                        vm.startActiveRoute(companyId: masterDataManager.currentCompany?.id, companyName: masterDataManager.currentCompany?.name, user: masterDataManager.user)
-                    }, label: {
-                        Label("Start Route to Continue", systemImage: "play.fill")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background(Color.orange.opacity(0.9), in: Capsule())
-                            .foregroundColor(.white)
-                            .shadow(color: Color.orange.opacity(0.25), radius: 8, x: 0, y: 4)
-                    })
-                } else {
-                    if let serviceStop {
-                        if serviceStop.startTime == nil {
-                            Button(action: {
-                                vm.startServiceStop(companyId: masterDataManager.currentCompany?.id, serviceStopId:serviceStopId)
-                            }, label: {
-                                Label("Start Service Stop To Continue", systemImage: "play.fill")
-                                    .font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 9)
-                                    .background(Color.orange.opacity(0.9), in: Capsule())
-                                    .foregroundColor(.white)
-                                    .shadow(color: Color.orange.opacity(0.25), radius: 8, x: 0, y: 4)
-                            })
-                        }
-                    }
+            if let serviceStop,
+               let continuationGate = continuationGate(for: serviceStop) {
+                ServiceStopContinuationBanner(title: continuationGate.title) {
+                    handleContinuationGate(continuationGate, serviceStop: serviceStop)
                 }
             }
         }
     }
 
-    var waterRecap: some View {
+    private func continuationGate(for serviceStop: ServiceStop) -> ServiceStopContinuationGate? {
+        if vm.activeRoute?.status.requiresStartToContinueServiceStopWork == true {
+            return .startRoute
+        }
+
+        if serviceStop.startTime == nil {
+            return .startServiceStop
+        }
+
+        return nil
+    }
+
+    private func handleContinuationGate(_ gate: ServiceStopContinuationGate, serviceStop: ServiceStop) {
+        switch gate {
+        case .startRoute:
+            vm.startActiveRoute(
+                companyId: masterDataManager.currentCompany?.id,
+                companyName: masterDataManager.currentCompany?.name,
+                user: masterDataManager.user
+            )
+        case .startServiceStop:
+            vm.startServiceStop(
+                companyId: masterDataManager.currentCompany?.id,
+                serviceStopId: serviceStop.id,
+                startTime: vm.arrivalTimeForServiceStop(serviceStop.id) ?? Date()
+            )
+        }
+    }
+
+    private func waterRecap(for stop: ServiceStop) -> some View {
         recapSection(title: "Water Recap", systemImage: "drop.fill") {
             if VM.bodiesOfWater.isEmpty {
                 emptyState(
@@ -757,7 +1086,7 @@ extension ServiceStopDetailView2 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 12) {
                         ForEach(VM.bodiesOfWater) { BOW in
-                            bodyOfWaterRecapCard(BOW)
+                            bodyOfWaterRecapCard(BOW, serviceStop: stop)
                         }
                     }
                     .padding(.vertical, 2)
@@ -766,7 +1095,7 @@ extension ServiceStopDetailView2 {
         }
     }
 
-    private func bodyOfWaterRecapCard(_ BOW: BodyOfWater) -> some View {
+    private func bodyOfWaterRecapCard(_ BOW: BodyOfWater, serviceStop: ServiceStop) -> some View {
         let data = stopData(for: BOW)
 
         return VStack(alignment: .leading, spacing: 12) {
@@ -784,14 +1113,20 @@ extension ServiceStopDetailView2 {
 
             Divider()
 
-            waterValueGroup(title: "Readings", systemImage: "testtube.2") {
-                readingRows(for: data)
+            if serviceStop.includeReadings {
+                waterValueGroup(title: "Readings", systemImage: "testtube.2") {
+                    readingRows(for: data)
+                }
             }
 
-            Divider()
+            if serviceStop.includeReadings && serviceStop.includeDosages {
+                Divider()
+            }
 
-            waterValueGroup(title: "Dosages", systemImage: "drop.degreesign") {
-                dosageRows(for: data)
+            if serviceStop.includeDosages {
+                waterValueGroup(title: "Dosages", systemImage: "drop.degreesign") {
+                    dosageRows(for: data)
+                }
             }
         }
         .padding(14)

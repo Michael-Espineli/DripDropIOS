@@ -462,8 +462,12 @@ enum EquipmentScheduledWorkStatus: String, Codable, CaseIterable, Identifiable, 
 }
 extension ProductionDataService {
  
-    func EquipmentImageRefrence(id:String)->StorageReference {
-        storage.child("Equipment").child(id)
+    func EquipmentImageRefrence(companyId:String,id:String)->StorageReference {
+        storage
+            .child("companies")
+            .child(companyId)
+            .child("equipment")
+            .child(id)
     }
      func equipmentCollection(companyId:String) -> CollectionReference{
         db.collection("companies/\(companyId)/equipment")
@@ -495,7 +499,7 @@ extension ProductionDataService {
         meta.contentType = "image/jpeg"
         print("meta >> \(meta)")
         
-        let returnedMetaData = try await EquipmentImageRefrence(id: equipmentId).child(path)
+        let returnedMetaData = try await EquipmentImageRefrence(companyId: companyId, id: equipmentId).child(path)
             .putDataAsync(data,metadata: meta)
         print("returnedMetaData >> \(returnedMetaData)")
         

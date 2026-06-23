@@ -59,6 +59,16 @@ import FirebaseFirestore
 import MapKit
 import CoreLocation
 
+struct ServiceStopStartPrompt: Identifiable, Equatable {
+    var id: String { serviceStopId }
+
+    let serviceStopId: String
+    let customerName: String
+    let serviceType: String
+    let arrivalTime: Date
+    let distanceMeters: CLLocationDistance
+}
+
 @MainActor
 final class MobileDailyRouteDisplayViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
@@ -84,6 +94,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     @Published private(set) var locationAuthorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published private(set) var previousRoutesNeedingReview: [ActiveRoute] = []
     @Published private(set) var recentActiveRoutes: [ActiveRoute] = []
+    @Published private(set) var pendingServiceStopStartPrompt: ServiceStopStartPrompt?
     init(dataService:any ProductionDataServiceProtocol, routeLocationManager: RouteLocationManager = RouteLocationManager()){
         self.dataService = dataService
         self.routeLocationManager = routeLocationManager
@@ -103,6 +114,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 }
 
                 self.currentLocation = location
+                await self.evaluateServiceStopArrival(for: location)
                 // Optional: Persist breadcrumb to Firestore here (throttle as needed)
                 if let active = self.activeRoute,
                    active.status == .inProgress,
@@ -133,6 +145,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     @Published var newDay: DaysOfWeek = .sunday
     private static let maximumAcceptedLocationAge: TimeInterval = 300
     private static let maximumAcceptedHorizontalAccuracy: CLLocationAccuracy = 500
+    private static let serviceStopArrivalRadiusMeters: CLLocationDistance = 120
 
     private var currentRouteLocation: CLLocation? {
         guard let location = currentLocation else { return nil }
@@ -208,6 +221,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     private var cachedCompanyId: String?
     private var cachedCompanyName: String?
     private var cachedUser: DBUser?
+    private var serviceStopArrivalTimes: [String: Date] = [:]
+    private var dismissedServiceStopStartPromptIds: Set<String> = []
+    private var notifiedServiceStopStartPromptIds: Set<String> = []
 
     // Summary log tracking
     @Published private(set) var currentSummaryLogId: String? = nil
@@ -376,6 +392,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         self.activeRoute = nil
         self.recurringRoute = nil
         self.serviceStopList.removeAll()
+        resetServiceStopArrivalState()
         
         // The issue occures because active Route comes back nil when it should not
         dataService.listenActiveRoute(
@@ -407,6 +424,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             techId: user.id
         ) { [weak self] stops in
             self?.serviceStopList = stops
+            self?.reconcileServiceStopArrivalState()
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Service Stop Listener: ", stops.count)
             self?.recompute(companyId: companyId, whoCalled: "SS", user: user, date: date)
@@ -495,23 +513,28 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             }
         }
     }
-    func startServiceStop(companyId: String?,serviceStopId:String){
+    func startServiceStop(companyId: String?, serviceStopId: String, startTime: Date = Date()){
         guard let companyId else {return}
 
         Task{
             do {
-                try await dataService.updateServiceStopStartTime(companyId: companyId, serviceStopId: serviceStopId, startTime: Date())
-                var list = serviceStopList
-                var first = list.first(where: {$0.id == serviceStopId})
-                first?.startTime = Date()
-                list.removeAll(where: {$0.id == serviceStopId})
-                list.append(first!)
+                try await dataService.updateServiceStopStartTime(companyId: companyId, serviceStopId: serviceStopId, startTime: startTime)
+                if let index = serviceStopList.firstIndex(where: { $0.id == serviceStopId }) {
+                    serviceStopList[index].startTime = startTime
+                }
+
+                clearServiceStopStartPrompt(serviceStopId: serviceStopId)
             } catch {
                 print("[MobileDailyRouteDisplayViewModel][startServiceStop] Error \(error)")
             }
         }
     }
-    func startActiveRoute(companyId: String?,companyName:String? , user:DBUser?){
+    func startActiveRoute(
+        companyId: String?,
+        companyName:String?,
+        user:DBUser?,
+        showMileageSheet: Bool = true
+    ){
         Task{
             do {
                 guard let companyId else {return}
@@ -526,7 +549,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 self.cachedUser = user
                 
                 //Change Status
-                self.showMilage = true
+                if showMileageSheet {
+                    self.showMilage = true
+                }
                 
                 
                 dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: .inProgress)
@@ -537,6 +562,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 
                 //Upload Location
                 routeLocationManager.startTracking()
+                Task {
+                    _ = await NotificationViewModel.shared.requestAuthorizationIfNeeded()
+                }
 
                 if let location = self.currentRouteLocation {
                     let log = ActiveRouteLog(
@@ -1046,6 +1074,168 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         // 5. Merge back together
         return reorderedRecurringStops + nonRecurringStops
     }
+
+    func confirmPendingServiceStopStart(companyId: String?) {
+        guard let prompt = pendingServiceStopStartPrompt else { return }
+
+        startServiceStop(
+            companyId: companyId,
+            serviceStopId: prompt.serviceStopId,
+            startTime: prompt.arrivalTime
+        )
+    }
+
+    func dismissPendingServiceStopStartPrompt() {
+        guard let prompt = pendingServiceStopStartPrompt else { return }
+
+        dismissedServiceStopStartPromptIds.insert(prompt.serviceStopId)
+        pendingServiceStopStartPrompt = nil
+        NotificationViewModel.shared.cancelServiceStopStartPrompt(serviceStopId: prompt.serviceStopId)
+    }
+
+    func arrivalTimeForServiceStop(_ serviceStopId: String) -> Date? {
+        serviceStopArrivalTimes[serviceStopId]
+    }
+
+    private func evaluateServiceStopArrival(for location: CLLocation) async {
+        guard let activeRoute,
+              activeRoute.status == .inProgress else {
+            pendingServiceStopStartPrompt = nil
+            return
+        }
+
+        let nearbyStops = nearbyUnstartedStops(for: location)
+        let nearbyStopIds = Set(nearbyStops.map { $0.stop.id })
+
+        clearArrivalStateForStopsNoLongerNearby(nearbyStopIds: nearbyStopIds)
+
+        guard let nearest = nearbyStops.first else {
+            pendingServiceStopStartPrompt = nil
+            return
+        }
+
+        let stop = nearest.stop
+        let arrivalTime = serviceStopArrivalTimes[stop.id] ?? location.timestamp
+        serviceStopArrivalTimes[stop.id] = arrivalTime
+
+        guard !dismissedServiceStopStartPromptIds.contains(stop.id) else { return }
+
+        let prompt = ServiceStopStartPrompt(
+            serviceStopId: stop.id,
+            customerName: stop.customerName,
+            serviceType: stop.type,
+            arrivalTime: arrivalTime,
+            distanceMeters: nearest.distance
+        )
+
+        if pendingServiceStopStartPrompt != prompt {
+            pendingServiceStopStartPrompt = prompt
+        }
+
+        guard !notifiedServiceStopStartPromptIds.contains(stop.id) else { return }
+        notifiedServiceStopStartPromptIds.insert(stop.id)
+
+        await NotificationViewModel.shared.scheduleServiceStopStartPrompt(
+            serviceStopId: stop.id,
+            customerName: stop.customerName,
+            serviceType: stop.type,
+            arrivalTime: arrivalTime
+        )
+    }
+
+    private func nearbyUnstartedStops(
+        for location: CLLocation
+    ) -> [(index: Int, stop: ServiceStop, distance: CLLocationDistance)] {
+        serviceStopList
+            .enumerated()
+            .compactMap { index, stop -> (index: Int, stop: ServiceStop, distance: CLLocationDistance)? in
+                guard stop.operationStatus == .notFinished,
+                      stop.startTime == nil,
+                      Self.isUsableCoordinate(stop.address.coordinates) else {
+                    return nil
+                }
+
+                let stopLocation = CLLocation(
+                    latitude: stop.address.latitude,
+                    longitude: stop.address.longitude
+                )
+                let distance = location.distance(from: stopLocation)
+
+                guard distance <= Self.serviceStopArrivalRadiusMeters else { return nil }
+
+                return (index, stop, distance)
+            }
+            .sorted { lhs, rhs in
+                if abs(lhs.distance - rhs.distance) < 10 {
+                    return lhs.index < rhs.index
+                }
+
+                return lhs.distance < rhs.distance
+            }
+    }
+
+    private func clearArrivalStateForStopsNoLongerNearby(nearbyStopIds: Set<String>) {
+        let trackedStopIds = Set(serviceStopArrivalTimes.keys)
+            .union(dismissedServiceStopStartPromptIds)
+            .union(notifiedServiceStopStartPromptIds)
+
+        for serviceStopId in trackedStopIds where !nearbyStopIds.contains(serviceStopId) {
+            serviceStopArrivalTimes.removeValue(forKey: serviceStopId)
+            dismissedServiceStopStartPromptIds.remove(serviceStopId)
+            notifiedServiceStopStartPromptIds.remove(serviceStopId)
+            NotificationViewModel.shared.cancelServiceStopStartPrompt(serviceStopId: serviceStopId)
+        }
+
+        if let prompt = pendingServiceStopStartPrompt,
+           !nearbyStopIds.contains(prompt.serviceStopId) {
+            pendingServiceStopStartPrompt = nil
+        }
+    }
+
+    private func clearServiceStopStartPrompt(serviceStopId: String) {
+        serviceStopArrivalTimes.removeValue(forKey: serviceStopId)
+        dismissedServiceStopStartPromptIds.remove(serviceStopId)
+        notifiedServiceStopStartPromptIds.remove(serviceStopId)
+
+        if pendingServiceStopStartPrompt?.serviceStopId == serviceStopId {
+            pendingServiceStopStartPrompt = nil
+        }
+
+        NotificationViewModel.shared.cancelServiceStopStartPrompt(serviceStopId: serviceStopId)
+    }
+
+    private func resetServiceStopArrivalState() {
+        if let prompt = pendingServiceStopStartPrompt {
+            NotificationViewModel.shared.cancelServiceStopStartPrompt(serviceStopId: prompt.serviceStopId)
+        }
+
+        serviceStopArrivalTimes.removeAll()
+        dismissedServiceStopStartPromptIds.removeAll()
+        notifiedServiceStopStartPromptIds.removeAll()
+        pendingServiceStopStartPrompt = nil
+    }
+
+    private func reconcileServiceStopArrivalState() {
+        let unstartedStopIds = Set(
+            serviceStopList
+                .filter { $0.operationStatus == .notFinished && $0.startTime == nil }
+                .map(\.id)
+        )
+
+        let trackedStopIds = Set(serviceStopArrivalTimes.keys)
+            .union(dismissedServiceStopStartPromptIds)
+            .union(notifiedServiceStopStartPromptIds)
+
+        for serviceStopId in trackedStopIds where !unstartedStopIds.contains(serviceStopId) {
+            clearServiceStopStartPrompt(serviceStopId: serviceStopId)
+        }
+
+        if let prompt = pendingServiceStopStartPrompt,
+           !unstartedStopIds.contains(prompt.serviceStopId) {
+            pendingServiceStopStartPrompt = nil
+        }
+    }
+
     // MARK: Location Functions
 
     // MARK: - Periodic Route Log Publishing

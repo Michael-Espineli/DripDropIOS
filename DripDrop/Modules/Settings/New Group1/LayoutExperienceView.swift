@@ -5,93 +5,127 @@
 //  Created by Michael Espineli on 12/6/23.
 //
 
-
 import SwiftUI
 
 struct LayoutExperienceView: View {
-    
     @Binding var selectedLayoutExperience: LayoutExperienceSetting?
-    
-    var columns: [GridItem] {
+
+    private var columns: [GridItem] {
         [
-         GridItem(.flexible(), spacing: 10),
-         GridItem(.flexible(), spacing: 10)
+            GridItem(.adaptive(minimum: 138), spacing: 10)
         ]
     }
-    
+
     var body: some View {
-        VStack(alignment: .leading,
-               spacing: 24) {
-            Text("Layout Configuration")
-                .font(.title)
-                .bold()
-                        
-            LazyVGrid(columns: columns) {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Layout Configuration", systemImage: "rectangle.grid.2x2")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
                 ForEach(LayoutExperienceSetting.allCases) { item in
                     Button {
-                        selectedLayoutExperience = item
+                        withAnimation(.snappy) {
+                            selectedLayoutExperience = item
+                        }
                     } label: {
-                        LayoutExperienceSelectionView(selectedItem: $selectedLayoutExperience,
-                                                      item: item)
+                        LayoutExperienceSelectionView(
+                            selectedItem: $selectedLayoutExperience,
+                            item: item
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
-        .padding()
-        .background {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.thinMaterial)
+        .padding(14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         }
-        .scenePadding()
     }
 }
 
 struct LayoutExperienceSelectionView: View {
-    
     @State private var isHovering = false
     @Binding var selectedItem: LayoutExperienceSetting?
-    
+
     let item: LayoutExperienceSetting
-    
+
+    private var isSelected: Bool {
+        selectedItem == item
+    }
+
     var body: some View {
-        VStack {
-            Image(systemName: item.imageName)
-                .font(.largeTitle)
-                .foregroundStyle(shapeStyle(Color.accentColor))
-            VStack {
-                Text(item.title)
-                    .bold()
-                    .foregroundStyle(shapeStyle(Color.primary))
-                Text(item.description)
-                    .lineLimit(3, reservesSpace: true)
-                    .font(.callout)
-                    .foregroundStyle(shapeStyle(Color.secondary))
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: item.imageName)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(isSelected ? .white : Color.accentColor)
+                    .frame(width: 34, height: 34)
+                    .background(iconBackground, in: Circle())
+
+                Spacer(minLength: 0)
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                }
             }
-            .padding(.top, 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(isSelected ? .white : .primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Text(item.description)
+                    .font(.caption)
+                    .foregroundStyle(isSelected ? .white.opacity(0.78) : .secondary)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.85)
+            }
         }
-        .padding(24)
-        .background {
-            RoundedRectangle(cornerRadius: 12,
-                             style: .continuous)
-            .fill(selectedItem == item ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.background))
-            .shadow(radius: selectedItem == item ? 4 : 0)
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isHovering ? Color.accentColor : .clear)
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
+        .padding(12)
+        .background(background)
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(borderColor, lineWidth: 1)
         }
-        .scaleEffect(isHovering ? 1.02 : 1)
-        .onHover { isHovering in
-            withAnimation {
-                self.isHovering = isHovering
+        .scaleEffect(isHovering ? 1.015 : 1)
+        .onHover { hovering in
+            withAnimation(.snappy) {
+                isHovering = hovering
             }
         }
     }
-    
-    func shapeStyle<S: ShapeStyle>(_ style: S) -> some ShapeStyle {
-        if selectedItem == item {
-            return AnyShapeStyle(.background)
-        } else {
-            return AnyShapeStyle(style)
+
+    private var iconBackground: some ShapeStyle {
+        if isSelected {
+            return AnyShapeStyle(.white.opacity(0.2))
         }
+
+        return AnyShapeStyle(Color.accentColor.opacity(0.12))
+    }
+
+    private var background: some ShapeStyle {
+        if isSelected {
+            return AnyShapeStyle(Color.accentColor)
+        }
+
+        return AnyShapeStyle(.background.opacity(0.48))
+    }
+
+    private var borderColor: Color {
+        if isSelected || isHovering {
+            return Color.accentColor.opacity(0.45)
+        }
+
+        return Color.primary.opacity(0.08)
     }
 }
 

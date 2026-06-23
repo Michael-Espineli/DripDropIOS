@@ -24,8 +24,12 @@ extension ProductionDataService {
     func readingCollectionForServiceStop(serviceStopId:String,companyId:String) -> CollectionReference{
        db.collection("companies/\(companyId)/serviceStops/\(serviceStopId)/stores")
    }
-    func ServiceStopImageRefrence(id:String)->StorageReference {
-        storage.child("serviceStop").child(id)
+    func ServiceStopImageRefrence(companyId:String,id:String)->StorageReference {
+        storage
+            .child("companies")
+            .child(companyId)
+            .child("serviceStops")
+            .child(id)
     }
     func serviceStopDocument(serviceStopId:String,companyId:String)-> DocumentReference{
        serviceStopCollection(companyId: companyId).document(serviceStopId)
@@ -341,7 +345,7 @@ extension ProductionDataService {
         meta.contentType = "image/jpeg"
         print("meta >> \(meta)")
         
-        let returnedMetaData = try await ServiceStopImageRefrence(id: serviceStopId).child(path)
+        let returnedMetaData = try await ServiceStopImageRefrence(companyId: companyId, id: serviceStopId).child(path)
             .putDataAsync(data,metadata: meta)
         print("returnedMetaData >> \(returnedMetaData)")
         
@@ -535,10 +539,141 @@ extension ProductionDataService {
     }
     func updateServiceStopEndTime(companyId:String,serviceStopId:String,endTime:Date) async throws{
         let itemRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+        let existingStop = try? await itemRef.getDocument(as: ServiceStop.self)
+        var data: [String: Any] = [
+            ServiceStop.CodingKeys.endTime.rawValue: endTime
+        ]
 
-        try await itemRef.updateData([
-            ServiceStop.CodingKeys.endTime.rawValue:endTime
-        ])
+        if let existingStop,
+           let durationMinutes = actualServiceStopDurationMinutes(
+            startTime: existingStop.startTime,
+            endTime: endTime
+           ) {
+            data[ServiceStop.CodingKeys.duration.rawValue] = durationMinutes
+        }
+
+        try await itemRef.updateData(data)
+
+        let updatedStop = try await itemRef.getDocument(as: ServiceStop.self)
+
+        if updatedStop.operationStatus == .finished {
+            _ = try? await updateFutureServiceStopEstimatedDurationsFromHistory(
+                companyId: companyId,
+                sourceStop: updatedStop
+            )
+        }
+
+        _ = try? await syncActiveRouteForServiceStops(
+            companyId: companyId,
+            date: updatedStop.serviceDate,
+            techId: updatedStop.techId,
+            techName: updatedStop.tech
+        )
+    }
+
+    private func updateFutureServiceStopEstimatedDurationsFromHistory(
+        companyId: String,
+        sourceStop: ServiceStop
+    ) async throws -> Int {
+        guard let estimate = try await historicalServiceStopDurationEstimate(
+            companyId: companyId,
+            sourceStop: sourceStop
+        ) else {
+            return 0
+        }
+
+        let candidates = try await serviceStopCollection(companyId: companyId)
+            .whereField(ServiceStop.CodingKeys.serviceLocationId.rawValue, isEqualTo: sourceStop.serviceLocationId)
+            .getDocuments(as: ServiceStop.self)
+
+        let futureStops = candidates.filter { stop in
+            stop.id != sourceStop.id &&
+            stop.operationStatus == .notFinished &&
+            stop.serviceDate > sourceStop.serviceDate &&
+            serviceStopMatchesDurationProfile(stop, sourceStop: sourceStop) &&
+            stop.estimatedDuration != estimate
+        }
+
+        for stop in futureStops {
+            try await serviceStopDocument(serviceStopId: stop.id, companyId: companyId)
+                .updateData([
+                    ServiceStop.CodingKeys.estimatedDuration.rawValue: estimate
+                ])
+        }
+
+        return futureStops.count
+    }
+
+    private func historicalServiceStopDurationEstimate(
+        companyId: String,
+        sourceStop: ServiceStop
+    ) async throws -> Int? {
+        guard !sourceStop.serviceLocationId.isEmpty else { return nil }
+
+        let candidates = try await serviceStopCollection(companyId: companyId)
+            .whereField(ServiceStop.CodingKeys.serviceLocationId.rawValue, isEqualTo: sourceStop.serviceLocationId)
+            .getDocuments(as: ServiceStop.self)
+
+        let durations = candidates
+            .filter { stop in
+                stop.id == sourceStop.id ||
+                (
+                    stop.operationStatus == .finished &&
+                    stop.serviceDate <= sourceStop.serviceDate &&
+                    serviceStopMatchesDurationProfile(stop, sourceStop: sourceStop)
+                )
+            }
+            .compactMap { actualDurationMinutes(for: $0) }
+            .sorted()
+
+        guard !durations.isEmpty else { return nil }
+
+        let middleIndex = durations.count / 2
+        if durations.count.isMultiple(of: 2) {
+            return max(1, Int((Double(durations[middleIndex - 1] + durations[middleIndex]) / 2.0).rounded()))
+        }
+
+        return max(1, durations[middleIndex])
+    }
+
+    private func serviceStopMatchesDurationProfile(_ stop: ServiceStop, sourceStop: ServiceStop) -> Bool {
+        guard stop.serviceLocationId == sourceStop.serviceLocationId else { return false }
+
+        if !sourceStop.recurringServiceStopId.isEmpty {
+            return stop.recurringServiceStopId == sourceStop.recurringServiceStopId
+        }
+
+        if !sourceStop.typeId.isEmpty {
+            return stop.typeId == sourceStop.typeId
+        }
+
+        let stopType = stop.type.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sourceType = sourceStop.type.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !sourceType.isEmpty else { return true }
+
+        return stopType.caseInsensitiveCompare(sourceType) == .orderedSame
+    }
+
+    private func actualDurationMinutes(for stop: ServiceStop) -> Int? {
+        if stop.duration > 0 {
+            return stop.duration
+        }
+
+        return actualServiceStopDurationMinutes(
+            startTime: stop.startTime,
+            endTime: stop.endTime
+        )
+    }
+
+    private func actualServiceStopDurationMinutes(startTime: Date?, endTime: Date?) -> Int? {
+        guard let startTime,
+              let endTime,
+              endTime > startTime else {
+            return nil
+        }
+
+        return max(1, Int(ceil(endTime.timeIntervalSince(startTime) / 60)))
     }
     func updateServicestopBillingStatus(companyId: String, serviceStop: ServiceStop, billingStatus: ServiceStopBillingStatus) async throws {
         let itemRef = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)

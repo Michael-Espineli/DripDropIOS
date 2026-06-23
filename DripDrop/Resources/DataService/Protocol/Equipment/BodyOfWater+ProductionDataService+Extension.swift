@@ -23,8 +23,12 @@ extension ProductionDataService {
     func bodyOfWaterDoc(companyId:String,bodyOfWaterId:String)-> DocumentReference{
         bodyOfWaterCollection(companyId: companyId).document(bodyOfWaterId)
     }
-    func bodyOfWaterImageRefrence(id:String)->StorageReference {
-        storage.child("bodyOfWater").child(id)
+    func bodyOfWaterImageRefrence(companyId:String,id:String)->StorageReference {
+        storage
+            .child("companies")
+            .child(companyId)
+            .child("bodiesOfWater")
+            .child(id)
     }
     //Create
     
@@ -41,7 +45,7 @@ extension ProductionDataService {
         meta.contentType = "image/jpeg"
         print("meta >> \(meta)")
         
-        let returnedMetaData = try await bodyOfWaterImageRefrence(id: bodyOfWaterId).child(path)
+        let returnedMetaData = try await bodyOfWaterImageRefrence(companyId: companyId, id: bodyOfWaterId).child(path)
             .putDataAsync(data,metadata: meta)
         print("returnedMetaData >> \(returnedMetaData)")
         

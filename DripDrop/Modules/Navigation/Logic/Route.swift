@@ -347,7 +347,7 @@ extension Route:View {
         case .leads(dataService: let dataService):
             CompanyLeadsView(dataService: dataService)
         case .sales(dataService: let dataService):
-            SalesFinanceView(dataService: dataService)
+            FeatureFlaggedSalesRouteView(dataService: dataService)
             
             
         case .managementTables(let dataService):
@@ -356,11 +356,11 @@ extension Route:View {
         case .purchases(let dataService):
             PurchasesView(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
         case .operation(let dataService):
-            Operations(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
+            FeatureFlaggedOperationsSectionView(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
         case .finace(let dataService):
-            Finance(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
+            FeatureFlaggedFinanceSectionView(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
         case .managment(let dataService):
-            Managment(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
+            FeatureFlaggedManagementSectionView(dataService: dataService)//DEVELOPER THINK ABOUT REMOVING
         case .dashBoard(dataService: let dataService):
             Dashboard()//DEVELOPER THINK ABOUT REMOVING
         case .customers(dataService: let dataService):
@@ -501,7 +501,7 @@ extension Route:View {
         case .userSettings(dataService: let dataService):
             UserSettings(dataService:dataService)
         case .companySettings(dataService: let dataService):
-            CompanySettings(dataService: dataService)
+            FeatureFlaggedCompanySettingsSectionView(dataService: dataService)
         case .businesses(dataService: let dataService):
             BusinessesListView(dataService:dataService)
         case .business(business: let business, dataService: let dataService):

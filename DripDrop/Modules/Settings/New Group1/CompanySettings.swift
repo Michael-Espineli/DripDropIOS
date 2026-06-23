@@ -36,13 +36,14 @@
         func setUpStripeAccount(company: Company, user: DBUser) {
             Task {
                 do {
-                    guard let stripeConnectAccountId = company.stripeConnectAccountId else {
+                    guard let stripeConnectAccountId = company.stripeConnectAccountId, !stripeConnectAccountId.isEmpty else {
                         return
                     }
 
                     print("--createStripeAccountLink--")
 
                     let data: [String: Any] = [
+                        "companyId": company.id,
                         "accountId": stripeConnectAccountId,
                         "stripeVersion": "2023-10-16",
                     ]

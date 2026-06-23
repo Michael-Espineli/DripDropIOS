@@ -7,6 +7,69 @@
 
 import SwiftUI
 
+enum ServiceStopContinuationGate {
+    case startRoute
+    case startServiceStop
+
+    var title: String {
+        switch self {
+        case .startRoute:
+            return "Start Route to Continue"
+        case .startServiceStop:
+            return "Start Service Stop to Continue"
+        }
+    }
+}
+
+extension ActiveRouteStatus {
+    var requiresStartToContinueServiceStopWork: Bool {
+        switch self {
+        case .didNotStart, .onBreak, .traveling, .finished:
+            return true
+        case .inProgress:
+            return false
+        }
+    }
+}
+
+struct ServiceStopContinuationBanner: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .opacity(0.35)
+
+            Button(action: action) {
+                HStack(spacing: 10) {
+                    Image(systemName: "play.fill")
+                        .font(.caption.weight(.bold))
+
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 13)
+                .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
+            .background(.regularMaterial)
+        }
+    }
+}
+
 @MainActor
 final class ServiceStopTaskViewModel: ObservableObject {
     let dataService: any ProductionDataServiceProtocol
@@ -479,20 +542,15 @@ struct ServiceStopTaskView: View {
         return vm.activeRoute?.status == .inProgress && serviceStop.startTime != nil
     }
 
-    private var disabledMessage: String? {
+    private var continuationGate: ServiceStopContinuationGate? {
         guard let serviceStop else { return nil }
 
-        if let activeRoute = vm.activeRoute {
-            if activeRoute.status == .didNotStart ||
-                activeRoute.status == .onBreak ||
-                activeRoute.status == .traveling ||
-                activeRoute.status == .finished {
-                return "Start route to continue"
-            }
+        if vm.activeRoute?.status.requiresStartToContinueServiceStopWork == true {
+            return .startRoute
         }
 
         if serviceStop.startTime == nil {
-            return "Start service stop to continue"
+            return .startServiceStop
         }
 
         return nil
@@ -514,24 +572,14 @@ struct ServiceStopTaskView: View {
                     taskSection(serviceStop: serviceStop)
 
                     addWorkSection(serviceStop: serviceStop)
-
-                    if disabledMessage != nil {
-                        Color.clear
-                            .frame(height: 72)
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                    }
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .background(Color.listColor)
                 .disabled(false)
-
-                if let disabledMessage {
-                    VStack {
-                        Spacer()
-                        actionNeededBar(message: disabledMessage, serviceStop: serviceStop)
+                .safeAreaInset(edge: .bottom) {
+                    if let continuationGate {
+                        actionNeededBar(message: continuationGate.title, serviceStop: serviceStop)
                     }
                 }
             } else {
@@ -989,58 +1037,26 @@ struct ServiceStopTaskView: View {
 extension ServiceStopTaskView {
 
     func actionNeededBar(message: String, serviceStop: ServiceStop) -> some View {
-        VStack(spacing: 0) {
-            Divider()
-                .opacity(0.35)
-
-            Button {
-                handleBlockedAction(serviceStop: serviceStop)
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "play.fill")
-                        .font(.caption.weight(.bold))
-
-                    Text(message)
-                        .font(.subheadline.weight(.semibold))
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 13)
-                .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
-            .padding(.bottom, 12)
-            .background(.regularMaterial)
+        ServiceStopContinuationBanner(title: message) {
+            handleBlockedAction(serviceStop: serviceStop)
         }
     }
 
     func handleBlockedAction(serviceStop: ServiceStop) {
-        if let activeRoute = vm.activeRoute {
-            if activeRoute.status == .didNotStart ||
-                activeRoute.status == .onBreak ||
-                activeRoute.status == .traveling ||
-                activeRoute.status == .finished {
-                vm.startActiveRoute(
-                    companyId: masterDataService.currentCompany?.id,
-                    companyName: masterDataService.currentCompany?.name,
-                    user: masterDataService.user
-                )
-                return
-            }
+        if vm.activeRoute?.status.requiresStartToContinueServiceStopWork == true {
+            vm.startActiveRoute(
+                companyId: masterDataService.currentCompany?.id,
+                companyName: masterDataService.currentCompany?.name,
+                user: masterDataService.user
+            )
+            return
         }
 
         if serviceStop.startTime == nil {
             vm.startServiceStop(
                 companyId: masterDataService.currentCompany?.id,
-                serviceStopId: serviceStop.id
+                serviceStopId: serviceStop.id,
+                startTime: vm.arrivalTimeForServiceStop(serviceStop.id) ?? Date()
             )
         }
     }

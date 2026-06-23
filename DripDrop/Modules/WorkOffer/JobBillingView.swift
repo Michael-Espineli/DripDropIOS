@@ -269,13 +269,20 @@ struct JobBillingView: View {
             JobBillingWorkflowStepRow(
                 title: "Invoiced",
                 isActive: currentBillingStatus == .invoiced,
-                isComplete: billingStepIndex(currentBillingStatus) >= billingStepIndex(.invoiced)
+                isComplete: currentBillingStatus != .comped &&
+                    billingStepIndex(currentBillingStatus) >= billingStepIndex(.invoiced)
             )
 
             JobBillingWorkflowStepRow(
                 title: "Paid",
                 isActive: currentBillingStatus == .paid,
-                isComplete: billingStepIndex(currentBillingStatus) >= billingStepIndex(.paid)
+                isComplete: currentBillingStatus == .paid
+            )
+
+            JobBillingWorkflowStepRow(
+                title: "Comped",
+                isActive: currentBillingStatus == .comped,
+                isComplete: currentBillingStatus == .comped
             )
 
             Divider().opacity(0.2)
@@ -381,6 +388,8 @@ struct JobBillingView: View {
         case .invoiced:
             return 4
         case .paid:
+            return 5
+        case .comped:
             return 5
         case .expired:
             return 6

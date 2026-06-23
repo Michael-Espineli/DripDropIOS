@@ -53,6 +53,32 @@ final class ServiceLocationStartUpViewModel:ObservableObject{
         print("equipmentImages \(equipmentImages)")
         print("")
 
+        let existingBodiesOfWater = try await dataService.getAllBodiesOfWaterByServiceLocationId(
+            companyId: companyId,
+            serviceLocationId: serviceLocationId
+        )
+        let existingEquipment = try await dataService.getEquipmentByServiceLocationId(
+            companyId: companyId,
+            serviceLocationId: serviceLocationId
+        )
+        let reconciledBodiesOfWater = reconciledBodyOfWaterList(
+            incoming: bodyOfWaterList,
+            existing: existingBodiesOfWater,
+            customerId: customerId,
+            serviceLocationId: serviceLocationId
+        )
+        var bodyOfWaterIdMap: [String:String] = [:]
+        for (incomingBodyOfWater, reconciledBodyOfWater) in zip(bodyOfWaterList, reconciledBodiesOfWater) {
+            bodyOfWaterIdMap[incomingBodyOfWater.id] = reconciledBodyOfWater.id
+        }
+        let reconciledEquipment = reconciledEquipmentList(
+            incoming: equipmentList,
+            existing: existingEquipment,
+            bodyOfWaterIdMap: bodyOfWaterIdMap,
+            customerId: customerId,
+            serviceLocationId: serviceLocationId
+        )
+
         if let locationNickName {
             try await dataService.updateServiceLocationNickName(
                 companyId: companyId,
@@ -98,10 +124,13 @@ final class ServiceLocationStartUpViewModel:ObservableObject{
             )
         }
 
-        for BOW in bodyOfWaterList {
+        for BOW in reconciledBodiesOfWater {
             //Upload Body Of Water Images
             var storedBOWImages:[DripDropStoredImage] = []
-            if let BOWImageKey = bodyOfWaterImages.keys.first(where: {$0 == BOW.id}),let BOWDripDropImages = bodyOfWaterImages[BOWImageKey] {
+            let bodyOfWaterImageKey = bodyOfWaterImages.keys.first { imageKey in
+                imageKey == BOW.id || bodyOfWaterIdMap[imageKey] == BOW.id
+            }
+            if let BOWImageKey = bodyOfWaterImageKey,let BOWDripDropImages = bodyOfWaterImages[BOWImageKey] {
                 for image in BOWDripDropImages {
                     let result = try await dataService.uploadBodyOfWaterImage(companyId: companyId, bodyOfWaterId: BOW.id, image: image)
                     print("")
@@ -119,14 +148,17 @@ final class ServiceLocationStartUpViewModel:ObservableObject{
             print("Converted Images \(storedBOWImages)")
             print("")
 
-            uploadBodyOfWater.photoUrls = storedBOWImages
+            uploadBodyOfWater.photoUrls = mergedStoredImages(
+                existing: uploadBodyOfWater.photoUrls,
+                new: storedBOWImages
+            )
             print("uploadBodyOfWater \(uploadBodyOfWater)")
 
             print("")
 
             //Upload Body Of Water
             try await dataService.uploadBodyOfWaterByServiceLocation(companyId: companyId, bodyOfWater: uploadBodyOfWater)
-            let selectedEquipmentList = equipmentList.filter({$0.bodyOfWaterId == BOW.id})
+            let selectedEquipmentList = reconciledEquipment.filter({$0.bodyOfWaterId == BOW.id})
             for equipment in selectedEquipmentList {
                 //Upload Equipment Images
                 var storedEquipmentImages:[DripDropStoredImage] = []
@@ -139,11 +171,141 @@ final class ServiceLocationStartUpViewModel:ObservableObject{
                 }
                 //Create Equipment
                 var uploadEquipment = equipment
-                uploadEquipment.photoUrls = storedEquipmentImages
+                uploadEquipment.photoUrls = mergedStoredImages(
+                    existing: uploadEquipment.photoUrls,
+                    new: storedEquipmentImages
+                )
                 //Upload Equipment
 
                 try await dataService.uploadEquipment(companyId: companyId, equipment: uploadEquipment)
             }
         }
+    }
+
+    private func reconciledBodyOfWaterList(
+        incoming: [BodyOfWater],
+        existing: [BodyOfWater],
+        customerId: String,
+        serviceLocationId: String
+    ) -> [BodyOfWater] {
+        var unmatchedExisting = existing
+
+        return incoming.map { bodyOfWater in
+            var uploadBodyOfWater = bodyOfWater
+
+            if let match = matchBodyOfWater(
+                bodyOfWater,
+                existing: unmatchedExisting,
+                incomingCount: incoming.count
+            ) {
+                uploadBodyOfWater.id = match.id
+                uploadBodyOfWater.photoUrls = match.photoUrls
+                unmatchedExisting.removeAll { $0.id == match.id }
+            }
+
+            uploadBodyOfWater.customerId = customerId
+            uploadBodyOfWater.serviceLocationId = serviceLocationId
+            return uploadBodyOfWater
+        }
+    }
+
+    private func matchBodyOfWater(
+        _ bodyOfWater: BodyOfWater,
+        existing: [BodyOfWater],
+        incomingCount: Int
+    ) -> BodyOfWater? {
+        if let exact = existing.first(where: { $0.id == bodyOfWater.id }) {
+            return exact
+        }
+
+        let incomingName = normalizedSurveyName(bodyOfWater.name)
+        if let sameName = existing.first(where: { normalizedSurveyName($0.name) == incomingName }) {
+            return sameName
+        }
+
+        if incomingCount == 1, existing.count == 1 {
+            return existing[0]
+        }
+
+        return nil
+    }
+
+    private func reconciledEquipmentList(
+        incoming: [Equipment],
+        existing: [Equipment],
+        bodyOfWaterIdMap: [String:String],
+        customerId: String,
+        serviceLocationId: String
+    ) -> [Equipment] {
+        var unmatchedExisting = existing
+
+        return incoming.map { equipment in
+            let resolvedBodyOfWaterId = bodyOfWaterIdMap[equipment.bodyOfWaterId] ?? equipment.bodyOfWaterId
+            var uploadEquipment = equipment
+            uploadEquipment.bodyOfWaterId = resolvedBodyOfWaterId
+
+            if let match = matchEquipment(
+                uploadEquipment,
+                existing: unmatchedExisting,
+                incoming: incoming,
+                bodyOfWaterIdMap: bodyOfWaterIdMap
+            ) {
+                uploadEquipment.id = match.id
+                uploadEquipment.photoUrls = match.photoUrls
+                unmatchedExisting.removeAll { $0.id == match.id }
+            }
+
+            uploadEquipment.customerId = customerId
+            uploadEquipment.serviceLocationId = serviceLocationId
+            return uploadEquipment
+        }
+    }
+
+    private func matchEquipment(
+        _ equipment: Equipment,
+        existing: [Equipment],
+        incoming: [Equipment],
+        bodyOfWaterIdMap: [String:String]
+    ) -> Equipment? {
+        if let exact = existing.first(where: { $0.id == equipment.id }) {
+            return exact
+        }
+
+        let sameBodyAndType = existing.filter {
+            $0.bodyOfWaterId == equipment.bodyOfWaterId &&
+            $0.type == equipment.type
+        }
+        let incomingSameBodyAndType = incoming.filter {
+            (bodyOfWaterIdMap[$0.bodyOfWaterId] ?? $0.bodyOfWaterId) == equipment.bodyOfWaterId &&
+            $0.type == equipment.type
+        }
+        let incomingName = normalizedSurveyName(equipment.name)
+
+        if let sameName = sameBodyAndType.first(where: { normalizedSurveyName($0.name) == incomingName }) {
+            return sameName
+        }
+
+        if sameBodyAndType.count == 1, incomingSameBodyAndType.count == 1 {
+            return sameBodyAndType[0]
+        }
+
+        return nil
+    }
+
+    private func mergedStoredImages(
+        existing: [DripDropStoredImage]?,
+        new: [DripDropStoredImage]
+    ) -> [DripDropStoredImage] {
+        var seenImageURLs: Set<String> = []
+
+        return ((existing ?? []) + new).filter { image in
+            seenImageURLs.insert(image.imageURL).inserted
+        }
+    }
+
+    private func normalizedSurveyName(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
 }

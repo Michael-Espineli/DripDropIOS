@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct BodyOfWaterDetailStartUpView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     @Binding var bodiesOfWater:[BodyOfWater]
     @Binding var selectedBodyOfWater:BodyOfWater
     @Binding var equipmentList:[Equipment]
@@ -28,97 +30,27 @@ struct BodyOfWaterDetailStartUpView: View {
     @State var selectedPhotos:[DripDropImage] = []
     @State var shape:String = ""
     @State var showDimensions:Bool = true
+    @State private var selectedPoolVolumePhotoStep: PoolVolumePhotoStep?
+    @State private var showPoolVolumePhotoSourceDialog = false
+    @State private var showPoolVolumePhotoPicker = false
+    @State private var poolVolumePhotoSource: DripDropPicker.Source = .camera
+    @State private var poolVolumePickerImage: UIImage?
+    @State private var showPoolVolumePhotoError = false
+    @State private var poolVolumePhotoErrorMessage = ""
     
     var body: some View {
-        VStack{
-            ForEach($bodiesOfWater){ $BOW in
-                if BOW.id == selectedBodyOfWater.id {
-                    VStack{
-                        HStack{
-                            Spacer()
-                            Button(action: {
-                                equipmentList.removeAll(where: {$0.bodyOfWaterId == selectedBodyOfWater.id})
-                                bodiesOfWater.removeAll(where: {$0.id == selectedBodyOfWater.id})
-                                
-                            }, label: {
-                                Text("Delete")
-                                    .modifier(DeleteButtonModifier())
-                            })
-                        }
-                        HStack{
-                            Text("Name: ")
-                                .bold(true)
-                            
-                            TextField("Name", text: $BOW.name, prompt: Text("Name"), axis: .vertical)
-                                .padding(5)
-                                .background(Color.white)
-                                .foregroundColor(Color.basicFontText)
-                                .cornerRadius(5)
-                                .padding(5)
-                        }
-                        HStack{
-                            Text("Material")
-                                .bold(true)
-                            Picker("Pool Material", selection: $BOW.material, content: {
-                                ForEach(BodyOfWaterMaterial.allCases,id:\.self){ material in
-                                    Text(material.rawValue).tag(material.rawValue)
-                                }
-                            })
-                            Spacer()
-                        }
-                        HStack{
-                            Text("Shape")
-                                .bold(true)
-                            Picker("Shape", selection: optionalStringBinding($BOW.shape)) {
-                                ForEach(shapes,id: \.self){ shape in
-                                    Text(shape).tag(shape)
-                                }
-                            }
-                            Spacer()
-                        }
-                        
-                        HStack{
-                            Text("Gallons: ")
-                                .bold(true)
-                            
-                            TextField("Gallons", text: $BOW.gallons, prompt: Text("Gallons"), axis: .vertical)
-                                .padding(5)
-                                .background(Color.white)
-                                .foregroundColor(Color.basicFontText)
-                                .cornerRadius(5)
-                                .padding(5)
-                            Button(action: {
-                                showDimensions.toggle()
-                            }, label: {
-                                Text(showDimensions ? "Hide Dimensions" : "Add Dimensions")
-                                    .modifier(AddButtonModifier())
-                            })
-                        }
-                        HStack(alignment: .top){
-                            Text("Notes")
-                                .bold(true)
+        VStack(alignment: .leading, spacing: 14) {
+            if bodiesOfWater.isEmpty {
+                startupEmptyState(
+                    title: "No Bodies Of Water",
+                    message: "Add a pool, spa, or other body of water to start the survey.",
+                    systemImage: "drop.triangle"
+                )
+            }
 
-                            TextField("Notes", text: optionalStringBinding($BOW.notes), axis: .vertical)
-                                .lineLimit(2...5)
-                                .padding(5)
-                                .background(Color.white)
-                                .foregroundColor(Color.basicFontText)
-                                .cornerRadius(5)
-                                .padding(5)
-                        }
-                        if showDimensions {
-                            VStack{
-                                dimensionRow(title: "Length 1", text: dimensionBinding($BOW.length, index: 0))
-                                dimensionRow(title: "Length 2", text: dimensionBinding($BOW.length, index: 1))
-                                dimensionRow(title: "Depth 1", text: dimensionBinding($BOW.depth, index: 0))
-                                dimensionRow(title: "Depth 2", text: dimensionBinding($BOW.depth, index: 1))
-                                dimensionRow(title: "Width 1", text: dimensionBinding($BOW.width, index: 0))
-                                dimensionRow(title: "Width 2", text: dimensionBinding($BOW.width, index: 1))
-                            }
-                        }
-                        poolVolumeGuide(for: $BOW)
-                        PhotoContentView(selectedImages: $selectedPhotos)
-                    }
+            ForEach($bodiesOfWater) { $BOW in
+                if BOW.id == selectedBodyOfWater.id {
+                    bodyOfWaterDetailCard($BOW)
                 }
             }
         }
@@ -157,6 +89,39 @@ struct BodyOfWaterDetailStartUpView: View {
             print(images)
             photos[selectedBodyOfWater.id] = images
         })
+        .confirmationDialog(
+            selectedPoolVolumePhotoStep.map { "Add photo for step \($0.number)" } ?? "Add Photo",
+            isPresented: $showPoolVolumePhotoSourceDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Take Photo") {
+                openPoolVolumePhotoPicker(source: .camera)
+            }
+
+            Button("Choose From Library") {
+                openPoolVolumePhotoPicker(source: .library)
+            }
+
+            Button("Cancel", role: .cancel) {
+                selectedPoolVolumePhotoStep = nil
+            }
+        } message: {
+            if let selectedPoolVolumePhotoStep {
+                Text(selectedPoolVolumePhotoStep.title)
+            }
+        }
+        .sheet(isPresented: $showPoolVolumePhotoPicker, onDismiss: savePoolVolumeStepPhotoIfNeeded) {
+            DripDropImagePicker(
+                sourceType: poolVolumePhotoSource == .library ? .photoLibrary : .camera,
+                selectedImage: $poolVolumePickerImage
+            )
+            .ignoresSafeArea()
+        }
+        .alert("Photo Error", isPresented: $showPoolVolumePhotoError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(poolVolumePhotoErrorMessage)
+        }
     }
 }
 
@@ -165,6 +130,261 @@ struct BodyOfWaterDetailStartUpView: View {
 //}
 
 private extension BodyOfWaterDetailStartUpView {
+    func bodyOfWaterDetailCard(_ bodyOfWater: Binding<BodyOfWater>) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            bodyOfWaterHeader(bodyOfWater)
+
+            VStack(spacing: 10) {
+                startupTextField(title: "Name", text: bodyOfWater.name)
+
+                LazyVGrid(
+                    columns: fieldColumns,
+                    spacing: 10
+                ) {
+                    materialPicker(bodyOfWater)
+                    shapePicker(bodyOfWater)
+                }
+
+                startupTextField(
+                    title: "Gallons",
+                    text: bodyOfWater.gallons,
+                    keyboardType: .numberPad
+                )
+
+                startupTextField(
+                    title: "Notes",
+                    text: optionalStringBinding(bodyOfWater.notes),
+                    lineLimit: 3...6
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Dimensions", systemImage: "ruler")
+                        .font(.headline.weight(.semibold))
+
+                    Spacer()
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showDimensions.toggle()
+                        }
+                    } label: {
+                        Label(showDimensions ? "Hide" : "Add", systemImage: showDimensions ? "chevron.up" : "plus")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
+                if showDimensions {
+                    LazyVGrid(
+                        columns: fieldColumns,
+                        spacing: 10
+                    ) {
+                        dimensionRow(title: "Length 1", text: dimensionBinding(bodyOfWater.length, index: 0))
+                        dimensionRow(title: "Length 2", text: dimensionBinding(bodyOfWater.length, index: 1))
+                        dimensionRow(title: "Depth 1", text: dimensionBinding(bodyOfWater.depth, index: 0))
+                        dimensionRow(title: "Depth 2", text: dimensionBinding(bodyOfWater.depth, index: 1))
+                        dimensionRow(title: "Width 1", text: dimensionBinding(bodyOfWater.width, index: 0))
+                        dimensionRow(title: "Width 2", text: dimensionBinding(bodyOfWater.width, index: 1))
+                    }
+                }
+            }
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            poolVolumeGuide(for: bodyOfWater)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Body Photos", systemImage: "camera.fill")
+                    .font(.headline.weight(.semibold))
+
+                Text("Use the guide rows above for volume photos. Add any extra body-of-water photos here.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                PhotoContentView(selectedImages: $selectedPhotos)
+            }
+        }
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    func bodyOfWaterHeader(_ bodyOfWater: Binding<BodyOfWater>) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "drop.fill")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 36, height: 36)
+                .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(bodyOfWater.wrappedValue.name.isEmpty ? "Body Of Water" : bodyOfWater.wrappedValue.name)
+                    .font(.headline.weight(.semibold))
+                    .lineLimit(2)
+
+                Text("Capture structure, volume, and photos for the service agreement estimate.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            Button(role: .destructive) {
+                deleteBodyOfWater(bodyOfWater.wrappedValue)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(width: 34, height: 34)
+                    .background(Color.red.opacity(0.10), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Delete body of water")
+        }
+    }
+
+    func materialPicker(_ bodyOfWater: Binding<BodyOfWater>) -> some View {
+        menuField(
+            title: "Material",
+            value: bodyOfWater.wrappedValue.material,
+            placeholder: "Select material"
+        ) {
+            Button("Select material") {
+                bodyOfWater.wrappedValue.material = ""
+            }
+
+            ForEach(BodyOfWaterMaterial.allCases, id: \.self) { material in
+                Button {
+                    bodyOfWater.wrappedValue.material = material.rawValue
+                } label: {
+                    Text(material.rawValue)
+                }
+            }
+        }
+    }
+
+    func shapePicker(_ bodyOfWater: Binding<BodyOfWater>) -> some View {
+        menuField(
+            title: "Shape",
+            value: bodyOfWater.wrappedValue.shape ?? "",
+            placeholder: "Select shape"
+        ) {
+            Button("Select shape") {
+                bodyOfWater.wrappedValue.shape = ""
+            }
+
+            ForEach(shapes, id: \.self) { shape in
+                Button {
+                    bodyOfWater.wrappedValue.shape = shape
+                } label: {
+                    Text(shape)
+                }
+            }
+        }
+    }
+
+    func menuField<Content: View>(
+        title: String,
+        value: String,
+        placeholder: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Menu {
+                content()
+            } label: {
+                HStack(spacing: 8) {
+                    Text(trimmedValue.isEmpty ? placeholder : trimmedValue)
+                        .foregroundStyle(trimmedValue.isEmpty ? .secondary : .primary)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 8)
+
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    func startupTextField(
+        title: String,
+        text: Binding<String>,
+        lineLimit: ClosedRange<Int>? = nil,
+        keyboardType: UIKeyboardType = .default
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if let lineLimit {
+                TextField(title, text: text, axis: .vertical)
+                    .lineLimit(lineLimit)
+                    .keyboardType(keyboardType)
+                    .padding(10)
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .foregroundColor(Color.basicFontText)
+            } else {
+                TextField(title, text: text)
+                    .keyboardType(keyboardType)
+                    .padding(10)
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .foregroundColor(Color.basicFontText)
+            }
+        }
+    }
+
+    var fieldColumns: [GridItem] {
+        if horizontalSizeClass == .compact {
+            return [GridItem(.flexible(), spacing: 10)]
+        }
+
+        return [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+    }
+
+    func deleteBodyOfWater(_ bodyOfWater: BodyOfWater) {
+        equipmentList.removeAll { $0.bodyOfWaterId == bodyOfWater.id }
+        bodiesOfWater.removeAll { $0.id == bodyOfWater.id }
+
+        if selectedBodyOfWater.id == bodyOfWater.id, let nextBodyOfWater = bodiesOfWater.first {
+            selectedBodyOfWater = nextBodyOfWater
+        }
+    }
+
+    func startupEmptyState(title: String, message: String, systemImage: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .padding(.horizontal, 12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
     var poolVolumePhotoSteps: [PoolVolumePhotoStep] {
         [
             PoolVolumePhotoStep(
@@ -202,7 +422,9 @@ private extension BodyOfWaterDetailStartUpView {
 
     func poolVolumeGuide(for bodyOfWater: Binding<BodyOfWater>) -> some View {
         let estimate = estimatedGallons(for: bodyOfWater.wrappedValue)
-        let capturedPhotoCount = min(selectedPhotos.count, poolVolumePhotoSteps.count)
+        let capturedPhotoCount = poolVolumePhotoSteps
+            .filter { poolVolumePhoto(for: $0) != nil }
+            .count
 
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -227,7 +449,13 @@ private extension BodyOfWaterDetailStartUpView {
 
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(poolVolumePhotoSteps) { step in
-                    photoGuideRow(step, capturedPhotoCount: capturedPhotoCount)
+                    Button {
+                        selectedPoolVolumePhotoStep = step
+                        showPoolVolumePhotoSourceDialog = true
+                    } label: {
+                        photoGuideRow(step, capturedPhotoCount: capturedPhotoCount)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
 
@@ -258,36 +486,50 @@ private extension BodyOfWaterDetailStartUpView {
                         .foregroundColor(.secondary)
                 }
 
-                Text(volumeConfidenceText(for: bodyOfWater.wrappedValue, photoCount: selectedPhotos.count))
+                Text(volumeConfidenceText(for: bodyOfWater.wrappedValue, photoCount: capturedPhotoCount))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             .padding(10)
-            .background(Color.white.opacity(0.65))
-            .cornerRadius(10)
+            .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .padding(12)
-        .background(Color.gray.opacity(0.12))
-        .cornerRadius(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func photoGuideRow(_ step: PoolVolumePhotoStep, capturedPhotoCount: Int) -> some View {
-        let isCaptured = capturedPhotoCount >= step.number
+        let stepPhoto = poolVolumePhoto(for: step)
+        let isCaptured = stepPhoto != nil
         let isNext = capturedPhotoCount + 1 == step.number
 
         return HStack(alignment: .top, spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(isCaptured ? Color.green.opacity(0.16) : Color.accentColor.opacity(isNext ? 0.18 : 0.08))
-                    .frame(width: 32, height: 32)
+            if let stepPhoto {
+                Image(uiImage: stepPhoto.image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 46, height: 46)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(alignment: .topTrailing) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(.green)
+                            .background(Color.white, in: Circle())
+                            .offset(x: 4, y: -4)
+                    }
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentColor.opacity(isNext ? 0.18 : 0.08))
+                        .frame(width: 40, height: 40)
 
-                Image(systemName: isCaptured ? "checkmark" : step.systemImage)
-                    .font(.caption.bold())
-                    .foregroundColor(isCaptured ? .green : .accentColor)
+                    Image(systemName: step.systemImage)
+                        .font(.caption.bold())
+                        .foregroundColor(.accentColor)
+                }
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(isCaptured ? "Captured" : (isNext ? "Next photo" : "Upcoming"))
+                Text(isCaptured ? "Photo assigned" : (isNext ? "Tap to add next photo" : "Tap to add photo"))
                     .font(.caption2.bold())
                     .foregroundColor(isCaptured ? .green : .secondary)
 
@@ -298,10 +540,90 @@ private extension BodyOfWaterDetailStartUpView {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: isCaptured ? "camera.rotate" : "camera.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.accentColor)
+                .frame(width: 34, height: 34)
+                .background(Color.accentColor.opacity(0.10), in: Circle())
         }
-        .padding(8)
-        .background(isNext ? Color.accentColor.opacity(0.08) : Color.clear)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .background(isNext ? Color.accentColor.opacity(0.08) : Color.white.opacity(0.55))
         .cornerRadius(10)
+    }
+
+    func poolVolumePhotoName(for step: PoolVolumePhotoStep) -> String {
+        "Pool Volume Step \(step.number): \(step.title)"
+    }
+
+    func poolVolumeStepNumber(for image: DripDropImage) -> Int? {
+        let prefix = "Pool Volume Step "
+        guard image.name.hasPrefix(prefix) else {
+            return nil
+        }
+
+        let remainder = image.name.dropFirst(prefix.count)
+        let numberText = remainder.prefix { $0.isNumber }
+        return Int(numberText)
+    }
+
+    func poolVolumePhoto(for step: PoolVolumePhotoStep) -> DripDropImage? {
+        if let taggedPhoto = selectedPhotos.first(where: { poolVolumeStepNumber(for: $0) == step.number }) {
+            return taggedPhoto
+        }
+
+        let fallbackIndex = step.number - 1
+        guard selectedPhotos.indices.contains(fallbackIndex) else {
+            return nil
+        }
+
+        let fallbackPhoto = selectedPhotos[fallbackIndex]
+        return poolVolumeStepNumber(for: fallbackPhoto) == nil ? fallbackPhoto : nil
+    }
+
+    func openPoolVolumePhotoPicker(source: DripDropPicker.Source) {
+        do {
+            if source == .camera {
+                try DripDropPicker.checkPermissions()
+            }
+
+            poolVolumePhotoSource = source
+            poolVolumePickerImage = nil
+            showPoolVolumePhotoPicker = true
+        } catch {
+            poolVolumePhotoErrorMessage = "Camera access is needed to take this photo. You can also choose one from the library."
+            showPoolVolumePhotoError = true
+        }
+    }
+
+    func savePoolVolumeStepPhotoIfNeeded() {
+        guard let uiImage = poolVolumePickerImage, let step = selectedPoolVolumePhotoStep else {
+            selectedPoolVolumePhotoStep = nil
+            poolVolumePickerImage = nil
+            return
+        }
+
+        let stepImage = DripDropImage(name: poolVolumePhotoName(for: step))
+
+        do {
+            try FileManager().saveImage("\(stepImage.id)", image: uiImage)
+
+            if let existingIndex = selectedPhotos.firstIndex(where: { poolVolumeStepNumber(for: $0) == step.number }) {
+                selectedPhotos[existingIndex] = stepImage
+            } else {
+                selectedPhotos.append(stepImage)
+            }
+        } catch {
+            poolVolumePhotoErrorMessage = "The photo could not be saved to this survey step."
+            showPoolVolumePhotoError = true
+        }
+
+        selectedPoolVolumePhotoStep = nil
+        poolVolumePickerImage = nil
     }
 
     func estimatedGallons(for bodyOfWater: BodyOfWater) -> Int? {
@@ -396,14 +718,16 @@ private extension BodyOfWaterDetailStartUpView {
     }
 
     func dimensionRow(title: String, text: Binding<String>) -> some View {
-        HStack{
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .bold(true)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
 
             TextField(title, text: text)
-                .padding(3)
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(3)
+                .keyboardType(.decimalPad)
+                .padding(10)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .foregroundColor(Color.basicFontText)
         }
     }
 }

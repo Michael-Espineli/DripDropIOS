@@ -158,6 +158,7 @@ final class SimpleCompanyInfoViewModel:ObservableObject{
                     accountType: company.accountType,
                     paidUntil: company.paidUntil,
                     status: company.status,
+                    stripeConnectAccountId: company.stripeConnectAccountId,
                     stripeConnectAccountStatus: company.stripeConnectAccountStatus,
                     yelpURL: yelpURL,
                     websiteURL: webURL
@@ -174,12 +175,13 @@ final class SimpleCompanyInfoViewModel:ObservableObject{
     func setUpStripeAccount(company:Company,user:DBUser) {
         Task{
             do {
-                guard let stripeConnectAccountId = company.stripeConnectAccountId else{
+                guard let stripeConnectAccountId = company.stripeConnectAccountId, !stripeConnectAccountId.isEmpty else{
                     return
                 }
                 
                 print("--createStripeAccountLink--")
                 let data:[String:Any] = [
+                    "companyId": company.id,
                     "accountId": stripeConnectAccountId,
                     "stripeVersion": "2023-10-16",
                 ]
@@ -779,4 +781,3 @@ extension SimpleCompanyInfoView {
         .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 10))
     }
 }
-

@@ -113,50 +113,49 @@ struct ServiceStopUtilityView: View {
                 .onChange(of: serviceStop, perform: { stop in
                     print("Service Stop Change From Utility View")
                 })
-                
-                if let activeRoute = vm.activeRoute {
-                    if activeRoute.status == .didNotStart || activeRoute.status == .onBreak || activeRoute.status == .traveling || activeRoute.status == .finished {
-                        Button(action: {
-                            vm.startActiveRoute(companyId: masterDataManager.currentCompany?.id, companyName: masterDataManager.currentCompany?.name, user: masterDataManager.user)
-                        }, label: {
-                            Text("Start Route to Continue")
-                                .font(.caption2)
-                                .bold()
-                                .padding(6)
-                                .background(Color.orange.opacity(0.8))
-                                .foregroundColor(.white)
-                                .clipShape(Capsule())
-                                .padding()
-                                .accessibilityHidden(true)
-                            
-                        })
-                    } else {
-                        if serviceStop.startTime == nil {
-                            Button(action: {
-                                vm.startServiceStop(companyId: masterDataManager.currentCompany?.id, serviceStopId:serviceStop.id)
-                            }, label: {
-                                Text("Start Service Stop To Continue")
-                                    .font(.caption2)
-                                    .bold()
-                                    .padding(6)
-                                    .background(Color.orange.opacity(0.9))
-                                    .foregroundColor(.white)
-                                    .clipShape(Capsule())
-                                    .padding()
-                                    .accessibilityHidden(true)
-                                
-                            })
-                        }
-                        
-                    }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if let serviceStop,
+               let continuationGate = continuationGate(for: serviceStop) {
+                ServiceStopContinuationBanner(title: continuationGate.title) {
+                    handleContinuationGate(continuationGate, serviceStop: serviceStop)
                 }
-            
             }
         }
     }
 }
 
 extension ServiceStopUtilityView {
+    private func continuationGate(for serviceStop: ServiceStop) -> ServiceStopContinuationGate? {
+        if vm.activeRoute?.status.requiresStartToContinueServiceStopWork == true {
+            return .startRoute
+        }
+
+        if serviceStop.startTime == nil {
+            return .startServiceStop
+        }
+
+        return nil
+    }
+
+    private func handleContinuationGate(_ gate: ServiceStopContinuationGate, serviceStop: ServiceStop) {
+        switch gate {
+        case .startRoute:
+            vm.startActiveRoute(
+                companyId: masterDataManager.currentCompany?.id,
+                companyName: masterDataManager.currentCompany?.name,
+                user: masterDataManager.user
+            )
+        case .startServiceStop:
+            vm.startServiceStop(
+                companyId: masterDataManager.currentCompany?.id,
+                serviceStopId: serviceStop.id,
+                startTime: vm.arrivalTimeForServiceStop(serviceStop.id) ?? Date()
+            )
+        }
+    }
+
     var sideBar:some View {
         ZStack{
             HStack{

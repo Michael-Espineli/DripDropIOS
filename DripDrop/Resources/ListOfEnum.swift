@@ -133,6 +133,7 @@ enum JobBillingStatus:String, CaseIterable,Codable {
     case inProgress = "In Progress"
     case invoiced = "Invoiced"
     case paid = "Paid"
+    case comped = "Comped"
     case expired = "Expired"
 }
 

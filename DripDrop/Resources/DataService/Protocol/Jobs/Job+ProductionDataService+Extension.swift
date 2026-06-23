@@ -179,7 +179,7 @@ extension ProductionDataService {
             return try await workOrderCollection(companyId: companyId)
                 .order(by: "dateCreated", descending: true)
                 .whereField("operationStatus", in: ["Finished"])
-                    .whereField("billingStatus", in: ["Invoiced","Paid","Expired"])
+                    .whereField("billingStatus", in: ["Invoiced","Paid","Comped","Expired"])
                 .getDocuments(as:Job.self)
             
         } else {

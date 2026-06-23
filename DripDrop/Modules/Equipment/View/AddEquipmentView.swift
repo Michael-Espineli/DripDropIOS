@@ -639,14 +639,14 @@ struct EquipmentCatalogSelectionControl: View {
     @State private var showCatalog = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Make & Model")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
                 .textCase(.uppercase)
 
-            HStack(spacing: 10) {
+            VStack(spacing: 8) {
                 Button(action: { showCatalog = true }) {
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass")
@@ -659,36 +659,57 @@ struct EquipmentCatalogSelectionControl: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
                 Button(action: clearCatalogIds) {
-                    Text("Custom")
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .background(Color(.secondarySystemBackground))
-                        .foregroundColor(.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    HStack(spacing: 10) {
+                        Image(systemName: "square.and.pencil")
+
+                        Text("Use custom make & model")
+                            .fontWeight(.semibold)
+
+                        Spacer()
+                    }
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemBackground))
+                    .foregroundColor(.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
 
             if !modelId.isEmpty || !makeId.isEmpty {
-                HStack {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                        .padding(.top, 2)
+
                     VStack(alignment: .leading, spacing: 2) {
                         Text([make, model].filter { !$0.isEmpty }.joined(separator: " "))
                             .fontWeight(.semibold)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("Selected from catalog")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
-                    Spacer()
-                    Button("Clear") { clearCatalogIds() }
-                        .fontWeight(.semibold)
-                        .foregroundColor(.blue)
+
+                    Spacer(minLength: 8)
+
+                    Button(action: clearCatalogIds) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .accessibilityLabel("Clear catalog match")
                 }
                 .padding(12)
                 .background(Color(.secondarySystemBackground))

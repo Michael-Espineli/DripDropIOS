@@ -11,6 +11,11 @@ import FirebaseFirestoreSwift
 import Firebase
 import Darwin
 
+struct DBUserSettings: Codable, Hashable {
+    var companyNavigationCategoryOrder: [String]?
+    var companyNavigationBookmarks: [String]?
+}
+
  struct DBUser:Codable,Identifiable,Hashable{
     var id :String
     var email :String
@@ -27,6 +32,7 @@ import Darwin
 //    var stripeConnectedAccountId: String?
     var recentlySelectedCompany: String
     var phoneNumber: String?
+    var settings: DBUserSettings?
      
     init(
         id: String,
@@ -43,7 +49,8 @@ import Darwin
 //        stripeId: String? = nil,
         //        stripeConnectedAccountId: String? = nil,
         recentlySelectedCompany: String,
-        phoneNumber: String? = nil
+        phoneNumber: String? = nil,
+        settings: DBUserSettings? = nil
     ){
         self.id = id
         self.email = email
@@ -60,6 +67,7 @@ import Darwin
 //        self.stripeConnectedAccountId = stripeConnectedAccountId
         self.recentlySelectedCompany = recentlySelectedCompany
         self.phoneNumber = phoneNumber
+        self.settings = settings
 
         
     }
@@ -79,6 +87,7 @@ import Darwin
 //            case stripeConnectedAccountId = "stripeConnectedAccountId"
             case recentlySelectedCompany = "recentlySelectedCompany"
             case phoneNumber = "phoneNumber"
+            case settings = "settings"
 
         }
 }
