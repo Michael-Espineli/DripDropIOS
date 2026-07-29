@@ -116,27 +116,32 @@ extension ProductionDataService {
         print("Service Stop Count " + String(toDoCount))
         return updatedServiceStopCount
     }
-    nonisolated func getAllCompanyToDoItems(companyId:String) -> [ToDo]{
-        return [
-            ToDo(id: "1", title: "Check Harold Rice", status: .toDo, description: "Do some stuff", dateCreated: Date(), dateFinished: Date(), assignedTechId: "", creatorId: ""),
-            ToDo(id: "2", title: "Check hey Rice", status: .toDo, description: "Do some stuff", dateCreated: Date(), dateFinished: Date(), assignedTechId: "", creatorId: ""),
-            ToDo(id: "3", title: "Check yum Rice", status: .toDo, description: "Do some stuff", dateCreated: Date(), dateFinished: Date(), assignedTechId: "", creatorId: ""),
-            ToDo(id: "4", title: "Check the Dude Rice", status: .toDo, description: "Do some stuff", dateCreated: Date(), dateFinished: Date(), assignedTechId: "", creatorId: "")
-        ]
-        
+    func getToDo(companyId:String,toDoId:String) async throws -> ToDo {
+        let snapshot = try await ToDoDocument(toDoId: toDoId, companyId: companyId).getDocument()
+        return ToDo(document: snapshot)
     }
-    nonisolated func getAllCompanyToDoItemsCount(companyId: String) -> Int {
-        return 8
+
+    func getAllCompanyToDoItems(companyId:String) async throws -> [ToDo]{
+        let snapshot = try await ToDoCollection(companyId: companyId).getDocuments()
+        return snapshot.documents
+            .map { ToDo(document: $0) }
+            .filter { !$0.isArchived }
+            .sorted(by: ToDo.sortByUrgency)
+    }
+    func getAllCompanyToDoItemsCount(companyId: String) async throws -> Int {
+        let query = ToDoCollection(companyId: companyId).whereField("status", isNotEqualTo: "archived")
+        let snapshot = try await query.count.getAggregation(source: .server)
+        return Int(truncating: snapshot.count)
     }
     
     func getAllTechnicanToDoItemsCount(companyId: String, techId: String) async throws -> Int {
         //MEMORY LEAK
-        let query = ToDoCollection(companyId: companyId).whereField("assignedTechId", isEqualTo: techId).whereField("status", isNotEqualTo: "Finished")
+        let query = ToDoCollection(companyId: companyId).whereField("assignedToUserId", isEqualTo: techId).whereField("status", isNotEqualTo: "archived")
         let countQuery = query.count
         do {
             let snapshot = try await countQuery.getAggregation(source: .server)
             print(snapshot.count)
-            return snapshot.count as! Int
+            return Int(truncating: snapshot.count)
         } catch {
             print(error)
             return 0
@@ -144,9 +149,13 @@ extension ProductionDataService {
         //        return 0
     }
     func getAllTechnicanToDoItems(companyId:String,techId:String) async throws -> [ToDo]{
-        return try await ToDoCollection(companyId: companyId)
-            .whereField("assignedTechId", isEqualTo: techId)
-            .getDocuments(as:ToDo.self)
+        let snapshot = try await ToDoCollection(companyId: companyId)
+            .whereField("assignedToUserId", isEqualTo: techId)
+            .getDocuments()
+        return snapshot.documents
+            .map { ToDo(document: $0) }
+            .filter { !$0.isArchived }
+            .sorted(by: ToDo.sortByUrgency)
         
     }
     func getCurrentUser(userId:String) async throws -> DBUser{

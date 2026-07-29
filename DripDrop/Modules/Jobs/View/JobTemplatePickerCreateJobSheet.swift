@@ -14,6 +14,9 @@ struct JobTemplatePickerCreateJobSheet: View {
 
     let companyId: String
     let dataService: any ProductionDataServiceProtocol
+    let technicianCanAddOnly: Bool
+    let isTechnicianCreateFlow: Bool
+    let canScheduleServiceStopsForOthers: Bool
 
     @State private var templates: [JobTemplate] = []
     @State private var selectedTemplate: JobTemplate?
@@ -22,6 +25,20 @@ struct JobTemplatePickerCreateJobSheet: View {
     @State private var showCreateJobSheet: Bool = false
     @State private var showAlert: Bool = false
     @State private var alertMessage: String = ""
+
+    init(
+        companyId: String,
+        dataService: any ProductionDataServiceProtocol,
+        technicianCanAddOnly: Bool = false,
+        isTechnicianCreateFlow: Bool = false,
+        canScheduleServiceStopsForOthers: Bool = true
+    ) {
+        self.companyId = companyId
+        self.dataService = dataService
+        self.technicianCanAddOnly = technicianCanAddOnly
+        self.isTechnicianCreateFlow = isTechnicianCreateFlow
+        self.canScheduleServiceStopsForOthers = canScheduleServiceStopsForOthers
+    }
 
     var body: some View {
         NavigationStack {
@@ -69,7 +86,9 @@ struct JobTemplatePickerCreateJobSheet: View {
                 AddNewJobView(
                     dataService: dataService,
                     customerId: nil,
-                    startingTemplate: template
+                    startingTemplate: template,
+                    isTechnicianCreateFlow: isTechnicianCreateFlow,
+                    canScheduleServiceStopsForOthers: canScheduleServiceStopsForOthers
                 )
             }
         }
@@ -121,7 +140,7 @@ struct JobTemplatePickerCreateJobSheet: View {
             Text("No templates found.")
                 .font(.headline.weight(.semibold))
 
-            Text("Create templates from Job Detail or from Settings > Job Templates.")
+            Text(technicianCanAddOnly ? "No templates are currently enabled for technician job creation." : "Create templates from Job Detail or from Settings > Job Templates.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -198,7 +217,12 @@ struct JobTemplatePickerCreateJobSheet: View {
         defer { isLoading = false }
 
         do {
-            templates = try await dataService.fetchJobTemplates(companyId: companyId)
+            let fetchedTemplates = try await dataService.fetchJobTemplates(companyId: companyId)
+            if technicianCanAddOnly {
+                templates = fetchedTemplates.filter { $0.technicianCanAdd }
+            } else {
+                templates = fetchedTemplates
+            }
         } catch {
             alertMessage = "Could not load job templates. \(error.localizedDescription)"
             showAlert = true

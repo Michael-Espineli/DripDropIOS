@@ -186,6 +186,7 @@
 
                     if role.permissionIdList.contains("20") {
                         jobs
+                        offeredWork
                     }
 
                     if role.permissionIdList.contains("30") {
@@ -450,6 +451,59 @@
                                         }
                                         .buttonStyle(.plain)
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
+        var offeredWork: some View {
+            operationsCard(
+                title: "Offered Work",
+                subtitle: "Direct offers, internal board posts, and accepted work.",
+                systemImage: "list.bullet.clipboard",
+                countText: VM.workOffers.isEmpty ? nil : "\(VM.workOffers.openOfferCount)",
+                seeMore: {
+                    if UIDevice.isIPhone {
+                        AnyView(
+                            NavigationLink(value: Route.offeredWork(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    } else {
+                        AnyView(
+                            NavigationLink(value: Route.offeredWork(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    }
+                },
+                stats: {
+                    VStack(spacing: 8) {
+                        statRow(title: "Open", value: "\(VM.workOffers.openOfferCount)", systemImage: "paperplane")
+                        statRow(title: "Ready", value: "\(VM.workOffers.acceptedReadyToScheduleCount)", systemImage: "calendar.badge.plus")
+                        statRow(title: "Scheduled", value: "\(VM.workOffers.scheduledOfferCount)", systemImage: "checkmark.circle")
+                    }
+                },
+                preview: {
+                    if shouldShowFullPreview {
+                        if VM.workOffers.isEmpty {
+                            emptyPreviewTile("No Offered Work", systemImage: "tray")
+                        } else {
+                            horizontalPreviewList {
+                                ForEach(VM.workOffers.prefix(10)) { offer in
+                                    NavigationLink(value: Route.offeredWork(dataService: dataService)) {
+                                        previewTile(
+                                            title: offer.title.isEmpty ? "Offered Work" : offer.title,
+                                            subtitle: offer.customerName,
+                                            systemImage: offer.offerType.systemImage
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }

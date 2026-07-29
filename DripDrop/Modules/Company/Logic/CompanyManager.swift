@@ -52,6 +52,8 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
     let stripeConnectAccountStatus : StripeConnectedAccountStatus
     let yelpURL : String
     let websiteURL : String
+    let defaultAdminId: String?
+    let defaultAdminName: String?
     init(
         id: String,
         ownerId : String,
@@ -72,7 +74,9 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
         stripeConnectAccountId : String? = nil,
         stripeConnectAccountStatus : StripeConnectedAccountStatus,
         yelpURL : String,
-        websiteURL : String
+        websiteURL : String,
+        defaultAdminId: String? = nil,
+        defaultAdminName: String? = nil
     ){
         self.id = id
         self.ownerId = ownerId
@@ -94,6 +98,8 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
         self.stripeConnectAccountStatus = stripeConnectAccountStatus
         self.yelpURL = yelpURL
         self.websiteURL = websiteURL
+        self.defaultAdminId = defaultAdminId
+        self.defaultAdminName = defaultAdminName
     }
     enum CodingKeys:String, CodingKey {
         case id = "id"
@@ -116,6 +122,8 @@ struct Company:Identifiable, Codable,Equatable,Hashable{
         case stripeConnectAccountStatus = "stripeConnectAccountStatus"
         case yelpURL = "yelpURL"
         case websiteURL = "websiteURL"
+        case defaultAdminId = "defaultAdminId"
+        case defaultAdminName = "defaultAdminName"
     }
     static func == (lhs: Company, rhs: Company) -> Bool {
         return lhs.id == rhs.id &&

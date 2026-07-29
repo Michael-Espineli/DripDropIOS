@@ -59,7 +59,7 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 16)
-                        .foregroundStyle(.poolBlack)
+                        .foregroundStyle(.primary)
                     } header: {
                         VStack(spacing: 12) {
 //                            toolBar
@@ -74,6 +74,11 @@ struct ProfileView: View {
         }
         .navigationTitle("\(masterDataManager.user?.firstName ?? "First Name") \(masterDataManager.user?.lastName ?? "Last Name")")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                editProfileButton
+            }
+        }
         .task {
             if let user = masterDataManager.user {
                 print("Arrived at Profile Page")
@@ -344,20 +349,26 @@ struct CompanyUserProfileHistoryView: View {
 }
 
 extension ProfileView {
-    var toolBar: some View {
-        HStack {
-            Spacer(minLength: 0)
+    var editProfileButton: some View {
+        Group {
             if let user = masterDataManager.user {
                 NavigationLink(value: Route.editUser(user: user, dataService: dataService)) {
                     Label("Edit", systemImage: "pencil")
                         .labelStyle(.titleAndIcon)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.white.opacity(0.12))
-                .foregroundStyle(.black)
+                .tint(Color.accentColor.opacity(0.16))
+                .foregroundStyle(Color.accentColor)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .accessibilityLabel("Edit Profile")
             }
+        }
+    }
+
+    var toolBar: some View {
+        HStack {
+            Spacer(minLength: 0)
+            editProfileButton
         }
     }
 
@@ -397,7 +408,11 @@ extension ProfileView {
                             .foregroundStyle(.tertiary)
                     }
                     .padding(16)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    }
                 }
                 .buttonStyle(.plain)
             }
@@ -440,7 +455,11 @@ extension ProfileView {
                             .foregroundStyle(.tertiary)
                     }
                     .padding(16)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    }
                 }
                 .buttonStyle(.plain)
             }
@@ -521,7 +540,7 @@ extension ProfileView {
         ZStack(alignment: .bottomTrailing) {
             ZStack {
                 Circle()
-                    .fill(Color.black.opacity(0.2))
+                    .fill(Color.accentColor.opacity(0.14))
                     .frame(width: 100, height: 100)
 
                 if let urlString = profileVM.imageUrlString, let url = URL(string: urlString) {
@@ -541,7 +560,7 @@ extension ProfileView {
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 100, height: 100)
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundStyle(.secondary)
                         @unknown default:
                             EmptyView()
                         }
@@ -551,7 +570,7 @@ extension ProfileView {
                         .resizable()
                         .scaledToFill()
                         .frame(width: 100, height: 100)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
             }
             .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
@@ -559,9 +578,13 @@ extension ProfileView {
             PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
                 Image(systemName: "camera.fill")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(Color.basicFontText)
+                    .foregroundStyle(.primary)
                     .padding(6)
-                    .background(.black.opacity(0.6), in: Circle())
+                    .background(.regularMaterial, in: Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    }
             }
             .padding(4)
             .accessibilityLabel("Change profile photo")
@@ -576,18 +599,8 @@ extension ProfileView {
                     HStack{
                         Text("\(user.firstName) \(user.lastName)")
                             .font(.title2.weight(.semibold))
-                            .foregroundColor(Color.basicFontText)
-                        if let user = masterDataManager.user {
-                            NavigationLink(value: Route.editUser(user: user, dataService: dataService)) {
-                                Label("Edit", systemImage: "pencil")
-                                    .labelStyle(.titleAndIcon)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.white.opacity(0.12))
-                            .foregroundColor(Color.basicFontText)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .accessibilityLabel("Edit Profile")
-                        }
+                            .foregroundStyle(.primary)
+                        Spacer(minLength: 0)
                     }
                     HStack(alignment: .center, spacing: 16) {
                         image
@@ -595,7 +608,7 @@ extension ProfileView {
                         // Level ring
                         ZStack {
                             Circle()
-                                .stroke(Color.reverseFontText.opacity(0.4), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                .stroke(Color.primary.opacity(0.14), style: StrokeStyle(lineWidth: 6, lineCap: .round))
                                 .frame(width: 56, height: 56)
                             Circle()
                                 .trim(from: 0, to: calculateLevel(exp: user.exp).percentage)
@@ -604,9 +617,9 @@ extension ProfileView {
                                 .frame(width: 56, height: 56)
                             Text("\(calculateLevel(exp: user.exp).level)")
                                 .font(.headline.weight(.bold))
-                                .foregroundColor(Color.basicFontText)
+                                .foregroundStyle(.primary)
                                 .frame(width: 56, height: 56)
-                                .background(Circle().fill(.white))
+                                .background(.thinMaterial, in: Circle())
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("Level \(calculateLevel(exp: user.exp).level)")
@@ -615,11 +628,11 @@ extension ProfileView {
                     bio
                 }
                 .padding(16)
-                .background(
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.background)
-                        .shadow(color: Color.darkGray.opacity(0.06), radius: 12, x: 0, y: 4)
-                )
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                }
             }
         }
     }
@@ -632,32 +645,29 @@ extension ProfileView {
                         Spacer()
                     }
                     Text(user.email)
-                        .foregroundColor(Color.basicFontText)
+                        .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                     HStack {
                         Text("Phone Number:").bold()
                         Spacer()
                         Text(user.phoneNumber ?? "Not Set")
-                            .foregroundColor(Color.basicFontText)
+                            .foregroundStyle(.secondary)
                     }
                     HStack {
                         Text("Date Created:").bold()
                         Spacer()
                         Text(fullDate(date: user.dateCreated))
-                            .foregroundColor(Color.basicFontText)
+                            .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Bio:").bold()
                         Text(user.bio ?? "")
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(Color.white.opacity(0.08))
-                            )
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                 }
-                .foregroundColor(Color.basicFontText)
+                .foregroundStyle(.primary)
             }
         }
     }

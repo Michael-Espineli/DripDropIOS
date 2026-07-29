@@ -393,6 +393,8 @@ struct JobBillingView: View {
             return 5
         case .expired:
             return 6
+        case .rejected:
+            return 6
         }
     }
 }

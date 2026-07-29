@@ -163,12 +163,12 @@ struct ShoppingListItemDraftForm: View {
             parts.append("SKU \(draft.selectedDataBaseItem.sku)")
         }
 
-        if draft.selectedDataBaseItem.rate > 0 {
-            parts.append("Cost \(moneyFromCents(draft.selectedDataBaseItem.rate))")
+        if let sellPrice = draft.selectedDataBaseItem.sellPrice, sellPrice > 0 {
+            parts.append("Price \(DataBaseItemMoneyFormatter.moneyFromCents(sellPrice))")
         }
 
-        if let sellPrice = draft.selectedDataBaseItem.sellPrice, sellPrice > 0 {
-            parts.append("Sell \(moneyFromCents(sellPrice))")
+        if draft.selectedDataBaseItem.rate > 0 {
+            parts.append("Cost \(DataBaseItemMoneyFormatter.moneyFromCents(draft.selectedDataBaseItem.rate))")
         }
 
         return parts.isEmpty ? draft.selectedDataBaseItem.description : parts.joined(separator: " • ")
@@ -214,9 +214,5 @@ struct ShoppingListItemDraftForm: View {
             .lineLimit(3, reservesSpace: true)
             .modifier(PlainTextFieldModifier())
         }
-    }
-    private func moneyFromCents(_ cents: Double) -> String {
-        let dollars = cents / 100.0
-        return dollars.formatted(.currency(code: "USD"))
     }
 }

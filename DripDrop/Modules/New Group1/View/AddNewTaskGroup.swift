@@ -49,17 +49,7 @@
 
         func onLoad(companyId: String) {
             Task {
-                self.typeList = [
-                    "Basic",
-                    "Clean",
-                    "Clean Filter",
-                    "Empty Water",
-                    "Fill Water",
-                    "Inspection",
-                    "Install",
-                    "Remove",
-                    "Replace"
-                ]
+                self.typeList = JobTaskType.allCases.map(\.rawValue)
             }
         }
 

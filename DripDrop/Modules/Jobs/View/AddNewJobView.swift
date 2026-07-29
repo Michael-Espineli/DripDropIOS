@@ -12,13 +12,19 @@ final class AddNewJobViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
     init(
         dataService: any ProductionDataServiceProtocol,
-        startingTemplate: JobTemplate? = nil
+        startingTemplate: JobTemplate? = nil,
+        isTechnicianCreateFlow: Bool = false,
+        canScheduleServiceStopsForOthers: Bool = true
     ) {
         self.dataService = dataService
         self.startingTemplate = startingTemplate
+        self.isTechnicianCreateFlow = isTechnicianCreateFlow
+        self.canScheduleServiceStopsForOthers = canScheduleServiceStopsForOthers
     }
     
     @Published var startingTemplate: JobTemplate?
+    @Published var isTechnicianCreateFlow: Bool = false
+    @Published var canScheduleServiceStopsForOthers: Bool = true
     @Published var plannedServiceStops: [JobPlannedServiceStop] = []
 
     @Published var isLoadingTemplate: Bool = false
@@ -252,17 +258,34 @@ final class AddNewJobViewModel:ObservableObject{
     
     
     
-    func onLoad(companyId:String,customerId:String?) async throws {
+    func onLoad(
+        companyId: String,
+        customerId: String?,
+        defaultAdminId: String? = nil,
+        currentUserId: String? = nil
+    ) async throws {
         let workOrderCount = try await dataService.getWorkOrderCount(companyId: companyId)
         self.jobId = "comp_wo_" + UUID().uuidString
         self.jobInternalId = "J" + String(workOrderCount)
         self.techList = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
-        if !techList.isEmpty {
+        let normalizedDefaultAdminId = defaultAdminId?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if let defaultAdmin = techList.first(where: { $0.userId == normalizedDefaultAdminId || $0.id == normalizedDefaultAdminId }) {
+            self.admin = defaultAdmin
+        } else if !techList.isEmpty {
             self.admin = techList.first!
+        }
+
+        let normalizedCurrentUserId = currentUserId?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if let currentUser = techList.first(where: { $0.userId == normalizedCurrentUserId || $0.id == normalizedCurrentUserId }) {
+            self.tech = currentUser
+        } else {
+            self.tech = self.admin
         }
         /*self.jobTaskList = try await dataService.getJobTasks(companyId: companyId, jobId: jobId)*/
         //Get Task Types
-        self.taskTypes = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
+        self.taskTypes = JobTaskType.allCases.map(\.rawValue)
         //Labor Contractor Id and Service Stop Id
         self.serviceStopIds = []
         self.laborContractIds = []
@@ -278,6 +301,63 @@ final class AddNewJobViewModel:ObservableObject{
         if let customerId{
             self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: customerId)
         }
+    }
+    func applyEquipmentContext(companyId: String, equipment: Equipment) async throws {
+        self.customer = try await dataService.getCustomerById(
+            companyId: companyId,
+            customerId: equipment.customerId
+        )
+        self.serviceLocations = try await dataService.getAllCustomerServiceLocationsId(
+            companyId: companyId,
+            customerId: equipment.customerId
+        )
+
+        if let location = serviceLocations.first(where: { $0.id == equipment.serviceLocationId }) {
+            self.serviceLocation = location
+            self.bodiesOfWater = try await dataService.getAllBodiesOfWaterByServiceLocationId(
+                companyId: companyId,
+                serviceLocationId: location.id
+            )
+        }
+
+        if let bodyOfWater = bodiesOfWater.first(where: { $0.id == equipment.bodyOfWaterId }) {
+            self.bodyOfWater = bodyOfWater
+            self.equipmentList = try await dataService.getEquipmentByBodyOfWater(
+                companyId: companyId,
+                bodyOfWater: bodyOfWater
+            )
+        }
+
+        self.equipment = equipmentList.first(where: { $0.id == equipment.id }) ?? equipment
+
+        if description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            description = "Schedule equipment work for \(equipment.name)"
+        }
+
+        guard !jobTaskList.contains(where: { $0.equipmentId == equipment.id }) else { return }
+
+        let taskType: JobTaskType = equipment.status == .needsRepair ? .repair : .maintenance
+        jobTaskList.append(
+            JobTask(
+                id: "comp_job_task_" + UUID().uuidString,
+                name: "\(taskType.rawValue) \(equipment.name)",
+                type: taskType,
+                contractedRate: 0,
+                estimatedTime: 0,
+                status: .draft,
+                customerApproval: false,
+                actualTime: 0,
+                workerId: "",
+                workerType: .notAssigned,
+                workerName: "",
+                laborContractId: "",
+                serviceStopId: IdInfo(id: "", internalId: ""),
+                equipmentId: equipment.id,
+                serviceLocationId: equipment.serviceLocationId,
+                bodyOfWaterId: equipment.bodyOfWaterId,
+                dataBaseItemId: ""
+            )
+        )
     }
     func onChangeOfCustomer(companyId:String)async throws {
         if customer.id != "" {
@@ -542,25 +622,44 @@ struct AddNewJobView: View {
     init(
         dataService: any ProductionDataServiceProtocol,
         customerId: String?,
-        startingTemplate: JobTemplate? = nil
+        startingTemplate: JobTemplate? = nil,
+        equipment: Equipment? = nil,
+        isTechnicianCreateFlow: Bool = false,
+        canScheduleServiceStopsForOthers: Bool = true
     ) {
         _VM = StateObject(
             wrappedValue: AddNewJobViewModel(
                 dataService: dataService,
-                startingTemplate: startingTemplate
+                startingTemplate: startingTemplate,
+                isTechnicianCreateFlow: isTechnicianCreateFlow,
+                canScheduleServiceStopsForOthers: canScheduleServiceStopsForOthers
             )
         )
         _customerId = State(wrappedValue: customerId)
+        self.initialEquipment = equipment
     }
 
 @State var customerId: String?
+private let initialEquipment: Equipment?
 @FocusState private var focusedField: String?
 
 var body: some View {
     ZStack {
         Color.listColor.ignoresSafeArea()
 
-        if VM.jobDetailType == "Complex" {
+        if VM.isTechnicianCreateFlow {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    headerCard
+                    technicianCreateInfo
+                    technicianSchedule
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 96)
+            }
+            .scrollDismissesKeyboard(.interactively)
+        } else if VM.jobDetailType == "Complex" {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
                     headerCard
@@ -618,7 +717,9 @@ var body: some View {
 
             try await VM.onLoad(
                 companyId: company.id,
-                customerId: customerId
+                customerId: customerId,
+                defaultAdminId: company.defaultAdminId,
+                currentUserId: masterDataManager.user?.id
             )
 
             let userId = masterDataManager.user?.id ?? ""
@@ -627,6 +728,13 @@ var body: some View {
                 companyId: company.id,
                 createdByUserId: userId
             )
+
+            if let initialEquipment {
+                try await VM.applyEquipmentContext(
+                    companyId: company.id,
+                    equipment: initialEquipment
+                )
+            }
         } catch {
             VM.alertMessage = "Could not load job. \(error.localizedDescription)"
             VM.showAlert = true
@@ -642,7 +750,7 @@ var body: some View {
                     Text("Submit")
                         .font(.caption.weight(.semibold))
                 }
-            } else if !UIDevice.isIPhone {
+            } else if !UIDevice.isIPhone && !VM.isTechnicianCreateFlow {
                 Button {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                         VM.jobDetailType = VM.jobDetailType == "Simple" ? "Complex" : "Simple"
@@ -945,6 +1053,147 @@ var info: some View {
     .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
 }
 
+var technicianCreateInfo: some View {
+    VStack(alignment: .leading, spacing: 14) {
+        sectionHeader("Job Details", systemImage: "briefcase")
+
+        if let template = VM.startingTemplate {
+            detailDisplayRow(
+                title: "Template",
+                value: template.name,
+                systemImage: "square.stack.3d.up"
+            )
+        }
+
+        pickerButtonRow(
+            title: "Admin",
+            value: VM.admin.id == "" ? "Select Admin" : VM.admin.userName,
+            systemImage: "person.crop.circle",
+            isSelected: VM.admin.id != ""
+        ) {
+            VM.showAdminSelector.toggle()
+        }
+
+        pickerButtonRow(
+            title: "Customer",
+            value: VM.customer.id == "" ? "Select Customer" : "\(VM.customer.firstName) \(VM.customer.lastName)",
+            systemImage: "person.text.rectangle",
+            isSelected: VM.customer.id != ""
+        ) {
+            VM.showCustomerSelector.toggle()
+        }
+
+        pickerButtonRow(
+            title: "Service Location",
+            value: VM.serviceLocation.id == "" ? "Select Location" : VM.serviceLocation.address.streetAddress,
+            systemImage: "mappin.and.ellipse",
+            isSelected: VM.serviceLocation.id != ""
+        ) {
+            VM.showLocationSelector.toggle()
+        }
+        .disabled(VM.customer.id == "")
+        .opacity(VM.customer.id == "" ? 0.55 : 1)
+
+        if let template = VM.startingTemplate {
+            HStack(spacing: 12) {
+                detailDisplayRow(
+                    title: "Default Price",
+                    value: AddNewJobMoneyFormatter.money(template.defaultRateCents),
+                    systemImage: "dollarsign.circle"
+                )
+
+                detailDisplayRow(
+                    title: "Labor",
+                    value: AddNewJobMoneyFormatter.money(template.defaultLaborCostCents),
+                    systemImage: "hammer"
+                )
+            }
+        }
+
+        descriptionInputCard
+    }
+    .padding(16)
+    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+}
+
+var technicianSchedule: some View {
+    VStack(alignment: .leading, spacing: 14) {
+        HStack {
+            sectionHeader("Service Stops", systemImage: "calendar.badge.plus")
+
+            Spacer()
+
+            Text("\(VM.serviceStops.count)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(.thinMaterial, in: Capsule())
+        }
+
+        if !VM.plannedServiceStops.isEmpty {
+            plannedServiceStopsPreviewCard
+        }
+
+        if VM.serviceStops.isEmpty {
+            emptyState(
+                title: "No service stops scheduled.",
+                message: "Schedule the service stop for this job.",
+                systemImage: "calendar.badge.exclamationmark"
+            )
+        } else {
+            VStack(spacing: 8) {
+                ForEach(VM.serviceStops) { serviceStop in
+                    serviceStopScheduleRow(serviceStop)
+                }
+            }
+        }
+
+        if VM.customer.id != "" && VM.serviceLocation.id != "" {
+            Button {
+                VM.isPresentServiceStop.toggle()
+            } label: {
+                actionRow(
+                    title: "Schedule Service Stop",
+                    subtitle: VM.canScheduleServiceStopsForOthers ? "Choose any technician allowed for this work." : "This stop will be assigned to you.",
+                    systemImage: "calendar.badge.plus"
+                )
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $VM.isPresentServiceStop) {
+                AddNewScheduleServiceStopToNewJobView(
+                    dataService: dataService,
+                    jobId: VM.jobId,
+                    customerId: VM.customer.id,
+                    customerName: VM.customer.firstName + " " + VM.customer.lastName,
+                    serviceLocationId: VM.serviceLocation.id,
+                    description: VM.description,
+                    jobTaskList: VM.jobTaskList,
+                    plannedServiceStops: VM.plannedServiceStops,
+                    canScheduleForOthers: VM.canScheduleServiceStopsForOthers,
+                    preferredTechnicianUserId: masterDataManager.user?.id,
+                    serviceStops: $VM.serviceStops,
+                    serviceStopTasks: $VM.serviceStopTasks
+                )
+                .presentationDetents([.medium])
+            }
+        } else {
+            Button {
+                VM.showCustomerSelector.toggle()
+            } label: {
+                actionRow(
+                    title: "Add Customer Info",
+                    subtitle: "Select a customer and service location before scheduling.",
+                    systemImage: "person.text.rectangle"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    .padding(16)
+    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+}
+
 var taskView: some View {
     VStack(alignment: .leading, spacing: 14) {
         if !VM.plannedServiceStops.isEmpty {
@@ -1151,6 +1400,8 @@ var schedule: some View {
                     description: VM.description,
                     jobTaskList: VM.jobTaskList,
                     plannedServiceStops: VM.plannedServiceStops,
+                    canScheduleForOthers: VM.canScheduleServiceStopsForOthers,
+                    preferredTechnicianUserId: masterDataManager.user?.id,
                     serviceStops: $VM.serviceStops,
                     serviceStopTasks: $VM.serviceStopTasks
                 )
@@ -1492,16 +1743,18 @@ var bottomActionBar: some View {
             }
             .buttonStyle(.plain)
 
+            let isSubmitAction = VM.isTechnicianCreateFlow || VM.chosenView == "Review"
+
             Button {
-                if VM.chosenView == "Review" {
+                if isSubmitAction {
                     submitCurrentJob()
                 } else {
                     goToNextView()
                 }
             } label: {
                 Label(
-                    VM.chosenView == "Review" ? "Submit" : "Next",
-                    systemImage: VM.chosenView == "Review" ? "checkmark" : "chevron.right"
+                    isSubmitAction ? "Submit" : "Next",
+                    systemImage: isSubmitAction ? "checkmark" : "chevron.right"
                 )
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)

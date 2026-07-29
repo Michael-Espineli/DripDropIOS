@@ -487,11 +487,49 @@ extension ProductionDataService {
     
     
     func getAllActiveRoutesBasedOnVehical(companyId: String, vehicalId:String, count: Int) async throws -> [ActiveRoute] {
-        return try await  ActiveRouteCollection(companyId: companyId)
+        async let currentRoutes = ActiveRouteCollection(companyId: companyId)
             .whereField(ActiveRoute.CodingKeys.vehicalId.rawValue, isEqualTo: vehicalId)
-            .limit(to: count)
             .order(by: ActiveRoute.CodingKeys.date.rawValue, descending: true)
+            .limit(to: count)
             .getDocuments(as: ActiveRoute.self)
+
+        async let legacyRoutes = ActiveRouteCollection(companyId: companyId)
+            .whereField("vehicleId", isEqualTo: vehicalId)
+            .order(by: ActiveRoute.CodingKeys.date.rawValue, descending: true)
+            .limit(to: count)
+            .getDocuments(as: ActiveRoute.self)
+
+        return try await mergeActiveRoutesById(currentRoutes + legacyRoutes, limit: count)
+    }
+
+    func getActiveRoutesForVehical(
+        companyId: String,
+        vehicalId: String,
+        startDate: Date,
+        endDate: Date,
+        limit: Int
+    ) async throws -> [ActiveRoute] {
+        let boundedLimit = max(1, min(limit, 250))
+        let rangeStart = min(startDate, endDate).startOfDay()
+        let rangeEnd = max(startDate, endDate).endOfDay()
+
+        async let currentRoutes = ActiveRouteCollection(companyId: companyId)
+            .whereField(ActiveRoute.CodingKeys.vehicalId.rawValue, isEqualTo: vehicalId)
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThanOrEqualTo: rangeStart)
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: rangeEnd)
+            .order(by: ActiveRoute.CodingKeys.date.rawValue, descending: true)
+            .limit(to: boundedLimit)
+            .getDocuments(as: ActiveRoute.self)
+
+        async let legacyRoutes = ActiveRouteCollection(companyId: companyId)
+            .whereField("vehicleId", isEqualTo: vehicalId)
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isGreaterThanOrEqualTo: rangeStart)
+            .whereField(ActiveRoute.CodingKeys.date.rawValue, isLessThan: rangeEnd)
+            .order(by: ActiveRoute.CodingKeys.date.rawValue, descending: true)
+            .limit(to: boundedLimit)
+            .getDocuments(as: ActiveRoute.self)
+
+        return try await mergeActiveRoutesById(currentRoutes + legacyRoutes, limit: boundedLimit)
     }
     func getAllActiveRoutesBasedOnDate(companyId: String,date:Date,tech:DBUser) async throws -> [ActiveRoute] {
             //MEMORY LEAK
@@ -1023,4 +1061,15 @@ extension ProductionDataService {
         return allStops
     }
 
+}
+
+private func mergeActiveRoutesById(_ routes: [ActiveRoute], limit: Int) -> [ActiveRoute] {
+    let routesById = routes.reduce(into: [String: ActiveRoute]()) { result, route in
+        result[route.id] = route
+    }
+
+    return Array(routesById.values)
+        .sorted { $0.date > $1.date }
+        .prefix(limit)
+        .map { $0 }
 }

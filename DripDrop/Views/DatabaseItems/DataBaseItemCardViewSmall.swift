@@ -21,27 +21,62 @@ struct DataBaseItemCardViewSmall: View {
     //Variables Declared For Use
 
     var body: some View {
-        ZStack{
-                VStack{
-                    HStack{
-                        Text(dataBaseItem.name)
-                        Text(String(dataBaseItem.rate))
-                        Text(dataBaseItem.size)
-                            Text(dataBaseItem.UOM.rawValue)
-     
-                    }
-                    HStack{
-                        Text("Last Updated : \(shortDate(date:dataBaseItem.dateUpdated))")
-                            .font(.footnote)
-                        Spacer()
-                        Text("Store : \(dataBaseItem.storeName)")
-                            .font(.footnote)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "shippingbox")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(priceTint)
+                    .frame(width: 32, height: 32)
+                    .background(priceTint.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(dataBaseItem.name.isEmpty ? "Unnamed Item" : dataBaseItem.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    Text("\(dataBaseItem.size) \(dataBaseItem.UOM.rawValue)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Label(dataBaseItem.billable ? "Billable" : "Not billable",
+                          systemImage: dataBaseItem.billable ? "checkmark.seal.fill" : "nosign")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(dataBaseItem.billable ? .green : .secondary)
+
+                    if dataBaseItem.billable {
+                        Text(DataBaseItemMoneyFormatter.customerPriceText(for: dataBaseItem))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(priceTint)
+                            .lineLimit(1)
                     }
                 }
-                .padding(EdgeInsets(top: 3, leading: 10, bottom: 3, trailing: 10))
-                .background(Color.gray)
-                .foregroundColor(Color.white)
-                .cornerRadius(10)
+            }
+
+            HStack {
+                Text("Cost \(DataBaseItemMoneyFormatter.costText(for: dataBaseItem))")
+                Spacer()
+                Text(shortDate(date: dataBaseItem.dateUpdated))
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
         }
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        }
+    }
+
+    private var priceTint: Color {
+        guard dataBaseItem.billable else { return .secondary }
+
+        return DataBaseItemMoneyFormatter.hasCustomerPrice(dataBaseItem) ? .green : .orange
     }
 }

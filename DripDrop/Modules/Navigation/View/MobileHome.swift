@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
+import FirebaseFirestoreSwift
 enum MobileHomeScreenCategories:String {
     case all
     case routing
@@ -236,6 +238,16 @@ private struct MobileReimaginedMainDashboard: View {
     @StateObject private var jobVM: JobViewModel
     @StateObject private var alertVM: CompanyAlertViewModel
     @State private var isLoading: Bool = false
+    @State private var todoSnapshotItems: [MobileDashboardTodoSnapshotItem] = []
+    @State private var todoSnapshotListener: ListenerRegistration?
+    @State private var todoSnapshotError: String?
+    @State private var workOfferSnapshot: MobileDashboardWorkOfferSnapshot = .empty
+    @State private var workOfferSnapshotError: String?
+    @State private var purchaseReconciliationPreview: MobilePurchaseReconciliationPreview = .empty
+    @State private var purchaseReconciliationPreviewError: String?
+    @State private var payrollSnapshot: MobileDashboardPayrollSnapshot = .empty
+    @State private var payrollSnapshotError: String?
+    @State private var showPayoutRequestAlert: Bool = false
 
     init(dataService: any ProductionDataServiceProtocol) {
         self.dataService = dataService
@@ -269,6 +281,12 @@ private struct MobileReimaginedMainDashboard: View {
         .onDisappear {
             repairRequestVM.removeListenerForRepairRequest()
             jobVM.removeListenerForJob()
+            stopTodoSnapshotListener()
+        }
+        .alert("Request payout", isPresented: $showPayoutRequestAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(payoutRequestAlertMessage)
         }
     }
 
@@ -313,13 +331,14 @@ private struct MobileReimaginedMainDashboard: View {
         ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
                     heroHeader
-                    todaysRouteCard
+                    quickActionsGrid
                     if shouldShowAlertsSection {
                         alertsOverviewSection
                     }
-                    quickActionsGrid
-                    technicianRepairRequestsSection
-                    assignedJobsSection
+                    todoSnapshotSection
+                    workOffersSnapshotSection
+                    purchaseReconciliationSnapshotSection
+                    payoutSnapshotSection
 
                 Color.clear.frame(height: 90)
             }
@@ -355,62 +374,28 @@ private struct MobileReimaginedMainDashboard: View {
                     title: "Route",
                     value: "\(routeFinishedCount)/\(routeTotalCount)",
                     systemImage: "map",
-                    tint: .poolGreen
+                    tint: .poolGreen,
+                    route: .employeeMainDailyDisplayView(dataService: dataService)
                 )
 
                 summaryMetric(
                     title: "Pending",
                     value: "\(pendingRepairRequests.count)",
                     systemImage: "wrench.adjustable.fill",
-                    tint: .orange
+                    tint: .orange,
+                    route: .repairRequestList(dataService: dataService)
                 )
 
                 summaryMetric(
                     title: "Jobs",
-                    value: "\(visibleAssignedJobs.count)",
+                    value: "\(operationBoardJobs.count)",
                     systemImage: "briefcase.fill",
-                    tint: .poolBlue
+                    tint: .poolBlue,
+                    route: .jobs(dataService: dataService)
                 )
             }
         }
         .mobileMainCard(material: true)
-    }
-
-    private var todaysRouteCard: some View {
-        NavigationLink(value: Route.employeeMainDailyDisplayView(dataService: dataService)) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    routeProgressRing
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Today's Route")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.primary)
-
-                        Text(routeSummaryText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-
-                HStack(spacing: 8) {
-                    Label("List", systemImage: "list.bullet.rectangle")
-                    Label("Calendar", systemImage: "calendar.day.timeline.left")
-                    Spacer()
-                }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            }
-            .mobileMainCard()
-        }
-        .buttonStyle(.plain)
     }
 
     private var alertsOverviewSection: some View {
@@ -442,6 +427,196 @@ private struct MobileReimaginedMainDashboard: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+        .mobileMainCard()
+    }
+
+    private var todoSnapshotSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(
+                title: "Todo Snapshot",
+                subtitle: "\(openTodoSnapshotItems.count) open, \(todoAttentionItems.count) need attention",
+                systemImage: "checklist",
+                route: .toDoList(dataService: dataService)
+            )
+
+            HStack(spacing: 8) {
+                snapshotMetric(title: "Open", value: "\(openTodoSnapshotItems.count)", tint: .poolBlue)
+                snapshotMetric(title: "Mine", value: "\(assignedTodoSnapshotItems.count)", tint: .poolGreen)
+                snapshotMetric(title: "Attention", value: "\(todoAttentionItems.count)", tint: todoAttentionItems.isEmpty ? .gray : .orange)
+            }
+
+            if let todoSnapshotError {
+                Text("Todos unavailable: \(todoSnapshotError)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .mobileMainCard()
+    }
+
+    private var workOffersSnapshotSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            workOffersSnapshotHeader
+
+            LazyVGrid(columns: quickActionColumns, spacing: 8) {
+                snapshotMetric(title: "Direct", value: "\(workOfferSnapshot.directOfferCount)", tint: .poolBlue)
+                snapshotMetric(title: "Board", value: "\(workOfferSnapshot.boardOfferCount)", tint: .poolGreen)
+                snapshotMetric(title: "Accepted", value: "\(workOfferSnapshot.acceptedOfferCount)", tint: .orange)
+                snapshotMetric(title: "Scheduled", value: "\(workOfferSnapshot.scheduledOfferCount)", tint: .purple)
+            }
+
+            if let workOfferSnapshotError {
+                Text("Work offers unavailable: \(workOfferSnapshotError)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .mobileMainCard()
+    }
+
+    private var purchaseReconciliationSnapshotSection: some View {
+        NavigationLink {
+            MobilePurchaseReconciliationView(dataService: dataService)
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "cart.badge.questionmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Reconcile Purchases")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text(purchaseReconciliationPreview.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 32, height: 32)
+                        .background(.thinMaterial, in: Circle())
+                }
+
+                HStack(spacing: 8) {
+                    snapshotMetric(
+                        title: "Need review",
+                        value: "\(purchaseReconciliationPreview.unresolvedCount)",
+                        tint: purchaseReconciliationPreview.unresolvedCount > 0 ? .orange : .gray
+                    )
+                    snapshotMetric(
+                        title: "Showing",
+                        value: "Open",
+                        tint: .poolGreen
+                    )
+                    snapshotMetric(
+                        title: "Window",
+                        value: "30d",
+                        tint: .poolBlue
+                    )
+                }
+
+                if !purchaseReconciliationPreview.recentItemNames.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(purchaseReconciliationPreview.recentItemNames, id: \.self) { name in
+                            Label(name, systemImage: "shippingbox")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+
+                if let purchaseReconciliationPreviewError {
+                    Text("Purchases unavailable: \(purchaseReconciliationPreviewError)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .mobileMainCard()
+    }
+
+    @ViewBuilder
+    private var workOffersSnapshotHeader: some View {
+        if let companyUser = masterDataManager.companyUser {
+            sectionHeader(
+                title: "Work Offers",
+                subtitle: workOfferSnapshot.subtitle,
+                systemImage: "list.bullet.clipboard",
+                route: .technicianWorkCenter(dataService: dataService, companyUser: companyUser)
+            )
+        } else {
+            sectionLabel(
+                title: "Work Offers",
+                subtitle: "Connect your company user profile to see offers.",
+                systemImage: "list.bullet.clipboard"
+            )
+        }
+    }
+
+    private var payoutSnapshotSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel(
+                title: "Payout Snapshot",
+                subtitle: payrollSnapshot.subtitle,
+                systemImage: "dollarsign.circle"
+            )
+
+            HStack(spacing: 8) {
+                snapshotMetric(
+                    title: "Owed",
+                    value: MobileDashboardMoneyFormatter.money(payrollSnapshot.owedCents),
+                    tint: payrollSnapshot.owedCents > 0 ? .poolGreen : .gray
+                )
+                snapshotMetric(
+                    title: "Work Done",
+                    value: "\(payrollSnapshot.owedLineItemCount)",
+                    tint: .poolBlue
+                )
+                snapshotMetric(
+                    title: "Last Payout",
+                    value: payrollSnapshot.daysSinceLastPayoutText,
+                    tint: .orange
+                )
+            }
+
+            if let payrollSnapshotError {
+                Text("Payout unavailable: \(payrollSnapshotError)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Button {
+                showPayoutRequestAlert = true
+            } label: {
+                HStack {
+                    Image(systemName: "paperplane.fill")
+                    Text("Request payout")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.poolGreen, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
         .mobileMainCard()
     }
@@ -504,92 +679,14 @@ private struct MobileReimaginedMainDashboard: View {
             )
 
             quickAction(
-                title: "Route",
-                subtitle: "Today",
-                systemImage: "map",
-                tint: .purple,
-                route: .employeeMainDailyDisplayView(dataService: dataService)
-            )
-        }
-    }
-
-    private var technicianRepairRequestsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(
-                title: "Pending Repair Requests",
-                subtitle: "\(pendingRepairRequests.count) pending from you",
-                systemImage: "wrench.and.screwdriver",
-                route: .repairRequestList(dataService: dataService)
-            )
-
-            if pendingRepairRequests.isEmpty {
-                emptyRow(
-                    title: "No pending repair requests",
-                    message: "Open requests you create will show here.",
-                    systemImage: "checkmark.circle"
-                )
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(Array(pendingRepairRequests.prefix(4))) { request in
-                        NavigationLink(value: Route.repairRequest(repairRequest: request, dataService: dataService)) {
-                            repairRequestRow(request)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                title: "Create Lead",
+                subtitle: "New request",
+                systemImage: "person.crop.circle.badge.plus",
+                tint: .poolYellow
+            ) {
+                CompanyLeadEditorView(dataService: dataService)
             }
         }
-        .mobileMainCard()
-    }
-
-    private var assignedJobsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(
-                title: "Jobs I'm In Charge Of",
-                subtitle: "\(visibleAssignedJobs.count) assigned to you",
-                systemImage: "person.badge.key.fill",
-                route: .jobs(dataService: dataService)
-            )
-
-            if visibleAssignedJobs.isEmpty {
-                emptyRow(
-                    title: "No assigned jobs",
-                    message: "Jobs where you are the admin will show here.",
-                    systemImage: "briefcase"
-                )
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(Array(visibleAssignedJobs.prefix(4))) { job in
-                        NavigationLink(value: Route.job(job: job, dataService: dataService)) {
-                            jobRow(job)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .mobileMainCard()
-    }
-
-    private var routeProgressRing: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.primary.opacity(0.10), lineWidth: 7)
-
-            Circle()
-                .trim(from: 0, to: routeProgress)
-                .stroke(Color.poolGreen, style: StrokeStyle(lineWidth: 7, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-
-            VStack(spacing: 1) {
-                Text("\(routeFinishedCount)")
-                    .font(.subheadline.weight(.bold))
-                Text("of \(routeTotalCount)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(width: 66, height: 66)
     }
 
     private func workAreaTile(_ area: MobileHomeScreenCategories) -> some View {
@@ -670,6 +767,60 @@ private struct MobileReimaginedMainDashboard: View {
         .buttonStyle(.plain)
     }
 
+    private func quickAction<Destination: View>(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        tint: Color,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) -> some View {
+        NavigationLink(destination: destination()) {
+            quickActionContent(
+                title: title,
+                subtitle: subtitle,
+                systemImage: systemImage,
+                tint: tint
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickActionContent(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 34, height: 34)
+                .background(tint.opacity(0.13), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(subtitle)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 72)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        )
+    }
+
     private func sectionLabel(
         title: String,
         subtitle: String,
@@ -730,38 +881,6 @@ private struct MobileReimaginedMainDashboard: View {
         }
     }
 
-    private func repairRequestRow(_ request: RepairRequest) -> some View {
-        HStack(spacing: 11) {
-            statusDot(color: repairRequestColor(request.status))
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(request.customerName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                Text(request.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(request.status.displayName)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(repairRequestColor(request.status))
-
-                Text(shortDate(date: request.date))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(12)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
     private func alertRow(_ alert: DripDropAlert) -> some View {
         HStack(alignment: .top, spacing: 11) {
             statusDot(color: .poolRed)
@@ -795,86 +914,103 @@ private struct MobileReimaginedMainDashboard: View {
         .background(Color.poolRed.opacity(0.075), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
-    private func jobRow(_ job: Job) -> some View {
-        HStack(spacing: 11) {
-            statusDot(color: jobOperationColor(job.operationStatus))
+    private func todoSnapshotRow(_ todo: MobileDashboardTodoSnapshotItem) -> some View {
+        HStack(alignment: .top, spacing: 11) {
+            statusDot(color: todoSnapshotStatusColor(todo))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(job.customerName)
+                HStack(spacing: 6) {
+                    Text(todo.issueKey)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    Text(todo.priorityLabel)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(todoSnapshotPriorityColor(todo.priority))
+                        .lineLimit(1)
+                }
+
+                Text(todo.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    .lineLimit(2)
 
-                Text("\(job.internalId) • \(job.type)")
+                Text(todo.detailLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(job.operationStatus.rawValue)
+                Text(todo.statusLabel)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(jobOperationColor(job.operationStatus))
+                    .foregroundStyle(todoSnapshotStatusColor(todo))
+                    .lineLimit(1)
 
-                Text(shortDate(date: job.dateCreated))
+                Text(todo.dueLabel)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(todoSnapshotDueColor(todo))
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(2)
             }
         }
         .padding(12)
         .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func snapshotMetric(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(tint)
+
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func summaryMetric(
         title: String,
         value: String,
         systemImage: String,
-        tint: Color
+        tint: Color,
+        route: Route
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(tint)
+        NavigationLink(value: route) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(tint)
 
-            Text(value)
-                .font(.headline.weight(.bold))
+                    Spacer(minLength: 0)
 
-            Text(title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
 
-    private func emptyRow(
-        title: String,
-        message: String,
-        systemImage: String
-    ) -> some View {
-        HStack(spacing: 11) {
-            Image(systemName: systemImage)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 34, height: 34)
-                .background(.thinMaterial, in: Circle())
+                Text(value)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.primary)
 
-            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
-
-                Text(message)
-                    .font(.caption)
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .padding(12)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .buttonStyle(.plain)
     }
 
     private func statusDot(color: Color) -> some View {
@@ -905,6 +1041,29 @@ private struct MobileReimaginedMainDashboard: View {
 
     private var shouldShowAlertsSection: Bool {
         masterDataManager.isFeatureEnabled(.alertsAndNotifications) && !dashboardAlerts.isEmpty
+    }
+
+    private var openTodoSnapshotItems: [MobileDashboardTodoSnapshotItem] {
+        todoSnapshotItems
+            .filter { $0.isOpen }
+            .sorted(by: MobileDashboardTodoSnapshotItem.sortByUrgency)
+    }
+
+    private var assignedTodoSnapshotItems: [MobileDashboardTodoSnapshotItem] {
+        let userId = masterDataManager.user?.id ?? ""
+        return openTodoSnapshotItems.filter { userId.isEmpty || $0.isAssigned(to: userId) }
+    }
+
+    private var todoAttentionItems: [MobileDashboardTodoSnapshotItem] {
+        openTodoSnapshotItems.filter { $0.needsAttention }
+    }
+
+    private var payoutRequestAlertMessage: String {
+        if payrollSnapshot.owedCents > 0 {
+            return "Current estimated amount owed is \(MobileDashboardMoneyFormatter.money(payrollSnapshot.owedCents)). Payout request submission still needs the backend workflow connected."
+        }
+
+        return "No unpaid completed work is showing in this payout snapshot right now."
     }
 
     private var availableWorkAreas: [MobileHomeScreenCategories] {
@@ -1094,11 +1253,32 @@ private struct MobileReimaginedMainDashboard: View {
         visibleRepairRequests.filter { $0.status.isOpenWorkQueueItem }
     }
 
-    private var visibleAssignedJobs: [Job] {
-        let userId = masterDataManager.user?.id ?? ""
+    private var operationBoardJobs: [Job] {
         return jobVM.workOrders
-            .filter { userId.isEmpty || $0.adminId == userId }
+            .filter {
+                operationBoardJobOperationStatuses.contains($0.operationStatus) &&
+                operationBoardJobBillingStatuses.contains($0.billingStatus)
+            }
             .sorted { $0.dateCreated > $1.dateCreated }
+    }
+
+    private var operationBoardJobOperationStatuses: [JobOperationStatus] {
+        [
+            .estimatePending,
+            .unscheduled,
+            .scheduled,
+            .waitingForParts,
+            .inProgress
+        ]
+    }
+
+    private var operationBoardJobBillingStatuses: Set<JobBillingStatus> {
+        [
+            .draft,
+            .estimate,
+            .accepted,
+            .inProgress
+        ]
     }
 
     private var routeFinishedCount: Int {
@@ -1107,19 +1287,6 @@ private struct MobileReimaginedMainDashboard: View {
 
     private var routeTotalCount: Int {
         routeVM.activeRoute?.totalStops ?? routeVM.serviceStopList.count
-    }
-
-    private var routeProgress: CGFloat {
-        guard routeTotalCount > 0 else { return 0 }
-        return CGFloat(routeFinishedCount) / CGFloat(routeTotalCount)
-    }
-
-    private var routeSummaryText: String {
-        guard routeTotalCount > 0 else {
-            return "No stops are scheduled for today."
-        }
-
-        return "\(routeFinishedCount) of \(routeTotalCount) stops complete. Open the route to use the list or calendar view."
     }
 
     private var greeting: String {
@@ -1134,14 +1301,27 @@ private struct MobileReimaginedMainDashboard: View {
         return (start, end)
     }
 
+    private var operationsBoardJobDateWindow: (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let start = calendar.date(byAdding: .year, value: -10, to: Date()) ?? Date()
+        let end = calendar.date(byAdding: .year, value: 10, to: Date()) ?? Date()
+        return (start, end)
+    }
+
     private func startDashboardListeners() async {
         guard let company = masterDataManager.currentCompany,
-              let user = masterDataManager.user else { return }
+              let user = masterDataManager.user else {
+            stopTodoSnapshotListener()
+            todoSnapshotItems = []
+            return
+        }
 
         isLoading = true
         routeVM.start(companyId: company.id, user: user, date: Date())
+        startTodoSnapshotListener(companyId: company.id)
 
         let window = listenerDateWindow
+        let jobWindow = operationsBoardJobDateWindow
         repairRequestVM.addListenerForAllRequests(
             companyId: company.id,
             status: [],
@@ -1151,10 +1331,10 @@ private struct MobileReimaginedMainDashboard: View {
         )
         jobVM.addListenerForAllJobsOperations(
             companyId: company.id,
-            status: [],
-            requesterIds: [user.id],
-            startDate: window.start,
-            endDate: window.end
+            status: operationBoardJobOperationStatuses,
+            requesterIds: [],
+            startDate: jobWindow.start,
+            endDate: jobWindow.end
         )
 
         if masterDataManager.isFeatureEnabled(.alertsAndNotifications) {
@@ -1166,33 +1346,602 @@ private struct MobileReimaginedMainDashboard: View {
             }
         }
 
+        let payrollTechnicianId = masterDataManager.companyUser?.userId ?? user.id
+        await loadWorkOfferSnapshot(companyId: company.id)
+        if let purchaseTechnicianId = purchaseReconciliationTechnicianId {
+            await loadPurchaseReconciliationPreview(companyId: company.id, technicianId: purchaseTechnicianId)
+        } else {
+            purchaseReconciliationPreview = .empty
+            purchaseReconciliationPreviewError = "Company user profile not loaded."
+        }
+        await loadPayrollSnapshot(companyId: company.id, technicianId: payrollTechnicianId)
+
         isLoading = false
     }
 
-    private func repairRequestColor(_ status: RepairRequestStatus) -> Color {
-        switch status {
-        case .resolved:
-            return .poolGreen
-        case .unresolved, .cancelled, .legacyPending, .legacyPendingCapitalized:
-            return .poolRed
-        case .convertedToJob:
-            return .gray
-        case .inprogress:
-            return .orange
+    private func loadWorkOfferSnapshot(companyId: String) async {
+        guard let companyUser = masterDataManager.companyUser else {
+            workOfferSnapshot = .empty
+            workOfferSnapshotError = "Company user profile not loaded."
+            return
+        }
+
+        workOfferSnapshotError = nil
+
+        do {
+            async let directTask = dataService.fetchWorkOffersForUser(
+                companyId: companyId,
+                userId: companyUser.userId
+            )
+            async let boardTask = dataService.fetchOpenBoardWorkOffers(
+                companyId: companyId,
+                workerType: companyUser.workerType
+            )
+            async let acceptedTask = dataService.fetchAcceptedWorkOffersForUser(
+                companyId: companyId,
+                userId: companyUser.userId
+            )
+
+            let directOffers = try await directTask
+            let boardOffers = try await boardTask
+            let acceptedOffers = try await acceptedTask
+            let acceptedUserOffers = (directOffers + boardOffers + acceptedOffers)
+                .mobileDashboardUniqueWorkOffers()
+                .filter {
+                    $0.acceptedByUserId == companyUser.userId ||
+                    $0.offeredToUserId == companyUser.userId
+                }
+
+            workOfferSnapshot = MobileDashboardWorkOfferSnapshot(
+                directOfferCount: directOffers.openDirectOfferCount,
+                boardOfferCount: boardOffers.openBoardOfferCount,
+                acceptedOfferCount: acceptedUserOffers.filter {
+                    $0.status == .accepted ||
+                    $0.status == .scheduled ||
+                    $0.status == .inProgress ||
+                    $0.status == .completed
+                }.count,
+                scheduledOfferCount: acceptedUserOffers.scheduledOfferCount,
+                readyToScheduleCount: acceptedUserOffers.acceptedReadyToScheduleCount
+            )
+        } catch {
+            workOfferSnapshot = .empty
+            workOfferSnapshotError = error.localizedDescription
         }
     }
 
-    private func jobOperationColor(_ status: JobOperationStatus) -> Color {
-        switch status {
-        case .estimatePending, .waitingForParts:
-            return .poolRed
-        case .unscheduled:
-            return .orange
-        case .scheduled, .inProgress:
-            return .poolBlue
-        case .finished:
-            return .poolGreen
+    private var purchaseReconciliationTechnicianId: String? {
+        let companyUserId = masterDataManager.companyUser?.userId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return companyUserId.isEmpty ? nil : companyUserId
+    }
+
+    private func loadPurchaseReconciliationPreview(companyId: String, technicianId: String) async {
+        purchaseReconciliationPreviewError = nil
+        let scopedTechnicianId = technicianId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !scopedTechnicianId.isEmpty else {
+            purchaseReconciliationPreview = .empty
+            purchaseReconciliationPreviewError = "Company user profile not loaded."
+            return
         }
+
+        do {
+            let endDate = Date()
+            let startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate) ?? endDate
+
+            let snapshot = try await Firestore.firestore()
+                .collection("companies")
+                .document(companyId)
+                .collection("purchasedItems")
+                .whereField("techId", isEqualTo: scopedTechnicianId)
+                .whereField("billable", isEqualTo: true)
+                .whereField("invoiced", isEqualTo: false)
+                .whereField("date", isGreaterThanOrEqualTo: startDate)
+                .whereField("date", isLessThanOrEqualTo: endDate)
+                .order(by: "date", descending: true)
+                .getDocuments()
+
+            let purchases = snapshot.documents
+                .compactMap { try? $0.data(as: PurchasedItem.self) }
+                .filter {
+                    MobilePurchaseReconciliationFilters.needsTechnicianReconciliation(
+                        $0,
+                        technicianId: scopedTechnicianId
+                    )
+                }
+
+            purchaseReconciliationPreview = MobilePurchaseReconciliationPreview(
+                unresolvedCount: purchases.count,
+                oldestPurchaseDate: purchases.map(\.date).min(),
+                recentItemNames: purchases.prefix(3).map { $0.name.isEmpty ? $0.venderName : $0.name }
+            )
+        } catch {
+            purchaseReconciliationPreview = .empty
+            purchaseReconciliationPreviewError = error.localizedDescription
+        }
+    }
+
+    private func loadPayrollSnapshot(companyId: String, technicianId: String) async {
+        payrollSnapshotError = nil
+
+        do {
+            let endDate = Date()
+            let startDate = Calendar.current.date(byAdding: .day, value: -365, to: endDate) ?? endDate
+
+            async let lineItemsTask = dataService.fetchTechnicianPayLineItems(
+                companyId: companyId,
+                startDate: startDate,
+                endDate: endDate
+            )
+            async let statementsTask = dataService.fetchTechnicianPayStatements(
+                companyId: companyId,
+                startDate: startDate,
+                endDate: endDate
+            )
+
+            let fetchedLineItems = try await lineItemsTask
+            let fetchedStatements = try await statementsTask
+            let lineItems = fetchedLineItems.filter { $0.technicianId == technicianId }
+            let statements = fetchedStatements.filter { $0.technicianId == technicianId }
+
+            let lastPayoutDate = MobileDashboardPayrollSnapshot.mostRecentPayoutDate(
+                lineItems: lineItems,
+                statements: statements
+            )
+            let owedItems = lineItems.filter { lineItem in
+                MobileDashboardPayrollSnapshot.isOwedLineItem(lineItem) &&
+                (lastPayoutDate == nil || lineItem.completedDate >= lastPayoutDate!)
+            }
+
+            payrollSnapshot = MobileDashboardPayrollSnapshot(
+                owedCents: owedItems.reduce(0) { $0 + $1.totalAmountCents },
+                owedLineItemCount: owedItems.count,
+                lastPayoutDate: lastPayoutDate,
+                oldestUnpaidWorkDate: owedItems.map(\.completedDate).min()
+            )
+        } catch {
+            payrollSnapshot = .empty
+            payrollSnapshotError = error.localizedDescription
+        }
+    }
+
+    private func startTodoSnapshotListener(companyId: String) {
+        stopTodoSnapshotListener()
+        todoSnapshotError = nil
+
+        todoSnapshotListener = Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("todoItems")
+            .addSnapshotListener { snapshot, error in
+                if let error {
+                    DispatchQueue.main.async {
+                        self.todoSnapshotItems = []
+                        self.todoSnapshotError = error.localizedDescription
+                    }
+                    return
+                }
+
+                let items = snapshot?.documents
+                    .map { MobileDashboardTodoSnapshotItem(document: $0) }
+                    .filter { !$0.isArchived } ?? []
+
+                DispatchQueue.main.async {
+                    self.todoSnapshotItems = items
+                    self.todoSnapshotError = nil
+                }
+            }
+    }
+
+    private func stopTodoSnapshotListener() {
+        todoSnapshotListener?.remove()
+        todoSnapshotListener = nil
+    }
+
+    private func todoSnapshotStatusColor(_ todo: MobileDashboardTodoSnapshotItem) -> Color {
+        if todo.needsAttention {
+            return .orange
+        }
+
+        switch todo.statusKey {
+        case "inprogress":
+            return .poolBlue
+        case "done", "finished":
+            return .poolGreen
+        default:
+            return .gray
+        }
+    }
+
+    private func todoSnapshotPriorityColor(_ priority: String) -> Color {
+        switch priority.lowercased() {
+        case "urgent":
+            return .poolRed
+        case "high":
+            return .orange
+        case "low":
+            return .poolGreen
+        default:
+            return .secondary
+        }
+    }
+
+    private func todoSnapshotDueColor(_ todo: MobileDashboardTodoSnapshotItem) -> Color {
+        switch todo.dueState {
+        case .overdue:
+            return .poolRed
+        case .today:
+            return .orange
+        case .upcoming:
+            return .poolBlue
+        case .complete:
+            return .poolGreen
+        case .none:
+            return .secondary
+        }
+    }
+}
+
+private enum MobileDashboardTodoDueState {
+    case overdue
+    case today
+    case upcoming
+    case none
+    case complete
+
+    var rank: Int {
+        switch self {
+        case .overdue:
+            return 0
+        case .today:
+            return 1
+        case .upcoming:
+            return 2
+        case .none:
+            return 3
+        case .complete:
+            return 4
+        }
+    }
+}
+
+private struct MobileDashboardTodoSnapshotItem: Identifiable {
+    let id: String
+    let title: String
+    let description: String
+    let status: String
+    let priority: String
+    let boardName: String
+    let assignedToUserId: String
+    let assignedToName: String
+    let scope: String
+    let dueAt: Date?
+    let reminderAt: Date?
+    let reminderEnabled: Bool
+    let createdAt: Date?
+    let updatedAt: Date?
+
+    init(document: QueryDocumentSnapshot) {
+        let data = document.data()
+
+        id = Self.stringValue(data["id"], fallback: document.documentID)
+        title = Self.stringValue(data["title"], fallback: "Untitled todo")
+        description = Self.stringValue(data["description"])
+        status = Self.stringValue(data["status"], fallback: "open")
+        priority = Self.stringValue(data["priority"], fallback: "normal")
+        boardName = Self.stringValue(data["boardName"], fallback: "No board")
+        assignedToUserId = Self.stringValue(data["assignedToUserId"])
+        assignedToName = Self.stringValue(data["assignedToName"], fallback: "Team task")
+        scope = Self.stringValue(data["scope"], fallback: "team")
+        dueAt = Self.dateValue(data["dueAt"])
+        reminderAt = Self.dateValue(data["reminderAt"])
+        reminderEnabled = Self.boolValue(data["reminderEnabled"])
+        createdAt = Self.dateValue(data["createdAt"])
+        updatedAt = Self.dateValue(data["updatedAt"])
+    }
+
+    var statusKey: String {
+        status
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "")
+            .replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: "-", with: "")
+    }
+
+    var isArchived: Bool {
+        statusKey == "archived"
+    }
+
+    var isOpen: Bool {
+        !["done", "finished", "complete", "completed", "archived"].contains(statusKey)
+    }
+
+    var needsAttention: Bool {
+        guard isOpen else { return false }
+
+        if dueState == .overdue || dueState == .today {
+            return true
+        }
+
+        if reminderEnabled, let reminderAt {
+            return reminderAt <= Date()
+        }
+
+        return false
+    }
+
+    var dueState: MobileDashboardTodoDueState {
+        guard isOpen else { return .complete }
+        guard let dueAt else { return .none }
+
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+        let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) ?? todayStart
+
+        if dueAt < todayStart {
+            return .overdue
+        }
+
+        if dueAt < tomorrowStart {
+            return .today
+        }
+
+        return .upcoming
+    }
+
+    var issueKey: String {
+        let compactId = id.uppercased().filter { $0.isLetter || $0.isNumber }
+        let suffix = String(compactId.suffix(5))
+        return "TODO-\(suffix.isEmpty ? "ITEM" : suffix)"
+    }
+
+    var priorityLabel: String {
+        switch priority.lowercased() {
+        case "urgent":
+            return "Urgent"
+        case "high":
+            return "High"
+        case "low":
+            return "Low"
+        default:
+            return "Normal"
+        }
+    }
+
+    var statusLabel: String {
+        switch statusKey {
+        case "inprogress":
+            return "In Progress"
+        case "done", "finished":
+            return "Done"
+        default:
+            return "Open"
+        }
+    }
+
+    var dueLabel: String {
+        switch dueState {
+        case .overdue:
+            return "Overdue \(shortDate(date: dueAt))"
+        case .today:
+            return "Today \(shortDate(date: dueAt))"
+        case .upcoming:
+            return "Due \(shortDate(date: dueAt))"
+        case .complete:
+            return "Complete"
+        case .none:
+            return "No due date"
+        }
+    }
+
+    var detailLine: String {
+        let board = boardName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No board" : boardName
+        let owner = assignedToName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Team task" : assignedToName
+        return "\(board) | \(owner)"
+    }
+
+    func isAssigned(to userId: String) -> Bool {
+        assignedToUserId == userId || (scope == "me" && !assignedToUserId.isEmpty && assignedToUserId == userId)
+    }
+
+    static func sortByUrgency(_ left: MobileDashboardTodoSnapshotItem, _ right: MobileDashboardTodoSnapshotItem) -> Bool {
+        if left.dueState.rank != right.dueState.rank {
+            return left.dueState.rank < right.dueState.rank
+        }
+
+        let leftDue = left.dueAt ?? .distantFuture
+        let rightDue = right.dueAt ?? .distantFuture
+        if leftDue != rightDue {
+            return leftDue < rightDue
+        }
+
+        let leftPriority = priorityRank(left.priority)
+        let rightPriority = priorityRank(right.priority)
+        if leftPriority != rightPriority {
+            return leftPriority < rightPriority
+        }
+
+        return (left.createdAt ?? left.updatedAt ?? .distantPast) > (right.createdAt ?? right.updatedAt ?? .distantPast)
+    }
+
+    private static func priorityRank(_ priority: String) -> Int {
+        switch priority.lowercased() {
+        case "urgent":
+            return 0
+        case "high":
+            return 1
+        case "low":
+            return 3
+        default:
+            return 2
+        }
+    }
+
+    private static func stringValue(_ value: Any?, fallback: String = "") -> String {
+        if let value = value as? String {
+            return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallback : value
+        }
+
+        return fallback
+    }
+
+    private static func boolValue(_ value: Any?) -> Bool {
+        if let value = value as? Bool {
+            return value
+        }
+
+        if let value = value as? String {
+            return ["true", "yes", "1"].contains(value.lowercased())
+        }
+
+        if let value = value as? Int {
+            return value != 0
+        }
+
+        return false
+    }
+
+    private static func dateValue(_ value: Any?) -> Date? {
+        if let value = value as? Timestamp {
+            return value.dateValue()
+        }
+
+        if let value = value as? Date {
+            return value
+        }
+
+        if let value = value as? TimeInterval {
+            return Date(timeIntervalSince1970: value)
+        }
+
+        return nil
+    }
+}
+
+private struct MobileDashboardWorkOfferSnapshot {
+    let directOfferCount: Int
+    let boardOfferCount: Int
+    let acceptedOfferCount: Int
+    let scheduledOfferCount: Int
+    let readyToScheduleCount: Int
+
+    static let empty = MobileDashboardWorkOfferSnapshot(
+        directOfferCount: 0,
+        boardOfferCount: 0,
+        acceptedOfferCount: 0,
+        scheduledOfferCount: 0,
+        readyToScheduleCount: 0
+    )
+
+    var openOfferCount: Int {
+        directOfferCount + boardOfferCount
+    }
+
+    var subtitle: String {
+        "\(openOfferCount) open, \(readyToScheduleCount) ready to schedule"
+    }
+}
+
+private struct MobileDashboardPayrollSnapshot {
+    let owedCents: Int
+    let owedLineItemCount: Int
+    let lastPayoutDate: Date?
+    let oldestUnpaidWorkDate: Date?
+
+    static let empty = MobileDashboardPayrollSnapshot(
+        owedCents: 0,
+        owedLineItemCount: 0,
+        lastPayoutDate: nil,
+        oldestUnpaidWorkDate: nil
+    )
+
+    var subtitle: String {
+        if let oldestUnpaidWorkDate {
+            return "Unpaid work since \(shortDate(date: oldestUnpaidWorkDate))"
+        }
+
+        if lastPayoutDate != nil {
+            return "No unpaid work since the last payout."
+        }
+
+        return "No payout history found."
+    }
+
+    var daysSinceLastPayoutText: String {
+        guard let lastPayoutDate else {
+            return "None"
+        }
+
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: lastPayoutDate)
+        let end = calendar.startOfDay(for: Date())
+        let days = max(0, calendar.dateComponents([.day], from: start, to: end).day ?? 0)
+
+        if days == 0 {
+            return "Today"
+        }
+
+        if days == 1 {
+            return "1 day"
+        }
+
+        return "\(days) days"
+    }
+
+    static func isOwedLineItem(_ lineItem: TechnicianPayLineItem) -> Bool {
+        guard lineItem.voidedAt == nil, lineItem.paidAt == nil else {
+            return false
+        }
+
+        switch lineItem.calculationStatus {
+        case .pending, .calculated, .needsReview, .approved, .adjusted:
+            return true
+        case .paid, .voided:
+            return false
+        }
+    }
+
+    static func mostRecentPayoutDate(
+        lineItems: [TechnicianPayLineItem],
+        statements: [TechnicianPayStatement]
+    ) -> Date? {
+        let statementDates = statements.compactMap { statement -> Date? in
+            if let paidAt = statement.paidAt {
+                return paidAt
+            }
+
+            return statement.status == .paid ? statement.endDate : nil
+        }
+        let lineItemDates = lineItems.compactMap(\.paidAt)
+
+        return (statementDates + lineItemDates).max()
+    }
+}
+
+private enum MobileDashboardMoneyFormatter {
+    static func money(_ cents: Int) -> String {
+        let dollars = Double(cents) / 100.0
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: dollars)) ?? "$0.00"
+    }
+}
+
+private extension Array where Element == WorkOffer {
+    func mobileDashboardUniqueWorkOffers() -> [WorkOffer] {
+        var seen: Set<String> = []
+        var result: [WorkOffer] = []
+
+        for offer in self {
+            if !seen.contains(offer.id) {
+                result.append(offer)
+                seen.insert(offer.id)
+            }
+        }
+
+        return result
     }
 }
 
@@ -1314,6 +2063,14 @@ struct MobileReimaginedOperationsSectionView: View {
                     systemImage: "briefcase.fill",
                     tint: .poolGreen,
                     route: .jobs(dataService: dataService),
+                    permissionId: "20"
+                ),
+                MobileReimaginedSectionItem(
+                    title: "Offered Work",
+                    subtitle: "Offers for all technicians",
+                    systemImage: "list.bullet.clipboard.fill",
+                    tint: .poolBlue,
+                    route: .offeredWork(dataService: dataService),
                     permissionId: "20"
                 ),
                 MobileReimaginedSectionItem(
@@ -1954,6 +2711,1595 @@ private struct MobileReimaginedSectionHub: View {
             GridItem(.flexible(), spacing: 10),
             GridItem(.flexible(), spacing: 10)
         ]
+    }
+}
+
+private enum MobilePurchaseReconciliationFilters {
+    static func needsTechnicianReconciliation(_ purchase: PurchasedItem) -> Bool {
+        purchase.billable &&
+        !purchase.invoiced &&
+        purchase.returned != true &&
+        !hasShoppingConnection(purchase) &&
+        !hasJobConnection(purchase) &&
+        !hasCustomerConnection(purchase)
+    }
+
+    static func needsTechnicianReconciliation(_ purchase: PurchasedItem, technicianId: String) -> Bool {
+        belongsToTechnician(purchase, technicianId: technicianId) &&
+        needsTechnicianReconciliation(purchase)
+    }
+
+    static func belongsToTechnician(_ purchase: PurchasedItem, technicianId: String) -> Bool {
+        let cleanTechnicianId = clean(technicianId)
+        return !cleanTechnicianId.isEmpty && clean(purchase.techId) == cleanTechnicianId
+    }
+
+    static func hasShoppingConnection(_ purchase: PurchasedItem) -> Bool {
+        !clean(purchase.shoppingListItemId ?? "").isEmpty
+    }
+
+    static func hasCustomerConnection(_ purchase: PurchasedItem) -> Bool {
+        !clean(purchase.customerId).isEmpty ||
+        !clean(purchase.customerName).isEmpty ||
+        normalizedStatus(purchase.billingOwner) == "customer"
+    }
+
+    static func hasJobConnection(_ purchase: PurchasedItem) -> Bool {
+        if purchase.assignedToJob == true {
+            return true
+        }
+
+        if !clean(purchase.jobId).isEmpty ||
+            !clean(purchase.workOrderId ?? "").isEmpty ||
+            !clean(purchase.assignedJobId ?? "").isEmpty ||
+            !clean(purchase.installationJobId ?? "").isEmpty ||
+            !clean(purchase.installationTaskId ?? "").isEmpty ||
+            !clean(purchase.jobInternalId ?? "").isEmpty ||
+            !clean(purchase.jobName ?? "").isEmpty {
+            return true
+        }
+
+        let assignmentStatus = normalizedStatus(purchase.assignmentStatus)
+        if assignmentStatus == "assignedtojob" || assignmentStatus == "connectedtojob" {
+            return true
+        }
+
+        if normalizedStatus(purchase.billingOwner) == "job" {
+            return true
+        }
+
+        let jobBillingStatus = normalizedStatus(purchase.jobBillingStatus)
+        if jobBillingStatus == "handledbyjob" || jobBillingStatus == "invoiced" || jobBillingStatus == "paid" {
+            return true
+        }
+
+        let status = normalizedStatus(purchase.status)
+        return status == "connectedtojob" || status == "assignedtojob"
+    }
+
+    private static func normalizedStatus(_ value: String?) -> String {
+        clean(value ?? "")
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static func clean(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct MobilePurchaseReconciliationPreview {
+    let unresolvedCount: Int
+    let oldestPurchaseDate: Date?
+    let recentItemNames: [String]
+
+    static let empty = MobilePurchaseReconciliationPreview(
+        unresolvedCount: 0,
+        oldestPurchaseDate: nil,
+        recentItemNames: []
+    )
+
+    var subtitle: String {
+        if unresolvedCount == 0 {
+            return "No unlinked billable purchases in the last 30 days."
+        }
+
+        if let oldestPurchaseDate {
+            return "\(unresolvedCount) unlinked billable since \(shortDate(date: oldestPurchaseDate))."
+        }
+
+        return "\(unresolvedCount) unlinked billable purchase\(unresolvedCount == 1 ? "" : "s")."
+    }
+}
+
+private struct MobilePurchaseReconciliationRangeOption: Identifiable {
+    let days: Int
+    let label: String
+
+    var id: Int { days }
+}
+
+private struct MobilePurchaseDatabaseItem: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let category: String
+    let subCategory: String
+    let sku: String
+    let storeName: String
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        self.name = Self.string(data["name"])
+        self.category = Self.string(data["category"])
+        self.subCategory = Self.string(data["subCategory"])
+        self.sku = Self.string(data["sku"])
+        self.storeName = Self.string(data["storeName"])
+    }
+
+    var detailLine: String {
+        [category, subCategory, sku.isEmpty ? "" : "SKU \(sku)", storeName]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: " | ")
+    }
+
+    private static func string(_ value: Any?) -> String {
+        if let value = value as? String {
+            return value.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        if let value = value {
+            return String(describing: value).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return ""
+    }
+}
+
+private struct MobilePurchaseReconciliationView: View {
+    let dataService: any ProductionDataServiceProtocol
+
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    @State private var lookbackDays: Int = 30
+    @State private var purchases: [PurchasedItem] = []
+    @State private var shoppingListItems: [ShoppingListItem] = []
+    @State private var databaseItemsById: [String: MobilePurchaseDatabaseItem] = [:]
+    @State private var selectedPurchase: PurchasedItem?
+    @State private var isLoading = false
+    @State private var isUpdating = false
+    @State private var errorMessage: String?
+    @State private var loadRequestId = UUID()
+
+    private let shoppingCandidateFetchLimit = 75
+
+    private let rangeOptions: [MobilePurchaseReconciliationRangeOption] = [
+        MobilePurchaseReconciliationRangeOption(days: 30, label: "30d"),
+        MobilePurchaseReconciliationRangeOption(days: 60, label: "60d"),
+        MobilePurchaseReconciliationRangeOption(days: 90, label: "90d"),
+        MobilePurchaseReconciliationRangeOption(days: 180, label: "6mo"),
+        MobilePurchaseReconciliationRangeOption(days: 365, label: "1yr")
+    ]
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    summaryCard
+                    rangeSelector
+                    purchaseList
+
+                    Color.clear.frame(height: 24)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 14)
+            }
+
+            if isLoading || isUpdating {
+                Color.black.opacity(0.18).ignoresSafeArea()
+                ProgressView(isLoading ? "Loading purchases..." : "Saving changes...")
+                    .padding(18)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+        .navigationTitle("Reconcile Purchases")
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: loadIdentity) {
+            await loadData()
+        }
+        .refreshable {
+            await loadData()
+        }
+        .sheet(item: $selectedPurchase) { purchase in
+            MobilePurchaseReconciliationDetailSheet(
+                dataService: dataService,
+                purchase: purchase,
+                databaseItem: databaseItemsById[purchase.itemId],
+                connectedShoppingItem: connectedShoppingItem(for: purchase),
+                shoppingCandidates: shoppingCandidates(for: purchase),
+                isUpdating: isUpdating,
+                onSaveNotes: { purchase, notes in
+                    await saveNotes(for: purchase, notes: notes)
+                },
+                onConnectShoppingItem: { purchase, item in
+                    await connectShoppingItem(item, to: purchase)
+                },
+                onConnectCustomer: { purchase, customer in
+                    await connectCustomer(customer, to: purchase)
+                },
+                onConnectJob: { purchase, job in
+                    await connectJob(job, to: purchase)
+                },
+                onMarkReturned: { purchase in
+                    await markReturned(purchase)
+                }
+            )
+            .presentationDetents([.large])
+        }
+    }
+
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "cart.badge.questionmark")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .frame(width: 42, height: 42)
+                    .background(Color.orange.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Reconcile Purchases")
+                        .font(.title3.weight(.semibold))
+
+                    Text("\(visiblePurchases.count) unlinked billable purchase\(visiblePurchases.count == 1 ? "" : "s") need review.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 8) {
+                metricPill(title: "Need review", value: "\(visiblePurchases.count)", tint: visiblePurchases.isEmpty ? .gray : .orange)
+                metricPill(title: "Showing", value: "Open", tint: .poolGreen)
+                metricPill(title: "Range", value: "\(lookbackDays)d", tint: .poolBlue)
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .mobileMainCard(material: true)
+    }
+
+    private var rangeSelector: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Date Range")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+
+            HStack(spacing: 8) {
+                ForEach(rangeOptions) { option in
+                    Button {
+                        lookbackDays = option.days
+                    } label: {
+                        Text(option.label)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(lookbackDays == option.days ? .white : .primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 9)
+                            .background(
+                                lookbackDays == option.days ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.background),
+                                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .mobileMainCard()
+    }
+
+    @ViewBuilder
+    private var purchaseList: some View {
+        if visiblePurchases.isEmpty && !isLoading {
+            ContentUnavailableView(
+                "No Purchases To Reconcile",
+                systemImage: "checkmark.seal",
+                description: Text("There are no unlinked billable purchases for this technician in the selected range.")
+            )
+            .mobileMainCard()
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Purchases")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                ForEach(visiblePurchases) { purchase in
+                    Button {
+                        selectedPurchase = purchase
+                    } label: {
+                        MobilePurchaseReconciliationPurchaseRow(
+                            purchase: purchase,
+                            databaseItem: databaseItemsById[purchase.itemId],
+                            connectedShoppingItem: connectedShoppingItem(for: purchase),
+                            candidateCount: shoppingCandidates(for: purchase).count
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var visiblePurchases: [PurchasedItem] {
+        purchases.filter { purchase in
+            MobilePurchaseReconciliationFilters.needsTechnicianReconciliation(
+                purchase,
+                technicianId: technicianId
+            ) &&
+            connectedShoppingItem(for: purchase) == nil
+        }
+    }
+
+    private var loadIdentity: String {
+        "\(masterDataManager.currentCompany?.id ?? "no-company")-\(technicianId)-\(lookbackDays)"
+    }
+
+    private var technicianId: String {
+        masterDataManager.companyUser?.userId.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private var actorId: String {
+        masterDataManager.companyUser?.userId ?? masterDataManager.user?.id ?? ""
+    }
+
+    private var actorName: String {
+        let companyUserName = masterDataManager.companyUser?.userName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !companyUserName.isEmpty {
+            return companyUserName
+        }
+
+        let firstName = masterDataManager.user?.firstName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let lastName = masterDataManager.user?.lastName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let fullName = "\(firstName) \(lastName)".trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return fullName.isEmpty ? "Mobile technician" : fullName
+    }
+
+    private func metricPill(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(tint)
+
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func loadData() async {
+        guard let companyId = masterDataManager.currentCompany?.id else {
+            errorMessage = "Select a company before reconciling purchases."
+            purchases = []
+            shoppingListItems = []
+            databaseItemsById = [:]
+            isLoading = false
+            return
+        }
+
+        guard !technicianId.isEmpty else {
+            errorMessage = "Technician profile is not loaded yet."
+            purchases = []
+            shoppingListItems = []
+            databaseItemsById = [:]
+            isLoading = false
+            return
+        }
+
+        let requestId = UUID()
+        loadRequestId = requestId
+
+        isLoading = true
+        errorMessage = nil
+        shoppingListItems = []
+
+        let endDate = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -lookbackDays, to: endDate) ?? endDate
+
+        do {
+            let loadedPurchases = try await fetchPurchases(
+                companyId: companyId,
+                technicianId: technicianId,
+                startDate: startDate,
+                endDate: endDate
+            )
+            let loadedDatabaseItems = await fetchDatabaseItems(
+                companyId: companyId,
+                purchases: loadedPurchases,
+                shoppingItems: []
+            )
+
+            guard loadRequestId == requestId else { return }
+
+            purchases = loadedPurchases
+            shoppingListItems = []
+            databaseItemsById = loadedDatabaseItems
+            isLoading = false
+
+            let loadedShoppingItems = await fetchShoppingItems(
+                companyId: companyId,
+                technicianId: technicianId,
+                purchases: loadedPurchases
+            )
+
+            guard loadRequestId == requestId else { return }
+
+            shoppingListItems = loadedShoppingItems
+        } catch {
+            guard loadRequestId == requestId else { return }
+
+            purchases = []
+            shoppingListItems = []
+            databaseItemsById = [:]
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    private func fetchPurchases(
+        companyId: String,
+        technicianId: String,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [PurchasedItem] {
+        let snapshot = try await Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("purchasedItems")
+            .whereField("techId", isEqualTo: technicianId)
+            .whereField("billable", isEqualTo: true)
+            .whereField("invoiced", isEqualTo: false)
+            .whereField("date", isGreaterThanOrEqualTo: startDate)
+            .whereField("date", isLessThanOrEqualTo: endDate)
+            .order(by: "date", descending: true)
+            .getDocuments()
+
+        return snapshot.documents
+            .compactMap { document -> PurchasedItem? in
+                do {
+                    var item = try document.data(as: PurchasedItem.self)
+                    if item.id.isEmpty {
+                        item.id = document.documentID
+                    }
+                    return item
+                } catch {
+                    print("[MobilePurchaseReconciliationView][decodePurchase] \(error)")
+                    return nil
+                }
+            }
+            .filter {
+                MobilePurchaseReconciliationFilters.needsTechnicianReconciliation(
+                    $0,
+                    technicianId: technicianId
+                )
+            }
+    }
+
+    private func fetchShoppingItems(
+        companyId: String,
+        technicianId: String,
+        purchases: [PurchasedItem]
+    ) async -> [ShoppingListItem] {
+        let collectionRef = Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+
+        var itemsById: [String: ShoppingListItem] = [:]
+
+        func mergeSnapshot(_ snapshot: QuerySnapshot?) {
+            snapshot?.documents.forEach { document in
+                do {
+                    var item = try document.data(as: ShoppingListItem.self)
+                    if item.id.isEmpty {
+                        item.id = document.documentID
+                    }
+                    itemsById[item.id] = item
+                } catch {
+                    print("[MobilePurchaseReconciliationView][decodeShopping] \(error)")
+                }
+            }
+        }
+
+        do {
+            mergeSnapshot(
+                try await collectionRef
+                    .whereField("purchaserId", isEqualTo: technicianId)
+                    .limit(to: shoppingCandidateFetchLimit)
+                    .getDocuments()
+            )
+        } catch {
+            print("[MobilePurchaseReconciliationView][shoppingByPurchaser] \(error)")
+        }
+
+        do {
+            mergeSnapshot(
+                try await collectionRef
+                    .whereField("userId", isEqualTo: technicianId)
+                    .limit(to: shoppingCandidateFetchLimit)
+                    .getDocuments()
+            )
+        } catch {
+            print("[MobilePurchaseReconciliationView][shoppingByUser] \(error)")
+        }
+
+        do {
+            mergeSnapshot(
+                try await collectionRef
+                    .whereField("assignedTechIds", arrayContains: technicianId)
+                    .limit(to: shoppingCandidateFetchLimit)
+                    .getDocuments()
+            )
+        } catch {
+            print("[MobilePurchaseReconciliationView][shoppingByAssignedTech] \(error)")
+        }
+
+        let purchaseIds = purchases.map(\.id).filter { !$0.isEmpty }
+        let purchaseIdSet = Set(purchaseIds)
+        var purchaseIdStartIndex = 0
+        while purchaseIdStartIndex < purchaseIds.count {
+            let purchaseIdEndIndex = min(purchaseIdStartIndex + 10, purchaseIds.count)
+            let purchaseIdChunk = Array(purchaseIds[purchaseIdStartIndex..<purchaseIdEndIndex])
+            do {
+                mergeSnapshot(try await collectionRef.whereField("purchasedItem", in: purchaseIdChunk).getDocuments())
+            } catch {
+                print("[MobilePurchaseReconciliationView][shoppingByPurchases] \(error)")
+            }
+            purchaseIdStartIndex = purchaseIdEndIndex
+        }
+
+        return itemsById.values
+            .filter { item in
+                let purchasedItem = item.purchasedItem?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let reverseLinkedToLoadedPurchase = purchaseIdSet.contains(purchasedItem)
+                let belongsToTech = item.purchaserId == technicianId ||
+                    item.userId == technicianId ||
+                    item.assignedTechIds.contains(technicianId) ||
+                    reverseLinkedToLoadedPurchase
+
+                return belongsToTech &&
+                    (reverseLinkedToLoadedPurchase || item.status.needsShoppingAction) &&
+                    (purchasedItem.isEmpty || reverseLinkedToLoadedPurchase)
+            }
+            .sorted {
+                ($0.datePurchased ?? .distantPast) > ($1.datePurchased ?? .distantPast)
+            }
+    }
+
+    private func fetchDatabaseItems(
+        companyId: String,
+        purchases: [PurchasedItem],
+        shoppingItems: [ShoppingListItem]
+    ) async -> [String: MobilePurchaseDatabaseItem] {
+        var databaseIds = Set<String>()
+
+        purchases
+            .map(\.itemId)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .forEach { databaseIds.insert($0) }
+
+        shoppingItems.forEach { item in
+            [item.dbItemId, item.genericItemId]
+                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .forEach { databaseIds.insert($0) }
+        }
+
+        guard !databaseIds.isEmpty else { return [:] }
+
+        let databaseCollection = Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("settings")
+            .document("dataBase")
+            .collection("dataBase")
+
+        var result: [String: MobilePurchaseDatabaseItem] = [:]
+
+        for chunk in Array(databaseIds).chunked(into: 10) {
+            do {
+                let snapshot = try await databaseCollection
+                    .whereField(FieldPath.documentID(), in: chunk)
+                    .getDocuments()
+
+                for document in snapshot.documents {
+                    result[document.documentID] = MobilePurchaseDatabaseItem(id: document.documentID, data: document.data())
+                }
+            } catch {
+                print("[MobilePurchaseReconciliationView][databaseItem] \(error)")
+            }
+        }
+
+        return result
+    }
+
+    private func connectedShoppingItem(for purchase: PurchasedItem) -> ShoppingListItem? {
+        let shoppingListItemId = purchase.shoppingListItemId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        return shoppingListItems.first { item in
+            (!shoppingListItemId.isEmpty && item.id == shoppingListItemId) ||
+            ((item.purchasedItem ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == purchase.id)
+        }
+    }
+
+    private func shoppingCandidates(for purchase: PurchasedItem) -> [ShoppingListItem] {
+        let connected = connectedShoppingItem(for: purchase)
+        let purchaseDatabaseId = purchase.itemId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let purchaseCustomerId = purchase.customerId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let purchaseJobId = firstNonEmpty(purchase.jobId, purchase.workOrderId ?? "", purchase.assignedJobId ?? "")
+
+        let candidates = shoppingListItems.filter { item in
+            if item.id == connected?.id {
+                return true
+            }
+
+            let existingPurchaseId = item.purchasedItem?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !existingPurchaseId.isEmpty {
+                return existingPurchaseId == purchase.id
+            }
+
+            let shoppingDatabaseIds = [
+                item.dbItemId,
+                item.genericItemId
+            ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+            if !purchaseDatabaseId.isEmpty && shoppingDatabaseIds.contains(purchaseDatabaseId) {
+                return true
+            }
+
+            if !purchaseCustomerId.isEmpty && item.customerId == purchaseCustomerId {
+                return true
+            }
+
+            if !purchaseJobId.isEmpty && item.jobId == purchaseJobId {
+                return true
+            }
+
+            return false
+        }
+
+        return candidates.uniqueByShoppingItemId().sorted { left, right in
+            let leftSameDatabase = shoppingItem(left, matchesDatabaseId: purchaseDatabaseId)
+            let rightSameDatabase = shoppingItem(right, matchesDatabaseId: purchaseDatabaseId)
+            if leftSameDatabase != rightSameDatabase {
+                return leftSameDatabase && !rightSameDatabase
+            }
+
+            return left.name.localizedCaseInsensitiveCompare(right.name) == .orderedAscending
+        }
+    }
+
+    private func shoppingItem(_ item: ShoppingListItem, matchesDatabaseId databaseId: String) -> Bool {
+        guard !databaseId.isEmpty else { return false }
+        return item.dbItemId == databaseId || item.genericItemId == databaseId
+    }
+
+    private func saveNotes(for purchase: PurchasedItem, notes: String) async {
+        let cleanNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleanNotes != purchase.notes.trimmingCharacters(in: .whitespacesAndNewlines) else { return }
+
+        await performPurchaseUpdate(
+            purchase: purchase,
+            updates: ["notes": cleanNotes],
+            title: "Purchase notes updated",
+            eventType: "notes_updated",
+            changes: [
+                historyChange("Notes", from: purchase.notes, to: cleanNotes)
+            ].compactMap { $0 }
+        )
+    }
+
+    private func connectShoppingItem(_ shoppingItem: ShoppingListItem, to purchase: PurchasedItem) async {
+        guard let companyId = masterDataManager.currentCompany?.id else { return }
+
+        isUpdating = true
+        errorMessage = nil
+        defer { isUpdating = false }
+
+        let purchaseRef = purchaseDocument(companyId: companyId, purchaseId: purchase.id)
+        let shoppingRef = shoppingDocument(companyId: companyId, shoppingItemId: shoppingItem.id)
+        let previousShoppingItemId = purchase.shoppingListItemId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let customerName = firstNonEmpty(purchase.customerName, shoppingItem.customerName ?? "")
+        let customerId = firstNonEmpty(purchase.customerId, shoppingItem.customerId ?? "")
+        let jobId = firstNonEmpty(purchase.jobId, purchase.workOrderId ?? "", shoppingItem.jobId ?? "")
+        let now = Timestamp(date: Date())
+
+        var purchaseUpdates: [String: Any] = [
+            "shoppingListItemId": shoppingItem.id,
+            "updatedAt": now
+        ]
+        if purchase.customerId.isEmpty && !customerId.isEmpty {
+            purchaseUpdates["customerId"] = customerId
+            purchaseUpdates["customerName"] = customerName
+        }
+        if firstNonEmpty(purchase.jobId, purchase.workOrderId ?? "").isEmpty && !jobId.isEmpty {
+            purchaseUpdates["jobId"] = jobId
+            purchaseUpdates["workOrderId"] = jobId
+            purchaseUpdates["assignedJobId"] = jobId
+            purchaseUpdates["assignedToJob"] = true
+            purchaseUpdates["assignmentStatus"] = "assignedToJob"
+            purchaseUpdates["billingOwner"] = "job"
+            purchaseUpdates["jobBillingStatus"] = purchase.invoiced ? "invoiced" : "handledByJob"
+            purchaseUpdates["status"] = purchase.invoiced ? "Invoiced" : "Connected to Job"
+        }
+
+        var shoppingUpdates: [String: Any] = [
+            "purchasedItem": purchase.id,
+            "status": ShoppingListStatus.purchased.rawValue,
+            "datePurchased": Timestamp(date: purchase.date),
+            "invoiced": purchase.invoiced,
+            "needsAction": true,
+            "updatedAt": now
+        ]
+        if !customerId.isEmpty {
+            shoppingUpdates["customerId"] = customerId
+            shoppingUpdates["customerName"] = customerName
+        }
+        if !jobId.isEmpty {
+            shoppingUpdates["category"] = ShoppingListCategory.job.rawValue
+            shoppingUpdates["jobId"] = jobId
+        }
+
+        do {
+            try await purchaseRef.updateData(purchaseUpdates)
+            try await shoppingRef.updateData(shoppingUpdates)
+
+            if !previousShoppingItemId.isEmpty && previousShoppingItemId != shoppingItem.id {
+                try? await shoppingDocument(companyId: companyId, shoppingItemId: previousShoppingItemId)
+                    .updateData(["purchasedItem": "", "updatedAt": now])
+            }
+
+            try await recordHistory(
+                companyId: companyId,
+                purchaseId: purchase.id,
+                title: "Shopping list item connected",
+                eventType: "shopping_item_connected",
+                changes: [
+                    historyChange("Shopping Item", from: connectedShoppingItem(for: purchase)?.name ?? "", to: shoppingItem.name),
+                    historyChange("Customer", from: purchase.customerName, to: customerName),
+                    historyChange("Job", from: purchaseJobLabel(purchase), to: jobId.isEmpty ? purchaseJobLabel(purchase) : "Job connected")
+                ].compactMap { $0 }
+            )
+            await loadData()
+        } catch {
+            errorMessage = "Could not connect that shopping list item."
+            print("[MobilePurchaseReconciliationView][connectShoppingItem] \(error)")
+        }
+    }
+
+    private func connectCustomer(_ customer: Customer, to purchase: PurchasedItem) async {
+        guard !customer.id.isEmpty else { return }
+
+        let nextName = customerDisplayName(customer)
+        await performPurchaseUpdate(
+            purchase: purchase,
+            updates: [
+                "customerId": customer.id,
+                "customerName": nextName
+            ],
+            title: "Purchase customer updated",
+            eventType: "customer_updated",
+            changes: [
+                historyChange("Customer", from: purchase.customerName, to: nextName)
+            ].compactMap { $0 },
+            shoppingUpdates: [
+                "customerId": customer.id,
+                "customerName": nextName
+            ]
+        )
+    }
+
+    private func connectJob(_ job: Job, to purchase: PurchasedItem) async {
+        guard let companyId = masterDataManager.currentCompany?.id, !job.id.isEmpty else { return }
+
+        isUpdating = true
+        errorMessage = nil
+        defer { isUpdating = false }
+
+        let purchaseRef = purchaseDocument(companyId: companyId, purchaseId: purchase.id)
+        let previousJobId = firstNonEmpty(purchase.jobId, purchase.workOrderId ?? "", purchase.assignedJobId ?? "")
+        let shouldMarkInvoiced = job.billingStatus == .invoiced || job.billingStatus == .paid
+        let jobLabel = job.internalId.isEmpty ? job.type : job.internalId
+        let now = Timestamp(date: Date())
+
+        var updates: [String: Any] = [
+            "jobId": job.id,
+            "workOrderId": job.id,
+            "assignedJobId": job.id,
+            "assignedToJob": true,
+            "assignmentStatus": "assignedToJob",
+            "billingOwner": "job",
+            "jobBillingStatus": shouldMarkInvoiced ? "invoiced" : "handledByJob",
+            "jobBillable": purchase.jobBillable ?? purchase.billable,
+            "jobBillingRate": purchase.jobBillingRate ?? purchase.billingRate ?? purchase.price,
+            "jobInternalId": job.internalId,
+            "jobName": job.type,
+            "customerId": firstNonEmpty(purchase.customerId, job.customerId),
+            "customerName": firstNonEmpty(purchase.customerName, job.customerName),
+            "status": shouldMarkInvoiced ? "Invoiced" : "Connected to Job",
+            "updatedAt": now
+        ]
+
+        if shouldMarkInvoiced {
+            updates["invoiced"] = true
+            updates["invoiceStatus"] = "Invoiced"
+            updates["invoicedAt"] = now
+            updates["jobInvoicedAt"] = now
+        }
+
+        do {
+            try await purchaseRef.updateData(updates)
+            try? await Firestore.firestore()
+                .collection("companies")
+                .document(companyId)
+                .collection("workOrders")
+                .document(job.id)
+                .updateData(["purchasedItemsIds": FieldValue.arrayUnion([purchase.id])])
+
+            if !previousJobId.isEmpty && previousJobId != job.id {
+                try? await Firestore.firestore()
+                    .collection("companies")
+                    .document(companyId)
+                    .collection("workOrders")
+                    .document(previousJobId)
+                    .updateData(["purchasedItemsIds": FieldValue.arrayRemove([purchase.id])])
+            }
+
+            if let shoppingItem = connectedShoppingItem(for: purchase) {
+                try? await shoppingDocument(companyId: companyId, shoppingItemId: shoppingItem.id)
+                    .updateData([
+                        "category": ShoppingListCategory.job.rawValue,
+                        "jobId": job.id,
+                        "jobName": jobLabel,
+                        "customerId": firstNonEmpty(purchase.customerId, job.customerId),
+                        "customerName": firstNonEmpty(purchase.customerName, job.customerName),
+                        "invoiced": shouldMarkInvoiced || purchase.invoiced,
+                        "invoiceStatus": shouldMarkInvoiced ? "Invoiced" : "",
+                        "status": shouldMarkInvoiced ? "Invoiced" : ShoppingListStatus.purchased.rawValue,
+                        "updatedAt": now
+                    ])
+            }
+
+            try await recordHistory(
+                companyId: companyId,
+                purchaseId: purchase.id,
+                title: "Purchase job updated",
+                eventType: "job_updated",
+                changes: [
+                    historyChange("Job", from: purchaseJobLabel(purchase), to: jobLabel.isEmpty ? "Job connected" : jobLabel),
+                    historyChange("Customer", from: purchase.customerName, to: firstNonEmpty(purchase.customerName, job.customerName)),
+                    historyChange("Status", from: purchase.status ?? "", to: shouldMarkInvoiced ? "Invoiced" : "Connected to Job"),
+                    shouldMarkInvoiced ? historyChange("Invoiced", from: yesNo(purchase.invoiced), to: "Yes") : nil
+                ].compactMap { $0 }
+            )
+            await loadData()
+        } catch {
+            errorMessage = "Could not connect that job."
+            print("[MobilePurchaseReconciliationView][connectJob] \(error)")
+        }
+    }
+
+    private func markReturned(_ purchase: PurchasedItem) async {
+        await performPurchaseUpdate(
+            purchase: purchase,
+            updates: [
+                "returned": true,
+                "returnedAt": Timestamp(date: Date()),
+                "returnedByUserId": actorId,
+                "returnedByUserName": actorName,
+                "status": "Returned"
+            ],
+            title: "Purchase marked returned",
+            eventType: "returned",
+            changes: [
+                historyChange("Returned", from: yesNo(purchase.returned == true), to: "Yes"),
+                historyChange("Status", from: purchase.status ?? "", to: "Returned")
+            ].compactMap { $0 }
+        )
+    }
+
+    private func performPurchaseUpdate(
+        purchase: PurchasedItem,
+        updates: [String: Any],
+        title: String,
+        eventType: String,
+        changes: [String],
+        shoppingUpdates: [String: Any] = [:]
+    ) async {
+        guard let companyId = masterDataManager.currentCompany?.id else { return }
+        guard !changes.isEmpty else { return }
+
+        isUpdating = true
+        errorMessage = nil
+        defer { isUpdating = false }
+
+        var updatePayload = updates
+        updatePayload["updatedAt"] = Timestamp(date: Date())
+
+        do {
+            try await purchaseDocument(companyId: companyId, purchaseId: purchase.id)
+                .updateData(updatePayload)
+
+            if !shoppingUpdates.isEmpty, let shoppingItem = connectedShoppingItem(for: purchase) {
+                var linkedShoppingUpdates = shoppingUpdates
+                linkedShoppingUpdates["updatedAt"] = Timestamp(date: Date())
+                try? await shoppingDocument(companyId: companyId, shoppingItemId: shoppingItem.id)
+                    .updateData(linkedShoppingUpdates)
+            }
+
+            try await recordHistory(
+                companyId: companyId,
+                purchaseId: purchase.id,
+                title: title,
+                eventType: eventType,
+                changes: changes
+            )
+            await loadData()
+        } catch {
+            errorMessage = "Could not save purchase changes."
+            print("[MobilePurchaseReconciliationView][performPurchaseUpdate] \(error)")
+        }
+    }
+
+    private func recordHistory(
+        companyId: String,
+        purchaseId: String,
+        title: String,
+        eventType: String,
+        changes: [String]
+    ) async throws {
+        guard !changes.isEmpty else { return }
+
+        let now = Date()
+        let historyId = UUID().uuidString
+        let purchaseRef = purchaseDocument(companyId: companyId, purchaseId: purchaseId)
+        let payload: [String: Any] = [
+            "id": historyId,
+            "date": Timestamp(date: now),
+            "tech": actorName,
+            "actorId": actorId,
+            "actorName": actorName,
+            "source": "mobile",
+            "eventType": eventType,
+            "title": title,
+            "changes": changes,
+            "createdAt": Timestamp(date: now)
+        ]
+
+        try await purchaseRef.collection("history").document(historyId).setData(payload)
+        try await purchaseRef.updateData([
+            "lastHistoryEventId": historyId,
+            "lastHistoryEventTitle": title,
+            "lastHistoryEventType": eventType,
+            "lastHistoryEventAt": Timestamp(date: now),
+            "updatedAt": Timestamp(date: now)
+        ])
+    }
+
+    private func purchaseDocument(companyId: String, purchaseId: String) -> DocumentReference {
+        Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("purchasedItems")
+            .document(purchaseId)
+    }
+
+    private func shoppingDocument(companyId: String, shoppingItemId: String) -> DocumentReference {
+        Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .document(shoppingItemId)
+    }
+
+    private func purchaseJobLabel(_ purchase: PurchasedItem) -> String {
+        firstNonEmpty(purchase.jobInternalId ?? "", purchase.jobName ?? "", purchase.jobId.isEmpty ? "" : "Job connected")
+    }
+
+    private func customerDisplayName(_ customer: Customer) -> String {
+        if customer.displayAsCompany {
+            return firstNonEmpty(customer.company ?? "", "\(customer.firstName) \(customer.lastName)")
+        }
+
+        return firstNonEmpty("\(customer.firstName) \(customer.lastName)", customer.company ?? "")
+    }
+
+    private func historyChange(_ label: String, from previousValue: String, to nextValue: String) -> String? {
+        let previous = compactHistoryValue(previousValue)
+        let next = compactHistoryValue(nextValue)
+        guard previous != next else { return nil }
+        return "\(label): \(previous) -> \(next)"
+    }
+
+    private func compactHistoryValue(_ value: String) -> String {
+        let cleanValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanValue.isEmpty else { return "Blank" }
+        guard cleanValue.count > 140 else { return cleanValue }
+        return "\(String(cleanValue.prefix(137)))..."
+    }
+
+    private func yesNo(_ value: Bool) -> String {
+        value ? "Yes" : "No"
+    }
+
+    private func firstNonEmpty(_ values: String...) -> String {
+        for value in values {
+            let cleanValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !cleanValue.isEmpty {
+                return cleanValue
+            }
+        }
+
+        return ""
+    }
+}
+
+private struct MobilePurchaseReconciliationPurchaseRow: View {
+    let purchase: PurchasedItem
+    let databaseItem: MobilePurchaseDatabaseItem?
+    let connectedShoppingItem: ShoppingListItem?
+    let candidateCount: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: connectedShoppingItem == nil ? "shippingbox" : "link.circle.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(connectedShoppingItem == nil ? Color.orange : Color.poolGreen)
+                    .frame(width: 36, height: 36)
+                    .background((connectedShoppingItem == nil ? Color.orange : Color.poolGreen).opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(purchase.name.isEmpty ? "Unnamed purchase" : purchase.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    Text("\(purchase.venderName.isEmpty ? "Unknown vendor" : purchase.venderName) | \(shortDate(date: purchase.date))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                detailLine(title: "Database", value: databaseLabel)
+                detailLine(title: "Customer", value: purchase.customerName.isEmpty ? "No customer connected" : purchase.customerName)
+                detailLine(title: "Job", value: jobLabel)
+                detailLine(title: "Shopping", value: shoppingLabel)
+            }
+
+            HStack(spacing: 6) {
+                statusChip(
+                    title: connectedShoppingItem == nil ? "\(candidateCount) candidate\(candidateCount == 1 ? "" : "s")" : "Connected",
+                    tint: connectedShoppingItem == nil ? .orange : .poolGreen
+                )
+                statusChip(title: purchase.returned == true ? "Returned" : "Not returned", tint: purchase.returned == true ? .orange : .gray)
+                statusChip(title: purchase.invoiced ? "Invoiced" : "Not invoiced", tint: purchase.invoiced ? .poolGreen : .poolRed)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        )
+    }
+
+    private var databaseLabel: String {
+        if let databaseItem {
+            return databaseItem.name.isEmpty ? "Database item linked" : databaseItem.name
+        }
+
+        return purchase.itemId.isEmpty ? "No database item" : "Database item linked"
+    }
+
+    private var jobLabel: String {
+        if let jobInternalId = purchase.jobInternalId, !jobInternalId.isEmpty {
+            return jobInternalId
+        }
+
+        if let jobName = purchase.jobName, !jobName.isEmpty {
+            return jobName
+        }
+
+        return purchase.jobId.isEmpty && (purchase.workOrderId ?? "").isEmpty ? "No job connected" : "Job connected"
+    }
+
+    private var shoppingLabel: String {
+        connectedShoppingItem?.name ?? "Not connected"
+    }
+
+    private func detailLine(title: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 64, alignment: .leading)
+
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func statusChip(title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.10), in: Capsule())
+    }
+}
+
+private struct MobilePurchaseReconciliationDetailSheet: View {
+    let dataService: any ProductionDataServiceProtocol
+    let purchase: PurchasedItem
+    let databaseItem: MobilePurchaseDatabaseItem?
+    let connectedShoppingItem: ShoppingListItem?
+    let shoppingCandidates: [ShoppingListItem]
+    let isUpdating: Bool
+    let onSaveNotes: (PurchasedItem, String) async -> Void
+    let onConnectShoppingItem: (PurchasedItem, ShoppingListItem) async -> Void
+    let onConnectCustomer: (PurchasedItem, Customer) async -> Void
+    let onConnectJob: (PurchasedItem, Job) async -> Void
+    let onMarkReturned: (PurchasedItem) async -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var draftNotes: String
+    @State private var showingCustomerPicker = false
+    @State private var showingJobPicker = false
+    @State private var selectedCustomer = MobilePurchaseReconciliationDefaults.emptyCustomer()
+    @State private var selectedJob = MobilePurchaseReconciliationDefaults.emptyJob()
+
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        purchase: PurchasedItem,
+        databaseItem: MobilePurchaseDatabaseItem?,
+        connectedShoppingItem: ShoppingListItem?,
+        shoppingCandidates: [ShoppingListItem],
+        isUpdating: Bool,
+        onSaveNotes: @escaping (PurchasedItem, String) async -> Void,
+        onConnectShoppingItem: @escaping (PurchasedItem, ShoppingListItem) async -> Void,
+        onConnectCustomer: @escaping (PurchasedItem, Customer) async -> Void,
+        onConnectJob: @escaping (PurchasedItem, Job) async -> Void,
+        onMarkReturned: @escaping (PurchasedItem) async -> Void
+    ) {
+        self.dataService = dataService
+        self.purchase = purchase
+        self.databaseItem = databaseItem
+        self.connectedShoppingItem = connectedShoppingItem
+        self.shoppingCandidates = shoppingCandidates
+        self.isUpdating = isUpdating
+        self.onSaveNotes = onSaveNotes
+        self.onConnectShoppingItem = onConnectShoppingItem
+        self.onConnectCustomer = onConnectCustomer
+        self.onConnectJob = onConnectJob
+        self.onMarkReturned = onMarkReturned
+        _draftNotes = State(wrappedValue: purchase.notes)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    header
+                    purchaseDetailLink
+                    databaseSection
+                    contextSection
+                    shoppingSection
+                    notesSection
+                    actionsSection
+                }
+                .padding(14)
+            }
+            .background(Color.listColor.ignoresSafeArea())
+            .navigationTitle("Purchase")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $showingCustomerPicker) {
+                NavigationStack {
+                    CustomerPickerScreen(dataService: dataService, customer: $selectedCustomer)
+                }
+            }
+            .sheet(isPresented: $showingJobPicker) {
+                NavigationStack {
+                    JobPickerScreen(dataService: dataService, job: $selectedJob)
+                }
+            }
+            .onChange(of: selectedCustomer) { customer in
+                guard !customer.id.isEmpty else { return }
+                Task {
+                    await onConnectCustomer(purchase, customer)
+                    dismiss()
+                }
+            }
+            .onChange(of: selectedJob) { job in
+                guard !job.id.isEmpty else { return }
+                Task {
+                    await onConnectJob(purchase, job)
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(purchase.name.isEmpty ? "Unnamed purchase" : purchase.name)
+                .font(.title3.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Label(purchase.venderName.isEmpty ? "Unknown vendor" : purchase.venderName, systemImage: "storefront")
+                Label(shortDate(date: purchase.date), systemImage: "calendar")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+
+            HStack(spacing: 6) {
+                statusChip(title: purchase.billable ? "Billable" : "Not billable", tint: purchase.billable ? .poolGreen : .gray)
+                statusChip(title: purchase.invoiced ? "Invoiced" : "Not invoiced", tint: purchase.invoiced ? .poolGreen : .poolRed)
+                statusChip(title: purchase.returned == true ? "Returned" : "Not returned", tint: purchase.returned == true ? .orange : .gray)
+            }
+        }
+        .mobileMainCard(material: true)
+    }
+
+    private var purchaseDetailLink: some View {
+        NavigationLink {
+            PurchaseDetailView(purchase: purchase, dataService: dataService)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolBlue.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Purchased Item Detail")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("Open the full purchase record")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var databaseSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Database Item", systemImage: "square.stack.3d.up")
+
+            Text(databaseItem?.name.isEmpty == false ? databaseItem!.name : (purchase.itemId.isEmpty ? "No database item connected" : "Database item linked"))
+                .font(.subheadline.weight(.semibold))
+
+            if let detailLine = databaseItem?.detailLine, !detailLine.isEmpty {
+                Text(detailLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .mobileMainCard()
+    }
+
+    private var contextSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Customer / Job", systemImage: "person.text.rectangle")
+
+            detailLine(title: "Customer", value: purchase.customerName.isEmpty ? "No customer connected" : purchase.customerName)
+            detailLine(title: "Job", value: jobLabel)
+
+            HStack(spacing: 8) {
+                Button {
+                    showingCustomerPicker = true
+                } label: {
+                    Label(purchase.customerName.isEmpty ? "Add Customer" : "Change Customer", systemImage: "person.crop.circle.badge.plus")
+                }
+                .buttonStyle(.bordered)
+                .disabled(isUpdating)
+
+                Button {
+                    showingJobPicker = true
+                } label: {
+                    Label(jobLabel == "No job connected" ? "Add Job" : "Change Job", systemImage: "briefcase")
+                }
+                .buttonStyle(.bordered)
+                .disabled(isUpdating)
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .mobileMainCard()
+    }
+
+    private var shoppingSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Shopping List Match", systemImage: "link")
+
+            if let connectedShoppingItem {
+                shoppingItemSummary(connectedShoppingItem, connected: true)
+            } else if shoppingCandidates.isEmpty {
+                Text("No matching shopping list item found. You can still update notes, customer, job, or mark it returned.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ForEach(shoppingCandidates.prefix(5)) { item in
+                    Button {
+                        Task {
+                            await onConnectShoppingItem(purchase, item)
+                            dismiss()
+                        }
+                    } label: {
+                        shoppingItemSummary(item, connected: false)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isUpdating)
+                }
+            }
+        }
+        .mobileMainCard()
+    }
+
+    private var notesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                sectionTitle("Notes", systemImage: "note.text")
+                Spacer()
+                Button {
+                    Task {
+                        await onSaveNotes(purchase, draftNotes)
+                        dismiss()
+                    }
+                } label: {
+                    Text("Save")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isUpdating || draftNotes.trimmingCharacters(in: .whitespacesAndNewlines) == purchase.notes.trimmingCharacters(in: .whitespacesAndNewlines))
+            }
+
+            TextEditor(text: $draftNotes)
+                .frame(minHeight: 110)
+                .padding(8)
+                .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+        }
+        .mobileMainCard()
+    }
+
+    private var actionsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionTitle("Status", systemImage: "checklist")
+
+            Button(role: .destructive) {
+                Task {
+                    await onMarkReturned(purchase)
+                    dismiss()
+                }
+            } label: {
+                HStack {
+                    Label("Mark Item Returned", systemImage: "arrow.uturn.backward.circle")
+                    Spacer()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isUpdating || purchase.returned == true)
+        }
+        .mobileMainCard()
+    }
+
+    private var jobLabel: String {
+        if let jobInternalId = purchase.jobInternalId, !jobInternalId.isEmpty {
+            return jobInternalId
+        }
+
+        if let jobName = purchase.jobName, !jobName.isEmpty {
+            return jobName
+        }
+
+        return purchase.jobId.isEmpty && (purchase.workOrderId ?? "").isEmpty ? "No job connected" : "Job connected"
+    }
+
+    private func sectionTitle(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+    }
+
+    private func detailLine(title: String, value: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .leading)
+
+            Text(value)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func shoppingItemSummary(_ item: ShoppingListItem, connected: Bool) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: connected ? "checkmark.circle.fill" : "cart")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(connected ? Color.poolGreen : Color.poolBlue)
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name.isEmpty ? "Unnamed shopping item" : item.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                if !item.description.isEmpty {
+                    Text(item.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                HStack(spacing: 6) {
+                    Text(item.status.rawValue)
+                    if let customerName = item.customerName, !customerName.isEmpty {
+                        Text(customerName)
+                    }
+                    if let quantity = item.quantity, !quantity.isEmpty {
+                        Text("Qty \(quantity)")
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background((connected ? Color.poolGreen : Color.poolBlue).opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func statusChip(title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.10), in: Capsule())
+    }
+}
+
+private enum MobilePurchaseReconciliationDefaults {
+    static func emptyCustomer() -> Customer {
+        Customer(
+            id: "",
+            firstName: "",
+            lastName: "",
+            email: "",
+            billingAddress: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0),
+            active: true,
+            displayAsCompany: false,
+            hireDate: Date(),
+            billingNotes: "",
+            linkedInviteId: UUID().uuidString
+        )
+    }
+
+    static func emptyJob() -> Job {
+        Job(
+            id: "",
+            internalId: "",
+            type: "",
+            dateCreated: Date(),
+            description: "",
+            operationStatus: .estimatePending,
+            billingStatus: .draft,
+            customerId: "",
+            customerName: "",
+            serviceLocationId: "",
+            serviceStopIds: [],
+            laborContractIds: [],
+            adminId: "",
+            adminName: "",
+            rate: 0,
+            laborCost: 0,
+            otherCompany: false,
+            receivedLaborContractId: "",
+            receiverId: "",
+            senderId: "",
+            dateEstimateAccepted: nil,
+            estimateAcceptedById: nil,
+            estimateAcceptType: nil,
+            estimateAcceptedNotes: nil,
+            invoiceDate: nil,
+            invoiceRef: nil,
+            invoiceType: nil,
+            invoiceNotes: nil
+        )
+    }
+}
+
+private extension Array where Element == ShoppingListItem {
+    func uniqueByShoppingItemId() -> [ShoppingListItem] {
+        var seen: Set<String> = []
+
+        return filter { item in
+            guard !seen.contains(item.id) else { return false }
+            seen.insert(item.id)
+            return true
+        }
     }
 }
 

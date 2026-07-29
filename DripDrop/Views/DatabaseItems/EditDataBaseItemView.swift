@@ -53,12 +53,15 @@ struct EditDataBaseItemView: View {
             ScrollView{
                 VStack{
                     HStack{
-                        if name != dataBaseItem.name || rate != String(dataBaseItem.rate) || storeName != dataBaseItem.storeName || storeId != dataBaseItem.venderId || category != dataBaseItem.category || description != dataBaseItem.description || dateUpdated != dataBaseItem.dateUpdated || sku != dataBaseItem.sku || billable != dataBaseItem.billable || color != dataBaseItem.color || size != dataBaseItem.size || subCategory == dataBaseItem.subCategory || UOM == dataBaseItem.UOM || sellPrice == String(dataBaseItem.sellPrice ?? 0) || tracking == dataBaseItem.tracking ?? ""{
+                        if hasChanges {
                             Button(action: {
                                 Task{
                                     if let company = masterDataManager.currentCompany {
                                         do {
-                                            try await viewModel.updateDataBaseItem(dataBaseItem: dataBaseItem, companyId: company.id, name: name, rate: Double(rate)!, category: category, description: description, sku: sku, billable: billable, color: color, size: size,sellPrice: Double(sellPrice)!,UOM: UOM, subCategory: subCategory, tracking: tracking) //DEVELOPER REMOVE EXPLICIT
+                                            let costCents = DataBaseItemMoneyFormatter.centsFromDollarInput(rate)
+                                            let priceCents = DataBaseItemMoneyFormatter.centsFromDollarInput(sellPrice)
+
+                                            try await viewModel.updateDataBaseItem(dataBaseItem: dataBaseItem, companyId: company.id, name: name, rate: costCents, category: category, description: description, sku: sku, billable: billable, color: color, size: size,sellPrice: priceCents,UOM: UOM, subCategory: subCategory, tracking: tracking) //DEVELOPER REMOVE EXPLICIT
                                             dismiss()
                                         } catch {
                                             print("Error Uploading Data Base Item")
@@ -145,7 +148,7 @@ struct EditDataBaseItemView: View {
                         .cornerRadius(3)
                     }
                     HStack{
-                        Text("Rate : $")
+                        Text("Cost : $")
                         TextField("#", text: $rate)
                             .padding(3)
                             .background(Color.gray.opacity(0.3))
@@ -177,18 +180,18 @@ struct EditDataBaseItemView: View {
                     }
                     if billable {
                         HStack{
-                            Text("Sell Price : $")
+                            Text("Price : $")
                             TextField("#", text: $sellPrice)
                                 .padding(3)
                                 .background(Color.gray.opacity(0.3))
                                 .cornerRadius(3)
-                                .onReceive(Just(rate)) { newValue in
+                                .onReceive(Just(sellPrice)) { newValue in
                                     let filtered = newValue.filter { ".0123456789".contains($0) }
                                     if filtered != newValue {
-                                        self.rate = filtered
+                                        self.sellPrice = filtered
                                     }
                                     if filtered.numberOfOccurrencesOf(string: ".") > 1{
-                                        self.rate = ""
+                                        self.sellPrice = ""
                                     }
                                 }
                         }
@@ -233,7 +236,7 @@ struct EditDataBaseItemView: View {
         .onAppear(perform:{
             
             name = dataBaseItem.name
-            rate = String(dataBaseItem.rate)
+            rate = DataBaseItemMoneyFormatter.dollarInputText(fromCents: dataBaseItem.rate)
             storeName = dataBaseItem.storeName
             storeId = dataBaseItem.venderId
             category = dataBaseItem.category
@@ -246,7 +249,7 @@ struct EditDataBaseItemView: View {
             
             subCategory = dataBaseItem.subCategory
             UOM = dataBaseItem.UOM
-            sellPrice = String(dataBaseItem.sellPrice ?? 0)
+            sellPrice = DataBaseItemMoneyFormatter.dollarInputText(fromCents: dataBaseItem.sellPrice)
             tracking = dataBaseItem.tracking ?? ""
             
         })
@@ -270,6 +273,28 @@ struct EditDataBaseItemView: View {
 }
 
 extension EditDataBaseItemView {
+    var hasChanges: Bool {
+        let costCents = DataBaseItemMoneyFormatter.centsFromDollarInput(rate)
+        let priceCents = DataBaseItemMoneyFormatter.centsFromDollarInput(sellPrice)
+        let originalSellPrice = dataBaseItem.sellPrice ?? 0
+
+        return name != dataBaseItem.name ||
+        Int(costCents.rounded()) != Int(dataBaseItem.rate.rounded()) ||
+        storeName != dataBaseItem.storeName ||
+        storeId != dataBaseItem.venderId ||
+        category != dataBaseItem.category ||
+        description != dataBaseItem.description ||
+        dateUpdated != dataBaseItem.dateUpdated ||
+        sku != dataBaseItem.sku ||
+        billable != dataBaseItem.billable ||
+        color != dataBaseItem.color ||
+        size != dataBaseItem.size ||
+        subCategory != dataBaseItem.subCategory ||
+        UOM != dataBaseItem.UOM ||
+        Int(priceCents.rounded()) != Int(originalSellPrice.rounded()) ||
+        tracking != (dataBaseItem.tracking ?? "")
+    }
+
     var subCategoryPicker : some View {
         VStack{
             Picker("", selection: $subCategory) {

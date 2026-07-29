@@ -33,6 +33,11 @@ struct OperationsView: View {
                         .tabItem {
                             Label("Route", systemImage: "car")
                         }
+
+                    CompanyOfferedWorkView(dataService: dataService)
+                        .tabItem {
+                            Label("Offered Work", systemImage: "list.bullet.clipboard")
+                        }
                     
                 }
                 .background(Color.gray)

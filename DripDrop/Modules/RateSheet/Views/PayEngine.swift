@@ -97,6 +97,16 @@ struct PayEngine {
             return []
         }
 
+        if let manualPayOverrideCents = serviceStop.manualPayOverrideCents {
+            return [
+                manualPayOverrideLine(
+                    serviceStop: serviceStop,
+                    amountCents: max(0, manualPayOverrideCents),
+                    now: now
+                )
+            ]
+        }
+
         // Hourly-only companies should generate pay from ActiveRoute / ActiveRouteLog,
         // not from individual service stops.
         if settings.payMode == .hourlyOnly {
@@ -674,6 +684,80 @@ private extension PayEngine {
 // MARK: - Shared Line Builders
 
 private extension PayEngine {
+    func manualPayOverrideLine(
+        serviceStop: ServiceStop,
+        amountCents: Int,
+        now: Date
+    ) -> TechnicianPayLineItem {
+        let worker = serviceStopWorker(serviceStop)
+
+        return TechnicianPayLineItem(
+            id: makeLineId(
+                source: .manualAdjustment,
+                serviceStopId: serviceStop.id,
+                serviceStopTaskId: nil,
+                activeRouteId: nil,
+                activeRouteLogId: nil,
+                technicianId: worker.userId,
+                workTypeId: nil
+            ),
+            companyId: serviceStop.companyId,
+            technicianId: worker.userId,
+            technicianName: worker.userName,
+            workerType: worker.workerType,
+            source: .manualAdjustment,
+            serviceStopId: serviceStop.id,
+            serviceStopTaskId: nil,
+            activeRouteId: nil,
+            activeRouteLogId: nil,
+            workTypeId: serviceStop.payWorkTypeId ?? serviceStop.workTypeId,
+            workTypeName: serviceStop.payWorkTypeName ?? serviceStop.workTypeName,
+            rateId: nil,
+            rateAmountCents: amountCents,
+            rateType: .manual,
+            payBasis: .manualAdjustment,
+            quantity: 1,
+            quantityUnit: .each,
+            totalAmountCents: amountCents,
+            completedDate: serviceStop.serviceDate,
+            calculatedAt: now,
+            calculationStatus: .calculated,
+            approvedAt: nil,
+            approvedByUserId: nil,
+            paidAt: nil,
+            paidByUserId: nil,
+            voidedAt: nil,
+            voidedByUserId: nil,
+            voidReason: nil,
+            payStatementId: nil,
+            exportBatchId: nil,
+            notes: serviceStop.manualPayOverrideNotes ?? "Manual payroll amount set while scheduling this service stop.",
+            adminReviewNotes: nil,
+            lineNumber: nil,
+            lineReference: nil,
+            paymentReference: nil,
+            displayTitle: payrollDisplayTitle(
+                serviceStop: serviceStop,
+                serviceStopTask: nil,
+                workTypeName: serviceStop.payWorkTypeName ?? serviceStop.workTypeName
+            ),
+            displaySubtitle: payrollDisplaySubtitle(
+                serviceStop: serviceStop,
+                serviceStopTask: nil,
+                workTypeName: serviceStop.payWorkTypeName ?? serviceStop.workTypeName
+            ),
+            customerId: serviceStop.customerId,
+            customerName: serviceStop.customerName,
+            serviceLocationId: serviceStop.serviceLocationId,
+            serviceLocationAddress: serviceStop.address.streetAddress,
+            jobId: serviceStop.jobId.isEmpty ? nil : serviceStop.jobId,
+            jobInternalId: nil,
+            taskName: nil,
+            serviceStopTypeName: serviceStop.type,
+            serviceStopCategory: serviceStop.resolvedCategory
+        )
+    }
+
     private func payrollDisplayTitle(
         serviceStop: ServiceStop,
         serviceStopTask: ServiceStopTask?,

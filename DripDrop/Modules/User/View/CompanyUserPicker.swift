@@ -126,7 +126,9 @@
         }
         
         func userRow(_ datum: CompanyUser) -> some View {
-            let isSelected = datum == companyUser
+            let selectedUserId = companyUser.userId.isEmpty ? companyUser.id : companyUser.userId
+            let rowUserId = datum.userId.isEmpty ? datum.id : datum.userId
+            let isSelected = !selectedUserId.isEmpty && selectedUserId == rowUserId
             
             return Button {
                 companyUser = datum

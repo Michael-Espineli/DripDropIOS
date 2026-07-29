@@ -89,6 +89,8 @@ final class WorkOfferSchedulingService {
         )
 
         let estimatedDuration = selectedTasks.reduce(0) { $0 + $1.estimatedTime }
+        let manualPayOverrideCents = manualPayOverrideCents(for: offer)
+        let manualPayOverrideNotes = manualPayOverrideNotes(for: offer)
 
         let serviceStop = ServiceStop(
             id: serviceStopId,
@@ -123,7 +125,10 @@ final class WorkOfferSchedulingService {
             contractedCompanyId: "",
             photoUrls: [],
             mainCompanyId: nil,
-            isInvoiced: false
+            isInvoiced: false,
+            estimatedPayCents: offer.estimatedPayTotalCents ?? offer.offeredAmountCents,
+            manualPayOverrideCents: manualPayOverrideCents,
+            manualPayOverrideNotes: manualPayOverrideNotes
         )
 
         try await dataService.uploadServiceStop(
@@ -170,7 +175,7 @@ final class WorkOfferSchedulingService {
                 equipmentId: jobTask.equipmentId,
                 serviceLocationId: jobTask.serviceLocationId.isEmpty ? job.serviceLocationId : jobTask.serviceLocationId,
                 bodyOfWaterId: jobTask.bodyOfWaterId,
-                shoppingListItemId: "",
+                shoppingListItemId: jobTask.shoppingListItemId ?? "",
 //                dataBaseItemId: jobTask.dataBaseItemId
 
             )
@@ -211,6 +216,26 @@ final class WorkOfferSchedulingService {
             copiedTasks.append(serviceStopTask)
         }
 
+        let shoppingItemIds = selectedTasks.compactMap { task in
+            task.shoppingListItemId?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        .filter { !$0.isEmpty }
+
+        try await dataService.syncShoppingListItemsForScheduledJobTasks(
+            companyId: companyId,
+            jobId: job.id,
+            customerId: job.customerId,
+            serviceLocationId: job.serviceLocationId,
+            serviceStopId: serviceStop.id,
+            serviceStopInternalId: serviceStop.internalId,
+            serviceDate: serviceDate,
+            assignedTechId: acceptedWorkerId,
+            assignedTechName: acceptedWorkerName,
+            taskIds: selectedTasks.map { $0.id },
+            shoppingListItemIds: shoppingItemIds,
+            plannedServiceStopId: nil
+        )
+
         try await dataService.updateWorkOfferScheduledServiceStop(
             companyId: companyId,
             workOfferId: offer.id,
@@ -246,6 +271,28 @@ final class WorkOfferSchedulingService {
         }
 
         return .contractor
+    }
+
+    private func manualPayOverrideCents(for offer: WorkOffer) -> Int? {
+        switch offer.paySource {
+        case .offeredAmount:
+            return max(0, offer.offeredAmountCents)
+        case .unpaid:
+            return 0
+        case .technicianRate, .taskContractedRates:
+            return nil
+        }
+    }
+
+    private func manualPayOverrideNotes(for offer: WorkOffer) -> String? {
+        switch offer.paySource {
+        case .offeredAmount:
+            return "Manual payroll amount from accepted work offer \(offer.id)."
+        case .unpaid:
+            return "Accepted work offer marked unpaid."
+        case .technicianRate, .taskContractedRates:
+            return nil
+        }
     }
 
     private func shortInternalSuffix() -> String {

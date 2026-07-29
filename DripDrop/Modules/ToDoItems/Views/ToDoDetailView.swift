@@ -13,146 +13,50 @@ struct ToDoDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @StateObject var toDoVM : ToDoViewModel
+    private let todoId: String?
     
-    init(dataService:any ProductionDataServiceProtocol){
+    init(dataService:any ProductionDataServiceProtocol, todoId: String? = nil){
+        self.todoId = todoId
         _toDoVM = StateObject(wrappedValue: ToDoViewModel(dataService: dataService))
     }
     
-    @State var alertMessage:String = ""
-    @State var showAlert:Bool = false
-    @State var showDeleteConfirmation:Bool = false
-    @State var status:toDoStatus = .toDo
-    @State var description:String = ""
-    @State var title:String = ""
+    @State private var alertMessage: String = ""
+    @State private var showAlert: Bool = false
+    @State private var showDeleteConfirmation: Bool = false
+    @State private var status: toDoStatus = .toDo
+    @State private var description: String = ""
+    @State private var title: String = ""
+    @State private var isSaving: Bool = false
 
-    
     var body: some View {
-        ScrollView{
-            if let toDo = masterDataManager.selectedToDo{
-                
-                Text("\(toDo.id)")
-                VStack{
-                    HStack{
-                        TextField(
-                            "Title",
-                            text: $title
-                        )
-                        .padding(5)
-                        .background(Color.gray)
-                        .foregroundColor(Color.black)
-                        .cornerRadius(5)
-               
-                    }
-                    Text("\(fullDate(date:toDo.dateCreated))")
-                    TextField(
-                        "Description",
-                        text: $description
-                    )
-                    .padding(5)
-                    .background(Color.gray)
-                    .foregroundColor(Color.black)
-                    .cornerRadius(5)
-
-                    HStack{
-                        Picker("", selection: $status) {
-                            Text("Pick WorkSheet")
-                            ForEach(toDoStatus.allCases,id: \.self) { status in
-                                    Text(status.title()).tag(status)
-                                        .foregroundColor(status.color())
-                            }
-                         
-                        }
-                        
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                if toDoVM.isLoading && currentTodo == nil {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 44)
+                } else if let toDo = currentTodo {
+                    headerCard(toDo)
+                    editorCard(toDo)
+                    metadataCard(toDo)
+                } else {
+                    emptyState
                 }
             }
+            .padding(16)
         }
-
-        .task {
-            if let toDo = masterDataManager.selectedToDo {
-                status = toDo.status
-                title = toDo.title
-                description = toDo.description
-            }
+        .background(Color.listColor.ignoresSafeArea())
+        .navigationTitle("Issue Details")
+        .task(id: loadIdentity) {
+            await loadTodo()
         }
-        .onChange(of: status, perform: { status in
-            Task{
-                if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
-                    do {
-                        try await toDoVM.updateToDoWithValidation(companyId: company.id,
-                                                                  title: toDo.title,
-                                                                  status: status,
-                                                                  description: toDo.description,
-                                                                  dateFinished: Date(),
-                                                                  linkedCustomerId: toDo.linkedCustomerId,
-                                                                  linkedJobId: toDo.linkedJobId,
-                                                                  assignedTechId: toDo.assignedTechId,
-                                                                  toDo: toDo)
-                    } catch {
-                        print(error)
-                    }
-                    
-                }
-            }
-        })
-        .onChange(of: title, perform: { title in
-            Task{
-                if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
-                    do {
-                        try await toDoVM.updateToDoWithValidation(companyId: company.id,
-                                                                  title: title,
-                                                                  status: toDo.status,
-                                                                  description: toDo.description,
-                                                                  dateFinished: Date(),
-                                                                  linkedCustomerId: toDo.linkedCustomerId,
-                                                                  linkedJobId: toDo.linkedJobId,
-                                                                  assignedTechId: toDo.assignedTechId,
-                                                                  toDo: toDo)
-                    } catch {
-                        print(error)
-                    }
-                    
-                }
-            }
-        })
-        .onChange(of: description, perform: { description in
-            Task{
-                if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
-                    do {
-                        try await toDoVM.updateToDoWithValidation(companyId: company.id,
-                                                                  title: toDo.title,
-                                                                  status: toDo.status,
-                                                                  description: description,
-                                                                  dateFinished: Date(),
-                                                                  linkedCustomerId: toDo.linkedCustomerId,
-                                                                  linkedJobId: toDo.linkedJobId,
-                                                                  assignedTechId: toDo.assignedTechId,
-                                                                  toDo: toDo)
-                    } catch {
-                        print(error)
-                    }
-                    
-                }
-            }
-        })
         .alert(isPresented:$showDeleteConfirmation) {
             Alert(
-                title: Text("Alert"),
-                message: Text("\(alertMessage)"),
+                title: Text("Delete todo?"),
+                message: Text("This removes the todo item from the shared board."),
                 primaryButton: .destructive(Text("Delete")) {
-   
-                    Task{
-                        print("Deleting...")
-                        if let company = masterDataManager.currentCompany, let toDo = masterDataManager.selectedToDo {
-                            do {
-                                try await toDoVM.deleteToDoItem(companyId: company.id, toDoId: toDo.id)
-                                dismiss()
-                            } catch {
-                                print(error)
-                            }
-                        } else {
-                            print("Not Selected Propperly Company or Shopping List item")
-                        }
+                    Task {
+                        await deleteTodo()
                     }
                 },
                 secondaryButton: .cancel()
@@ -161,12 +65,294 @@ struct ToDoDetailView: View {
         .alert(alertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         }
-        .toolbar{
-            Button(action: {
-                showDeleteConfirmation = true
-            }, label: {
-                Text("Delete")
-            })
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    Task {
+                        await saveTodo()
+                    }
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                }
+                .disabled(currentTodo == nil || isSaving)
+
+                Button(role: .destructive) {
+                    showDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .disabled(currentTodo == nil || isSaving)
+            }
+        }
+    }
+}
+
+private extension ToDoDetailView {
+    var currentTodo: ToDo? {
+        toDoVM.selectedToDo ?? masterDataManager.selectedToDo
+    }
+
+    var loadIdentity: String {
+        "\(masterDataManager.currentCompany?.id ?? "no-company")-\(todoId ?? masterDataManager.selectedToDo?.id ?? "no-todo")"
+    }
+
+    func loadTodo() async {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        do {
+            if let todoId {
+                try await toDoVM.readToDo(companyId: company.id, toDoId: todoId)
+                applyFormValues(from: toDoVM.selectedToDo)
+            } else {
+                applyFormValues(from: masterDataManager.selectedToDo)
+            }
+        } catch {
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+    }
+
+    func applyFormValues(from toDo: ToDo?) {
+        guard let toDo else { return }
+        status = toDo.status
+        title = toDo.title
+        description = toDo.description
+    }
+
+    func saveTodo() async {
+        guard let company = masterDataManager.currentCompany, let toDo = currentTodo else { return }
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            try await toDoVM.updateToDoWithValidation(
+                companyId: company.id,
+                title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                status: status,
+                description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+                dateFinished: status == .finished ? Date() : nil,
+                linkedCustomerId: toDo.linkedCustomerId,
+                linkedJobId: toDo.linkedJobId,
+                assignedTechId: toDo.assignedToUserId,
+                toDo: toDo
+            )
+
+            if let todoId = todoId ?? currentTodo?.id {
+                try await toDoVM.readToDo(companyId: company.id, toDoId: todoId)
+                applyFormValues(from: toDoVM.selectedToDo)
+            }
+
+            alertMessage = "Todo updated."
+            showAlert = true
+        } catch {
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+    }
+
+    func deleteTodo() async {
+        guard let company = masterDataManager.currentCompany, let toDo = currentTodo else { return }
+
+        do {
+            try await toDoVM.deleteToDoItem(companyId: company.id, toDoId: toDo.id)
+            dismiss()
+        } catch {
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+    }
+
+    func headerCard(_ toDo: ToDo) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(toDo.issueKey) | \(toDo.boardName.isEmpty ? "No board" : toDo.boardName)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.poolBlue)
+                        .textCase(.uppercase)
+
+                    Text(toDo.title)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(3)
+                }
+
+                Spacer()
+
+                Image(systemName: "checklist")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.poolBlue)
+            }
+
+            HStack(spacing: 7) {
+                pill(text: toDo.statusLabel, color: statusColor(toDo))
+                pill(text: toDo.priorityLabel, color: priorityColor(toDo.priority))
+                pill(text: toDo.dueLabel, color: dueColor(toDo))
+            }
+        }
+        .padding(16)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    func editorCard(_ toDo: ToDo) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Title")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                TextField("Title", text: $title, axis: .vertical)
+                    .font(.body.weight(.semibold))
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Notes")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                TextEditor(text: $description)
+                    .frame(minHeight: 120)
+                    .padding(8)
+                    .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Status")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Picker("Status", selection: $status) {
+                    ForEach(toDoStatus.allCases,id: \.self) { status in
+                        Text(status.title()).tag(status)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .padding(16)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    func metadataCard(_ toDo: ToDo) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Details")
+                .font(.headline)
+
+            metadataRow("Assignee", toDo.assignmentLabel, systemImage: "person")
+            metadataRow("Board", toDo.boardName.isEmpty ? "No board" : toDo.boardName, systemImage: "rectangle.3.group")
+            metadataRow("Created", shortDateAndTime(date: toDo.dateCreated), systemImage: "calendar")
+            metadataRow("Updated", shortDateAndTime(date: toDo.updatedAt), systemImage: "clock")
+
+            if toDo.reminderEnabled {
+                metadataRow("Alert", shortDateAndTime(date: toDo.reminderAt ?? toDo.dueAt), systemImage: "bell")
+            }
+
+            if let relatedEntity = toDo.relatedEntity {
+                metadataRow(
+                    "Linked record",
+                    "\(relatedEntity.type): \(relatedEntity.label.isEmpty ? relatedEntity.id : relatedEntity.label)",
+                    systemImage: "link"
+                )
+            }
+        }
+        .padding(16)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    func metadataRow(_ title: String, _ value: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(value.isEmpty ? "None" : value)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checklist")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("Select a todo")
+                .font(.subheadline.weight(.semibold))
+            Text("Tap a todo from the snapshot or todo list to view details.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    func pill(text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.10), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    func statusColor(_ toDo: ToDo) -> Color {
+        if toDo.needsAttention {
+            return .orange
+        }
+
+        switch toDo.statusKey {
+        case "inprogress":
+            return .poolBlue
+        case "done", "finished", "complete", "completed":
+            return .poolGreen
+        default:
+            return .gray
+        }
+    }
+
+    func priorityColor(_ priority: String) -> Color {
+        switch priority.lowercased() {
+        case "urgent":
+            return .poolRed
+        case "high":
+            return .orange
+        case "low":
+            return .poolGreen
+        default:
+            return .secondary
+        }
+    }
+
+    func dueColor(_ toDo: ToDo) -> Color {
+        switch toDo.dueState {
+        case .overdue:
+            return .poolRed
+        case .today:
+            return .orange
+        case .upcoming:
+            return .poolBlue
+        case .complete:
+            return .poolGreen
+        case .none:
+            return .gray
         }
     }
 }
@@ -174,6 +360,6 @@ struct ToDoDetailView: View {
 struct ToDoDetailView_Previews: PreviewProvider {
     static let dataService = ProductionDataService()
     static var previews: some View {
-        ToDoDetailView(dataService: dataService)
+        ToDoDetailView(dataService: dataService, todoId: "todo_12345")
     }
 }

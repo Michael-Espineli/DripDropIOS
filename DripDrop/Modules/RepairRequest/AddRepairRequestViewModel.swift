@@ -111,6 +111,8 @@ final class AddRepairRequestViewModel:ObservableObject{
     @Published var selectedDripDropPhotos:[DripDropImage] = []
     @Published var savedDripDropPhotos:[DripDropStoredImage] = []
     @Published var description:String = ""
+    @Published var customerNoteText: String = ""
+    @Published var customerNoteAudience: CustomerNoteAudience = .field
     @Published var showCustomerSelector:Bool = false
     @Published var showLocationSelector:Bool = false
     @Published var showBodyOfWaterSelector:Bool = false
@@ -253,7 +255,58 @@ final class AddRepairRequestViewModel:ObservableObject{
                 status: selectedEquipmentStatus
             )
         }
+        try await uploadCustomerNoteIfNeeded(
+            companyId: companyId,
+            requesterId: requesterId,
+            requesterName: requesterName,
+            customerName: fullName
+        )
         self.repairRequestId = ""
+    }
+
+    private func uploadCustomerNoteIfNeeded(
+        companyId: String,
+        requesterId: String,
+        requesterName: String,
+        customerName: String
+    ) async throws {
+        let trimmedNote = customerNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNote.isEmpty else { return }
+        guard !selectedCustomer.id.isEmpty else { return }
+
+        let noteId = "comp_cus_note_\(UUID().uuidString)"
+        let now = Date()
+
+        let note = CustomerNote(
+            storedId: noteId,
+            companyId: companyId,
+            customerId: selectedCustomer.id,
+            customerName: customerName,
+            bodyOfWaterId: selectedBodyOfWater.id.isEmpty ? nil : selectedBodyOfWater.id,
+            bodyOfWaterName: selectedBodyOfWater.name.isEmpty ? nil : selectedBodyOfWater.name,
+            serviceLocationId: selectedLocation.id.isEmpty ? nil : selectedLocation.id,
+            userId: requesterId,
+            userName: requesterName,
+            authorId: requesterId,
+            authorName: requesterName,
+            note: trimmedNote,
+            comment: trimmedNote,
+            audience: customerNoteAudience,
+            visibility: customerNoteAudience.rawValue,
+            resolved: false,
+            date: now,
+            createdAt: now,
+            updatedAt: now
+        )
+
+        try await dataService.uploadCustomerNote(
+            companyId: companyId,
+            customerId: selectedCustomer.id,
+            note: note
+        )
+
+        customerNoteText = ""
+        customerNoteAudience = .field
     }
     
 }

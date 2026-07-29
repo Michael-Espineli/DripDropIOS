@@ -5,6 +5,7 @@
 //  Created by Michael Espineli on 3/18/24.
 //
 
+import Foundation
 import SwiftUI
 
 enum ServiceStopContinuationGate {
@@ -17,6 +18,31 @@ enum ServiceStopContinuationGate {
             return "Start Route to Continue"
         case .startServiceStop:
             return "Start Service Stop to Continue"
+        }
+    }
+}
+
+enum NextStopTaskScope: String, CaseIterable, Identifiable {
+    case nextStop
+    case allFutureStops
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .nextStop:
+            return "Next Stop"
+        case .allFutureStops:
+            return "All Future"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .nextStop:
+            return "Adds a one-off task to the next generated stop."
+        case .allFutureStops:
+            return "Adds this task to the recurring template and future scheduled stops."
         }
     }
 }
@@ -92,6 +118,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
     @Published var showAttachJobTasks: Bool = false
     @Published var attachableJobTasks: [JobTask] = []
     @Published var selectedAttachJobTaskIds: Set<String> = []
+    @Published var nextStopTaskScope: NextStopTaskScope = .nextStop
 
     func finishServiceStopTask(
         companyId: String,
@@ -376,7 +403,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
             }
         }
     }
-    func addPendingTasksToNextRecurringStop(
+    func addPendingTasksToNextStop(
         companyId: String,
         serviceStop: ServiceStop
     ) {
@@ -387,24 +414,64 @@ final class ServiceStopTaskViewModel: ObservableObject {
             do {
                 isSavingNewTask = true
 
-                for item in pendingNextRecurringStopTasks {
-                    let recurringTask = RecurringServiceStopTask(
-                        name: item.name,
-                        description: item.description,
-                        type: item.type,
-                        contractedRate: item.contractedRate,
-                        estimatedTime: item.estimatedTime,
-                        status: .unassigned,
-                        isTaskGroup: false,
-                        taskGroupId: "",
-                        taskGroupTaskId: ""
-                    )
-
-                    try await dataService.uploadRecurringServiceStopTask(
+                let futureStops = try await dataService
+                    .getAllServiceStopsByRecurringServiceStopIdAfterDate(
                         companyId: companyId,
                         recurringServiceStopId: serviceStop.recurringServiceStopId,
-                        task: recurringTask
+                        date: serviceStop.serviceDate
                     )
+                    .filter { $0.id != serviceStop.id }
+                    .sorted { $0.serviceDate < $1.serviceDate }
+
+                guard !futureStops.isEmpty else {
+                    throw NSError(
+                        domain: "ServiceStopTaskViewModel",
+                        code: 404,
+                        userInfo: [NSLocalizedDescriptionKey: "No future service stops were found for this recurring stop."]
+                    )
+                }
+
+                let targetStops: [ServiceStop]
+
+                switch nextStopTaskScope {
+                case .nextStop:
+                    targetStops = Array(futureStops.prefix(1))
+                case .allFutureStops:
+                    targetStops = futureStops
+                }
+
+                for item in pendingNextRecurringStopTasks {
+                    let recurringTask: RecurringServiceStopTask?
+
+                    if nextStopTaskScope == .allFutureStops {
+                        let task = makeRecurringServiceStopTask(from: item)
+                        try await dataService.uploadRecurringServiceStopTask(
+                            companyId: companyId,
+                            recurringServiceStopId: serviceStop.recurringServiceStopId,
+                            task: task
+                        )
+                        recurringTask = task
+                    } else {
+                        recurringTask = nil
+                    }
+
+                    for futureStop in targetStops {
+                        let serviceStopTask = makeServiceStopTask(
+                            from: item,
+                            companyId: companyId,
+                            serviceStop: futureStop,
+                            workerId: futureStop.techId,
+                            workerType: .employee,
+                            workerName: futureStop.tech,
+                            recurringServiceStopTaskId: recurringTask?.id ?? ""
+                        )
+
+                        try await dataService.uploadServiceStopTask(
+                            companyId: companyId,
+                            serviceStopId: futureStop.id,
+                            task: serviceStopTask
+                        )
+                    }
                 }
 
                 pendingNextRecurringStopTasks = []
@@ -426,13 +493,28 @@ final class ServiceStopTaskViewModel: ObservableObject {
         }
     }
 
+    func makeRecurringServiceStopTask(from item: JobTaskGroupItem) -> RecurringServiceStopTask {
+        RecurringServiceStopTask(
+            name: item.name,
+            description: item.description,
+            type: item.type,
+            contractedRate: item.contractedRate,
+            estimatedTime: item.estimatedTime,
+            status: .unassigned,
+            isTaskGroup: false,
+            taskGroupId: "",
+            taskGroupTaskId: ""
+        )
+    }
+
     func makeServiceStopTask(
         from item: JobTaskGroupItem,
         companyId: String,
         serviceStop: ServiceStop,
         workerId: String = "",
         workerType: WorkerTypeEnum = .employee,
-        workerName: String = ""
+        workerName: String = "",
+        recurringServiceStopTaskId: String = ""
     ) -> ServiceStopTask {
         ServiceStopTask(
             id: "comp_ss_task_" + UUID().uuidString,
@@ -460,7 +542,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
                 internalId: "",
             ),
             jobTaskId: "",
-            recurringServiceStopTaskId: "",
+            recurringServiceStopTaskId: recurringServiceStopTaskId,
             equipmentId: "",
             serviceLocationId: serviceStop.serviceLocationId,
             bodyOfWaterId: "",
@@ -616,7 +698,7 @@ struct ServiceStopTaskView: View {
         .sheet(isPresented: $VM.showAddNextRecurringStopTask, onDismiss: {
             if let currentCompany = masterDataService.currentCompany,
                let serviceStop {
-                VM.addPendingTasksToNextRecurringStop(
+                VM.addPendingTasksToNextStop(
                     companyId: currentCompany.id,
                     serviceStop: serviceStop
                 )
@@ -830,12 +912,33 @@ struct ServiceStopTaskView: View {
                 .listRowBackground(Color.clear)
 
                 if hasRecurringServiceStop {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Next Stop Scope")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Picker("Next Stop Scope", selection: $VM.nextStopTaskScope) {
+                            ForEach(NextStopTaskScope.allCases) { scope in
+                                Text(scope.title)
+                                    .tag(scope)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    .padding(12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 4)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+
                     Button {
                         VM.showAddNextRecurringStopTask.toggle()
                     } label: {
                         addWorkButtonLabel(
-                            title: "Add Task To Next Recurring Stop",
-                            subtitle: "Adds this task to the recurring template.",
+                            title: "Add Task To Next Stop",
+                            subtitle: VM.nextStopTaskScope.subtitle,
                             systemImage: "repeat"
                         )
                     }

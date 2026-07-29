@@ -20,15 +20,21 @@ struct AddNewRepairRequest: View {
 
     @Binding var isPresented: Bool
     @State var customer: Customer?
+    private let initialEquipment: Equipment?
+    private let initialDescription: String?
 
     init(
         dataService: any ProductionDataServiceProtocol,
         isPresented: Binding<Bool>,
-        customer: Customer?
+        customer: Customer?,
+        equipment: Equipment? = nil,
+        description: String? = nil
     ) {
         _VM = StateObject(wrappedValue: AddRepairRequestViewModel(dataService: dataService))
         _isPresented = isPresented
         _customer = State(wrappedValue: customer)
+        self.initialEquipment = equipment
+        self.initialDescription = description
     }
 
     @FocusState var descriptionField: Bool
@@ -43,6 +49,7 @@ struct AddNewRepairRequest: View {
                     customerCard
                     photosCard
                     descriptionCard
+                    customerNoteCard
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
@@ -70,6 +77,7 @@ struct AddNewRepairRequest: View {
             do {
                 if let company = masterDataManager.currentCompany {
                     try await VM.onLoad(companyId: company.id, customer: customer)
+                    try await applyInitialEquipmentContext(companyId: company.id)
                 }
             } catch {
                 print("Error - onLoad - [AddNewRepairRequest]")
@@ -105,6 +113,39 @@ struct AddNewRepairRequest: View {
 // MARK: - Main Sections
 
 extension AddNewRepairRequest {
+
+    private func applyInitialEquipmentContext(companyId: String) async throws {
+        guard let initialEquipment else { return }
+
+        let contextCustomer: Customer
+        if let customer, customer.id == initialEquipment.customerId {
+            contextCustomer = customer
+        } else {
+            contextCustomer = try await dataService.getCustomerById(
+                companyId: companyId,
+                customerId: initialEquipment.customerId
+            )
+        }
+
+        VM.selectedCustomer = contextCustomer
+        try await VM.onChangeCustomer(companyId: companyId, contextCustomer)
+
+        if let location = VM.serviceLocationList.first(where: { $0.id == initialEquipment.serviceLocationId }) {
+            VM.selectedLocation = location
+            try await VM.onChangeLocation(companyId: companyId, location)
+        }
+
+        if let bodyOfWater = VM.bodyOfWaterList.first(where: { $0.id == initialEquipment.bodyOfWaterId }) {
+            VM.selectedBodyOfWater = bodyOfWater
+        }
+
+        VM.selectedEquipment = VM.equipmentList.first(where: { $0.id == initialEquipment.id }) ?? initialEquipment
+        VM.selectedEquipmentStatus = .needsRepair
+
+        if VM.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            VM.description = initialDescription ?? "Repair request for \(initialEquipment.name)"
+        }
+    }
 
     var headerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -286,6 +327,33 @@ extension AddNewRepairRequest {
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var customerNoteCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader("Customer Note", systemImage: "text.bubble")
+
+            Picker("Audience", selection: $VM.customerNoteAudience) {
+                ForEach(CustomerNoteAudience.allCases) { audience in
+                    Label(audience.title, systemImage: audience.systemImage)
+                        .tag(audience)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            TextField(
+                "Optional note for office, field, or everyone",
+                text: $VM.customerNoteText,
+                axis: .vertical
+            )
+            .font(.subheadline)
+            .lineLimit(4, reservesSpace: true)
+            .submitLabel(.return)
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))

@@ -45,6 +45,24 @@ struct Role:Identifiable,Codable,Equatable,Hashable{
     }
 }
 
+extension Role {
+    var canCreateJobFromTemplate: Bool {
+        permissionIdList.contains("22") || permissionIdList.contains("23")
+    }
+
+    var canCreateBlankJob: Bool {
+        permissionIdList.contains("22") || permissionIdList.contains("27")
+    }
+
+    var canCreateAnyJob: Bool {
+        canCreateJobFromTemplate || canCreateBlankJob
+    }
+
+    var canScheduleServiceStopsForOthers: Bool {
+        permissionIdList.contains("252")
+    }
+}
+
 
 final class RoleManager {
     static let shared = RoleManager()

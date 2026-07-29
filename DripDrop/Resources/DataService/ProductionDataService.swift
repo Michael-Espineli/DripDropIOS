@@ -219,6 +219,204 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
 
         return results.dedupedById()
     }
+
+    @discardableResult
+    func syncShoppingListItemsForScheduledJobTasks(
+        companyId: String,
+        jobId: String,
+        customerId: String,
+        serviceLocationId: String,
+        serviceStopId: String,
+        serviceStopInternalId: String,
+        serviceDate: Date,
+        assignedTechId: String,
+        assignedTechName: String,
+        taskIds: [String],
+        shoppingListItemIds: [String],
+        plannedServiceStopId: String? = nil
+    ) async throws -> Int {
+        let selectedTaskIds = Set(taskIds.map(cleanShoppingSyncString).filter { !$0.isEmpty })
+        let explicitShoppingItemIds = Set(shoppingListItemIds.map(cleanShoppingSyncString).filter { !$0.isEmpty })
+        let plannedStopId = cleanShoppingSyncString(plannedServiceStopId ?? "")
+
+        guard !companyId.isEmpty,
+              !jobId.isEmpty,
+              !serviceStopId.isEmpty,
+              !selectedTaskIds.isEmpty || !explicitShoppingItemIds.isEmpty || !plannedStopId.isEmpty else {
+            return 0
+        }
+
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .whereField("jobId", isEqualTo: jobId)
+            .getDocuments()
+
+        var updateCount = 0
+
+        for document in snapshot.documents {
+            let data = document.data()
+
+            guard shoppingItemMatchesScheduledJobTasks(
+                documentId: document.documentID,
+                data: data,
+                selectedTaskIds: selectedTaskIds,
+                explicitShoppingItemIds: explicitShoppingItemIds,
+                plannedServiceStopId: plannedStopId
+            ) else {
+                continue
+            }
+
+            let linkedTaskIds = shoppingSyncTaskIds(from: data).filter { selectedTaskIds.contains($0) }
+            let prepTaskIds = linkedTaskIds.isEmpty ? Array(selectedTaskIds) : Array(linkedTaskIds)
+            let prepKeys = shoppingSyncPrepKeys(
+                userId: assignedTechId,
+                jobId: jobId,
+                customerId: customerId,
+                serviceLocationId: serviceLocationId,
+                serviceStopId: serviceStopId,
+                taskIds: prepTaskIds
+            )
+
+            var updates: [String: Any] = [
+                "serviceStopId": serviceStopId,
+                "serviceStopInternalId": serviceStopInternalId,
+                "scheduledServiceStopId": serviceStopId,
+                "scheduledServiceStopInternalId": serviceStopInternalId,
+                "scheduledDate": serviceDate,
+                "actionDate": serviceDate,
+                "needsAction": shoppingSyncNeedsAction(data),
+                "updatedAt": Date()
+            ]
+
+            if !prepKeys.isEmpty {
+                updates["prepKeys"] = FieldValue.arrayUnion(prepKeys)
+            }
+
+            if !assignedTechId.isEmpty {
+                updates["assignedTechIds"] = FieldValue.arrayUnion([assignedTechId])
+                updates["assignedTechId"] = assignedTechId
+                updates["assignedToUserId"] = assignedTechId
+            }
+
+            if !assignedTechName.isEmpty {
+                updates["assignedTechNames"] = FieldValue.arrayUnion([assignedTechName])
+                updates["assignedTechName"] = assignedTechName
+                updates["assignedToUserName"] = assignedTechName
+            }
+
+            try await document.reference.updateData(updates)
+            updateCount += 1
+        }
+
+        return updateCount
+    }
+
+    private func cleanShoppingSyncString(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func shoppingSyncStringValue(_ value: Any?) -> String {
+        if let string = value as? String {
+            return cleanShoppingSyncString(string)
+        }
+
+        if let number = value as? NSNumber {
+            return number.stringValue
+        }
+
+        if let dictionary = value as? [String: Any] {
+            return shoppingSyncStringValue(dictionary["id"] ?? dictionary["value"] ?? dictionary["docId"])
+        }
+
+        return ""
+    }
+
+    private func shoppingSyncTaskIds(from data: [String: Any]) -> Set<String> {
+        var ids = Set<String>()
+        let taskFields = [
+            "linkedTaskId",
+            "linkedJobTaskId",
+            "jobTaskId",
+            "sourceTaskId",
+            "taskId"
+        ]
+
+        for field in taskFields {
+            let taskId = shoppingSyncStringValue(data[field])
+            if !taskId.isEmpty {
+                ids.insert(taskId)
+            }
+        }
+
+        let prepKeys = data["prepKeys"] as? [String] ?? []
+        for key in prepKeys {
+            let cleanKey = cleanShoppingSyncString(key)
+            if cleanKey.hasPrefix("jobTask:") {
+                ids.insert(String(cleanKey.dropFirst("jobTask:".count)))
+            }
+        }
+
+        return ids
+    }
+
+    private func shoppingItemMatchesScheduledJobTasks(
+        documentId: String,
+        data: [String: Any],
+        selectedTaskIds: Set<String>,
+        explicitShoppingItemIds: Set<String>,
+        plannedServiceStopId: String
+    ) -> Bool {
+        let itemId = shoppingSyncStringValue(data["id"]).isEmpty
+            ? documentId
+            : shoppingSyncStringValue(data["id"])
+
+        if explicitShoppingItemIds.contains(itemId) {
+            return true
+        }
+
+        if !shoppingSyncTaskIds(from: data).isDisjoint(with: selectedTaskIds) {
+            return true
+        }
+
+        let itemPlannedStopId = [
+            "plannedServiceStopId",
+            "plannedStopId",
+            "sourcePlannedStopId"
+        ]
+            .map { shoppingSyncStringValue(data[$0]) }
+            .first { !$0.isEmpty } ?? ""
+
+        return !plannedServiceStopId.isEmpty && itemPlannedStopId == plannedServiceStopId
+    }
+
+    private func shoppingSyncPrepKeys(
+        userId: String,
+        jobId: String,
+        customerId: String,
+        serviceLocationId: String,
+        serviceStopId: String,
+        taskIds: [String]
+    ) -> [String] {
+        var keys = Set<String>()
+
+        if !userId.isEmpty { keys.insert(ShoppingPrepKeyBuilder.user(userId)) }
+        if !jobId.isEmpty { keys.insert(ShoppingPrepKeyBuilder.job(jobId)) }
+        if !customerId.isEmpty { keys.insert(ShoppingPrepKeyBuilder.customer(customerId)) }
+        if !serviceLocationId.isEmpty { keys.insert(ShoppingPrepKeyBuilder.serviceLocation(serviceLocationId)) }
+        if !serviceStopId.isEmpty { keys.insert(ShoppingPrepKeyBuilder.serviceStop(serviceStopId)) }
+
+        for taskId in taskIds.map(cleanShoppingSyncString) where !taskId.isEmpty {
+            keys.insert("jobTask:\(taskId)")
+        }
+
+        return Array(keys)
+    }
+
+    private func shoppingSyncNeedsAction(_ data: [String: Any]) -> Bool {
+        !shoppingSyncStringValue(data["status"]).localizedCaseInsensitiveContains("Installed")
+    }
     // MARK: - Job Templates
 
     func fetchJobTemplates(
@@ -460,6 +658,18 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     ) async throws -> [WorkOffer] {
         let snapshot = try await workOffersCollection(companyId: companyId)
             .whereField("jobId", isEqualTo: jobId)
+            .order(by: "createdAt", descending: true)
+            .getDocuments()
+
+        return try snapshot.documents.compactMap { document in
+            try document.data(as: WorkOffer.self)
+        }
+    }
+
+    func fetchAllWorkOffers(
+        companyId: String
+    ) async throws -> [WorkOffer] {
+        let snapshot = try await workOffersCollection(companyId: companyId)
             .order(by: "createdAt", descending: true)
             .getDocuments()
 
@@ -1645,7 +1855,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         //                    toDos Collections
     
     func ToDoCollection(companyId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/toDos")
+        db.collection("companies/\(companyId)/todoItems")
     }
         //                    receipts Collections
     
@@ -1842,7 +2052,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         equipmentPartCollection(companyId: companyId, equipmentId: equipmentId).document(partId)
     }
     func equipmentMeasurmentDoc(companyId:String,equipmentId:String,measurmentId:String)-> DocumentReference{
-        equipmentMeasurmentsCollection(companyId: companyId, equipmentId: measurmentId)
+        equipmentMeasurmentsCollection(companyId: companyId, equipmentId: equipmentId)
             .document(measurmentId)
     }
     func getAllpurchasedItemsByPrice(companyId: String,start:Date,end:Date, descending: Bool,techIds:[String]) async throws -> [PurchasedItem]{

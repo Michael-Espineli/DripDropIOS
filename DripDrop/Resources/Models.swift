@@ -1065,12 +1065,16 @@ struct PurchasedItem:Identifiable,Codable,Equatable,Hashable{
     var sku : String
     var notes : String
     var jobId: String
+    var shoppingListItemId: String? = nil
+    var status: String? = nil
     var workOrderId: String?
     var assignedJobId: String?
     var assignedToJob: Bool?
     var assignmentStatus: String?
     var billingOwner: String?
     var jobBillingStatus: String?
+    var jobInternalId: String? = nil
+    var jobName: String? = nil
     var jobBillable: Bool?
     var jobBillingRate: Double?
     var universalEquipmentId: String?

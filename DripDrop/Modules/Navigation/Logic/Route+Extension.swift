@@ -34,6 +34,8 @@ extension Route {
             return "Customers"
         case .toDoDetail:
             return "To Do"
+        case .todoItemDetail:
+            return "To Do"
         case .repairRequestList:
             return "Repair Request"
         case .toDoList:
@@ -93,6 +95,8 @@ extension Route {
             return "Market Place"
         case .jobPosting:
             return "Job Posting"
+        case .offeredWork:
+            return "Offered Work"
         case .jobBoard:
             return "Job Board"
         case .feed:

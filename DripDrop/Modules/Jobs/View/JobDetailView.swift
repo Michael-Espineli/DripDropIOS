@@ -38,7 +38,7 @@ struct JobDetailView: View {
     @State private var showBillingActionsSheet: Bool = false
 
         //Body Of Water
-    
+
     @State var jobTemplate:JobTemplate = JobTemplate(companyId: "", name: "", createdByUserId: "")
     @State var serviceStopTemplate:ServiceStopTemplate = ServiceStopTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), color: "")
     
@@ -322,8 +322,7 @@ struct JobDetailView: View {
                     customer.firstName = job.customerName
                     
                     serviceStopIds = job.serviceStopIds
-                    admin.id = job.adminId
-                    admin.userName = job.adminName
+                    applyJobAdmin(job)
                     laborCost = String(job.laborCost)
                     rate = job.rate
                     
@@ -356,8 +355,7 @@ struct JobDetailView: View {
                         customer.firstName = job.customerName
                         
                         serviceStopIds = job.serviceStopIds
-                        admin.id = job.adminId
-                        admin.userName = job.adminName
+                        applyJobAdmin(job)
                         rate = job.rate
                         laborCost = String(job.laborCost)
                         
@@ -569,7 +567,9 @@ extension JobDetailView {
                             } else {
                                 try await VM.markJobAsFinished(
                                     companyId: company.id,
-                                    job: job
+                                    job: job,
+                                    completedByUserId: masterDataManager.user?.id ?? "",
+                                    completedByUserName: currentUserDisplayName
                                 )
                             }
                         }
@@ -721,9 +721,9 @@ extension JobDetailView {
             
             pickerButtonRow(
                 title: "Admin / Owner",
-                value: admin.id == "" ? "Select Admin" : "\(admin.userName) \(admin.roleName)",
+                value: selectedAdminId(admin).isEmpty ? "Select Admin" : "\(admin.userName) \(admin.roleName)",
                 systemImage: "person.crop.circle",
-                isSelected: admin.id != ""
+                isSelected: !selectedAdminId(admin).isEmpty
             ) {
                 showAdminSelector.toggle()
             }
@@ -978,6 +978,16 @@ extension JobDetailView {
         .padding(.vertical, 12)
         .background(.regularMaterial)
     }
+
+    private func selectedAdminId(_ companyUser: CompanyUser) -> String {
+        companyUser.userId.isEmpty ? companyUser.id : companyUser.userId
+    }
+
+    private func applyJobAdmin(_ sourceJob: Job) {
+        admin.id = sourceJob.adminId
+        admin.userId = sourceJob.adminId
+        admin.userName = sourceJob.adminName
+    }
     
     private func saveEditInfoChanges() async {
         guard let company = masterDataManager.currentCompany else {
@@ -987,8 +997,9 @@ extension JobDetailView {
         }
         
         do {
+            let adminId = selectedAdminId(admin)
             let hasChanges =
-            admin.id != job.adminId ||
+            adminId != job.adminId ||
             admin.userName != job.adminName ||
             jobTemplate.name != job.type ||
             operationStatus != job.operationStatus ||
@@ -1030,8 +1041,7 @@ extension JobDetailView {
     }
     
     private func resetEditInfoFields() {
-        admin.id = job.adminId
-        admin.userName = job.adminName
+        applyJobAdmin(job)
         
         jobTemplate.name = job.type
         
@@ -1801,7 +1811,9 @@ extension JobDetailView {
 
                                 try await VM.markEstimateAsAccepted(
                                     companyId: company.id,
-                                    job: job
+                                    job: job,
+                                    acceptedByUserId: masterDataManager.user?.id ?? "",
+                                    acceptedByUserName: currentUserDisplayName
                                 )
 
                                 VM.alertMessage = "Successfully Accepted"
@@ -2671,6 +2683,8 @@ extension JobDetailView {
 
     func operationStatusIcon(_ status: JobOperationStatus) -> String {
         switch status {
+        case .draft:
+            return "doc"
         case .estimatePending:
             return "doc.text.magnifyingglass"
         case .unscheduled:
@@ -2704,10 +2718,15 @@ extension JobDetailView {
             return "giftcard"
         case .expired:
             return "xmark.circle"
+        case .rejected:
+            return "xmark.octagon"
         }
     }
     private func applyBillingSuggestionForOperation(_ status: JobOperationStatus) {
         switch status {
+        case .draft:
+            billingStatus = .draft
+
         case .estimatePending:
             if billingStatus == .draft {
                 billingStatus = .draft
@@ -2774,6 +2793,10 @@ extension JobDetailView {
             operationStatus = .finished
 
         case .expired:
+            if operationStatus != .finished {
+                operationStatus = .estimatePending
+            }
+        case .rejected:
             if operationStatus != .finished {
                 operationStatus = .estimatePending
             }
@@ -2896,6 +2919,8 @@ private struct JobOperationStatusSelectorSheet: View {
 
     private func operationStatusIcon(_ status: JobOperationStatus) -> String {
         switch status {
+        case .draft:
+            return "doc"
         case .estimatePending:
             return "doc.text.magnifyingglass"
         case .unscheduled:
@@ -2913,6 +2938,8 @@ private struct JobOperationStatusSelectorSheet: View {
 
     private func operationStatusSubtitle(_ status: JobOperationStatus) -> String {
         switch status {
+        case .draft:
+            return "The job is still being drafted."
         case .estimatePending:
             return "The job is still being scoped or estimated."
         case .unscheduled:
@@ -2989,6 +3016,8 @@ private struct JobBillingStatusSelectorSheet: View {
             return "giftcard"
         case .expired:
             return "xmark.circle"
+        case .rejected:
+            return "xmark.octagon"
         }
     }
 
@@ -3010,6 +3039,8 @@ private struct JobBillingStatusSelectorSheet: View {
             return "The company absorbed the cost; no customer invoice is expected."
         case .expired:
             return "The estimate or billing window has expired."
+        case .rejected:
+            return "The customer rejected this work, but it can stay visible for follow-up."
         }
     }
 }
@@ -3495,7 +3526,9 @@ extension JobDetailView {
                                             } else {
                                                 try await VM.markJobAsFinished(
                                                     companyId: company.id,
-                                                    job: job
+                                                    job: job,
+                                                    completedByUserId: masterDataManager.user?.id ?? "",
+                                                    completedByUserName: currentUserDisplayName
                                                 )
                                             }
                                         }

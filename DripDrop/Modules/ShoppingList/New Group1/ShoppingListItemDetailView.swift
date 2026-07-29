@@ -27,6 +27,7 @@ struct ShoppingListItemDetailView: View {
 
     @State private var receivedItem: ShoppingListItem? = nil
     @State private var shoppingListItem: ShoppingListItem? = nil
+    @State private var dataBaseItem: DataBaseItem? = nil
 
     @State private var description: String = ""
     @State private var isSavingDescription: Bool = false
@@ -78,6 +79,7 @@ struct ShoppingListItemDetailView: View {
             if let shoppingListItem {
                 masterDataManager.selectedShoppingListItem = shoppingListItem
                 description = shoppingListItem.description
+                await loadDataBaseItem(for: shoppingListItem)
             }
         }
         .onChange(of: masterDataManager.selectedShoppingListItem) { item in
@@ -85,6 +87,9 @@ struct ShoppingListItemDetailView: View {
 
             if let item {
                 description = item.description
+                Task {
+                    await loadDataBaseItem(for: item)
+                }
             }
         }
         .alert("Please Confirm Delete", isPresented: $showDeleteConfirmation) {
@@ -279,48 +284,43 @@ extension ShoppingListItemDetailView {
 
     @ViewBuilder
     private func moneyCard(_ item: ShoppingListItem) -> some View {
-        if hasPlannedMoney(item) {
+        if hasPlannedMoney(item) || hasCustomerPrice(item) || databaseItemId(for: item) != nil {
             VStack(alignment: .leading, spacing: 14) {
                 sectionHeader(
-                    title: "Planned Money",
-                    subtitle: "Material cost and billable values saved with this item.",
+                    title: "Customer Price",
+                    subtitle: "Uses the linked database item's sellPrice when available.",
                     systemImage: "dollarsign.circle"
                 )
 
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ],
-                    spacing: 10
-                ) {
-                    if let plannedUnitCostCents = item.plannedUnitCostCents {
-                        moneyTile(
-                            title: "Unit Cost",
-                            value: JobMaterialsMoneyFormatter.money(plannedUnitCostCents)
-                        )
-                    }
+                if hasCustomerPrice(item) {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible()),
+                            GridItem(.flexible())
+                        ],
+                        spacing: 10
+                    ) {
+                        if let customerUnitPriceCents = customerUnitPriceCents(item) {
+                            moneyTile(
+                                title: "Price",
+                                value: JobMaterialsMoneyFormatter.money(customerUnitPriceCents)
+                            )
+                        }
 
-                    if let plannedUnitPriceCents = item.plannedUnitPriceCents {
-                        moneyTile(
-                            title: "Unit Billable",
-                            value: JobMaterialsMoneyFormatter.money(plannedUnitPriceCents)
-                        )
+                        if let customerTotalPriceCents = customerTotalPriceCents(item) {
+                            moneyTile(
+                                title: "Total Price",
+                                value: JobMaterialsMoneyFormatter.money(customerTotalPriceCents)
+                            )
+                        }
                     }
-
-                    if let plannedTotalCostCents = item.plannedTotalCostCents {
-                        moneyTile(
-                            title: "Planned Cost",
-                            value: JobMaterialsMoneyFormatter.money(plannedTotalCostCents)
-                        )
-                    }
-
-                    if let plannedTotalPriceCents = item.plannedTotalPriceCents {
-                        moneyTile(
-                            title: "Planned Billable",
-                            value: JobMaterialsMoneyFormatter.money(plannedTotalPriceCents)
-                        )
-                    }
+                } else {
+                    Label("No customer price set", systemImage: "exclamationmark.triangle")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
             }
             .shoppingDetailCard()
@@ -511,6 +511,34 @@ extension ShoppingListItemDetailView {
             }
         }
     }
+
+    private func loadDataBaseItem(for item: ShoppingListItem) async {
+        dataBaseItem = nil
+
+        guard let company = masterDataManager.currentCompany,
+              let databaseItemId = databaseItemId(for: item) else {
+            return
+        }
+
+        dataBaseItem = try? await shoppingVM.dataService.getDataBaseItem(
+            companyId: company.id,
+            dataBaseItemId: databaseItemId
+        )
+    }
+
+    private func databaseItemId(for item: ShoppingListItem) -> String? {
+        if let dbItemId = item.dbItemId,
+           !dbItemId.isEmpty {
+            return dbItemId
+        }
+
+        if item.subCategory == .dataBase,
+           !item.genericItemId.isEmpty {
+            return item.genericItemId
+        }
+
+        return nil
+    }
 }
 
 extension ShoppingListItemDetailView {
@@ -681,6 +709,30 @@ extension ShoppingListItemDetailView {
         item.plannedTotalPriceCents != nil
     }
 
+    private func hasCustomerPrice(_ item: ShoppingListItem) -> Bool {
+        customerUnitPriceCents(item) != nil || customerTotalPriceCents(item) != nil
+    }
+
+    private func customerUnitPriceCents(_ item: ShoppingListItem) -> Int? {
+        if let sellPrice = dataBaseItem?.sellPrice,
+           sellPrice > 0 {
+            return Int(sellPrice.rounded())
+        }
+
+        return item.plannedUnitPriceCents
+    }
+
+    private func customerTotalPriceCents(_ item: ShoppingListItem) -> Int? {
+        if let sellPrice = dataBaseItem?.sellPrice,
+           sellPrice > 0 {
+            let quantity = Double(item.quantity ?? "") ?? 1
+
+            return Int((sellPrice * quantity).rounded())
+        }
+
+        return item.plannedTotalPriceCents
+    }
+
     private func itemIcon(_ item: ShoppingListItem) -> String {
         switch item.subCategory {
         case .chemical:
@@ -715,11 +767,23 @@ extension ShoppingListItemDetailView {
         case .installed:
             return .green
 
+        case .delivered, .invoiced:
+            return .green
+
         case .purchased:
             return .blue
 
         case .needToPurchase:
             return .orange
+
+        case .readyToPurchase:
+            return .poolGreen
+
+        case .needsCustomerApproval:
+            return .purple
+
+        case .customerRejected:
+            return .poolRed
         }
     }
 }

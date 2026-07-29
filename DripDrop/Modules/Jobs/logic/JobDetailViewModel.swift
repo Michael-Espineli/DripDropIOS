@@ -223,7 +223,7 @@ final class JobDetailViewModel:ObservableObject{
         }
         
         //Get Task Types
-        self.taskTypes = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
+        self.taskTypes = JobTaskType.allCases.map(\.rawValue)
         
         //Labor Contractor Id and Service Stop Id
         self.serviceStopIds = job.serviceStopIds
@@ -405,7 +405,7 @@ final class JobDetailViewModel:ObservableObject{
         }
         
         //Get Task Types
-        self.taskTypes = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
+        self.taskTypes = JobTaskType.allCases.map(\.rawValue)
         
         //Labor Contractor Id and Service Stop Id
         self.serviceStopIds = []
@@ -469,7 +469,7 @@ final class JobDetailViewModel:ObservableObject{
         }
         
         //Get Task Types
-        self.taskTypes = ["Basic","Clean","Clean Filter","Empty Water","Fill Water","Inspection","Install","Remove","Replace"]
+        self.taskTypes = JobTaskType.allCases.map(\.rawValue)
         
         //Labor Contractor Id and Service Stop Id
         self.serviceStopIds = []
@@ -861,10 +861,11 @@ final class JobDetailViewModel:ObservableObject{
         description:String
     ) async throws{
             //Check Which Parts Need Updating
-            if admin.id != updatingJob.adminId || admin.userName != updatingJob.adminName{
+            let adminId = admin.userId.isEmpty ? admin.id : admin.userId
+            if adminId != updatingJob.adminId || admin.userName != updatingJob.adminName{
                 print("Change in Admin")
                 let name:String = admin.userName
-                try await dataService.updateJobAdmin(companyId: companyId, jobId: updatingJob.id, adminName: name, adminId: admin.id)
+                try await dataService.updateJobAdmin(companyId: companyId, jobId: updatingJob.id, adminName: name, adminId: adminId)
             }
      
             if operationStatus != updatingJob.operationStatus {
@@ -888,10 +889,45 @@ final class JobDetailViewModel:ObservableObject{
             }
         }
     
-    func markJobAsFinished(companyId: String, job: Job) async throws {
+    private func addJobKeyMomentComment(
+        companyId: String,
+        jobId: String,
+        userId: String,
+        userName: String,
+        comment: String
+    ) async throws {
+        let authorName = userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unknown" : userName
+        let jobComment = JobComment(
+            id: "comp_wo_com_" + UUID().uuidString,
+            jobId: jobId,
+            companyId: companyId,
+            userId: userId,
+            userName: authorName,
+            authorId: userId,
+            authorName: authorName,
+            date: Date(),
+            comment: comment,
+            resolved: true
+        )
+
+        try await dataService.addWorkOrderComment(
+            companyId: companyId,
+            workOrderId: jobId,
+            comment: jobComment
+        )
+        comments.insert(jobComment, at: 0)
+    }
+
+    func markJobAsFinished(
+        companyId: String,
+        job: Job,
+        completedByUserId: String = "",
+        completedByUserName: String = ""
+    ) async throws {
         //Update Data Model
         try await dataService.updateJobOperationStatus(companyId: companyId, jobId: job.id, operationStatus: .finished)
         self.operationStatus = .finished
+        let completedByName = completedByUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unknown" : completedByUserName
         
         //See if is other company
         if job.otherCompany {
@@ -915,6 +951,14 @@ final class JobDetailViewModel:ObservableObject{
                 try await updateTaskHelperFunction(companyId: companyId, task: task, jobId: job.id)
             }
         }
+
+        try await addJobKeyMomentComment(
+            companyId: companyId,
+            jobId: job.id,
+            userId: completedByUserId,
+            userName: completedByName,
+            comment: "Job finished by \(completedByName)."
+        )
     }
     func updateTaskHelperFunction(
         companyId: String,
@@ -1506,7 +1550,12 @@ final class JobDetailViewModel:ObservableObject{
         }
     }
     
-    func markEstimateAsAccepted(companyId:String,job:Job) async throws {
+    func markEstimateAsAccepted(
+        companyId: String,
+        job: Job,
+        acceptedByUserId: String = "",
+        acceptedByUserName: String = ""
+    ) async throws {
         let newJob = try await dataService.getWorkOrderById(companyId: companyId, workOrderId: job.id)
         //Check if already accepted
         if let dateAccepted = newJob.dateEstimateAccepted {
@@ -1520,6 +1569,20 @@ final class JobDetailViewModel:ObservableObject{
             try dataService.updateJobEstimateAcceptedNotes(companyId: companyId, jobId: job.id, notes: estimateAcceptedNotes)
             try dataService.updateJobBillingStatus(companyId: companyId, jobId: job.id, billingStatus: .accepted)
             self.billingStatus = .accepted
+            let acceptedByName = acceptedByUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unknown" : acceptedByUserName
+            let trimmedNotes = estimateAcceptedNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+            try await addJobKeyMomentComment(
+                companyId: companyId,
+                jobId: job.id,
+                userId: acceptedByUserId,
+                userName: acceptedByName,
+                comment: [
+                    "Estimate accepted by \(acceptedByName).",
+                    trimmedNotes.isEmpty ? "" : "Acceptance notes: \(trimmedNotes)"
+                ]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: "\n\n")
+            )
         }
     }
     

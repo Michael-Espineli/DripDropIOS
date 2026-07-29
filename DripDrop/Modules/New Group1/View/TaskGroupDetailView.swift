@@ -55,17 +55,7 @@
 
                     self.name = taskGroup.name
                     self.description = taskGroup.description
-                    self.typeList = [
-                        "Basic",
-                        "Clean",
-                        "Clean Filter",
-                        "Empty Water",
-                        "Fill Water",
-                        "Inspection",
-                        "Install",
-                        "Remove",
-                        "Replace"
-                    ]
+                    self.typeList = JobTaskType.allCases.map(\.rawValue)
 
                     let items = try await dataService.getAllTaskGroupItems(
                         companyId: companyId,

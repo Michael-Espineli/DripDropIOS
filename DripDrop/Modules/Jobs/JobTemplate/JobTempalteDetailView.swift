@@ -634,6 +634,7 @@ struct EditJobTemplateSheet: View {
     @State private var defaultLaborCostCents: Int
     @State private var isActive: Bool
     @State private var locked: Bool
+    @State private var technicianCanAdd: Bool
 
     @State private var isSaving: Bool = false
     @State private var showAlert: Bool = false
@@ -655,6 +656,7 @@ struct EditJobTemplateSheet: View {
         _defaultLaborCostCents = State(initialValue: template.defaultLaborCostCents)
         _isActive = State(initialValue: template.isActive)
         _locked = State(initialValue: template.locked)
+        _technicianCanAdd = State(initialValue: template.technicianCanAdd)
     }
 
     private var canSave: Bool {
@@ -793,6 +795,11 @@ struct EditJobTemplateSheet: View {
                 .padding(12)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
+            Toggle("Technicians Can Add", isOn: $technicianCanAdd)
+                .font(.subheadline.weight(.semibold))
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
             Text("Locked templates can still be viewed, but should not be edited casually. You can enforce stricter locked behavior later.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -858,6 +865,7 @@ struct EditJobTemplateSheet: View {
             updated.defaultLaborCostCents = defaultLaborCostCents
             updated.isActive = isActive
             updated.locked = locked
+            updated.technicianCanAdd = technicianCanAdd
             updated.updatedAt = Date()
 
             try await dataService.saveJobTemplate(updated)

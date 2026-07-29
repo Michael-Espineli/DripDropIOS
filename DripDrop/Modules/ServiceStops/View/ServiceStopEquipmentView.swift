@@ -36,6 +36,7 @@ struct ServiceStopEquipmentView: View {
             .padding(.top)
         }
         .task {
+            ensureBodyOfWaterSelection()
             if let currentCompany = masterDataManager.currentCompany,
                let BOW = VM.selectedBOW {
                 try? await VM.getAllEquipmentFromBodyOfWater(
@@ -43,6 +44,9 @@ struct ServiceStopEquipmentView: View {
                     bodyOfWater: BOW
                 )
             }
+        }
+        .onChange(of: VM.bodiesOfWater) { _ in
+            ensureBodyOfWaterSelection()
         }
         .onChange(of: VM.selectedBOW) { BOW in
             if let BOW {
@@ -65,44 +69,113 @@ struct ServiceStopEquipmentView: View {
 extension ServiceStopEquipmentView {
     
     var bodyOfWaterPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                
-                if VM.bodiesOfWater.isEmpty {
-                    Text("No Bodies of Water")
-                        .foregroundColor(.secondary)
-                } else {
-                    ForEach(VM.bodiesOfWater) { BOW in
-                        Button {
-                            VM.selectedBOW = BOW
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: VM.selectedBOW == BOW ? "drop.fill" : "drop")
-                                Text(BOW.name)
-                                    .lineLimit(1)
-                            }
-                            .padding(.horizontal, 14)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "drop.fill")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 32, height: 32)
+                    .background(Color.poolBlue.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Equipment Water")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+
+                    Text(VM.selectedBOW?.name.isEmpty == false ? VM.selectedBOW?.name ?? "Select Water" : "Select Water")
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(1)
+                }
+
+                Spacer()
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    if VM.bodiesOfWater.isEmpty {
+                        Text("No Bodies of Water")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.secondary)
+                            .frame(minWidth: 220, alignment: .leading)
                             .padding(.vertical, 8)
-                            .background(
-                                Capsule()
-                                    .fill(
-                                        VM.selectedBOW == BOW
-                                        ? Color.poolGreen
-                                        : Color.gray.opacity(0.15)
-                                    )
-                            )
-                            .foregroundStyle(
-                                VM.selectedBOW == BOW
-                                ? Color.white
-                                : Color.primary
-                            )
+                    } else {
+                        ForEach(VM.bodiesOfWater) { bodyOfWater in
+                            equipmentBodyOfWaterChip(bodyOfWater)
                         }
                     }
                 }
+                .padding(.trailing, 10)
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
         }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(.separator).opacity(0.28), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
+        .padding(.horizontal)
+    }
+
+    private func equipmentBodyOfWaterChip(_ bodyOfWater: BodyOfWater) -> some View {
+        let isSelected = VM.selectedBOW?.id == bodyOfWater.id
+
+        return Button {
+            VM.selectedBOW = bodyOfWater
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.caption.weight(.bold))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(bodyOfWater.name.isEmpty ? "Unnamed Water" : bodyOfWater.name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+
+                    Text(equipmentBodyOfWaterMetaText(bodyOfWater))
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.82) : Color.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .frame(minWidth: 126, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isSelected ? Color.poolGreen : Color(.secondarySystemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(isSelected ? Color.poolGreen : Color(.separator).opacity(0.35), lineWidth: 1)
+            )
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func equipmentBodyOfWaterMetaText(_ bodyOfWater: BodyOfWater) -> String {
+        let gallons = bodyOfWater.gallons.trimmingCharacters(in: .whitespacesAndNewlines)
+        let material = bodyOfWater.material.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = [
+            gallons.isEmpty ? "" : "\(gallons) gal",
+            material,
+        ].filter { !$0.isEmpty }
+
+        return parts.isEmpty ? "No details" : parts.joined(separator: " · ")
+    }
+
+    @MainActor
+    private func ensureBodyOfWaterSelection() {
+        guard !VM.bodiesOfWater.isEmpty else { return }
+
+        if let selected = VM.selectedBOW,
+           VM.bodiesOfWater.contains(where: { $0.id == selected.id }) {
+            return
+        }
+
+        VM.selectedBOW = VM.bodiesOfWater.first
     }
 }
 
@@ -157,9 +230,22 @@ struct EquipmentCard: View {
     @State private var showEquipment: Bool = false
     @State private var equipmentStatus: EquipmentStatus = .operational
     @State private var showEquipmentStatus: Bool = false
+    @State private var isSavingObservation: Bool = false
+    @State private var observationMessage: String? = nil
+    @State private var showRepairRequestSheet: Bool = false
+    @State private var showJobSheet: Bool = false
+    @State private var showPartApprovalSheet: Bool = false
     
     private var equipment: Equipment? {
         VM.listOfEquipment.first { $0.id == equipmentId }
+    }
+
+    private var needsTechnicianAttention: Bool {
+        guard let equipment else { return false }
+        return equipment.currentlyNeedsMaintenanceFollowUp ||
+        equipmentStatus == .needsRepair ||
+        equipmentStatus == .needsMaintenance ||
+        equipmentStatus == .nonoperational
     }
     
     var body: some View {
@@ -190,7 +276,11 @@ struct EquipmentCard: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
+                if needsTechnicianAttention {
+                    technicianAttentionBanner(equipment: equipment)
+                }
+
                 // Status Row
                 HStack {
                     Button {
@@ -214,6 +304,8 @@ struct EquipmentCard: View {
                     .foregroundColor(.secondary)
                 }
                 
+                equipmentActionSection(equipment: equipment)
+
                 // Filter Section
                 if equipment.type == .filter {
                     filterSection(equipment: equipment)
@@ -233,10 +325,49 @@ struct EquipmentCard: View {
                 )
                 .presentationDetents([.fraction(0.3), .fraction(0.5)])
             }
+            .sheet(isPresented: $showRepairRequestSheet) {
+                AddNewRepairRequest(
+                    dataService: dataService,
+                    isPresented: $showRepairRequestSheet,
+                    customer: nil,
+                    equipment: equipment,
+                    description: "Repair request for \(equipment.name)"
+                )
+            }
+            .sheet(isPresented: $showJobSheet) {
+                AddNewJobView(
+                    dataService: dataService,
+                    customerId: equipment.customerId,
+                    equipment: equipment
+                )
+            }
+            .sheet(isPresented: $showPartApprovalSheet) {
+                ServiceStopPartApprovalSheet(
+                    dataService: dataService,
+                    serviceStop: serviceStop,
+                    equipment: equipment,
+                    onCreated: { }
+                )
+            }
             .onAppear {
                 equipmentStatus = equipment.status
                 if let measurement = stopData.equipmentMeasurements.first(where: { $0.equipmentId == equipment.id }) {
                     pressure = String(measurement.poundForcePerSquareInch ?? 0)
+                }
+            }
+            .onChange(of: equipmentStatus) { status in
+                guard status != equipment.status,
+                      let currentCompany = masterDataManager.currentCompany else { return }
+
+                do {
+                    try VM.updateEquipmentStatus(
+                        companyId: currentCompany.id,
+                        serviceStop: serviceStop,
+                        equipmentId: equipment.id,
+                        status: status
+                    )
+                } catch {
+                    observationMessage = "Could not update equipment status."
                 }
             }
         }
@@ -252,6 +383,57 @@ struct EquipmentCard: View {
         }
     }
     
+    @ViewBuilder
+    private func equipmentActionSection(equipment: Equipment) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            equipmentActionButton(
+                title: "Repair Request",
+                systemImage: "wrench.and.screwdriver",
+                tint: .orange
+            ) {
+                showRepairRequestSheet = true
+            }
+
+            equipmentActionButton(
+                title: "Schedule Job",
+                systemImage: "calendar.badge.plus",
+                tint: Color.poolBlue
+            ) {
+                showJobSheet = true
+            }
+
+            equipmentActionButton(
+                title: "Part Approval",
+                systemImage: "checkmark.seal",
+                tint: Color.poolGreen
+            ) {
+                showPartApprovalSheet = true
+            }
+        }
+    }
+
+    private func equipmentActionButton(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .foregroundStyle(tint)
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private func filterSection(equipment: Equipment) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -298,6 +480,33 @@ struct EquipmentCard: View {
                 Text(shortDate(date: equipment.lastServiceDate))
             }
             .font(.footnote)
+
+            Button {
+                Task { await addEquipmentObservation(equipment: equipment) }
+            } label: {
+                HStack {
+                    if isSavingObservation {
+                        ProgressView()
+                            .frame(width: 18, height: 18)
+                    } else {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    Text(isSavingObservation ? "Saving Observation" : "Add Equipment Observation")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .background(Color.poolBlue.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(isSavingObservation)
+
+            if let observationMessage {
+                Text(observationMessage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(observationMessage == "Equipment observation saved." ? Color.poolGreen : Color.poolRed)
+            }
         }
     }
     
@@ -317,6 +526,196 @@ struct EquipmentCard: View {
             }
         }
         .font(.footnote)
+    }
+
+    @ViewBuilder
+    private func technicianAttentionBanner(equipment: Equipment) -> some View {
+        let title = technicianAttentionTitle(for: equipment)
+        let detail = technicianAttentionDetail(for: equipment)
+        let tint = technicianAttentionTint()
+
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: technicianAttentionIcon(for: equipment))
+                .foregroundStyle(tint)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func technicianAttentionTitle(for equipment: Equipment) -> String {
+        switch equipmentStatus {
+        case .needsMaintenance:
+            return "Needs Maintenance"
+        case .needsRepair:
+            return "Needs Repair"
+        case .nonoperational:
+            return "Non-Operational"
+        case .replaced:
+            return "Replaced"
+        case .operational:
+            return equipment.currentlyNeedsMaintenanceFollowUp ? "Maintenance Due Soon" : "Equipment Needs Attention"
+        }
+    }
+
+    private func technicianAttentionDetail(for equipment: Equipment) -> String {
+        switch equipmentStatus {
+        case .needsMaintenance:
+            return maintenanceTimingText(for: equipment)
+        case .needsRepair:
+            return "Repair is needed. Create a repair request or schedule a job for this equipment."
+        case .nonoperational:
+            return "Equipment is not operational. Repair or replace it before normal service."
+        case .replaced:
+            return "Equipment has been replaced."
+        case .operational:
+            if equipment.currentlyNeedsMaintenanceFollowUp {
+                return maintenanceTimingText(for: equipment)
+            }
+            return equipment.status.displayName
+        }
+    }
+
+    private func technicianAttentionIcon(for equipment: Equipment) -> String {
+        switch equipmentStatus {
+        case .needsMaintenance:
+            return "wrench.and.screwdriver"
+        case .needsRepair, .nonoperational:
+            return "exclamationmark.triangle.fill"
+        case .replaced:
+            return "arrow.triangle.2.circlepath"
+        case .operational:
+            return equipment.currentlyNeedsMaintenanceFollowUp ? "calendar.badge.clock" : "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func technicianAttentionTint() -> Color {
+        switch equipmentStatus {
+        case .needsMaintenance, .needsRepair:
+            return .orange
+        case .nonoperational:
+            return .red
+        case .replaced:
+            return .gray
+        case .operational:
+            return .orange
+        }
+    }
+
+    private func maintenanceTimingText(for equipment: Equipment) -> String {
+        guard let nextServiceDate = equipment.maintenanceDueDateForFollowUp else {
+            return "Maintenance is required. No due date is set."
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dueDay = calendar.startOfDay(for: nextServiceDate)
+        let daysOverdue = calendar.dateComponents([.day], from: dueDay, to: today).day ?? 0
+
+        if daysOverdue > 0 {
+            return "Maintenance overdue by \(maintenanceIntervalText(for: daysOverdue)). Due \(shortDate(date: nextServiceDate))."
+        } else if daysOverdue == 0 {
+            return "Maintenance due today."
+        } else {
+            return "Maintenance due in \(maintenanceIntervalText(for: abs(daysOverdue))). Due \(shortDate(date: nextServiceDate))."
+        }
+    }
+
+    private func maintenanceIntervalText(for days: Int) -> String {
+        if days >= 60 {
+            return pluralized(max(1, days / 30), unit: "month")
+        } else if days >= 14 {
+            return pluralized(max(1, days / 7), unit: "week")
+        }
+
+        return pluralized(max(1, days), unit: "day")
+    }
+
+    private func pluralized(_ value: Int, unit: String) -> String {
+        "\(value) \(unit)\(value == 1 ? "" : "s")"
+    }
+
+    private func targetCompanyId() -> String? {
+        if serviceStop.otherCompany, let mainCompanyId = serviceStop.mainCompanyId {
+            return mainCompanyId
+        }
+
+        return masterDataManager.currentCompany?.id
+    }
+
+    private func addEquipmentObservation(equipment: Equipment) async {
+        let trimmedPressure = pressure.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let pressureValue = Int(trimmedPressure) else {
+            observationMessage = "Enter a valid PSI reading."
+            return
+        }
+
+        guard let companyId = targetCompanyId() else {
+            observationMessage = "No company selected."
+            return
+        }
+
+        isSavingObservation = true
+        observationMessage = nil
+
+        var nextStatus = equipmentStatus
+        if let cleanPressure = equipment.cleanFilterPressure,
+           pressureValue - cleanPressure >= 15 {
+            nextStatus = .needsMaintenance
+            equipmentStatus = nextStatus
+        }
+
+        let measurement = EquipmentMeasurements(
+            id: UUID().uuidString,
+            equipmentId: equipment.id,
+            date: Date(),
+            status: nextStatus,
+            poundForcePerSquareInch: pressureValue,
+            revolutionsPerMinute: nil
+        )
+
+        do {
+            stopData.equipmentMeasurements.removeAll { $0.equipmentId == equipment.id }
+            stopData.equipmentMeasurements.append(measurement)
+
+            try await VM.createEquipmentMeasurment(
+                companyId: companyId,
+                equipmentId: equipment.id,
+                measurment: measurement
+            )
+            try dataService.updateEquipmentCurrentPressure(
+                companyId: companyId,
+                equipmentId: equipment.id,
+                currentPressure: pressureValue
+            )
+
+            if nextStatus != equipment.status {
+                try VM.updateEquipmentStatus(
+                    companyId: companyId,
+                    serviceStop: serviceStop,
+                    equipmentId: equipment.id,
+                    status: nextStatus
+                )
+            }
+
+            VM.EquipmentReadings[equipment] = measurement
+            observationMessage = "Equipment observation saved."
+        } catch {
+            observationMessage = "Could not save equipment observation."
+        }
+
+        isSavingObservation = false
     }
 }
 private extension View {

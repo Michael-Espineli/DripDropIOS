@@ -11,6 +11,16 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 
 
+struct TesterStripScanReview: Identifiable, Codable, Equatable {
+    var id: String
+    var profileId: String
+    var profileName: String
+    var serviceStopId: String
+    var bodyOfWaterId: String
+    var image: DripDropStoredImage
+    var createdAt: Date
+}
+
 struct StopData:Identifiable, Codable,Equatable{
     var id: String
     var date: Date
@@ -23,6 +33,15 @@ struct StopData:Identifiable, Codable,Equatable{
     var serviceLocationId: String
     var userId: String
     var equipmentMeasurements: [EquipmentMeasurements]
+    var testerStripScans: [TesterStripScanReview]? = nil
+}
+
+extension StopData {
+    var customerVisibleCopy: StopData {
+        var copy = self
+        copy.testerStripScans = nil
+        return copy
+    }
 }
 
 protocol StopDataManagerProtocol {

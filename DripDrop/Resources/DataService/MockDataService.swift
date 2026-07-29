@@ -148,6 +148,23 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     ) async throws -> [ShoppingListItem] {
         return []
     }
+    @discardableResult
+    func syncShoppingListItemsForScheduledJobTasks(
+        companyId: String,
+        jobId: String,
+        customerId: String,
+        serviceLocationId: String,
+        serviceStopId: String,
+        serviceStopInternalId: String,
+        serviceDate: Date,
+        assignedTechId: String,
+        assignedTechName: String,
+        taskIds: [String],
+        shoppingListItemIds: [String],
+        plannedServiceStopId: String?
+    ) async throws -> Int {
+        return 0
+    }
     func fetchJobTemplates(companyId: String) async throws -> [JobTemplate] { [] }
 
     func fetchJobTemplate(
@@ -250,6 +267,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func fetchWorkOffers(
         companyId: String,
         jobId: String
+    ) async throws -> [WorkOffer] {
+        []
+    }
+
+    func fetchAllWorkOffers(
+        companyId: String
     ) async throws -> [WorkOffer] {
         []
     }
@@ -2242,6 +2265,17 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func getAllActiveRoutesBasedOnVehical(companyId: String, vehicalId:String, count: Int) async throws -> [ActiveRoute] {
         return []
     }
+    
+    func getActiveRoutesForVehical(
+        companyId: String,
+        vehicalId: String,
+        startDate: Date,
+        endDate: Date,
+        limit: Int
+    ) async throws -> [ActiveRoute] {
+        return []
+    }
+    
     func getAllActiveRoutesBasedOnDate(companyId: String,date:Date,tech:CompanyUser) async throws -> [ActiveRoute] {
         return []
     }
@@ -2585,7 +2619,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         //                    toDos Collections
     
     private func ToDoCollection(companyId:String) -> CollectionReference{
-        db.collection("companies/\(companyId)/toDos")
+        db.collection("companies/\(companyId)/todoItems")
     }
         //                    receipts Collections
     
@@ -3634,7 +3668,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     
     func upLoadInitialGenericRoles(companyId:String) async throws {
         let allPermissionIds = [
-            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "40","42","44","46","50","52","54","56","60","62","64","66",
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
@@ -3647,7 +3681,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             "890","892","894","896"
         ]
         let managerPermissionIds = [
-            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
             "290","292","294","296",
@@ -4036,17 +4070,17 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
     }
     func uploadReadingToCustomerHistory(companyId:String,serviceStop : ServiceStop,stopData:StopData) async throws {
-        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: true)
+        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: true)
         print("Uploaded Reading List")
         
     }
     func uploadDosagesToCustomerHistory(companyId:String,serviceStop : ServiceStop,stopData:StopData) async throws {
-        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: true)
+        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: true)
         print("Uploaded Dosage List")
     }
     func addStopHistory(serviceStop:ServiceStop,stopData:StopData,companyId:String) async throws{
         print("breaks here")
-        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: false)
+        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: false)
         
     }
     func uploadRecurringServiceStop(companyId:String,recurringServiceStop : RecurringServiceStop) async throws {
@@ -4185,7 +4219,22 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         //                    Read Functions
         //----------------------------------------------------
     
-    func getAllCompanyToDoItems(companyId:String) -> [ToDo]{
+    func getToDo(companyId:String,toDoId:String) async throws -> ToDo {
+        ToDo(
+            id: toDoId,
+            title: "Check Harold Rice",
+            status: .toDo,
+            description: "Do some stuff",
+            dateCreated: Date(),
+            dateFinished: nil,
+            assignedTechId: "",
+            creatorId: "",
+            boardName: "Mock Board",
+            priority: "normal"
+        )
+    }
+
+    func getAllCompanyToDoItems(companyId:String) async throws -> [ToDo]{
         return [
             ToDo(id: "1", title: "Check Harold Rice", status: .toDo, description: "Do some stuff", dateCreated: Date(), dateFinished: Date(), assignedTechId: "", creatorId: ""),
             ToDo(id: "2", title: "Check hey Rice", status: .toDo, description: "Do some stuff", dateCreated: Date(), dateFinished: Date(), assignedTechId: "", creatorId: ""),
@@ -4194,27 +4243,31 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         ]
         
     }
-    func getAllCompanyToDoItemsCount(companyId: String) -> Int {
+    func getAllCompanyToDoItemsCount(companyId: String) async throws -> Int {
         return 8
     }
     
     func getAllTechnicanToDoItemsCount(companyId: String, techId: String) async throws -> Int {
         
-        let query = ToDoCollection(companyId: companyId).whereField("assignedTechId", isEqualTo: techId).whereField("status", isNotEqualTo: "Finished")
+        let query = ToDoCollection(companyId: companyId).whereField("assignedToUserId", isEqualTo: techId).whereField("status", isNotEqualTo: "archived")
         let countQuery = query.count
         do {
             let snapshot = try await countQuery.getAggregation(source: .server)
             print(snapshot.count)
-            return snapshot.count as! Int
+            return Int(truncating: snapshot.count)
         } catch {
             print(error)
             return 0
         }
     }
     func getAllTechnicanToDoItems(companyId:String,techId:String) async throws -> [ToDo]{
-        return try await ToDoCollection(companyId: companyId)
-            .whereField("assignedTechId", isEqualTo: techId)
-            .getDocuments(as:ToDo.self)
+        let snapshot = try await ToDoCollection(companyId: companyId)
+            .whereField("assignedToUserId", isEqualTo: techId)
+            .getDocuments()
+        return snapshot.documents
+            .map { ToDo(document: $0) }
+            .filter { !$0.isArchived }
+            .sorted(by: ToDo.sortByUrgency)
         
     }
     func getCurrentUser(userId:String) async throws -> DBUser{
@@ -6809,6 +6862,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         companyUser:CompanyUser,
         description:String,
         estimatedDuration:Int,
+        manualPayOverrideCents:Int?,
+        manualPayOverrideNotes:String?,
         serviceStopTypeFields:ServiceStopTypeFields
     ) async throws {
     }
@@ -7342,7 +7397,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateToDoTitle(companyId:String,toDoId:String,newTitle:String) async throws {
         ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "title": newTitle
+                "title": newTitle,
+                "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {
                     print("Error updating document: \(err)")
@@ -7354,7 +7410,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateToDoStatus(companyId:String,toDoId:String,newStatus:toDoStatus) async throws {
         ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "status": newStatus
+                "status": newStatus.todoItemValue,
+                "completedAt": newStatus == .finished ? FieldValue.serverTimestamp() : NSNull(),
+                "dateFinished": newStatus == .finished ? FieldValue.serverTimestamp() : NSNull(),
+                "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {
                     print("Error updating document: \(err)")
@@ -7366,7 +7425,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateToDoDescription(companyId:String,toDoId:String,newDescription:String) async throws {
         ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "description": newDescription
+                "description": newDescription,
+                "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {
                     print("Error updating document: \(err)")
@@ -7376,9 +7436,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             }
     }
     func updateToDoDateFinished(companyId:String,toDoId:String,newDateFinished:Date?) async throws {
+        let finishedValue: Any = newDateFinished.map { $0 as Any } ?? NSNull()
+
         ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "dateFinished": newDateFinished
+                "completedAt": finishedValue,
+                "dateFinished": finishedValue,
+                "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {
                     print("Error updating document: \(err)")
@@ -7390,7 +7454,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateToDoCustomerId(companyId:String,toDoId:String,newCustomerId:String) async throws {
         ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "customerId": newCustomerId
+                "customerId": newCustomerId,
+                "linkedCustomerId": newCustomerId,
+                "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {
                     print("Error updating document: \(err)")
@@ -7402,7 +7468,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateToDoJobId(companyId:String,toDoId:String,newJobId:String) async throws {
         ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "jobId": newJobId
+                "jobId": newJobId,
+                "linkedJobId": newJobId,
+                "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {
                     print("Error updating document: \(err)")
@@ -7414,7 +7482,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateToDoTechId(companyId:String,toDoId:String,newTechId:String) async throws {
         ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "newTechId": newTechId
+                "assignedToUserId": newTechId,
+                "assignedTechId": newTechId,
+                "updatedAt": FieldValue.serverTimestamp()
             ]) { err in
                 if let err = err {
                     print("Error updating document: \(err)")
@@ -7517,7 +7587,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
      
      var stopData = StopData(id: UUID().uuidString, date: date, serviceStopId: id, readings: readingList, dosages: dosageList)
      
-     try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: user.companyId).setData(from:stopData, merge: false)
+     try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: user.companyId).setData(from: stopData.customerVisibleCopy, merge: false)
      
      print("Added Stop Data")
      counter = counter - 7
@@ -7697,7 +7767,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
      }
      let stopData = StopData(id: UUID().uuidString, date: date, serviceStopId: id, readings: readingList, dosages: dosageList, bodyOfWaterId: bodyOfWater.id)
      
-     try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: false)
+     try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: false)
      
      print("Added Stop Data")
      counter = counter - 7
@@ -7882,7 +7952,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
      }
      let stopData = StopData(id: UUID().uuidString, date: date, serviceStopId: id, readings: readingList, dosages: dosageList, bodyOfWaterId: bodyOfWater.id)
      
-     try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: false)
+     try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: false)
      
      print("Added Stop Data")
      counter = counter - 7

@@ -119,11 +119,12 @@ struct ShoppingListItemDraft: Hashable {
             return nil
         }
 
-        if let sellPrice = selectedDataBaseItem.sellPrice {
+        if let sellPrice = selectedDataBaseItem.sellPrice,
+           sellPrice > 0 {
             return Int(sellPrice.rounded())
         }
 
-        return Int(selectedDataBaseItem.rate.rounded())
+        return nil
     }
 
     var plannedTotalCostCents: Int? {

@@ -162,174 +162,85 @@ struct StopDataDosageInputView: View {
             .padding(EdgeInsets(top: 0, leading: 28, bottom: 5, trailing: 0))
         }
         */
-        ZStack {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "drop.degreesign")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(statusTint)
+                    .frame(width: 34, height: 34)
+                    .background(statusTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            // MARK: - Left Status Indicator
-            HStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(input == "" ? Color.gray.opacity(0.25) : Color.poolGreen)
-                    .frame(width: 6)
-                Spacer()
-            }
-            .padding(.leading, 12)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(template.name ?? "Dosage")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
 
-            VStack {
-                if selectedId == template.dosageTemplateId {
-
-                    HStack {
-                        Text(template.name ?? "Template Name")
-                            .font(.footnote.weight(.semibold))
-                        Spacer()
-                    }
-
-                    VStack(spacing: 8) {
-
-                        Text(prediction)
-                            .font(.caption)
+                    if !templateUOM.isEmpty {
+                        Text(templateUOM)
+                            .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(template.amount ?? [], id: \.self) { amount in
-
-                                    Button(action: {
-                                        input = amount
-                                    }, label: {
-
-                                        let suffix = amount.suffix(3)
-
-                                        if suffix == ".00" {
-
-                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                                if dosage.amount == amount {
-                                                    Text("\(String(amount.dropLast(3)))")
-                                                        .modifier(SubmitButtonModifier())
-                                                } else {
-                                                    Text("\(String(amount.dropLast(3)))")
-                                                        .modifier(ListButtonModifier())
-                                                }
-                                            } else {
-                                                Text("\(String(amount.dropLast(3)))")
-                                                    .modifier(ListButtonModifier())
-                                            }
-
-                                        } else if suffix == ".25" {
-
-                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                                if dosage.amount == amount {
-                                                    Text("\(String(amount.dropLast(3)))¼")
-                                                        .modifier(SubmitButtonModifier())
-                                                } else {
-                                                    Text("\(String(amount.dropLast(3)))¼")
-                                                        .modifier(ListButtonModifier())
-                                                }
-                                            } else {
-                                                Text("\(String(amount.dropLast(3)))¼")
-                                                    .modifier(ListButtonModifier())
-                                            }
-
-                                        } else if suffix == ".50" {
-
-                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                                if dosage.amount == amount {
-                                                    Text("\(String(amount.dropLast(3)))½")
-                                                        .modifier(SubmitButtonModifier())
-                                                } else {
-                                                    Text("\(String(amount.dropLast(3)))½")
-                                                        .modifier(ListButtonModifier())
-                                                }
-                                            } else {
-                                                Text("\(String(amount.dropLast(3)))½")
-                                                    .modifier(ListButtonModifier())
-                                            }
-
-                                        } else if suffix == ".75" {
-
-                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                                if dosage.amount == amount {
-                                                    Text("\(String(amount.dropLast(3)))¾")
-                                                        .modifier(SubmitButtonModifier())
-                                                } else {
-                                                    Text("\(String(amount.dropLast(3)))¾")
-                                                        .modifier(ListButtonModifier())
-                                                }
-                                            } else {
-                                                Text("\(String(amount.dropLast(3)))¾")
-                                                    .modifier(ListButtonModifier())
-                                            }
-
-                                        } else {
-
-                                            if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                                if dosage.amount == amount {
-                                                    Text("\(amount)")
-                                                        .modifier(SubmitButtonModifier())
-                                                } else {
-                                                    Text("\(amount)")
-                                                        .modifier(ListButtonModifier())
-                                                }
-                                            } else {
-                                                Text("\(amount)")
-                                                    .modifier(ListButtonModifier())
-                                            }
-                                        }
-                                    })
-                                    .padding(.horizontal, 6)
-                                }
-                                TextField("Input", text: $input)
-                                    .modifier(TextFieldModifier())
-                                    .modifier(OutLineButtonModifier())
-                                    .focused($chemicalInput)
-
-                            }
-                        }
-                    }
-
-                } else {
-
-                    if input == "" {
-                        HStack {
-                            Text(template.name ?? "")
-                                .font(.footnote.weight(.medium))
-
-                            if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                Text("• \(reading.amount ?? "")")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        }
-                        .modifier(ListButtonModifier())
-
-                    } else {
-
-                        HStack {
-                            Text(template.name ?? "")
-                                .font(.footnote.weight(.medium))
-
-                            if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                Text("• \(reading.amount ?? "")")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        }
-                        .modifier(AddButtonModifier())
+                            .lineLimit(1)
                     }
                 }
+
+                Spacer(minLength: 8)
+
+                if hasValue {
+                    Text(displayValue)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.poolGreen)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.poolGreen.opacity(0.12), in: Capsule())
+                }
+
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
             }
-            .padding(.leading, 30)
-            .padding(.vertical, 10)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    if !prediction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Label(prediction, systemImage: "sparkles")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(template.amount ?? [], id: \.self) { amount in
+                                Button {
+                                    input = amount
+                                } label: {
+                                    amountChip(amount, isSelected: currentDosage?.amount == amount)
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            dosageInputField
+                        }
+                        .padding(.vertical, 1)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
-        .padding(.vertical, 4)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.listColor)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.listColor.opacity(0.72))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.black.opacity(0.05))
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(isExpanded ? Color.poolBlue.opacity(0.35) : Color.black.opacity(0.05), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
-
+        .contentShape(Rectangle())
         .onAppear(perform: {
             if stopDataList.contains(where: {$0.bodyOfWaterId == bodyOfWaterId}){
                 stopData = stopDataList.first(where: {$0.bodyOfWaterId == bodyOfWaterId })!
@@ -443,6 +354,88 @@ struct StopDataDosageInputView: View {
 }
 
 private extension StopDataDosageInputView {
+    var isExpanded: Bool {
+        selectedId == template.dosageTemplateId
+    }
+
+    var trimmedInput: String {
+        input.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var hasValue: Bool {
+        !trimmedInput.isEmpty
+    }
+
+    var currentDosage: Dosage? {
+        stopData.dosages.first {
+            $0.universalTemplateId == template.dosageTemplateId &&
+            $0.bodyOfWaterId == bodyOfWaterId
+        }
+    }
+
+    var displayValue: String {
+        guard hasValue else { return "-" }
+        return formattedDosageAmount(trimmedInput)
+    }
+
+    var templateUOM: String {
+        (template.UOM ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var statusTint: Color {
+        if hasValue { return Color.poolGreen }
+        if isExpanded { return Color.poolBlue }
+        return Color.secondary.opacity(0.75)
+    }
+
+    var dosageInputField: some View {
+        TextField("Input", text: $input)
+            .focused($chemicalInput)
+            .keyboardType(.decimalPad)
+            .font(.subheadline.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .frame(width: 88, height: 36)
+            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(chemicalInput ? Color.poolBlue.opacity(0.55) : Color.secondary.opacity(0.18), lineWidth: 1)
+            }
+    }
+
+    func amountChip(_ amount: String, isSelected: Bool) -> some View {
+        Text(formattedDosageAmount(amount))
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(minWidth: 44, minHeight: 36)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? Color.poolGreen : Color(.systemBackground))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(isSelected ? Color.poolGreen : Color.secondary.opacity(0.18), lineWidth: 1)
+            }
+    }
+
+    func formattedDosageAmount(_ amount: String) -> String {
+        let suffix = amount.suffix(3)
+
+        if suffix == ".00" {
+            return String(amount.dropLast(3))
+        } else if suffix == ".25" {
+            return "\(String(amount.dropLast(3)))¼"
+        } else if suffix == ".50" {
+            return "\(String(amount.dropLast(3)))½"
+        } else if suffix == ".75" {
+            return "\(String(amount.dropLast(3)))¾"
+        }
+
+        return amount
+    }
+
     func getChemicalDosages(gallons:Int,dosageTempalte:SavedDosageTemplate,readings:[Reading]?,observations:[String])->  String {
         
         return recommendationChems(gallons: Double(gallons), dosageTemplate: dosageTempalte, readingList: readings ?? [], hasAlgea: observations.contains(where: {$0 == "Algea"}))

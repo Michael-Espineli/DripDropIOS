@@ -131,17 +131,17 @@ struct JobMaterialsView: View {
             Divider().opacity(0.2)
 
             JobMaterialsDetailRow(
-                title: "Planned Billable Price",
+                title: "Planned Customer Price",
                 value: JobMaterialsMoneyFormatter.money(plannedMaterialPriceCents)
             )
 
             JobMaterialsDetailRow(
-                title: "Purchased Billable Price",
+                title: "Purchased Customer Price",
                 value: JobMaterialsMoneyFormatter.money(billablePurchasedMaterialPriceCents)
             )
 
             JobMaterialsDetailRow(
-                title: "Billable Difference",
+                title: "Price Difference",
                 value: JobMaterialsMoneyFormatter.signedMoney(materialPriceDifferenceCents),
                 valueIsWarning: materialPriceDifferenceCents < 0
             )
@@ -351,7 +351,7 @@ struct JobShoppingMaterialRow: View {
                 }
 
                 if let plannedTotalPriceCents = item.plannedTotalPriceCents {
-                    Text("Planned billable: \(JobMaterialsMoneyFormatter.money(plannedTotalPriceCents))")
+                    Text("Total price: \(JobMaterialsMoneyFormatter.money(plannedTotalPriceCents))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -402,7 +402,7 @@ struct JobShoppingMaterialRow: View {
         }
 
         if let unitPrice = item.plannedUnitPriceCents {
-            parts.append("Bill \(JobMaterialsMoneyFormatter.money(unitPrice))")
+            parts.append("Price \(JobMaterialsMoneyFormatter.money(unitPrice))")
         }
 
         return parts.joined(separator: " • ")

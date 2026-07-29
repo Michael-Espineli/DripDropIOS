@@ -18,24 +18,9 @@ struct ReceiptDatabaseView: View{
     }
     var body: some View{
         ReceiptDatabaseListView(dataService: dataService)
-
-        .toolbar{
-            ToolbarItem(){
-
-                NavigationLink{
-                    AddDataBaseFromComputer()
-                } label: {
-                    HStack{
-                        Text("Upload")
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                }
-            }
-        }
         .navigationTitle("Database Items")
     }
 }
-
 
 
 

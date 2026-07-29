@@ -24,6 +24,8 @@ struct AddNewScheduleServiceStopToNewJobView: View {
     @State var description: String
     @State var jobTaskList: [JobTask]
     @State var plannedServiceStops: [JobPlannedServiceStop]
+    let canScheduleForOthers: Bool
+    let preferredTechnicianUserId: String?
 
     @Binding var serviceStops: [ServiceStop]
     @Binding var serviceStopTasks: [ServiceStop: [ServiceStopTask]]
@@ -39,6 +41,8 @@ struct AddNewScheduleServiceStopToNewJobView: View {
         description: String,
         jobTaskList: [JobTask],
         plannedServiceStops: [JobPlannedServiceStop] = [],
+        canScheduleForOthers: Bool = true,
+        preferredTechnicianUserId: String? = nil,
         serviceStops: Binding<[ServiceStop]>,
         serviceStopTasks: Binding<[ServiceStop: [ServiceStopTask]]>
     ) {
@@ -50,6 +54,8 @@ struct AddNewScheduleServiceStopToNewJobView: View {
         _description = State(wrappedValue: description)
         _jobTaskList = State(wrappedValue: jobTaskList)
         _plannedServiceStops = State(wrappedValue: plannedServiceStops)
+        self.canScheduleForOthers = canScheduleForOthers
+        self.preferredTechnicianUserId = preferredTechnicianUserId
         self._serviceStops = serviceStops
         self._serviceStopTasks = serviceStopTasks
     }
@@ -101,6 +107,15 @@ struct AddNewScheduleServiceStopToNewJobView: View {
                         jobTaskList: jobTaskList,
                         plannedServiceStops: plannedServiceStops
                     )
+
+                    if !canScheduleForOthers {
+                        if let preferredTechnicianUserId,
+                           let currentUser = VM.companyUserList.first(where: { $0.userId == preferredTechnicianUserId }) {
+                            VM.selectedUser = currentUser
+                        } else if let currentCompanyUser = masterDataManager.companyUser {
+                            VM.selectedUser = currentCompanyUser
+                        }
+                    }
                 } catch {
                     print(error)
                 }
@@ -267,13 +282,21 @@ extension AddNewScheduleServiceStopToNewJobView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Details", systemImage: "calendar.badge.plus")
 
-            pickerButtonRow(
-                title: "Technician",
-                value: VM.selectedUser.id == "" ? "Select Technician" : "\(VM.selectedUser.userName) \(VM.selectedUser.roleName)",
-                systemImage: "person.crop.circle",
-                isSelected: VM.selectedUser.id != ""
-            ) {
-                showTechnicianSelector.toggle()
+            if canScheduleForOthers {
+                pickerButtonRow(
+                    title: "Technician",
+                    value: VM.selectedUser.id == "" ? "Select Technician" : "\(VM.selectedUser.userName) \(VM.selectedUser.roleName)",
+                    systemImage: "person.crop.circle",
+                    isSelected: VM.selectedUser.id != ""
+                ) {
+                    showTechnicianSelector.toggle()
+                }
+            } else {
+                detailDisplayRow(
+                    title: "Technician",
+                    value: VM.selectedUser.id == "" ? "Assigned to you" : "\(VM.selectedUser.userName) \(VM.selectedUser.roleName)",
+                    systemImage: "person.crop.circle"
+                )
             }
 
             HStack(spacing: 12) {

@@ -249,8 +249,10 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "16", name: "Delete Customer", description: "", category: "Operations"),
         PermissionModel(id: "20", name: "Jobs", description: "", category: "Operations"),
         PermissionModel(id: "22", name: "Create Jobs", description: "", category: "Operations"),
+        PermissionModel(id: "23", name: "Create Jobs From Templates", description: "Can create jobs from technician-enabled job templates.", category: "Operations"),
         PermissionModel(id: "24", name: "Update Jobs", description: "", category: "Operations"),
         PermissionModel(id: "26", name: "Delete Jobs", description: "", category: "Operations"),
+        PermissionModel(id: "27", name: "Create Blank Jobs", description: "Can create blank jobs without starting from a template.", category: "Operations"),
         PermissionModel(id: "30", name: "Repair Requests", description: "", category: "Operations"),
         PermissionModel(id: "32", name: "Create Repair Requests", description: "", category: "Operations"),
         PermissionModel(id: "34", name: "Update Repair Requests", description: "", category: "Operations"),
@@ -351,7 +353,7 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "896", name: "Delete Manage Subscriptions", description: "", category: "Settings"),
     ]
     let permissionIds: [String] = [
-        "0","10","12","14","16","20","22","24","26","30","32","34","36",
+        "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
         "40","42","44","46","50","52","54","56","60","62","64","66",
         "200","210","220","230","232","234","236","240","242","244","246",
         "250","252","254","256","260","262","264","266","280","282","284","286",

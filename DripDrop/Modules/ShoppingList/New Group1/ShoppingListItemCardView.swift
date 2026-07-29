@@ -23,6 +23,13 @@ final class ShoppingListItemCardViewModel: ObservableObject {
         companyId: String,
         shoppingListItem: ShoppingListItem
     ) async throws {
+        if let databaseItemId = databaseItemId(for: shoppingListItem) {
+            self.dataBaseItem = try? await dataService.getDataBaseItem(
+                companyId: companyId,
+                dataBaseItemId: databaseItemId
+            )
+        }
+
         switch shoppingListItem.category {
         case .personal:
             break
@@ -40,8 +47,20 @@ final class ShoppingListItemCardViewModel: ObservableObject {
             }
         }
 
-        // Optional later:
-        // If you have a fetchDataBaseItem method, load it here using shoppingListItem.dbItemId.
+    }
+
+    private func databaseItemId(for shoppingListItem: ShoppingListItem) -> String? {
+        if let dbItemId = shoppingListItem.dbItemId,
+           !dbItemId.isEmpty {
+            return dbItemId
+        }
+
+        if shoppingListItem.subCategory == .dataBase,
+           !shoppingListItem.genericItemId.isEmpty {
+            return shoppingListItem.genericItemId
+        }
+
+        return nil
     }
 
     func updateShoppingListItemStatus(
@@ -65,8 +84,23 @@ final class ShoppingListItemCardViewModel: ObservableObject {
 
 
 struct ShoppingListItemCardView: View {
+    @EnvironmentObject var masterDataManager: MasterDataManager
+
     let dataService: any ProductionDataServiceProtocol
     let shoppingListItem: ShoppingListItem
+
+    @StateObject private var viewModel: ShoppingListItemCardViewModel
+
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        shoppingListItem: ShoppingListItem
+    ) {
+        self.dataService = dataService
+        self.shoppingListItem = shoppingListItem
+        _viewModel = StateObject(
+            wrappedValue: ShoppingListItemCardViewModel(dataService: dataService)
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -90,6 +124,14 @@ struct ShoppingListItemCardView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(statusTint.opacity(0.22), lineWidth: 1)
+        }
+        .task(id: shoppingListItem.id) {
+            guard let company = masterDataManager.currentCompany else { return }
+
+            try? await viewModel.onLoad(
+                companyId: company.id,
+                shoppingListItem: shoppingListItem
+            )
         }
     }
 }
@@ -157,40 +199,29 @@ extension ShoppingListItemCardView {
 
     @ViewBuilder
     private var moneyRows: some View {
-        if hasPlannedMoney {
-            VStack(spacing: 6) {
-                HStack {
-                    if let plannedUnitCostCents = shoppingListItem.plannedUnitCostCents {
-                        moneyChip(
-                            title: "Unit Cost",
-                            value: JobMaterialsMoneyFormatter.money(plannedUnitCostCents)
-                        )
-                    }
-
-                    if let plannedUnitPriceCents = shoppingListItem.plannedUnitPriceCents {
-                        moneyChip(
-                            title: "Unit Billable",
-                            value: JobMaterialsMoneyFormatter.money(plannedUnitPriceCents)
-                        )
-                    }
+        if hasCustomerPrice {
+            HStack {
+                if let customerUnitPriceCents {
+                    moneyChip(
+                        title: "Price",
+                        value: ShoppingListItemMoneyFormatter.money(customerUnitPriceCents)
+                    )
                 }
 
-                HStack {
-                    if let plannedTotalCostCents = shoppingListItem.plannedTotalCostCents {
-                        moneyChip(
-                            title: "Planned Cost",
-                            value: JobMaterialsMoneyFormatter.money(plannedTotalCostCents)
-                        )
-                    }
-
-                    if let plannedTotalPriceCents = shoppingListItem.plannedTotalPriceCents {
-                        moneyChip(
-                            title: "Planned Billable",
-                            value: JobMaterialsMoneyFormatter.money(plannedTotalPriceCents)
-                        )
-                    }
+                if let customerTotalPriceCents {
+                    moneyChip(
+                        title: "Total Price",
+                        value: ShoppingListItemMoneyFormatter.money(customerTotalPriceCents)
+                    )
                 }
             }
+        } else if hasPlannedMoney || hasDatabaseItemPricingContext {
+            Label("No customer price set", systemImage: "exclamationmark.triangle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
 
@@ -304,6 +335,43 @@ extension ShoppingListItemCardView {
         shoppingListItem.plannedUnitPriceCents != nil ||
         shoppingListItem.plannedTotalCostCents != nil ||
         shoppingListItem.plannedTotalPriceCents != nil
+    }
+
+    private var hasCustomerPrice: Bool {
+        customerUnitPriceCents != nil || customerTotalPriceCents != nil
+    }
+
+    private var hasDatabaseItemPricingContext: Bool {
+        if viewModel.dataBaseItem != nil {
+            return true
+        }
+
+        if let dbItemId = shoppingListItem.dbItemId,
+           !dbItemId.isEmpty {
+            return true
+        }
+
+        return shoppingListItem.subCategory == .dataBase && !shoppingListItem.genericItemId.isEmpty
+    }
+
+    private var customerUnitPriceCents: Int? {
+        if let sellPrice = viewModel.dataBaseItem?.sellPrice,
+           sellPrice > 0 {
+            return Int(sellPrice.rounded())
+        }
+
+        return shoppingListItem.plannedUnitPriceCents
+    }
+
+    private var customerTotalPriceCents: Int? {
+        if let sellPrice = viewModel.dataBaseItem?.sellPrice,
+           sellPrice > 0 {
+            let quantity = Double(shoppingListItem.quantity ?? "") ?? 1
+
+            return Int((sellPrice * quantity).rounded())
+        }
+
+        return shoppingListItem.plannedTotalPriceCents
     }
 
     private var contextText: String? {

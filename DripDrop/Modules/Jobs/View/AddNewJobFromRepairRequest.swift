@@ -268,17 +268,7 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
             status: "Active"
         )
 
-        self.taskTypes = [
-            "Basic",
-            "Clean",
-            "Clean Filter",
-            "Empty Water",
-            "Fill Water",
-            "Inspection",
-            "Install",
-            "Remove",
-            "Replace"
-        ]
+        self.taskTypes = JobTaskType.allCases.map(\.rawValue)
 
         self.serviceStopIds = []
         self.laborContractIds = []

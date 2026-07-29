@@ -24,181 +24,77 @@ struct StopDataReadingInputView: View {
 
 
     var body: some View {
-        /*
-         //Old View
-        ZStack{
-            HStack{
-                if input == "" {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.25))
-                        .frame(width: 5)
-                } else {
-                    Rectangle()
-                        .fill(Color.poolGreen)
-                        .frame(width: 5)
-                }
-                Spacer()
-            }
-            .padding(EdgeInsets(top: 0, leading: 15, bottom: 0, trailing: 0))
-            VStack{
-                if selectedId == template.readingsTemplateId {
-                    
-                    HStack{
-                        Text(template.name)
-                            .font(.footnote)
-                        Spacer()
-                    }
-                    ScrollView(.horizontal,showsIndicators: false){
-                        HStack(spacing: 8){
-                            TextField("Input", text: $input)
-                                .focused($chemicalInput)
-                                .modifier(TextFieldModifier())
-                                .modifier(OutLineButtonModifier())
-                            ForEach(template.amount,id:\.self){ amount in
-                                Button(action: {
-                                    input = amount
-                                }, label: {
-                                    if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                        if reading.amount == amount {
-                                            Text("\(amount)")
-                                                .modifier(SubmitButtonModifier())
-                                        } else {
-                                            Text("\(amount)")
-                                                .modifier(ListButtonModifier())
-                                        }
-                                    } else {
-                                        Text("\(amount)")
-                                            .modifier(ListButtonModifier())
-                                    }
-                                })
-                            }
-                        }
-                    }
-                } else {
-                    if input == "" {
-                        HStack{
-                            Text(template.name)
-                            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                Text(" - \(reading.amount ?? "")")
-                            }
-                        }
-                        .modifier(ListButtonModifier())
-                    } else {
-                        HStack{
-                            Text(template.name)
-                            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                                Text(" - \(reading.amount ?? "")")
-                            }
-                        }
-                        .modifier(SubmitButtonModifier())
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "testtube.2")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(statusTint)
+                    .frame(width: 34, height: 34)
+                    .background(statusTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(template.name)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    if !template.UOM.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(template.UOM)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
-                
+
+                Spacer(minLength: 8)
+
+                if hasValue {
+                    Text(displayValue)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.poolGreen)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.poolGreen.opacity(0.12), in: Capsule())
+                }
+
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
             }
-            .padding(EdgeInsets(top: 0, leading: 28, bottom: 5, trailing: 0))
-        }
-         */
-        ZStack {
 
-            // MARK: - Left Status Indicator
-            HStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(input == "" ? Color.gray.opacity(0.25) : Color.poolGreen)
-                    .frame(width: 6)
-                Spacer()
-            }
-            .padding(.leading, 12)
-
-            VStack {
-
-                if selectedId == template.readingsTemplateId {
-
-                    HStack {
-                        Text(template.name)
-                            .font(.footnote.weight(.semibold))
-                        Spacer()
-                    }
-
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {
                             ForEach(template.amount, id: \.self) { amount in
-                                Button(action: {
+                                Button {
                                     input = amount
-                                }, label: {
-                                    if let reading = stopData.readings.first(where: {
-                                        $0.universalTemplateId == template.readingsTemplateId &&
-                                        $0.bodyOfWaterId == bodyOfWaterId
-                                    }) {
-                                        if reading.amount == amount {
-                                            Text("\(amount)")
-                                                .modifier(SubmitButtonModifier())
-                                        } else {
-                                            Text("\(amount)")
-                                                .modifier(ListButtonModifier())
-                                        }
-                                    } else {
-                                        Text("\(amount)")
-                                            .modifier(ListButtonModifier())
-                                    }
-                                })
+                                } label: {
+                                    amountChip(amount, isSelected: currentReading?.amount == amount)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            TextField("Input", text: $input)
-                                .focused($chemicalInput)
-                                .modifier(TextFieldModifier())
-                                .modifier(OutLineButtonModifier())
+
+                            readingInputField
                         }
-                    }
-
-                } else {
-                    if input == "" {
-                        HStack {
-                            Text(template.name)
-                                .font(.footnote.weight(.medium))
-
-                            if let reading = stopData.readings.first(where: {
-                                $0.universalTemplateId == template.readingsTemplateId &&
-                                $0.bodyOfWaterId == bodyOfWaterId
-                            }) {
-                                Text("• \(reading.amount ?? "")")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        }
-                        .modifier(ListButtonModifier())
-
-                    } else {
-
-                        HStack {
-                            Text(template.name)
-                                .font(.footnote.weight(.medium))
-
-                            if let reading = stopData.readings.first(where: {
-                                $0.universalTemplateId == template.readingsTemplateId &&
-                                $0.bodyOfWaterId == bodyOfWaterId
-                            }) {
-                                Text("• \(reading.amount ?? "")")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                        }
-                        .modifier(AddButtonModifier())
+                        .padding(.vertical, 1)
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .padding(.leading, 30)
-            .padding(.vertical, 10)
         }
-        .padding(.vertical, 4)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.listColor)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.listColor.opacity(0.72))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.black.opacity(0.05))
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(isExpanded ? Color.poolBlue.opacity(0.35) : Color.black.opacity(0.05), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
-
+        .contentShape(Rectangle())
         .onChange(of: stopData, perform: { datum in
             if let reading = datum.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
                 input = reading.amount ?? ""
@@ -293,5 +189,69 @@ struct StopDataReadingInputView: View {
                 }
             }
         })
+    }
+}
+
+private extension StopDataReadingInputView {
+    var isExpanded: Bool {
+        selectedId == template.readingsTemplateId
+    }
+
+    var trimmedInput: String {
+        input.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var hasValue: Bool {
+        !trimmedInput.isEmpty
+    }
+
+    var currentReading: Reading? {
+        stopData.readings.first {
+            $0.universalTemplateId == template.readingsTemplateId &&
+            $0.bodyOfWaterId == bodyOfWaterId
+        }
+    }
+
+    var displayValue: String {
+        guard hasValue else { return "-" }
+        return trimmedInput
+    }
+
+    var statusTint: Color {
+        if hasValue { return Color.poolGreen }
+        if isExpanded { return Color.poolBlue }
+        return Color.secondary.opacity(0.75)
+    }
+
+    var readingInputField: some View {
+        TextField("Input", text: $input)
+            .focused($chemicalInput)
+            .keyboardType(.decimalPad)
+            .font(.subheadline.weight(.semibold))
+            .multilineTextAlignment(.center)
+            .frame(width: 88, height: 36)
+            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(chemicalInput ? Color.poolBlue.opacity(0.55) : Color.secondary.opacity(0.18), lineWidth: 1)
+            }
+    }
+
+    func amountChip(_ amount: String, isSelected: Bool) -> some View {
+        Text(amount)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(minWidth: 44, minHeight: 36)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? Color.poolGreen : Color(.systemBackground))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(isSelected ? Color.poolGreen : Color.secondary.opacity(0.18), lineWidth: 1)
+            }
     }
 }

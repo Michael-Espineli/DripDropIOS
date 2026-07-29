@@ -30,26 +30,30 @@ struct MobileDashboard: View {
     let data = (1...100).map { "Item \($0)" }
     
     let columns = [
-        GridItem(.adaptive(minimum: 100))
+        GridItem(.adaptive(minimum: 100), spacing: 14)
     ]
     @State var isLoading : Bool = false
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 30) {
-                routePreview
-                if UIDevice.isIPhone {
-                    dashboardDetails
-                    
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                LazyVGrid(columns: columns, spacing: 14) {
+                    routePreview
+                    if UIDevice.isIPhone {
+                        dashboardDetails
+                    }
+                    todoList
+                    pendingJobs
+                    shoppingList
+                    unassignedPurchasedItems
+                    repairRequests
                 }
-                todoList
-                pendingJobs
-                shoppingList
-                unassignedPurchasedItems
-                repairRequests
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
             }
-            .padding(20)
         }
-        //        .background(Color.white)
         .task{
             isLoading = true
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
@@ -117,333 +121,183 @@ struct MobileDashboard_Previews: PreviewProvider {
     }
 }
 extension MobileDashboard{
-    
+
     var repairRequests: some View {
-            NavigationLink(value: Route.repairRequestList(dataService: dataService), label: {
-            ZStack{
-                VStack{
-                    Spacer()
-                    ZStack{
-                        Color.poolBlue
-                        Text("Repair Requests")
-                            .foregroundColor(Color.white)
-                    }
-                    .frame(height: 50)
-                }
-                VStack{
-                    HStack{
-                        ZStack{
-                            
-                            if let count = repairRequestVM.count {
-                                if count >= 1 && count <= 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "\(String(count)).circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .font(.title)
-                                } else if count > 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .overlay{
-                                            HStack{
-                                                Text("50")
-                                                Image(systemName: "plus")
-                                                
-                                            }
-                                        }
-                                }
-                                
-                            }
-                        }
-                        Spacer()
-                    }
-                    Spacer()
-                }
-            }
-            .frame(minWidth: 80, idealWidth: 100, maxWidth: 120, minHeight: 80, idealHeight: 100, maxHeight: 120)
-            .foregroundColor(Color.basicFontText)
-            .background(Color.gray)
-            .cornerRadius(5)
-            .background(Color.white // any non-transparent background
-                .cornerRadius(10)
-                .shadow(color: Color.basicFontText, radius: 6, x: 2, y: 2)
+        NavigationLink(value: Route.repairRequestList(dataService: dataService)) {
+            dashboardActionTile(
+                title: "Repair Requests",
+                systemImage: "wrench.and.screwdriver",
+                badgeCount: repairRequestVM.count
             )
-        })
-        
+        }
+        .buttonStyle(.plain)
     }
-    
+
     var todoList: some View {
-            NavigationLink(value: Route.toDoList(dataService: dataService), label: {
-            ZStack{
-                VStack(alignment: .leading){
-                    Spacer()
-                    ZStack{
-                        Color.poolBlue
-                        Text("To Do List")
-                            .foregroundColor(Color.white)
-                    }
-                    .frame(height: 50)
-
-                }
-                VStack{
-                    HStack{
-                        ZStack{
-                            
-                            if let count = toDoVM.toDoListCount {
-                                if count >= 1 && count <= 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "\(String(count)).circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .font(.title)
-                                } else if count > 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .overlay{
-                                            HStack{
-                                                Text("50")
-                                                Image(systemName: "plus")
-                                            }
-                                        }
-                                }
-                            }
-                        }
-                        Spacer()
-                    }
-                    Spacer()
-                }
-                .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 0))
-            }
-            .frame(minWidth: 80, idealWidth: 100, maxWidth: 120, minHeight: 80, idealHeight: 100, maxHeight: 120)
-            .foregroundColor(Color.basicFontText)
-            .background(Color.gray)
-            .cornerRadius(10)
-            .background(Color.white // any non-transparent background
-                .cornerRadius(10)
-                .shadow(color: Color.basicFontText, radius: 6, x: 0, y: 0)
+        NavigationLink(value: Route.toDoList(dataService: dataService)) {
+            dashboardActionTile(
+                title: "To Do List",
+                systemImage: "checklist",
+                badgeCount: toDoVM.toDoListCount
             )
-        })
-        
+        }
+        .buttonStyle(.plain)
     }
+
     var shoppingList: some View {
-
-            NavigationLink(value: Route.shoppingList(dataService: dataService), label: {
-
-            ZStack{
-                VStack(alignment: .leading){
-                    Spacer()
-                    ZStack{
-                        Color.poolBlue
-                        Text("Shopping List")
-                            .foregroundColor(Color.white)
-                    }
-                    .frame(height: 50)
-
-                }
-                VStack{
-                    HStack{
-                        ZStack{
-                            if let count = shoppingListVM.shoppingListItemCount {
-                                if count >= 1 && count <= 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "\(String(count)).circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .font(.title)
-                                } else if count > 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .overlay{
-                                            HStack{
-                                                Text("50")
-                                                Image(systemName: "plus")
-                                                
-                                            }
-                                        }
-                                }
-                                
-                            }
-                        }
-                        Spacer()
-                    }
-                    Spacer()
-                }
-                .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 0))
-            }
-            .frame(minWidth: 80, idealWidth: 100, maxWidth: 120, minHeight: 80, idealHeight: 100, maxHeight: 120)
-            .foregroundColor(Color.basicFontText)
-            .background(Color.gray)
-            .cornerRadius(10)
-            .background(Color.white // any non-transparent background
-                .cornerRadius(10)
-                .shadow(color: Color.basicFontText, radius: 6, x: 2, y: 2)
+        NavigationLink(value: Route.shoppingList(dataService: dataService)) {
+            dashboardActionTile(
+                title: "Shopping List",
+                systemImage: "cart",
+                badgeCount: shoppingListVM.shoppingListItemCount
             )
-        })
-        
+        }
+        .buttonStyle(.plain)
     }
+
     var unassignedPurchasedItems: some View {
-
-            NavigationLink(value: Route.purchasedItemsList(dataService: dataService), label: {
-
-            ZStack{
-                VStack(alignment: .leading){
-                Spacer()
-                    ZStack{
-                        Color.poolBlue
-                        Text("Purchased Items")
-                            .foregroundColor(Color.white)
-                    }
-                    .frame(height: 50)
-
-                }
-                VStack{
-                    HStack{
-                        ZStack{
-                            if let count = purchaseVM.purchaseCount {
-                                if count >= 1 && count <= 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "\(String(count)).circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .font(.title)
-                                } else if count > 50 {
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.white)
-                                    Image(systemName: "circle.fill")
-                                        .foregroundColor(Color.poolRed)
-                                        .overlay{
-                                            HStack{
-                                                Text("50")
-                                                Image(systemName: "plus")
-                                                
-                                            }
-                                        }
-                                }
-                                
-                            }
-                        }
-                        Spacer()
-                    }
-                    Spacer()
-                }
-                .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 0))
-
-            }
-            .frame(minWidth: 80, idealWidth: 100, maxWidth: 120, minHeight: 80, idealHeight: 100, maxHeight: 120)
-            .foregroundColor(Color.basicFontText)
-            .background(Color.gray)
-            .cornerRadius(10)
-            .background(Color.white // any non-transparent background
-                .cornerRadius(10)
-                .shadow(color: Color.basicFontText, radius: 6, x: 2, y: 2)
+        NavigationLink(value: Route.purchasedItemsList(dataService: dataService)) {
+            dashboardActionTile(
+                title: "Purchased Items",
+                systemImage: "shippingbox",
+                badgeCount: purchaseVM.purchaseCount
             )
-        })
-        
+        }
+        .buttonStyle(.plain)
     }
-    
+
     var pendingJobs: some View {
-
-            NavigationLink(value: Route.pendingJobs(dataService: dataService), label: {
-
-            ZStack{
-                VStack(alignment: .leading){
-                    Spacer()
-                    ZStack{
-                        Color.poolBlue
-                        Text("Pending Jobs")
-                            .foregroundColor(Color.white)
-                    }
-                    .frame(height: 50)
-                }
-                VStack{
-                    HStack{
-                        ZStack{
-                            Image(systemName: "circle.fill")
-                                .foregroundColor(Color.white)
-                            Image(systemName: "12.circle.fill")
-                                .foregroundColor(Color.poolRed)
-                                .font(.title)
-                        }
-                        Spacer()
-                    }
-                    Spacer()
-                }
-                .padding(EdgeInsets(top: 10, leading: 10, bottom: 0, trailing: 0))
-            }
-            .frame(minWidth: 80, idealWidth: 100, maxWidth: 120, minHeight: 80, idealHeight: 100, maxHeight: 120)
-            .foregroundColor(Color.gray)
-            .background(Color.gray)
-            .cornerRadius(10)
-            .background(Color.white // any non-transparent background
-                .cornerRadius(10)
-                .shadow(color: Color.basicFontText, radius: 6, x: 0, y: 0)
+        NavigationLink(value: Route.pendingJobs(dataService: dataService)) {
+            dashboardActionTile(
+                title: "Pending Jobs",
+                systemImage: "briefcase",
+                badgeCount: 12
             )
-        })
-        
+        }
+        .buttonStyle(.plain)
     }
-    
+
     var dashboardDetails: some View {
-
-            NavigationLink(value: Route.dashBoard(dataService: dataService), label: {
-
-            HStack{
-                VStack(alignment: .leading){
-                    Spacer()
-                    ZStack{
-                        Color.poolBlue
-                        Text("Dashboard")
-                            .foregroundColor(Color.white)
-                    }
-                    .frame(height: 50)
-                }
-            }
-            .frame(minWidth: 80, idealWidth: 100, maxWidth: 120, minHeight: 80, idealHeight: 100, maxHeight: 120)
-            .foregroundColor(Color.basicFontText)
-            .background(Color.gray)
-            .cornerRadius(10)
-            .background(Color.white // any non-transparent background
-                .cornerRadius(10)
-                .shadow(color: Color.basicFontText, radius: 6, x: 0, y: 0)
+        NavigationLink(value: Route.dashBoard(dataService: dataService)) {
+            dashboardActionTile(
+                title: "Dashboard",
+                systemImage: "rectangle.grid.2x2"
             )
-        })
+        }
+        .buttonStyle(.plain)
     }
-    var routePreview: some View {
-            NavigationLink(value: Route.mainDailyDisplayView(dataService: dataService), label: {
 
-            VStack{
-                ZStack{
-                    Circle()
-                        .fill(.gray.opacity(0.5))
-                        .frame(width: 90, height: 90)
-                    
-                    Circle()
-                        .trim(from: 0, to: Double(activeRouteVM.finishedStops ?? 0) / Double(activeRouteVM.totalStops ?? 0))
-                        .stroke(Color.poolGreen, style: StrokeStyle(lineWidth: 10, lineCap: .round, lineJoin: .round))
-                        .frame(width: 80, height: 80)
-                        .rotationEffect(.degrees(-90))
-                    Circle()
-                        .strokeBorder(style: StrokeStyle(lineWidth: 10, dash:[1,20]))
-                        .fill(.black)
-                        .rotationEffect(.degrees(-90))
-                    Text("\(String(format:  "%.0f", activeRouteVM.finishedStops ?? 0)) / \(String(format:  "%.0f", activeRouteVM.totalStops ?? 0))")
-                        .foregroundColor(Color.basicFontText)
-                        .font(.headline)
-                        .bold(true)
+    var routePreview: some View {
+        NavigationLink(value: Route.mainDailyDisplayView(dataService: dataService)) {
+            dashboardTile {
+                VStack(alignment: .leading, spacing: 10) {
+                    routeProgressRing
+
+                    Spacer(minLength: 8)
+
+                    Text("Today's Route")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+
+                    Text(routeStopSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
-        })
-        .foregroundColor(Color.basicFontText)
-        .background(Color.gray // any non-transparent background
-            .cornerRadius(10)
-            .shadow(color: Color.basicFontText, radius: 6, x: 2, y: 2)
-        )
-        
+        }
+        .buttonStyle(.plain)
+    }
+
+    var routeProgressRing: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.primary.opacity(0.14), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+
+            Circle()
+                .trim(from: 0, to: routeProgress)
+                .stroke(Color.poolGreen, style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+                .rotationEffect(.degrees(-90))
+
+            Text("\(activeRouteVM.finishedStops ?? 0)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.primary)
+        }
+        .frame(width: 58, height: 58)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(routeStopSummary)
+    }
+
+    var routeProgress: Double {
+        guard let totalStops = activeRouteVM.totalStops, totalStops > 0 else {
+            return 0
+        }
+
+        let finishedStops = min(max(activeRouteVM.finishedStops ?? 0, 0), totalStops)
+        return Double(finishedStops) / Double(totalStops)
+    }
+
+    var routeStopSummary: String {
+        "\(activeRouteVM.finishedStops ?? 0) of \(activeRouteVM.totalStops ?? 0) stops"
+    }
+
+    func dashboardActionTile(
+        title: String,
+        systemImage: String,
+        badgeCount: Int? = nil
+    ) -> some View {
+        dashboardTile {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    Image(systemName: systemImage)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 40, height: 40)
+                        .background(Color.accentColor.opacity(0.14), in: Circle())
+
+                    Spacer(minLength: 8)
+
+                    dashboardBadge(count: badgeCount)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+            }
+        }
+    }
+
+    func dashboardTile<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+    }
+
+    @ViewBuilder
+    func dashboardBadge(count: Int?) -> some View {
+        if let count, count > 0 {
+            Text(count > 50 ? "50+" : "\(count)")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(minWidth: 24, minHeight: 24)
+                .padding(.horizontal, count > 9 ? 4 : 0)
+                .background(Color.poolRed, in: Capsule())
+                .accessibilityLabel("\(count) items")
+        }
     }
 }
-

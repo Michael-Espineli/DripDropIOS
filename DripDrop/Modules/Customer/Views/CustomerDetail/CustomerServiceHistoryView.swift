@@ -6,6 +6,8 @@
 //
 ///There are a whole Bunch of duplicate functions in here if I call one it calls them all, so fix that
 import SwiftUI
+import FirebaseFirestore
+import FirebaseFirestoreSwift
 
 enum CustomerTimelineEventKind: String, CaseIterable {
     case serviceStop = "Service Stop"
@@ -15,6 +17,7 @@ enum CustomerTimelineEventKind: String, CaseIterable {
     case waterFill = "Water Fill"
     case waterEmpty = "Water Empty"
     case workOrder = "Work Order"
+    case outstandingWork = "Outstanding Work"
     case note = "Note"
 
     var systemImage: String {
@@ -26,6 +29,7 @@ enum CustomerTimelineEventKind: String, CaseIterable {
         case .waterFill: return "drop.fill"
         case .waterEmpty: return "drop"
         case .workOrder: return "briefcase"
+        case .outstandingWork: return "exclamationmark.circle"
         case .note: return "text.bubble"
         }
     }
@@ -39,6 +43,7 @@ enum CustomerTimelineEventKind: String, CaseIterable {
         case .waterFill: return .indigo
         case .waterEmpty: return .orange
         case .workOrder: return .purple
+        case .outstandingWork: return .orange
         case .note: return .green
         }
     }
@@ -62,7 +67,7 @@ enum CustomerTimelineFilter: String, CaseIterable, Identifiable {
         case .service:
             return kind == .serviceStop
         case .jobs:
-            return kind == .workOrder
+            return kind == .workOrder || kind == .outstandingWork
         case .notes:
             return kind == .note
         case .chemistry:
@@ -105,13 +110,17 @@ final class CustomerTimelineViewModel: ObservableObject {
             async let equipmentEvents = loadEquipmentEvents(companyId: companyId, customerId: customer.id)
             async let waterEvents = loadWaterEvents(companyId: companyId, customerId: customer.id)
             async let jobEvents = loadJobEvents(companyId: companyId, customerId: customer.id)
+            async let customerNoteEvents = loadCustomerNoteEvents(companyId: companyId, customerId: customer.id)
+            async let outstandingWorkEvents = loadOutstandingWorkEvents(companyId: companyId, customerId: customer.id)
 
             let loadedServiceStops = try await serviceStopEvents
             let loadedStopData = try await stopDataEvents
             let loadedEquipment = try await equipmentEvents
             let loadedWater = try await waterEvents
             let loadedJobs = try await jobEvents
-            let combined = loadedServiceStops + loadedStopData + loadedEquipment + loadedWater + loadedJobs
+            let loadedCustomerNotes = try await customerNoteEvents
+            let loadedOutstandingWork = try await outstandingWorkEvents
+            let combined = loadedServiceStops + loadedStopData + loadedEquipment + loadedWater + loadedJobs + loadedCustomerNotes + loadedOutstandingWork
             events = combined.sorted { $0.date > $1.date }
         } catch {
             print("[CustomerTimelineViewModel][load] error: \(error)")
@@ -258,6 +267,75 @@ final class CustomerTimelineViewModel: ObservableObject {
         }
 
         return events
+    }
+
+    private func loadCustomerNoteEvents(companyId: String, customerId: String) async throws -> [CustomerTimelineEvent] {
+        let snapshot = try await Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("customers")
+            .document(customerId)
+            .collection("notes")
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            do {
+                let note = try document.data(as: CustomerNote.self)
+                return CustomerTimelineEvent(
+                    id: "customer-note-\(note.id)",
+                    kind: .note,
+                    title: note.resolved == true ? "Customer note resolved" : "Customer note",
+                    subtitle: [note.displayAuthor, note.bodyOfWaterName ?? ""]
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " • "),
+                    detail: note.displayText,
+                    date: note.displayDate
+                )
+            } catch {
+                print("[CustomerTimelineViewModel][loadCustomerNoteEvents] Decode Error: \(error)")
+                return nil
+            }
+        }
+    }
+
+    private func loadOutstandingWorkEvents(companyId: String, customerId: String) async throws -> [CustomerTimelineEvent] {
+        let snapshot = try await Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("customers")
+            .document(customerId)
+            .collection("outstandingWork")
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            do {
+                let record = try document.data(as: CustomerOutstandingWork.self)
+                guard record.billingStatus != JobBillingStatus.expired.rawValue else { return nil }
+                let subtitle = [
+                    record.displayStatus,
+                    record.bodyOfWaterName ?? "",
+                    record.serviceLocationName ?? ""
+                ]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " • ")
+                let detail = [record.displayDetail, record.reason ?? ""]
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                    .joined(separator: "\n")
+
+                return CustomerTimelineEvent(
+                    id: "outstanding-work-\(record.id)",
+                    kind: .outstandingWork,
+                    title: record.displayTitle,
+                    subtitle: subtitle,
+                    detail: detail,
+                    date: record.displayDate
+                )
+            } catch {
+                print("[CustomerTimelineViewModel][loadOutstandingWorkEvents] Decode Error: \(error)")
+                return nil
+            }
+        }
     }
 }
 

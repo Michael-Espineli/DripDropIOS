@@ -214,8 +214,54 @@ enum ShoppingListStatus:String, Codable, CaseIterable, Identifiable {
         return self.rawValue
     }
     case needToPurchase = "Need to Purchase"
+    case needsCustomerApproval = "Needs Customer Approval"
+    case readyToPurchase = "Ready to Purchase"
+    case customerRejected = "Customer Rejected"
     case purchased = "Purchased"
+    case delivered = "Delivered"
     case installed = "Installed"
+    case invoiced = "Invoiced"
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = (try? container.decode(String.self)) ?? ""
+        self = Self.fromFirestoreValue(value)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
+    static func fromFirestoreValue(_ value: String) -> ShoppingListStatus {
+        switch normalizedStatus(value) {
+        case "needtopurchase", "needpurchase":
+            return .needToPurchase
+        case "needscustomerapproval", "customerapproval", "pendingapproval":
+            return .needsCustomerApproval
+        case "readytopurchase", "approved":
+            return .readyToPurchase
+        case "customerrejected", "rejected":
+            return .customerRejected
+        case "purchased":
+            return .purchased
+        case "delivered":
+            return .delivered
+        case "installed":
+            return .installed
+        case "invoiced", "paid":
+            return .invoiced
+        default:
+            return .needToPurchase
+        }
+    }
+
+    private static func normalizedStatus(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
 }
 
 enum toDoStatus: String, CaseIterable, Codable {

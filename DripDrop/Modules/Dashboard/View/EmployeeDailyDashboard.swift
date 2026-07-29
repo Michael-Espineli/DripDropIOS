@@ -71,6 +71,9 @@ struct EmployeeDailyDashboard: View {
     @State private var routeCloseoutPromptedRouteId: String? = nil
     @State private var showPreviousRouteReview: Bool = false
     @State private var routePendingEnd: ActiveRoute? = nil
+    @State private var showCreateJobOptions: Bool = false
+    @State private var showCreateBlankJob: Bool = false
+    @State private var showCreateFromTemplate: Bool = false
 
     @AppStorage("employeeDailyDashboardRouteViewMode")
     private var routeViewModeRawValue: String = EmployeeDailyDashboardRouteViewMode.list.rawValue
@@ -178,6 +181,7 @@ struct EmployeeDailyDashboard: View {
         }
         .onChange(of: VM.serviceStopList) { _, _ in
             updateRouteMapCamera()
+            refreshShoppingListBadge()
             presentRouteCloseoutIfNeeded()
         }
         .onChange(of: VM.activeRoute) { _, _ in
@@ -285,11 +289,23 @@ struct EmployeeDailyDashboard: View {
 
         Task {
             do {
-                listOfShoppingListItems = try await dataService.getShoppingListItemByUserAndStatusCount(
-                    companyId: company.id,
-                    userId: user.id,
-                    status: .needToPurchase
+                let prepKeys = ShoppingPrepKeyBuilder.keysForRoute(
+                    serviceStops: VM.serviceStopList,
+                    userId: user.id
                 )
+
+                guard !prepKeys.isEmpty else {
+                    listOfShoppingListItems = 0
+                    return
+                }
+
+                let routePrepItems = try await dataService.getShoppingListItemsForPrepKeys(
+                    companyId: company.id,
+                    prepKeys: prepKeys,
+                    needsAction: true
+                )
+
+                listOfShoppingListItems = routePrepItems.count
             } catch {
                 listOfShoppingListItems = 0
                 print("[EmployeeDailyDashboard][refreshShoppingListBadge] Error", error)
@@ -447,7 +463,13 @@ extension EmployeeDailyDashboard {
             }
             .buttonStyle(.plain)
 
-            NavigationLink(value: Route.shoppingList(dataService: dataService)) {
+            NavigationLink {
+                ShoppingListView(
+                    dataService: dataService,
+                    routeServiceStops: VM.serviceStopList,
+                    routeDate: VM.selectedDate
+                )
+            } label: {
                 dashboardToolbarIcon(
                     systemImage: "cart",
                     badgeCount: listOfShoppingListItems
@@ -455,18 +477,161 @@ extension EmployeeDailyDashboard {
             }
             .buttonStyle(.plain)
 
-            NavigationLink(value: Route.createNewJob(dataService: dataService)) {
-                dashboardToolbarIcon(
-                    systemImage: "plus",
-                    badgeCount: 0
-                )
+            if masterDataManager.role?.canCreateAnyJob == true {
+                Button {
+                    showCreateJobOptions = true
+                } label: {
+                    dashboardToolbarIcon(
+                        systemImage: "plus",
+                        badgeCount: 0
+                    )
+                }
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showCreateJobOptions) {
+                    technicianCreateJobOptionsSheet
+                        .presentationDetents([.medium])
+                }
+                .sheet(isPresented: $showCreateBlankJob) {
+                    AddNewJobView(
+                        dataService: dataService,
+                        customerId: nil,
+                        isTechnicianCreateFlow: true,
+                        canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                    )
+                }
+                .sheet(isPresented: $showCreateFromTemplate) {
+                    if let company = masterDataManager.currentCompany {
+                        JobTemplatePickerCreateJobSheet(
+                            companyId: company.id,
+                            dataService: dataService,
+                            technicianCanAddOnly: true,
+                            isTechnicianCreateFlow: true,
+                            canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                        )
+                        .presentationDetents([.large])
+                    } else {
+                        Text("Missing company.")
+                            .presentationDetents([.medium])
+                    }
+                }
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(.regularMaterial)
     }
+
+    var technicianCreateJobOptionsSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                VStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Create Job")
+                                    .font(.title3.weight(.semibold))
+
+                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Start blank or use a technician-enabled template." : "Use a technician-enabled job template.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "plus.circle")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 36, height: 36)
+                                .background(.thinMaterial, in: Circle())
+                        }
+                    }
+                    .dashboardCreateJobOptionCard()
+
+                    if masterDataManager.role?.canCreateBlankJob == true {
+                        Button {
+                            showCreateJobOptions = false
+
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                showCreateBlankJob = true
+                            }
+                        } label: {
+                            technicianJobCreateOptionRow(
+                                title: "Blank Job",
+                                subtitle: "Create a simplified blank job.",
+                                systemImage: "doc.badge.plus"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if masterDataManager.role?.canCreateJobFromTemplate == true {
+                        Button {
+                            showCreateJobOptions = false
+
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                showCreateFromTemplate = true
+                            }
+                        } label: {
+                            technicianJobCreateOptionRow(
+                                title: "From Template",
+                                subtitle: "Create from a template marked for technicians.",
+                                systemImage: "square.stack.3d.up"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Spacer()
+                }
+                .padding(14)
+            }
+            .navigationTitle("New Job")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showCreateJobOptions = false
+                    }
+                }
+            }
+        }
+    }
+
+    func technicianJobCreateOptionRow(
+        title: String,
+        subtitle: String,
+        systemImage: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
     var shoppingListIcon: some View {
         ZStack {
             Image(systemName: "list.clipboard.fill")
@@ -548,34 +713,20 @@ extension EmployeeDailyDashboard {
                 .buttonStyle(.plain)
             }
         }
-        .employeeDashCard(material: true)
+        .employeeDashCard(padding: 12)
     }}
 
 // MARK: - Route View Selector
 extension EmployeeDailyDashboard {
     private var routeViewSelector: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Image(systemName: selectedRouteViewMode.systemImage)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 34, height: 34)
-                    .background(.thinMaterial, in: Circle())
-
-                Text("Route View")
-                    .font(.subheadline.weight(.semibold))
-
-                Spacer()
+        Picker("Route View", selection: selectedRouteViewModeBinding) {
+            ForEach(EmployeeDailyDashboardRouteViewMode.allCases) { mode in
+                Text(mode.title).tag(mode)
             }
-
-            Picker("Route View", selection: selectedRouteViewModeBinding) {
-                ForEach(EmployeeDailyDashboardRouteViewMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
         }
-        .employeeDashCard(material: true)
+        .pickerStyle(.segmented)
+        .controlSize(.small)
+        .employeeDashCard(material: true, padding: 8)
     }
 }
 
@@ -776,66 +927,101 @@ extension EmployeeDailyDashboard {
 // MARK: - Route Info
 extension EmployeeDailyDashboard {
     var routeInfo: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             if let activeRoute = VM.activeRoute {
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .center, spacing: 10) {
                     routeProgressRing(activeRoute)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(activeRoute.name.isEmpty ? "Today’s Route" : activeRoute.name)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(activeRoute.name.isEmpty ? "Today’s Route" : activeRoute.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+
+                            Spacer(minLength: 4)
+
+                            routeStatusBadge(activeRoute.status.rawValue)
+                        }
 
                         Text("\(activeRoute.finishedStops) of \(activeRoute.totalStops) stops complete")
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
-
-                        routeStatusBadge(activeRoute.status.rawValue)
                     }
-
-                    Spacer()
                 }
 
                 routeMetricGrid(activeRoute)
 
-                Divider().opacity(0.35)
-
                 if routeNeedsStartMileage(activeRoute) {
+                    Divider().opacity(0.25)
                     routeStartMileageCard(activeRoute)
                 }
 
                 if routeNeedsCloseout(activeRoute) {
+                    if !routeNeedsStartMileage(activeRoute) {
+                        Divider().opacity(0.25)
+                    }
                     routeCloseoutCard(activeRoute)
                 }
 
                 routeActionButtons
             }
         }
-        .employeeDashCard()
+        .employeeDashCard(padding: 12)
     }
     private var routeActionButtons: some View {
-        HStack {
+        HStack(spacing: 8) {
 
             if !VM.enableMove && !enableReorder {
-                Button("Reorder") { enableReorder = true }
-                Spacer()
-                Button("Move") { VM.enableMove = true }
+                Button {
+                    enableReorder = true
+                } label: {
+                    routeSummaryButton(
+                        title: "Reorder",
+                        systemImage: "arrow.up.arrow.down",
+                        foreground: .accentColor,
+                        background: Color.accentColor.opacity(0.12)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    VM.enableMove = true
+                } label: {
+                    routeSummaryButton(
+                        title: "Move",
+                        systemImage: "arrowshape.turn.up.right",
+                        foreground: .accentColor,
+                        background: Color.accentColor.opacity(0.12)
+                    )
+                }
+                .buttonStyle(.plain)
             }
 
             if enableReorder {
                 Button(action: { enableReorder = false}, label: {
-                    Text("Cancel")
-                        .modifier(DeleteButtonModifier())
+                    routeSummaryButton(
+                        title: "Cancel",
+                        systemImage: "xmark",
+                        foreground: .red,
+                        background: Color.red.opacity(0.12)
+                    )
                 })
-                Spacer()
+                .buttonStyle(.plain)
 
                 Button(action: {
                     VM.reorderServiceStops(companyId: masterDataManager.currentCompany?.id)
                     enableReorder = false
                 }, label: {
-                    Text("Save")
-                        .modifier(SubmitButtonModifier())
+                    routeSummaryButton(
+                        title: "Save",
+                        systemImage: "checkmark",
+                        foreground: .white,
+                        background: Color.accentColor
+                    )
                 })
+                .buttonStyle(.plain)
             }
 
             if VM.enableMove {
@@ -843,17 +1029,26 @@ extension EmployeeDailyDashboard {
                     VM.cancelMove()
                     VM.enableMove = false
                 }, label: {
-                    Text("Cancel")
-                        .modifier(DeleteButtonModifier())
+                    routeSummaryButton(
+                        title: "Cancel",
+                        systemImage: "xmark",
+                        foreground: .red,
+                        background: Color.red.opacity(0.12)
+                    )
                 })
-                Spacer()
+                .buttonStyle(.plain)
 
                 Button(action: {
                     confirmMove.toggle()
                 }, label: {
-                    Text("Confirm")
-                        .modifier(SubmitButtonModifier())
+                    routeSummaryButton(
+                        title: "Confirm",
+                        systemImage: "checkmark",
+                        foreground: VM.selectedServiceStops.isEmpty ? Color.secondary : .white,
+                        background: VM.selectedServiceStops.isEmpty ? Color.secondary.opacity(0.12) : Color.accentColor
+                    )
                 })
+                .buttonStyle(.plain)
                 .disabled(VM.selectedServiceStops.isEmpty)
                 .sheet(isPresented: $confirmMove) {
                     moveConfirmationSheet
@@ -861,6 +1056,22 @@ extension EmployeeDailyDashboard {
                 }
             }
         }
+    }
+
+    private func routeSummaryButton(
+        title: String,
+        systemImage: String,
+        foreground: Color,
+        background: Color
+    ) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .foregroundStyle(foreground)
+            .background(background, in: Capsule())
     }
 }
 
@@ -1710,8 +1921,8 @@ extension EmployeeDailyDashboard {
     private func routeProgressRing(_ activeRoute: ActiveRoute) -> some View {
         ZStack {
             Circle()
-                .stroke(Color.primary.opacity(0.12), lineWidth: 8)
-                .frame(width: 76, height: 76)
+                .stroke(Color.primary.opacity(0.12), lineWidth: 5)
+                .frame(width: 48, height: 48)
 
             Circle()
                 .trim(
@@ -1720,25 +1931,31 @@ extension EmployeeDailyDashboard {
                 )
                 .stroke(
                     Color.poolGreen,
-                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 5, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .frame(width: 76, height: 76)
+                .frame(width: 48, height: 48)
 
             VStack(spacing: 1) {
                 Text("\(activeRoute.finishedStops)")
-                    .font(.headline.weight(.bold))
+                    .font(.caption.weight(.bold))
 
                 Text("of \(activeRoute.totalStops)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 82, height: 82)
+        .frame(width: 52, height: 52)
     }
 
     private func routeMetricGrid(_ activeRoute: ActiveRoute) -> some View {
-        VStack(spacing: 8) {
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8)
+            ],
+            spacing: 8
+        ) {
             if let startTime = activeRoute.startTime {
                 metricRow(
                     title: "Time",
@@ -1779,33 +1996,36 @@ extension EmployeeDailyDashboard {
         detail: String?,
         systemImage: String
     ) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
-                .background(.thinMaterial, in: Circle())
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.caption2.weight(.semibold))
 
-            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-
-                if let detail, !detail.isEmpty {
-                    Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
+            .foregroundStyle(.secondary)
 
-            Spacer()
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            if let detail, !detail.isEmpty {
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
         }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     @ViewBuilder
@@ -1913,38 +2133,32 @@ extension EmployeeDailyDashboard {
     }
 
     private var routeOrderDifferenceCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(
-                title: "Route Order Changed",
-                subtitle: "This active route order does not match the recurring default route.",
-                systemImage: "arrow.triangle.branch"
-            )
-
-            HStack(spacing: 10) {
-                Button {
-                    VM.resetOrderToMatchRecurringRoute(companyId: masterDataManager.currentCompany?.id)
-                } label: {
-                    actionButton(
-                        title: "Reset Order",
-                        systemImage: "arrow.uturn.backward",
-                        tint: .orange
-                    )
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    VM.reorderServiceStopsPermanently(companyId: masterDataManager.currentCompany?.id)
-                } label: {
-                    actionButton(
-                        title: "Update Default",
-                        systemImage: "checkmark.circle",
-                        tint: .green
-                    )
-                }
-                .buttonStyle(.plain)
+        HStack(spacing: 8) {
+            Button {
+                VM.resetOrderToMatchRecurringRoute(companyId: masterDataManager.currentCompany?.id)
+            } label: {
+                routeSummaryButton(
+                    title: "Reset Order",
+                    systemImage: "arrow.uturn.backward",
+                    foreground: .orange,
+                    background: Color.orange.opacity(0.12)
+                )
             }
+            .buttonStyle(.plain)
+
+            Button {
+                VM.reorderServiceStopsPermanently(companyId: masterDataManager.currentCompany?.id)
+            } label: {
+                routeSummaryButton(
+                    title: "Update Default",
+                    systemImage: "checkmark.circle",
+                    foreground: .green,
+                    background: Color.green.opacity(0.12)
+                )
+            }
+            .buttonStyle(.plain)
         }
-        .employeeDashCard()
+        .employeeDashCard(padding: 12)
     }
 
     private func stopCardWrapper(
@@ -3014,12 +3228,18 @@ private struct EmployeeRouteCalendarEntry: Identifiable {
 }
 
 private extension View {
-    func employeeDashCard(material: Bool = false) -> some View {
+    func employeeDashCard(material: Bool = false, padding: CGFloat = 16) -> some View {
         self
-            .padding(16)
+            .padding(padding)
             .background(
                 material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
                 in: RoundedRectangle(cornerRadius: 22, style: .continuous)
             )
+    }
+
+    func dashboardCreateJobOptionCard() -> some View {
+        self
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }

@@ -2880,6 +2880,8 @@ extension MyCompany{
 
 struct CompanyLeadSummary: Identifiable {
     let id: String
+    let serviceName: String
+    let serviceDescription: String
     let homeownerName: String
     let homeownerEmail: String
     let homeownerPhone: String
@@ -2893,19 +2895,28 @@ struct CompanyLeadSummary: Identifiable {
     let customerCompanyRelationshipId: String
     let streetAddress: String
     let city: String
+    let state: String
+    let zip: String
+    let latitude: Double?
+    let longitude: Double?
     let status: String
     let source: String
+    let sourceType: String
+    let publicLead: Bool
     let createdAt: Date?
+    let dateCompleted: Date?
     
     init(document: QueryDocumentSnapshot) {
         let data = document.data()
         let address = data["serviceLocationAddress"] as? [String: Any]
         
         id = document.documentID
-        homeownerName = data["homeownerName"] as? String ?? "Unknown Homeowner"
+        serviceName = data["serviceName"] as? String ?? "Lead Request"
+        serviceDescription = data["serviceDescription"] as? String ?? ""
+        homeownerName = data["homeownerName"] as? String ?? data["customerName"] as? String ?? "Unknown Homeowner"
         homeownerEmail = data["homeownerEmail"] as? String ?? ""
         homeownerPhone = data["homeownerPhone"] as? String ?? ""
-        customerId = data["customerId"] as? String ?? ""
+        customerId = data["customerId"] as? String ?? data["companyCustomerId"] as? String ?? ""
         customerName = data["customerName"] as? String ?? ""
         customerUserId = data["customerUserId"] as? String ?? ""
         homeownerId = data["homeownerId"] as? String ?? data["homeownerUserId"] as? String ?? customerUserId
@@ -2915,9 +2926,16 @@ struct CompanyLeadSummary: Identifiable {
         customerCompanyRelationshipId = data["customerCompanyRelationshipId"] as? String ?? relationshipId
         streetAddress = address?["streetAddress"] as? String ?? "No street address"
         city = address?["city"] as? String ?? ""
+        state = address?["state"] as? String ?? ""
+        zip = address?["zip"] as? String ?? address?["zipCode"] as? String ?? ""
+        latitude = CompanyLeadSummary.double(from: address?["latitude"])
+        longitude = CompanyLeadSummary.double(from: address?["longitude"])
         status = data["status"] as? String ?? "Pending"
-        source = data["source"] as? String ?? "Customer"
+        source = data["source"] as? String ?? ""
+        sourceType = data["sourceType"] as? String ?? ""
+        publicLead = data["publicLead"] as? Bool ?? false
         createdAt = CompanyLeadSummary.date(from: data["createdAt"])
+        dateCompleted = CompanyLeadSummary.date(from: data["dateCompleted"])
     }
     
     static func date(from value: Any?) -> Date? {
@@ -2932,9 +2950,30 @@ struct CompanyLeadSummary: Identifiable {
         }
         return nil
     }
+
+    static func double(from value: Any?) -> Double? {
+        if let double = value as? Double {
+            return double
+        }
+        if let int = value as? Int {
+            return Double(int)
+        }
+        if let string = value as? String {
+            return Double(string)
+        }
+        return nil
+    }
     
     var normalizedSource: String {
-        source == "Manual" ? "Manual" : "Customer"
+        let normalized = source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if normalized == "manual" {
+            return "Manual"
+        }
+        if normalized == "public" || publicLead || sourceType == "publicNoAccount" {
+            return "Public"
+        }
+        return "Customer"
     }
     
     var connectionLabel: String {
@@ -2956,6 +2995,16 @@ struct CompanyLeadSummary: Identifiable {
         }
         return "Needs customer/client link"
     }
+
+    var fullAddress: String {
+        [streetAddress == "No street address" ? "" : streetAddress, city, state, zip]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: ", ")
+    }
+
+    var hasLinkedCustomer: Bool {
+        !customerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 }
 
 struct CompanyLeadsView: View {
@@ -2967,12 +3016,12 @@ struct CompanyLeadsView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var searchTerm = ""
-    @State private var statusFilter = "All"
+    @State private var statusFilter = "Pending"
     @State private var sourceFilter = "All"
     @State private var listener: ListenerRegistration?
     
     private let statusOptions = ["All", "Pending", "In Progress", "Completed", "Cancelled"]
-    private let sourceOptions = ["All", "Customer", "Manual"]
+    private let sourceOptions = ["All", "Customer", "Public", "Manual"]
     
     var filteredLeads: [CompanyLeadSummary] {
         let term = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -2992,6 +3041,8 @@ struct CompanyLeadsView: View {
                 lead.customerCompanyRelationshipId,
                 lead.streetAddress,
                 lead.city,
+                lead.serviceName,
+                lead.serviceDescription,
                 lead.status,
                 lead.normalizedSource,
                 lead.id
@@ -3010,107 +3061,42 @@ struct CompanyLeadsView: View {
     var inProgressCount: Int {
         leads.filter { $0.status == "In Progress" }.count
     }
+
+    var completedRecentCount: Int {
+        leads.filter { $0.status == "Completed" && isRecentCompletion($0.dateCompleted) }.count
+    }
+
+    var cancelledRecentCount: Int {
+        leads.filter { $0.status == "Cancelled" && isRecentCompletion($0.dateCompleted) }.count
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                leadStat(title: "Pending", value: pendingCount)
-                leadStat(title: "In Progress", value: inProgressCount)
-                leadStat(title: "Visible", value: filteredLeads.count)
-            }
-            .padding(.horizontal)
-            
-            HStack {
-                Picker("Status", selection: $statusFilter) {
-                    ForEach(statusOptions, id: \.self) { status in
-                        Text(status).tag(status)
-                    }
-                }
-                .pickerStyle(.menu)
-                
-                Picker("Source", selection: $sourceFilter) {
-                    ForEach(sourceOptions, id: \.self) { source in
-                        Text(source).tag(source)
-                    }
-                }
-                .pickerStyle(.menu)
-                
-                Spacer()
-            }
-            .padding(.horizontal)
-            
-            if isLoading {
-                Spacer()
-                HStack {
-                    Spacer()
-                    ProgressView()
-                    Spacer()
-                }
-                Spacer()
-            } else if let errorMessage {
-                Spacer()
-                Text(errorMessage)
-                    .foregroundColor(.red)
-                    .frame(maxWidth: .infinity)
-                Spacer()
-            } else if filteredLeads.isEmpty {
-                Spacer()
-                Text("No leads found.")
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity)
-                Spacer()
-            } else {
-                List(filteredLeads) { lead in
-                    NavigationLink {
-                        CompanyLeadConversionView(
-                            lead: lead,
-                            companyId: masterDataManager.currentCompany?.id ?? ""
-                        )
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(lead.homeownerName)
-                                    .font(.headline)
-                                Spacer()
-                                Text(lead.status)
-                                    .font(.caption)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(statusColor(lead.status).opacity(0.18))
-                                    .foregroundColor(statusColor(lead.status))
-                                    .cornerRadius(8)
-                            }
+        ZStack {
+            Color.listColor.ignoresSafeArea()
 
-                            Text(lead.streetAddress)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            HStack {
-                                Text(lead.normalizedSource)
-                                if let createdAt = lead.createdAt {
-                                    Text(createdAt.formatted(date: .abbreviated, time: .omitted))
-                                }
-                            }
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(lead.connectionLabel)
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                Text(lead.connectionDetail)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    headerCard
+                    statsGrid
+                    filtersCard
+                    leadContent
                 }
-                .listStyle(.plain)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
             }
         }
         .navigationTitle("Leads")
         .searchable(text: $searchTerm, prompt: "Search leads")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink {
+                    CompanyLeadEditorView(dataService: dataService)
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add Lead")
+            }
+        }
         .onAppear {
             startListening()
         }
@@ -3123,34 +3109,170 @@ struct CompanyLeadsView: View {
         })
     }
 
-    private func leadStat(title: String, value: Int) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Leads")
+                        .font(.title2.weight(.bold))
+
+                    Text("Manage and track incoming homeowner service requests.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                NavigationLink {
+                    CompanyLeadEditorView(dataService: dataService)
+                } label: {
+                    Label("Add Lead", systemImage: "person.crop.circle.badge.plus")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
+                        .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .leadCardStyle()
+    }
+
+    private var statsGrid: some View {
+        LazyVGrid(columns: statColumns, spacing: 10) {
+            leadStat(title: "Pending", value: pendingCount, systemImage: "clock", tint: .poolBlue)
+            leadStat(title: "In Progress", value: inProgressCount, systemImage: "arrow.triangle.2.circlepath", tint: .orange)
+            leadStat(title: "Completed (30d)", value: completedRecentCount, systemImage: "checkmark.circle", tint: .poolGreen)
+            leadStat(title: "Cancelled (30d)", value: cancelledRecentCount, systemImage: "xmark.octagon", tint: .poolRed)
+        }
+    }
+
+    private var filtersCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Picker("Status", selection: $statusFilter) {
+                    ForEach(statusOptions, id: \.self) { status in
+                        Text(status).tag(status)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Picker("Source", selection: $sourceFilter) {
+                    ForEach(sourceOptions, id: \.self) { source in
+                        Text(source).tag(source)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Spacer()
+            }
+
+            Text("\(filteredLeads.count) visible lead\(filteredLeads.count == 1 ? "" : "s")")
+                .font(.caption.weight(.medium))
                 .foregroundColor(.secondary)
+        }
+        .leadCardStyle()
+    }
+
+    @ViewBuilder
+    private var leadContent: some View {
+        if isLoading {
+            VStack(spacing: 10) {
+                ProgressView()
+                Text("Loading leads...")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 180)
+            .leadCardStyle()
+        } else if let errorMessage {
+            emptyState(
+                title: "Could not load leads",
+                message: errorMessage,
+                systemImage: "exclamationmark.triangle"
+            )
+        } else if filteredLeads.isEmpty {
+            emptyState(
+                title: "No leads found",
+                message: "When a homeowner request or filter match appears, it will show here.",
+                systemImage: "tray"
+            )
+        } else {
+            LazyVStack(spacing: 10) {
+                ForEach(filteredLeads) { lead in
+                    NavigationLink {
+                        CompanyLeadDetailView(dataService: dataService, lead: lead)
+                    } label: {
+                        CompanyLeadRowCard(lead: lead)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var statColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10),
+            GridItem(.flexible(), spacing: 10)
+        ]
+    }
+
+    private func leadStat(title: String, value: Int, systemImage: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(tint)
+                    .frame(width: 28, height: 28)
+                    .background(tint.opacity(0.13), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+
             Text("\(value)")
                 .font(.title2)
                 .fontWeight(.semibold)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(Color.listColor)
-        .cornerRadius(8)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 
-    private func statusColor(_ status: String) -> Color {
-        switch status {
-        case "Pending":
-            return .blue
-        case "In Progress":
-            return .orange
-        case "Completed":
-            return .green
-        case "Cancelled":
-            return .red
-        default:
-            return .gray
+    private func emptyState(title: String, message: String, systemImage: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .foregroundColor(.secondary)
+                .frame(width: 44, height: 44)
+                .background(.thinMaterial, in: Circle())
+
+            Text(title)
+                .font(.headline.weight(.semibold))
+
+            Text(message)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .leadCardStyle()
+    }
+
+    private func isRecentCompletion(_ date: Date?) -> Bool {
+        guard let date else { return false }
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        return date >= thirtyDaysAgo
     }
 
     private func startListening() {
@@ -3180,6 +3302,681 @@ struct CompanyLeadsView: View {
                     .sorted(by: { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }) ?? []
                 isLoading = false
             }
+    }
+}
+
+struct CompanyLeadRowCard: View {
+    let lead: CompanyLeadSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(lead.homeownerName)
+                        .font(.headline.weight(.semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+
+                    Text(lead.serviceName)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                LeadChip(text: lead.status, color: leadStatusColor(lead.status))
+            }
+
+            if !lead.fullAddress.isEmpty {
+                Text(lead.fullAddress)
+                    .font(.subheadline)
+                    .foregroundColor(.primary.opacity(0.72))
+                    .lineLimit(2)
+            }
+
+            HStack(spacing: 8) {
+                LeadChip(text: lead.normalizedSource, color: leadSourceColor(lead.normalizedSource))
+
+                if let createdAt = lead.createdAt {
+                    Text(createdAt.formatted(date: .abbreviated, time: .omitted))
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+            }
+
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: lead.hasLinkedCustomer ? "checkmark.seal.fill" : "link.badge.plus")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(lead.hasLinkedCustomer ? .poolGreen : .secondary)
+                    .frame(width: 24, height: 24)
+                    .background((lead.hasLinkedCustomer ? Color.poolGreen : Color.secondary).opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(lead.connectionLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.primary)
+
+                    Text(lead.connectionDetail)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .leadCardStyle()
+    }
+}
+
+struct CompanyLeadDetailView: View {
+    let dataService: any ProductionDataServiceProtocol
+    let lead: CompanyLeadSummary
+
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    @State private var selectedStatus: String
+    @State private var savedStatus: String
+    @State private var isSavingStatus = false
+    @State private var alertMessage: String?
+
+    private let statusOptions = ["Pending", "In Progress", "Completed", "Cancelled"]
+
+    init(dataService: any ProductionDataServiceProtocol, lead: CompanyLeadSummary) {
+        self.dataService = dataService
+        self.lead = lead
+        _selectedStatus = State(initialValue: lead.status)
+        _savedStatus = State(initialValue: lead.status)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    headerCard
+                    statusCard
+                    requestCard
+                    homeownerCard
+                    addressCard
+                    linkCard
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
+            }
+        }
+        .navigationTitle("Lead")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink {
+                    CompanyLeadEditorView(dataService: dataService, lead: lead)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+            }
+        }
+        .alert("Lead Update", isPresented: alertBinding) {
+            Button("OK", role: .cancel) {
+                alertMessage = nil
+            }
+        } message: {
+            Text(alertMessage ?? "")
+        }
+        .onChange(of: selectedStatus) { nextStatus in
+            Task {
+                await updateStatus(nextStatus)
+            }
+        }
+    }
+
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(lead.homeownerName)
+                        .font(.title2.weight(.bold))
+
+                    Text(lead.serviceName)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                LeadChip(text: selectedStatus, color: leadStatusColor(selectedStatus))
+            }
+
+            HStack(spacing: 8) {
+                LeadChip(text: lead.normalizedSource, color: leadSourceColor(lead.normalizedSource))
+
+                if let createdAt = lead.createdAt {
+                    Text("Submitted \(createdAt.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .leadCardStyle()
+    }
+
+    private var statusCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Status", systemImage: "slider.horizontal.3")
+                .font(.headline.weight(.semibold))
+
+            Picker("Status", selection: $selectedStatus) {
+                ForEach(statusOptions, id: \.self) { status in
+                    Text(status).tag(status)
+                }
+            }
+            .pickerStyle(.segmented)
+            .disabled(isSavingStatus)
+
+            if isSavingStatus {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Saving status...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .leadCardStyle()
+    }
+
+    private var requestCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Shared Description", systemImage: "text.alignleft")
+                .font(.headline.weight(.semibold))
+
+            Text(lead.serviceDescription.isEmpty ? "No description provided." : lead.serviceDescription)
+                .font(.body)
+                .foregroundColor(lead.serviceDescription.isEmpty ? .secondary : .primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .leadCardStyle()
+    }
+
+    private var homeownerCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Homeowner", systemImage: "person.fill")
+                .font(.headline.weight(.semibold))
+
+            detailRow("Name", lead.homeownerName)
+            detailRow("Phone", lead.homeownerPhone)
+            detailRow("Email", lead.homeownerEmail)
+        }
+        .leadCardStyle()
+    }
+
+    private var addressCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Service Location", systemImage: "mappin.and.ellipse")
+                .font(.headline.weight(.semibold))
+
+            Text(lead.fullAddress.isEmpty ? "No service location saved." : lead.fullAddress)
+                .font(.subheadline)
+                .foregroundColor(lead.fullAddress.isEmpty ? .secondary : .primary)
+        }
+        .leadCardStyle()
+    }
+
+    private var linkCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Customer Link", systemImage: "link")
+                .font(.headline.weight(.semibold))
+
+            detailRow(lead.connectionLabel, lead.connectionDetail)
+
+            if lead.hasLinkedCustomer {
+                LeadChip(text: "Customer linked", color: .poolGreen)
+            } else {
+                NavigationLink {
+                    CompanyLeadConversionView(
+                        lead: lead,
+                        companyId: masterDataManager.currentCompany?.id ?? ""
+                    )
+                } label: {
+                    Label("Convert Lead", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.poolBlue)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .leadCardStyle()
+    }
+
+    private var alertBinding: Binding<Bool> {
+        Binding(
+            get: { alertMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    alertMessage = nil
+                }
+            }
+        )
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(label)
+                .font(.caption.weight(.medium))
+                .foregroundColor(.secondary)
+                .frame(width: 118, alignment: .leading)
+
+            Text(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "-" : value)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.leading)
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    @MainActor
+    private func updateStatus(_ nextStatus: String) async {
+        guard nextStatus != savedStatus else { return }
+
+        isSavingStatus = true
+        do {
+            var payload: [String: Any] = [
+                "status": nextStatus,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+
+            if nextStatus == "Completed" || nextStatus == "Cancelled" {
+                payload["dateCompleted"] = Date()
+            } else {
+                payload["dateCompleted"] = NSNull()
+            }
+
+            try await Firestore.firestore()
+                .collection("homeownerServiceRequests")
+                .document(lead.id)
+                .updateData(payload)
+            savedStatus = nextStatus
+        } catch {
+            selectedStatus = savedStatus
+            alertMessage = "Could not update status: \(error.localizedDescription)"
+        }
+        isSavingStatus = false
+    }
+}
+
+struct CompanyLeadEditorView: View {
+    let dataService: any ProductionDataServiceProtocol
+    let lead: CompanyLeadSummary?
+
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var serviceName: String
+    @State private var serviceDescription: String
+    @State private var homeownerName: String
+    @State private var homeownerEmail: String
+    @State private var homeownerPhone: String
+    @State private var streetAddress: String
+    @State private var city: String
+    @State private var state: String
+    @State private var zip: String
+    @State private var latitude: String
+    @State private var longitude: String
+    @State private var isSubmitting = false
+    @State private var alertMessage: String?
+
+    init(dataService: any ProductionDataServiceProtocol, lead: CompanyLeadSummary? = nil) {
+        self.dataService = dataService
+        self.lead = lead
+
+        _serviceName = State(initialValue: lead?.serviceName == "Lead Request" ? "" : lead?.serviceName ?? "")
+        _serviceDescription = State(initialValue: lead?.serviceDescription ?? "")
+        _homeownerName = State(initialValue: lead?.homeownerName == "Unknown Homeowner" ? "" : lead?.homeownerName ?? "")
+        _homeownerEmail = State(initialValue: lead?.homeownerEmail ?? "")
+        _homeownerPhone = State(initialValue: lead?.homeownerPhone ?? "")
+        _streetAddress = State(initialValue: lead?.streetAddress == "No street address" ? "" : lead?.streetAddress ?? "")
+        _city = State(initialValue: lead?.city ?? "")
+        _state = State(initialValue: lead?.state ?? "")
+        _zip = State(initialValue: lead?.zip ?? "")
+        _latitude = State(initialValue: lead?.latitude.map { String($0) } ?? "")
+        _longitude = State(initialValue: lead?.longitude.map { String($0) } ?? "")
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    formHeader
+                    requestSection
+                    homeownerSection
+                    serviceLocationSection
+                    actionSection
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 16)
+            }
+        }
+        .navigationTitle(lead == nil ? "Add Lead" : "Edit Lead")
+        .alert("Lead", isPresented: alertBinding) {
+            Button("OK", role: .cancel) {
+                alertMessage = nil
+            }
+        } message: {
+            Text(alertMessage ?? "")
+        }
+    }
+
+    private var formHeader: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(lead == nil ? "Add New Lead" : "Edit Lead")
+                .font(.title2.weight(.bold))
+
+            Text(lead == nil ? "Add a manual lead to your marketing list." : "Update this lead before the next sales step.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .leadCardStyle()
+    }
+
+    private var requestSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Lead Info", systemImage: "doc.text")
+
+            LeadTextField(title: "Service Name", text: $serviceName, required: true)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Shared Description")
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(.secondary)
+
+                TextEditor(text: $serviceDescription)
+                    .frame(minHeight: 180)
+                    .padding(8)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                    )
+            }
+        }
+        .leadCardStyle()
+    }
+
+    private var homeownerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Homeowner", systemImage: "person")
+            LeadTextField(title: "Name", text: $homeownerName, required: true)
+            LeadTextField(title: "Phone", text: $homeownerPhone, keyboardType: .phonePad)
+            LeadTextField(title: "Email", text: $homeownerEmail, keyboardType: .emailAddress, textInputAutocapitalization: .never)
+        }
+        .leadCardStyle()
+    }
+
+    private var serviceLocationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("Service Location", systemImage: "mappin.and.ellipse")
+            LeadTextField(title: "Street Address", text: $streetAddress)
+            LeadTextField(title: "City", text: $city)
+
+            HStack(spacing: 10) {
+                LeadTextField(title: "State", text: $state)
+                LeadTextField(title: "Zip", text: $zip, keyboardType: .numbersAndPunctuation)
+            }
+
+            HStack(spacing: 10) {
+                LeadTextField(title: "Latitude", text: $latitude, keyboardType: .decimalPad)
+                LeadTextField(title: "Longitude", text: $longitude, keyboardType: .decimalPad)
+            }
+        }
+        .leadCardStyle()
+    }
+
+    private var actionSection: some View {
+        VStack(spacing: 10) {
+            Button {
+                Task {
+                    await saveLead()
+                }
+            } label: {
+                HStack {
+                    if isSubmitting {
+                        ProgressView()
+                            .tint(.white)
+                    }
+
+                    Text(isSubmitting ? "Saving Lead..." : lead == nil ? "Add Lead" : "Save Lead")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(isSubmitting)
+
+            Button("Cancel") {
+                dismiss()
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundColor(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+        }
+    }
+
+    private var alertBinding: Binding<Bool> {
+        Binding(
+            get: { alertMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    alertMessage = nil
+                }
+            }
+        )
+    }
+
+    private func sectionTitle(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+    }
+
+    @MainActor
+    private func saveLead() async {
+        guard !isSubmitting else { return }
+
+        let cleanServiceName = serviceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDescription = serviceDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanHomeowner = homeownerName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanServiceName.isEmpty, !cleanDescription.isEmpty, !cleanHomeowner.isEmpty else {
+            alertMessage = "Service name, homeowner name, and shared description are required."
+            return
+        }
+
+        guard let company = masterDataManager.currentCompany else {
+            alertMessage = "Select a company before saving a lead."
+            return
+        }
+
+        isSubmitting = true
+
+        do {
+            let leadPayload: [String: Any] = [
+                "serviceDescription": cleanDescription,
+                "serviceName": cleanServiceName,
+                "serviceLocationAddress": [
+                    "streetAddress": streetAddress.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "city": city.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "state": state.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "zip": zip.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "latitude": firestoreNumber(latitude),
+                    "longitude": firestoreNumber(longitude)
+                ],
+                "homeownerName": cleanHomeowner,
+                "homeownerEmail": homeownerEmail.trimmingCharacters(in: .whitespacesAndNewlines),
+                "homeownerPhone": homeownerPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+            ]
+
+            let db = Firestore.firestore()
+
+            if let lead {
+                var updatePayload = leadPayload
+                updatePayload["updatedAt"] = FieldValue.serverTimestamp()
+
+                try await db
+                    .collection("homeownerServiceRequests")
+                    .document(lead.id)
+                    .updateData(updatePayload)
+            } else {
+                let newLeadId = "hosr_\(UUID().uuidString)"
+                let user = masterDataManager.user
+                let creatorName = [
+                    user?.firstName.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+                    user?.lastName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                ]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: " ")
+
+                var createPayload: [String: Any] = [
+                    "id": newLeadId,
+                    "source": "Manual",
+                    "status": "Pending",
+                    "createdAt": Date(),
+                    "companyId": company.id,
+                    "companyName": company.name,
+                    "creatorId": user?.id ?? "",
+                    "creatorName": creatorName,
+                    "customerId": "",
+                    "customerName": "",
+                    "serviceLocationId": "",
+                    "bodyOfWaterId": "",
+                    "equipmentIds": [],
+                    "homeownerId": "",
+                    "homeownerserviceLocationId": "",
+                    "homeownerbodyOfWaterId": "",
+                    "homeownerequipmentId": "",
+                    "dateCompleted": NSNull()
+                ]
+
+                leadPayload.forEach { key, value in
+                    createPayload[key] = value
+                }
+
+                try await db
+                    .collection("homeownerServiceRequests")
+                    .document(newLeadId)
+                    .setData(createPayload)
+            }
+
+            dismiss()
+        } catch {
+            alertMessage = "Could not save lead: \(error.localizedDescription)"
+        }
+
+        isSubmitting = false
+    }
+
+    private func firestoreNumber(_ text: String) -> Any {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, let value = Double(clean) else {
+            return NSNull()
+        }
+        return value
+    }
+}
+
+struct LeadTextField: View {
+    let title: String
+    @Binding var text: String
+    var required: Bool = false
+    var keyboardType: UIKeyboardType = .default
+    var textInputAutocapitalization: TextInputAutocapitalization? = .words
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 3) {
+                Text(title)
+                if required {
+                    Text("*")
+                        .foregroundColor(.poolRed)
+                }
+            }
+            .font(.caption.weight(.medium))
+            .foregroundColor(.secondary)
+
+            TextField(title, text: $text)
+                .keyboardType(keyboardType)
+                .textInputAutocapitalization(textInputAutocapitalization)
+                .autocorrectionDisabled(keyboardType == .emailAddress)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+                )
+        }
+    }
+}
+
+struct LeadChip: View {
+    let text: String
+    let color: Color
+
+    var body: some View {
+        Text(text.isEmpty ? "Unknown" : text)
+            .font(.caption2.weight(.semibold))
+            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(color.opacity(0.14), in: Capsule())
+    }
+}
+
+private func leadStatusColor(_ status: String) -> Color {
+    switch status {
+    case "Pending":
+        return .poolBlue
+    case "In Progress":
+        return .orange
+    case "Completed":
+        return .poolGreen
+    case "Cancelled":
+        return .poolRed
+    default:
+        return .gray
+    }
+}
+
+private func leadSourceColor(_ source: String) -> Color {
+    switch source {
+    case "Manual":
+        return .purple
+    case "Public":
+        return .orange
+    default:
+        return .teal
+    }
+}
+
+private extension View {
+    func leadCardStyle() -> some View {
+        self
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
     }
 }
 

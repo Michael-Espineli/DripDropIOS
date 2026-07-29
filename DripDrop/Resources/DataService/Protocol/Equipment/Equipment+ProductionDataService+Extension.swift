@@ -228,6 +228,46 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.dateUninstalled = try container.decodeIfPresent(Date.self, forKey: .dateUninstalled)
     }
 }
+
+extension Equipment {
+    var maintenanceDueDateForFollowUp: Date? {
+        if let nextServiceDate {
+            return nextServiceDate
+        }
+
+        guard let lastServiceDate,
+              let serviceFrequency,
+              serviceFrequency > 0,
+              let serviceFrequencyEvery else {
+            return nil
+        }
+
+        let calendar = Calendar.current
+        switch serviceFrequencyEvery {
+        case .daily:
+            return calendar.date(byAdding: .day, value: serviceFrequency, to: lastServiceDate)
+        case .weekly:
+            return calendar.date(byAdding: .weekOfYear, value: serviceFrequency, to: lastServiceDate)
+        case .monthly:
+            return calendar.date(byAdding: .month, value: serviceFrequency, to: lastServiceDate)
+        case .yearly:
+            return calendar.date(byAdding: .year, value: serviceFrequency, to: lastServiceDate)
+        }
+    }
+
+    var currentlyNeedsMaintenanceFollowUp: Bool {
+        guard needsService, let dueDate = maintenanceDueDateForFollowUp else {
+            return false
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let followUpWindowEnd = calendar.date(byAdding: .day, value: 7, to: today) ?? today
+        let dueDay = calendar.startOfDay(for: dueDate)
+
+        return dueDay <= followUpWindowEnd
+    }
+}
 // MARK: - Maybe update
 /*struct EquipmentServiceHistory: Identifiable, Codable, Equatable, Hashable {
  var id: String = "com_equ_sh_" + UUID().uuidString

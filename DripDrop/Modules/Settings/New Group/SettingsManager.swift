@@ -27,6 +27,7 @@ struct JobTemplate: Identifiable, Codable, Hashable {
     var color: String?
     var isActive: Bool
     var locked: Bool
+    var technicianCanAdd: Bool
 
     var createdAt: Date
     var createdByUserId: String
@@ -44,6 +45,7 @@ struct JobTemplate: Identifiable, Codable, Hashable {
         color: String? = nil,
         isActive: Bool = true,
         locked: Bool = false,
+        technicianCanAdd: Bool = false,
         createdAt: Date = Date(),
         createdByUserId: String,
         updatedAt: Date? = nil
@@ -59,9 +61,48 @@ struct JobTemplate: Identifiable, Codable, Hashable {
         self.color = color
         self.isActive = isActive
         self.locked = locked
+        self.technicianCanAdd = technicianCanAdd
         self.createdAt = createdAt
         self.createdByUserId = createdByUserId
         self.updatedAt = updatedAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case companyId
+        case name
+        case description
+        case jobType
+        case jobTypeImage
+        case defaultRateCents
+        case defaultLaborCostCents
+        case color
+        case isActive
+        case locked
+        case technicianCanAdd
+        case createdAt
+        case createdByUserId
+        case updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? "comp_job_template_" + UUID().uuidString
+        companyId = try container.decodeIfPresent(String.self, forKey: .companyId) ?? ""
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        jobType = try container.decodeIfPresent(String.self, forKey: .jobType) ?? ""
+        jobTypeImage = try container.decodeIfPresent(String.self, forKey: .jobTypeImage)
+        defaultRateCents = try container.decodeIfPresent(Int.self, forKey: .defaultRateCents) ?? 0
+        defaultLaborCostCents = try container.decodeIfPresent(Int.self, forKey: .defaultLaborCostCents) ?? 0
+        color = try container.decodeIfPresent(String.self, forKey: .color)
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        locked = try container.decodeIfPresent(Bool.self, forKey: .locked) ?? false
+        technicianCanAdd = try container.decodeIfPresent(Bool.self, forKey: .technicianCanAdd) ?? false
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        createdByUserId = try container.decodeIfPresent(String.self, forKey: .createdByUserId) ?? ""
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
     }
 }
 
@@ -505,7 +546,7 @@ final class SettingsManager {
     
     func upLoadInitialGenericRoles(companyId:String) async throws {
         let allPermissionIds = [
-            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "40","42","44","46","50","52","54","56","60","62","64","66",
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
@@ -518,7 +559,7 @@ final class SettingsManager {
             "890","892","894","896"
         ]
         let managerPermissionIds = [
-            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
             "290","292","294","296",

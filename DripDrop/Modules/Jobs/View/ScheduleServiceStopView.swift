@@ -31,6 +31,9 @@ final class ScheduleServiceStopViewModel: ObservableObject {
 
     @Published var description: String = ""
     @Published var estimatedTime: Int = 0
+    @Published var manualPayOverrideEnabled: Bool = false
+    @Published var manualPayOverrideCents: Int = 0
+    @Published var manualPayOverrideNotes: String = ""
 
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
@@ -114,6 +117,9 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             self.editingServiceStopTasks = serviceStopTasks
             let editingJobTaskIds = Set(serviceStopTasks.map { $0.jobTaskId })
             self.selectedJobTaskList = jobTaskList.filter { editingJobTaskIds.contains($0.id) }
+            self.manualPayOverrideEnabled = editingServiceStop.manualPayOverrideCents != nil
+            self.manualPayOverrideCents = editingServiceStop.manualPayOverrideCents ?? 0
+            self.manualPayOverrideNotes = editingServiceStop.manualPayOverrideNotes ?? ""
             estimateTime(tasks: selectedJobTaskList)
         }
 
@@ -189,6 +195,35 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         self.routeSnapshotOpenTasks = 12
     }
 
+    private func syncShoppingItemsForScheduledTasks(
+        companyId: String,
+        jobId: String,
+        customerId: String,
+        serviceLocationId: String,
+        serviceStopId: String,
+        serviceStopInternalId: String
+    ) async throws {
+        let shoppingItemIds = selectedJobTaskList.compactMap { task in
+            task.shoppingListItemId?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        .filter { !$0.isEmpty }
+
+        try await dataService.syncShoppingListItemsForScheduledJobTasks(
+            companyId: companyId,
+            jobId: jobId,
+            customerId: customerId,
+            serviceLocationId: serviceLocationId,
+            serviceStopId: serviceStopId,
+            serviceStopInternalId: serviceStopInternalId,
+            serviceDate: serviceDate,
+            assignedTechId: selectedUser.userId,
+            assignedTechName: selectedUser.userName,
+            taskIds: selectedJobTaskList.map { $0.id },
+            shoppingListItemIds: shoppingItemIds,
+            plannedServiceStopId: selectedPlannedServiceStop?.id
+        )
+    }
+
     func scheduleNewServiceStop(
         companyId: String,
         jobId: String,
@@ -196,6 +231,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         customerName: String,
         serviceLocationId: String,
         estimatedDurationOverride: Int? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
         serviceStopTypeFields: ServiceStopTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
             selectedType: nil,
             useCase: .jobVisit
@@ -268,7 +305,9 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 otherCompany: false,
                 laborContractId: "",
                 contractedCompanyId: "",
-                isInvoiced: false
+                isInvoiced: false,
+                manualPayOverrideCents: manualPayOverrideCents,
+                manualPayOverrideNotes: manualPayOverrideNotes
             )
 
             print(serviceStop)
@@ -337,6 +376,15 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 )
             }
 
+            try await syncShoppingItemsForScheduledTasks(
+                companyId: companyId,
+                jobId: jobId,
+                customerId: customerId,
+                serviceLocationId: serviceLocationId,
+                serviceStopId: serviceStopId,
+                serviceStopInternalId: internalId
+            )
+
             self.alertMessage = "Successfully Uploaded"
             self.showAlert = true
             self.isLoading = false
@@ -349,6 +397,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         serviceStop: ServiceStop,
         serviceLocationId: String,
         estimatedDurationOverride: Int? = nil,
+        manualPayOverrideCents: Int?,
+        manualPayOverrideNotes: String?,
         serviceStopTypeFields: ServiceStopTypeFields
     ) async throws {
         if !isLoading {
@@ -373,6 +423,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 companyUser: selectedUser,
                 description: description,
                 estimatedDuration: durationMin,
+                manualPayOverrideCents: manualPayOverrideCents,
+                manualPayOverrideNotes: manualPayOverrideNotes,
                 serviceStopTypeFields: serviceStopTypeFields
             )
 
@@ -478,6 +530,15 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 )
             }
 
+            try await syncShoppingItemsForScheduledTasks(
+                companyId: companyId,
+                jobId: jobId,
+                customerId: serviceStop.customerId,
+                serviceLocationId: serviceLocationId,
+                serviceStopId: serviceStop.id,
+                serviceStopInternalId: serviceStop.internalId
+            )
+
             self.alertMessage = "Successfully Updated"
             self.showAlert = true
         }
@@ -534,6 +595,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         customerName: String,
         serviceLocationId: String,
         estimatedDurationOverride: Int? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
         serviceStopTypeFields: ServiceStopTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
             selectedType: nil,
             useCase: .jobVisit
@@ -608,7 +671,9 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 otherCompany: false,
                 laborContractId: "",
                 contractedCompanyId: "",
-                isInvoiced: false
+                isInvoiced: false,
+                manualPayOverrideCents: manualPayOverrideCents,
+                manualPayOverrideNotes: manualPayOverrideNotes
             )
 
             print(serviceStop)
@@ -656,6 +721,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         customerName: String,
         serviceLocationId: String,
         estimatedDurationOverride: Int? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
         serviceStopTypeFields: ServiceStopTypeFields = ServiceStopTypeResolver.serviceStopTypeFields(
             selectedType: nil,
             useCase: .jobVisit
@@ -747,7 +814,9 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 laborContractId: receivedLaborContractId,
                 contractedCompanyId: receiverId,
                 mainCompanyId: senderId,
-                isInvoiced: false
+                isInvoiced: false,
+                manualPayOverrideCents: manualPayOverrideCents,
+                manualPayOverrideNotes: manualPayOverrideNotes
             )
 
             print(serviceStop)
@@ -815,6 +884,15 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                     status: .scheduled
                 )
             }
+
+            try await syncShoppingItemsForScheduledTasks(
+                companyId: companyId,
+                jobId: job.id,
+                customerId: customerId,
+                serviceLocationId: serviceLocationId,
+                serviceStopId: serviceStopId,
+                serviceStopInternalId: internalId
+            )
 
             try await dataService.updateJobOperationStatus(
                 companyId: companyId,
@@ -910,6 +988,7 @@ struct ScheduleServiceStopView: View {
                     plannedSourceCard
                     detailsCard
                     serviceStopTypeCard
+                    payrollCard
                     routeSnapshotCard
                     tasksCard
                 }
@@ -1149,6 +1228,75 @@ extension ScheduleServiceStopView {
         }
 
         return masterDataManager.currentCompany?.id ?? ""
+    }
+
+    private var selectedTaskLaborCents: Int {
+        VM.selectedJobTaskList.reduce(0) { $0 + $1.contractedRate }
+    }
+
+    private var manualPayOverrideCentsForSave: Int? {
+        VM.manualPayOverrideEnabled ? VM.manualPayOverrideCents : nil
+    }
+
+    private var manualPayOverrideNotesForSave: String? {
+        guard VM.manualPayOverrideEnabled else { return nil }
+
+        let trimmedNotes = VM.manualPayOverrideNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmedNotes.isEmpty {
+            return "Manual payroll amount set while scheduling this service stop."
+        }
+
+        return trimmedNotes
+    }
+
+    var payrollCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("Payroll", systemImage: "dollarsign.circle")
+
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(isOn: $VM.manualPayOverrideEnabled.animation(.spring(response: 0.25, dampingFraction: 0.9))) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Manual pay amount")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("Use one fixed payroll amount for this scheduled stop.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if VM.manualPayOverrideEnabled {
+                    VStack(alignment: .leading, spacing: 8) {
+                        MoneyTextField(cents: $VM.manualPayOverrideCents)
+
+                        TextField("Optional payroll note", text: $VM.manualPayOverrideNotes, axis: .vertical)
+                            .font(.subheadline)
+                            .lineLimit(3, reservesSpace: true)
+                            .padding(12)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        Text("Final payroll will use this amount instead of automatic stop or task rates.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            if !VM.manualPayOverrideEnabled {
+                detailDisplayRow(
+                    title: "Selected Task Labor",
+                    value: payrollMoney(selectedTaskLaborCents),
+                    systemImage: "checklist"
+                )
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
     
     
@@ -1411,6 +1559,8 @@ extension ScheduleServiceStopView {
                         typeFields = resolvedFields
                     }
                     let plannedEstimate = VM.selectedPlannedServiceStop?.estimatedMinutes
+                    let manualPayOverrideCents = manualPayOverrideCentsForSave
+                    let manualPayOverrideNotes = manualPayOverrideNotesForSave
 
                     if let editingServiceStop {
                         try await VM.updateScheduledServiceStop(
@@ -1419,6 +1569,8 @@ extension ScheduleServiceStopView {
                             serviceStop: editingServiceStop,
                             serviceLocationId: serviceLocationId,
                             estimatedDurationOverride: plannedEstimate,
+                            manualPayOverrideCents: manualPayOverrideCents,
+                            manualPayOverrideNotes: manualPayOverrideNotes,
                             serviceStopTypeFields: typeFields
                         )
                     } else if job.otherCompany {
@@ -1430,6 +1582,8 @@ extension ScheduleServiceStopView {
                             customerName: customerName,
                             serviceLocationId: serviceLocationId,
                             estimatedDurationOverride: plannedEstimate,
+                            manualPayOverrideCents: manualPayOverrideCents,
+                            manualPayOverrideNotes: manualPayOverrideNotes,
                             serviceStopTypeFields: typeFields
                         )
                     } else {
@@ -1440,6 +1594,8 @@ extension ScheduleServiceStopView {
                             customerName: customerName,
                             serviceLocationId: serviceLocationId,
                             estimatedDurationOverride: plannedEstimate,
+                            manualPayOverrideCents: manualPayOverrideCents,
+                            manualPayOverrideNotes: manualPayOverrideNotes,
                             serviceStopTypeFields: typeFields
                         )
                     }
@@ -1861,6 +2017,15 @@ extension ScheduleServiceStopView {
         Label(title, systemImage: systemImage)
             .font(.headline.weight(.semibold))
             .foregroundStyle(.primary)
+    }
+
+    func payrollMoney(_ cents: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+
+        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "$0.00"
     }
 
     func emptyState(title: String, message: String, systemImage: String) -> some View {

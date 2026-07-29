@@ -41,6 +41,9 @@
         @State var showDeleteConfirmation: Bool = false
         @State var rssID: String = ""
         @State var selectedJob: Job? = nil
+        @State private var customerNoteText: String = ""
+        @State private var selectedNoteBodyOfWaterId: String = ""
+        @State private var isSavingCustomerNote: Bool = false
 
         var body: some View {
             ZStack {
@@ -50,6 +53,8 @@
                     VStack(spacing: 16) {
                         pageHeader
 
+                        outstandingWork
+                        customerNotes
                         repairRequests
                         jobs
                         recurringServiceStops
@@ -134,6 +139,11 @@
                     companyId: company.id,
                     customerId: customerId
                 )
+
+                try await VM.reloadCustomerBodiesOfWater(
+                    companyId: company.id,
+                    customerId: customerId
+                )
             } catch {
                 print("[CustomerUpcomingWork][refreshUpcomingWorkBackup] Error: \(error)")
             }
@@ -161,6 +171,257 @@
     // MARK: - Sections
 
     extension CustomerUpcomingWork {
+
+        private var currentUserDisplayName: String {
+            let firstName = masterDataManager.user?.firstName ?? ""
+            let lastName = masterDataManager.user?.lastName ?? ""
+            let fullName = [firstName, lastName]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+
+            if !fullName.isEmpty {
+                return fullName
+            }
+
+            return masterDataManager.user?.email ?? "Admin"
+        }
+
+        private var selectedNoteBodyOfWater: BodyOfWater? {
+            VM.customerBodiesOfWater.first { $0.id == selectedNoteBodyOfWaterId }
+        }
+
+        private var outstandingWorkItems: [CustomerOutstandingWorkDisplayItem] {
+            var jobsById: [String: Job] = [:]
+            VM.jobs.forEach { jobsById[$0.id] = $0 }
+
+            var repairsById: [String: RepairRequest] = [:]
+            VM.repairRequest.forEach { repairsById[$0.id] = $0 }
+
+            var usedSourceKeys = Set<String>()
+            var items: [CustomerOutstandingWorkDisplayItem] = []
+
+            for record in VM.customerOutstandingWork {
+                let recordJobId = record.jobId ?? record.sourceId
+                let linkedJob = recordJobId.flatMap { jobsById[$0] }
+                let linkedRepair = record.sourceType?.lowercased().contains("repair") == true
+                    ? record.sourceId.flatMap { repairsById[$0] }
+                    : nil
+
+                if let linkedJob {
+                    usedSourceKeys.insert("job-\(linkedJob.id)")
+                }
+
+                if let linkedRepair {
+                    usedSourceKeys.insert("repair-\(linkedRepair.id)")
+                }
+
+                items.append(
+                    CustomerOutstandingWorkDisplayItem(
+                        record: record,
+                        job: linkedJob,
+                        repairRequest: linkedRepair
+                    )
+                )
+            }
+
+            for job in VM.jobs where isOutstanding(job) {
+                let key = "job-\(job.id)"
+                guard !usedSourceKeys.contains(key) else { continue }
+                usedSourceKeys.insert(key)
+                items.append(CustomerOutstandingWorkDisplayItem(job: job))
+            }
+
+            for repair in VM.repairRequest where isOpenRepairRequest(repair) {
+                let key = "repair-\(repair.id)"
+                guard !usedSourceKeys.contains(key) else { continue }
+                usedSourceKeys.insert(key)
+                items.append(CustomerOutstandingWorkDisplayItem(repairRequest: repair))
+            }
+
+            return items.sorted { $0.date > $1.date }
+        }
+
+        private func isOutstanding(_ job: Job) -> Bool {
+            let closedBillingStatuses: Set<JobBillingStatus> = [.invoiced, .paid, .comped]
+            return job.operationStatus != .finished && !closedBillingStatuses.contains(job.billingStatus)
+        }
+
+        private func isOpenRepairRequest(_ repair: RepairRequest) -> Bool {
+            ![RepairRequestStatus.resolved, .convertedToJob, .cancelled].contains(repair.status)
+        }
+
+        private func saveCustomerNote() async {
+            let trimmedNote = customerNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedNote.isEmpty else { return }
+
+            guard let company = masterDataManager.currentCompany, let customer else {
+                alertMessage = "Select a customer before adding a note."
+                showAlert = true
+                return
+            }
+
+            let userId = masterDataManager.user?.id ?? ""
+            guard !userId.isEmpty else {
+                alertMessage = "Sign in before adding a note."
+                showAlert = true
+                return
+            }
+
+            isSavingCustomerNote = true
+            defer { isSavingCustomerNote = false }
+
+            do {
+                try await VM.addCustomerNote(
+                    companyId: company.id,
+                    customer: customer,
+                    bodyOfWater: selectedNoteBodyOfWater,
+                    note: trimmedNote,
+                    authorId: userId,
+                    authorName: currentUserDisplayName
+                )
+
+                customerNoteText = ""
+            } catch {
+                alertMessage = "Unable to save customer note."
+                showAlert = true
+                print("[CustomerUpcomingWork][saveCustomerNote] Error: \(error)")
+            }
+        }
+
+        private func toggleCustomerNoteResolved(_ note: CustomerNote) async {
+            guard let company = masterDataManager.currentCompany else { return }
+
+            let userId = masterDataManager.user?.id ?? ""
+            guard !userId.isEmpty else {
+                alertMessage = "Sign in before updating a note."
+                showAlert = true
+                return
+            }
+
+            do {
+                try await VM.setCustomerNoteResolved(
+                    companyId: company.id,
+                    customerId: customerId,
+                    noteId: note.id,
+                    resolved: !(note.resolved ?? false),
+                    authorId: userId,
+                    authorName: currentUserDisplayName
+                )
+            } catch {
+                alertMessage = "Unable to update customer note."
+                showAlert = true
+                print("[CustomerUpcomingWork][toggleCustomerNoteResolved] Error: \(error)")
+            }
+        }
+
+        var outstandingWork: some View {
+            SectionCard(title: "Outstanding Work") {
+                VStack(spacing: 12) {
+                    if outstandingWorkItems.isEmpty {
+                        Text("No outstanding work found.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                    } else {
+                        ForEach(outstandingWorkItems) { item in
+                            if let job = item.job {
+                                if UIDevice.isIPhone {
+                                    NavigationLink(value: Route.job(job: job, dataService: dataService)) {
+                                        CustomerOutstandingWorkRow(item: item)
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    Button {
+                                        masterDataManager.selectedCategory = .jobs
+                                        masterDataManager.selectedJob = job
+                                    } label: {
+                                        CustomerOutstandingWorkRow(item: item)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            } else if let repairRequest = item.repairRequest {
+                                if UIDevice.isIPhone {
+                                    NavigationLink(value: Route.repairRequest(repairRequest: repairRequest, dataService: dataService)) {
+                                        CustomerOutstandingWorkRow(item: item)
+                                    }
+                                    .buttonStyle(.plain)
+                                } else {
+                                    Button {
+                                        masterDataManager.selectedCategory = .jobs
+                                        masterDataManager.selectedRepairRequest = repairRequest
+                                    } label: {
+                                        CustomerOutstandingWorkRow(item: item)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            } else {
+                                CustomerOutstandingWorkRow(item: item)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        var customerNotes: some View {
+            SectionCard(title: "Customer Notes") {
+                VStack(alignment: .leading, spacing: 12) {
+                    if !VM.customerBodiesOfWater.isEmpty {
+                        Picker("Pool", selection: $selectedNoteBodyOfWaterId) {
+                            Text("All pools").tag("")
+                            ForEach(VM.customerBodiesOfWater) { bodyOfWater in
+                                Text(bodyOfWater.name).tag(bodyOfWater.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    TextEditor(text: $customerNoteText)
+                        .frame(minHeight: 84)
+                        .padding(8)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
+                        )
+
+                    HStack {
+                        Spacer()
+                        Button {
+                            Task {
+                                await saveCustomerNote()
+                            }
+                        } label: {
+                            Label(isSavingCustomerNote ? "Saving" : "Save Note", systemImage: "paperplane.fill")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isSavingCustomerNote || customerNoteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+
+                    Divider()
+
+                    if VM.customerNotes.isEmpty {
+                        Text("No customer notes yet.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 6)
+                    } else {
+                        ForEach(Array(VM.customerNotes.prefix(8))) { note in
+                            CustomerNoteRow(note: note) {
+                                Task {
+                                    await toggleCustomerNoteResolved(note)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         var recurringServiceStops: some View {
             SectionCard(
@@ -414,4 +675,229 @@
             }
             .buttonStyle(.plain)
         )
+    }
+
+    private enum CustomerOutstandingWorkKind {
+        case persisted
+        case job
+        case repairRequest
+    }
+
+    private struct CustomerOutstandingWorkDisplayItem: Identifiable {
+        let id: String
+        let title: String
+        let subtitle: String
+        let detail: String
+        let status: String
+        let date: Date
+        let kind: CustomerOutstandingWorkKind
+        let job: Job?
+        let repairRequest: RepairRequest?
+
+        init(record: CustomerOutstandingWork, job: Job?, repairRequest: RepairRequest?) {
+            let status = record.displayStatus
+            let detail = [record.displayDetail, record.reason ?? ""]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: "\n")
+            let subtitle = [
+                record.bodyOfWaterName,
+                record.serviceLocationName,
+                record.adminName
+            ]
+                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " • ")
+
+            self.id = "outstanding-record-\(record.id)"
+            self.title = record.displayTitle
+            self.subtitle = subtitle
+            self.detail = detail
+            self.status = status
+            self.date = record.displayDate
+            self.kind = .persisted
+            self.job = job
+            self.repairRequest = repairRequest
+        }
+
+        init(job: Job) {
+            self.id = "outstanding-job-\(job.id)"
+            self.title = job.type.isEmpty ? "Work order" : job.type
+            self.subtitle = [job.adminName, job.operationStatus.rawValue]
+                .filter { !$0.isEmpty }
+                .joined(separator: " • ")
+            self.detail = job.description
+            self.status = job.billingStatus.rawValue
+            self.date = job.dateCreated
+            self.kind = .job
+            self.job = job
+            self.repairRequest = nil
+        }
+
+        init(repairRequest: RepairRequest) {
+            self.id = "outstanding-repair-\(repairRequest.id)"
+            self.title = "Repair request"
+            self.subtitle = [repairRequest.requesterName, repairRequest.status.rawValue]
+                .filter { !$0.isEmpty }
+                .joined(separator: " • ")
+            self.detail = repairRequest.description
+            self.status = repairRequest.status.rawValue
+            self.date = repairRequest.date
+            self.kind = .repairRequest
+            self.job = nil
+            self.repairRequest = repairRequest
+        }
+
+        var accentColor: Color {
+            let normalizedStatus = status.lowercased()
+            if normalizedStatus.contains("reject") {
+                return .red
+            }
+
+            if normalizedStatus.contains("expired") {
+                return .orange
+            }
+
+            switch kind {
+            case .persisted:
+                return .orange
+            case .job:
+                return .purple
+            case .repairRequest:
+                return .blue
+            }
+        }
+
+        var systemImage: String {
+            switch kind {
+            case .persisted:
+                return "exclamationmark.circle"
+            case .job:
+                return "briefcase"
+            case .repairRequest:
+                return "wrench.and.screwdriver"
+            }
+        }
+    }
+
+    private struct CustomerOutstandingWorkRow: View {
+        let item: CustomerOutstandingWorkDisplayItem
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(item.accentColor.opacity(0.12))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: item.systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(item.accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(item.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+
+                        Spacer(minLength: 8)
+
+                        Text(item.status)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(item.accentColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(item.accentColor.opacity(0.12))
+                            )
+                    }
+
+                    Text(item.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    if !item.subtitle.isEmpty {
+                        Text(item.subtitle)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    if !item.detail.isEmpty {
+                        Text(item.detail)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(3)
+                    }
+                }
+            }
+            .padding(12)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private struct CustomerNoteRow: View {
+        let note: CustomerNote
+        let toggleResolved: () -> Void
+
+        private var isResolved: Bool {
+            note.resolved ?? false
+        }
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 12) {
+                Button(action: toggleResolved) {
+                    Image(systemName: isResolved ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(isResolved ? Color.green : Color.secondary)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
+                        Text(note.displayAuthor)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.primary)
+
+                        Spacer(minLength: 8)
+
+                        Text(isResolved ? "Resolved" : "Open")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(isResolved ? Color.green : Color.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill((isResolved ? Color.green : Color.orange).opacity(0.12))
+                            )
+                    }
+
+                    Label(note.displayAudience.title, systemImage: note.displayAudience.systemImage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    if let bodyOfWaterName = note.bodyOfWaterName, !bodyOfWaterName.isEmpty {
+                        Label(bodyOfWaterName, systemImage: "drop.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Text(note.displayDate.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text(note.displayText)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                        .lineLimit(4)
+                }
+            }
+            .padding(12)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
     }

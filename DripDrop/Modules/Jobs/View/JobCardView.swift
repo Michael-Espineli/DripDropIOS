@@ -178,7 +178,7 @@ extension JobCardView {
     func getColorOperation(status: JobOperationStatus) -> Color {
         var color: Color = Color.gray
         switch status {
-        case .estimatePending, .waitingForParts:
+        case .draft, .estimatePending, .waitingForParts:
             color = Color.poolRed
         case .unscheduled:
             color = Color.orange
@@ -195,7 +195,7 @@ extension JobCardView {
     func getForgroundColorOperation(status: JobOperationStatus) -> Color {
         var color: Color = Color.gray
         switch status {
-        case .estimatePending, .waitingForParts:
+        case .draft, .estimatePending, .waitingForParts:
             color = Color.poolWhite
         case .unscheduled:
             color = Color.poolWhite
@@ -226,7 +226,7 @@ extension JobCardView {
             color = Color.green
         case .comped:
             color = Color.poolGreen
-        case .expired:
+        case .expired, .rejected:
             color = Color.poolRed
         }
         return color
@@ -235,7 +235,7 @@ extension JobCardView {
     func getForgroundColorBilling(status: JobBillingStatus) -> Color {
         var color: Color = Color.gray
         switch status {
-        case .draft, .estimate, .accepted, .invoiced, .comped, .expired:
+        case .draft, .estimate, .accepted, .invoiced, .comped, .expired, .rejected:
             color = Color.poolWhite
         case .inProgress, .paid:
             color = Color.poolBlack

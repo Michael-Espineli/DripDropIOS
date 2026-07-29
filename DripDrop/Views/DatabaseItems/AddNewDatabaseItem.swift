@@ -10,12 +10,13 @@ import SwiftUI
 struct AddNewDatabaseItem: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager : MasterDataManager
+
     init(dataService: any ProductionDataServiceProtocol){
         _viewModel = StateObject(wrappedValue: ReceiptDatabaseViewModel(dataService: dataService))
     }
     @StateObject private var viewModel : ReceiptDatabaseViewModel
     @StateObject private var storeViewModel = StoreViewModel()
- 
+
     @State var store:Vender = Vender(id: "",address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0))
 
     @State var name:String = ""
@@ -33,215 +34,358 @@ struct AddNewDatabaseItem: View {
     @State var UOM:UnitOfMeasurment = .unit
     @State var color:String = ""
 
-    
+    @State private var isSubmitting = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+
     var body: some View {
-        ScrollView{
-            VStack{
-                HStack{
-                    Spacer()
-                    Button(action: {
-                        dismiss()
-                        
-                    }, label: {
-                        Image(systemName: "xmark")
-                            .modifier(DismissButtonTextModifier())
-                    })
-                    .modifier(DismissButtonModifier())
-                    
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    headerCard
+                    basicsCard
+                    pricingCard
+                    classificationCard
+                    storeCard
+                    detailsCard
                 }
-                HStack{
-                    Text("name")
-                    TextField(
-                        "012345",
-                        text: $name
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+            }
+        }
+        .navigationTitle("Add Database Item")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
                 }
-                
-                HStack{
-                    Text("rate")
-                    TextField(
-                        "rate",
-                        text: $rate
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
+            }
+
+            ToolbarItem(placement: .confirmationAction) {
+                Button(isSubmitting ? "Saving..." : "Save") {
+                    submit()
                 }
-                HStack{
-                    Text("SellPrice")
-                    TextField(
-                        "SellPrice",
-                        text: $sellPrice
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
-                HStack{
-                    Text("Store")
-                    
-                    Picker("", selection: $store) {
-                        Text("Pick store")
-                        ForEach(storeViewModel.stores) {
-                            
-                            Text($0.name ?? "no Name").tag($0)
-                            
-                        }
+                .disabled(!canSubmit)
+            }
+        }
+        .alert("Database Item", isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
+        .onChange(of: rate) { newValue in
+            rate = sanitizedDecimalInput(newValue)
+        }
+        .onChange(of: sellPrice) { newValue in
+            sellPrice = sanitizedDecimalInput(newValue)
+        }
+        .onChange(of: billable) { isBillable in
+            if !isBillable {
+                sellPrice = ""
+            }
+        }
+        .task{
+            await loadStores()
+        }
+    }
+}
+
+extension AddNewDatabaseItem {
+    private var headerCard: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: "shippingbox.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 54, height: 54)
+                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Database Item")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(Date(), style: .date)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        }
+    }
+
+    private var basicsCard: some View {
+        formCard(title: "Basics", systemImage: "tag") {
+            databaseTextField(title: "Name", placeholder: "Item name", text: $name, systemImage: "textformat")
+            databaseTextField(title: "SKU", placeholder: "Part number", text: $sku, systemImage: "barcode")
+        }
+    }
+
+    private var pricingCard: some View {
+        formCard(title: "Pricing", systemImage: "dollarsign.circle") {
+            moneyField(title: "Cost", placeholder: "0.00", text: $rate, systemImage: "cart")
+
+            Toggle(isOn: $billable) {
+                Label(billable ? "Billable" : "Not Billable", systemImage: billable ? "checkmark.seal.fill" : "nosign")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .tint(.green)
+            .padding(12)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            if billable {
+                moneyField(title: "Price", placeholder: "0.00", text: $sellPrice, systemImage: "tag.circle")
+            }
+        }
+    }
+
+    private var classificationCard: some View {
+        formCard(title: "Classification", systemImage: "square.grid.2x2") {
+            pickerField(title: "Category", systemImage: "folder") {
+                Picker("Category", selection: $category) {
+                    ForEach(DataBaseItemCategory.allCases.filter { $0 != .na }, id:\.self) { category in
+                        Text(category.rawValue).tag(category)
                     }
                 }
             }
-            VStack{
-                Picker("", selection: $category) {
-                    Text("Pick tech").tag("Tech")
-                    ForEach(DataBaseItemCategory.allCases,id:\.self) { UOM in
+
+            pickerField(title: "Subcategory", systemImage: "tray") {
+                Picker("Subcategory", selection: $subCategory) {
+                    ForEach(DataBaseItemSubCategory.allCases.filter { $0 != .na }, id:\.self) { subCategory in
+                        Text(subCategory.rawValue).tag(subCategory)
+                    }
+                }
+            }
+
+            pickerField(title: "Unit", systemImage: "ruler") {
+                Picker("Unit", selection: $UOM) {
+                    ForEach(UnitOfMeasurment.allCases.filter { $0 != .na }, id:\.self) { UOM in
                         Text(UOM.rawValue).tag(UOM)
                     }
                 }
-                HStack{
-
-                    Picker("", selection: $subCategory) {
-                        Text("Pick tech").tag("Tech")
-                        ForEach(DataBaseItemSubCategory.allCases,id:\.self) { UOM in
-                            Text(UOM.rawValue).tag(UOM)
-                        }
-                    }
-                }
-
-                HStack{
-                    Text("UOM: ")
-                    Picker("", selection: $UOM) {
-                        Text("Pick tech").tag("Tech")
-                        ForEach(UnitOfMeasurment.allCases,id:\.self) { UOM in
-                            Text(UOM.rawValue).tag(UOM)
-                        }
-                    }
-                }
-                HStack{
-                    Text("size")
-                    TextField(
-                        "size",
-                        text: $size
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
-                HStack{
-                    Text("color")
-                    TextField(
-                        "color",
-                        text: $color
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
-                HStack{
-                    Text("sku")
-                    TextField(
-                        "sku",
-                        text: $sku
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
-                HStack{
-                    Text("description")
-                    TextField(
-                        "description",
-                        text: $description
-                    )
-                    .padding(3)
-                    .background(Color.gray.opacity(0.3))
-                    .cornerRadius(3)
-                    
-                }
-                Toggle("Billable", isOn: $billable)
             }
-            Button(action: {
-                Task{
-                    if let company = masterDataManager.currentCompany {
-                        do {
-                            let pushName = name
-                            let pushRate = rate
-                            let pushStoreId = store.id
-                            let pushStoreName = store.name
-                            
-                            let pushCategory = category
-                            let pushDescription = description
-                            let pushDateUpdated = dateUpdated
-                            let pushSku = sku
-                            let pushBillable = billable
-                            let pushSellPrice = Double(sellPrice)
-                            let pushUOM = UOM
-                            let pushSize = size
-                            let pushSubCategory = subCategory
-                            let pushColor = color
-                            
-                            
-                            try await viewModel.addDataBaseItem(companyId: company.id,dataBaseItem:DataBaseItem(id: UUID().uuidString,
-                                                                                                                name: pushName,
-                                                                                                                rate: Double(pushRate) ?? 0.00,
-                                                                                                                storeName: pushStoreName ?? "Unknown",
-                                                                                                                venderId: pushStoreId,
-                                                                                                                category: pushCategory,
-                                                                                                                subCategory: pushSubCategory,
-                                                                                                                description: pushDescription,
-                                                                                                                dateUpdated: pushDateUpdated,
-                                                                                                                sku: pushSku,
-                                                                                                                billable: pushBillable,
-                                                                                                                color: pushColor,
-                                                                                                                size: pushSize,
-                                                                                                                UOM: pushUOM,
-                                                                                                                sellPrice: pushSellPrice))
-                            
-                            
-                            name = ""
-                            rate = ""
-                            storeId = ""
-                            category = .misc
-                            subCategory = .misc
-                            UOM = .unit
-                            description = ""
-                            dateUpdated = Date()
-                            sku = ""
-                        } catch {
-                            print(error)
-                        }
-                    }
-                }
-            }, label: {
-                Text("Submit")
-                    .modifier(SubmitButtonModifier())
 
-            })
-            
+            databaseTextField(title: "Size", placeholder: "Size", text: $size, systemImage: "arrow.left.and.right")
+            databaseTextField(title: "Color", placeholder: "Color", text: $color, systemImage: "paintpalette")
         }
-        .padding(.init(top: 40, leading: 20, bottom: 0, trailing: 0))
-        .task{
-            if let company = masterDataManager.currentCompany {
-                do {
-                    try await storeViewModel.getAllStores(companyId:company.id)
-                    if storeViewModel.stores.count != 0 {
-                        store = storeViewModel.stores.first!
-                    }
-                } catch {
-                    print(error)
-                }
-            }
-        }
-        .navigationTitle("Add Item To DataBase")
     }
-    
+
+    private var storeCard: some View {
+        formCard(title: "Store", systemImage: "storefront") {
+            pickerField(title: "Vendor", systemImage: "building.2") {
+                Picker("Store", selection: $store) {
+                    Text("No store selected").tag(Vender(id: "",address: Address(streetAddress: "", city: "", state: "", zip: "", latitude: 0, longitude: 0)))
+                    ForEach(storeViewModel.stores) { store in
+                        Text(store.name ?? "Unnamed Store").tag(store)
+                    }
+                }
+            }
+        }
+    }
+
+    private var detailsCard: some View {
+        formCard(title: "Details", systemImage: "text.alignleft") {
+            VStack(alignment: .leading, spacing: 7) {
+                Label("Description", systemImage: "note.text")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField("Description", text: $description, axis: .vertical)
+                    .lineLimit(3...6)
+                    .padding(12)
+                    .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+    }
 }
 
+extension AddNewDatabaseItem {
+    private var canSubmit: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSubmitting
+    }
+
+    private func formCard<Content: View>(
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            content()
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 4)
+    }
+
+    private func databaseTextField(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        systemImage: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(placeholder, text: text)
+                .padding(12)
+                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private func moneyField(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        systemImage: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 8) {
+                Text("$")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField(placeholder, text: text)
+                    .keyboardType(.decimalPad)
+            }
+            .padding(12)
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private func pickerField<Content: View>(
+        title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(spacing: 10) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            content()
+                .font(.subheadline.weight(.semibold))
+                .pickerStyle(.menu)
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func loadStores() async {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        do {
+            try await storeViewModel.getAllStores(companyId:company.id)
+            if let firstStore = storeViewModel.stores.first {
+                store = firstStore
+            }
+        } catch {
+            print(error)
+        }
+    }
+
+    private func submit() {
+        guard canSubmit else { return }
+
+        Task{
+            isSubmitting = true
+            defer { isSubmitting = false }
+
+            guard let company = masterDataManager.currentCompany else {
+                alertMessage = "Select a company before adding an item."
+                showAlert = true
+                return
+            }
+
+            do {
+                let pushSellPrice: Double? = billable && !sellPrice.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? DataBaseItemMoneyFormatter.centsFromDollarInput(sellPrice)
+                    : nil
+
+                try await viewModel.addDataBaseItem(companyId: company.id,dataBaseItem:DataBaseItem(id: UUID().uuidString,
+                                                                                                    name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                                                                    rate: DataBaseItemMoneyFormatter.centsFromDollarInput(rate),
+                                                                                                    storeName: store.name ?? "Unknown",
+                                                                                                    venderId: store.id,
+                                                                                                    category: category,
+                                                                                                    subCategory: subCategory,
+                                                                                                    description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                                                                    dateUpdated: dateUpdated,
+                                                                                                    sku: sku.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                                                                    billable: billable,
+                                                                                                    color: color.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                                                                    size: size.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                                                                    UOM: UOM,
+                                                                                                    sellPrice: pushSellPrice))
+
+                resetForm()
+                dismiss()
+            } catch {
+                alertMessage = "Unable to add this database item."
+                showAlert = true
+                print(error)
+            }
+        }
+    }
+
+    private func resetForm() {
+        name = ""
+        rate = ""
+        sellPrice = ""
+        storeId = ""
+        storeName = ""
+        category = .misc
+        subCategory = .misc
+        UOM = .unit
+        description = ""
+        dateUpdated = Date()
+        billable = true
+        sku = ""
+        size = ""
+        color = ""
+
+        if let firstStore = storeViewModel.stores.first {
+            store = firstStore
+        }
+    }
+
+    private func sanitizedDecimalInput(_ value: String) -> String {
+        var hasDecimal = false
+        var output = ""
+
+        for character in value {
+            if character.isNumber {
+                output.append(character)
+            } else if character == "." && !hasDecimal {
+                output.append(character)
+                hasDecimal = true
+            }
+        }
+
+        return output
+    }
+}

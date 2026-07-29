@@ -67,6 +67,22 @@ protocol ProductionDataServiceProtocol: Equatable {
         needsAction: Bool
     ) async throws -> [ShoppingListItem]
 
+    @discardableResult
+    func syncShoppingListItemsForScheduledJobTasks(
+        companyId: String,
+        jobId: String,
+        customerId: String,
+        serviceLocationId: String,
+        serviceStopId: String,
+        serviceStopInternalId: String,
+        serviceDate: Date,
+        assignedTechId: String,
+        assignedTechName: String,
+        taskIds: [String],
+        shoppingListItemIds: [String],
+        plannedServiceStopId: String?
+    ) async throws -> Int
+
     func getOutstandingShoppingListItemsPage(
         companyId: String,
         limit: Int
@@ -157,6 +173,10 @@ protocol ProductionDataServiceProtocol: Equatable {
     func fetchWorkOffers(
         companyId: String,
         jobId: String
+    ) async throws -> [WorkOffer]
+
+    func fetchAllWorkOffers(
+        companyId: String
     ) async throws -> [WorkOffer]
 
     func fetchWorkOffersForUser(
@@ -659,8 +679,9 @@ protocol ProductionDataServiceProtocol: Equatable {
     
     
     func searchForUsers(searchTerm:String) async throws -> [DBUser]
-    func getAllCompanyToDoItems(companyId:String) -> [ToDo]
-    func getAllCompanyToDoItemsCount(companyId: String) -> Int
+    func getToDo(companyId:String,toDoId:String) async throws -> ToDo
+    func getAllCompanyToDoItems(companyId:String) async throws -> [ToDo]
+    func getAllCompanyToDoItemsCount(companyId: String) async throws -> Int
     func getAllTechnicanToDoItemsCount(companyId: String, techId: String) async throws -> Int
     func getAllTechnicanToDoItems(companyId:String,techId:String) async throws -> [ToDo]
     func getCurrentUser(userId:String) async throws -> DBUser
@@ -718,6 +739,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getCustomersActiveAndFirstName(companyId:String,active : Bool,firstNameHigh:Bool) async throws ->[Customer]
     func getCustomersActiveAndLastName(companyId:String,active : Bool,lastNameHigh:Bool) async throws ->[Customer]
     func getCustomerById(companyId:String,customerId : String) async throws ->Customer
+    func getCustomerNotes(companyId: String, customerId: String, visibleFromFieldOnly: Bool, limit: Int) async throws -> [CustomerNote]
+    func getCustomerPartApprovals(companyId: String, customerId: String) async throws -> [CustomerPartApproval]
     func getAllCustomers(companyId:String) async throws -> [Customer]
     func getAllActiveCustomers(companyId:String) async throws -> [Customer]
     func searchForCustomers(companyId:String,searchTerm:String) async throws -> [Customer]
@@ -889,6 +912,13 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateEquipmentIsActive(companyId:String,equipmentId:String,isActive:Bool) throws
     func updateEquipmentDateUninstalled(companyId:String,equipmentId:String,dateUninstalled:Date) throws
     func getAllActiveRoutesBasedOnVehical(companyId: String, vehicalId:String, count: Int) async throws -> [ActiveRoute]
+    func getActiveRoutesForVehical(
+        companyId: String,
+        vehicalId: String,
+        startDate: Date,
+        endDate: Date,
+        limit: Int
+    ) async throws -> [ActiveRoute]
 
     func getAllActiveRoutesBasedOnDate(companyId: String,date:Date,tech:DBUser) async throws -> [ActiveRoute]
     func getAllActiveRoutesBasedOnDate(companyId: String,date:Date,tech:CompanyUser) async throws -> [ActiveRoute]
@@ -1197,6 +1227,9 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateHomeOwnerServiceStopFinish(companyId: String, serviceStop: ServiceStop, finished: Bool) async throws
     func updateRecurringServiceStopAddress(companyId:String,recurringServiceStopId:String,address:Address) async throws
     func uploadRecurringServiceStopTask(companyId:String,recurringServiceStopId:String,task:RecurringServiceStopTask) async throws
+    func uploadCustomerNote(companyId: String, customerId: String, note: CustomerNote) async throws
+    func updateCustomerNoteResolved(companyId: String, customerId: String, noteId: String, resolved: Bool, authorId: String, authorName: String) async throws
+    func uploadCustomerPartApproval(_ approval: CustomerPartApproval) async throws
     func getRecurringServiceStopTasks(companyId:String,recurringServiceStopId:String) async throws -> [RecurringServiceStopTask]
     func updateRecurringServiceStopTaskStatus(companyId:String,recurringServiceStopId:String,taskId:String,status:JobTaskStatus)
     func getAllTaskGroupById(companyId:String,taskGroupId:String) async throws -> JobTaskGroup 
@@ -1209,7 +1242,7 @@ protocol ProductionDataServiceProtocol: Equatable {
         //Service Stops
 
     func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws
-    func updateScheduledJobServiceStop(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser,description:String,estimatedDuration:Int,serviceStopTypeFields:ServiceStopTypeFields) async throws
+    func updateScheduledJobServiceStop(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser,description:String,estimatedDuration:Int,manualPayOverrideCents:Int?,manualPayOverrideNotes:String?,serviceStopTypeFields:ServiceStopTypeFields) async throws
     func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,newServiceStop:ServiceStop) async throws // Developer Break Out into Induvidual and Delete
     func updateServiceStopAddress(companyId:String,serviceStopId:String,address:Address) async throws
     func updateServiceStopServiceNotes(companyId:String,serviceStopId:String,serviceNotes:String) async throws
@@ -1443,4 +1476,169 @@ protocol ProductionDataServiceProtocol: Equatable {
 //    Mobile Dashboard listeners
     func stopServiceStopActiveRouteRecurringRouteListenrs()
 
+}
+
+extension ProductionDataServiceProtocol {
+    func getCustomerNotes(
+        companyId: String,
+        customerId: String,
+        visibleFromFieldOnly: Bool = false,
+        limit: Int = 25
+    ) async throws -> [CustomerNote] {
+        guard !companyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !customerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return []
+        }
+
+        let snapshot = try await Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("customers")
+            .document(customerId)
+            .collection("notes")
+            .order(by: "date", descending: true)
+            .limit(to: limit)
+            .getDocuments()
+
+        let notes = snapshot.documents.compactMap { document in
+            do {
+                return try document.data(as: CustomerNote.self)
+            } catch {
+                print("[ProductionDataServiceProtocol][getCustomerNotes] Decode error: \(error)")
+                return nil
+            }
+        }
+
+        let visibleNotes = visibleFromFieldOnly
+            ? notes.filter(\.isVisibleFromFieldStop)
+            : notes
+
+        return visibleNotes.sorted { $0.displayDate > $1.displayDate }
+    }
+
+    func uploadCustomerNote(
+        companyId: String,
+        customerId: String,
+        note: CustomerNote
+    ) async throws {
+        guard !companyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !customerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        var noteToSave = note
+        let trimmedId = (noteToSave.storedId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let noteId = trimmedId.isEmpty ? "comp_cus_note_\(UUID().uuidString)" : trimmedId
+        let now = Date()
+        let nowMillis = now.timeIntervalSince1970 * 1000
+        let noteText = (noteToSave.note ?? noteToSave.comment ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let audience = noteToSave.audience ?? noteToSave.displayAudience
+
+        noteToSave.storedId = noteId
+        noteToSave.companyId = noteToSave.companyId ?? companyId
+        noteToSave.customerId = noteToSave.customerId ?? customerId
+        noteToSave.note = noteText
+        noteToSave.comment = noteText
+        noteToSave.audience = audience
+        noteToSave.visibility = audience.rawValue
+        noteToSave.resolved = noteToSave.resolved ?? false
+        noteToSave.date = noteToSave.date ?? now
+        noteToSave.dateMillis = noteToSave.dateMillis ?? nowMillis
+        noteToSave.createdAt = noteToSave.createdAt ?? now
+        noteToSave.createdAtMillis = noteToSave.createdAtMillis ?? nowMillis
+        noteToSave.updatedAt = now
+        noteToSave.updatedAtMillis = nowMillis
+
+        try Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("customers")
+            .document(customerId)
+            .collection("notes")
+            .document(noteId)
+            .setData(from: noteToSave, merge: false)
+    }
+
+    func updateCustomerNoteResolved(
+        companyId: String,
+        customerId: String,
+        noteId: String,
+        resolved: Bool,
+        authorId: String,
+        authorName: String
+    ) async throws {
+        guard !companyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !customerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !noteId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+
+        let nowMillis = Date().timeIntervalSince1970 * 1000
+
+        try await Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("customers")
+            .document(customerId)
+            .collection("notes")
+            .document(noteId)
+            .updateData([
+                "resolved": resolved,
+                "resolvedAt": resolved ? FieldValue.serverTimestamp() : NSNull(),
+                "resolvedAtMillis": resolved ? nowMillis : NSNull(),
+                "resolvedByUserId": resolved ? authorId : "",
+                "resolvedByUserName": resolved ? authorName : "",
+                "updatedAt": FieldValue.serverTimestamp(),
+                "updatedAtMillis": nowMillis
+            ])
+    }
+
+    func getCustomerPartApprovals(
+        companyId: String,
+        customerId: String
+    ) async throws -> [CustomerPartApproval] {
+        guard !companyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !customerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return []
+        }
+
+        let snapshot = try await Firestore.firestore()
+            .collection("customerPartApprovals")
+            .whereField("companyId", isEqualTo: companyId)
+            .whereField("customerId", isEqualTo: customerId)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            do {
+                return try document.data(as: CustomerPartApproval.self)
+            } catch {
+                print("[ProductionDataServiceProtocol][getCustomerPartApprovals] Decode error: \(error)")
+                return nil
+            }
+        }
+        .sorted { $0.displayDate > $1.displayDate }
+    }
+
+    func uploadCustomerPartApproval(_ approval: CustomerPartApproval) async throws {
+        let approvalId = approval.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "cpa_\(UUID().uuidString)"
+            : approval.id
+
+        var approvalToSave = approval
+        approvalToSave.id = approvalId
+        approvalToSave.status = approvalToSave.status ?? "pending"
+        approvalToSave.approvalStatus = approvalToSave.approvalStatus ?? approvalToSave.status
+        approvalToSave.fulfillmentStatus = approvalToSave.fulfillmentStatus ?? "awaitingCustomerApproval"
+        approvalToSave.sourceType = approvalToSave.sourceType ?? "partApprovalRequest"
+
+        let now = Date()
+        approvalToSave.requestedAt = approvalToSave.requestedAt ?? now
+        approvalToSave.createdAt = approvalToSave.createdAt ?? now
+        approvalToSave.updatedAt = now
+
+        try Firestore.firestore()
+            .collection("customerPartApprovals")
+            .document(approvalId)
+            .setData(from: approvalToSave, merge: false)
+    }
 }

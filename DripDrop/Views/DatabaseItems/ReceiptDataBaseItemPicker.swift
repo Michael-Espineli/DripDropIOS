@@ -160,7 +160,7 @@ struct ReceiptDataBaseItemPicker: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
 
-            TextField("Search name, SKU, description, or rate", text: $searchTerm)
+            TextField("Search name, SKU, description, or price", text: $searchTerm)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
 
@@ -396,10 +396,14 @@ private struct DatabaseItemPickerRow: View {
 
     private var priceText: String {
         if let sellPrice = item.sellPrice, sellPrice > 0 {
-            return "Cost \(moneyFromCents(item.rate)) • Sell \(moneyFromCents(sellPrice))"
+            return "Price \(DataBaseItemMoneyFormatter.moneyFromCents(sellPrice))"
         }
 
-        return "Cost \(moneyFromCents(item.rate))"
+        return "No customer price"
+    }
+
+    private var costText: String {
+        "Cost \(DataBaseItemMoneyFormatter.moneyFromCents(item.rate))"
     }
 
     private var detailText: String {
@@ -436,10 +440,17 @@ private struct DatabaseItemPickerRow: View {
 
                         Spacer()
 
-                        Text(priceText)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(priceText)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(DataBaseItemMoneyFormatter.hasCustomerPrice(item) ? .green : .orange)
+                                .lineLimit(1)
+
+                            Text(costText)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
 
                     if !detailText.isEmpty {
@@ -504,10 +515,6 @@ private struct DatabaseItemPickerRow: View {
         }
     }
 
-    private func moneyFromCents(_ cents: Double) -> String {
-        let dollars = cents / 100.0
-        return dollars.formatted(.currency(code: "USD"))
-    }
 }
 
 // MARK: - Styling

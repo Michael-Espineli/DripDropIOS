@@ -304,13 +304,70 @@ struct TechnicianWorkCenterView: View {
 
     private var tabSection: some View {
         Section {
-            Picker("View", selection: $viewModel.selectedTab) {
+            LazyVGrid(columns: workTabColumns, spacing: 10) {
                 ForEach(TechnicianWorkCenterTab.allCases) { tab in
-                    Text(tabTitle(for: tab)).tag(tab)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            viewModel.selectedTab = tab
+                        }
+                    } label: {
+                        workTabBox(for: tab)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .pickerStyle(.segmented)
+            .padding(.vertical, 2)
+        } header: {
+            Text("View")
         }
+    }
+
+    private var workTabColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10),
+            GridItem(.flexible(), spacing: 10)
+        ]
+    }
+
+    private func workTabBox(for tab: TechnicianWorkCenterTab) -> some View {
+        let isSelected = viewModel.selectedTab == tab
+        let tint = tabTint(for: tab)
+
+        return VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .center, spacing: 8) {
+                Image(systemName: tabIcon(for: tab))
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(isSelected ? .white : tint)
+                    .frame(width: 28, height: 28)
+                    .background(
+                        isSelected ? Color.white.opacity(0.16) : tint.opacity(0.13),
+                        in: Circle()
+                    )
+
+                Spacer()
+
+                Text("\(tabCount(for: tab))")
+                    .font(.title3.weight(.bold))
+                    .foregroundColor(isSelected ? .white : .primary)
+                    .monospacedDigit()
+            }
+
+            Text(tabName(for: tab))
+                .font(.caption.weight(.semibold))
+                .foregroundColor(isSelected ? .white.opacity(0.9) : .secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+        .padding(12)
+        .background(
+            isSelected ? tint : Color.primary.opacity(0.045),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(isSelected ? Color.clear : tint.opacity(0.16), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -496,18 +553,58 @@ struct TechnicianWorkCenterView: View {
         }
     }
     
-    private func tabTitle(for tab: TechnicianWorkCenterTab) -> String {
+    private func tabName(for tab: TechnicianWorkCenterTab) -> String {
         switch tab {
         case .directOffers:
-            return "Offers \(viewModel.directOfferCount)"
+            return "Offers"
         case .workBoard:
-            return "Board \(viewModel.boardOfferCount)"
+            return "Board"
         case .accepted:
-            return "Accepted \(viewModel.acceptedOfferCount)"
+            return "Accepted"
         case .scheduled:
-            return "Scheduled \(viewModel.scheduledServiceStopCount)"
+            return "Scheduled"
         }
     }
+
+    private func tabCount(for tab: TechnicianWorkCenterTab) -> Int {
+        switch tab {
+        case .directOffers:
+            return viewModel.directOfferCount
+        case .workBoard:
+            return viewModel.boardOfferCount
+        case .accepted:
+            return viewModel.acceptedOfferCount
+        case .scheduled:
+            return viewModel.scheduledServiceStopCount
+        }
+    }
+
+    private func tabIcon(for tab: TechnicianWorkCenterTab) -> String {
+        switch tab {
+        case .directOffers:
+            return "paperplane"
+        case .workBoard:
+            return "list.bullet.clipboard"
+        case .accepted:
+            return "checkmark.circle"
+        case .scheduled:
+            return "calendar"
+        }
+    }
+
+    private func tabTint(for tab: TechnicianWorkCenterTab) -> Color {
+        switch tab {
+        case .directOffers:
+            return .poolBlue
+        case .workBoard:
+            return .poolGreen
+        case .accepted:
+            return .orange
+        case .scheduled:
+            return .purple
+        }
+    }
+
     private var scheduledWorkSection: some View {
         Section {
             if viewModel.scheduledServiceStops.isEmpty {
@@ -873,6 +970,496 @@ struct TechnicianWorkNoteBlock: View {
 
             Text(value)
         }
+    }
+}
+
+// MARK: - Company Offered Work
+
+private enum CompanyOfferedWorkStatusFilter: String, CaseIterable, Identifiable {
+    case open = "Open"
+    case ready = "Ready"
+    case accepted = "Accepted"
+    case scheduled = "Scheduled"
+    case final = "Final"
+    case all = "All"
+
+    var id: String { rawValue }
+
+    func includes(_ offer: WorkOffer) -> Bool {
+        switch self {
+        case .open:
+            return offer.status.isOpen
+        case .ready:
+            return offer.status == .accepted && offer.serviceStopId.isEmpty
+        case .accepted:
+            return offer.status == .accepted
+        case .scheduled:
+            return offer.status == .scheduled ||
+            offer.status == .inProgress ||
+            offer.status == .completed ||
+            !offer.serviceStopId.isEmpty
+        case .final:
+            return offer.status.isFinal
+        case .all:
+            return true
+        }
+    }
+}
+
+private enum CompanyOfferedWorkTypeFilter: String, CaseIterable, Identifiable {
+    case all = "All Types"
+    case direct = "Direct"
+    case board = "Board"
+    case external = "External"
+
+    var id: String { rawValue }
+
+    func includes(_ offer: WorkOffer) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .direct:
+            return offer.offerType == .directUser
+        case .board:
+            return offer.offerType == .internalBoard
+        case .external:
+            return offer.offerType == .externalCompany
+        }
+    }
+}
+
+private enum CompanyOfferedWorkSchedulingFilter: String, CaseIterable, Identifiable {
+    case all = "All Scheduling"
+    case selfSchedule = "Tech Can Schedule"
+    case adminSchedule = "Admin Schedules"
+    case scheduled = "Scheduled"
+    case unscheduled = "Unscheduled"
+
+    var id: String { rawValue }
+
+    func includes(_ offer: WorkOffer) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .selfSchedule:
+            return offer.allowsTechnicianSelfScheduling == true
+        case .adminSchedule:
+            return offer.allowsTechnicianSelfScheduling != true && offer.serviceStopId.isEmpty
+        case .scheduled:
+            return offer.status == .scheduled ||
+            offer.status == .inProgress ||
+            offer.status == .completed ||
+            !offer.serviceStopId.isEmpty
+        case .unscheduled:
+            return offer.serviceStopId.isEmpty
+        }
+    }
+}
+
+fileprivate struct CompanyOfferedWorkSummary {
+    var total: Int
+    var open: Int
+    var ready: Int
+    var accepted: Int
+    var scheduled: Int
+    var estimatedPayCents: Int
+}
+
+@MainActor
+final class CompanyOfferedWorkViewModel: ObservableObject {
+    @Published private(set) var offers: [WorkOffer] = []
+    @Published var isLoading: Bool = false
+    @Published var showAlert: Bool = false
+    @Published var alertMessage: String = ""
+
+    let dataService: any ProductionDataServiceProtocol
+
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
+    }
+
+    fileprivate var summary: CompanyOfferedWorkSummary {
+        CompanyOfferedWorkSummary(
+            total: offers.count,
+            open: offers.filter { $0.status.isOpen }.count,
+            ready: offers.acceptedReadyToScheduleCount,
+            accepted: offers.filter { $0.status == .accepted }.count,
+            scheduled: offers.scheduledOfferCount,
+            estimatedPayCents: offers.reduce(0) { $0 + $1.companyEstimatedPayCents }
+        )
+    }
+
+    func load(companyId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            offers = try await dataService.fetchAllWorkOffers(companyId: companyId)
+                .sorted { $0.createdAt > $1.createdAt }
+        } catch {
+            offers = []
+            alertMessage = "Could not load offered work. \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+}
+
+struct CompanyOfferedWorkView: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @StateObject private var viewModel: CompanyOfferedWorkViewModel
+
+    @State private var statusFilter: CompanyOfferedWorkStatusFilter = .open
+    @State private var typeFilter: CompanyOfferedWorkTypeFilter = .all
+    @State private var schedulingFilter: CompanyOfferedWorkSchedulingFilter = .all
+    @State private var workerFilter: String = "All"
+    @State private var searchText: String = ""
+
+    init(dataService: any ProductionDataServiceProtocol) {
+        _viewModel = StateObject(wrappedValue: CompanyOfferedWorkViewModel(dataService: dataService))
+    }
+
+    private var workerOptions: [String] {
+        let workers = viewModel.offers
+            .map(\.companyOfferTargetName)
+            .filter { !$0.isEmpty }
+            .uniqueSorted()
+
+        return ["All"] + workers
+    }
+
+    private var filteredOffers: [WorkOffer] {
+        let term = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        return viewModel.offers
+            .filter { statusFilter.includes($0) }
+            .filter { typeFilter.includes($0) }
+            .filter { schedulingFilter.includes($0) }
+            .filter {
+                workerFilter == "All" ||
+                $0.companyOfferTargetName == workerFilter
+            }
+            .filter {
+                term.isEmpty ||
+                $0.companyOfferSearchText.localizedCaseInsensitiveContains(term)
+            }
+            .sorted {
+                if statusFilter != .ready {
+                    let leftReady = $0.status == .accepted && $0.serviceStopId.isEmpty
+                    let rightReady = $1.status == .accepted && $1.serviceStopId.isEmpty
+                    if leftReady != rightReady { return leftReady }
+                }
+
+                return $0.createdAt > $1.createdAt
+            }
+    }
+
+    var body: some View {
+        List {
+            summarySection
+            filtersSection
+            offersSection
+        }
+        .navigationTitle("Offered Work")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, prompt: "Search offered work")
+        .task(id: masterDataManager.currentCompany?.id) {
+            if let company = masterDataManager.currentCompany {
+                await viewModel.load(companyId: company.id)
+            }
+        }
+        .refreshable {
+            if let company = masterDataManager.currentCompany {
+                await viewModel.load(companyId: company.id)
+            }
+        }
+        .overlay {
+            if viewModel.isLoading {
+                ProgressView("Loading offered work...")
+                    .padding()
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .alert("Offered Work", isPresented: $viewModel.showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.alertMessage)
+        }
+    }
+
+    private var summarySection: some View {
+        Section {
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 10) {
+                TechnicianWorkSummaryChip(title: "Open", value: "\(viewModel.summary.open)", systemImage: "paperplane")
+                TechnicianWorkSummaryChip(title: "Ready", value: "\(viewModel.summary.ready)", systemImage: "calendar.badge.plus")
+                TechnicianWorkSummaryChip(title: "Accepted", value: "\(viewModel.summary.accepted)", systemImage: "checkmark.circle")
+                TechnicianWorkSummaryChip(title: "Est. Pay", value: TechnicianWorkMoneyFormatter.money(viewModel.summary.estimatedPayCents), systemImage: "dollarsign.circle")
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Summary")
+        } footer: {
+            Text("\(viewModel.summary.total) total offered work item\(viewModel.summary.total == 1 ? "" : "s").")
+        }
+    }
+
+    private var filtersSection: some View {
+        Section("Filters") {
+            Picker("Status", selection: $statusFilter) {
+                ForEach(CompanyOfferedWorkStatusFilter.allCases) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+
+            Picker("Type", selection: $typeFilter) {
+                ForEach(CompanyOfferedWorkTypeFilter.allCases) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+
+            Picker("Scheduling", selection: $schedulingFilter) {
+                ForEach(CompanyOfferedWorkSchedulingFilter.allCases) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+
+            Picker("Worker", selection: $workerFilter) {
+                ForEach(workerOptions, id: \.self) { worker in
+                    Text(worker).tag(worker)
+                }
+            }
+        }
+    }
+
+    private var offersSection: some View {
+        Section {
+            if filteredOffers.isEmpty {
+                ContentUnavailableView(
+                    "No Offered Work",
+                    systemImage: "tray",
+                    description: Text("No offers match the current view.")
+                )
+            } else if let company = masterDataManager.currentCompany {
+                ForEach(filteredOffers) { offer in
+                    NavigationLink {
+                        CompanyOfferedWorkDetailLoader(
+                            companyId: company.id,
+                            currentUserId: currentUserId,
+                            currentUserName: currentUserName,
+                            offer: offer,
+                            dataService: viewModel.dataService,
+                            onChanged: {
+                                Task {
+                                    await viewModel.load(companyId: company.id)
+                                }
+                            }
+                        )
+                    } label: {
+                        CompanyOfferedWorkRow(offer: offer)
+                    }
+                }
+            }
+        } header: {
+            Text("\(filteredOffers.count) Offer\(filteredOffers.count == 1 ? "" : "s")")
+        }
+    }
+
+    private var currentUserId: String {
+        masterDataManager.companyUser?.userId ??
+        masterDataManager.user?.id ??
+        ""
+    }
+
+    private var currentUserName: String {
+        if let companyUserName = masterDataManager.companyUser?.userName,
+           !companyUserName.isEmpty {
+            return companyUserName
+        }
+
+        return [
+            masterDataManager.user?.firstName,
+            masterDataManager.user?.lastName
+        ]
+            .compactMap { $0 }
+            .joined(separator: " ")
+    }
+}
+
+private struct CompanyOfferedWorkDetailLoader: View {
+    let companyId: String
+    let currentUserId: String
+    let currentUserName: String
+    let offer: WorkOffer
+    let dataService: any ProductionDataServiceProtocol
+    let onChanged: () -> Void
+
+    @State private var jobTasks: [JobTask] = []
+    @State private var isLoading: Bool = false
+    @State private var taskLoadError: String?
+
+    var body: some View {
+        WorkOfferDetailView(
+            companyId: companyId,
+            currentUserId: currentUserId,
+            currentUserName: currentUserName,
+            offer: offer,
+            jobTasks: jobTasks,
+            dataService: dataService,
+            onChanged: onChanged
+        )
+        .task {
+            await loadTasks()
+        }
+        .overlay(alignment: .bottom) {
+            if isLoading {
+                ProgressView("Loading tasks...")
+                    .padding(12)
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.bottom, 12)
+            } else if let taskLoadError {
+                Text("Tasks unavailable: \(taskLoadError)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(10)
+                    .background(.thinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.bottom, 12)
+            }
+        }
+    }
+
+    private func loadTasks() async {
+        guard !offer.jobId.isEmpty else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            jobTasks = try await dataService.getJobTasks(companyId: companyId, jobId: offer.jobId)
+            taskLoadError = nil
+        } catch {
+            jobTasks = []
+            taskLoadError = error.localizedDescription
+        }
+    }
+}
+
+private struct CompanyOfferedWorkRow: View {
+    let offer: WorkOffer
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: offer.offerType.systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 34, height: 34)
+                    .background(iconColor.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(offer.title.isEmpty ? "Offered Work" : offer.title)
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("\(offer.jobInternalId) • \(offer.customerName)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Text(offer.status.title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            HStack(spacing: 10) {
+                Label(offer.companyOfferTargetName, systemImage: "person")
+                Label("\(offer.jobTaskIds.count) task(s)", systemImage: "checklist")
+                Label(TechnicianWorkMoneyFormatter.money(offer.companyEstimatedPayCents), systemImage: "dollarsign.circle")
+            }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var iconColor: Color {
+        switch offer.offerType {
+        case .directUser:
+            return .poolBlue
+        case .internalBoard:
+            return .poolGreen
+        case .externalCompany:
+            return .orange
+        }
+    }
+}
+
+private extension WorkOffer {
+    var companyEstimatedPayCents: Int {
+        if let estimatedPayTotalCents {
+            return estimatedPayTotalCents
+        }
+
+        if offeredAmountCents > 0 {
+            return offeredAmountCents
+        }
+
+        return estimatedLaborCents
+    }
+
+    var companyOfferTargetName: String {
+        if !offeredToUserName.isEmpty {
+            return offeredToUserName
+        }
+
+        if !acceptedByUserName.isEmpty {
+            return acceptedByUserName
+        }
+
+        if offerType == .internalBoard {
+            return "Internal Board"
+        }
+
+        if !externalCompanyName.isEmpty {
+            return externalCompanyName
+        }
+
+        return "Unassigned"
+    }
+
+    var companyOfferSearchText: String {
+        [
+            id,
+            title,
+            description,
+            adminNotes,
+            workerNotes,
+            jobInternalId,
+            jobName,
+            customerName,
+            serviceLocationName,
+            serviceStopTypeName ?? "",
+            status.title,
+            offerType.title,
+            companyOfferTargetName
+        ]
+            .joined(separator: " ")
+            .lowercased()
+    }
+}
+
+private extension Array where Element == String {
+    func uniqueSorted() -> [String] {
+        Array(Set(self)).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 }
 

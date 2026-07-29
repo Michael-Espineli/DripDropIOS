@@ -13,8 +13,17 @@ struct ShoppingListView: View {
 
     @StateObject var shoppingVM: ShoppingListViewModel
     @StateObject private var routeVM: MobileDailyRouteDisplayViewModel
+    private let providedRouteServiceStops: [ServiceStop]?
+    private let routeDate: Date?
 
-    init(dataService: any ProductionDataServiceProtocol) {
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        routeServiceStops: [ServiceStop]? = nil,
+        routeDate: Date? = nil
+    ) {
+        self.providedRouteServiceStops = routeServiceStops
+        self.routeDate = routeDate
+
         _shoppingVM = StateObject(
             wrappedValue: ShoppingListViewModel(dataService: dataService)
         )
@@ -28,6 +37,7 @@ struct ShoppingListView: View {
     @State private var showAddNewShoppingListItem: Bool = false
     @State private var isLoading: Bool = false
     @State private var includeAllOutstanding: Bool = false
+    @State private var showOtherOutstandingItems: Bool = false
 
     var body: some View {
         ZStack {
@@ -111,6 +121,13 @@ struct ShoppingListView: View {
             await startRouteContextIfNeeded()
             await reloadShoppingCenter()
         }
+        .onChange(of: routeVM.serviceStopList) { _, _ in
+            guard providedRouteServiceStops == nil else { return }
+
+            Task {
+                await reloadShoppingCenter()
+            }
+        }
         .refreshable {
             await reloadShoppingCenter()
         }
@@ -165,16 +182,103 @@ extension ShoppingListView {
         .shoppingCenterCard(material: true)
     }
 
+    private var routeContextServiceStops: [ServiceStop] {
+        providedRouteServiceStops ?? routeVM.serviceStopList
+    }
+
+    private var routeContextLabel: String {
+        guard let routeDate else {
+            return "today’s route"
+        }
+
+        if Calendar.current.isDateInToday(routeDate) {
+            return "today’s route"
+        }
+
+        return "\(weekDay(date: routeDate)) route"
+    }
+
+    private var otherOutstandingItems: [ShoppingListItem] {
+        let routeItemIds = Set(shoppingVM.routePrepItems.map { $0.id })
+
+        return shoppingVM.outstandingItems.filter { item in
+            !routeItemIds.contains(item.id)
+        }
+    }
+
+    private var otherOutstandingRouteItemsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+
+            Button {
+                showOtherOutstandingItems.toggle()
+                includeAllOutstanding = showOtherOutstandingItems
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: showOtherOutstandingItems ? "chevron.up.circle" : "tray.full")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(showOtherOutstandingItems ? "Hide Other Open Items" : "Show Other Open Items")
+                            .font(.subheadline.weight(.semibold))
+
+                        Text("Open shopping items outside \(routeContextLabel).")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    Spacer()
+
+                    if showOtherOutstandingItems {
+                        Text("\(otherOutstandingItems.count)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(.thinMaterial, in: Capsule())
+                    } else {
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            if showOtherOutstandingItems {
+                if otherOutstandingItems.isEmpty {
+                    emptyState(
+                        title: "No other open items.",
+                        message: "Everything open is already tied to this route context.",
+                        systemImage: "checkmark.circle"
+                    )
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(otherOutstandingItems) { item in
+                            shoppingItemLink(item)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var routePrepSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 title: "Route Prep",
-                subtitle: "Items connected to today’s route, jobs, customers, service locations, or your personal list.",
+                subtitle: "Items connected to \(routeContextLabel), jobs, customers, service locations, or your personal list.",
                 systemImage: "map",
                 count: shoppingVM.routePrepItems.count
             )
 
-            if routeVM.serviceStopList.isEmpty {
+            if routeContextServiceStops.isEmpty {
                 routeContextEmptyCard
             }
 
@@ -191,6 +295,8 @@ extension ShoppingListView {
                     }
                 }
             }
+
+            otherOutstandingRouteItemsSection
         }
         .shoppingCenterCard()
     }
@@ -220,7 +326,9 @@ extension ShoppingListView {
             }
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .onChange(of: includeAllOutstanding) { _ in
+            .onChange(of: includeAllOutstanding) { _, isEnabled in
+                showOtherOutstandingItems = isEnabled
+
                 Task {
                     await reloadShoppingCenter()
                 }
@@ -276,7 +384,7 @@ extension ShoppingListView {
             Label("No route context loaded", systemImage: "map")
                 .font(.subheadline.weight(.semibold))
 
-            Text("Route Prep works best when today’s service stops are loaded. You can still use Outstanding to plan ahead.")
+            Text("Route Prep works best when the selected day’s service stops are loaded. You can still use Outstanding to plan ahead.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -383,6 +491,10 @@ extension ShoppingListView {
 extension ShoppingListView {
 
     private func startRouteContextIfNeeded() async {
+        guard providedRouteServiceStops == nil else {
+            return
+        }
+
         guard let company = masterDataManager.currentCompany,
               let user = masterDataManager.user else {
             return
@@ -391,7 +503,7 @@ extension ShoppingListView {
         routeVM.start(
             companyId: company.id,
             user: user,
-            date: Date()
+            date: routeDate ?? Date()
         )
     }
 
@@ -408,10 +520,10 @@ extension ShoppingListView {
             try await shoppingVM.loadRoutePrepShoppingItems(
                 companyId: company.id,
                 userId: user.id,
-                serviceStops: routeVM.serviceStopList
+                serviceStops: routeContextServiceStops
             )
 
-            if includeAllOutstanding {
+            if includeAllOutstanding || showOtherOutstandingItems {
                 try await shoppingVM.loadOutstandingShoppingItems(
                     companyId: company.id,
                     limit: 100

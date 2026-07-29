@@ -455,10 +455,12 @@ extension ProductionDataService {
         companyUser:CompanyUser,
         description:String,
         estimatedDuration:Int,
+        manualPayOverrideCents:Int?,
+        manualPayOverrideNotes:String?,
         serviceStopTypeFields:ServiceStopTypeFields
     ) async throws {
         let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
-        try await ref.updateData([
+        var updateData: [String: Any] = [
             ServiceStop.CodingKeys.serviceDate.rawValue: serviceDate,
             ServiceStop.CodingKeys.techId.rawValue: companyUser.userId,
             ServiceStop.CodingKeys.tech.rawValue: companyUser.userName,
@@ -468,7 +470,21 @@ extension ProductionDataService {
             ServiceStop.CodingKeys.type.rawValue: serviceStopTypeFields.type,
             ServiceStop.CodingKeys.typeImage.rawValue: serviceStopTypeFields.typeImage,
             ServiceStop.CodingKeys.category.rawValue: serviceStopTypeFields.category.rawValue
-        ])
+        ]
+
+        if let manualPayOverrideCents {
+            updateData[ServiceStop.CodingKeys.manualPayOverrideCents.rawValue] = manualPayOverrideCents
+        } else {
+            updateData[ServiceStop.CodingKeys.manualPayOverrideCents.rawValue] = FieldValue.delete()
+        }
+
+        if let manualPayOverrideNotes {
+            updateData[ServiceStop.CodingKeys.manualPayOverrideNotes.rawValue] = manualPayOverrideNotes
+        } else {
+            updateData[ServiceStop.CodingKeys.manualPayOverrideNotes.rawValue] = FieldValue.delete()
+        }
+
+        try await ref.updateData(updateData)
 
         _ = try? await syncActiveRouteForServiceStops(
             companyId: companyId,

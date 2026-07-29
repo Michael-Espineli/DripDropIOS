@@ -115,6 +115,28 @@ extension ProductionDataService {
 struct IdInfo: Identifiable, Codable, Hashable {
     var id:String//var uniqueId:String
     var internalId:String
+
+    init(id: String = "", internalId: String = "") {
+        self.id = id
+        self.internalId = internalId
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case internalId
+    }
+
+    init(from decoder: Decoder) throws {
+        if let container = try? decoder.container(keyedBy: CodingKeys.self) {
+            id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+            internalId = try container.decodeIfPresent(String.self, forKey: .internalId) ?? ""
+            return
+        }
+
+        let singleValueContainer = try decoder.singleValueContainer()
+        id = (try? singleValueContainer.decode(String.self)) ?? ""
+        internalId = ""
+    }
 }
 
 

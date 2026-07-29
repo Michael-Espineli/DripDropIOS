@@ -207,12 +207,12 @@ final class ReadingsManager {
     
     }
     func uploadReadingToCustomerHistory(companyId:String,serviceStop : ServiceStop,stopData:StopData) async throws {
-        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: true)
+        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: true)
         print("Uploaded Reading List")
 
     }
     func uploadDosagesToCustomerHistory(companyId:String,serviceStop : ServiceStop,stopData:StopData) async throws {
-        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: true)
+        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: true)
         print("Uploaded Dosage List")
     }
     
@@ -458,7 +458,7 @@ final class ReadingsManager {
 
     func addStopHistory(serviceStop:ServiceStop,stopData:StopData,companyId:String) async throws{
         print("breaks here")
-        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: false)
+        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: false)
         
     }
     /*
@@ -516,7 +516,7 @@ final class ReadingsManager {
     
                         var stopData = StopData(id: UUID().uuidString, date: date, serviceStopId: id, readings: readingList, dosages: dosageList)
     
-                        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: user.companyId).setData(from:stopData, merge: false)
+                        try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: user.companyId).setData(from: stopData.customerVisibleCopy, merge: false)
     
                         print("Added Stop Data")
                         counter = counter - 7
@@ -696,7 +696,7 @@ final class ReadingsManager {
                     }
                     let stopData = StopData(id: UUID().uuidString, date: date, serviceStopId: id, readings: readingList, dosages: dosageList, bodyOfWaterId: bodyOfWater.id)
                     
-                    try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: false)
+                    try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: false)
                     
                     print("Added Stop Data")
                     counter = counter - 7
@@ -881,7 +881,7 @@ final class ReadingsManager {
                 }
                 let stopData = StopData(id: UUID().uuidString, date: date, serviceStopId: id, readings: readingList, dosages: dosageList, bodyOfWaterId: bodyOfWater.id)
                 
-                try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from:stopData, merge: false)
+                try readingDocumentToCustomerHistory(customerId: serviceStop.customerId , stopDataId: stopData.id, companyId: companyId).setData(from: stopData.customerVisibleCopy, merge: false)
                 
                 print("Added Stop Data")
                 counter = counter - 7

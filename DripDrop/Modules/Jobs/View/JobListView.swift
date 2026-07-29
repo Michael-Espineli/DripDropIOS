@@ -131,15 +131,19 @@ extension JobListView {
         VStack{
             if jobVM.workOrders.count == 0 {
                 if let role = masterDataManager.role {
-                    if role.permissionIdList.contains("22") {
+                    if role.canCreateAnyJob {
                         Button(action: {
-                            showAddNew.toggle()
+                            showCreateJobOptions = true
                         }, label: {
                             Text("Add First Job")
                                 .modifier(AddButtonModifier())
                             
                         })
-                        .sheet(isPresented: $showAddNew,onDismiss: {
+                        .sheet(isPresented: $showCreateJobOptions) {
+                            createJobOptionsSheet
+                                .presentationDetents([.medium])
+                        }
+                        .sheet(isPresented: $showCreateBlankJob,onDismiss: {
                             Task{
                                 if let company = masterDataManager.currentCompany {
                                     
@@ -160,11 +164,28 @@ extension JobListView {
                                     
                                 }
                             }
-                        }, content: {
-                            VStack{
-                                AddNewJobView(dataService: dataService, customerId: nil)
+                        }) {
+                            AddNewJobView(
+                                dataService: dataService,
+                                customerId: nil,
+                                canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                            )
+                        }
+                        .sheet(isPresented: $showCreateFromTemplate, onDismiss: {
+                            reloadJobs()
+                        }) {
+                            if let company = masterDataManager.currentCompany {
+                                JobTemplatePickerCreateJobSheet(
+                                    companyId: company.id,
+                                    dataService: dataService,
+                                    canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                                )
+                                .presentationDetents([.large])
+                            } else {
+                                Text("Missing company.")
+                                    .presentationDetents([.medium])
                             }
-                        })
+                        }
                     }}
             } else {
                 ScrollView{
@@ -319,7 +340,7 @@ extension JobListView {
                         .presentationDetents([.fraction(0.4)])
                     })
                     if let role = masterDataManager.role {
-                        if role.permissionIdList.contains("22") {
+                        if role.canCreateAnyJob {
                             Button(action: {
                                 showCreateJobOptions = true
                             }, label: {
@@ -334,7 +355,11 @@ extension JobListView {
                             .sheet(isPresented: $showCreateBlankJob, onDismiss: {
                                 reloadJobs()
                             }) {
-                                AddNewJobView(dataService: dataService, customerId: nil)
+                                AddNewJobView(
+                                    dataService: dataService,
+                                    customerId: nil,
+                                    canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                                )
                             }
                             .sheet(isPresented: $showCreateFromTemplate, onDismiss: {
                                 reloadJobs()
@@ -342,7 +367,8 @@ extension JobListView {
                                 if let company = masterDataManager.currentCompany {
                                     JobTemplatePickerCreateJobSheet(
                                         companyId: company.id,
-                                        dataService: dataService
+                                        dataService: dataService,
+                                        canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
                                     )
                                     .presentationDetents([.large])
                                 } else {
@@ -392,7 +418,7 @@ extension JobListView {
                                 Text("Create Job")
                                     .font(.title3.weight(.semibold))
 
-                                Text("Start blank or use a reusable template.")
+                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Start blank or use a reusable template." : "Use a reusable job template.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -408,35 +434,39 @@ extension JobListView {
                     }
                     .jobCreateOptionCard()
 
-                    Button {
-                        showCreateJobOptions = false
+                    if masterDataManager.role?.canCreateBlankJob == true {
+                        Button {
+                            showCreateJobOptions = false
 
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            showCreateBlankJob = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                showCreateBlankJob = true
+                            }
+                        } label: {
+                            jobCreateOptionRow(
+                                title: "Blank Job",
+                                subtitle: "Build a job manually from scratch.",
+                                systemImage: "doc.badge.plus"
+                            )
                         }
-                    } label: {
-                        jobCreateOptionRow(
-                            title: "Blank Job",
-                            subtitle: "Build a job manually from scratch.",
-                            systemImage: "doc.badge.plus"
-                        )
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
-                    Button {
-                        showCreateJobOptions = false
+                    if masterDataManager.role?.canCreateJobFromTemplate == true {
+                        Button {
+                            showCreateJobOptions = false
 
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            showCreateFromTemplate = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                showCreateFromTemplate = true
+                            }
+                        } label: {
+                            jobCreateOptionRow(
+                                title: "From Template",
+                                subtitle: "Create a job using planned stops, tasks, materials, and pricing.",
+                                systemImage: "square.stack.3d.up"
+                            )
                         }
-                    } label: {
-                        jobCreateOptionRow(
-                            title: "From Template",
-                            subtitle: "Create a job using planned stops, tasks, materials, and pricing.",
-                            systemImage: "square.stack.3d.up"
-                        )
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
                     Spacer()
                 }

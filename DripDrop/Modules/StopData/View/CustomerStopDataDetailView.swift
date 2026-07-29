@@ -72,6 +72,7 @@ final class CustomerStopDataDetailViewModel:ObservableObject{
 
                 if !locations.isEmpty {
                     self.selectedLocation = locations.first!
+                    await loadBodiesOfWater(companyId: companyId, customerId: customerId)
                 }
             } catch {
                 print(error)
@@ -80,17 +81,8 @@ final class CustomerStopDataDetailViewModel:ObservableObject{
     }
     func onChangeOfServiceLocation(companyId:String,customerId:String){
         Task{
-            do {
-                print("[CustomerStopDataDetailViewModel][onChangeOfServiceLocation] selectedLocation \(selectedLocation.id)")
-                if selectedLocation.id.isEmpty {
-                    self.bodiesOfWater = try await dataService.getAllBodiesOfWaterByServiceLocation(companyId: companyId, serviceLocation: selectedLocation)
-                    if !bodiesOfWater.isEmpty {
-                        self.selectedBodyOfWater = bodiesOfWater.first!
-                    }
-                }
-            } catch {
-                print(error)
-            }
+            print("[CustomerStopDataDetailViewModel][onChangeOfServiceLocation] selectedLocation \(selectedLocation.id)")
+            await loadBodiesOfWater(companyId: companyId, customerId: customerId)
         }
     }
     func onChangeOfBodyOfWater(companyId:String,customerId:String){
@@ -104,6 +96,55 @@ final class CustomerStopDataDetailViewModel:ObservableObject{
                 print(error)
             }
         }
+    }
+
+    private func loadBodiesOfWater(companyId: String, customerId: String) async {
+        guard !selectedLocation.id.isEmpty else {
+            bodiesOfWater = []
+            selectedBodyOfWater = emptyBodyOfWater()
+            currentHistory = []
+            return
+        }
+
+        do {
+            bodiesOfWater = try await dataService.getAllBodiesOfWaterByServiceLocation(
+                companyId: companyId,
+                serviceLocation: selectedLocation
+            )
+
+            if let firstBodyOfWater = bodiesOfWater.first {
+                if selectedBodyOfWater.id.isEmpty ||
+                    !bodiesOfWater.contains(where: { $0.id == selectedBodyOfWater.id }) {
+                    selectedBodyOfWater = firstBodyOfWater
+                }
+
+                currentHistory = try await dataService.getRecentServiceStopsByBodyOfWater(
+                    companyId: companyId,
+                    bodyOfWaterId: selectedBodyOfWater.id,
+                    amount: 20
+                )
+            } else {
+                selectedBodyOfWater = emptyBodyOfWater()
+                currentHistory = []
+            }
+        } catch {
+            bodiesOfWater = []
+            currentHistory = []
+            print("[CustomerStopDataDetailViewModel][loadBodiesOfWater] Error: \(error)")
+        }
+    }
+
+    private func emptyBodyOfWater() -> BodyOfWater {
+        BodyOfWater(
+            id: "",
+            name: "",
+            gallons: "",
+            material: "",
+            customerId: "",
+            serviceLocationId: "",
+            lastFilled: Date(),
+            isActive: true
+        )
     }
     func loadTestData(companyId:String,customerId:String) {
         Task {
@@ -237,70 +278,204 @@ struct CustomerStopDataDetailView: View {
 }
 extension CustomerStopDataDetailView {
     var form: some View {
-        ScrollView{
-            locationForm
-            BOWForm
-            table
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 12) {
+                locationForm
+                BOWForm
+                table
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
         }
     }
+
     var locationForm: some View {
-        VStack{
-            Button(action: {
-                VM.showLocationPicker.toggle()
-            }, label: {
-                if VM.selectedLocation.id != "" {
-                    Text(VM.selectedLocation.address.streetAddress)
-                } else {
-                    Text("No Location Selected")
-                }
-            })
-            .sheet(isPresented: $VM.showLocationPicker, onDismiss: {
-                print("[CustomerStopDataDetailView][showLocationPicker] On dismiss")
-            }, content: {
-                ServiceLocationPicker(dataService: dataService, customerId: customerId, location: $VM.selectedLocation)
-            })
+        selectorCard(
+            title: "Service Location",
+            value: selectedLocationTitle,
+            detail: selectedLocationDetail,
+            systemImage: "mappin.and.ellipse",
+            accentColor: Color.poolBlue
+        ) {
+            VM.showLocationPicker.toggle()
         }
+        .sheet(isPresented: $VM.showLocationPicker, onDismiss: {
+            print("[CustomerStopDataDetailView][showLocationPicker] On dismiss")
+        }, content: {
+            ServiceLocationPicker(dataService: dataService, customerId: customerId, location: $VM.selectedLocation)
+        })
     }
+
     var BOWForm: some View {
-        VStack{
-            Button(action: {
-                VM.showBOWPicker.toggle()
-            }, label: {
-                if VM.selectedBodyOfWater.id != "" {
-                    Text(VM.selectedBodyOfWater.name)
-                } else {
-                    Text("No Water Body Selected")
-                }
-            })
-            .sheet(isPresented: $VM.showBOWPicker, onDismiss: {
-                print("[CustomerStopDataDetailView][showBOWPicker] On dismiss")
-            }, content: {
-                BodyOfWaterPicker(dataService: dataService, serviceLocationId: VM.selectedLocation.id, bodyOfWater: $VM.selectedBodyOfWater)
-            })
+        selectorCard(
+            title: "Body of Water",
+            value: selectedBodyOfWaterTitle,
+            detail: bodyOfWaterMetaText(VM.selectedBodyOfWater),
+            systemImage: "drop.fill",
+            accentColor: Color.poolGreen
+        ) {
+            VM.showBOWPicker.toggle()
         }
+        .disabled(VM.selectedLocation.id.isEmpty)
+        .opacity(VM.selectedLocation.id.isEmpty ? 0.55 : 1)
+        .sheet(isPresented: $VM.showBOWPicker, onDismiss: {
+            print("[CustomerStopDataDetailView][showBOWPicker] On dismiss")
+        }, content: {
+            BodyOfWaterPicker(dataService: dataService, serviceLocationId: VM.selectedLocation.id, bodyOfWater: $VM.selectedBodyOfWater)
+        })
     }
+
     var table: some View {
-        VStack{
-            Text("Table")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Water History")
+                        .font(.headline.weight(.semibold))
+
+                    Text(selectedBodyOfWaterTitle)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text("\(VM.currentHistory.count)")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.poolBlue)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.poolBlue.opacity(0.1), in: Capsule())
+            }
+
             if VM.selectedBodyOfWater.id != "" && VM.selectedLocation.id != "" {
                 if VM.currentHistory.count != 0 {
-                    ScrollView(.horizontal,showsIndicators: false){
+                    ScrollView(.horizontal, showsIndicators: false) {
                         StopDataTableView(
                             stopData: VM.currentHistory,
                             readingTemplates: VM.readingTemplates,
-                            dosageTemplates: VM.dosageTemplates
+                            dosageTemplates: VM.dosageTemplates,
+                            bodyOfWaterId: VM.selectedBodyOfWater.id
                         )
                     }
                 } else {
-                    HStack{
-                        Spacer()
-                        Text("No Current History")
-                        Spacer()
-                    }
-                    .modifier(DismissButtonModifier())
+                    ContentUnavailableView(
+                        "No Water History",
+                        systemImage: "tablecells",
+                        description: Text("No readings or dosages have been saved for this body of water yet.")
+                    )
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
                 }
+            } else {
+                ContentUnavailableView(
+                    "Select Water",
+                    systemImage: "drop.triangle",
+                    description: Text("Choose a service location and body of water to view history.")
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
             }
         }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(.separator).opacity(0.28), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    private var selectedLocationTitle: String {
+        if !VM.selectedLocation.nickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return VM.selectedLocation.nickName
+        }
+
+        let street = VM.selectedLocation.address.streetAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        return street.isEmpty ? "No Location Selected" : street
+    }
+
+    private var selectedLocationDetail: String {
+        let address = VM.selectedLocation.address
+        let detail = [
+            address.city,
+            address.state,
+            address.zip,
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: ", ")
+
+        return detail.isEmpty ? "Tap to choose a location" : detail
+    }
+
+    private var selectedBodyOfWaterTitle: String {
+        let name = VM.selectedBodyOfWater.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "No Water Body Selected" : name
+    }
+
+    private func bodyOfWaterMetaText(_ bodyOfWater: BodyOfWater) -> String {
+        let gallons = bodyOfWater.gallons.trimmingCharacters(in: .whitespacesAndNewlines)
+        let material = bodyOfWater.material.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = [
+            gallons.isEmpty ? "" : "\(gallons) gal",
+            material,
+        ].filter { !$0.isEmpty }
+
+        return parts.isEmpty ? "Tap to choose water" : parts.joined(separator: " · ")
+    }
+
+    private func selectorCard(
+        title: String,
+        value: String,
+        detail: String,
+        systemImage: String,
+        accentColor: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(accentColor.opacity(0.12))
+                        .frame(width: 42, height: 42)
+
+                    Image(systemName: systemImage)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+
+                    Text(value)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text(detail)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(.separator).opacity(0.28), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
     }
 }

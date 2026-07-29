@@ -46,6 +46,9 @@ struct ContractorDailyDashboard: View {
 
     @State var duration:Int = 0
     @State var listOfShoppingListItems:Int = 3
+    @State private var showCreateJobOptions: Bool = false
+    @State private var showCreateBlankJob: Bool = false
+    @State private var showCreateFromTemplate: Bool = false
     
     @State var idItem:IdInfo? = nil
 
@@ -190,15 +193,158 @@ extension ContractorDailyDashboard {
             NavigationLink(value: Route.shoppingList(dataService: dataService), label: {
                 shoppingListIcon
             })
-            NavigationLink(value: Route.createNewJob(dataService: dataService), label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title)
-                    .foregroundColor(Color.poolBlue)
-                
-            })
+            if masterDataManager.role?.canCreateAnyJob == true {
+                Button {
+                    showCreateJobOptions = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title)
+                        .foregroundColor(Color.poolBlue)
+                }
+                .sheet(isPresented: $showCreateJobOptions) {
+                    contractorCreateJobOptionsSheet
+                        .presentationDetents([.medium])
+                }
+                .sheet(isPresented: $showCreateBlankJob) {
+                    AddNewJobView(
+                        dataService: dataService,
+                        customerId: nil,
+                        isTechnicianCreateFlow: true,
+                        canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                    )
+                }
+                .sheet(isPresented: $showCreateFromTemplate) {
+                    if let company = masterDataManager.currentCompany {
+                        JobTemplatePickerCreateJobSheet(
+                            companyId: company.id,
+                            dataService: dataService,
+                            technicianCanAddOnly: true,
+                            isTechnicianCreateFlow: true,
+                            canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                        )
+                        .presentationDetents([.large])
+                    } else {
+                        Text("Missing company.")
+                            .presentationDetents([.medium])
+                    }
+                }
+            }
         }
         .padding(8)
     }
+
+    var contractorCreateJobOptionsSheet: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                VStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Create Job")
+                                    .font(.title3.weight(.semibold))
+
+                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Start blank or use a technician-enabled template." : "Use a technician-enabled job template.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "plus.circle")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 36, height: 36)
+                                .background(.thinMaterial, in: Circle())
+                        }
+                    }
+                    .padding(16)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                    if masterDataManager.role?.canCreateBlankJob == true {
+                        Button {
+                            showCreateJobOptions = false
+
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                showCreateBlankJob = true
+                            }
+                        } label: {
+                            contractorJobCreateOptionRow(
+                                title: "Blank Job",
+                                subtitle: "Create a simplified blank job.",
+                                systemImage: "doc.badge.plus"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if masterDataManager.role?.canCreateJobFromTemplate == true {
+                        Button {
+                            showCreateJobOptions = false
+
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                showCreateFromTemplate = true
+                            }
+                        } label: {
+                            contractorJobCreateOptionRow(
+                                title: "From Template",
+                                subtitle: "Create from a template marked for technicians.",
+                                systemImage: "square.stack.3d.up"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Spacer()
+                }
+                .padding(14)
+            }
+            .navigationTitle("New Job")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showCreateJobOptions = false
+                    }
+                }
+            }
+        }
+    }
+
+    func contractorJobCreateOptionRow(
+        title: String,
+        subtitle: String,
+        systemImage: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
     var shoppingListIcon: some View {
         ZStack{
             Image(systemName: "list.clipboard.fill")
@@ -601,4 +747,3 @@ extension ContractorDailyDashboard {
     }
     
 }
-

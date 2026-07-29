@@ -11,6 +11,7 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 import Darwin
 import FirebaseFunctions
+import UIKit
 
 struct EquipmentMeasurements:Identifiable, Codable,Equatable,Hashable{
     var id:String
@@ -25,6 +26,7 @@ struct EquipmentMeasurements:Identifiable, Codable,Equatable,Hashable{
 final class ServiceStopDetailViewModel:ObservableObject{
     private var dataService:any ProductionDataServiceProtocol
     private let payrollCoordinator: ServiceStopPayrollCompletionCoordinator
+    private let functions = Functions.functions()
 
 
     init(dataService:any ProductionDataServiceProtocol){
@@ -51,6 +53,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
     @Published private(set) var currentHistory: [StopData] = []
     @Published private(set) var listOfEquipment: [Equipment] = []
+    @Published var EquipmentReadings: [Equipment: EquipmentMeasurements] = [:]
     @Published private(set) var selectedInputIdList: [String] = []
     @Published private(set) var companyUsers: [CompanyUser] = []
     
@@ -65,6 +68,93 @@ final class ServiceStopDetailViewModel:ObservableObject{
     @Published private(set) var isSavingServiceNotes: Bool = false
     
     @Published var currentWeather: Weather?
+
+    func analyzeTesterStripScan(
+        companyId: String,
+        serviceStopId: String,
+        bodyOfWaterId: String,
+        image: UIImage,
+        scanId: String? = nil,
+        scanImageURL: String? = nil
+    ) async throws -> [Reading] {
+        let stripSample = TesterStripImageSampler.sample(from: image)
+
+        guard !stripSample.observedPads.isEmpty else {
+            throw TesterStripAnalysisError.noObservedPads
+        }
+
+        var payload: [String: Any] = [
+            "companyId": companyId,
+            "profileId": "aquachek_7_in_1",
+            "serviceStopId": serviceStopId,
+            "bodyOfWaterId": bodyOfWaterId,
+            "observedPads": stripSample.observedPads,
+            "persist": true,
+        ]
+
+        if let scanId, !scanId.isEmpty {
+            payload["scanId"] = scanId
+        }
+
+        if let scanImageURL, !scanImageURL.isEmpty {
+            payload["scanImagePath"] = scanImageURL
+            payload["scanImageURL"] = scanImageURL
+        }
+
+        if !stripSample.calibration.isEmpty {
+            payload["calibration"] = stripSample.calibration
+        }
+
+        let result = try await functions.httpsCallable("analyzeTesterStripScan").call(payload)
+        guard
+            let response = result.data as? [String: Any],
+            let suggestedReadings = response["suggestedReadings"] as? [[String: Any]]
+        else {
+            throw TesterStripAnalysisError.invalidResponse
+        }
+
+        return suggestedReadings.compactMap { readingData in
+            let universalTemplateId = stringValue(for: "universalTemplateId", in: readingData)
+            let amount = stringValue(for: "amount", in: readingData)
+
+            guard !universalTemplateId.isEmpty, !amount.isEmpty else {
+                return nil
+            }
+
+            return Reading(
+                id: stringValue(for: "id", in: readingData, fallback: UUID().uuidString),
+                templateId: stringValue(for: "templateId", in: readingData),
+                universalTemplateId: universalTemplateId,
+                dosageType: stringValue(for: "dosageType", in: readingData),
+                name: stringValue(for: "name", in: readingData),
+                amount: amount,
+                UOM: stringValue(for: "UOM", in: readingData),
+                bodyOfWaterId: bodyOfWaterId
+            )
+        }
+    }
+
+    func uploadTesterStripReviewImage(
+        companyId: String,
+        serviceStopId: String,
+        scanId: String,
+        image: UIImage
+    ) async throws -> DripDropStoredImage {
+        let dripDropImage = DripDropImage(name: "Tester Strip Scan")
+        try FileManager().saveImage(dripDropImage.id.uuidString, image: image)
+
+        let (path, _) = try await dataService.uploadServiceStopImage(
+            companyId: companyId,
+            serviceStopId: serviceStopId,
+            image: dripDropImage
+        )
+
+        return DripDropStoredImage(
+            id: scanId,
+            description: "Tester Strip Scan",
+            imageURL: path
+        )
+    }
 
     
     func onInitalLoad(companyId:String,serviceStop:ServiceStop,userId:String) async throws {
@@ -285,7 +375,25 @@ final class ServiceStopDetailViewModel:ObservableObject{
         }
     }
     
-    func onChangeOfBodyOfWater(bodyOfWater:BodyOfWater)async {
+    func onChangeOfBodyOfWater(companyId: String, bodyOfWater: BodyOfWater) async {
+        selectedBOW = bodyOfWater
+
+        let bodyOfWaterId = bodyOfWater.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bodyOfWaterId.isEmpty else {
+            currentHistory = []
+            return
+        }
+
+        do {
+            currentHistory = try await dataService.getRecentServiceStopsByBodyOfWater(
+                companyId: companyId,
+                bodyOfWaterId: bodyOfWaterId,
+                amount: 4
+            )
+        } catch {
+            currentHistory = []
+            print("[ServiceStopDetailViewModel][onChangeOfBodyOfWater] Failed loading history for \(bodyOfWaterId): \(error)")
+        }
     }
     
     func updateServicestopOperationStatus(companyId:String,currentUserId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
@@ -479,4 +587,30 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
         selectedDripDropPhotos = []
     }
+}
+
+enum TesterStripAnalysisError: LocalizedError {
+    case noObservedPads
+    case invalidResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .noObservedPads:
+            return "Could not read colors from the tester strip photo."
+        case .invalidResponse:
+            return "The tester strip analyzer returned an unexpected response."
+        }
+    }
+}
+
+private func stringValue(for key: String, in data: [String: Any], fallback: String = "") -> String {
+    if let value = data[key] as? String {
+        return value
+    }
+
+    if let value = data[key] {
+        return String(describing: value)
+    }
+
+    return fallback
 }

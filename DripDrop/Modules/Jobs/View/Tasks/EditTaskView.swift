@@ -346,19 +346,12 @@ extension EditTaskView {
                         TextField("Quantity", text: $VM.quantityString)
                             .modifier(TextFieldModifier())
                     }
-                case .maintenance:
+                case .maintenance, .repair:
                     Button(action: { VM.showEquipmentPicker.toggle() }) {
                         Text(VM.selectedEquipment.id.isEmpty ? "Select Equipment" : VM.selectedEquipment.name)
                     }
                     .sheet(isPresented: $VM.showEquipmentPicker) {
                         EquipmentPickerByServiceLocationId(dataService: dataService, serviceLocationId: VM.originalTask.serviceLocationId, equipment: $VM.selectedEquipment)
-                    }
-                case .repair:
-                    Button(action: { VM.showBOWPicker.toggle() }) {
-                        Text(VM.selectedBodyOfWater.id.isEmpty ? "Select Body Of Water" : VM.selectedBodyOfWater.name)
-                    }
-                    .sheet(isPresented: $VM.showBOWPicker) {
-                        BodyOfWaterPicker(dataService: dataService, serviceLocationId: VM.originalTask.serviceLocationId, bodyOfWater: $VM.selectedBodyOfWater)
                     }
                 }
             }

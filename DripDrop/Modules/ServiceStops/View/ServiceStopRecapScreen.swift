@@ -14,6 +14,115 @@
         case camera
     }
 
+    @MainActor
+    final class ServiceStopRecapWorkSummaryViewModel: ObservableObject {
+        @Published private(set) var jobs: [Job] = []
+        @Published private(set) var repairRequests: [RepairRequest] = []
+        @Published private(set) var pendingParts: [ShoppingListItem] = []
+        @Published private(set) var invoices: [SalesInvoice] = []
+        @Published private(set) var isLoading: Bool = false
+        @Published private(set) var errorMessage: String? = nil
+
+        var hasOperationalWork: Bool {
+            !jobs.isEmpty || !repairRequests.isEmpty || !pendingParts.isEmpty
+        }
+
+        var hasAnyVisibleWork: Bool {
+            hasOperationalWork || !invoices.isEmpty
+        }
+
+        func load(
+            companyId: String,
+            serviceStop: ServiceStop,
+            includeFinance: Bool,
+            dataService: any ProductionDataServiceProtocol
+        ) async {
+            isLoading = true
+            errorMessage = nil
+
+            do {
+                let jobResults = try await dataService.getAllJobsByCustomer(
+                    companyId: companyId,
+                    customerId: serviceStop.customerId
+                )
+                let repairRequestResults = try await dataService.getRepairRequestsByCustomer(
+                    companyId: companyId,
+                    customerId: serviceStop.customerId
+                )
+                let partResults = try await dataService.getAllShoppingListItemsByCompanyCustomer(
+                    companyId: companyId,
+                    customerId: serviceStop.customerId
+                )
+                let invoicesResult = includeFinance
+                    ? try await dataService.getSalesInvoices(companyId: companyId, customerId: serviceStop.customerId)
+                    : []
+
+                jobs = jobResults
+                    .filter { job in
+                        job.serviceLocationId == serviceStop.serviceLocationId &&
+                        job.operationStatus != .finished &&
+                        ![JobBillingStatus.paid, .comped, .expired].contains(job.billingStatus)
+                    }
+                    .sorted { $0.dateCreated > $1.dateCreated }
+
+                repairRequests = repairRequestResults
+                    .filter { request in
+                        request.locationId == serviceStop.serviceLocationId &&
+                        request.status.isOpenWorkQueueItem
+                    }
+                    .sorted { $0.date > $1.date }
+
+                pendingParts = partResults
+                    .filter { item in
+                        let matchesLinkedJob = item.jobId.map { jobId in
+                            jobs.contains(where: { $0.id == jobId })
+                        } ?? false
+
+                        return item.status.needsShoppingAction &&
+                        (item.serviceLocationId == serviceStop.serviceLocationId ||
+                         matchesLinkedJob)
+                    }
+                    .sorted { ($0.actionDate ?? $0.datePurchased ?? Date.distantPast) > ($1.actionDate ?? $1.datePurchased ?? Date.distantPast) }
+
+                invoices = invoicesResult
+                    .filter { invoice in
+                        invoiceAppliesToCurrentLocation(invoice, serviceLocationId: serviceStop.serviceLocationId) &&
+                        invoiceNeedsAttention(invoice)
+                    }
+                    .sorted { invoiceSortDate($0) < invoiceSortDate($1) }
+            } catch {
+                jobs = []
+                repairRequests = []
+                pendingParts = []
+                invoices = []
+                errorMessage = error.localizedDescription
+            }
+
+            isLoading = false
+        }
+
+        private func invoiceAppliesToCurrentLocation(_ invoice: SalesInvoice, serviceLocationId: String) -> Bool {
+            guard let locationIds = invoice.serviceLocationIds, !locationIds.isEmpty else { return true }
+            return locationIds.contains(serviceLocationId)
+        }
+
+        private func invoiceNeedsAttention(_ invoice: SalesInvoice) -> Bool {
+            if invoice.status == .open || invoice.status == .partiallyPaid || invoice.status == .overdue {
+                return true
+            }
+
+            if let dueDate = invoice.dueDate, dueDate < Date(), invoice.status != .paid {
+                return true
+            }
+
+            return false
+        }
+
+        private func invoiceSortDate(_ invoice: SalesInvoice) -> Date {
+            invoice.dueDate ?? invoice.createdAt ?? Date.distantFuture
+        }
+    }
+
     struct ServiceStopRecapScreen: View {
         @Environment(\.dismiss) private var dismiss
         @Environment(\.presentationMode) var presentationMode
@@ -23,6 +132,7 @@
 
         @EnvironmentObject var dataService: ProductionDataService
         @EnvironmentObject var VM: ServiceStopDetailViewModel
+        @StateObject private var workSummaryViewModel = ServiceStopRecapWorkSummaryViewModel()
 
         @State var serviceStop: ServiceStop
         @Binding var stopData: StopData
@@ -53,6 +163,8 @@
                 ScrollView(showsIndicators: true) {
                     VStack(spacing: 14) {
                         headerCard
+
+                        outstandingWorkSummary
 
                         recapCard
 
@@ -99,12 +211,33 @@
             .onAppear {
                 opStatus = serviceStop.operationStatus
             }
+            .task(id: serviceStop.id) {
+                await loadOutstandingWorkSummary()
+            }
             .onChange(of: selectedImage) { image in
                 if let image {
                     images.append(image)
                 }
             }
         }
+
+        private var canViewFinanceSummary: Bool {
+            masterDataManager.role?.permissionIdList.contains(where: { permissionId in
+                permissionId == "400" || permissionId == "13"
+            }) == true
+        }
+
+        private func loadOutstandingWorkSummary() async {
+            guard let company = masterDataManager.currentCompany else { return }
+
+            await workSummaryViewModel.load(
+                companyId: company.id,
+                serviceStop: serviceStop,
+                includeFinance: canViewFinanceSummary,
+                dataService: dataService
+            )
+        }
+
         func submitSkipReason() {
             if skipReason == "" {
                 print("Did not Provide a Reason")
@@ -195,6 +328,253 @@
             }
             .padding(16)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        var outstandingWorkSummary: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top) {
+                    sectionHeader("Outstanding Work", systemImage: "tray.full")
+
+                    Spacer()
+
+                    if workSummaryViewModel.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 8),
+                        GridItem(.flexible(), spacing: 8)
+                    ],
+                    spacing: 8
+                ) {
+                    workSummaryMetric(
+                        title: "Jobs",
+                        count: workSummaryViewModel.jobs.count,
+                        systemImage: "briefcase",
+                        tint: .poolBlue
+                    )
+
+                    workSummaryMetric(
+                        title: "Parts",
+                        count: workSummaryViewModel.pendingParts.count,
+                        systemImage: "shippingbox",
+                        tint: .orange
+                    )
+
+                    workSummaryMetric(
+                        title: "Repairs",
+                        count: workSummaryViewModel.repairRequests.count,
+                        systemImage: "wrench.and.screwdriver",
+                        tint: .red
+                    )
+
+                    if canViewFinanceSummary {
+                        workSummaryMetric(
+                            title: "Invoices",
+                            count: workSummaryViewModel.invoices.count,
+                            systemImage: "doc.text",
+                            tint: .purple
+                        )
+                    }
+                }
+
+                if let errorMessage = workSummaryViewModel.errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else if !workSummaryViewModel.isLoading && !workSummaryViewModel.hasAnyVisibleWork {
+                    emptyState(
+                        title: "No Outstanding Work",
+                        message: "No open jobs, repair requests, or pending parts are linked to this location.",
+                        systemImage: "checkmark.seal"
+                    )
+                } else {
+                    VStack(spacing: 10) {
+                        if !workSummaryViewModel.jobs.isEmpty {
+                            workSummarySection(
+                                title: "Jobs",
+                                count: workSummaryViewModel.jobs.count,
+                                systemImage: "briefcase",
+                                tint: .poolBlue
+                            ) {
+                                ForEach(workSummaryViewModel.jobs.prefix(3), id: \.id) { job in
+                                    workSummaryRow(
+                                        title: job.internalId,
+                                        subtitle: nonEmpty(job.type, fallback: "Open job"),
+                                        detail: job.operationStatus.rawValue,
+                                        systemImage: "briefcase"
+                                    )
+                                }
+                            }
+                        }
+
+                        if !workSummaryViewModel.pendingParts.isEmpty {
+                            workSummarySection(
+                                title: "Parts Pending",
+                                count: workSummaryViewModel.pendingParts.count,
+                                systemImage: "shippingbox",
+                                tint: .orange
+                            ) {
+                                ForEach(workSummaryViewModel.pendingParts.prefix(3), id: \.id) { item in
+                                    workSummaryRow(
+                                        title: item.name,
+                                        subtitle: nonEmpty(item.description, fallback: "Material needed"),
+                                        detail: item.status.rawValue,
+                                        systemImage: "shippingbox"
+                                    )
+                                }
+                            }
+                        }
+
+                        if !workSummaryViewModel.repairRequests.isEmpty {
+                            workSummarySection(
+                                title: "Repair Requests",
+                                count: workSummaryViewModel.repairRequests.count,
+                                systemImage: "wrench.and.screwdriver",
+                                tint: .red
+                            ) {
+                                ForEach(workSummaryViewModel.repairRequests.prefix(3), id: \.id) { request in
+                                    workSummaryRow(
+                                        title: request.status.displayName,
+                                        subtitle: nonEmpty(request.description, fallback: "Open repair request"),
+                                        detail: shortDate(date: request.date),
+                                        systemImage: "wrench.and.screwdriver"
+                                    )
+                                }
+                            }
+                        }
+
+                        if canViewFinanceSummary && !workSummaryViewModel.invoices.isEmpty {
+                            workSummarySection(
+                                title: "Invoices",
+                                count: workSummaryViewModel.invoices.count,
+                                systemImage: "doc.text",
+                                tint: .purple
+                            ) {
+                                ForEach(workSummaryViewModel.invoices.prefix(3), id: \.id) { invoice in
+                                    workSummaryRow(
+                                        title: nonEmpty(invoice.invoiceNumber, fallback: "Invoice"),
+                                        subtitle: invoiceSubtitle(invoice),
+                                        detail: moneyText(invoice.amountDueCents ?? invoice.totalAmountCents),
+                                        systemImage: invoiceIsOverdue(invoice) ? "exclamationmark.circle" : "doc.text"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .refreshable {
+                await loadOutstandingWorkSummary()
+            }
+        }
+
+        func workSummaryMetric(title: String, count: Int, systemImage: String, tint: Color) -> some View {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 26, height: 26)
+                    .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("\(count)")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.primary)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+
+        func workSummarySection<Content: View>(
+            title: String,
+            count: Int,
+            systemImage: String,
+            tint: Color,
+            @ViewBuilder content: () -> Content
+        ) -> some View {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label(title, systemImage: systemImage)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(tint)
+
+                    Spacer()
+
+                    Text("\(count)")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(tint)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(tint.opacity(0.12), in: Capsule())
+                }
+
+                content()
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+
+        func workSummaryRow(title: String, subtitle: String, detail: String, systemImage: String) -> some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20, height: 20)
+                    .padding(.top, 1)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(detail)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+
+        func invoiceSubtitle(_ invoice: SalesInvoice) -> String {
+            let statusText = invoiceIsOverdue(invoice) ? "Overdue" : invoice.status.rawValue
+            guard let dueDate = invoice.dueDate else { return statusText }
+            return "\(statusText) - Due \(shortDate(date: dueDate))"
+        }
+
+        func invoiceIsOverdue(_ invoice: SalesInvoice) -> Bool {
+            invoice.status == .overdue || ((invoice.dueDate ?? Date.distantFuture) < Date() && invoice.status != .paid)
+        }
+
+        func moneyText(_ cents: Int) -> String {
+            (Double(cents) / 100.0).formatted(.currency(code: "USD"))
+        }
+
+        func nonEmpty(_ text: String, fallback: String) -> String {
+            let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmedText.isEmpty ? fallback : trimmedText
         }
 
         var recapCard: some View {

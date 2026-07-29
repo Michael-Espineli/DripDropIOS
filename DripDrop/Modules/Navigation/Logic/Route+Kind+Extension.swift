@@ -278,6 +278,10 @@ extension Route {
             return 134
         case .sales:
             return 135
+        case .todoItemDetail:
+            return 136
+        case .offeredWork:
+            return 137
         }
     }
 
@@ -369,6 +373,8 @@ extension Route {
         case .marketPlace:
             break
         case .jobPosting:
+            break
+        case .offeredWork:
             break
         case .feed:
             break
@@ -548,6 +554,8 @@ extension Route {
             hasher.combine(role.id)
         case .termsTemplateDetailView(_, termsTemplate: let template):
             hasher.combine(template.id)
+        case .todoItemDetail(todoId: let todoId, _):
+            hasher.combine(todoId)
         default:
             break
         }
@@ -646,6 +654,7 @@ extension Route {
             .manageTermsTemplates,
             .payRoll,
             .payRollSettings,
+            .offeredWork,
             .technicianWorkCenter:
             return nil
 
@@ -750,6 +759,8 @@ extension Route {
             return AnyHashable(role.id)
         case .termsTemplateDetailView(dataService: let dataService, termsTemplate: let template):
             return AnyHashable(template.id)
+        case .todoItemDetail(todoId: let todoId, _):
+            return AnyHashable(todoId)
         }
     }
 }

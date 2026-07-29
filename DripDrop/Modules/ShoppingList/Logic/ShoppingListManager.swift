@@ -74,17 +74,17 @@ struct ShoppingListItem: Identifiable, Codable, Hashable {
 }
 extension ShoppingListItem {
     var computedNeedsAction: Bool {
-        switch status {
-        case .installed:
-            return false
-        default:
-            return true
-        }
+        status.needsShoppingAction
     }
 }
 extension ShoppingListStatus {
     var needsShoppingAction: Bool {
-        !rawValue.localizedCaseInsensitiveContains("Installed")
+        switch self {
+        case .delivered, .installed, .invoiced:
+            return false
+        case .needToPurchase, .needsCustomerApproval, .readyToPurchase, .customerRejected, .purchased:
+            return true
+        }
     }
 }
 protocol ShoppingListManagerProtocol {

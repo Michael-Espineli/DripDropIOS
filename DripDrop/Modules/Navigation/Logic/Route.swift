@@ -25,6 +25,7 @@ enum Route {
 
     case customers(dataService:any ProductionDataServiceProtocol)
     case toDoDetail(dataService:any ProductionDataServiceProtocol)
+    case todoItemDetail(todoId: String, dataService:any ProductionDataServiceProtocol)
     case repairRequestList(dataService:any ProductionDataServiceProtocol)
     case toDoList(dataService:any ProductionDataServiceProtocol)
     case pendingJobs(dataService:any ProductionDataServiceProtocol)
@@ -84,6 +85,7 @@ enum Route {
 
     )
     case technicianWorkCenter(dataService:any ProductionDataServiceProtocol,companyUser: CompanyUser)
+    case offeredWork(dataService:any ProductionDataServiceProtocol)
     case feed(dataService:any ProductionDataServiceProtocol)//Are these the Same
     case chats(dataService:any ProductionDataServiceProtocol)//Are these the Same
     
@@ -367,6 +369,8 @@ extension Route:View {
             CustomerListView(dataService: dataService)
         case .toDoDetail(dataService: let dataService):
             ToDoDetailView(dataService: dataService)
+        case .todoItemDetail(todoId: let todoId, dataService: let dataService):
+            ToDoDetailView(dataService: dataService, todoId: todoId)
         case .repairRequestList(dataService: let dataService):
             RepairRequestListView(dataService: dataService)
         case .toDoList(dataService: let dataService):
@@ -661,6 +665,8 @@ extension Route:View {
                 companyUser: companyUser,
                 dataService: dataService
             )
+        case .offeredWork(dataService: let dataService):
+            CompanyOfferedWorkView(dataService: dataService)
         }
     }
 }

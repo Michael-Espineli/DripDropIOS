@@ -685,7 +685,7 @@ extension ProductionDataService {
     
     func upLoadInitialGenericRoles(companyId:String) async throws {
         let allPermissionIds = [
-            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "40","42","44","46","50","52","54","56","60","62","64","66",
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
@@ -698,7 +698,7 @@ extension ProductionDataService {
             "890","892","894","896"
         ]
         let managerPermissionIds = [
-            "0","10","12","14","16","20","22","24","26","30","32","34","36",
+            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
             "290","292","294","296",
@@ -1112,20 +1112,20 @@ extension ProductionDataService {
     
     func uploadReadingToCustomerHistory(companyId:String,serviceStop : ServiceStop,stopData:StopData) async throws {
         try stopDataDocument(companyId: companyId, stopDataId: stopData.id).setData(from:stopData, merge: true)
-        try homeOwnerStopDataDocument(stopDataId: stopData.id).setData(from:stopData,merge: true)
+        try homeOwnerStopDataDocument(stopDataId: stopData.id).setData(from: stopData.customerVisibleCopy,merge: true)
         print("Uploaded Reading List")
         
     }
     func uploadDosagesToCustomerHistory(companyId:String,serviceStop : ServiceStop,stopData:StopData) async throws {
         try stopDataDocument(companyId: companyId, stopDataId: stopData.id).setData(from:stopData, merge: true)
-        try homeOwnerStopDataDocument(stopDataId: stopData.id).setData(from:stopData,merge: true)
+        try homeOwnerStopDataDocument(stopDataId: stopData.id).setData(from: stopData.customerVisibleCopy,merge: true)
 
         print("Uploaded Dosage List")
     }
     func addStopHistory(serviceStop:ServiceStop,stopData:StopData,companyId:String) async throws{
         print("breaks here")
         try stopDataDocument(companyId: companyId, stopDataId: stopData.id).setData(from:stopData, merge: false)
-        try homeOwnerStopDataDocument(stopDataId: stopData.id).setData(from:stopData,merge: true)
+        try homeOwnerStopDataDocument(stopDataId: stopData.id).setData(from: stopData.customerVisibleCopy,merge: true)
 
         
     }
@@ -1181,6 +1181,6 @@ extension ProductionDataService {
         
         //External
         try homeOwnerStopDataDocument(stopDataId: stopData.id)
-            .setData(from:stopData, merge: true)
+            .setData(from: stopData.customerVisibleCopy, merge: true)
     }
 }

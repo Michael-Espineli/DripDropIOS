@@ -97,6 +97,48 @@ enum JobTaskType:String, CaseIterable, Codable,Identifiable {
     case install = "Install"
     case remove = "Remove"
     case replace = "Replace"
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawType = (try? container.decode(String.self)) ?? ""
+        let normalized = rawType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+
+        switch normalized {
+        case "basic", "task", "":
+            self = .basic
+        case "clean":
+            self = .clean
+        case "clean filter", "cleanfilter", "filter clean":
+            self = .cleanFilter
+        case "maintenance":
+            self = .maintenance
+        case "repair":
+            self = .repair
+        case "empty water", "emptywater":
+            self = .emptyWater
+        case "fill water", "fillwater":
+            self = .fillWater
+        case "inspection", "inspect":
+            self = .inspection
+        case "install", "installation":
+            self = .install
+        case "remove", "removal":
+            self = .remove
+        case "replace", "replacement":
+            self = .replace
+        default:
+            self = JobTaskType(rawValue: rawType) ?? .basic
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 enum JobTaskStatus:String, CaseIterable, Codable {
@@ -108,9 +150,47 @@ enum JobTaskStatus:String, CaseIterable, Codable {
     case inProgress = "In Progress"
     case rejected = "Rejected"
     case finished = "Finished"
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawStatus = (try? container.decode(String.self)) ?? ""
+        let normalized = rawStatus
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "  ", with: " ")
+
+        switch normalized {
+        case "draft":
+            self = .draft
+        case "unassigned", "not assigned":
+            self = .unassigned
+        case "offered":
+            self = .offered
+        case "accepted":
+            self = .accepted
+        case "scheduled", "not finished", "notfinished", "pending", "todo", "to do":
+            self = .scheduled
+        case "in progress", "inprogress", "active":
+            self = .inProgress
+        case "rejected":
+            self = .rejected
+        case "finished", "completed", "complete", "done":
+            self = .finished
+        default:
+            self = JobTaskStatus(rawValue: rawStatus) ?? .scheduled
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 enum JobOperationStatus:String, CaseIterable, Codable {
+    case draft = "Draft"
     case estimatePending = "Estimate Pending"
     case unscheduled = "Unscheduled"
     case scheduled = "Scheduled"
@@ -135,6 +215,7 @@ enum JobBillingStatus:String, CaseIterable,Codable {
     case paid = "Paid"
     case comped = "Comped"
     case expired = "Expired"
+    case rejected = "Rejected"
 }
 
 enum RepairRequestStatus:String,Codable, CaseIterable{
@@ -284,6 +365,30 @@ enum WorkerTypeEnum:String, CaseIterable, Codable {
     case contractor = "Independent Contractor"
     case employee = "Employee"
     case notAssigned = ""
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawType = (try? container.decode(String.self)) ?? ""
+        let normalized = rawType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+
+        switch normalized {
+        case "independent contractor", "contractor":
+            self = .contractor
+        case "employee":
+            self = .employee
+        default:
+            self = .notAssigned
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 enum ActiveRouteStatus:String,Codable,CaseIterable {

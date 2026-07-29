@@ -31,6 +31,8 @@ func convertRouteToString(route:Route) -> RouteString {
         return .customers
     case .toDoDetail(dataService: _):
         return .toDoDetail
+    case .todoItemDetail(todoId: _, dataService: _):
+        return .toDoDetail
     case .repairRequestList(dataService: _):
         return .repairRequestList
     case .toDoList(dataService: _):
@@ -279,6 +281,8 @@ func convertRouteToString(route:Route) -> RouteString {
     case .payRollSettings:
         return .managementTables  // Developer fix
     case .technicianWorkCenter:
+        return .managementTables  // Developer fix
+    case .offeredWork:
         return .managementTables  // Developer fix
     }
 }

@@ -60,7 +60,9 @@ struct ServiceStopInfoView: View {
     }
 
     private var canOpenCustomerPage: Bool {
-        masterDataManager.role?.permissionIdList.contains("10") == true
+        masterDataManager.role?.permissionIdList.contains(where: { permissionId in
+            permissionId == "10" || permissionId == "18"
+        }) == true
     }
 
     var body: some View {
@@ -237,17 +239,22 @@ private extension ServiceStopInfoView {
     @ViewBuilder
     func customerLinkRow(_ stop: ServiceStop) -> some View {
         if canOpenCustomerPage, let customer = viewModel.customer {
-            NavigationLink(value: Route.customer(customer: customer, dataService: dataService)) {
-                ServiceStopActionLabel(
-                    icon: "person.crop.circle",
-                    title: "Customer",
-                    subtitle: customerDisplayName(customer),
-                    footnote: viewModel.otherCompany?.name,
-                    tint: .poolBlue,
-                    accessorySystemImage: "chevron.right"
-                )
+            if UIDevice.isIPhone {
+                NavigationLink(value: Route.customer(customer: customer, dataService: dataService)) {
+                    customerActionLabel(customer)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    masterDataManager.selectedCategory = .customers
+                    masterDataManager.selectedCustomer = customer
+                    masterDataManager.selectedID = customer.id
+                    masterDataManager.columnVisibility = .all
+                } label: {
+                    customerActionLabel(customer)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         } else {
             ServiceStopInfoLine(
                 icon: "person.crop.circle",
@@ -255,6 +262,17 @@ private extension ServiceStopInfoView {
                 value: stop.customerName
             )
         }
+    }
+
+    func customerActionLabel(_ customer: Customer) -> some View {
+        ServiceStopActionLabel(
+            icon: "person.crop.circle",
+            title: "Customer",
+            subtitle: customerDisplayName(customer),
+            footnote: viewModel.otherCompany?.name,
+            tint: .poolBlue,
+            accessorySystemImage: "chevron.right"
+        )
     }
 
     @ViewBuilder

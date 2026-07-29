@@ -386,15 +386,19 @@
                     statusBadge
 
                     if activeEquipment.needsService {
-                        Label("Service Enabled", systemImage: "wrench.and.screwdriver")
+                        Label("Needs Maintenance", systemImage: "wrench.and.screwdriver")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.orange)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
-                            .background(.thinMaterial, in: Capsule())
+                            .background(Color.orange.opacity(0.12), in: Capsule())
                     }
 
                     Spacer()
+                }
+
+                if equipmentNeedsAttention {
+                    equipmentAttentionBanner
                 }
 
                 VStack(spacing: 8) {
@@ -680,6 +684,91 @@
             .padding(.vertical, 7)
         }
 
+        private var equipmentNeedsAttention: Bool {
+            activeEquipment.needsService ||
+            activeEquipment.status == .needsRepair ||
+            activeEquipment.status == .needsMaintenance ||
+            activeEquipment.status == .nonoperational
+        }
+
+        private var equipmentAttentionTitle: String {
+            switch activeEquipment.status {
+            case .needsMaintenance:
+                return "Needs Maintenance"
+            case .needsRepair:
+                return "Needs Repair"
+            case .nonoperational:
+                return "Non-Operational"
+            case .replaced:
+                return "Replaced"
+            case .operational:
+                return activeEquipment.needsService ? "Needs Maintenance" : "Equipment Needs Attention"
+            }
+        }
+
+        private var equipmentAttentionDetail: String {
+            switch activeEquipment.status {
+            case .needsMaintenance:
+                return maintenanceTimingText(for: activeEquipment)
+            case .needsRepair:
+                return "Repair is needed. Create a repair request or schedule a job for this equipment."
+            case .nonoperational:
+                return "Equipment is not operational. Repair or replace it before normal service."
+            case .replaced:
+                return "Equipment has been replaced."
+            case .operational:
+                if activeEquipment.needsService {
+                    return maintenanceTimingText(for: activeEquipment)
+                }
+                return activeEquipment.status.displayName
+            }
+        }
+
+        private var equipmentAttentionIcon: String {
+            switch activeEquipment.status {
+            case .needsMaintenance:
+                return "wrench.and.screwdriver"
+            case .needsRepair, .nonoperational:
+                return "exclamationmark.triangle.fill"
+            case .replaced:
+                return "arrow.triangle.2.circlepath"
+            case .operational:
+                return activeEquipment.needsService ? "wrench.and.screwdriver" : "exclamationmark.triangle.fill"
+            }
+        }
+
+        private var equipmentAttentionTint: Color {
+            switch activeEquipment.status {
+            case .nonoperational:
+                return .red
+            case .replaced:
+                return .gray
+            default:
+                return .orange
+            }
+        }
+
+        private var equipmentAttentionBanner: some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: equipmentAttentionIcon)
+                    .foregroundStyle(equipmentAttentionTint)
+                    .padding(.top, 1)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(equipmentAttentionTitle)
+                        .font(.subheadline.weight(.semibold))
+
+                    Text(equipmentAttentionDetail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .background(equipmentAttentionTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+
         @ViewBuilder
         var serviceInfoBlock: some View {
             if activeEquipment.needsService,
@@ -722,13 +811,13 @@
 
                         Spacer()
 
-                        Text(nextServiceDate > Date() ? "Upcoming" : "Due")
+                        Text(maintenanceScheduleBadgeText(for: nextServiceDate))
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(nextServiceDate > Date() ? Color.poolGreen : Color.red)
+                            .foregroundStyle(maintenanceScheduleBadgeColor(for: nextServiceDate))
                             .padding(.horizontal, 9)
                             .padding(.vertical, 5)
                             .background(
-                                nextServiceDate > Date() ? Color.poolGreen.opacity(0.12) : Color.red.opacity(0.12),
+                                maintenanceScheduleBadgeColor(for: nextServiceDate).opacity(0.12),
                                 in: Capsule()
                             )
                     }
@@ -736,6 +825,59 @@
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
             }
+        }
+
+        private func maintenanceScheduleBadgeText(for date: Date) -> String {
+            let daysOverdue = maintenanceDaysOverdue(for: date)
+
+            if daysOverdue > 0 {
+                return "Overdue"
+            } else if daysOverdue == 0 {
+                return "Due Today"
+            }
+
+            return "Upcoming"
+        }
+
+        private func maintenanceScheduleBadgeColor(for date: Date) -> Color {
+            maintenanceDaysOverdue(for: date) >= 0 ? Color.red : Color.poolGreen
+        }
+
+        private func maintenanceTimingText(for equipment: Equipment) -> String {
+            guard let nextServiceDate = equipment.nextServiceDate else {
+                return "Maintenance is required. No due date is set."
+            }
+
+            let daysOverdue = maintenanceDaysOverdue(for: nextServiceDate)
+
+            if daysOverdue > 0 {
+                return "Maintenance overdue by \(maintenanceIntervalText(for: daysOverdue)). Due \(shortDate(date: nextServiceDate))."
+            } else if daysOverdue == 0 {
+                return "Maintenance due today."
+            } else {
+                return "Maintenance due in \(maintenanceIntervalText(for: abs(daysOverdue))). Due \(shortDate(date: nextServiceDate))."
+            }
+        }
+
+        private func maintenanceDaysOverdue(for date: Date) -> Int {
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+            let dueDay = calendar.startOfDay(for: date)
+            return calendar.dateComponents([.day], from: dueDay, to: today).day ?? 0
+        }
+
+        private func maintenanceIntervalText(for days: Int) -> String {
+            if days >= 60 {
+                return pluralized(max(1, days / 30), unit: "month")
+            } else if days >= 14 {
+                return pluralized(max(1, days / 7), unit: "week")
+            }
+
+            return pluralized(max(1, days), unit: "day")
+        }
+
+        private func pluralized(_ value: Int, unit: String) -> String {
+            "\(value) \(unit)\(value == 1 ? "" : "s")"
         }
 
         @ViewBuilder

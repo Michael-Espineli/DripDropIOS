@@ -81,15 +81,11 @@ struct ReceiptDatabaseTableView: View{
                     TableColumn("Sku"){
                         Text($0.sku )
                     }
-                    TableColumn("Cost"){
-                        Text($0.rate, format: .currency(code: "USD").precision(.fractionLength(2)))
+                    TableColumn("Price"){
+                        Text(DataBaseItemMoneyFormatter.customerPriceText(for: $0))
                     }
-                    TableColumn("Sell Rate"){
-                        if $0.sellPrice == nil {
-                            Text("NA")
-                        } else {
-                            Text($0.sellPrice ?? 0, format: .currency(code: "USD").precision(.fractionLength(2)))
-                        }
+                    TableColumn("Cost"){
+                        Text(DataBaseItemMoneyFormatter.costText(for: $0))
                     }
                     TableColumn("Updated"){
                         if $0.dateUpdated == nil {

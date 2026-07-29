@@ -67,6 +67,7 @@ final class MyCompanyViewModel:ObservableObject{
 
     @Published private(set) var purchasedItems: [PurchasedItem] = []
     @Published private(set) var jobs: [Job] = []
+    @Published private(set) var workOffers: [WorkOffer] = []
     @Published private(set) var listOfEquipment:[Equipment] = []
     @Published private(set) var listOfRepairRequests:[RepairRequest] = []
     @Published private(set) var listOfVehicals:[Vehical] = []
@@ -205,6 +206,8 @@ final class MyCompanyViewModel:ObservableObject{
         self.openJobs = try await dataService.getAllJobsOpenedCount(companyId: companyId)
         
         print("  [MyCompanyViewModel][onLoad] Jobs 3")
+        self.workOffers = try await dataService.fetchAllWorkOffers(companyId: companyId)
+        print("  [MyCompanyViewModel][onLoad] Offered Work")
         //Shopping List Item
         
         self.listOfShoppingListItems = try await dataService.getAllShoppingListItemsSnapShotByCompany(companyId: companyId)

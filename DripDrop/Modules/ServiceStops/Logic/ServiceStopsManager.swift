@@ -61,6 +61,8 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     var workTypeId: String?
     var workTypeName: String?
     var defaultWorkTypeIds: [String]?
+    var manualPayOverrideCents: Int?
+    var manualPayOverrideNotes: String?
     
     init(
         id: String,
@@ -103,7 +105,9 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         payWorkTypeName: String? = nil,
         workTypeId: String? = nil,
         workTypeName: String? = nil,
-        defaultWorkTypeIds: [String]? = nil
+        defaultWorkTypeIds: [String]? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil
 
     ){
         
@@ -155,6 +159,8 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         self.workTypeId = workTypeId
         self.workTypeName = workTypeName
         self.defaultWorkTypeIds = defaultWorkTypeIds
+        self.manualPayOverrideCents = manualPayOverrideCents
+        self.manualPayOverrideNotes = manualPayOverrideNotes
     }
     
         enum CodingKeys:String, CodingKey {
@@ -199,6 +205,8 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case workTypeId = "workTypeId"
             case workTypeName = "workTypeName"
             case defaultWorkTypeIds = "defaultWorkTypeIds"
+            case manualPayOverrideCents = "manualPayOverrideCents"
+            case manualPayOverrideNotes = "manualPayOverrideNotes"
         }
     static func == (lhs: ServiceStop, rhs: ServiceStop) -> Bool {
         return lhs.id == rhs.id &&

@@ -612,43 +612,58 @@ extension ProductionDataService {
     func updateToDoTitle(companyId:String,toDoId:String,newTitle:String) async throws {
         try await ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "title": newTitle
+                "title": newTitle,
+                "updatedAt": FieldValue.serverTimestamp()
             ])
     }
     func updateToDoStatus(companyId:String,toDoId:String,newStatus:toDoStatus) async throws {
         try await ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "status": newStatus
+                "status": newStatus.todoItemValue,
+                "completedAt": newStatus == .finished ? FieldValue.serverTimestamp() : NSNull(),
+                "dateFinished": newStatus == .finished ? FieldValue.serverTimestamp() : NSNull(),
+                "updatedAt": FieldValue.serverTimestamp()
             ])
     }
     func updateToDoDescription(companyId:String,toDoId:String,newDescription:String) async throws {
         try await ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "description": newDescription
+                "description": newDescription,
+                "updatedAt": FieldValue.serverTimestamp()
             ])
     }
     func updateToDoDateFinished(companyId:String,toDoId:String,newDateFinished:Date?) async throws {
+        let finishedValue: Any = newDateFinished.map { $0 as Any } ?? NSNull()
+
         try await ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "dateFinished": newDateFinished
+                "completedAt": finishedValue,
+                "dateFinished": finishedValue,
+                "updatedAt": FieldValue.serverTimestamp()
             ])
     }
     func updateToDoCustomerId(companyId:String,toDoId:String,newCustomerId:String) async throws {
         try await ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "customerId": newCustomerId
+                "customerId": newCustomerId,
+                "linkedCustomerId": newCustomerId,
+                "updatedAt": FieldValue.serverTimestamp()
             ])
     }
     func updateToDoJobId(companyId:String,toDoId:String,newJobId:String) async throws {
         try await ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "jobId": newJobId
+                "jobId": newJobId,
+                "linkedJobId": newJobId,
+                "updatedAt": FieldValue.serverTimestamp()
             ])
     }
     func updateToDoTechId(companyId:String,toDoId:String,newTechId:String) async throws {
         try await ToDoDocument(toDoId: toDoId, companyId: companyId)
             .updateData([
-                "newTechId": newTechId
+                "assignedToUserId": newTechId,
+                "assignedTechId": newTechId,
+                "updatedAt": FieldValue.serverTimestamp()
             ])
     }
 }

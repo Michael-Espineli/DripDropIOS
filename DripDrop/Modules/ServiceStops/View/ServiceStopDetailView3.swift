@@ -602,6 +602,8 @@ extension ServiceStopDetailView3 {
                     companyUser: selectedUser,
                     description: editDescription,
                     estimatedDuration: editEstimatedDuration,
+                    manualPayOverrideCents: originalStop.manualPayOverrideCents,
+                    manualPayOverrideNotes: originalStop.manualPayOverrideNotes,
                     serviceStopTypeFields: typeFields
                 )
 
