@@ -196,6 +196,10 @@ private extension BodyOfWaterDetailStartUpView {
 
             poolVolumeGuide(for: bodyOfWater)
 
+            if let storedImages = bodyOfWater.wrappedValue.photoUrls, !storedImages.isEmpty {
+                DripDropStoredImageRow(images: storedImages)
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 Label("Body Photos", systemImage: "camera.fill")
                     .font(.headline.weight(.semibold))

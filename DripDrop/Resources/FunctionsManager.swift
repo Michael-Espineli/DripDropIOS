@@ -115,28 +115,58 @@ final class FunctionsManager {
             }
         }
     }
-        // MARK: updateRecurringRouteOrderPermanently
-    func updateRecurringRouteOrderPermanently(companyId:String, routeId:String, recurringRouteOrder:[recurringRouteOrder],serviceStopOrders:[ServiceStopOrder]){
+    // MARK: updateRecurringRouteOrderPermanently
+    func updateRecurringRouteOrderPermanently(
+        companyId: String,
+        routeId: String,
+        recurringRouteOrder: [recurringRouteOrder],
+        serviceStopOrders: [ServiceStopOrder]
+    ) async throws {
+        let recurringRouteOrderPayload = recurringRouteOrder.map { item in
+            [
+                "id": item.id,
+                "order": item.order,
+                "recurringServiceStopId": item.recurringServiceStopId,
+                "customerId": item.customerId,
+                "customerName": item.customerName,
+                "locationId": item.locationId,
+            ] as [String: Any]
+        }
+
+        let serviceStopOrdersPayload = serviceStopOrders.map { item in
+            [
+                "id": item.id,
+                "order": item.order,
+                "serviceStopId": item.serviceStopId,
+                "recurringServiceStopId": item.recurringServiceStopId,
+            ] as [String: Any]
+        }
+
         let payload: [String: Any] = [
             "companyId": companyId,
             "routeId": routeId,
-            "recurringRouteOrder": recurringRouteOrder,
-            "serviceStopOrders":serviceStopOrders,
+            "recurringRouteOrder": recurringRouteOrderPayload,
+            "serviceStopOrders": serviceStopOrdersPayload,
         ]
         
-        
         let callable = functions.httpsCallable("updateRecurringRouteOrderPermanently")
-        Task{
-            do {
-                let result = try await callable.call(payload)
-                guard let data = result.data as? [String: Any],
-                      let companyId = data["companyId"] as? String,
-                      !companyId.isEmpty else {
-                    throw NSError(domain: "CreateCompany", code: -1, userInfo: [NSLocalizedDescriptionKey: "Company ID not returned from function."])
-                }
-            } catch {
-                print("      [FunctionsManager][updateRecurringRouteOrderPermanently] Error: \(error)")
-            }
+        let result = try await callable.call(payload)
+
+        guard let data = result.data as? [String: Any] else {
+            print("      [FunctionsManager][updateRecurringRouteOrderPermanently] Error: Unable to read JSON from function response.")
+            throw FireBaseRead.unableToRead
+        }
+
+        let status = data["status"] as? Int ?? 500
+        let success = data["success"] as? Bool ?? false
+        guard status == 200 || success else {
+            let message = data["error"] as? String ?? "Recurring route order could not be updated."
+            print("      [FunctionsManager][updateRecurringRouteOrderPermanently] Error: \(message)")
+            throw NSError(
+                domain: "UpdateRecurringRouteOrder",
+                code: status,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
         }
     }
         // MARK: sendServiceReportOnFinish

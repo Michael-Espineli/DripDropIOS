@@ -82,7 +82,7 @@ struct NoCompanySelectedView: View {
                     
                         // Lower Section
                     AdaptiveGrid(columns: 3, spacing: 16) {
-                            // Recent Chats (2 columns wide on large screens)
+                            // Recent messages (2 columns wide on large screens)
                         VStack(spacing: 12) {
                             RecentChatsWidgetPlaceholder(chats: VM.chats)
                         }
@@ -186,7 +186,7 @@ struct RecentChatsWidgetPlaceholder: View {
             HStack {
                 Image(systemName: "bubble.left.and.bubble.right")
                     .foregroundStyle(.blue)
-                Text("Recent Chats")
+                Text("Recent Messages")
                     .font(.headline)
                 Spacer()
                 NavigationLink(value: Route.chats(dataService: dataService), label: {

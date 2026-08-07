@@ -197,77 +197,77 @@ extension ProductionDataService {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -284,28 +284,28 @@ extension ProductionDataService {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -328,77 +328,77 @@ extension ProductionDataService {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -417,28 +417,28 @@ extension ProductionDataService {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -457,28 +457,28 @@ extension ProductionDataService {
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Tires/Wheel",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Gear Box",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Turbine",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Hose",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -496,7 +496,7 @@ extension ProductionDataService {
                     id: UUID().uuidString,
                     equipmentType: .saltCell,
                     name: "Salt Cell",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             ]
@@ -513,7 +513,7 @@ extension ProductionDataService {
                     id: UUID().uuidString,
                     equipmentType: .heater,
                     name: "Heater",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 //DEVELOPER HERE
@@ -615,19 +615,94 @@ extension ProductionDataService {
             .setData(from:chat, merge: false)
     }
     func sendMessage(message: Message) async throws {
-        try messageDocument(messageId: message.id)
-            .setData(from:message, merge: false)
         let chatRef = chatDocument(chatId: message.chatId)
+        var outboundMessage = message
+        var enrichedLink:ConversationLink? = nil
+
         if let chat = try? await chatRef.getDocument(as: Chat.self) {
-            let userTargets = chat.participantIds.filter { $0 != message.senderId }
-            let companyTargets = chat.participantCompanyIds ?? chat.companyId.map { [$0] } ?? []
-            try await chatRef.updateData([
-                "lastMessage": message.previewText,
-                "mostRecentChat": message.dateSent,
-                "userWhoHaveNotRead": FieldValue.arrayUnion(userTargets),
-                "companyIdsWhoHaveNotRead": FieldValue.arrayUnion(companyTargets),
-                "readByUserIds": [message.senderId]
-            ])
+            if let link = message.conversationLink ?? message.messageLinks.first {
+                enrichedLink = link.enriched(
+                    companyId: link.companyId ?? chat.companyId ?? chat.senderCompanyId ?? chat.receiverCompanyId,
+                    audience: link.audience ?? (message.senderCompanyId?.isEmpty == false ? "company" : "client"),
+                    chatId: message.chatId
+                )
+                outboundMessage.conversationLink = enrichedLink
+                outboundMessage.attachments = enrichedLink.map { [$0] }
+            }
+
+            let targets = chat.unreadTargets(
+                senderId: outboundMessage.senderId,
+                senderCompanyId: outboundMessage.senderCompanyId
+            )
+            outboundMessage.receiverId = targets.userIds.first
+            outboundMessage.receiverCompanyId = targets.companyIds.first
+
+            try messageDocument(messageId: outboundMessage.id)
+                .setData(from:outboundMessage, merge: false)
+
+            var updatePayload:[String:Any] = [
+                "lastMessage": outboundMessage.previewText,
+                "lastMessageKind": outboundMessage.kind?.rawValue ?? ChatMessageKind.text.rawValue,
+                "mostRecentChat": outboundMessage.dateSent,
+                "userWhoHaveNotRead": targets.userIds,
+                "companyIdsWhoHaveNotRead": targets.companyIds,
+                "readByUserIds": [outboundMessage.senderId],
+                "updatedAt": Date()
+            ]
+            if let enrichedLink {
+                updatePayload["lastConversationLink"] = try Firestore.Encoder().encode(enrichedLink)
+            } else {
+                updatePayload["lastConversationLink"] = FieldValue.delete()
+            }
+
+            try await chatRef.updateData(updatePayload)
+            try await createMessageNotifications(
+                chat: chat,
+                message: outboundMessage,
+                link: enrichedLink,
+                userTargets: targets.userIds,
+                companyTargets: targets.companyIds
+            )
+        } else {
+            try messageDocument(messageId: outboundMessage.id)
+                .setData(from:outboundMessage, merge: false)
+        }
+    }
+
+    private func createMessageNotifications(
+        chat:Chat,
+        message:Message,
+        link:ConversationLink?,
+        userTargets:[String],
+        companyTargets:[String]
+    ) async throws {
+        for recipientUserId in Set(userTargets) {
+            let recipientAudience = dripDropRecipientAudience(chat: chat, recipientUserId: recipientUserId)
+            let alertId = "alert_\(message.id)_\(recipientUserId)"
+            let payload = dripDropChatNotificationPayload(
+                alertId: alertId,
+                chat: chat,
+                message: message,
+                preview: message.previewText,
+                link: link,
+                recipientUserId: recipientUserId,
+                recipientAudience: recipientAudience
+            )
+            try await personalAlertDocument(userId: recipientUserId, alertId: alertId).setData(payload, merge: false)
+        }
+
+        for recipientCompanyId in Set(companyTargets) {
+            let alertId = "alert_\(message.id)_\(recipientCompanyId)"
+            let payload = dripDropChatNotificationPayload(
+                alertId: alertId,
+                chat: chat,
+                message: message,
+                preview: message.previewText,
+                link: link,
+                recipientCompanyId: recipientCompanyId,
+                recipientAudience: "company"
+            )
+            try await alertDocument(companyId: recipientCompanyId, alertId: alertId).setData(payload, merge: false)
         }
     }
 
@@ -697,6 +772,8 @@ extension ProductionDataService {
             "870","872","874","876","880","882","884","886",
             "890","892","894","896"
         ]
+        let ownerPermissionIds = allPermissionIds + ["420", "900", "910"]
+        let adminPermissionIds = allPermissionIds + ["900", "910"]
         let managerPermissionIds = [
             "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "200","210","220","230","232","234","236","240","242","244","246",
@@ -706,13 +783,13 @@ extension ProductionDataService {
             "600","610","612","614","616","620","622","624","626",
             "800","810","812","814","816","820","822","824","826","830","832","834","836",
             "840","842","844","846","850","852","854","856","860","862","864","866",
-            "870","872","874","876","880","882","884","886"
+            "870","872","874","876","880","882","884","886","900"
         ]
         let roles:[Role] = [
             Role(
                 id: "1",
                 name: "Owner",
-                permissionIdList: allPermissionIds,
+                permissionIdList: ownerPermissionIds,
                 listOfUserIdsToManage: [],
                 color: "red",
                 description: "All Permissions Enabled"
@@ -737,7 +814,7 @@ extension ProductionDataService {
             Role(
                 id: UUID().uuidString,
                 name: "Admin",
-                permissionIdList: allPermissionIds,
+                permissionIdList: adminPermissionIds,
                 listOfUserIdsToManage: [],
                 color: "red",
                 description: "Basic Permissions For Admin"

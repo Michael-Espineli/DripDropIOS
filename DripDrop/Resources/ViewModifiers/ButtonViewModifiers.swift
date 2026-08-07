@@ -334,6 +334,226 @@ struct OutLineButtonModifier: ViewModifier {
     }
 }
 
+// MARK: - Filter Sheets
+
+struct DripDropFilterSheet<Content: View>: View {
+    @Binding private var isPresented: Bool
+
+    private let title: String
+    private let resetTitle: String
+    private let isResetDisabled: Bool
+    private let onReset: (() -> Void)?
+    private let content: Content
+
+    init(
+        title: String = "Filters",
+        isPresented: Binding<Bool>,
+        resetTitle: String = "Reset",
+        isResetDisabled: Bool = true,
+        onReset: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self._isPresented = isPresented
+        self.resetTitle = resetTitle
+        self.isResetDisabled = isResetDisabled
+        self.onReset = onReset
+        self.content = content()
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        content
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if let onReset {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(resetTitle) {
+                            onReset()
+                        }
+                        .disabled(isResetDisabled)
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+}
+
+struct DripDropFilterSummaryCard: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    var tint: Color = .poolBlue
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 42, height: 42)
+                .background(tint.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+    }
+}
+
+struct DripDropFilterSection<Content: View>: View {
+    let title: String
+    let systemImage: String
+    var tint: Color = .poolBlue
+    private let content: Content
+
+    init(
+        title: String,
+        systemImage: String,
+        tint: Color = .poolBlue,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.tint = tint
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            } icon: {
+                Image(systemName: systemImage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(tint)
+            }
+
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+    }
+}
+
+struct DripDropFilterRow<Content: View>: View {
+    let title: String
+    var subtitle: String? = nil
+    let systemImage: String
+    var tint: Color = .poolBlue
+    private let content: Content
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        systemImage: String,
+        tint: Color = .poolBlue,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+        self.tint = tint
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            content
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct DripDropFilterMenuLabel: View {
+    let title: String
+    var tint: Color = .poolBlue
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2.weight(.bold))
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(tint)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: 190, alignment: .trailing)
+        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
 /*
 struct DismissButtonModifier:ViewModifier{
     func body(content: Content) -> some View {

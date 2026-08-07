@@ -8,6 +8,34 @@
 import Foundation
 import SwiftUI
 
+struct DripDropAlertRelatedEntity: Hashable, Codable {
+    var type:String?
+    var id:String?
+    var label:String?
+    var companyId:String?
+    var collectionPath:String?
+    var webPath:String?
+    var deeplinkUrl:String?
+}
+
+struct DripDropAlertShare: Hashable, Codable {
+    var type:String?
+    var id:String?
+    var recordId:String?
+    var companyId:String?
+    var customerId:String?
+    var customerUserId:String?
+    var title:String?
+    var subtitle:String?
+    var collectionPath:String?
+    var webPath:String?
+    var sharePath:String?
+    var shareUrl:String?
+    var deeplinkUrl:String?
+    var mobileRoute:String?
+    var audience:String?
+}
+
 struct DripDropAlert:Identifiable,Hashable,Codable{
     var id:String = UUID().uuidString
     var category:MacCategories
@@ -16,6 +44,206 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
     var name:String
     var description:String
     var date:Date
+    var status:String? = nil
+    var severity:String? = nil
+    var source:String? = nil
+    var sourceId:String? = nil
+    var chatId:String? = nil
+    var targetScope:String? = nil
+    var assignedToUserId:String? = nil
+    var recipientUserId:String? = nil
+    var recipientCompanyId:String? = nil
+    var routePath:String? = nil
+    var relatedEntity:DripDropAlertRelatedEntity? = nil
+    var share:DripDropAlertShare? = nil
+
+    init(
+        id:String = UUID().uuidString,
+        category:MacCategories,
+        route:RouteString,
+        itemId:String,
+        name:String,
+        description:String,
+        date:Date,
+        status:String? = nil,
+        severity:String? = nil,
+        source:String? = nil,
+        sourceId:String? = nil,
+        chatId:String? = nil,
+        targetScope:String? = nil,
+        assignedToUserId:String? = nil,
+        recipientUserId:String? = nil,
+        recipientCompanyId:String? = nil,
+        routePath:String? = nil,
+        relatedEntity:DripDropAlertRelatedEntity? = nil,
+        share:DripDropAlertShare? = nil
+    ) {
+        self.id = id
+        self.category = category
+        self.route = route
+        self.itemId = itemId
+        self.name = name
+        self.description = description
+        self.date = date
+        self.status = status
+        self.severity = severity
+        self.source = source
+        self.sourceId = sourceId
+        self.chatId = chatId
+        self.targetScope = targetScope
+        self.assignedToUserId = assignedToUserId
+        self.recipientUserId = recipientUserId
+        self.recipientCompanyId = recipientCompanyId
+        self.routePath = routePath
+        self.relatedEntity = relatedEntity
+        self.share = share
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case category
+        case route
+        case itemId
+        case name
+        case title
+        case description
+        case message
+        case date
+        case createdAt
+        case updatedAt
+        case status
+        case severity
+        case source
+        case sourceId
+        case chatId
+        case targetScope
+        case assignedToUserId
+        case recipientUserId
+        case recipientCompanyId
+        case routePath
+        case relatedEntity
+        case share
+        case conversationLink
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedShare = (try? container.decodeIfPresent(DripDropAlertShare.self, forKey: .share))
+            ?? (try? container.decodeIfPresent(DripDropAlertShare.self, forKey: .conversationLink))
+        let decodedRelatedEntity = try? container.decodeIfPresent(DripDropAlertRelatedEntity.self, forKey: .relatedEntity)
+        let linkType = decodedShare?.type ?? decodedRelatedEntity?.type
+        let routeAndCategory = Self.routeAndCategory(for: linkType, source: try? container.decodeIfPresent(String.self, forKey: .source))
+        let rawRoute = try? container.decodeIfPresent(String.self, forKey: .route)
+        let decodedRoute = rawRoute.flatMap { RouteString(rawValue: $0) }
+        let routePath = rawRoute?.hasPrefix("/") == true ? rawRoute : nil
+
+        self.id = (try? container.decodeIfPresent(String.self, forKey: .id)) ?? UUID().uuidString
+        self.category = (try? container.decodeIfPresent(MacCategories.self, forKey: .category)) ?? routeAndCategory.category
+        self.route = decodedRoute ?? routeAndCategory.route
+        self.itemId =
+            (try? container.decodeIfPresent(String.self, forKey: .itemId)) ??
+            decodedShare?.recordId ??
+            decodedShare?.id ??
+            decodedRelatedEntity?.id ??
+            (try? container.decodeIfPresent(String.self, forKey: .chatId)) ??
+            (try? container.decodeIfPresent(String.self, forKey: .sourceId)) ??
+            ""
+        let decodedName = (try? container.decodeIfPresent(String.self, forKey: .name))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .title))
+            ?? decodedShare?.title
+            ?? decodedRelatedEntity?.label
+            ?? "Notification"
+        let decodedDescription = (try? container.decodeIfPresent(String.self, forKey: .description))
+            ?? (try? container.decodeIfPresent(String.self, forKey: .message))
+            ?? decodedShare?.subtitle
+            ?? ""
+
+        self.name = decodedName
+        self.description = decodedDescription
+        self.date =
+            (try? container.decodeIfPresent(Date.self, forKey: .date)) ??
+            (try? container.decodeIfPresent(Date.self, forKey: .createdAt)) ??
+            (try? container.decodeIfPresent(Date.self, forKey: .updatedAt)) ??
+            Date()
+        self.status = try? container.decodeIfPresent(String.self, forKey: .status)
+        self.severity = try? container.decodeIfPresent(String.self, forKey: .severity)
+        self.source = try? container.decodeIfPresent(String.self, forKey: .source)
+        self.sourceId = try? container.decodeIfPresent(String.self, forKey: .sourceId)
+        self.chatId = try? container.decodeIfPresent(String.self, forKey: .chatId)
+        self.targetScope = try? container.decodeIfPresent(String.self, forKey: .targetScope)
+        self.assignedToUserId = try? container.decodeIfPresent(String.self, forKey: .assignedToUserId)
+        self.recipientUserId = try? container.decodeIfPresent(String.self, forKey: .recipientUserId)
+        self.recipientCompanyId = try? container.decodeIfPresent(String.self, forKey: .recipientCompanyId)
+        self.routePath = routePath
+        self.relatedEntity = decodedRelatedEntity
+        self.share = decodedShare
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(category, forKey: .category)
+        try container.encode(route, forKey: .route)
+        try container.encode(itemId, forKey: .itemId)
+        try container.encode(name, forKey: .name)
+        try container.encode(name, forKey: .title)
+        try container.encode(description, forKey: .description)
+        try container.encode(description, forKey: .message)
+        try container.encode(date, forKey: .date)
+        try container.encodeIfPresent(status, forKey: .status)
+        try container.encodeIfPresent(severity, forKey: .severity)
+        try container.encodeIfPresent(source, forKey: .source)
+        try container.encodeIfPresent(sourceId, forKey: .sourceId)
+        try container.encodeIfPresent(chatId, forKey: .chatId)
+        try container.encodeIfPresent(targetScope, forKey: .targetScope)
+        try container.encodeIfPresent(assignedToUserId, forKey: .assignedToUserId)
+        try container.encodeIfPresent(recipientUserId, forKey: .recipientUserId)
+        try container.encodeIfPresent(recipientCompanyId, forKey: .recipientCompanyId)
+        try container.encodeIfPresent(routePath, forKey: .routePath)
+        try container.encodeIfPresent(relatedEntity, forKey: .relatedEntity)
+        try container.encodeIfPresent(share, forKey: .share)
+    }
+
+    private static func routeAndCategory(for type:String?, source:String?) -> (route:RouteString, category:MacCategories) {
+        if type == "chat" || source == "chat" {
+            return (.chat, .chat)
+        }
+
+        switch ConversationLinkType.normalized(type ?? "") {
+        case .customer:
+            return (.customer, .customers)
+        case .serviceLocation, .bodyOfWater:
+            return (.customers, .customers)
+        case .equipment:
+            return (.equipmentDetailView, .equipment)
+        case .repairRequest:
+            return (.repairRequest, .repairRequest)
+        case .serviceRequest:
+            return (.leads, .alerts)
+        case .serviceStop, .recurringServiceStop:
+            return (.serviceStop, .serviceStops)
+        case .estimate, .serviceAgreement, .contract:
+            return (.contract, .contracts)
+        case .invoice:
+            return (.accountsReceivableDetail, .accountsReceivable)
+        case .job:
+            return (.job, .jobs)
+        case .purchase:
+            return (.purchase, .purchases)
+        case .shoppingListItem, .todo:
+            return (.shoppingListDetail, .shoppingList)
+        case .databaseItem:
+            return (.dataBaseItem, .databaseItems)
+        case .receipt:
+            return (.receipt, .receipts)
+        case .vendor:
+            return (.vender, .vender)
+        case .companyUser:
+            return (.companyUserDetailView, .companyUser)
+        case .other:
+            return (.alerts, .alerts)
+        }
+    }
 }
 @MainActor
 final class CompanyAlertViewModel:ObservableObject{
@@ -110,7 +338,8 @@ final class CompanyAlertViewModel:ObservableObject{
                         print("No Item for createCustomer")
                         
                     case .equipmentDetailView:
-                        print("No Item for equipmentDetailView")
+                        let item = try await dataService.getSinglePieceOfEquipment(companyId: companyId, equipmentId: alert.itemId)
+                        self.route = Route.equipmentDetailView(equipment: item, dataService: dataService)
                     case .allTechRouteOverview:
 #warning("[Update 2.5] Needs more Help")
                         self.route = Route.allTechRouteOverview(route: [], dataService: dataService)

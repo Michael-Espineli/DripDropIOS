@@ -1372,7 +1372,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateEquipmentServiceFrequencyEvery(companyId:String,equipmentId:String,serviceFrequencyEvery:EquipmentFrequency) throws {
         
     }
-    func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws {
+    func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date?) throws {
+
+    }
+    func updateEquipmentCreatedAt(companyId:String,equipmentId:String,createdAt:Date) throws {
         
     }
     func updateEquipmentStatus(companyId:String,equipmentId:String,status:EquipmentStatus) throws {
@@ -3152,8 +3155,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         try bodyOfWaterDoc(companyId: companyId, bodyOfWaterId: bodyOfWater.id).setData(from:bodyOfWater, merge: false)
     }
     func uploadEquipment(companyId:String,equipment:Equipment) async throws {
-        
-        try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: false)
+        var equipmentToSave = equipment
+        equipmentToSave.createdAt = equipmentToSave.createdAt ?? Date()
+        try equipmentCollection(companyId: companyId).document(equipmentToSave.id).setData(from:equipmentToSave, merge: false)
         
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
@@ -3166,77 +3170,77 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -3253,28 +3257,28 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -3297,77 +3301,77 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -3386,28 +3390,28 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -3426,28 +3430,28 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Tires/Wheel",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Gear Box",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Turbine",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Hose",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -3465,7 +3469,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     id: UUID().uuidString,
                     equipmentType: .saltCell,
                     name: "Salt Cell",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             ]
@@ -3482,7 +3486,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                     id: UUID().uuidString,
                     equipmentType: .heater,
                     name: "Heater",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 //DEVELOPER HERE
@@ -3680,6 +3684,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             "870","872","874","876","880","882","884","886",
             "890","892","894","896"
         ]
+        let ownerPermissionIds = allPermissionIds + ["420", "900", "910"]
+        let adminPermissionIds = allPermissionIds + ["900", "910"]
         let managerPermissionIds = [
             "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "200","210","220","230","232","234","236","240","242","244","246",
@@ -3689,14 +3695,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             "600","610","612","614","616","620","622","624","626",
             "800","810","812","814","816","820","822","824","826","830","832","834","836",
             "840","842","844","846","850","852","854","856","860","862","864","866",
-            "870","872","874","876","880","882","884","886"
+            "870","872","874","876","880","882","884","886","900"
         ]
         let roles:[Role] = [
-            Role(id: "1", name: "Owner", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
+            Role(id: "1", name: "Owner", permissionIdList: ownerPermissionIds, listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
             
             Role(id: UUID().uuidString, name: "Tech", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Techs"),
             Role(id: UUID().uuidString, name: "Manager", permissionIdList: managerPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Manager"),
-            Role(id: UUID().uuidString, name: "Admin", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
+            Role(id: UUID().uuidString, name: "Admin", permissionIdList: adminPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
             Role(id: UUID().uuidString, name: "Office", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Office Personal")
         ]
         print("Adding Work Order Templates")
@@ -4328,9 +4334,13 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func getCompanyUserByDBUserId(companyId:String,userId:String) async throws -> CompanyUser{
-        return try await companyUsersCollection(companyId: companyId)
+        if let companyUser = try await companyUsersCollection(companyId: companyId)
             .whereField("userId", isEqualTo: userId)
-            .getDocuments(as:CompanyUser.self).first! // DEVELOPER PROPPERLY UNWRAP
+            .getDocuments(as:CompanyUser.self).first {
+            return companyUser
+        }
+
+        throw FireBaseRead.unableToRead
         
     }
     func getAllRateSheetByCompanyUserId(companyId: String, companyUserId: String) async throws -> [RateSheet]{
@@ -5470,18 +5480,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .getDocuments(as:Chat.self)
     }
     func getVisibleChats(userId:String, companyId:String?) async throws ->[Chat]{
-        var chats = try await getAllChatsByUser(userId: userId)
         if let companyId {
-            let companyChats = try await chatCollection()
-                .whereField("participantCompanyIds", arrayContains: companyId)
-                .order(by: "mostRecentChat", descending: true)
+            return try await chatCollection()
+                .whereField("companyId", isEqualTo: companyId)
                 .getDocuments(as:Chat.self)
-            chats.append(contentsOf: companyChats)
+                .sorted { $0.mostRecentChat > $1.mostRecentChat }
         }
 
-        return Dictionary(grouping: chats, by: \.id)
-            .compactMap { $0.value.first }
-            .sorted { $0.mostRecentChat > $1.mostRecentChat }
+        return try await getAllChatsByUser(userId: userId)
     }
     func getAllMessagesByChat(chatId: String) async throws ->[Message]{
         return try await messageCollection()
@@ -6880,12 +6886,15 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        let createdAt = equipment.createdAt ?? Date()
+        let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
             Equipment.CodingKeys.type.stringValue:equipment.type,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.model.stringValue:equipment.model,
-            Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
+            Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue,
+            Equipment.CodingKeys.createdAt.stringValue: createdAt,
             Equipment.CodingKeys.status.stringValue:equipment.status,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,

@@ -20,6 +20,7 @@ struct GenericItemList: View {
     @State var searchTerm:String = ""
     @State var showSearch:Bool = false
     @State var showFilter:Bool = false
+    @State private var selectedCategory: String? = nil
 
     var body: some View {
         ZStack{
@@ -45,7 +46,7 @@ extension GenericItemList {
     var list: some View {
         VStack(spacing: 0){
             List{
-                ForEach(genericItemVM.genericItems) { item in
+                ForEach(displayedGenericItems) { item in
                     if UIDevice.isIPhone {
                         
                         NavigationLink(value: Route.toDoDetail(dataService: dataService), label: {
@@ -89,12 +90,7 @@ extension GenericItemList {
                     })
                     .padding(10)
                     .sheet(isPresented: $showFilter, content: {
-                        VStack{
-                            Text("Filter")
-                            Text("Category")
-                            Text("Sub-Category")
-
-                        }
+                        genericItemFilterSheet
                     })
                     Button(action: {
                         
@@ -147,4 +143,83 @@ extension GenericItemList {
         
     }
     
+    private var genericItemFilterSheet: some View {
+        DripDropFilterSheet(
+            title: "Generic Item Filters",
+            isPresented: $showFilter,
+            isResetDisabled: selectedCategory == nil,
+            onReset: resetGenericFilters
+        ) {
+            DripDropFilterSummaryCard(
+                title: "\(displayedGenericItems.count) generic items",
+                subtitle: selectedCategory ?? "All categories",
+                systemImage: "shippingbox.fill",
+                tint: .accentColor
+            )
+
+            DripDropFilterSection(
+                title: "Classification",
+                systemImage: "square.grid.2x2",
+                tint: .poolBlue
+            ) {
+                DripDropFilterRow(
+                    title: "Category",
+                    subtitle: selectedCategory ?? "All categories",
+                    systemImage: "tag",
+                    tint: .poolBlue
+                ) {
+                    Picker("Category", selection: $selectedCategory) {
+                        Text("All categories").tag(nil as String?)
+
+                        ForEach(genericCategoryOptions, id: \.self) { category in
+                            Text(category).tag(category as String?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var displayedGenericItems: [GenericItem] {
+        var items = genericItemVM.genericItems
+
+        if let selectedCategory {
+            items = items.filter { $0.category == selectedCategory }
+        }
+
+        let term = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if !term.isEmpty {
+            items = items.filter { item in
+                [
+                    item.commonName,
+                    item.specificName,
+                    item.category,
+                    item.description,
+                    item.sku,
+                    item.UOM
+                ]
+                    .joined(separator: " ")
+                    .lowercased()
+                    .contains(term)
+            }
+        }
+
+        return items.sorted {
+            $0.commonName.localizedCaseInsensitiveCompare($1.commonName) == .orderedAscending
+        }
+    }
+
+    private var genericCategoryOptions: [String] {
+        Array(Set(genericItemVM.genericItems.map { $0.category.trimmingCharacters(in: .whitespacesAndNewlines) }))
+            .filter { !$0.isEmpty }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    private func resetGenericFilters() {
+        selectedCategory = nil
+    }
+
 }

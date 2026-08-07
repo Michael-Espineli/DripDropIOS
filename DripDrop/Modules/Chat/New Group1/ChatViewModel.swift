@@ -42,7 +42,24 @@ final class ChatViewModel:ObservableObject{
     func uploadChat(userId:String,chat:Chat) async throws {
         try await dataService.uploadChat(chat: chat)
     }
-    func uploadChatandMessageWithValidation(userId:String,senderName:String,participantIds:[String],participants:[BasicUserInfo],companyId:String,message:String,mostRecentChat:Date) async throws {
+    func uploadChatandMessageWithValidation(
+        userId:String,
+        senderName:String,
+        participantIds:[String],
+        participants:[BasicUserInfo],
+        companyId:String,
+        message:String,
+        mostRecentChat:Date,
+        visibility:ChatVisibility = .companyInternal,
+        audience:String = "internal",
+        targetType:String = "companyUser",
+        title:String? = nil,
+        customerId:String? = nil,
+        customerUserId:String? = nil,
+        customerName:String? = nil,
+        companyVisibility:String? = nil,
+        publicToCompanyId:String? = nil
+    ) async throws {
         let chatId = UUID().uuidString
         let chat = Chat(
             id: chatId,
@@ -52,10 +69,21 @@ final class ChatViewModel:ObservableObject{
             mostRecentChat: mostRecentChat,
             userWhoHaveNotRead: participantIds.filter { $0 != userId },
             lastMessage: message,
-            visibility: .direct,
+            visibility: visibility,
             participantCompanyIds: [companyId],
-            companyIdsWhoHaveNotRead: [companyId],
-            readByUserIds: [userId]
+            companyIdsWhoHaveNotRead: [],
+            readByUserIds: [userId],
+            title: title,
+            customerId: customerId,
+            companyName: participants.first(where: { $0.companyId == companyId })?.companyName,
+            senderCompanyId: companyId,
+            customerUserId: customerUserId,
+            customerName: customerName,
+            audience: audience,
+            targetType: targetType,
+            companyVisibility: companyVisibility,
+            publicToCompanyId: publicToCompanyId,
+            lastMessageKind: .text
         )
         try await dataService.uploadChat(chat: chat)
         //Send Message
@@ -101,6 +129,7 @@ final class ChatViewModel:ObservableObject{
             senderCompanyId: senderCompanyId,
             senderCompanyName: senderCompanyName,
             attachments: [link],
+            conversationLink: link,
             actionTitle: "Open"
         )
         try await dataService.sendMessage(message: message)

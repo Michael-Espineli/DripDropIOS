@@ -238,7 +238,7 @@ struct DetailView: View {
                         if let chat = masterDataManager.selectedChat{
                             ChatDetailView(dataService:dataService,chat:chat)
                         } else {
-                            Text("Select Chat")
+                            Text("Select Message")
                         }
                     case .repairRequest:
                         if let repair = masterDataManager.selectedRepairRequest{

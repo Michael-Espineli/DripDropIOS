@@ -323,65 +323,177 @@ extension PurchaseListView {
     }
 
     var filterSheet: some View {
-        NavigationStack {
-            Form {
-                Section("Date Range") {
+        DripDropFilterSheet(
+            title: "Purchase Filters",
+            isPresented: $showFilerOptions,
+            isResetDisabled: purchaseActiveFilterCount == 0,
+            onReset: resetPurchaseFilters
+        ) {
+            DripDropFilterSummaryCard(
+                title: "\(purchasedItems.count) purchased items",
+                subtitle: "\(purchaseFilterOption.display()) from \(shortDate(date: startViewingDate)) to \(shortDate(date: endViewingDate)).",
+                systemImage: "cart.fill",
+                tint: .poolGreen
+            )
+
+            DripDropFilterSection(
+                title: "Date Range",
+                systemImage: "calendar",
+                tint: .poolBlue
+            ) {
+                DripDropFilterRow(
+                    title: "Start",
+                    subtitle: shortDate(date: startViewingDate),
+                    systemImage: "calendar.badge.minus",
+                    tint: .poolBlue
+                ) {
                     DatePicker("Start Date", selection: $startViewingDate, displayedComponents: .date)
+                        .labelsHidden()
+                }
+
+                DripDropFilterRow(
+                    title: "End",
+                    subtitle: shortDate(date: endViewingDate),
+                    systemImage: "calendar.badge.plus",
+                    tint: .poolBlue
+                ) {
                     DatePicker("End Date", selection: $endViewingDate, displayedComponents: .date)
-                }
-
-                Section("Sort & Filter") {
-                    Picker("Sort", selection: $purchaseSortOption) {
-                        ForEach(PurchaseSortOptions.allCases,id:\.self) {
-                            Text($0.display()).tag($0)
-                        }
-                    }
-
-                    Picker("Filter", selection: $purchaseFilterOption) {
-                        ForEach(PurchaseFilterOptions.allCases,id:\.self) {
-                            Text($0.display()).tag($0)
-                        }
-                    }
-                }
-
-                Section("Techs") {
-                    Button("Select All") {
-                        techIds = purchaseVM.techList.map(\.userId)
-                    }
-
-                    ForEach(purchaseVM.techList) { tech in
-                        Button {
-                            if techIds.contains(tech.userId) {
-                                techIds.removeAll(where: {$0 == tech.userId})
-                            } else {
-                                techIds.append(tech.userId)
-                            }
-                        } label: {
-                            HStack {
-                                Text(tech.userName ?? "")
-                                Spacer()
-                                if techIds.contains(tech.userId) {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-
-                    Button("Clear Techs", role: .destructive) {
-                        techIds = []
-                    }
+                        .labelsHidden()
                 }
             }
-            .navigationTitle("Filters")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        showFilerOptions = false
+
+            DripDropFilterSection(
+                title: "Purchased Items",
+                systemImage: "line.3.horizontal.decrease.circle",
+                tint: .orange
+            ) {
+                DripDropFilterRow(
+                    title: "Sort",
+                    subtitle: "List order",
+                    systemImage: "arrow.up.arrow.down",
+                    tint: .poolBlue
+                ) {
+                    Picker("Sort", selection: $purchaseSortOption) {
+                        ForEach(PurchaseSortOptions.allCases, id: \.self) { option in
+                            Text(option.display()).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+
+                DripDropFilterRow(
+                    title: "Filter",
+                    subtitle: "Billing state",
+                    systemImage: "checkmark.seal",
+                    tint: .orange
+                ) {
+                    Picker("Filter", selection: $purchaseFilterOption) {
+                        ForEach(PurchaseFilterOptions.allCases, id: \.self) { option in
+                            Text(option.display()).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+            }
+
+            DripDropFilterSection(
+                title: "Techs",
+                systemImage: "person.2",
+                tint: .poolGreen
+            ) {
+                DripDropFilterRow(
+                    title: "Assigned Techs",
+                    subtitle: purchaseTechMenuTitle,
+                    systemImage: "person.crop.circle.badge.checkmark",
+                    tint: .poolGreen
+                ) {
+                    Menu {
+                        Button {
+                            techIds = purchaseVM.techList.map(\.userId)
+                        } label: {
+                            Label("All techs", systemImage: allPurchaseTechsSelected ? "checkmark" : "circle")
+                        }
+
+                        ForEach(purchaseVM.techList) { tech in
+                            Button {
+                                togglePurchaseTech(tech.userId)
+                            } label: {
+                                Label(tech.userName ?? "", systemImage: techIds.contains(tech.userId) ? "checkmark" : "circle")
+                            }
+                        }
+
+                        Button(role: .destructive) {
+                            techIds = []
+                        } label: {
+                            Label("Clear techs", systemImage: techIds.isEmpty ? "checkmark" : "xmark")
+                        }
+                    } label: {
+                        DripDropFilterMenuLabel(title: purchaseTechMenuTitle, tint: .poolGreen)
                     }
                 }
             }
         }
+        .presentationDetents([.medium, .large])
+    }
+
+    var defaultPurchaseStartDate: Date {
+        Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+    }
+
+    var defaultPurchaseEndDate: Date {
+        Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+    }
+
+    var purchaseActiveFilterCount: Int {
+        var count = 0
+
+        if !Calendar.current.isDate(startViewingDate, inSameDayAs: defaultPurchaseStartDate) { count += 1 }
+        if !Calendar.current.isDate(endViewingDate, inSameDayAs: defaultPurchaseEndDate) { count += 1 }
+        if purchaseSortOption != .purchaseDateFirst { count += 1 }
+        if purchaseFilterOption != .all { count += 1 }
+        if !allPurchaseTechsSelected { count += 1 }
+
+        return count
+    }
+
+    var allPurchaseTechsSelected: Bool {
+        let allTechIds = Set(purchaseVM.techList.map(\.userId))
+
+        guard !allTechIds.isEmpty else {
+            return techIds.isEmpty
+        }
+
+        return Set(techIds) == allTechIds
+    }
+
+    var purchaseTechMenuTitle: String {
+        if techIds.isEmpty { return "None selected" }
+        if allPurchaseTechsSelected { return "All techs" }
+        if techIds.count == 1 {
+            guard let firstTechId = techIds.first else { return "1 tech" }
+
+            let techName = purchaseVM.techList.first(where: { $0.userId == firstTechId })?.userName
+            return techName ?? "1 tech"
+        }
+        return "\(Set(techIds).count) selected"
+    }
+
+    func togglePurchaseTech(_ userId: String) {
+        if techIds.contains(userId) {
+            techIds.removeAll(where: { $0 == userId })
+        } else {
+            techIds.append(userId)
+        }
+    }
+
+    func resetPurchaseFilters() {
+        startViewingDate = defaultPurchaseStartDate
+        endViewingDate = defaultPurchaseEndDate
+        purchaseFilterOption = .all
+        purchaseSortOption = .purchaseDateFirst
+        techIds = purchaseVM.techList.map(\.userId)
     }
 
     @MainActor
@@ -556,92 +668,7 @@ extension PurchaseListView {
                             }
                         }
                     }, content: {
-                        ZStack{
-                            Color.listColor.ignoresSafeArea()
-                            VStack{
-                                HStack{
-                                    Spacer()
-                                    Text("Filters")
-                                        .font(.title)
-                                    Spacer()
-                                    Button(action: {
-                                        showFilerOptions = false
-                                    }, label: {
-                                        Image(systemName: "xmark")
-                                            .modifier(DismissButtonModifier())
-                                    })
-                                }
-                                HStack{
-                                    Text("Start Date: ")
-                                    DatePicker(selection: $startViewingDate, displayedComponents: .date) {
-                                    }
-                                }
-                                HStack{
-                                    Text("End Date: ")
-                                    
-                                    DatePicker(selection: $endViewingDate, displayedComponents: .date) {
-                                    }
-                                }
-                                
-                                
-                                HStack{
-                                    Text("Sort: ")
-                                    Picker("Sort: ", selection: $purchaseSortOption) {
-                                        ForEach(PurchaseSortOptions.allCases,id:\.self) {
-                                            Text($0.display()).tag($0)
-                                        }
-                                    }
-                                    Spacer()
-                                }
-                                HStack{
-                                    Text("Filter: ")
-                                    Picker("Filter:", selection: $purchaseFilterOption) {
-                                        ForEach(PurchaseFilterOptions.allCases,id:\.self) {
-                                            Text($0.display()).tag($0)
-                                        }
-                                    }
-                                    Spacer()
-                                }
-                                HStack{
-                                    Text("Techs: ")
-                                    Menu("Techs") {
-                                        Button(action: {
-                                            print("All Selected")
-                                            for tech in purchaseVM.techList {
-                                                techIds.append(tech.userId)
-                                            }
-                                            
-                                        }, label: {
-                                            Text("All \(techIds.count == purchaseVM.techList.count ? "✓" : "")")
-                                        })
-                                        
-                                        ForEach(purchaseVM.techList) { tech in
-                                            Button(action: {
-                                                if techIds.contains(tech.userId) {
-                                                    techIds.removeAll(where: {$0 == tech.userId})
-                                                    print("Removed \((tech.userName ?? ""))")
-                                                } else {
-                                                    print("Added \((tech.userName ?? ""))")
-                                                    
-                                                    techIds.append(tech.userId)
-                                                }
-                                            }, label: {
-                                                Text("\(tech.userName ?? "") \(techIds.contains(tech.userId) ? "✓" : "")")
-                                            })
-                                        }
-                                        Button(action: {
-                                            techIds = []
-                                        }, label: {
-                                            Text("Clear \(techIds == [] ? "✓" : "")")
-                                        })
-                                    }
-                                    Spacer()
-                                }
-                                Spacer()
-                            }
-                            .padding(10)
-                        }
-                        
+                        filterSheet
                     })
                     
                     

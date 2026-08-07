@@ -280,162 +280,127 @@ extension ReceiptDatabaseListView {
 
 extension ReceiptDatabaseListView {
     private var filterSheet: some View {
-        NavigationView {
-            ZStack {
-                Color.listColor.ignoresSafeArea()
+        DripDropFilterSheet(
+            title: "Database Filters",
+            isPresented: $showFilter,
+            isResetDisabled: !hasActiveFilters,
+            onReset: resetFilters
+        ) {
+            DripDropFilterSummaryCard(
+                title: "\(dataBaseItemList.count) of \(viewModel.dataBaseItems.count) items",
+                subtitle: activeFilterCount == 0 ? "No filters applied." : "\(activeFilterCount) active filter\(activeFilterCount == 1 ? "" : "s").",
+                systemImage: "shippingbox.fill",
+                tint: .accentColor
+            )
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        filterSummaryCard
+            DripDropFilterSection(
+                title: "Billable",
+                systemImage: "checkmark.seal",
+                tint: .poolGreen
+            ) {
+                Picker("Billable", selection: $billableFilter) {
+                    ForEach(DatabaseBillableFilter.allCases) { filter in
+                        Text(filter.rawValue).tag(filter)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
 
-                        filterSection(title: "Billable", systemImage: "checkmark.seal") {
-                            Picker("Billable", selection: $billableFilter) {
-                                ForEach(DatabaseBillableFilter.allCases) { filter in
-                                    Text(filter.rawValue).tag(filter)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                        }
+            DripDropFilterSection(
+                title: "Price",
+                systemImage: "dollarsign.circle",
+                tint: .poolGreen
+            ) {
+                Picker("Price", selection: $priceFilter) {
+                    ForEach(DatabasePriceFilter.allCases) { filter in
+                        Text(filter.rawValue).tag(filter)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
 
-                        filterSection(title: "Price", systemImage: "dollarsign.circle") {
-                            Picker("Price", selection: $priceFilter) {
-                                ForEach(DatabasePriceFilter.allCases) { filter in
-                                    Text(filter.rawValue).tag(filter)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                        }
-
-                        filterSection(title: "Classification", systemImage: "square.grid.2x2") {
-                            pickerRow(title: "Category") {
-                                Picker("Category", selection: $categoryFilter) {
-                                    Text("All categories").tag(nil as DataBaseItemCategory?)
-                                    ForEach(DataBaseItemCategory.allCases.filter { $0 != .na }, id: \.self) { category in
-                                        Text(category.rawValue).tag(category as DataBaseItemCategory?)
-                                    }
-                                }
-                            }
-
-                            pickerRow(title: "Subcategory") {
-                                Picker("Subcategory", selection: $subCategoryFilter) {
-                                    Text("All subcategories").tag(nil as DataBaseItemSubCategory?)
-                                    ForEach(DataBaseItemSubCategory.allCases.filter { $0 != .na }, id: \.self) { subCategory in
-                                        Text(subCategory.rawValue).tag(subCategory as DataBaseItemSubCategory?)
-                                    }
-                                }
-                            }
-                        }
-
-                        filterSection(title: "Store", systemImage: "storefront") {
-                            pickerRow(title: "Vendor") {
-                                Picker("Store", selection: $storeFilter) {
-                                    Text("All stores").tag(nil as String?)
-                                    ForEach(storeOptions, id: \.self) { storeName in
-                                        Text(storeName).tag(storeName as String?)
-                                    }
-                                }
-                            }
-                        }
-
-                        filterSection(title: "Sort", systemImage: "arrow.up.arrow.down") {
-                            pickerRow(title: "Order") {
-                                Picker("Sort", selection: $sortOption) {
-                                    ForEach(DatabaseSortOption.allCases) { option in
-                                        Text(option.rawValue).tag(option)
-                                    }
-                                }
-                            }
+            DripDropFilterSection(
+                title: "Classification",
+                systemImage: "square.grid.2x2",
+                tint: .poolBlue
+            ) {
+                DripDropFilterRow(
+                    title: "Category",
+                    subtitle: categoryFilter?.rawValue ?? "All categories",
+                    systemImage: "tag",
+                    tint: .poolBlue
+                ) {
+                    Picker("Category", selection: $categoryFilter) {
+                        Text("All categories").tag(nil as DataBaseItemCategory?)
+                        ForEach(DataBaseItemCategory.allCases.filter { $0 != .na }, id: \.self) { category in
+                            Text(category.rawValue).tag(category as DataBaseItemCategory?)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 28)
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+
+                DripDropFilterRow(
+                    title: "Subcategory",
+                    subtitle: subCategoryFilter?.rawValue ?? "All subcategories",
+                    systemImage: "tag.circle",
+                    tint: .poolBlue
+                ) {
+                    Picker("Subcategory", selection: $subCategoryFilter) {
+                        Text("All subcategories").tag(nil as DataBaseItemSubCategory?)
+                        ForEach(DataBaseItemSubCategory.allCases.filter { $0 != .na }, id: \.self) { subCategory in
+                            Text(subCategory.rawValue).tag(subCategory as DataBaseItemSubCategory?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
                 }
             }
-            .navigationTitle("Filters")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Reset") {
-                        resetFilters()
-                    }
-                    .disabled(!hasActiveFilters)
-                }
 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        showFilter = false
+            DripDropFilterSection(
+                title: "Store",
+                systemImage: "storefront",
+                tint: .orange
+            ) {
+                DripDropFilterRow(
+                    title: "Vendor",
+                    subtitle: storeFilter ?? "All stores",
+                    systemImage: "building.2",
+                    tint: .orange
+                ) {
+                    Picker("Store", selection: $storeFilter) {
+                        Text("All stores").tag(nil as String?)
+                        ForEach(storeOptions, id: \.self) { storeName in
+                            Text(storeName).tag(storeName as String?)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+            }
+
+            DripDropFilterSection(
+                title: "Sort",
+                systemImage: "arrow.up.arrow.down",
+                tint: .poolBlue
+            ) {
+                DripDropFilterRow(
+                    title: "Order",
+                    subtitle: sortOption.rawValue,
+                    systemImage: "arrow.up.arrow.down",
+                    tint: .poolBlue
+                ) {
+                    Picker("Sort", selection: $sortOption) {
+                        ForEach(DatabaseSortOption.allCases) { option in
+                            Text(option.rawValue).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
                 }
             }
         }
         .presentationDetents([.medium, .large])
-    }
-
-    private var filterSummaryCard: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "shippingbox.fill")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 42, height: 42)
-                .background(Color.accentColor.opacity(0.12), in: Circle())
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("\(dataBaseItemList.count) of \(viewModel.dataBaseItems.count) items")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Text(activeFilterCount == 0 ? "No filters applied" : "\(activeFilterCount) active filter\(activeFilterCount == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-        }
-        .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-        }
-    }
-
-    private func filterSection<Content: View>(
-        title: String,
-        systemImage: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: systemImage)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-
-            content()
-        }
-        .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-        }
-    }
-
-    private func pickerRow<Content: View>(
-        title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        HStack {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            Spacer()
-
-            content()
-                .font(.subheadline.weight(.semibold))
-        }
-        .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 

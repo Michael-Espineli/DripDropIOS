@@ -865,7 +865,9 @@ extension All {
                             })
                             .padding(.vertical,5)
                             .sheet(isPresented: $showNewChat, content: {
-                                AddNewChatView(dataService: dataService, receivedCustomer: nil)
+                                NavigationStack {
+                                    AddNewChatView(dataService: dataService, receivedCustomer: nil)
+                                }
                             })
                             HStack{
                                 ForEach(VM.listOfUnreadChats){ datum in

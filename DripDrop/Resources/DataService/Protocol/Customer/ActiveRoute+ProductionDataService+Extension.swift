@@ -922,23 +922,11 @@ extension ProductionDataService {
                     //If Order is Changed make updates to Ar Order
                     if diff.orderChanged {
                      print("    [ProductionDataService][applyRouteChanges] Update Order Changed")
-                        try await ref.updateData([
-                            "order": []
-                        ])
-                        
-                        for order in diff.new.order ?? [] {
-                            let data =  [
-                                "order": FieldValue.arrayUnion([
-                                    [
-                                        "id": order.id,
-                                        "order": order.order,
-                                        "serviceStopId": order.serviceStopId,
-                                        "recurringServiceStopId": order.recurringServiceStopId,
-                                    ]
-                                ])
-                            ]
-                            try await ref.updateData(data)
-                        }
+                        try await updateActiveRouteOrderList(
+                            companyId: companyId,
+                            activeRouteId: diff.new.id,
+                            serviceStopOrderList: diff.new.order ?? []
+                        )
                         
                     } else {
                         print("    [ProductionDataService][applyRouteChanges] No Change To Order")

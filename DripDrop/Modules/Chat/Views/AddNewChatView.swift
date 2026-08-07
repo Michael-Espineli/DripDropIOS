@@ -55,14 +55,47 @@ struct AddNewChatView: View {
     @State var scrollToBottom:Bool = true
     @State var messagesToGet:Int = 25
     
-    @State private var selectedOtherParticipantId: String? = nil
-    @State private var showInitiation: Bool = false
+    private var trimmedMessage:String {
+        message.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var selectedCustomerUserId:String? {
+        if let linkedCustomerUserId = customer.linkedCustomerUserId?.trimmingCharacters(in: .whitespacesAndNewlines), !linkedCustomerUserId.isEmpty {
+            return linkedCustomerUserId
+        }
+        if let linkedHomeownerUserId = customer.linkedHomeownerUserId?.trimmingCharacters(in: .whitespacesAndNewlines), !linkedHomeownerUserId.isEmpty {
+            return linkedHomeownerUserId
+        }
+        return customer.linkedCustomerIds?.first?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var selectedCustomerName:String {
+        if customer.displayAsCompany, let company = customer.company, !company.isEmpty {
+            return company
+        }
+        let fullName = "\(customer.firstName) \(customer.lastName)".trimmingCharacters(in: .whitespacesAndNewlines)
+        return fullName.isEmpty ? customer.email : fullName
+    }
+
+    private var selectedCompanyUserName:String {
+        "\(user.firstName) \(user.lastName)".trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSendChat:Bool {
+        guard !trimmedMessage.isEmpty else { return false }
+        if chatType == "Customer" {
+            guard let selectedCustomerUserId else { return false }
+            return customer.id != "" && !selectedCustomerUserId.isEmpty
+        }
+        return user.id != ""
+    }
     
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
-            VStack{
+            VStack(spacing: 0) {
                 if user.id == "" && customer.id == "" {
+                    composeHeader
                     chatTypePicker
                     Spacer()
                 } else {
@@ -70,18 +103,15 @@ struct AddNewChatView: View {
                 }
             }
         }
-        .background(
-            NavigationLink(isActive: Binding(get: { showInitiation }, set: { showInitiation = $0 })) {
-                if let otherId = selectedOtherParticipantId {
-                    ChatInitiationView(dataService: dataService, otherParticipantId: otherId)
-                } else {
-                    EmptyView()
-                }
-            } label: { EmptyView() }
-            .hidden()
-        )
+        .navigationTitle("New Message")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar{
-            ToolbarItem{
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") {
+                    dismiss()
+                }
+            }
+            ToolbarItem(placement: .confirmationAction) {
                 button
             }
         }
@@ -130,126 +160,129 @@ struct AddNewChatView: View {
             }
         })
     }
-    
-    private func handleUserSelect(_ selected: DBUser) {
-        selectedOtherParticipantId = selected.id
-        showInitiation = true
-        // If this view is presented as a sheet, dismiss it. NavigationLink above will push from the underlying stack.
-        dismiss()
-    }
 }
 extension AddNewChatView {
+    var composeHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "square.and.pencil")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 48, height: 48)
+                    .background(Color.poolBlue.opacity(0.14), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("New Message")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("Choose a recipient and write the first message.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
+    }
+
     var newMessage: some View {
-        HStack{
-            Button(action: {
-                print("Does Nothing")
-            }, label: {
-                Image(systemName: "plus")
-            })
-            HStack{
+        HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 TextField(
                     "Message",
                     text: $message,
                     axis: .vertical
                 )
+                .submitLabel(.send)
                 
-                if message != "" {
-                    Button(action: {
-                        Task {
-                            do {
-                                if let user = masterDataManager.user {
-                                    if let chat = chatVM.chat {
-                                        let fullName = (user.firstName) + " " + (user.lastName)
-                                        try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, senderCompanyId: masterDataManager.currentCompany?.id, senderCompanyName: masterDataManager.currentCompany?.name, message: message, chatId: chat.id)
-                                        try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
-                                        message = ""
-                                    } else {
-                                        print("Invalid Selected Chat")
-                                    }
-                                } else {
-                                    print("Invalid User")
-                                }
-                                    //DEVELOPER ADD Subscriber Rather than having to re grab every time
-                                
-                            } catch {
-                                print("")
-                                print("Add New Chat View")
-                                print(error)
-                                print("")
-                                
-                            }
-                        }
-                    }, label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .foregroundColor(Color.blue)
-                    })
-                }
+                Button(action: {
+                    Task {
+                        await sendMessageToExistingThread()
+                    }
+                }, label: {
+                    Image(systemName: "arrow.up")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(trimmedMessage.isEmpty ? Color.secondary : Color.white)
+                        .frame(width: 30, height: 30)
+                        .background(trimmedMessage.isEmpty ? Color.primary.opacity(0.08) : Color.poolGreen, in: Circle())
+                })
+                .buttonStyle(.plain)
+                .disabled(trimmedMessage.isEmpty || chatVM.chat == nil)
             }
-            .padding(5)
-            .background(Color.white)
-            .foregroundColor(Color.basicFontText)
-            .cornerRadius(20)
-            .padding(5)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+            .font(.subheadline)
         }
-        .padding(10)
-        .background(Color.gray.opacity(0.5))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
     }
     var chatPreview: some View {
-        ZStack{
+        VStack(spacing: 0) {
+            selectedRecipientHeader
+
             if chatVM.chat != nil {
-                VStack{
-                    ScrollView(.vertical, showsIndicators: false) {
-                        messages2
-                    }
-                    newMessage
-                }
-                
+                messages2
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                VStack{
-                    Spacer()
-                    newMessage
-                }
-            }
-            VStack{
-                HStack{
-                    Button(action: {
-                        user.id = ""
-                        customer.id = ""
-                    }, label: {
-                        HStack{
-                            Image(systemName: "chevron.left")
-                            Text("Back")
-                        }
-                    })
-                    .padding()
-                    Spacer()
-                }
-                .background(Color.listColor)
-                switch chatType {
-                case "Customer":
-                    if customer.displayAsCompany {
-                        Text("\(customer.company ?? "")")
-                    } else {
-                        Text("\(customer.firstName) \(customer.lastName)")
-                    }
-                case "Company":
-                    Text("Company")
-                default:
-                    Text("Default")
-                }
                 Spacer()
             }
+
+            newMessage
         }
     }
-    var chatTypePicker: some View {
-        VStack{
-            HStack{
-                Picker("Type", selection: $chatType) {
-                    Text("Company").tag("Company")
-                    Text("Customer").tag("Customer")
-                }
-                .pickerStyle(.segmented)
+
+    var selectedRecipientHeader: some View {
+        HStack(spacing: 12) {
+            Button(action: {
+                user.id = ""
+                customer.id = ""
+            }, label: {
+                Image(systemName: "chevron.left")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.poolBlue.opacity(0.13), in: Circle())
+            })
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back")
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(selectedRecipientTitle)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Text(chatVM.chat == nil ? "Ready to start a message." : "Message thread")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(.regularMaterial)
+    }
+    var chatTypePicker: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Picker("Type", selection: $chatType) {
+                Text("Company").tag("Company")
+                Text("Customer").tag("Customer")
+            }
+            .pickerStyle(.segmented)
+
             switch chatType {
             case "Customer":
                 toCustomer
@@ -259,53 +292,42 @@ extension AddNewChatView {
                 toCustomer
             }
         }
-        .padding(8)
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.horizontal, 14)
     }
     var toCustomer: some View {
-        VStack{
-            HStack{
-                TextField(
-                    "search",
-                    text: $search
-                )
-                .modifier(SearchTextFieldModifier())
-                .padding(8)
-                Picker("Customer", selection: $customer) {
-                    ForEach(customerList){ customer in
-                        if customer.displayAsCompany {
-                            Text("\(customer.company ?? "")").tag(customer)
-                        } else {
-                            Text("\(customer.firstName) \(customer.lastName)").tag(customer)
-                        }
+        VStack(alignment: .leading, spacing: 10) {
+            recipientSearchField(placeholder: "Search customers")
+
+            Picker("Customer", selection: $customer) {
+                ForEach(filteredCustomerList){ customer in
+                    if customer.displayAsCompany {
+                        Text("\(customer.company ?? "")").tag(customer)
+                    } else {
+                        Text("\(customer.firstName) \(customer.lastName)").tag(customer)
                     }
-                    
                 }
             }
+            .pickerStyle(.menu)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
     var toCompany: some View {
-        VStack{
-            Text("Company")
-            HStack{
-                TextField(
-                    "search",
-                    text: $search
-                )
-                .modifier(SearchTextFieldModifier())
-                .padding(8)
-                Picker("User", selection: $user) {
-                    ForEach(userList){ user in
-                        Text("\(user.firstName) \(user.lastName)").tag(user)
-                        
-                    }
-                    
+        VStack(alignment: .leading, spacing: 10) {
+            recipientSearchField(placeholder: "Search company users")
+
+            Picker("User", selection: $user) {
+                ForEach(filteredUserList){ user in
+                    Text("\(user.firstName) \(user.lastName)").tag(user)
                 }
-                .onChange(of: user, perform: { selected in
-                    if selected.id != "" {
-                        handleUserSelect(selected)
-                    }
-                })
             }
+            .pickerStyle(.menu)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
     var button: some View {
@@ -316,35 +338,51 @@ extension AddNewChatView {
                         print("No Company")
                         return
                     }
+                    guard canSendChat else {
+                        print("Select a recipient and enter a message.")
+                        return
+                    }
                     if let sender = masterDataManager.user {
-                        var participants :[BasicUserInfo] = []
-                        var participantIds :[String] = []
-                        
-                        let fullName = (sender.firstName) + " " + (sender.lastName)
-                            //DEVELOPER CHANGE TO BE MORE ACCEPTING OF GROUP CHATS
-                        recipientList = [user]
-                        if recipientList.count != 0 {
-                            participants.append(BasicUserInfo(id: UUID().uuidString, userId: sender.id, userName: fullName, userImage: sender.photoUrl ?? "", companyId: company.id, companyName: company.name))
-                            participantIds.append(sender.id)
-                            for user in recipientList {
-                                participantIds.append(user.id)
-                                
-                                let userFullName = (user.firstName) + " " + (user.lastName)
-                                
-                                let participant = BasicUserInfo(id: UUID().uuidString, userId: user.id, userName: userFullName, userImage: user.photoUrl ?? "", companyId: company.id, companyName: company.name)
-                                participants.append(participant)
-                            }
-                            try await chatVM.uploadChatandMessageWithValidation(userId: sender.id,
-                                                                                senderName: fullName,
-                                                                                participantIds: participantIds,
-                                                                                participants: participants,
-                                                                                companyId: company.id,
-                                                                                message: message,
-                                                                                mostRecentChat: Date())
-                            dismiss()
-                        } else {
-                            print("Add Error Here Should bot be able to send to no one")
-                        }
+                        let isCustomerChat = chatType == "Customer"
+                        let senderName = "\(sender.firstName) \(sender.lastName)".trimmingCharacters(in: .whitespacesAndNewlines)
+                        let recipientUserId = isCustomerChat ? selectedCustomerUserId ?? "" : user.id
+                        let recipientName = isCustomerChat ? selectedCustomerName : selectedCompanyUserName
+                        let senderParticipant = BasicUserInfo(
+                            id: UUID().uuidString,
+                            userId: sender.id,
+                            userName: senderName,
+                            userImage: sender.photoUrl ?? "",
+                            companyId: company.id,
+                            companyName: company.name
+                        )
+                        let recipientParticipant = BasicUserInfo(
+                            id: UUID().uuidString,
+                            userId: recipientUserId,
+                            userName: recipientName,
+                            userImage: isCustomerChat ? "" : (user.photoUrl ?? ""),
+                            companyId: isCustomerChat ? nil : company.id,
+                            companyName: isCustomerChat ? nil : company.name
+                        )
+
+                        try await chatVM.uploadChatandMessageWithValidation(
+                            userId: sender.id,
+                            senderName: senderName,
+                            participantIds: [sender.id, recipientUserId],
+                            participants: [senderParticipant, recipientParticipant],
+                            companyId: company.id,
+                            message: trimmedMessage,
+                            mostRecentChat: Date(),
+                            visibility: isCustomerChat ? .companyExternal : .companyInternal,
+                            audience: isCustomerChat ? "external" : "internal",
+                            targetType: isCustomerChat ? "customer" : "companyUser",
+                            title: "\(recipientName) / \(company.name)",
+                            customerId: isCustomerChat ? customer.id : nil,
+                            customerUserId: isCustomerChat ? recipientUserId : nil,
+                            customerName: isCustomerChat ? recipientName : nil,
+                            companyVisibility: isCustomerChat ? "public" : nil,
+                            publicToCompanyId: isCustomerChat ? company.id : nil
+                        )
+                        dismiss()
                     } else {
                         print("No User")
                     }
@@ -354,17 +392,119 @@ extension AddNewChatView {
             }
         }, label: {
             Text("Send")
-                .foregroundColor(Color.white)
-                .padding(5)
-                .background(Color.accentColor)
-                .cornerRadius(5)
-                .padding(5)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(canSendChat ? Color.poolBlue : Color.secondary)
         })
+        .disabled(!canSendChat)
     }
+
+    private func recipientSearchField(placeholder: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(placeholder, text: $search)
+                .submitLabel(.search)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+
+            if !search.isEmpty {
+                Button(action: { search = "" }) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .font(.subheadline)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var filteredCustomerList: [Customer] {
+        let term = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !term.isEmpty else { return customerList }
+
+        return customerList.filter { customer in
+            [
+                customer.firstName,
+                customer.lastName,
+                customer.company ?? "",
+                customer.email
+            ]
+            .contains { $0.lowercased().contains(term) }
+        }
+    }
+
+    private var filteredUserList: [DBUser] {
+        let term = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !term.isEmpty else { return userList }
+
+        return userList.filter { user in
+            [
+                user.firstName,
+                user.lastName,
+                user.email
+            ]
+            .contains { $0.lowercased().contains(term) }
+        }
+    }
+
+    private var selectedRecipientTitle: String {
+        switch chatType {
+        case "Customer":
+            return selectedCustomerName
+        case "Company":
+            return selectedCompanyUserName.isEmpty ? "Company User" : selectedCompanyUserName
+        default:
+            return "Message"
+        }
+    }
+
+    private func sendMessageToExistingThread() async {
+        do {
+            guard !trimmedMessage.isEmpty else { return }
+            guard let currentUser = masterDataManager.user else {
+                print("Invalid User")
+                return
+            }
+            guard let chat = chatVM.chat else {
+                print("Invalid Selected Message Thread")
+                return
+            }
+
+            let fullName = (currentUser.firstName) + " " + (currentUser.lastName)
+            try await chatVM.sendNewMessage(
+                userId: currentUser.id,
+                senderName: fullName,
+                senderCompanyId: masterDataManager.currentCompany?.id,
+                senderCompanyName: masterDataManager.currentCompany?.name,
+                message: trimmedMessage,
+                chatId: chat.id
+            )
+            try await chatVM.markChatAsUnRead(userId: currentUser.id, chat: chat)
+            message = ""
+        } catch {
+            print("")
+            print("Add New Message View")
+            print(error)
+            print("")
+        }
+    }
+
     var messages2: some View {
         ScrollViewReader { scrollView in
-            ScrollView{
-                LazyVStack{
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 8) {
                     if let user = masterDataManager.user {
                         
                         ForEach(chatVM.listOfMessages) { item in
@@ -373,19 +513,11 @@ extension AddNewChatView {
                                     if item.senderId == user.id {
                                         Spacer()
                                         Text("\(item.message)")
-                                            .padding(5)
-                                            .background(.blue)
-                                            .foregroundColor(Color.white)
-                                            .cornerRadius(5)
-                                            .padding(5)
+                                            .messagePreviewBubble(isCurrentUser: true)
                                     } else {
                                         
                                         Text("\(item.message)")
-                                            .padding(5)
-                                            .background(.gray)
-                                            .foregroundColor(Color.white)
-                                            .cornerRadius(5)
-                                            .padding(5)
+                                            .messagePreviewBubble(isCurrentUser: false)
                                         
                                         Spacer()
                                     }
@@ -393,25 +525,25 @@ extension AddNewChatView {
                                 }
                                 if item.senderId == user.id {
                                     
-                                    HStack{
+                                    HStack(spacing: 6){
                                         Spacer()
                                         Text("\(item.senderName)")
-                                            .font(.footnote)
                                         Text("\(fullDateAndTime(date:item.dateSent))")
-                                            .font(.footnote)
                                     }
                                 } else {
-                                    HStack{
+                                    HStack(spacing: 6){
                                         Text("\(item.senderName)")
-                                            .font(.footnote)
                                         Text("\(fullDateAndTime(date:item.dateSent))")
-                                            .font(.footnote)
                                         Spacer()
                                     }
                                     
                                 }
                                 
                             }
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 2)
                             .id(item)
                             .flippedUpsideDown()
                             
@@ -425,7 +557,7 @@ extension AddNewChatView {
                                         let placeHolder = messagesToGet
                                         messagesToGet = messagesToGet + 10
                                         print("Messages to get \(messagesToGet)")
-                                        print("Loading New Chats")
+                                        print("Loading More Messages")
                                         
                                         if let chat = masterDataManager.selectedChat {
                                             chatVM.removeListenerForMessages()
@@ -433,14 +565,18 @@ extension AddNewChatView {
                                         }
                                         scrollView.scrollTo(chatVM.listOfMessages[placeHolder - 1],anchor: .bottomTrailing)
                                     }
+                                    .flippedUpsideDown()
                                 } else {
                                     Button(action: {
-                                        scrollView.scrollTo(chatVM.listOfMessages[chatVM.listOfMessages.startIndex + 1],anchor: .bottomTrailing)
+                                        if let message = previewScrollAnchorMessage {
+                                            scrollView.scrollTo(message,anchor: .bottomTrailing)
+                                        }
                                         
                                     }, label: {
-                                        VStack{
+                                        VStack(spacing: 4){
                                             Text("No More Messages")
-                                            Text("Return to bottom")
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.secondary)
                                         }
                                     })
                                     .flippedUpsideDown()
@@ -454,9 +590,32 @@ extension AddNewChatView {
             
             .onChange(of: chatVM.listOfMessages, perform: { list in
                 if list.count > 3 {
-                    scrollView.scrollTo(chatVM.listOfMessages[chatVM.listOfMessages.startIndex + 1],anchor: .bottomTrailing)
+                    if let message = previewScrollAnchorMessage {
+                        scrollView.scrollTo(message,anchor: .bottomTrailing)
+                    }
                 }
             })
         }
+    }
+
+    private var previewScrollAnchorMessage: Message? {
+        guard !chatVM.listOfMessages.isEmpty else { return nil }
+        let anchorIndex = chatVM.listOfMessages.index(after: chatVM.listOfMessages.startIndex)
+        if chatVM.listOfMessages.indices.contains(anchorIndex) {
+            return chatVM.listOfMessages[anchorIndex]
+        }
+        return chatVM.listOfMessages.first
+    }
+}
+
+private extension Text {
+    func messagePreviewBubble(isCurrentUser: Bool) -> some View {
+        self
+            .font(.subheadline)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(isCurrentUser ? Color.poolBlue : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .foregroundStyle(isCurrentUser ? Color.white : Color.primary)
+            .frame(maxWidth: 300, alignment: isCurrentUser ? .trailing : .leading)
     }
 }

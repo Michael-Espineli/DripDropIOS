@@ -422,7 +422,7 @@ enum TesterStripImageSampler {
         }
     }
 
-    private static let minimumPadDetectionScore: CGFloat = 0.08
+    private static let minimumPadDetectionScore: CGFloat = 0.075
 
     static func sample(from image: UIImage) -> TesterStripImageSample {
         let padIds = [
@@ -490,16 +490,19 @@ enum TesterStripImageSampler {
             height: max(min(padSampleSize.height * geometryScale, stripGeometry.height * 0.026), 10)
         )
 
-        let observedPads: [[String: Any]] = zip(padIds, TesterStripGuideMetrics.padCenterRatios).compactMap { pair -> [String: Any]? in
-            let (padId, ratio) = pair
-            let expectedCenter = stripGeometry.center(for: ratio)
-            let detection = detectPadCenter(
-                in: pixelBuffer,
-                expectedCenter: expectedCenter,
-                guideRect: stripGeometry.searchRect(in: imageBounds, guideWidth: guideRect.width),
-                sampleSize: alignedPadSampleSize
-            )
-            let center = detection?.center ?? expectedCenter
+        let padTargets = padSampleTargets(
+            in: pixelBuffer,
+            ratios: TesterStripGuideMetrics.padCenterRatios,
+            geometry: stripGeometry,
+            bands: detectedBands,
+            guideRect: guideRect,
+            imageBounds: imageBounds,
+            sampleSize: alignedPadSampleSize
+        )
+
+        let observedPads: [[String: Any]] = padIds.enumerated().compactMap { index, padId -> [String: Any]? in
+            let target = padTargets[index]
+            let center = target.center
             let color = pixelBuffer.averageHexColor(
                 centeredAt: center,
                 sampleSize: alignedPadSampleSize
@@ -511,7 +514,7 @@ enum TesterStripImageSampler {
                 "hex": color,
                 "sampleCenterXRatio": center.x / CGFloat(pixelBuffer.width),
                 "sampleCenterYRatio": center.y / CGFloat(pixelBuffer.height),
-                "sampleConfidence": detection?.score ?? 0,
+                "sampleConfidence": target.score,
                 "stripGeometryConfidence": stripGeometry.confidence,
             ]
         }
@@ -680,7 +683,7 @@ enum TesterStripImageSampler {
         }
 
         for y in stride(from: searchRect.minY, through: searchRect.maxY, by: yStep) {
-            let rowScore = xOffsets.compactMap { offset -> CGFloat? in
+            let rowScores = xOffsets.compactMap { offset -> CGFloat? in
                 let x = min(max(centerX + offset, searchRect.minX), searchRect.maxX)
                 guard let color = pixelBuffer.averageColor(
                     centeredAt: CGPoint(x: x, y: y),
@@ -690,7 +693,16 @@ enum TesterStripImageSampler {
                 }
 
                 return padColorScore(for: color)
-            }.max() ?? 0
+            }
+            .filter { $0 >= minimumPadDetectionScore * 0.72 }
+            .sorted(by: >)
+            let rowScore: CGFloat
+
+            if rowScores.count >= 2 {
+                rowScore = (rowScores[0] * 0.62) + (rowScores[1] * 0.38)
+            } else {
+                rowScore = rowScores.first ?? 0
+            }
 
             if rowScore >= minimumPadDetectionScore {
                 activeBandSamples.append((y, rowScore))
@@ -779,6 +791,64 @@ enum TesterStripImageSampler {
         return score
     }
 
+    private static func padSampleTargets(
+        in pixelBuffer: PixelBuffer,
+        ratios: [CGFloat],
+        geometry: StripGeometry,
+        bands: [PadBand],
+        guideRect: CGRect,
+        imageBounds: CGRect,
+        sampleSize: CGSize
+    ) -> [PadDetection] {
+        var availableBands = bands
+            .filter { $0.score >= minimumPadDetectionScore }
+            .sorted { $0.centerY < $1.centerY }
+        let searchRect = geometry.searchRect(in: imageBounds, guideWidth: guideRect.width)
+        let bandTolerance = max(
+            min(geometry.height * 0.052, geometry.height * 0.11 * 0.48),
+            sampleSize.height * 1.8
+        )
+
+        return ratios.map { ratio in
+            let expectedCenter = geometry.center(for: ratio)
+            let matchedBandIndex = availableBands
+                .enumerated()
+                .map { index, band in
+                    (index: index, band: band, distance: abs(band.centerY - expectedCenter.y))
+                }
+                .filter { $0.distance <= bandTolerance }
+                .min { $0.distance < $1.distance }?.index
+            let matchedBand = matchedBandIndex.map { availableBands.remove(at: $0) }
+            let rowAnchoredCenter = CGPoint(
+                x: geometry.centerX,
+                y: matchedBand?.centerY ?? expectedCenter.y
+            )
+            let detection = detectPadCenter(
+                in: pixelBuffer,
+                expectedCenter: rowAnchoredCenter,
+                guideRect: searchRect,
+                sampleSize: sampleSize
+            )
+
+            if let detection,
+               abs(detection.center.y - rowAnchoredCenter.y) <= bandTolerance {
+                return PadDetection(
+                    center: detection.center,
+                    score: max(detection.score, matchedBand?.score ?? 0)
+                )
+            }
+
+            if let matchedBand {
+                return PadDetection(
+                    center: CGPoint(x: geometry.centerX, y: matchedBand.centerY),
+                    score: matchedBand.score
+                )
+            }
+
+            return PadDetection(center: expectedCenter, score: 0)
+        }
+    }
+
     private static func detectPadCenter(
         in pixelBuffer: PixelBuffer,
         expectedCenter: CGPoint,
@@ -814,9 +884,13 @@ enum TesterStripImageSampler {
                 }
 
                 let score = padColorScore(for: color)
-                if score >= minimumPadDetectionScore {
-                    candidates.append((center, score))
-                    bestScore = max(bestScore, score)
+                let xPenalty = abs(x - expectedCenter.x) / max(halfSearchWidth, 1) * 0.035
+                let yPenalty = abs(y - expectedCenter.y) / max(halfSearchHeight, 1) * 0.045
+                let weightedScore = score - xPenalty - yPenalty
+
+                if weightedScore >= minimumPadDetectionScore {
+                    candidates.append((center, weightedScore))
+                    bestScore = max(bestScore, weightedScore)
                 }
             }
         }
@@ -855,8 +929,13 @@ enum TesterStripImageSampler {
             pow((255 - color.blue) / 255, 2)
         ) / sqrt(3)
         let brightNeutralPenalty = max(color.brightness - 0.92, 0) * max(1 - saturation, 0)
+        let darkBackgroundPenalty = max(0.32 - color.brightness, 0) * 0.55
 
-        return (saturation * 0.70) + (chroma * 0.25) + (distanceFromWhite * 0.15) - (brightNeutralPenalty * 0.35)
+        return (saturation * 0.70) +
+            (chroma * 0.25) +
+            (distanceFromWhite * 0.15) -
+            (brightNeutralPenalty * 0.35) -
+            darkBackgroundPenalty
     }
 
     private static func clamped(_ rect: CGRect, to bounds: CGRect) -> CGRect {

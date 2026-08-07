@@ -2719,6 +2719,7 @@ private enum MobilePurchaseReconciliationFilters {
         purchase.billable &&
         !purchase.invoiced &&
         purchase.returned != true &&
+        !isPersonalPurchase(purchase) &&
         !hasShoppingConnection(purchase) &&
         !hasJobConnection(purchase) &&
         !hasCustomerConnection(purchase)
@@ -2775,6 +2776,16 @@ private enum MobilePurchaseReconciliationFilters {
 
         let status = normalizedStatus(purchase.status)
         return status == "connectedtojob" || status == "assignedtojob"
+    }
+
+    static func isPersonalPurchase(_ purchase: PurchasedItem) -> Bool {
+        let assignmentStatus = normalizedStatus(purchase.assignmentStatus)
+        let billingOwner = normalizedStatus(purchase.billingOwner)
+        let status = normalizedStatus(purchase.status)
+
+        return assignmentStatus == "personal" ||
+            billingOwner == "personal" ||
+            status == "personalpurchase"
     }
 
     private static func normalizedStatus(_ value: String?) -> String {
@@ -2933,6 +2944,18 @@ private struct MobilePurchaseReconciliationView: View {
                 },
                 onMarkReturned: { purchase in
                     await markReturned(purchase)
+                },
+                onMarkPersonal: { purchase in
+                    await markPersonal(purchase)
+                },
+                onSplitPurchase: { purchase, quantity, customer, job, notes in
+                    await splitPurchase(
+                        purchase,
+                        quantity: quantity,
+                        customer: customer,
+                        job: job,
+                        notes: notes
+                    )
                 }
             )
             .presentationDetents([.large])
@@ -3433,6 +3456,10 @@ private struct MobilePurchaseReconciliationView: View {
 
         var purchaseUpdates: [String: Any] = [
             "shoppingListItemId": shoppingItem.id,
+            "personalPurchase": false,
+            "personalPurchaseAssignedAt": FieldValue.delete(),
+            "personalPurchaseAssignedByUserId": FieldValue.delete(),
+            "personalPurchaseAssignedByUserName": FieldValue.delete(),
             "updatedAt": now
         ]
         if purchase.customerId.isEmpty && !customerId.isEmpty {
@@ -3502,7 +3529,11 @@ private struct MobilePurchaseReconciliationView: View {
             purchase: purchase,
             updates: [
                 "customerId": customer.id,
-                "customerName": nextName
+                "customerName": nextName,
+                "personalPurchase": false,
+                "personalPurchaseAssignedAt": FieldValue.delete(),
+                "personalPurchaseAssignedByUserId": FieldValue.delete(),
+                "personalPurchaseAssignedByUserName": FieldValue.delete()
             ],
             title: "Purchase customer updated",
             eventType: "customer_updated",
@@ -3543,6 +3574,10 @@ private struct MobilePurchaseReconciliationView: View {
             "jobName": job.type,
             "customerId": firstNonEmpty(purchase.customerId, job.customerId),
             "customerName": firstNonEmpty(purchase.customerName, job.customerName),
+            "personalPurchase": false,
+            "personalPurchaseAssignedAt": FieldValue.delete(),
+            "personalPurchaseAssignedByUserId": FieldValue.delete(),
+            "personalPurchaseAssignedByUserName": FieldValue.delete(),
             "status": shouldMarkInvoiced ? "Invoiced" : "Connected to Job",
             "updatedAt": now
         ]
@@ -3607,22 +3642,76 @@ private struct MobilePurchaseReconciliationView: View {
     }
 
     private func markReturned(_ purchase: PurchasedItem) async {
-        await performPurchaseUpdate(
-            purchase: purchase,
-            updates: [
-                "returned": true,
-                "returnedAt": Timestamp(date: Date()),
-                "returnedByUserId": actorId,
-                "returnedByUserName": actorName,
-                "status": "Returned"
-            ],
-            title: "Purchase marked returned",
-            eventType: "returned",
-            changes: [
-                historyChange("Returned", from: yesNo(purchase.returned == true), to: "Yes"),
-                historyChange("Status", from: purchase.status ?? "", to: "Returned")
-            ].compactMap { $0 }
-        )
+        guard let companyId = masterDataManager.currentCompany?.id else { return }
+
+        isUpdating = true
+        errorMessage = nil
+        defer { isUpdating = false }
+
+        do {
+            try await PurchasedItemWorkflowService.shared.markReturnedAndDetach(
+                purchase: purchase,
+                companyId: companyId,
+                actorId: actorId,
+                actorName: actorName
+            )
+            await loadData()
+        } catch {
+            errorMessage = "Could not mark that purchase returned."
+            print("[MobilePurchaseReconciliationView][markReturned] \(error)")
+        }
+    }
+
+    private func markPersonal(_ purchase: PurchasedItem) async {
+        guard let companyId = masterDataManager.currentCompany?.id else { return }
+
+        isUpdating = true
+        errorMessage = nil
+        defer { isUpdating = false }
+
+        do {
+            try await PurchasedItemWorkflowService.shared.markPersonalAndDetach(
+                purchase: purchase,
+                companyId: companyId,
+                actorId: actorId,
+                actorName: actorName
+            )
+            await loadData()
+        } catch {
+            errorMessage = "Could not mark that purchase personal."
+            print("[MobilePurchaseReconciliationView][markPersonal] \(error)")
+        }
+    }
+
+    private func splitPurchase(
+        _ purchase: PurchasedItem,
+        quantity: Double,
+        customer: Customer?,
+        job: Job?,
+        notes: String
+    ) async {
+        guard let companyId = masterDataManager.currentCompany?.id else { return }
+
+        isUpdating = true
+        errorMessage = nil
+        defer { isUpdating = false }
+
+        do {
+            _ = try await PurchasedItemWorkflowService.shared.splitPurchase(
+                purchase: purchase,
+                companyId: companyId,
+                splitQuantity: quantity,
+                customer: customer,
+                job: job,
+                notes: notes,
+                actorId: actorId,
+                actorName: actorName
+            )
+            await loadData()
+        } catch {
+            errorMessage = "Could not split that purchase."
+            print("[MobilePurchaseReconciliationView][splitPurchase] \(error)")
+        }
     }
 
     private func performPurchaseUpdate(
@@ -3882,11 +3971,14 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
     let onConnectCustomer: (PurchasedItem, Customer) async -> Void
     let onConnectJob: (PurchasedItem, Job) async -> Void
     let onMarkReturned: (PurchasedItem) async -> Void
+    let onMarkPersonal: (PurchasedItem) async -> Void
+    let onSplitPurchase: (PurchasedItem, Double, Customer?, Job?, String) async -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var draftNotes: String
     @State private var showingCustomerPicker = false
     @State private var showingJobPicker = false
+    @State private var showingSplitSheet = false
     @State private var selectedCustomer = MobilePurchaseReconciliationDefaults.emptyCustomer()
     @State private var selectedJob = MobilePurchaseReconciliationDefaults.emptyJob()
 
@@ -3901,7 +3993,9 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
         onConnectShoppingItem: @escaping (PurchasedItem, ShoppingListItem) async -> Void,
         onConnectCustomer: @escaping (PurchasedItem, Customer) async -> Void,
         onConnectJob: @escaping (PurchasedItem, Job) async -> Void,
-        onMarkReturned: @escaping (PurchasedItem) async -> Void
+        onMarkReturned: @escaping (PurchasedItem) async -> Void,
+        onMarkPersonal: @escaping (PurchasedItem) async -> Void,
+        onSplitPurchase: @escaping (PurchasedItem, Double, Customer?, Job?, String) async -> Void
     ) {
         self.dataService = dataService
         self.purchase = purchase
@@ -3914,6 +4008,8 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
         self.onConnectCustomer = onConnectCustomer
         self.onConnectJob = onConnectJob
         self.onMarkReturned = onMarkReturned
+        self.onMarkPersonal = onMarkPersonal
+        self.onSplitPurchase = onSplitPurchase
         _draftNotes = State(wrappedValue: purchase.notes)
     }
 
@@ -3950,6 +4046,17 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                 NavigationStack {
                     JobPickerScreen(dataService: dataService, job: $selectedJob)
                 }
+            }
+            .sheet(isPresented: $showingSplitSheet) {
+                PurchasedItemSplitSheet(
+                    dataService: dataService,
+                    purchase: purchase,
+                    isUpdating: isUpdating
+                ) { quantity, customer, job, notes in
+                    await onSplitPurchase(purchase, quantity, customer, job, notes)
+                    dismiss()
+                }
+                .presentationDetents([.medium, .large])
             }
             .onChange(of: selectedCustomer) { customer in
                 guard !customer.id.isEmpty else { return }
@@ -4069,6 +4176,22 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                 .disabled(isUpdating)
             }
             .font(.caption.weight(.semibold))
+
+            Button {
+                Task {
+                    await onMarkPersonal(purchase)
+                    dismiss()
+                }
+            } label: {
+                HStack {
+                    Label("Mark Personal Purchase", systemImage: "person.crop.circle.badge.checkmark")
+                    Spacer()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isUpdating || purchase.returned == true || purchase.invoiced)
         }
         .mobileMainCard()
     }
@@ -4080,7 +4203,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
             if let connectedShoppingItem {
                 shoppingItemSummary(connectedShoppingItem, connected: true)
             } else if shoppingCandidates.isEmpty {
-                Text("No matching shopping list item found. You can still update notes, customer, job, or mark it returned.")
+                Text("No matching shopping list item found. You can still update notes, customer, job, mark it personal, or mark it returned.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -4151,6 +4274,19 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
             }
             .buttonStyle(.bordered)
             .disabled(isUpdating || purchase.returned == true)
+
+            Button {
+                showingSplitSheet = true
+            } label: {
+                HStack {
+                    Label("Split Purchase", systemImage: "rectangle.split.2x1")
+                    Spacer()
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isUpdating || purchase.returned == true || purchase.invoiced || purchase.quantity <= 0)
         }
         .mobileMainCard()
     }

@@ -1087,7 +1087,8 @@ protocol ProductionDataServiceProtocol: Equatable {
         universalEquipmentId:String,
         manualPdfLink:String
     ) throws
-    func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws
+    func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date?) throws
+    func updateEquipmentCreatedAt(companyId:String,equipmentId:String,createdAt:Date) throws
     func updateEquipmentStatus(companyId:String,equipmentId:String,status:EquipmentStatus) throws
     func updateEquipmentCleanFilterPressure(companyId:String,equipmentId:String,cleanFilterPressure:Int) throws
     func updateEquipmentCurrentPressure(companyId:String,equipmentId:String,currentPressure:Int) throws
@@ -1230,6 +1231,16 @@ protocol ProductionDataServiceProtocol: Equatable {
     func uploadCustomerNote(companyId: String, customerId: String, note: CustomerNote) async throws
     func updateCustomerNoteResolved(companyId: String, customerId: String, noteId: String, resolved: Bool, authorId: String, authorName: String) async throws
     func uploadCustomerPartApproval(_ approval: CustomerPartApproval) async throws
+    func recordCustomerPartApprovalTechnicianResponse(
+        approval: CustomerPartApproval,
+        companyId: String,
+        approved: Bool,
+        note: String,
+        actorUserId: String,
+        actorUserName: String,
+        actorEmail: String,
+        serviceStop: ServiceStop?
+    ) async throws
     func getRecurringServiceStopTasks(companyId:String,recurringServiceStopId:String) async throws -> [RecurringServiceStopTask]
     func updateRecurringServiceStopTaskStatus(companyId:String,recurringServiceStopId:String,taskId:String,status:JobTaskStatus)
     func getAllTaskGroupById(companyId:String,taskGroupId:String) async throws -> JobTaskGroup 
@@ -1640,5 +1651,226 @@ extension ProductionDataServiceProtocol {
             .collection("customerPartApprovals")
             .document(approvalId)
             .setData(from: approvalToSave, merge: false)
+    }
+
+    func recordCustomerPartApprovalTechnicianResponse(
+        approval: CustomerPartApproval,
+        companyId: String,
+        approved: Bool,
+        note: String,
+        actorUserId: String,
+        actorUserName: String,
+        actorEmail: String,
+        serviceStop: ServiceStop?
+    ) async throws {
+        let cleanCompanyId = companyId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let approvalId = approval.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanCompanyId.isEmpty, !approvalId.isEmpty else { return }
+
+        let now = Date()
+        let db = Firestore.firestore()
+        let batch = db.batch()
+        let approvalRef = db.collection("customerPartApprovals").document(approvalId)
+        let status = approved ? "approved" : "rejected"
+        let fulfillmentStatus = approved ? "approvedAwaitingPurchase" : "rejected"
+        let responseNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let responderName = actorUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Technician"
+            : actorUserName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let serviceStopId = nonEmpty(approval.serviceStopId)
+            ?? nonEmpty(approval.scheduledServiceStopId)
+            ?? serviceStop?.id
+            ?? ""
+        let serviceStopInternalId = nonEmpty(approval.serviceStopInternalId)
+            ?? nonEmpty(approval.scheduledServiceStopInternalId)
+            ?? serviceStop?.internalId
+            ?? ""
+        let jobId = nonEmpty(approval.jobId) ?? serviceStop?.jobId ?? ""
+        let jobName = nonEmpty(approval.jobName) ?? serviceStop?.jobName ?? ""
+        let serviceLocationId = nonEmpty(approval.serviceLocationId) ?? serviceStop?.serviceLocationId ?? ""
+        let serviceLocationName = nonEmpty(approval.serviceLocationName) ?? serviceStop?.address.streetAddress ?? ""
+        let serviceLocationAddress = nonEmpty(approval.serviceLocationAddress) ?? serviceStop?.address.streetAddress ?? ""
+        let techId = nonEmpty(approval.techId)
+            ?? nonEmpty(approval.assignedTechId)
+            ?? nonEmpty(approval.assignedToUserId)
+            ?? serviceStop?.techId
+            ?? actorUserId
+        let techName = nonEmpty(approval.techName)
+            ?? nonEmpty(approval.assignedTechName)
+            ?? nonEmpty(approval.assignedToUserName)
+            ?? serviceStop?.tech
+            ?? responderName
+        let shoppingListItemId = approved
+            ? (nonEmpty(approval.shoppingListItemId) ?? "comp_shop_\(UUID().uuidString)")
+            : (nonEmpty(approval.shoppingListItemId) ?? "")
+
+        let historyItem: [String: Any] = [
+            "id": "cpa_hist_\(UUID().uuidString)",
+            "action": approved ? "technicianApproved" : "technicianDenied",
+            "status": status,
+            "note": responseNote,
+            "source": "technicianOnBehalfOfCustomer",
+            "sourceLabel": "Technician on behalf of customer",
+            "actorUserId": actorUserId,
+            "actorUserName": responderName,
+            "actorEmail": actorEmail,
+            "customerId": approval.customerId ?? serviceStop?.customerId ?? "",
+            "customerName": approval.customerName ?? serviceStop?.customerName ?? "",
+            "createdAt": now
+        ]
+
+        var approvalUpdates: [String: Any] = [
+            "status": status,
+            "approvalStatus": status,
+            "response": status,
+            "responseNote": responseNote,
+            "respondedAt": now,
+            "respondedByUserId": actorUserId,
+            "respondedByUserName": responderName,
+            "respondedByEmail": actorEmail,
+            "responseSource": "technicianOnBehalfOfCustomer",
+            "responseSourceLabel": "Technician on behalf of customer",
+            "respondedOnBehalfOfCustomer": true,
+            "customerConversationRecorded": true,
+            "fulfillmentStatus": fulfillmentStatus,
+            "approvedInPerson": approved,
+            "deniedInPerson": !approved,
+            "serviceStopId": serviceStopId,
+            "serviceStopInternalId": serviceStopInternalId,
+            "scheduledServiceStopId": serviceStopId,
+            "scheduledServiceStopInternalId": serviceStopInternalId,
+            "scheduledDate": approval.scheduledDate ?? serviceStop?.serviceDate ?? now,
+            "jobId": jobId,
+            "jobName": jobName,
+            "serviceLocationId": serviceLocationId,
+            "serviceLocationName": serviceLocationName,
+            "serviceLocationAddress": serviceLocationAddress,
+            "techId": techId,
+            "techName": techName,
+            "assignedTechId": techId,
+            "assignedTechName": techName,
+            "assignedToUserId": techId,
+            "assignedToUserName": techName,
+            "assignedTechIds": uniqueNonEmpty((approval.assignedTechIds ?? []) + [techId]),
+            "assignedTechNames": uniqueNonEmpty((approval.assignedTechNames ?? []) + [techName]),
+            "purchaserId": nonEmpty(approval.purchaserId) ?? techId,
+            "purchaserName": nonEmpty(approval.purchaserName) ?? techName,
+            "updatedAt": now,
+            "history": FieldValue.arrayUnion([historyItem])
+        ]
+
+        if approved {
+            approvalUpdates["inPersonApprovedByUserId"] = actorUserId
+            approvalUpdates["shoppingListItemId"] = shoppingListItemId
+            approvalUpdates["shoppingListPath"] = "companies/\(cleanCompanyId)/shoppingList/\(shoppingListItemId)"
+            approvalUpdates["shoppingListGeneratedAt"] = approval.shoppingListGeneratedAt ?? now
+        } else {
+            approvalUpdates["inPersonDeniedByUserId"] = actorUserId
+        }
+
+        batch.setData(approvalUpdates, forDocument: approvalRef, merge: true)
+
+        if !shoppingListItemId.isEmpty {
+            let shoppingRef = db
+                .collection("companies")
+                .document(cleanCompanyId)
+                .collection("shoppingList")
+                .document(shoppingListItemId)
+            let quantity = approval.quantity ?? "1"
+            let quantityValue = Double(quantity) ?? 1
+            let unitCostCents = approval.plannedUnitCostCents ?? 0
+            let unitPriceCents = approval.plannedUnitPriceCents ?? 0
+            let totalCostCents = approval.plannedTotalCostCents ?? Int((Double(unitCostCents) * quantityValue).rounded())
+            let totalPriceCents = approval.plannedTotalPriceCents ?? Int((Double(unitPriceCents) * quantityValue).rounded())
+            let shoppingStatus = approved ? ShoppingListStatus.readyToPurchase.rawValue : ShoppingListStatus.customerRejected.rawValue
+            let prepKeys = uniqueNonEmpty([
+                jobId.isEmpty ? "" : "job:\(jobId)",
+                approval.customerId.map { "customer:\($0)" } ?? "",
+                serviceLocationId.isEmpty ? "" : "serviceLocation:\(serviceLocationId)",
+                serviceStopId.isEmpty ? "" : "serviceStop:\(serviceStopId)",
+                approval.linkedTaskId.map { "jobTask:\($0)" } ?? "",
+                techId.isEmpty ? "" : "user:\(techId)"
+            ])
+
+            batch.setData([
+                "id": shoppingListItemId,
+                "category": jobId.isEmpty ? ShoppingListCategory.customer.rawValue : ShoppingListCategory.job.rawValue,
+                "subCategory": approval.subCategory ?? (approval.dbItemId?.isEmpty == false ? ShoppingListSubCategory.dataBase.rawValue : ShoppingListSubCategory.part.rawValue),
+                "status": shoppingStatus,
+                "purchaserId": nonEmpty(approval.purchaserId) ?? techId,
+                "purchaserName": nonEmpty(approval.purchaserName) ?? techName,
+                "genericItemId": approval.genericItemId ?? "",
+                "name": approval.displayTitle,
+                "description": approval.description ?? "",
+                "quantity": quantity,
+                "jobId": jobId,
+                "jobName": jobName,
+                "linkedTaskId": approval.linkedTaskId ?? "",
+                "linkedTaskName": approval.linkedTaskName ?? "",
+                "linkedTaskType": approval.linkedTaskType ?? "",
+                "customerId": approval.customerId ?? serviceStop?.customerId ?? "",
+                "customerName": approval.customerName ?? serviceStop?.customerName ?? "",
+                "customerUserId": approval.customerUserId ?? "",
+                "userId": techId,
+                "userName": techName,
+                "serviceStopId": serviceStopId,
+                "serviceStopInternalId": serviceStopInternalId,
+                "scheduledServiceStopId": serviceStopId,
+                "scheduledServiceStopInternalId": serviceStopInternalId,
+                "serviceLocationId": serviceLocationId,
+                "serviceLocationName": serviceLocationName,
+                "serviceLocationAddress": serviceLocationAddress,
+                "scheduledDate": approval.scheduledDate ?? serviceStop?.serviceDate ?? now,
+                "prepKeys": prepKeys,
+                "needsAction": true,
+                "actionDate": approval.scheduledDate ?? serviceStop?.serviceDate ?? now,
+                "assignedTechIds": uniqueNonEmpty((approval.assignedTechIds ?? []) + [techId]),
+                "assignedTechNames": uniqueNonEmpty((approval.assignedTechNames ?? []) + [techName]),
+                "assignedTechId": techId,
+                "assignedTechName": techName,
+                "assignedToUserId": techId,
+                "assignedToUserName": techName,
+                "dbItemId": approval.dbItemId ?? "",
+                "dbItemName": approval.dbItemName ?? approval.displayTitle,
+                "itemId": approval.dbItemId ?? "",
+                "itemType": approval.subCategory ?? (approval.dbItemId?.isEmpty == false ? ShoppingListSubCategory.dataBase.rawValue : ShoppingListSubCategory.part.rawValue),
+                "purchasedItem": approval.shoppingListItemId == nil ? "" : (approval.shoppingListItemId ?? ""),
+                "invoiced": false,
+                "cost": unitCostCents,
+                "price": unitPriceCents,
+                "plannedUnitCostCents": unitCostCents,
+                "plannedUnitPriceCents": unitPriceCents,
+                "plannedTotalCostCents": totalCostCents,
+                "plannedTotalPriceCents": totalPriceCents,
+                "customerApprovalRequired": true,
+                "customerApprovalStatus": status,
+                "customerApprovalResponse": status,
+                "customerApprovalResponseNote": responseNote,
+                "customerApprovalRespondedAt": now,
+                "customerApprovalRespondedByUserId": actorUserId,
+                "customerApprovalRespondedByUserName": responderName,
+                "customerApprovalRespondedByEmail": actorEmail,
+                "approvalRequestId": approvalId,
+                "partApprovalRequestId": approvalId,
+                "sourceType": approval.sourceType ?? "partApprovalRequest",
+                "updatedAt": now
+            ], forDocument: shoppingRef, merge: true)
+        }
+
+        try await batch.commit()
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func uniqueNonEmpty(_ values: [String]) -> [String] {
+        var seen: Set<String> = []
+        return values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { seen.insert($0).inserted }
     }
 }

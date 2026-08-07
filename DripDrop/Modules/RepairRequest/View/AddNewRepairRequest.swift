@@ -20,6 +20,8 @@ struct AddNewRepairRequest: View {
 
     @Binding var isPresented: Bool
     @State var customer: Customer?
+    private let initialCustomerId: String?
+    private let initialServiceLocationId: String?
     private let initialEquipment: Equipment?
     private let initialDescription: String?
 
@@ -27,12 +29,16 @@ struct AddNewRepairRequest: View {
         dataService: any ProductionDataServiceProtocol,
         isPresented: Binding<Bool>,
         customer: Customer?,
+        customerId: String? = nil,
+        serviceLocationId: String? = nil,
         equipment: Equipment? = nil,
         description: String? = nil
     ) {
         _VM = StateObject(wrappedValue: AddRepairRequestViewModel(dataService: dataService))
         _isPresented = isPresented
         _customer = State(wrappedValue: customer)
+        self.initialCustomerId = customerId
+        self.initialServiceLocationId = serviceLocationId
         self.initialEquipment = equipment
         self.initialDescription = description
     }
@@ -77,6 +83,7 @@ struct AddNewRepairRequest: View {
             do {
                 if let company = masterDataManager.currentCompany {
                     try await VM.onLoad(companyId: company.id, customer: customer)
+                    try await applyInitialCustomerContext(companyId: company.id)
                     try await applyInitialEquipmentContext(companyId: company.id)
                 }
             } catch {
@@ -113,6 +120,63 @@ struct AddNewRepairRequest: View {
 // MARK: - Main Sections
 
 extension AddNewRepairRequest {
+
+    private func applyInitialCustomerContext(companyId: String) async throws {
+        guard initialEquipment == nil else { return }
+
+        let customerId = (initialCustomerId ?? customer?.id ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !customerId.isEmpty else {
+            if VM.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               let initialDescription {
+                VM.description = initialDescription
+            }
+            return
+        }
+
+        let contextCustomer: Customer
+        if let customer, customer.id == customerId {
+            contextCustomer = customer
+        } else if VM.selectedCustomer.id == customerId {
+            contextCustomer = VM.selectedCustomer
+        } else {
+            contextCustomer = try await dataService.getCustomerById(
+                companyId: companyId,
+                customerId: customerId
+            )
+        }
+
+        VM.selectedCustomer = contextCustomer
+        try await VM.onChangeCustomer(companyId: companyId, contextCustomer)
+
+        let serviceLocationId = (initialServiceLocationId ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !serviceLocationId.isEmpty else {
+            if VM.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               let initialDescription {
+                VM.description = initialDescription
+            }
+            return
+        }
+
+        var contextLocation = VM.serviceLocationList.first { $0.id == serviceLocationId }
+        if contextLocation == nil {
+            contextLocation = try? await dataService.getServiceLocationById(
+                companyId: companyId,
+                locationId: serviceLocationId
+            )
+        }
+
+        if let contextLocation {
+            VM.selectedLocation = contextLocation
+            try await VM.onChangeLocation(companyId: companyId, contextLocation)
+        }
+
+        if VM.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let initialDescription {
+            VM.description = initialDescription
+        }
+    }
 
     private func applyInitialEquipmentContext(companyId: String) async throws {
         guard let initialEquipment else { return }

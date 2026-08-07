@@ -239,7 +239,7 @@ struct CustomerStopDataDetailView: View {
     @State var customerId:String
     var body: some View {
         ZStack{
-            Color.listColor
+            Color.listColor.ignoresSafeArea()
             VStack{
                 
                     #if DEBUG
@@ -378,12 +378,11 @@ extension CustomerStopDataDetailView {
             }
         }
         .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(.separator).opacity(0.28), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 
     private var selectedLocationTitle: String {
@@ -436,7 +435,7 @@ extension CustomerStopDataDetailView {
         Button(action: action) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    Circle()
                         .fill(accentColor.opacity(0.12))
                         .frame(width: 42, height: 42)
 
@@ -469,12 +468,11 @@ extension CustomerStopDataDetailView {
                     .foregroundStyle(.secondary)
             }
             .padding(14)
-            .background(.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color(.separator).opacity(0.28), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }

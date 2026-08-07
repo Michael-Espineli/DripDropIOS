@@ -219,6 +219,7 @@ struct RepairRequestDetailView: View {
     @State var showDeleteConfirmation:Bool = false
     @State var showAddJobToRepairRequest:Bool = false
     @State var showEdit:Bool = false
+    @State private var showStatusPicker: Bool = false
 
     var body: some View {
         ZStack{
@@ -330,12 +331,42 @@ extension RepairRequestDetailView {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                Picker("Status", selection: $VM.status) {
-                    ForEach(RepairRequestStatus.allCases,id: \.self){ stat in
-                        Text(stat.displayName).tag(stat)
+                Button {
+                    showStatusPicker = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(statusTint(VM.status))
+                            .frame(width: 10, height: 10)
+
+                        Text(VM.status.displayName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+
+                        Spacer(minLength: 8)
+
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
-                .pickerStyle(.segmented)
+                .buttonStyle(.plain)
+                .confirmationDialog("Change Status", isPresented: $showStatusPicker, titleVisibility: .visible) {
+                    ForEach(RepairRequestStatus.allCases, id: \.self) { stat in
+                        Button(stat.displayName) {
+                            VM.status = stat
+                        }
+                    }
+
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Current status: \(VM.status.displayName)")
+                }
             }
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

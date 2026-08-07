@@ -523,21 +523,21 @@
                                 }
                             }
                             
+                            if role.permissionIdList.contains("420") {
                                 settingsSection(
                                     title: "Pay Roll",
                                     systemImage: "doc.text"
                                 ) {
-                                    if role.permissionIdList.contains("880") {
-                                        NavigationLink(value: Route.payRollSettings(dataService: dataService)) {
-                                            settingsRow(
-                                                title: "Pay Roll Settings",
-                                                subtitle: "Manage invoice and estimate terms.",
-                                                systemImage: "doc.text"
-                                            )
-                                        }
-                                        .buttonStyle(.plain)
+                                    NavigationLink(value: Route.payRollSettings(dataService: dataService)) {
+                                        settingsRow(
+                                            title: "Pay Roll Settings",
+                                            subtitle: "Manage payroll settings and pay information.",
+                                            systemImage: "doc.text"
+                                        )
                                     }
+                                    .buttonStyle(.plain)
                                 }
+                            }
                         }
                     } else {
                         emptyState(

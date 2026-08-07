@@ -39,6 +39,7 @@ final class ShoppingListViewModel:ObservableObject{
     @Published private(set) var routeCustomerItems: [ShoppingListItem] = []
     @Published private(set) var routeJobItems: [ShoppingListItem] = []
     @Published private(set) var purchasedButNotInstalledItems: [ShoppingListItem] = []
+    @Published private(set) var recentlyPurchasedItems: [ShoppingListItem] = []
     
     //Create
     func addNewShoppingListItemWithValidation(
@@ -153,9 +154,8 @@ final class ShoppingListViewModel:ObservableObject{
 
         self.outstandingItems = items
 
-        self.purchasedButNotInstalledItems = items.filter { item in
-            item.status.rawValue.localizedCaseInsensitiveContains("Purchased")
-        }
+        self.purchasedButNotInstalledItems = purchasedItemsSortedByRecency(from: items)
+        self.recentlyPurchasedItems = purchasedItemsSortedByRecency(from: items)
     }
     
     
@@ -171,9 +171,20 @@ final class ShoppingListViewModel:ObservableObject{
 
         self.outstandingItems = items
 
-        self.purchasedButNotInstalledItems = items.filter { item in
-            item.status.rawValue.localizedCaseInsensitiveContains("Purchased")
-        }
+        self.purchasedButNotInstalledItems = purchasedItemsSortedByRecency(from: items)
+        self.recentlyPurchasedItems = purchasedItemsSortedByRecency(from: items)
+    }
+
+    func loadRecentlyPurchasedShoppingItems(
+        companyId: String,
+        limit: Int = 100
+    ) async throws {
+        let items = try await dataService.getOutstandingShoppingListItemsPage(
+            companyId: companyId,
+            limit: limit
+        )
+
+        self.recentlyPurchasedItems = purchasedItemsSortedByRecency(from: items)
     }
     
     func getSpecificShoppingListItem(companyId: String, shoppingListItemId: String) async throws {
@@ -243,6 +254,25 @@ final class ShoppingListViewModel:ObservableObject{
     func setOutstandingItemsForCurrentContext(_ items: [ShoppingListItem]) {
         self.outstandingItems = items.sortedForShoppingPrep()
     }
+
+    func setRecentlyPurchasedItemsForCurrentContext(_ items: [ShoppingListItem]) {
+        self.recentlyPurchasedItems = purchasedItemsSortedByRecency(from: items)
+    }
+
+    private func purchasedItemsSortedByRecency(from items: [ShoppingListItem]) -> [ShoppingListItem] {
+        items
+            .filter { item in
+                item.status == .purchased
+            }
+            .sorted { lhs, rhs in
+                purchaseRecencyDate(lhs) > purchaseRecencyDate(rhs)
+            }
+    }
+
+    private func purchaseRecencyDate(_ item: ShoppingListItem) -> Date {
+        item.datePurchased ?? item.actionDate ?? .distantPast
+    }
+
     private func buildPrepKeys(
         category: ShoppingListCategory,
         jobId: String?,

@@ -36,6 +36,7 @@ struct JobDetailView: View {
     @State private var showDuplicateJobSheet: Bool = false
     
     @State private var showBillingActionsSheet: Bool = false
+    @State private var showCommentsSheet: Bool = false
 
         //Body Of Water
 
@@ -193,44 +194,15 @@ struct JobDetailView: View {
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
-            VStack{
+            VStack(spacing: 0){
                 if !VM.isEdit {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(VM.viewOptionList, id: \.self) { datum in
-                            if view == datum {
-                                Text(datum)
-                                    .font(.subheadline.weight(.semibold))
-                                    .padding(.vertical, 8)
-                                    .padding(.horizontal, 12)
-                                    .background(Capsule().fill(Color.primary.opacity(0.14)))
-                                    .overlay(Capsule().stroke(Color.primary.opacity(0.20), lineWidth: 1))
-                            } else {
-                                let index = (VM.viewOptionList.firstIndex(where: { $0 == datum }) ?? 0)
-                                let selectedIndex = (VM.viewOptionList.firstIndex(where: { $0 == view }) ?? 0)
+                    jobDetailSummaryHeader
+                        .padding(.horizontal, 14)
+                        .padding(.top, 10)
+                        .padding(.bottom, 8)
 
-                                Button(action: { view = datum }, label: {
-                                    Text(datum)
-                                        .font(.subheadline.weight(.semibold))
-                                        .padding(.vertical, 8)
-                                        .padding(.horizontal, 12)
-                                        .background(
-                                            Capsule().fill(
-                                                index > selectedIndex
-                                                ? Color.primary.opacity(0.06)
-                                                : Color.primary.opacity(0.03)
-                                            )
-                                        )
-                                        .overlay(Capsule().stroke(Color.primary.opacity(0.10), lineWidth: 1))
-                                        .foregroundStyle(index > selectedIndex ? .primary : .secondary)
-                                })
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                }
-            } else {
+                    jobDetailTabs
+                } else {
                 // same semantics, just prettier
                 HStack {
                     Spacer()
@@ -292,9 +264,6 @@ struct JobDetailView: View {
                 case "Actual":
                     actualWorkView
                     
-                case "Comments":
-                    commentsView
-                    
                 case "Billing":
                     billingView
                 default:
@@ -307,6 +276,21 @@ struct JobDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .sheet(isPresented: $showCommentsSheet) {
+            NavigationStack {
+                commentsView
+                    .navigationTitle("Job Comments")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") {
+                                showCommentsSheet = false
+                            }
+                        }
+                    }
+            }
+            .presentationDetents([.medium, .large])
         }
         .task {
             
@@ -482,6 +466,184 @@ struct JobDetailView: View {
 }
 
 extension JobDetailView {
+    private var jobDetailSummaryHeader: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "briefcase.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 36, height: 36)
+                .background(Color.poolBlue.opacity(0.14), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(job.type.isEmpty ? "Job \(job.internalId)" : job.type)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Text(job.customerName.isEmpty ? job.internalId : "\(job.customerName) • \(job.internalId)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        compactJobDetailChip(
+                            title: job.operationStatus.rawValue,
+                            systemImage: operationStatusIcon(job.operationStatus),
+                            tint: jobDetailOperationTint(job.operationStatus)
+                        )
+
+                        compactJobDetailChip(
+                            title: job.billingStatus.rawValue,
+                            systemImage: billingStatusIcon(job.billingStatus),
+                            tint: jobDetailBillingTint(job.billingStatus)
+                        )
+
+                        commentsInfoBarButton
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var jobDetailTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(VM.viewOptionList, id: \.self) { option in
+                    jobDetailTabButton(option)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .background(.regularMaterial)
+    }
+
+    private func jobDetailTabButton(_ option: String) -> some View {
+        let isSelected = view == option
+
+        return Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                view = option
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: jobDetailTabIcon(option))
+                    .font(.caption.weight(.semibold))
+
+                Text(option)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(
+                isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.background),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func compactJobDetailChip(title: String, systemImage: String, tint: Color) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(tint.opacity(0.10), in: Capsule())
+    }
+
+    private var commentsInfoBarButton: some View {
+        Button {
+            showCommentsSheet = true
+        } label: {
+            Label(jobCommentSummaryTitle, systemImage: "text.bubble.fill")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(jobDetailCommentsTint)
+                .lineLimit(1)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(jobDetailCommentsTint.opacity(0.10), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(jobCommentAccessibilityLabel))
+    }
+
+    private var jobCommentSummaryTitle: String {
+        let openCount = VM.comments.filter { !$0.resolved }.count
+
+        if openCount > 0 {
+            return "\(openCount) Open"
+        }
+
+        return "Comments"
+    }
+
+    private var jobCommentAccessibilityLabel: String {
+        let openCount = VM.comments.filter { !$0.resolved }.count
+        let totalCount = VM.comments.count
+
+        if VM.commentsLoading && totalCount == 0 {
+            return "Job comments loading"
+        }
+
+        return "\(totalCount) job comments, \(openCount) open"
+    }
+
+    private var jobDetailCommentsTint: Color {
+        VM.comments.contains { !$0.resolved } ? .orange : .poolBlue
+    }
+
+    private func jobDetailTabIcon(_ option: String) -> String {
+        switch option {
+        case "Info": return "doc.text.fill"
+        case "Tasks": return "checklist"
+        case "Offers": return "paperplane.fill"
+        case "Schedule": return "calendar"
+        case "Materials": return "cart.fill"
+        case "Actual": return "hammer.fill"
+        case "Billing": return "creditcard.fill"
+        default: return "square.grid.2x2.fill"
+        }
+    }
+
+    private func jobDetailOperationTint(_ status: JobOperationStatus) -> Color {
+        switch status {
+        case .finished:
+            return .poolGreen
+        case .scheduled, .inProgress:
+            return .poolBlue
+        case .unscheduled:
+            return .orange
+        case .draft, .estimatePending, .waitingForParts:
+            return .poolRed
+        }
+    }
+
+    private func jobDetailBillingTint(_ status: JobBillingStatus) -> Color {
+        switch status {
+        case .paid, .accepted, .comped:
+            return .poolGreen
+        case .estimate, .invoiced:
+            return .poolBlue
+        case .inProgress:
+            return .orange
+        case .draft, .expired, .rejected:
+            return .poolRed
+        }
+    }
     
     // MARK: info
     var info: some View {
@@ -1109,7 +1271,7 @@ extension JobDetailView {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
     var taskListCard: some View {
@@ -1142,7 +1304,7 @@ extension JobDetailView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
     var addTaskActionsCard: some View {
@@ -1172,7 +1334,7 @@ extension JobDetailView {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
     func addTaskActionLabel(
@@ -1260,7 +1422,7 @@ extension JobDetailView {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
     func sectionHeader(_ title: String, systemImage: String) -> some View {
@@ -2822,16 +2984,11 @@ private extension View {
     func ddCard() -> some View {
         self
             .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.background)
-                    .shadow(color: Color.darkGray.opacity(0.06), radius: 12, x: 0, y: 4)
-            )
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
     }
 
     func ddBottomBar() -> some View {
@@ -3176,7 +3333,11 @@ private extension View {
     func basicCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
     }
 }
 private struct JobManualInvoiceSummaryRow: View {
@@ -3242,7 +3403,7 @@ extension JobDetailView {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             } else {
                 VStack(spacing: 8) {
                     ForEach(VM.plannedServiceStops.sorted(by: { $0.sortOrder < $1.sortOrder })) { plannedStop in
@@ -3263,7 +3424,7 @@ extension JobDetailView {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     func plannedServiceStopRow(_ plannedStop: JobPlannedServiceStop) -> some View {
         HStack(alignment: .top, spacing: 12) {

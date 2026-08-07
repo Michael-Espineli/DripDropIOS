@@ -422,6 +422,8 @@ extension ShoppingListItemDetailView {
         defer { isUpdatingStatus = false }
 
         do {
+            let now = Date()
+
             try await shoppingVM.updateShoppingListStatus(
                 companyId: company.id,
                 shoppingListItemId: item.id,
@@ -430,6 +432,11 @@ extension ShoppingListItemDetailView {
 
             item.status = status
             item.needsAction = status.needsShoppingAction
+            item.actionDate = now
+
+            if status == .purchased {
+                item.datePurchased = now
+            }
 
             shoppingListItem = item
             masterDataManager.selectedShoppingListItem = item

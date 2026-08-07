@@ -581,3 +581,530 @@ final class PurchasedItemsManager {
         }
     }
 }
+
+enum PurchasedItemWorkflowError: LocalizedError {
+    case invalidSplitQuantity
+    case missingPurchaseId
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidSplitQuantity:
+            return "Enter a split quantity greater than 0 and less than the purchased quantity."
+        case .missingPurchaseId:
+            return "This purchase is missing an id."
+        }
+    }
+}
+
+final class PurchasedItemWorkflowService {
+    static let shared = PurchasedItemWorkflowService()
+
+    private let db = Firestore.firestore()
+
+    private init() {}
+
+    func markReturnedAndDetach(
+        purchase: PurchasedItem,
+        companyId: String,
+        actorId: String,
+        actorName: String
+    ) async throws {
+        guard !purchase.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw PurchasedItemWorkflowError.missingPurchaseId
+        }
+
+        let now = Timestamp(date: Date())
+        let linkedJobIds = try await jobIdsLinkedToPurchase(purchase, companyId: companyId)
+        let linkedShoppingItemIds = try await shoppingItemIdsLinkedToPurchase(purchase, companyId: companyId)
+
+        var purchaseUpdates: [String: Any] = [
+            "returned": true,
+            "returnedAt": now,
+            "returnedByUserId": actorId,
+            "returnedByUserName": actorName,
+            "status": "Returned",
+            "jobId": "",
+            "assignedToJob": false,
+            "assignmentStatus": "returned",
+            "jobBillingStatus": "returned",
+            "updatedAt": now
+        ]
+
+        [
+            "shoppingListItemId",
+            "workOrderId",
+            "assignedJobId",
+            "billingOwner",
+            "jobInternalId",
+            "jobName",
+            "installationJobId",
+            "installationTaskId",
+            "installedEquipmentId",
+            "installedAt"
+        ].forEach { field in
+            purchaseUpdates[field] = FieldValue.delete()
+        }
+
+        try await purchaseDocument(companyId: companyId, purchaseId: purchase.id)
+            .updateData(purchaseUpdates)
+
+        for shoppingItemId in linkedShoppingItemIds {
+            try? await shoppingDocument(companyId: companyId, shoppingItemId: shoppingItemId)
+                .updateData([
+                    "purchasedItem": FieldValue.delete(),
+                    "status": ShoppingListStatus.readyToPurchase.rawValue,
+                    "datePurchased": FieldValue.delete(),
+                    "invoiced": false,
+                    "needsAction": true,
+                    "actionDate": now,
+                    "updatedAt": now
+                ])
+        }
+
+        for jobId in linkedJobIds {
+            try? await workOrderDocument(companyId: companyId, jobId: jobId)
+                .updateData([
+                    "purchasedItemsIds": FieldValue.arrayRemove([purchase.id]),
+                    "updatedAt": now
+                ])
+
+            try? await clearTaskPurchaseLinks(companyId: companyId, jobId: jobId, purchaseId: purchase.id, timestamp: now)
+        }
+
+        let changes = [
+            historyChange("Returned", from: yesNo(purchase.returned == true), to: "Yes"),
+            historyChange("Status", from: purchase.status ?? "", to: "Returned"),
+            linkedShoppingItemIds.isEmpty ? nil : historyChange("Shopping List", from: "Connected", to: "Disconnected"),
+            linkedJobIds.isEmpty ? nil : historyChange("Job", from: "Connected", to: "Disconnected")
+        ].compactMap { $0 }
+
+        try await recordHistory(
+            companyId: companyId,
+            purchaseId: purchase.id,
+            actorId: actorId,
+            actorName: actorName,
+            title: "Purchase marked returned",
+            eventType: "returned",
+            changes: changes
+        )
+    }
+
+    func markPersonalAndDetach(
+        purchase: PurchasedItem,
+        companyId: String,
+        actorId: String,
+        actorName: String
+    ) async throws {
+        guard !purchase.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw PurchasedItemWorkflowError.missingPurchaseId
+        }
+
+        let now = Timestamp(date: Date())
+        let linkedJobIds = try await jobIdsLinkedToPurchase(purchase, companyId: companyId)
+        let linkedShoppingItemIds = try await shoppingItemIdsLinkedToPurchase(purchase, companyId: companyId)
+
+        var purchaseUpdates: [String: Any] = [
+            "billable": false,
+            "invoiced": false,
+            "returned": false,
+            "personalPurchase": true,
+            "personalPurchaseAssignedAt": now,
+            "personalPurchaseAssignedByUserId": actorId,
+            "personalPurchaseAssignedByUserName": actorName,
+            "status": "Personal Purchase",
+            "customerId": "",
+            "customerName": "",
+            "jobId": "",
+            "assignedToJob": false,
+            "assignmentStatus": "personal",
+            "billingOwner": "personal",
+            "jobBillingStatus": "personal",
+            "jobBillable": false,
+            "jobBillingRate": 0,
+            "updatedAt": now
+        ]
+
+        [
+            "shoppingListItemId",
+            "workOrderId",
+            "assignedJobId",
+            "jobInternalId",
+            "jobName",
+            "invoiceStatus",
+            "invoiceId",
+            "invoiceRef",
+            "invoiceType",
+            "invoicedAt",
+            "jobInvoicedAt",
+            "installationJobId",
+            "installationTaskId",
+            "installedEquipmentId",
+            "installedAt"
+        ].forEach { field in
+            purchaseUpdates[field] = FieldValue.delete()
+        }
+
+        try await purchaseDocument(companyId: companyId, purchaseId: purchase.id)
+            .updateData(purchaseUpdates)
+
+        for shoppingItemId in linkedShoppingItemIds {
+            try? await shoppingDocument(companyId: companyId, shoppingItemId: shoppingItemId)
+                .updateData([
+                    "purchasedItem": FieldValue.delete(),
+                    "status": ShoppingListStatus.readyToPurchase.rawValue,
+                    "datePurchased": FieldValue.delete(),
+                    "invoiced": false,
+                    "needsAction": true,
+                    "actionDate": now,
+                    "updatedAt": now
+                ])
+        }
+
+        for jobId in linkedJobIds {
+            try? await workOrderDocument(companyId: companyId, jobId: jobId)
+                .updateData([
+                    "purchasedItemsIds": FieldValue.arrayRemove([purchase.id]),
+                    "updatedAt": now
+                ])
+
+            try? await clearTaskPurchaseLinks(companyId: companyId, jobId: jobId, purchaseId: purchase.id, timestamp: now)
+        }
+
+        let changes = [
+            historyChange("Personal Purchase", from: "No", to: "Yes"),
+            historyChange("Status", from: purchase.status ?? "", to: "Personal Purchase"),
+            historyChange("Billable", from: yesNo(purchase.billable), to: "No"),
+            historyChange("Invoiced", from: yesNo(purchase.invoiced), to: "No"),
+            historyChange("Customer", from: purchase.customerName, to: ""),
+            linkedShoppingItemIds.isEmpty ? nil : historyChange("Shopping List", from: "Connected", to: "Disconnected"),
+            linkedJobIds.isEmpty ? nil : historyChange("Job", from: "Connected", to: "Disconnected")
+        ].compactMap { $0 }
+
+        try await recordHistory(
+            companyId: companyId,
+            purchaseId: purchase.id,
+            actorId: actorId,
+            actorName: actorName,
+            title: "Purchase marked personal",
+            eventType: "personal_purchase",
+            changes: changes
+        )
+    }
+
+    @discardableResult
+    func splitPurchase(
+        purchase: PurchasedItem,
+        companyId: String,
+        splitQuantity: Double,
+        customer: Customer?,
+        job: Job?,
+        notes: String,
+        actorId: String,
+        actorName: String
+    ) async throws -> PurchasedItem {
+        guard !purchase.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw PurchasedItemWorkflowError.missingPurchaseId
+        }
+
+        let originalQuantity = purchase.quantity
+        guard splitQuantity > 0, splitQuantity < originalQuantity else {
+            throw PurchasedItemWorkflowError.invalidSplitQuantity
+        }
+
+        let remainingQuantity = originalQuantity - splitQuantity
+        let nowDate = Date()
+        let now = Timestamp(date: nowDate)
+        let splitPurchaseId = UUID().uuidString
+        let selectedCustomerName = customer.map(customerDisplayName) ?? ""
+        let jobCustomerName = job?.customerName ?? ""
+        let nextCustomerId = firstNonEmpty(customer?.id ?? "", job?.customerId ?? "")
+        let nextCustomerName = firstNonEmpty(selectedCustomerName, jobCustomerName)
+
+        var splitPurchase = purchase
+        splitPurchase.id = splitPurchaseId
+        splitPurchase.quantityString = formattedQuantity(splitQuantity)
+        splitPurchase.customerId = nextCustomerId
+        splitPurchase.customerName = nextCustomerName
+        splitPurchase.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? purchase.notes : notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        splitPurchase.shoppingListItemId = nil
+        splitPurchase.returned = false
+        splitPurchase.invoiced = false
+        splitPurchase.status = job == nil ? "Split" : "Connected to Job"
+        splitPurchase.workOrderId = nil
+        splitPurchase.assignedJobId = nil
+        splitPurchase.assignedToJob = false
+        splitPurchase.assignmentStatus = "split"
+        splitPurchase.billingOwner = nil
+        splitPurchase.jobBillingStatus = nil
+        splitPurchase.jobInternalId = nil
+        splitPurchase.jobName = nil
+        splitPurchase.installationJobId = nil
+        splitPurchase.installationTaskId = nil
+        splitPurchase.installedEquipmentId = nil
+        splitPurchase.installedAt = nil
+
+        if let job {
+            let shouldMarkInvoiced = job.billingStatus == .invoiced || job.billingStatus == .paid
+            splitPurchase.jobId = job.id
+            splitPurchase.workOrderId = job.id
+            splitPurchase.assignedJobId = job.id
+            splitPurchase.assignedToJob = true
+            splitPurchase.assignmentStatus = "assignedToJob"
+            splitPurchase.billingOwner = "job"
+            splitPurchase.jobBillingStatus = shouldMarkInvoiced ? "invoiced" : "handledByJob"
+            splitPurchase.jobInternalId = job.internalId
+            splitPurchase.jobName = job.type
+            splitPurchase.status = shouldMarkInvoiced ? "Invoiced" : "Connected to Job"
+            splitPurchase.invoiced = shouldMarkInvoiced
+        } else {
+            splitPurchase.jobId = ""
+        }
+
+        try purchaseDocument(companyId: companyId, purchaseId: splitPurchase.id)
+            .setData(from: splitPurchase, merge: false)
+
+        try await purchaseDocument(companyId: companyId, purchaseId: splitPurchase.id)
+            .setData([
+                "splitFromPurchasedItemId": purchase.id,
+                "splitRootPurchasedItemId": purchase.id,
+                "splitCreatedAt": now,
+                "splitCreatedByUserId": actorId,
+                "splitCreatedByUserName": actorName,
+                "createdAt": now,
+                "updatedAt": now
+            ], merge: true)
+
+        try await purchaseDocument(companyId: companyId, purchaseId: purchase.id)
+            .updateData([
+                "quantityString": formattedQuantity(remainingQuantity),
+                "splitChildPurchasedItemIds": FieldValue.arrayUnion([splitPurchase.id]),
+                "lastSplitAt": now,
+                "updatedAt": now
+            ])
+
+        if !purchase.receiptId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try? await receiptDocument(companyId: companyId, receiptId: purchase.receiptId)
+                .updateData([
+                    "purchasedItemIds": FieldValue.arrayUnion([splitPurchase.id]),
+                    "numberOfItems": FieldValue.increment(Int64(1)),
+                    "updatedAt": now
+                ])
+        }
+
+        if let job {
+            try? await workOrderDocument(companyId: companyId, jobId: job.id)
+                .updateData([
+                    "purchasedItemsIds": FieldValue.arrayUnion([splitPurchase.id]),
+                    "updatedAt": now
+                ])
+        }
+
+        try await recordHistory(
+            companyId: companyId,
+            purchaseId: purchase.id,
+            actorId: actorId,
+            actorName: actorName,
+            title: "Purchase split",
+            eventType: "split",
+            changes: [
+                historyChange("Quantity", from: formattedQuantity(originalQuantity), to: formattedQuantity(remainingQuantity)),
+                historyChange("Split Quantity", from: "Blank", to: formattedQuantity(splitQuantity)),
+                historyChange("New Purchase", from: "Blank", to: splitPurchase.id)
+            ].compactMap { $0 }
+        )
+
+        try await recordHistory(
+            companyId: companyId,
+            purchaseId: splitPurchase.id,
+            actorId: actorId,
+            actorName: actorName,
+            title: "Purchase created from split",
+            eventType: "split_created",
+            changes: [
+                historyChange("Source Purchase", from: "Blank", to: purchase.id),
+                historyChange("Quantity", from: "Blank", to: formattedQuantity(splitQuantity)),
+                historyChange("Customer", from: "Blank", to: nextCustomerName),
+                historyChange("Job", from: "Blank", to: jobLabel(job))
+            ].compactMap { $0 }
+        )
+
+        return splitPurchase
+    }
+
+    private func jobIdsLinkedToPurchase(_ purchase: PurchasedItem, companyId: String) async throws -> Set<String> {
+        var jobIds = Set([
+            purchase.jobId,
+            purchase.workOrderId ?? "",
+            purchase.assignedJobId ?? "",
+            purchase.installationJobId ?? ""
+        ].map(clean).filter { !$0.isEmpty })
+
+        let snapshot = try await workOrderCollection(companyId: companyId)
+            .whereField("purchasedItemsIds", arrayContains: purchase.id)
+            .getDocuments()
+
+        for document in snapshot.documents {
+            jobIds.insert(document.documentID)
+        }
+
+        return jobIds
+    }
+
+    private func shoppingItemIdsLinkedToPurchase(_ purchase: PurchasedItem, companyId: String) async throws -> Set<String> {
+        var shoppingItemIds = Set([
+            purchase.shoppingListItemId ?? ""
+        ].map(clean).filter { !$0.isEmpty })
+
+        let snapshot = try await shoppingCollection(companyId: companyId)
+            .whereField("purchasedItem", isEqualTo: purchase.id)
+            .getDocuments()
+
+        for document in snapshot.documents {
+            shoppingItemIds.insert(document.documentID)
+        }
+
+        return shoppingItemIds
+    }
+
+    private func clearTaskPurchaseLinks(
+        companyId: String,
+        jobId: String,
+        purchaseId: String,
+        timestamp: Timestamp
+    ) async throws {
+        let snapshot = try await workOrderDocument(companyId: companyId, jobId: jobId)
+            .collection("tasks")
+            .whereField("purchasedItemId", isEqualTo: purchaseId)
+            .getDocuments()
+
+        for document in snapshot.documents {
+            try await document.reference.updateData([
+                "purchasedItemId": FieldValue.delete(),
+                "updatedAt": timestamp
+            ])
+        }
+    }
+
+    private func recordHistory(
+        companyId: String,
+        purchaseId: String,
+        actorId: String,
+        actorName: String,
+        title: String,
+        eventType: String,
+        changes: [String]
+    ) async throws {
+        guard !changes.isEmpty else { return }
+
+        let now = Timestamp(date: Date())
+        let historyId = UUID().uuidString
+        let purchaseRef = purchaseDocument(companyId: companyId, purchaseId: purchaseId)
+        let cleanActorName = actorName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayActorName = cleanActorName.isEmpty ? "DripDrop" : cleanActorName
+
+        try await purchaseRef.collection("history").document(historyId).setData([
+            "id": historyId,
+            "date": now,
+            "tech": displayActorName,
+            "actorId": actorId,
+            "actorName": displayActorName,
+            "source": "purchase-workflow",
+            "eventType": eventType,
+            "title": title,
+            "changes": changes,
+            "createdAt": now
+        ])
+
+        try await purchaseRef.updateData([
+            "lastHistoryEventId": historyId,
+            "lastHistoryEventTitle": title,
+            "lastHistoryEventType": eventType,
+            "lastHistoryEventAt": now,
+            "updatedAt": now
+        ])
+    }
+
+    private func purchaseDocument(companyId: String, purchaseId: String) -> DocumentReference {
+        purchaseCollection(companyId: companyId).document(purchaseId)
+    }
+
+    private func purchaseCollection(companyId: String) -> CollectionReference {
+        db.collection("companies").document(companyId).collection("purchasedItems")
+    }
+
+    private func shoppingDocument(companyId: String, shoppingItemId: String) -> DocumentReference {
+        shoppingCollection(companyId: companyId).document(shoppingItemId)
+    }
+
+    private func shoppingCollection(companyId: String) -> CollectionReference {
+        db.collection("companies").document(companyId).collection("shoppingList")
+    }
+
+    private func workOrderDocument(companyId: String, jobId: String) -> DocumentReference {
+        workOrderCollection(companyId: companyId).document(jobId)
+    }
+
+    private func workOrderCollection(companyId: String) -> CollectionReference {
+        db.collection("companies").document(companyId).collection("workOrders")
+    }
+
+    private func receiptDocument(companyId: String, receiptId: String) -> DocumentReference {
+        db.collection("companies").document(companyId).collection("receipts").document(receiptId)
+    }
+
+    private func clean(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func firstNonEmpty(_ values: String...) -> String {
+        for value in values {
+            let cleanValue = clean(value)
+            if !cleanValue.isEmpty {
+                return cleanValue
+            }
+        }
+
+        return ""
+    }
+
+    private func customerDisplayName(_ customer: Customer) -> String {
+        if customer.displayAsCompany {
+            return firstNonEmpty(customer.company ?? "", "\(customer.firstName) \(customer.lastName)")
+        }
+
+        return firstNonEmpty("\(customer.firstName) \(customer.lastName)", customer.company ?? "")
+    }
+
+    private func jobLabel(_ job: Job?) -> String {
+        guard let job else { return "" }
+        return firstNonEmpty(job.internalId, job.type, job.id)
+    }
+
+    private func historyChange(_ label: String, from previousValue: String, to nextValue: String) -> String? {
+        let previous = compactHistoryValue(previousValue)
+        let next = compactHistoryValue(nextValue)
+        guard previous != next else { return nil }
+        return "\(label): \(previous) -> \(next)"
+    }
+
+    private func compactHistoryValue(_ value: String) -> String {
+        let cleanValue = clean(value)
+        guard !cleanValue.isEmpty else { return "Blank" }
+        guard cleanValue.count > 140 else { return cleanValue }
+        return "\(String(cleanValue.prefix(137)))..."
+    }
+
+    private func yesNo(_ value: Bool) -> String {
+        value ? "Yes" : "No"
+    }
+
+    private func formattedQuantity(_ quantity: Double) -> String {
+        if quantity.rounded() == quantity {
+            return String(Int(quantity))
+        }
+
+        return String(format: "%.3f", quantity)
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
+    }
+}

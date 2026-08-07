@@ -116,10 +116,19 @@ extension ProductionDataService {
     }
     func updateShoppingListItemStatus(companyId: String, shoppingListItemId: String, status: ShoppingListStatus) async throws {
         let ref = shoppingListDoc(companyId: companyId, shoppingListItemId: shoppingListItemId)
+        let now = Date()
+        var updates: [String: Any] = [
+            "status": status.rawValue,
+            "needsAction": status.needsShoppingAction,
+            "actionDate": now
+        ]
+
+        if status == .purchased {
+            updates["datePurchased"] = now
+        }
+
         try await ref
-            .updateData([
-                "status": status.rawValue
-            ])
+            .updateData(updates)
     }
     func removingReadingTemplateAmountArray(companyId:String,readingTemplateId : String,amount:String) async throws {
         

@@ -222,6 +222,20 @@ struct EmployeeDailyDashboard: View {
         } message: {
             Text(serviceStopStartPromptMessage)
         }
+        .alert(
+            "Would you like to end this stop?",
+            isPresented: serviceStopEndPromptPresentedBinding
+        ) {
+            Button("End Stop") {
+                VM.confirmPendingServiceStopEnd(companyId: masterDataManager.currentCompany?.id)
+            }
+
+            Button("Not Now", role: .cancel) {
+                VM.dismissPendingServiceStopEndPrompt()
+            }
+        } message: {
+            Text(serviceStopEndPromptMessage)
+        }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
@@ -274,6 +288,28 @@ struct EmployeeDailyDashboard: View {
         let title = serviceType.isEmpty ? prompt.customerName : "\(prompt.customerName) - \(serviceType)"
 
         return "\(title)\nArrived at \(time(date: prompt.arrivalTime))."
+    }
+
+    private var serviceStopEndPromptPresentedBinding: Binding<Bool> {
+        Binding(
+            get: { VM.pendingServiceStopEndPrompt != nil },
+            set: { isPresented in
+                if !isPresented {
+                    VM.dismissPendingServiceStopEndPrompt()
+                }
+            }
+        )
+    }
+
+    private var serviceStopEndPromptMessage: String {
+        guard let prompt = VM.pendingServiceStopEndPrompt else {
+            return ""
+        }
+
+        let serviceType = prompt.serviceType.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = serviceType.isEmpty ? prompt.customerName : "\(prompt.customerName) - \(serviceType)"
+
+        return "\(title)\nLeft stop area at \(time(date: prompt.departureTime))."
     }
 
     private var shouldUseExperimentalRouteLayout: Bool {
@@ -975,6 +1011,7 @@ extension EmployeeDailyDashboard {
 
             if !VM.enableMove && !enableReorder {
                 Button {
+                    VM.autoOrderServiceStopsForRoute()
                     enableReorder = true
                 } label: {
                     routeSummaryButton(

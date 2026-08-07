@@ -108,68 +108,68 @@ struct CustomerBillingView: View {
     }
     
     var body: some View {
-        ScrollView{
+        Group {
             if UIDevice.isIPhone {
                 iphone
             } else {
-                largeScreen
+                ScrollView {
+                    largeScreen
+                }
             }
-            Text("")
-                .sheet(isPresented: $VM.isPresented,
-                       onDismiss: {
-                    Task{
-                        if let company = masterDataManager.currentCompany {
-                            if let customer = masterDataManager.selectedCustomer {
-                                do {
-                                    print("Get Contractacts For Customer Id: \(customer.id)")
-                                    try await VM.onLoad(companyId: company.id, customerId: customer.id)
-                                    print("Successfully Got Contracts")
-                                } catch{
-                                    print("No Contracts")
-                                    print(error)
-                                }
-                            } else {
-                                if let customer = customer {
-                                    do {
-                                        print("Get Contractacts For Customer Id: \(customer.id)")
-                                        try await VM.onLoad(companyId: company.id, customerId: customer.id)
-                                        print("Successfully Got Contracts")
-                                    } catch{
-                                        print("No Contracts")
-                                        print(error)
-                                    }
-                                } else {
-                                    print("No Selected Customer")
-                                }
-                            }
-                        }
-                    }
-                },
-                       content: {
-                    if let customer = customer {
-                        AddNewContractView(
-                            dataService: dataService,
-                            customer: customer
-                        )
-                    } else {
-                        if let selectedCustomer = masterDataManager.selectedCustomer {
-                            AddNewContractView(
-                                dataService: dataService,
-                                customer: selectedCustomer
-                            )
-                        } else {
-                            AddNewContractView(
-                                dataService: dataService,
-                                customer: nil
-                            )
-                        }
-                    }
-                })
-            Text("")
-                .sheet(isPresented: $VM.isPresentedOldContract, content: {
-                    Text("Is Presented Old Contract")
-                })
         }
+        .sheet(isPresented: $VM.isPresented,
+               onDismiss: {
+            Task{
+                if let company = masterDataManager.currentCompany {
+                    if let customer = masterDataManager.selectedCustomer {
+                        do {
+                            print("Get Contractacts For Customer Id: \(customer.id)")
+                            try await VM.onLoad(companyId: company.id, customerId: customer.id)
+                            print("Successfully Got Contracts")
+                        } catch{
+                            print("No Contracts")
+                            print(error)
+                        }
+                    } else {
+                        if let customer = customer {
+                            do {
+                                print("Get Contractacts For Customer Id: \(customer.id)")
+                                try await VM.onLoad(companyId: company.id, customerId: customer.id)
+                                print("Successfully Got Contracts")
+                            } catch{
+                                print("No Contracts")
+                                print(error)
+                            }
+                        } else {
+                            print("No Selected Customer")
+                        }
+                    }
+                }
+            }
+        },
+               content: {
+            if let customer = customer {
+                AddNewContractView(
+                    dataService: dataService,
+                    customer: customer
+                )
+            } else {
+                if let selectedCustomer = masterDataManager.selectedCustomer {
+                    AddNewContractView(
+                        dataService: dataService,
+                        customer: selectedCustomer
+                    )
+                } else {
+                    AddNewContractView(
+                        dataService: dataService,
+                        customer: nil
+                    )
+                }
+            }
+        })
+        .sheet(isPresented: $VM.isPresentedOldContract, content: {
+            Text("Is Presented Old Contract")
+        })
         .task{
             VM.billingNotes = customer?.billingNotes ?? ""
             if let company = masterDataManager.currentCompany {
@@ -264,293 +264,484 @@ struct CustomerBillingView: View {
 }
 extension CustomerBillingView {
     var iphone: some View {
-        VStack(alignment: .leading){
+        VStack(alignment: .leading, spacing: 12) {
             billingInfoSmall
-            Rectangle()
-                .frame(height: 1)
             billingStats
-            Rectangle()
-                .frame(height: 1)
             serviceAgreements
-            Rectangle()
-                .frame(height: 1)
             contracts
-            Rectangle()
-                .frame(height: 1)
             paymentHistory
-            Rectangle()
-                .frame(height: 1)
             outStandingInvoices
         }
     }
+
     var largeScreen: some View {
-        VStack{
-            HStack{
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 billingInfoLarge
                 billingStats
             }
             serviceAgreements
-            Rectangle()
-                .frame(height: 1)
             contracts
-            Rectangle()
-                .frame(height: 1)
             paymentHistory
-            Rectangle()
-                .frame(height: 1)
             outStandingInvoices
         }
-        
+        .padding(12)
     }
+
     var billingInfoSmall: some View {
-        VStack{
-            VStack{
-                Text("Billing Notes:")
-                TextField(
-                    "",
-                    text: $VM.billingNotes,
-                    axis: .vertical
-                )
-                .padding(4)
-                .padding(.horizontal,4)
-                .background(Color.poolBlue.opacity(0.2))
-                .cornerRadius(5.0)
-                .padding(8)
-            }
-            Text("Last Raised: 03/14/2024")
+        billingSection(
+            title: "Billing Notes",
+            systemImage: "note.text",
+            tint: Color.poolBlue
+        ) {
+            TextField(
+                "Add billing notes",
+                text: $VM.billingNotes,
+                axis: .vertical
+            )
+            .font(.subheadline)
+            .padding(10)
+            .frame(minHeight: 76, alignment: .topLeading)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+            )
+
+            Label("Last raised 03/14/2024", systemImage: "calendar")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
+
     var billingInfoLarge: some View {
-        VStack{
-            VStack{
-                Text("Billing Notes:")
-                TextField(
-                    "",
-                    text: $VM.billingNotes,
-                    axis: .vertical
-                )
-                .padding(5)
-                .background(Color.poolBlue.opacity(0.2))
-                .cornerRadius(5.0)
-                .padding()
-            }
-            Text("Last Raised: 03/14/2024")
-            Text("")
-            Spacer()
-        }
+        billingInfoSmall
+            .frame(maxWidth: .infinity)
     }
+
     var billingStats: some View {
-        VStack{
-            HStack{
-                Text("Total Outstanding : ")
-                Spacer()
-                Text("\(Double(VM.openInvoiceTotalCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-            }
-            HStack{
-                Text("Recently Paid (30 Days) : ")
-                Spacer()
-                Text("\(Double(VM.recentlyPaidTotalCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+        billingSection(
+            title: "Billing Snapshot",
+            systemImage: "chart.bar.fill",
+            tint: Color.poolGreen
+        ) {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                spacing: 8
+            ) {
+                billingStatTile(
+                    title: "Outstanding",
+                    value: currencyString(cents: VM.openInvoiceTotalCents),
+                    tint: Color.orange,
+                    systemImage: "exclamationmark.circle.fill"
+                )
 
-            }
-            HStack{
-                Text("Accepted Agreements : ")
-                Spacer()
-                Text("\(VM.acceptedAgreementCount)")
+                billingStatTile(
+                    title: "Paid 30 Days",
+                    value: currencyString(cents: VM.recentlyPaidTotalCents),
+                    tint: Color.poolGreen,
+                    systemImage: "checkmark.circle.fill"
+                )
 
-            }
-            HStack{
-                Text("Active Subscriptions : ")
-                Spacer()
-                Text("\(VM.activeSubscriptionCount)")
+                billingStatTile(
+                    title: "Accepted",
+                    value: "\(VM.acceptedAgreementCount)",
+                    tint: Color.poolBlue,
+                    systemImage: "doc.text.fill"
+                )
 
-            }
-            HStack{
-                Text("Agreement Total : ")
-                Spacer()
-                Text("\(Double(VM.serviceAgreementTotalCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                billingStatTile(
+                    title: "Subscriptions",
+                    value: "\(VM.activeSubscriptionCount)",
+                    tint: Color.purple,
+                    systemImage: "arrow.triangle.2.circlepath"
+                )
 
-            }
-            HStack{
-                Text("Legacy Contract Total : ")
-                Spacer()
-                Text(" \(VM.total, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                billingStatTile(
+                    title: "Agreements",
+                    value: currencyString(cents: VM.serviceAgreementTotalCents),
+                    tint: Color.poolBlue,
+                    systemImage: "signature"
+                )
 
+                billingStatTile(
+                    title: "Legacy",
+                    value: currencyString(dollars: VM.total),
+                    tint: Color.secondary,
+                    systemImage: "clock.arrow.circlepath"
+                )
             }
-            
         }
     }
+
     var serviceAgreements: some View {
-        VStack(alignment: .leading, spacing: 10){
-            HStack{
-                Spacer()
-                Text("Service Agreements")
-                    .font(.headline)
-                Spacer()
-            }
-            
+        billingSection(
+            title: "Service Agreements",
+            systemImage: "doc.text.fill",
+            tint: Color.poolBlue
+        ) {
             if VM.salesAgreements.isEmpty {
-                Text("No service agreements yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
+                billingEmptyText("No service agreements yet.")
             } else {
-                ForEach(Array(VM.salesAgreements.prefix(5))){ agreement in
-                    VStack(alignment: .leading, spacing: 6){
-                        HStack{
-                            VStack(alignment: .leading, spacing: 2){
-                                Text(agreement.title.isEmpty ? "Service Agreement" : agreement.title)
-                                    .font(.subheadline.weight(.semibold))
-                                Text(agreement.status.rawValue.capitalized)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text("\(Double(agreement.totalAmountCents ?? agreement.rateAmountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        HStack{
-                            Text(agreement.serviceCadence.isEmpty ? "Cadence not set" : agreement.serviceCadence)
-                            Spacer()
-                            if let sentAt = agreement.sentAt {
-                                Text("Sent \(sentAt.formatted(date: .abbreviated, time: .omitted))")
-                            } else if let acceptedAt = agreement.acceptedAt {
-                                Text("Accepted \(acceptedAt.formatted(date: .abbreviated, time: .omitted))")
-                            }
-                        }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(spacing: 8) {
+                    ForEach(Array(VM.salesAgreements.prefix(5))) { agreement in
+                        agreementRow(agreement)
                     }
-                    .padding(.vertical, 6)
-                    Divider()
                 }
             }
         }
-        .padding(.horizontal, 8)
     }
     
     var contracts: some View {
-        VStack{
-            ScrollView(showsIndicators: false){
-                
-                HStack{
-                    Spacer()
-                    Text("Legacy Recurring Contracts")
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                }
-                HStack{
+        billingSection(
+            title: "Legacy Contracts",
+            systemImage: "calendar.badge.clock",
+            tint: Color.secondary
+        ) {
+            VStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Button(action: {
                         VM.isPresented.toggle()
                     }, label: {
-                        
-                        Text("Add New")
-                            .foregroundColor(Color.basicFontText)
-                            .padding(5)
-                            .background(Color.poolBlue)
-                            .cornerRadius(5)
-                            .fontDesign(.monospaced)
+                        Label("Add", systemImage: "plus")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 8)
+                            .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     })
+                    .buttonStyle(.plain)
+
                     Spacer()
+
                     Button(action: {
                         VM.isPresentedOldContract.toggle()
                     }, label: {
-                        Text("See Past")
-                            .foregroundColor(Color.poolRed)
-                            .padding(3)
+                        Label("Past", systemImage: "archivebox.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.poolRed)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Color.poolRed.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     })
+                    .buttonStyle(.plain)
                 }
-                
-                ForEach(VM.listOfContrats){ contract in
-                    if UIDevice.isIPhone {
-                        NavigationLink(value: Route.contract(contract: contract, dataService: dataService), label: {
-                            ContractCardView(contract: contract)
-                        })
-                    } else {
-                        HStack{
-                            ContractCardView(contract: contract)
-                            Button(action: {
-                                masterDataManager.selectedCategory = .contract
-                                masterDataManager.selectedID = contract.id
-                            }, label: {
-                                Text("See More")
-                                    .foregroundColor(Color.basicFontText)
-                                    .padding(5)
-                                    .background(Color.poolBlue)
-                                    .cornerRadius(5)
-                            })
+
+                if VM.listOfContrats.isEmpty {
+                    billingEmptyText("No legacy contracts found.")
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(VM.listOfContrats) { contract in
+                            if UIDevice.isIPhone {
+                                NavigationLink(value: Route.contract(contract: contract, dataService: dataService), label: {
+                                    contractRow(contract)
+                                })
+                                .buttonStyle(.plain)
+                            } else {
+                                Button(action: {
+                                    masterDataManager.selectedCategory = .contract
+                                    masterDataManager.selectedID = contract.id
+                                }, label: {
+                                    contractRow(contract)
+                                })
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
                 }
             }
         }
     }
+
     var outStandingInvoices: some View {
-        VStack{
-            HStack{
-                Spacer()
-                Text("Outstanding Invoices")
-                    .font(.headline)
-                Spacer()
-                
-            }
-            HStack{
-                Text("Description")
-                Spacer()
-                Text("Amount")
-            }
-            Divider()
+        billingSection(
+            title: "Outstanding Invoices",
+            systemImage: "doc.richtext.fill",
+            tint: Color.orange
+        ) {
             if VM.openInvoices.isEmpty {
-                Text("No outstanding Sales invoices.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
+                billingEmptyText("No outstanding sales invoices.")
             } else {
-                ForEach(VM.openInvoices){ invoice in
-                    HStack{
-                        Text(invoice.dueDate?.formatted(date: .abbreviated, time: .omitted) ?? "No due date")
-                        Text(invoice.memo ?? invoice.invoiceNumber)
-                        Spacer()
-                        Text("\(Double(invoice.amountDueCents ?? invoice.totalAmountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                        Button(action: {
-                            
-                        }, label: {
-                            Image(systemName: "chevron.right")
-                        })
+                VStack(spacing: 8) {
+                    ForEach(VM.openInvoices) { invoice in
+                        invoiceRow(invoice)
                     }
-                    .padding(.vertical,4)
                 }
             }
         }
     }
+
     var paymentHistory: some View {
-        VStack{
-            HStack{
-                Spacer()
-                Text("Payment History")
-                    .font(.headline)
-                
-                Spacer()
-                
-            }
+        billingSection(
+            title: "Payment History",
+            systemImage: "creditcard.fill",
+            tint: Color.poolGreen
+        ) {
             if VM.salesPayments.isEmpty {
-                Text("No Sales payments recorded.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
+                billingEmptyText("No sales payments recorded.")
             } else {
-                ForEach(Array(VM.salesPayments.prefix(5))){ payment in
-                    HStack{
-                        Text(payment.receivedAt?.formatted(date: .abbreviated, time: .omitted) ?? "No date")
-                        Text(payment.method.rawValue.capitalized)
-                        Spacer()
-                        Text("\(Double(payment.amountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                VStack(spacing: 8) {
+                    ForEach(Array(VM.salesPayments.prefix(5))) { payment in
+                        paymentRow(payment)
                     }
-                    .font(.caption)
-                    .padding(.vertical, 4)
                 }
             }
         }
+    }
+
+    private func billingSection<Content: View>(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 34, height: 34)
+                    .background(tint.opacity(0.13), in: Circle())
+
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+            }
+
+            content()
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        )
+    }
+
+    private func billingStatTile(
+        title: String,
+        value: String,
+        tint: Color,
+        systemImage: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(tint)
+
+                Spacer()
+            }
+
+            Text(value)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tint.opacity(0.09), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func agreementRow(_ agreement: SalesAgreement) -> some View {
+        let total = Double(agreement.totalAmountCents ?? agreement.rateAmountCents) / 100
+        let status = agreement.status.rawValue.capitalized
+
+        return billingRowCard {
+            HStack(alignment: .top, spacing: 10) {
+                rowIcon(systemName: "doc.text.fill", tint: statusTint(status))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(agreement.title.isEmpty ? "Service Agreement" : agreement.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    Text(agreement.serviceCadence.isEmpty ? agreementDateText(agreement) : agreement.serviceCadence)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text("\(total, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                        .font(.subheadline.weight(.semibold))
+
+                    statusChip(status)
+                }
+            }
+        }
+    }
+
+    private func contractRow(_ contract: RecurringContract) -> some View {
+        billingRowCard {
+            HStack(alignment: .top, spacing: 10) {
+                rowIcon(systemName: "calendar.badge.clock", tint: statusTint(contract.status.rawValue))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(contract.serviceFrequency.rawValue)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text("\(contract.locationCount) \(contract.locationCount == 1 ? "location" : "locations")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text("\(Double(contract.rate) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                        .font(.subheadline.weight(.semibold))
+
+                    statusChip(contract.status.rawValue.capitalized)
+                }
+            }
+        }
+    }
+
+    private func invoiceRow(_ invoice: SalesInvoice) -> some View {
+        billingRowCard {
+            HStack(alignment: .top, spacing: 10) {
+                rowIcon(systemName: "doc.richtext.fill", tint: statusTint(invoice.status.rawValue))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(invoice.memo ?? invoice.invoiceNumber)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    Text(invoice.dueDate?.formatted(date: .abbreviated, time: .omitted) ?? "No due date")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text("\(Double(invoice.amountDueCents ?? invoice.totalAmountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                        .font(.subheadline.weight(.semibold))
+
+                    statusChip(invoice.status.rawValue.capitalized)
+                }
+            }
+        }
+    }
+
+    private func paymentRow(_ payment: SalesPayment) -> some View {
+        billingRowCard {
+            HStack(alignment: .top, spacing: 10) {
+                rowIcon(systemName: "creditcard.fill", tint: statusTint(payment.status.rawValue))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(payment.method.rawValue.capitalized)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text(payment.receivedAt?.formatted(date: .abbreviated, time: .omitted) ?? "No date")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 5) {
+                    Text("\(Double(payment.amountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                        .font(.subheadline.weight(.semibold))
+
+                    statusChip(payment.status.rawValue.capitalized)
+                }
+            }
+        }
+    }
+
+    private func billingRowCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(10)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.055), lineWidth: 1)
+            )
+    }
+
+    private func rowIcon(systemName: String, tint: Color) -> some View {
+        Image(systemName: systemName)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(tint)
+            .frame(width: 28, height: 28)
+            .background(tint.opacity(0.11), in: Circle())
+    }
+
+    private func statusChip(_ status: String) -> some View {
+        Text(status)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(statusTint(status))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(statusTint(status).opacity(0.11), in: Capsule())
+    }
+
+    private func billingEmptyText(_ message: String) -> some View {
+        Text(message)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+    }
+
+    private func agreementDateText(_ agreement: SalesAgreement) -> String {
+        if let sentAt = agreement.sentAt {
+            return "Sent \(sentAt.formatted(date: .abbreviated, time: .omitted))"
+        }
+
+        if let acceptedAt = agreement.acceptedAt {
+            return "Accepted \(acceptedAt.formatted(date: .abbreviated, time: .omitted))"
+        }
+
+        return "Cadence not set"
+    }
+
+    private func currencyString(cents: Int) -> String {
+        currencyString(dollars: Double(cents) / 100)
+    }
+
+    private func currencyString(dollars: Double) -> String {
+        dollars.formatted(.currency(code: "USD").precision(.fractionLength(2)))
+    }
+
+    private func statusTint(_ status: String) -> Color {
+        let normalized = status.lowercased()
+
+        if normalized.contains("accept") || normalized.contains("active") || normalized.contains("paid") || normalized.contains("posted") {
+            return Color.poolGreen
+        }
+
+        if normalized.contains("open") || normalized.contains("pending") || normalized.contains("partial") {
+            return Color.orange
+        }
+
+        if normalized.contains("reject") || normalized.contains("overdue") || normalized.contains("past") || normalized.contains("cancel") {
+            return Color.poolRed
+        }
+
+        return Color.secondary
     }
 }

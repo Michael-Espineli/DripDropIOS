@@ -114,7 +114,7 @@ extension Route {
         case .rateSheet(user: _):
             return "Rate Sheet"
         case .chat(chat: _):
-            return "Chat"
+            return "Message"
         case .repairRequest(repairRequest: _):
             return "Repair Request"
         case .customer(customer: _):
@@ -136,7 +136,7 @@ extension Route {
         case .companyProfile:
             return "Company Profile"
         case .chats:
-            return "Chats"
+            return "Messages"
         case .compileInvoice:
             return "Compile Invoice"
         case .createNewJob:
@@ -284,7 +284,7 @@ extension Route {
         case .createCompanyView:
             return "Create Company View"
         case .initiateChat:
-            return "Initiate Chat"
+            return "New Message"
         case .manageTermsTemplates:
             return "Manage Terms Templates"
         case .userRoleDetailView:

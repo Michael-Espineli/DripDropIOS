@@ -12,6 +12,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>stripeConnect</string>
+				<string>dripdrop</string>
 			</array>
 		</dict>
 		<dict/>

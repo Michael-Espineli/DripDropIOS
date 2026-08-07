@@ -558,6 +558,8 @@ final class SettingsManager {
             "870","872","874","876","880","882","884","886",
             "890","892","894","896"
         ]
+        let ownerPermissionIds = allPermissionIds + ["420", "900", "910"]
+        let adminPermissionIds = allPermissionIds + ["900", "910"]
         let managerPermissionIds = [
             "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
             "200","210","220","230","232","234","236","240","242","244","246",
@@ -567,14 +569,14 @@ final class SettingsManager {
             "600","610","612","614","616","620","622","624","626",
             "800","810","812","814","816","820","822","824","826","830","832","834","836",
             "840","842","844","846","850","852","854","856","860","862","864","866",
-            "870","872","874","876","880","882","884","886"
+            "870","872","874","876","880","882","884","886","900"
         ]
         let roles:[Role] = [
-            Role(id: "1", name: "Owner", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
+            Role(id: "1", name: "Owner", permissionIdList: ownerPermissionIds, listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
 
             Role(id: UUID().uuidString, name: "Tech", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Techs"),
             Role(id: UUID().uuidString, name: "Manager", permissionIdList: managerPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Manager"),
-            Role(id: UUID().uuidString, name: "Admin", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
+            Role(id: UUID().uuidString, name: "Admin", permissionIdList: adminPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
             Role(id: UUID().uuidString, name: "Office", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Office Personal")
             ]
         print("Adding Work Order Templates")

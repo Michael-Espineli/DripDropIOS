@@ -33,12 +33,14 @@ struct ChatInitiationView: View {
     @State private var participantInfo: BasicUserInfo?
     @State private var isLoading: Bool = true
     @State private var errorText: String?
+    @State private var participantTargetType: String = "companyUser"
+    @State private var participantCustomerId: String? = nil
 
     var body: some View {
         ZStack {
-            Color(.systemGray6).ignoresSafeArea()
+            Color.listColor.ignoresSafeArea()
             if isLoading {
-                ProgressView("Loading chat...")
+                ProgressView("Loading message...")
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -46,14 +48,14 @@ struct ChatInitiationView: View {
 
                         VStack(spacing: 0) {
                             VStack {
-                                Text("You are starting a new conversation with ")
+                                Text("New message to ")
                                     .foregroundColor(.secondary)
-                                    + Text(participantInfo?.userName ?? "New Chat")
+                                    + Text(participantInfo?.userName ?? "New Message")
                                         .bold()
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.white)
+                            .background(.background)
 
                             Divider()
 
@@ -67,17 +69,20 @@ struct ChatInitiationView: View {
                                         Image(systemName: "paperplane.fill")
                                             .foregroundColor(.white)
                                             .padding(10)
-                                            .background(newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.blue)
+                                            .background(newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.gray : Color.poolGreen)
                                             .clipShape(Circle())
                                     }
                                     .disabled(newMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                                 }
                             }
                             .padding()
-                            .background(Color.white)
+                            .background(.background)
                         }
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                        )
 
                         if let errorText {
                             Text(errorText)
@@ -98,10 +103,15 @@ struct ChatInitiationView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("New Message to \(participantInfo?.userName ?? "...")")
-                .font(.title).bold()
+            Text("New Message")
+                .font(.title3.weight(.semibold))
                 .foregroundColor(.primary)
+            Text(participantInfo?.userName ?? "...")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     // MARK: - Flow
@@ -118,11 +128,13 @@ struct ChatInitiationView: View {
         }
         print("[findOrCreateChat] user \(user)")
         do {
-            // 1) Check if chat exists between current and participant (both orders).
-            // TODO: Query your backend (Firestore) for an existing chat where
-            // participantIds == [currentCompanyId, participantId] or [participantId, currentCompanyId]
-            
-            if let existingChat = try await dataService.getChatBySenderAndReceiver(senderId: user.id, receiverId: otherParticipantId) {
+            participantInfo = try await loadParticipantInfo(participantId: otherParticipantId)
+
+            if let participantInfo, let existingChat = try await findExistingChat(
+                currentUserId: user.id,
+                participant: participantInfo,
+                companyId: masterDataManager.currentCompany?.id
+            ) {
                 print("[findOrCreateChat] existingChat \(existingChat)")
                 print("")
                 print("[findOrCreateChat] Trying to navigate forward")
@@ -133,17 +145,32 @@ struct ChatInitiationView: View {
                 navigationManager.replace(stack: [Route.chat(chat: existingChat, dataService: dataService)])
                 return
             }
-            
-            // 2) Load participant info (user or company)
-            participantInfo = try await loadParticipantInfo(participantId: otherParticipantId)
-            
+
             print("[findOrCreateChat] participantInfo \(String(describing: participantInfo))")
             
             isLoading = false
         } catch {
-            errorText = "Failed to prepare chat: \(error.localizedDescription)"
+            errorText = "Failed to prepare message: \(error.localizedDescription)"
             isLoading = false
         }
+    }
+
+    private func findExistingChat(currentUserId: String, participant: BasicUserInfo, companyId: String?) async throws -> Chat? {
+        if let companyId {
+            let chats = try await dataService.getVisibleChats(userId: currentUserId, companyId: companyId)
+            return chats.first { chat in
+                let hasParticipant = chat.participantIds.contains(participant.userId)
+                let hasCustomer = participantCustomerId.map { chat.customerId == $0 } ?? false
+                let hasCompany = participant.companyId.map { targetCompanyId in
+                    chat.receiverCompanyId == targetCompanyId
+                        || chat.companyId == targetCompanyId
+                        || chat.participantCompanyIds?.contains(targetCompanyId) == true
+                } ?? false
+                return hasParticipant || hasCustomer || hasCompany
+            }
+        }
+
+        return try await dataService.getChatBySenderAndReceiver(senderId: currentUserId, receiverId: participant.userId)
     }
 
     private func handleSendFirstMessage() async {
@@ -180,7 +207,7 @@ struct ChatInitiationView: View {
             print("Created First Chat: \(chat.id)")
             navigationManager.replaceLast(new: Route.chat(chat: chat, dataService: dataService))
         } catch {
-            errorText = "Failed to start chat: \(error.localizedDescription)"
+            errorText = "Failed to start message: \(error.localizedDescription)"
         }
     }
 
@@ -188,18 +215,128 @@ struct ChatInitiationView: View {
 
         
     private func loadParticipantInfo(participantId: String) async throws -> BasicUserInfo {
-        // TODO:
-        // 1) Try users collection for participantId
+        if let company = masterDataManager.currentCompany {
+            if let companyUser = try? await dataService.getCompanyUserById(companyId: company.id, companyUserId: participantId) {
+                participantTargetType = "companyUser"
+                participantCustomerId = nil
+                return companyUserParticipant(companyUser, company: company)
+            }
+
+            if let companyUser = try? await dataService.getCompanyUserByDBUserId(companyId: company.id, userId: participantId) {
+                participantTargetType = "companyUser"
+                participantCustomerId = nil
+                return companyUserParticipant(companyUser, company: company)
+            }
+
+            if let customer = try? await dataService.getCustomerById(companyId: company.id, customerId: participantId) {
+                let customerUserId = linkedCustomerUserId(customer)
+                guard !customerUserId.isEmpty else {
+                    throw ChatInitiationError.customerNotLinked
+                }
+
+                participantTargetType = "customer"
+                participantCustomerId = customer.id
+                return BasicUserInfo(
+                    id: UUID().uuidString,
+                    userId: customerUserId,
+                    userName: customerDisplayName(customer),
+                    userImage: ""
+                )
+            }
+        }
+
+        if let company = try? await dataService.getCompany(companyId: participantId) {
+            participantTargetType = "company"
+            participantCustomerId = nil
+            return BasicUserInfo(
+                id: UUID().uuidString,
+                userId: company.ownerId,
+                userName: company.name,
+                userImage: company.photoUrl ?? "",
+                companyId: company.id,
+                companyName: company.name
+            )
+        }
+
         let user = try await dataService.getOneUser(userId: participantId)
         let fullName = user.firstName + " " + user.lastName
         print("[loadParticipantInfo] fullName: \(fullName)")
+        participantTargetType = "direct"
+        participantCustomerId = nil
 
         return BasicUserInfo(id: UUID().uuidString, userId: participantId, userName: fullName, userImage: user.profileImagePath ?? "")
+    }
+
+    private func companyUserParticipant(_ companyUser: CompanyUser, company: Company) -> BasicUserInfo {
+        BasicUserInfo(
+            id: UUID().uuidString,
+            userId: companyUser.userId,
+            userName: companyUser.userName,
+            userImage: "",
+            companyId: company.id,
+            companyName: company.name,
+            roleName: companyUser.roleName
+        )
+    }
+
+    private func linkedCustomerUserId(_ customer: Customer) -> String {
+        if let linkedCustomerUserId = customer.linkedCustomerUserId?.trimmingCharacters(in: .whitespacesAndNewlines), !linkedCustomerUserId.isEmpty {
+            return linkedCustomerUserId
+        }
+
+        if let linkedHomeownerUserId = customer.linkedHomeownerUserId?.trimmingCharacters(in: .whitespacesAndNewlines), !linkedHomeownerUserId.isEmpty {
+            return linkedHomeownerUserId
+        }
+
+        return customer.linkedCustomerIds?.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func customerDisplayName(_ customer: Customer) -> String {
+        if customer.displayAsCompany, let companyName = customer.company, !companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return companyName
+        }
+
+        let fullName = "\(customer.firstName) \(customer.lastName)".trimmingCharacters(in: .whitespacesAndNewlines)
+        return fullName.isEmpty ? customer.email : fullName
+    }
+
+    private func companyScopedParticipantIds(currentCompany: Company?, participant: BasicUserInfo) -> [String]? {
+        var ids: [String] = []
+
+        if let currentCompany {
+            ids.append(currentCompany.id)
+        }
+
+        if let participantCompanyId = participant.companyId,
+           !participantCompanyId.isEmpty,
+           !ids.contains(participantCompanyId) {
+            ids.append(participantCompanyId)
+        }
+
+        return ids.isEmpty ? nil : ids
     }
 
     private func createChatAndFirstMessage(currentUser: DBUser, currentCompany: Company?, participant: BasicUserInfo, firstMessage: String) async throws -> Chat {
         // TODO:
         let chatId = "chat_" + UUID().uuidString
+        let isCompanyChat = currentCompany != nil
+        let isCustomerChat = participantTargetType == "customer"
+        let isCompanyTarget = participantTargetType == "company"
+        let companyId = currentCompany?.id ?? (isCompanyTarget ? participant.companyId : nil)
+        let companyName = currentCompany?.name ?? (isCompanyTarget ? participant.companyName : nil)
+        let receiverCompanyId = isCompanyTarget ? participant.companyId : nil
+        let participantCompanyIds = companyScopedParticipantIds(currentCompany: currentCompany, participant: participant)
+        let companyIdsWhoHaveNotRead = receiverCompanyId.map { [$0] } ?? []
+        let chatVisibility: ChatVisibility
+        if isCompanyTarget && currentCompany != nil {
+            chatVisibility = .companyToCompany
+        } else if isCompanyTarget || isCustomerChat {
+            chatVisibility = .companyExternal
+        } else if !isCompanyChat {
+            chatVisibility = .direct
+        } else {
+            chatVisibility = .companyInternal
+        }
         let currentUserInfo = BasicUserInfo(
             id: UUID().uuidString,
             userId: currentUser.id,
@@ -213,14 +350,26 @@ struct ChatInitiationView: View {
             id: chatId,
             participantIds: [participant.userId, currentUserInfo.userId],
             participants: [participant,currentUserInfo],
-            companyId: currentCompany?.id,
+            companyId: companyId,
             mostRecentChat: Date(),
             userWhoHaveNotRead: [participant.userId],
             lastMessage: firstMessage,
-            visibility: .direct,
-            participantCompanyIds: currentCompany.map { [$0.id] },
-            companyIdsWhoHaveNotRead: currentCompany.map { [$0.id] },
-            readByUserIds: [currentUser.id]
+            visibility: chatVisibility,
+            participantCompanyIds: participantCompanyIds,
+            companyIdsWhoHaveNotRead: companyIdsWhoHaveNotRead,
+            readByUserIds: [currentUser.id],
+            title: "\(participant.userName) / \(companyName ?? currentUserInfo.userName)",
+            customerId: isCustomerChat ? participantCustomerId : nil,
+            companyName: companyName,
+            senderCompanyId: currentCompany?.id,
+            receiverCompanyId: receiverCompanyId,
+            customerUserId: isCustomerChat ? participant.userId : nil,
+            customerName: isCustomerChat ? participant.userName : nil,
+            audience: (isCustomerChat || isCompanyTarget) ? "external" : (isCompanyChat ? "internal" : "direct"),
+            targetType: isCustomerChat ? "customer" : (isCompanyTarget ? "company" : (isCompanyChat ? "companyUser" : "user")),
+            companyVisibility: isCustomerChat || (isCompanyTarget && currentCompany == nil) ? "public" : nil,
+            publicToCompanyId: isCustomerChat ? currentCompany?.id : (isCompanyTarget && currentCompany == nil ? participant.companyId : nil),
+            lastMessageKind: .text
         )
         print("[createChatAndFirstMessage] chat: \(chat)")
         
@@ -236,5 +385,16 @@ struct ChatInitiationView: View {
         print("[createChatAndFirstMessage] Success")
 
         return chat
+    }
+}
+
+private enum ChatInitiationError: LocalizedError {
+    case customerNotLinked
+
+    var errorDescription: String? {
+        switch self {
+        case .customerNotLinked:
+            return "This customer is not linked to a homeowner account yet."
+        }
     }
 }

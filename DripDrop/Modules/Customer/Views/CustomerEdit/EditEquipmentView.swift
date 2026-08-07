@@ -24,7 +24,7 @@ final class EditEquipmentViewModel: ObservableObject {
     @Published var modelId: String = ""
     @Published var universalEquipmentId: String = ""
     @Published var manualPdfLink: String = ""
-    @Published var dateInstalled: Date = Date()
+    @Published var dateInstalled: Date? = nil
     @Published var status: EquipmentStatus = .operational
     @Published var notes: String = ""
 
@@ -112,6 +112,9 @@ final class EditEquipmentViewModel: ObservableObject {
         }
         if equipment.dateInstalled != dateInstalled {
             try dataService.updateEquipmentDateInstalled(companyId: companyId, equipmentId: equipmentId, dateInstalled: dateInstalled)
+        }
+        if equipment.createdAt == nil {
+            try dataService.updateEquipmentCreatedAt(companyId: companyId, equipmentId: equipmentId, createdAt: Date())
         }
 
         if let pressureInt = Int(cleanPressure), equipment.cleanFilterPressure != pressureInt {
@@ -319,8 +322,7 @@ extension EditEquipmentView {
 
                 GridRow2 {
                     Field(title: "Date Installed") {
-                        DatePicker("", selection: $VM.dateInstalled, displayedComponents: .date)
-                            .labelsHidden()
+                        EditEquipmentInstallDatePicker(date: $VM.dateInstalled)
                     }
 
                     Field(title: "Status") {
@@ -464,6 +466,47 @@ extension EditEquipmentView {
 }
 
 // MARK: - Small UI Building Blocks (Aesthetic Only)
+
+private struct EditEquipmentInstallDatePicker: View {
+    @Binding var date: Date?
+    @State private var draftDate: Date = Date()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle("Install date known", isOn: Binding(
+                get: { date != nil },
+                set: { isKnown in
+                    if isKnown {
+                        date = draftDate
+                    } else {
+                        date = nil
+                    }
+                }
+            ))
+            .toggleStyle(SwitchToggleStyle(tint: .blue))
+
+            if date != nil {
+                DatePicker("", selection: Binding(
+                    get: { date ?? draftDate },
+                    set: { nextDate in
+                        draftDate = nextDate
+                        date = nextDate
+                    }
+                ), displayedComponents: .date)
+                .labelsHidden()
+            } else {
+                Text("Not set")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .onAppear {
+            if let date {
+                draftDate = date
+            }
+        }
+    }
+}
 
 private struct Card<Content: View>: View {
     let content: Content

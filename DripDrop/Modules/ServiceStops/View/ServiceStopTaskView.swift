@@ -713,7 +713,9 @@ struct ServiceStopTaskView: View {
             AddNewRepairRequest(
                 dataService: dataService,
                 isPresented: $VM.showAddRepairRequest,
-                customer: nil
+                customer: nil,
+                customerId: serviceStop?.customerId,
+                serviceLocationId: serviceStop?.serviceLocationId
             )
         }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {

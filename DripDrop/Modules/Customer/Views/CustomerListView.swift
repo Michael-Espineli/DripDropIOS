@@ -78,7 +78,9 @@ final class CustomerListViewModel:ObservableObject{
     func filterCustomerList() {
         //very facncy Search Bar
         print("Filtering Customers: \(searchTerm)")
-        if searchTerm != "" {
+        if searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            self.displayCustomers = customers
+        } else {
             var filteredListOfCustomers:[Customer] = []
             for customer in customers {
                 let phone = customer.phoneNumber ?? "0"
@@ -222,92 +224,294 @@ struct CustomerListView: View{
 }
 extension CustomerListView {
     var mobileList: some View{
-        VStack{
+        VStack(spacing: 0){
+            mobileCustomerHeader
+
+            if VM.showSearch {
+                mobileSearchField
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
+            }
+
             if VM.displayCustomers.count == 0 {
-                if let role = masterDataManager.role {
-                    if role.permissionIdList.contains("12") {
+                ScrollView(showsIndicators: false) {
+                    mobileEmptyState
+                        .padding(.horizontal, 14)
+                        .padding(.top, 14)
+
+                    Color.clear.frame(height: 120)
+                }
+            } else {
+                ScrollView(showsIndicators: false){
+                    LazyVStack(alignment: .leading, spacing: 10, pinnedViews: [.sectionHeaders]) {
+                        ForEach(displayedAlphabetLetters) { letter in
+                            let customers = groupedCustomers(for: letter)
+
+                            if !customers.isEmpty {
+                                Section {
+                                    ForEach(customers){ customer in
+                                        mobileCustomerLink(customer)
+                                    }
+                                } header: {
+                                    mobileSectionHeader(letter.upperCase())
+                                }
+                            }
+                        }
+
+                        if !customersWithoutGroupName.isEmpty {
+                            Section {
+                                ForEach(customersWithoutGroupName){ customer in
+                                    mobileCustomerLink(customer)
+                                }
+                            } header: {
+                                mobileSectionHeader("No Name")
+                            }
+                        }
+
+                        Color.clear.frame(height: 120)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 4)
+                }
+            }
+        }
+    }
+
+    private var mobileCustomerHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.2.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 48, height: 48)
+                    .background(Color.poolBlue.opacity(0.14), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Customers")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(customerListSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 8) {
+                customerSummaryMetric(
+                    title: "Showing",
+                    value: "\(VM.displayCustomers.count)",
+                    tint: .poolBlue
+                )
+
+                customerSummaryMetric(
+                    title: "Active",
+                    value: "\(VM.displayCustomers.filter { $0.active }.count)",
+                    tint: .poolGreen
+                )
+
+                customerSummaryMetric(
+                    title: "Filter",
+                    value: VM.customerFilterOption.display(),
+                    tint: .orange
+                )
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
+    }
+
+    private var mobileSearchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField("Search customers", text: $VM.searchTerm)
+                .focused($searchField, equals: true)
+                .submitLabel(.search)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .onSubmit {
+                    VM.filterCustomerList()
+                }
+
+            if !VM.searchTerm.isEmpty {
+                Button {
+                    VM.searchTerm = ""
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .font(.subheadline)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var mobileEmptyState: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 11) {
+                Image(systemName: "person.crop.circle.badge.questionmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 38, height: 38)
+                    .background(.thinMaterial, in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(VM.searchTerm.isEmpty ? "No customers found." : "No matches found.")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(VM.searchTerm.isEmpty ? "Add a customer to start building this list." : "Try a different name, phone, email, or address.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+            }
+
+            if VM.searchTerm.isEmpty, let role = masterDataManager.role, role.permissionIdList.contains("12") {
                         Button(action: {
                             VM.showCustomerPicker = true
                         }, label: {
-                            Text("Add New Customer")
-                                .modifier(AddButtonModifier())
-                        })
-                    }}
-            } else {
-                switch VM.customerSortOption {
-                case .lastNameHigh, .durationHigh, .durationLow, .lastNameLow, .firstNameLow, .firstNameHigh:
-                    ScrollView{
-                        ForEach(Alphebet.allCases) { letter in
-                            if VM.displayCustomers.filter({$0.lastName.lowercased().starts(with: letter.lowerCase())}).count != 0 {
-                                
-                                Section(content: {
-                                    ForEach(VM.displayCustomers.filter({$0.lastName.lowercased().starts(with: letter.lowerCase())})){ customer in
-                                        if UIDevice.isIPhone {
-                                            NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                                    .padding(.vertical,8)
-                                            })
-                                            .onTapGesture(perform: {
-                                                VM.showSearch = false
-                                                searchField = false
-                                            })
-                                        } else {
-                                            Button(action: {
-                                                masterDataManager.selectedCustomer = customer
-                                                navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                            }, label: {
-                                                CustomerCardViewSmall(customer: customer)
-                                                    .padding(.vertical,8)
-                                            })
-                                        }
-                                    }
-                                    
-                                }, header: {
-                                    HStack{
-                                        Text(letter.upperCase())
-                                            .foregroundColor(Color.accentColor)
-                                        Spacer()
-                                    }
-                                })
-                            }
-                        }
-                        if VM.displayCustomers.filter({$0.firstName.lowercased() == ""}).count != 0 {
-                            Section(content: {
-                                ForEach(VM.displayCustomers.filter({$0.firstName.lowercased() == ""})){ customer in
-                                    if UIDevice.isIPhone {
-                                        NavigationLink(value: Route.customer(customer: customer,dataService:dataService), label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                                .padding(.vertical,8)
-                                        })
-                                        .onTapGesture(perform: {
-                                            VM.showSearch = false
-                                            searchField = false
-                                        })
-                                    } else {
-                                        Button(action: {
-                                            masterDataManager.selectedCustomer = customer
-                                            navigationManager.routes.append(Route.customer(customer: customer,dataService:dataService))
-                                        }, label: {
-                                            CustomerCardViewSmall(customer: customer)
-                                                .padding(.vertical,8)
-                                        })
-                                    }
-                                }
-                                
-                            }, header: {
-                                HStack{
-                                    Text("No Name")
-                                        .foregroundColor(Color.accentColor)
-                                    Spacer()
-                                }
-                            })
-                        }
+                    HStack {
+                        Image(systemName: "plus")
+                        Text("Add Customer")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
                     }
-                    .padding(8)
-                }
-                
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color.poolGreen, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        })
             }
         }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func customerSummaryMetric(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func mobileSectionHeader(_ title: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Color.accentColor)
+
+            Spacer()
+        }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 7)
+        .background(Color.listColor)
+    }
+
+    private func mobileCustomerLink(_ customer: Customer) -> some View {
+        NavigationLink(value: Route.customer(customer: customer,dataService:dataService)) {
+            CustomerCardViewSmall(customer: customer)
+        }
+        .buttonStyle(.plain)
+        .onTapGesture {
+            VM.showSearch = false
+            searchField = false
+        }
+    }
+
+    private var customerListSubtitle: String {
+        let sort = VM.customerSortOption.display()
+        let filter = VM.customerFilterOption.display()
+
+        if VM.searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "\(filter) customers sorted by \(sort.lowercased())."
+        }
+
+        return "Search results for \"\(VM.searchTerm)\"."
+    }
+
+    private var displayedAlphabetLetters: [Alphebet] {
+        switch VM.customerSortOption {
+        case .firstNameLow, .lastNameLow:
+            return Array(Alphebet.allCases.reversed())
+        case .durationLow, .durationHigh, .firstNameHigh, .lastNameHigh:
+            return Alphebet.allCases
+        }
+    }
+
+    private var usesFirstNameGrouping: Bool {
+        switch VM.customerSortOption {
+        case .firstNameHigh, .firstNameLow:
+            return true
+        case .durationLow, .durationHigh, .lastNameHigh, .lastNameLow:
+            return false
+        }
+    }
+
+    private func groupedCustomers(for letter: Alphebet) -> [Customer] {
+        VM.displayCustomers.filter {
+            customerGroupingName($0)
+                .lowercased()
+                .starts(with: letter.lowerCase())
+        }
+    }
+
+    private var customersWithoutGroupName: [Customer] {
+        VM.displayCustomers.filter {
+            customerGroupingName($0)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty
+        }
+    }
+
+    private func customerGroupingName(_ customer: Customer) -> String {
+        if usesFirstNameGrouping {
+            return customer.firstName
+        }
+
+        if !customer.lastName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return customer.lastName
+        }
+
+        if customer.displayAsCompany {
+            return customer.company ?? ""
+        }
+
+        return customer.firstName
     }
     
     var macList: some View{
@@ -692,83 +896,53 @@ extension CustomerListView {
                                     DocumentPicker(filePath: self.$VM.selectedDocumentUrl)
                                 }
                             })
-                        
-                        VStack{
-                            Button(action: {
-                                VM.showFilters.toggle()
-                            }, label: {
-                                Image(systemName: "slider.horizontal.3")
-                                    .modifier(FilterIconModifer())
+                            .sheet(isPresented: $VM.showSelectedContact,onDismiss: {
+                                    //                                    selectedContact = nil
+                                VM.showConfirmationSheet = true
+                            }, content: {
+                                ContactPicker(selectedContact: self.$VM.selectedContact)
                             })
-                            .padding(8)
-                            .sheet(isPresented: $VM.showFilters, onDismiss: {
-                                Task{
-                                    if let company = masterDataManager.currentCompany {
-                                        do {
-                                            VM.removeListener()
-                                            try await VM.changeSortOrFilter(companyId: company.id)
-                                        } catch {
-                                            print(error)
-                                        }
-                                    }
-                                }
+                            .sheet(isPresented: $VM.showConfirmationSheet,onDismiss: {
+                                VM.selectedContact = nil
                             }, content: {
                                 ZStack{
-                                    Color.listColor.ignoresSafeArea()
-                                    VStack{
-                                        HStack{
-                                            Text("Sort & Filter")
-                                                .font(.title)
-                                        }
-                                        Rectangle()
-                                            .frame(height: 1)
-                                        HStack{
-                                            Text("Sort")
-                                            Spacer()
-                                            Picker("Sort: ", selection: $VM.customerSortOption) {
-                                                ForEach(CustomerSortOptions.allCases,id:\.self) {
-                                                    Text($0.display()).tag($0)
-                                                }
-                                            }
-                                        }
-                                        HStack{
-                                            Text("Filter")
-                                            Spacer()
-                                            Picker("Filter:", selection: $VM.customerFilterOption) {
-                                                ForEach(CustomerFilterOptions.allCases,id:\.self) {
-                                                    Text($0.display()).tag($0)
-                                                }
-                                            }
-                                        }
-                                            //----------------------------------------
-                                            //Add Back in During Roll out of Phase 2
-                                            //----------------------------------------
-                                            //                                    HStack{
-                                            //                                        Text("Tags")
-                                            //                                        Spacer()
-                                            //                                        Picker("Tags:", selection: $VM.tag) {
-                                            //                                            Text("Tag")
-                                            //                                            ForEach(VM.tags,id:\.self) {
-                                            //                                                Text($0).tag($0)
-                                            //                                            }
-                                            //                                        }
-                                            //                                    }
-                                        Spacer()
+                                    if VM.selectedContact != nil {
+                                        AddNewCustomerConfirmationScreen(dataService: dataService,contact:VM.selectedContact!)
                                     }
-                                    .padding(16)
                                 }
-                                .presentationDetents([.fraction(0.3), .medium])
                             })
+
+                        VStack(spacing: 10){
+                            Button {
+                                VM.showFilters.toggle()
+                            } label: {
+                                mobileDockIcon(
+                                    systemImage: "slider.horizontal.3",
+                                    tint: .orange,
+                                    isSelected: VM.showFilters
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .sheet(isPresented: $VM.showFilters, onDismiss: {
+                                if let company = masterDataManager.currentCompany {
+                                    VM.removeListener()
+                                    VM.changeSortOrFilter(companyId: company.id)
+                                }
+                            }, content: {
+                                customerFilterSheet
+                            })
+
                             if role.permissionIdList.contains("12") {
-                                Button(action: {
-                                    Task{
-                                        VM.showCustomerPicker = true
-                                    }
-                                }, label: {
-                                    Image(systemName: "plus")
-                                        .modifier(PlusIconModifer())
-                                })
-                                .padding(8)
+                                Button {
+                                    VM.showCustomerPicker = true
+                                } label: {
+                                    mobileDockIcon(
+                                        systemImage: "plus",
+                                        tint: .poolGreen,
+                                        isSelected: false
+                                    )
+                                }
+                                .buttonStyle(.plain)
                                 .confirmationDialog("Select Type", isPresented: self.$VM.showCustomerPicker, actions: {
                                     Button(action: {
                                         VM.pickerType = .new
@@ -821,62 +995,116 @@ extension CustomerListView {
                                         }
                                     }
                                 }
-                                Button(action: {
+                            }
+
+                            Button(action: {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
                                     VM.showSearch.toggle()
-                                    
-                                    searchField.toggle()
-                                    VM.filterCustomerList()
-                                }, label: {
-                                    Image(systemName: "magnifyingglass")
-                                        .modifier(SearchIconModifer())
-                                })
-                                .padding(10)
-                                .sheet(isPresented: $VM.showSelectedContact,onDismiss: {
-                                        //                                    selectedContact = nil
-                                    VM.showConfirmationSheet = true
-                                }, content: {
-                                    ContactPicker(selectedContact: self.$VM.selectedContact)
-                                })
-                                .sheet(isPresented: $VM.showConfirmationSheet,onDismiss: {
-                                    VM.selectedContact = nil
-                                }, content: {
-                                    ZStack{
-                                        if VM.selectedContact != nil {
-                                            AddNewCustomerConfirmationScreen(dataService: dataService,contact:VM.selectedContact!)
-                                        }
-                                    }
-                                })
-                            }
-                            
-                        }
-                        
-                    }
-                    if VM.showSearch && UIDevice.isIPhone{
-                        HStack{
-                            HStack{
-                                TextField(
-                                    "Search",
-                                    text: $VM.searchTerm
-                                )
-                                .focused($searchField, equals: true)
-                                .submitLabel(.search)
-                                .onSubmit {
-                                    VM.filterCustomerList()
                                 }
-                                Spacer()
-                                Button(action: {
-                                    VM.searchTerm = ""
-                                }, label: {
-                                    Image(systemName: "xmark")
-                                })
-                            }
-                            .modifier(SearchTextFieldModifier())
-                            .padding(8)
+                                searchField = VM.showSearch
+                                VM.filterCustomerList()
+                            }, label: {
+                                mobileDockIcon(
+                                    systemImage: "magnifyingglass",
+                                    tint: .poolBlue,
+                                    isSelected: VM.showSearch
+                                )
+                            })
+                            .buttonStyle(.plain)
                         }
-                        .background(Color.listColor)
+                        .padding(7)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                        )
+                        .padding(.trailing, 14)
+                        .padding(.bottom, UIDevice.isIPhone ? 18 : 14)
                     }
                 }
             }
         }
+    }
+
+    private func mobileDockIcon(
+        systemImage: String,
+        tint: Color,
+        isSelected: Bool
+    ) -> some View {
+        Image(systemName: systemImage)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(isSelected ? Color.white : tint)
+            .frame(width: 40, height: 40)
+            .background(
+                isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.13)),
+                in: Circle()
+            )
+    }
+
+    private var customerFilterSheet: some View {
+        DripDropFilterSheet(
+            title: "Sort & Filter",
+            isPresented: $VM.showFilters,
+            isResetDisabled: customerActiveFilterCount == 0,
+            onReset: resetCustomerFilters
+        ) {
+            DripDropFilterSummaryCard(
+                title: "\(VM.displayCustomers.count) customers showing",
+                subtitle: customerActiveFilterCount == 0 ? "Using the default customer list settings." : "\(customerActiveFilterCount) list setting\(customerActiveFilterCount == 1 ? "" : "s") changed.",
+                systemImage: "person.2.fill",
+                tint: .orange
+            )
+
+            DripDropFilterSection(
+                title: "Customer List",
+                systemImage: "person.text.rectangle",
+                tint: .orange
+            ) {
+                DripDropFilterRow(
+                    title: "Sort",
+                    subtitle: "List order",
+                    systemImage: "arrow.up.arrow.down",
+                    tint: .poolBlue
+                ) {
+                    Picker("Sort", selection: $VM.customerSortOption) {
+                        ForEach(CustomerSortOptions.allCases, id: \.self) { option in
+                            Text(option.display()).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+
+                DripDropFilterRow(
+                    title: "Filter",
+                    subtitle: "Account status",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    tint: .orange
+                ) {
+                    Picker("Filter", selection: $VM.customerFilterOption) {
+                        ForEach(CustomerFilterOptions.allCases, id: \.self) { option in
+                            Text(option.display()).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+            }
+        }
+        .presentationDetents([.fraction(0.35), .medium])
+    }
+
+    private var customerActiveFilterCount: Int {
+        var count = 0
+
+        if VM.customerSortOption != .lastNameHigh { count += 1 }
+        if VM.customerFilterOption != .active { count += 1 }
+
+        return count
+    }
+
+    private func resetCustomerFilters() {
+        VM.customerSortOption = .lastNameHigh
+        VM.customerFilterOption = .active
     }
 }

@@ -303,6 +303,7 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "412", name: "Create Finished Jobs", description: "", category: "Finance"),
         PermissionModel(id: "414", name: "Update Finished Jobs", description: "", category: "Finance"),
         PermissionModel(id: "416", name: "Delete Finished Jobs", description: "", category: "Finance"),
+        PermissionModel(id: "420", name: "Payroll Information", description: "Can view payroll setup, pay statements, and technician pay line items.", category: "Finance"),
         
         PermissionModel(id: "600", name: "Marketing", description: "", category: "Marketing"),
         PermissionModel(id: "610", name: "Leads", description: "", category: "Marketing"),
@@ -351,6 +352,8 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "892", name: "Create Manage Subscriptions", description: "", category: "Settings"),
         PermissionModel(id: "894", name: "Update Manage Subscriptions", description: "", category: "Settings"),
         PermissionModel(id: "896", name: "Delete Manage Subscriptions", description: "", category: "Settings"),
+        PermissionModel(id: "900", name: "General Company Configuration", description: "Can manage general company setup and configuration tools.", category: "Settings"),
+        PermissionModel(id: "910", name: "Data Uploads", description: "Can access company data import and upload tools.", category: "Settings"),
     ]
     let permissionIds: [String] = [
         "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
@@ -358,12 +361,12 @@ final class PermissionViewModel:ObservableObject{
         "200","210","220","230","232","234","236","240","242","244","246",
         "250","252","254","256","260","262","264","266","280","282","284","286",
         "290","292","294","296",
-        "400","410","412","414","416",
+        "400","410","412","414","416","420",
         "600","610","612","614","616","620","622","624","626",
         "800","810","812","814","816","820","822","824","826","830","832","834","836",
         "840","842","844","846","850","852","854","856","860","862","864","866",
         "870","872","874","876","880","882","884","886",
-        "890","892","894","896"
+        "890","892","894","896","900","910"
     ]
     func getPermissionsByIdList(ids:[String]){
         var list:[PermissionModel] = []

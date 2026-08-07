@@ -26,7 +26,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
     var modelId :String //For Universal equipment. Says Custom if not selected
     var universalEquipmentId: String
     var manualPdfLink: String
-    var dateInstalled : Date
+    var dateInstalled : Date?
+    var createdAt: Date?
     var status : EquipmentStatus
     var needsService : Bool
     var cleanFilterPressure: Int?
@@ -57,7 +58,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         modelId : String,
         universalEquipmentId: String = "",
         manualPdfLink: String = "",
-        dateInstalled  : Date,
+        dateInstalled  : Date? = nil,
+        createdAt: Date? = nil,
         status:EquipmentStatus,
         needsService:Bool,
         cleanFilterPressure : Int? = nil,
@@ -90,6 +92,7 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.universalEquipmentId = universalEquipmentId
         self.manualPdfLink = manualPdfLink
         self.dateInstalled = dateInstalled
+        self.createdAt = createdAt
         self.status = status
         
         self.needsService = needsService
@@ -122,6 +125,7 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             case universalEquipmentId = "universalEquipmentId"
             case manualPdfLink = "manualPdfLink"
             case dateInstalled = "dateInstalled"
+            case createdAt = "createdAt"
             case status = "status"
             case needsService = "needsService"
             case cleanFilterPressure = "cleanFilterPressure"
@@ -193,7 +197,8 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.modelId = try container.decodeIfPresent(String.self, forKey: .modelId) ?? ""
         self.universalEquipmentId = try container.decodeIfPresent(String.self, forKey: .universalEquipmentId) ?? self.modelId
         self.manualPdfLink = try container.decodeIfPresent(String.self, forKey: .manualPdfLink) ?? ""
-        self.dateInstalled = try container.decodeIfPresent(Date.self, forKey: .dateInstalled) ?? Date()
+        self.dateInstalled = try container.decodeIfPresent(Date.self, forKey: .dateInstalled)
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
 
         let statusRaw = try container.decodeIfPresent(String.self, forKey: .status) ?? EquipmentStatus.operational.rawValue
         self.status = EquipmentStatus(rawValue: statusRaw) ?? .operational
@@ -230,6 +235,10 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
 }
 
 extension Equipment {
+    var dateForGeneratedParts: Date {
+        dateInstalled ?? createdAt ?? Date()
+    }
+
     var maintenanceDueDateForFollowUp: Date? {
         if let nextServiceDate {
             return nextServiceDate
@@ -523,7 +532,9 @@ extension ProductionDataService {
   }
     //CREATE
     func uploadEquipment(companyId:String,equipment:Equipment) async throws {
-        try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: false)
+        var equipmentToSave = equipment
+        equipmentToSave.createdAt = equipmentToSave.createdAt ?? Date()
+        try equipmentCollection(companyId: companyId).document(equipmentToSave.id).setData(from: equipmentToSave, merge: false)
     }
     func uploadEquipmentHistory(companyId:String,equipmentId:String,history:EquipmentServiceHistory) async throws {
         try equipmentServiceHistoryCollection(companyId: companyId,equipmentId:equipmentId).document(history.id).setData(from:history, merge: false)
@@ -642,10 +653,17 @@ extension ProductionDataService {
             Equipment.CodingKeys.manualPdfLink.stringValue: manualPdfLink
         ])
     }
-    func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date) throws {
+    func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date?) throws {
+        let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        let dateInstalledValue: Any = dateInstalled.map { $0 as Any } ?? FieldValue.delete()
+        equipmentRef.updateData([
+            Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue
+        ])
+    }
+    func updateEquipmentCreatedAt(companyId:String,equipmentId:String,createdAt:Date) throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         equipmentRef.updateData([
-            Equipment.CodingKeys.dateInstalled.stringValue:dateInstalled
+            Equipment.CodingKeys.createdAt.stringValue: createdAt
         ])
     }
     func updateEquipmentStatus(companyId:String,equipmentId:String,status:EquipmentStatus) throws {
@@ -726,6 +744,8 @@ extension ProductionDataService {
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        let createdAt = equipment.createdAt ?? Date()
+        let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
             Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
@@ -736,7 +756,8 @@ extension ProductionDataService {
             Equipment.CodingKeys.modelId.stringValue:equipment.modelId,
             Equipment.CodingKeys.universalEquipmentId.stringValue:equipment.universalEquipmentId,
             Equipment.CodingKeys.manualPdfLink.stringValue:equipment.manualPdfLink,
-            Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
+            Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue,
+            Equipment.CodingKeys.createdAt.stringValue: createdAt,
             Equipment.CodingKeys.status.stringValue:equipment.status.rawValue,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
@@ -754,6 +775,41 @@ extension ProductionDataService {
     }
     //DELETE
     func deleteEquipment(companyId:String,equipmentId:String) async throws {
-        try await equipmentDoc(companyId: companyId, equipmentId: equipmentId).delete()
+        let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        let subcollections = [
+            "parts",
+            "serviceHistory",
+            "scheduledWork",
+            "equipmentMeasurements",
+            "equipmentMeasurments"
+        ]
+        var batch = db.batch()
+        var writeCount = 0
+
+        func commitIfNeeded() async throws {
+            guard writeCount >= 450 else { return }
+            try await batch.commit()
+            batch = db.batch()
+            writeCount = 0
+        }
+
+        func queueDelete(_ reference: DocumentReference) async throws {
+            batch.deleteDocument(reference)
+            writeCount += 1
+            try await commitIfNeeded()
+        }
+
+        for collectionName in subcollections {
+            let snapshot = try await equipmentRef.collection(collectionName).getDocuments()
+            for document in snapshot.documents {
+                try await queueDelete(document.reference)
+            }
+        }
+
+        try await queueDelete(equipmentRef)
+
+        if writeCount > 0 {
+            try await batch.commit()
+        }
     }
 }

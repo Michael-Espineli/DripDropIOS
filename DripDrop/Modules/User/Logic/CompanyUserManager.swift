@@ -63,7 +63,28 @@ struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will A
     var linkedCompanyId : String?
     var linkedCompanyName : String?
     var allowPersonalVehicle: Bool?
+    var routeVehicleAccess: String?
     var personalVehicle: PersonalVehicle?
+
+    var normalizedRouteVehicleAccess: String {
+        let normalizedValue = routeVehicleAccess?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        if let normalizedValue, ["personal", "company", "both"].contains(normalizedValue) {
+            return normalizedValue
+        }
+
+        return allowPersonalVehicle == true ? "both" : "company"
+    }
+
+    var canUsePersonalRouteVehicle: Bool {
+        normalizedRouteVehicleAccess == "personal" || normalizedRouteVehicleAccess == "both"
+    }
+
+    var canUseCompanyRouteVehicle: Bool {
+        normalizedRouteVehicleAccess == "company" || normalizedRouteVehicleAccess == "both"
+    }
     
     init(
         id: String,
@@ -77,6 +98,7 @@ struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will A
         linkedCompanyId: String? = nil,
         linkedCompanyName: String? = nil,
         allowPersonalVehicle: Bool? = nil,
+        routeVehicleAccess: String? = nil,
         personalVehicle: PersonalVehicle? = nil
     ) {
         self.id = id
@@ -90,6 +112,7 @@ struct CompanyUser:Codable,Identifiable,Hashable{ // the Id of UserAccess Will A
         self.linkedCompanyId = linkedCompanyId
         self.linkedCompanyName = linkedCompanyName
         self.allowPersonalVehicle = allowPersonalVehicle
+        self.routeVehicleAccess = routeVehicleAccess
         self.personalVehicle = personalVehicle
     }
 }

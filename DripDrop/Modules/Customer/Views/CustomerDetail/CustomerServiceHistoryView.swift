@@ -356,10 +356,18 @@ struct CustomerTimelineView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
+            HStack(spacing: 10) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolBlue.opacity(0.13), in: Circle())
+
                 Text("Customer Timeline")
                     .font(.headline.weight(.semibold))
+
                 Spacer()
+
                 if VM.isLoading {
                     ProgressView()
                 }
@@ -404,10 +412,10 @@ struct CustomerTimelineView: View {
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
         )
         .task(id: customer.id) {
             if let company = masterDataManager.currentCompany {
@@ -482,14 +490,14 @@ struct CustomerTimelineView: View {
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .foregroundStyle(selectedFilter == filter ? Color.primary : Color.secondary)
+                            .foregroundStyle(selectedFilter == filter ? Color.white : Color.secondary)
                             .background(
                                 Capsule()
-                                    .fill(selectedFilter == filter ? Color(.secondarySystemBackground) : Color.clear)
+                                    .fill(selectedFilter == filter ? Color.accentColor : Color.primary.opacity(0.035))
                             )
                             .overlay(
                                 Capsule()
-                                    .stroke(Color.secondary.opacity(selectedFilter == filter ? 0.25 : 0.15), lineWidth: 1)
+                                    .stroke(selectedFilter == filter ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.07), lineWidth: 1)
                             )
                     }
                     .buttonStyle(.plain)

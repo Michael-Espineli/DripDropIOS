@@ -45,7 +45,7 @@ final class AddEquipmentViewModel: ObservableObject {
     @Published var modelId: String = ""
     @Published var universalEquipmentId: String = ""
     @Published var manualPdfLink: String = ""
-    @Published var dateInstalled: Date = Date()
+    @Published var dateInstalled: Date? = nil
     @Published var status: EquipmentStatus = .operational
     @Published var notes: String = ""
 
@@ -94,6 +94,7 @@ final class AddEquipmentViewModel: ObservableObject {
 
         if let customer {
             let fullName = customer.firstName + " " + customer.lastName
+            let createdAt = Date()
             let equipment = Equipment(
                 id: bodyOfWaterId,
                 name: name,
@@ -106,6 +107,7 @@ final class AddEquipmentViewModel: ObservableObject {
                 universalEquipmentId: universalEquipmentId,
                 manualPdfLink: manualPdfLink,
                 dateInstalled: dateInstalled,
+                createdAt: createdAt,
                 status: status,
                 needsService: needsService,
                 lastServiceDate: lastServiced,
@@ -138,7 +140,7 @@ final class AddEquipmentViewModel: ObservableObject {
         self.modelId = ""
         self.universalEquipmentId = ""
         self.manualPdfLink = ""
-        self.dateInstalled = Date()
+        self.dateInstalled = nil
         self.notes = ""
         self.status = .operational
         self.needsService = false
@@ -288,8 +290,7 @@ extension AddEquipmentView {
 
                 GridRow2 {
                     Field(title: "Date Installed") {
-                        DatePicker("", selection: $VM.dateInstalled, displayedComponents: .date)
-                            .labelsHidden()
+                        AddEquipmentInstallDatePicker(date: $VM.dateInstalled)
                     }
                     Field(title: "Status") {
                         Picker("Status", selection: $VM.status) {
@@ -554,6 +555,47 @@ private struct RowButton: View {
     }
 }
 
+private struct AddEquipmentInstallDatePicker: View {
+    @Binding var date: Date?
+    @State private var draftDate: Date = Date()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle("Install date known", isOn: Binding(
+                get: { date != nil },
+                set: { isKnown in
+                    if isKnown {
+                        date = draftDate
+                    } else {
+                        date = nil
+                    }
+                }
+            ))
+            .toggleStyle(SwitchToggleStyle(tint: .blue))
+
+            if date != nil {
+                DatePicker("", selection: Binding(
+                    get: { date ?? draftDate },
+                    set: { nextDate in
+                        draftDate = nextDate
+                        date = nextDate
+                    }
+                ), displayedComponents: .date)
+                .labelsHidden()
+            } else {
+                Text("Not set")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .onAppear {
+            if let date {
+                draftDate = date
+            }
+        }
+    }
+}
+
 // MARK: - Shared UI Building Blocks
 
 private struct Card<Content: View>: View {
@@ -647,24 +689,6 @@ struct EquipmentCatalogSelectionControl: View {
                 .textCase(.uppercase)
 
             VStack(spacing: 8) {
-                Button(action: { showCatalog = true }) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass")
-                        Text("Search equipment catalog")
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
-
                 Button(action: clearCatalogIds) {
                     HStack(spacing: 10) {
                         Image(systemName: "square.and.pencil")
@@ -680,6 +704,24 @@ struct EquipmentCatalogSelectionControl: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.secondarySystemBackground))
                     .foregroundColor(.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: { showCatalog = true }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                        Text("Search equipment catalog")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -834,6 +876,11 @@ private struct EquipmentCatalogSelectionSheet: View {
                         }
 
                         VStack(spacing: 10) {
+                            RowButton(title: "Use custom make/model") {
+                                onCustom()
+                                dismiss()
+                            }
+
                             if let selectedType {
                                 if let selectedMake {
                                     listHeader("Models", count: equipmentModels.count)

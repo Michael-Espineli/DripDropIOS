@@ -64,7 +64,6 @@ final class JobDetailViewModel:ObservableObject{
         "Schedule",
         "Materials",
         "Actual",
-        "Comments",
         "Billing"
     ]
     @Published private(set) var jobTaskList:[JobTask] = []

@@ -262,10 +262,24 @@ struct CustomerOutstandingWork: Identifiable, Codable, Hashable {
     }
 }
 
+struct CustomerPartApprovalHistoryItem: Identifiable, Codable, Hashable {
+    var id: String = "cpa_hist_" + UUID().uuidString
+    var action: String?
+    var status: String?
+    var note: String?
+    var source: String?
+    var sourceLabel: String?
+    var actorUserId: String?
+    var actorUserName: String?
+    var actorEmail: String?
+    var createdAt: Date?
+}
+
 struct CustomerPartApproval: Identifiable, Codable, Hashable {
     var id: String = "cpa_" + UUID().uuidString
     var companyId: String?
     var companyName: String?
+    var customerApprovalUrl: String?
     var customerId: String?
     var customerUserId: String?
     var customerName: String?
@@ -274,6 +288,7 @@ struct CustomerPartApproval: Identifiable, Codable, Hashable {
     var billingEmail: String?
     var serviceLocationId: String?
     var serviceLocationName: String?
+    var serviceLocationAddress: String?
     var shoppingListItemId: String?
     var shoppingListPath: String?
     var itemName: String?
@@ -297,6 +312,46 @@ struct CustomerPartApproval: Identifiable, Codable, Hashable {
     var updatedAt: Date?
     var requestedByUserId: String?
     var requestedByUserName: String?
+    var jobId: String?
+    var jobName: String?
+    var jobInternalId: String?
+    var linkedTaskId: String?
+    var linkedTaskName: String?
+    var linkedTaskType: String?
+    var serviceStopId: String?
+    var serviceStopInternalId: String?
+    var scheduledServiceStopId: String?
+    var scheduledServiceStopInternalId: String?
+    var scheduledDate: Date?
+    var techId: String?
+    var techName: String?
+    var assignedTechId: String?
+    var assignedTechName: String?
+    var assignedToUserId: String?
+    var assignedToUserName: String?
+    var assignedTechIds: [String]?
+    var assignedTechNames: [String]?
+    var purchaserId: String?
+    var purchaserName: String?
+    var prepKeys: [String]?
+    var response: String?
+    var responseNote: String?
+    var respondedAt: Date?
+    var respondedByUserId: String?
+    var respondedByUserName: String?
+    var respondedByEmail: String?
+    var responseSource: String?
+    var responseSourceLabel: String?
+    var respondedOnBehalfOfCustomer: Bool?
+    var customerConversationRecorded: Bool?
+    var approvedInPerson: Bool?
+    var deniedInPerson: Bool?
+    var inPersonApprovedByUserId: String?
+    var inPersonDeniedByUserId: String?
+    var shoppingListGeneratedAt: Date?
+    var lastResentAt: Date?
+    var resendCount: Int?
+    var history: [CustomerPartApprovalHistoryItem]?
 
     var displayTitle: String {
         itemName ?? name ?? dbItemName ?? "Part Approval"
@@ -311,7 +366,13 @@ struct CustomerPartApproval: Identifiable, Codable, Hashable {
     }
 
     var displayTotalCents: Int {
-        plannedTotalPriceCents ?? 0
+        if let plannedTotalPriceCents, plannedTotalPriceCents > 0 {
+            return plannedTotalPriceCents
+        }
+
+        let quantityValue = Double(quantity ?? "1") ?? 1
+        let unitPrice = plannedUnitPriceCents ?? 0
+        return Int((Double(unitPrice) * quantityValue).rounded())
     }
 
     var isOpen: Bool {

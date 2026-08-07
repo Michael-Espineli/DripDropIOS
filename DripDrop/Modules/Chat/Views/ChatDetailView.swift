@@ -25,14 +25,16 @@ struct ChatDetailView: View {
     @State var participant:String = ""
     @State private var showLinkComposer: Bool = false
     var body: some View {
-        VStack{
-            ScrollView(.vertical, showsIndicators: false) {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+            VStack(spacing: 0) {
                 messages2
-                
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                newMessage
             }
-            newMessage
         }
-        .navigationTitle(participant)
+        .navigationTitle(participant.isEmpty ? "Messages" : participant)
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             do {
           
@@ -64,10 +66,17 @@ struct ChatDetailView: View {
 extension ChatDetailView {
     var messages2: some View {
         ScrollViewReader { scrollView in
-            ScrollView{
-                LazyVStack{
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 8) {
                     if let user = masterDataManager.user {
-                        
+
+                        if chatVM.listOfMessages.isEmpty {
+                            emptyThreadState
+                                .padding(.horizontal, 14)
+                                .padding(.top, 14)
+                                .flippedUpsideDown()
+                        }
+
                         ForEach(chatVM.listOfMessages) { item in
                             VStack{
                                 HStack{
@@ -84,25 +93,25 @@ extension ChatDetailView {
                                 }
                                 if item.senderId == user.id {
                                     
-                                    HStack{
+                                    HStack(spacing: 6){
                                         Spacer()
                                         Text("\(item.senderName)")
-                                            .font(.footnote)
                                         Text("\(fullTime(date:item.dateSent))")
-                                            .font(.footnote)
                                     }
                                 } else {
-                                    HStack{
+                                    HStack(spacing: 6){
                                         Text("\(item.senderName)")
-                                            .font(.footnote)
                                         Text("\(fullTime(date:item.dateSent))")
-                                            .font(.footnote)
                                         Spacer()
                                     }
                                     
                                 }
                                 
                             }
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 2)
                             .id(item)
                             .flippedUpsideDown()
 
@@ -116,7 +125,7 @@ extension ChatDetailView {
                                         let placeHolder = messagesToGet
                                         messagesToGet = messagesToGet + 10
                                         print("Messages to get \(messagesToGet)")
-                                        print("Loading New Chats")
+                                        print("Loading More Messages")
                                         
                                         if let chat = masterDataManager.selectedChat {
                                             chatVM.removeListenerForMessages()
@@ -124,13 +133,18 @@ extension ChatDetailView {
                                         }
                                         scrollView.scrollTo(chatVM.listOfMessages[placeHolder - 1],anchor: .bottomTrailing)
                                     }
+                                    .flippedUpsideDown()
                                     } else {
                                         Button(action: {
-                                            scrollView.scrollTo(chatVM.listOfMessages[chatVM.listOfMessages.startIndex + 1],anchor: .bottomTrailing)
+                                            if let message = scrollAnchorMessage {
+                                                scrollView.scrollTo(message,anchor: .bottomTrailing)
+                                            }
 
                                         }, label: {
-                                            VStack{
+                                            VStack(spacing: 4){
                                                 Text("No More Messages")
+                                                    .font(.caption.weight(.semibold))
+                                                    .foregroundStyle(.secondary)
                                             }
                                         })
                                             .flippedUpsideDown()
@@ -144,7 +158,9 @@ extension ChatDetailView {
 
                 .onChange(of: chatVM.listOfMessages, perform: { list in
                     if list.count > 3 {
-                        scrollView.scrollTo(chatVM.listOfMessages[chatVM.listOfMessages.startIndex + 1],anchor: .bottomTrailing)
+                        if let message = scrollAnchorMessage {
+                            scrollView.scrollTo(message,anchor: .bottomTrailing)
+                        }
                     }
                 })
         }
@@ -203,13 +219,18 @@ extension ChatDetailView {
         }
     }
     var newMessage: some View {
-        HStack{
+        HStack(spacing: 10) {
             Button(action: {
                 showLinkComposer = true
             }, label: {
                 Image(systemName: "plus")
-                    .font(.headline)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.poolBlue.opacity(0.13), in: Circle())
             })
+            .buttonStyle(.plain)
+            .accessibilityLabel("Attach record")
             .sheet(isPresented: $showLinkComposer) {
                 ShareConversationLinkSheet { link, note in
                     Task {
@@ -217,73 +238,112 @@ extension ChatDetailView {
                     }
                 }
             }
-            HStack{
+
+            HStack(spacing: 8) {
                 TextField(
                     "Message",
                     text: $message,
                     axis: .vertical
                 )
-                .foregroundColor(Color.black)
-                .background(Color.white)
+                .foregroundStyle(.primary)
+                .submitLabel(.send)
                 .onSubmit {
                     Task {
-                        do {
-                            if message == "" {
-                                return
-                            }
-                            if let user = masterDataManager.user {
-                                let fullName = (user.firstName) + " " + (user.lastName)
-                                    try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, senderCompanyId: masterDataManager.currentCompany?.id, senderCompanyName: masterDataManager.currentCompany?.name, message: message, chatId: chat.id)
-                                    try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
-                                    message = ""
-                          
-                            } else {
-                                print("Invalid User")
-                            }
-                            //DEVELOPER ADD Subscriber Rather than having to re grab every time
-                            
-                        } catch {
-                            print("[ChatDetailView][onSubmit] \(error)")
-                        }
+                        await sendCurrentMessage()
                     }
                 }
-            if message != "" {
+
                 Button(action: {
                     Task {
-                        do {
-                            if let user = masterDataManager.user {
-                                let fullName = (user.firstName) + " " + (user.lastName)
-                                    try await chatVM.sendNewMessage(userId: user.id, senderName: fullName, senderCompanyId: masterDataManager.currentCompany?.id, senderCompanyName: masterDataManager.currentCompany?.name, message: message, chatId: chat.id)
-                                    try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
-                                    message = ""
-                          
-                            } else {
-                                print("Invalid User")
-                            }
-                            //DEVELOPER ADD Subscriber Rather than having to re grab every time
-                            
-                        } catch {
-                            print("[ChatDetailView][buttonPress] \(error)")
-                        }
+                        await sendCurrentMessage()
                     }
                 }, label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .foregroundColor(Color.blue)
-                        .font(.headline)
+                    Image(systemName: "arrow.up")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(trimmedMessage.isEmpty ? Color.secondary : Color.white)
+                        .frame(width: 30, height: 30)
+                        .background(trimmedMessage.isEmpty ? Color.primary.opacity(0.08) : Color.poolGreen, in: Circle())
                 })
-            }
+                .buttonStyle(.plain)
+                .disabled(trimmedMessage.isEmpty)
+                .accessibilityLabel("Send Message")
             }
             .textFieldStyle(PlainTextFieldStyle())
-            .font(.headline)
-            .padding(8)
-            .background(Color.white)
-            .cornerRadius(20)
-            .foregroundColor(Color.black)
+            .font(.subheadline)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 16)
         }
-        .padding(8)
-        .background(Color.gray.opacity(0.5))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
+    }
+
+    private var trimmedMessage: String {
+        message.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var emptyThreadState: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 11) {
+                Image(systemName: "bubble.left")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 38, height: 38)
+                    .background(.thinMaterial, in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("No messages yet.")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("Send the first message in this thread.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var scrollAnchorMessage: Message? {
+        guard !chatVM.listOfMessages.isEmpty else { return nil }
+        let anchorIndex = chatVM.listOfMessages.index(after: chatVM.listOfMessages.startIndex)
+        if chatVM.listOfMessages.indices.contains(anchorIndex) {
+            return chatVM.listOfMessages[anchorIndex]
+        }
+        return chatVM.listOfMessages.first
+    }
+
+    private func sendCurrentMessage() async {
+        do {
+            guard !trimmedMessage.isEmpty else { return }
+            guard let user = masterDataManager.user else {
+                print("Invalid User")
+                return
+            }
+
+            let fullName = (user.firstName) + " " + (user.lastName)
+            try await chatVM.sendNewMessage(
+                userId: user.id,
+                senderName: fullName,
+                senderCompanyId: masterDataManager.currentCompany?.id,
+                senderCompanyName: masterDataManager.currentCompany?.name,
+                message: trimmedMessage,
+                chatId: chat.id
+            )
+            message = ""
+        } catch {
+            print("[ChatDetailView][sendCurrentMessage] \(error)")
+        }
     }
     
     private func sendLink(_ link: ConversationLink, note: String) async {
@@ -302,7 +362,6 @@ extension ChatDetailView {
                 note: note,
                 link: link
             )
-            try await chatVM.markChatAsUnRead(userId: user.id, chat: chat)
         } catch {
             print("[ChatDetailView][sendLink] \(error)")
         }
@@ -317,18 +376,26 @@ private struct ChatMessageContent: View {
         VStack(alignment: .leading, spacing: 8) {
             if !message.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(message.message)
+                    .font(.subheadline)
             }
 
-            ForEach(message.attachments ?? []) { link in
+            ForEach(message.messageLinks) { link in
                 ConversationLinkCard(link: link)
             }
         }
-        .padding(8)
-        .background(isCurrentUser ? Color.blue : Color.gray)
-        .foregroundColor(Color.white)
-        .cornerRadius(8)
-        .padding(5)
-        .frame(maxWidth: 280, alignment: isCurrentUser ? .trailing : .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(messageBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(isCurrentUser ? Color.clear : Color.primary.opacity(0.07), lineWidth: 1)
+        )
+        .foregroundStyle(isCurrentUser ? Color.white : Color.primary)
+        .frame(maxWidth: 300, alignment: isCurrentUser ? .trailing : .leading)
+    }
+
+    private var messageBackground: Color {
+        isCurrentUser ? Color.poolBlue : Color(.secondarySystemBackground)
     }
 }
 
@@ -338,14 +405,15 @@ private struct ConversationLinkCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: link.type.systemImage)
-                .font(.headline)
-                .frame(width: 24)
+                .font(.caption.weight(.semibold))
+                .frame(width: 28, height: 28)
+                .background(Color.primary.opacity(0.08), in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(link.type.displayName)
                     .font(.caption)
                     .fontWeight(.semibold)
-                    .opacity(0.85)
+                    .opacity(0.78)
                 Text(link.title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -370,14 +438,14 @@ private struct ConversationLinkCard: View {
                 .font(.caption)
                 .opacity(0.8)
         }
-        .padding(8)
-        .background(Color.white.opacity(0.18))
-        .cornerRadius(8)
+        .padding(9)
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
 private struct ShareConversationLinkSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var masterDataManager: MasterDataManager
     @State private var type: ConversationLinkType = .serviceStop
     @State private var title: String = ""
     @State private var recordId: String = ""
@@ -407,7 +475,7 @@ private struct ShareConversationLinkSheet: View {
                 TextField("Amount", text: $amountLabel)
                 TextField("Note", text: $note, axis: .vertical)
             }
-            .navigationTitle("Share")
+            .navigationTitle("Share to Message")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -418,14 +486,21 @@ private struct ShareConversationLinkSheet: View {
                     Button("Send") {
                         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
                         let trimmedRecordId = recordId.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let resolvedRecordId = trimmedRecordId.isEmpty ? UUID().uuidString : trimmedRecordId
+                        let companyId = masterDataManager.currentCompany?.id
+                        let accountType = masterDataManager.user?.accountType?.lowercased() ?? ""
+                        let audience = accountType.contains("home") || accountType.contains("client") ? "client" : "company"
                         let link = ConversationLink(
                             id: UUID().uuidString,
                             type: type,
-                            recordId: trimmedRecordId.isEmpty ? UUID().uuidString : trimmedRecordId,
+                            recordId: resolvedRecordId,
                             title: trimmedTitle.isEmpty ? type.displayName : trimmedTitle,
                             subtitle: subtitle.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+                            companyId: companyId,
                             status: status.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-                            amountLabel: amountLabel.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+                            amountLabel: amountLabel.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+                            mobileRoute: type.mobileRouteString,
+                            audience: audience
                         )
                         onSend(link, note.trimmingCharacters(in: .whitespacesAndNewlines))
                         dismiss()

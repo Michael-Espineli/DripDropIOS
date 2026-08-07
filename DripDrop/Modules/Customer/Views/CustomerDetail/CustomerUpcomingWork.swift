@@ -3,14 +3,19 @@
     //  ThePoolApp
     //
     //  Aesthetic-only refresh:
-    //  - system grouped background
+    //  - dashboard background
     //  - “page header” feel
-    //  - section cards with soft shadow + rounded corners
+    //  - compact section cards
     //  - consistent header controls (icon buttons)
     //  - better spacing + typography
     //
 
     import SwiftUI
+
+    enum CustomerUpcomingWorkMode {
+        case operations
+        case notes
+    }
 
     struct CustomerUpcomingWork: View {
         @EnvironmentObject var masterDataManager: MasterDataManager
@@ -24,9 +29,15 @@
         }
 
         @State var customerId: String
+        let mode: CustomerUpcomingWorkMode
 
-        init(dataService: any ProductionDataServiceProtocol, customerId: String) {
+        init(
+            dataService: any ProductionDataServiceProtocol,
+            customerId: String,
+            mode: CustomerUpcomingWorkMode = .operations
+        ) {
             _customerId = State(wrappedValue: customerId)
+            self.mode = mode
         }
 
         @State var editRSS: Bool = false
@@ -47,21 +58,24 @@
 
         var body: some View {
             ZStack {
-                Color(.systemGroupedBackground).ignoresSafeArea()
+                Color.listColor.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         pageHeader
 
-                        outstandingWork
-                        customerNotes
-                        repairRequests
-                        jobs
-                        recurringServiceStops
-                        serviceStops
+                        if mode == .notes {
+                            customerNotes
+                        } else {
+                            recurringServiceStops
+                            serviceStops
+                            outstandingWork
+                            repairRequests
+                            jobs
+                        }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
+                    .padding(.horizontal, 0)
+                    .padding(.top, 2)
                     .padding(.bottom, 28)
                     .frame(maxWidth: 900)
                     .frame(maxWidth: .infinity)
@@ -154,17 +168,29 @@
 
     extension CustomerUpcomingWork {
         private var pageHeader: some View {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Upcoming Work")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
+            HStack(spacing: 10) {
+                Image(systemName: mode == .notes ? "text.bubble.fill" : "wrench.and.screwdriver.fill")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolBlue.opacity(0.13), in: Circle())
 
-                Text("Repairs, jobs, recurring stops, and scheduled service stops.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mode == .notes ? "Customer Notes" : "Upcoming Work")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(mode == .notes ? "Open notes, office notes, and customer context." : "Recurring stops, scheduled service, repairs, and jobs.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, 2)
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -381,11 +407,11 @@
                     TextEditor(text: $customerNoteText)
                         .frame(minHeight: 84)
                         .padding(8)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(Color.primary.opacity(0.035))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.14), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
                         )
 
                     HStack {
@@ -570,7 +596,7 @@
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 6)
                     } else {
-                        ForEach(VM.serviceStops) { ss in
+                        ForEach(Array(VM.serviceStops.prefix(4))) { ss in
                             NavigationLink(value: Route.serviceStop(serviceStop: ss, dataService: dataService)) {
                                 ServiceStopCardViewLarge(serviceStop: ss)
                             }
@@ -637,9 +663,11 @@
                 content
             }
             .padding(16)
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: Color.black.opacity(0.06), radius: 14, x: 0, y: 8)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
         }
 
         private var header: some View {
@@ -668,10 +696,10 @@
             Button(action: action) {
                 Image(systemName: systemName)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.blue)
-                    .frame(width: 36, height: 36)
-                    .background(Color.blue.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .foregroundColor(.accentColor)
+                    .frame(width: 32, height: 32)
+                    .background(Color.accentColor.opacity(0.12))
+                    .clipShape(Circle())
             }
             .buttonStyle(.plain)
         )
@@ -834,8 +862,11 @@
                 }
             }
             .padding(12)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.055), lineWidth: 1)
+            )
         }
     }
 
@@ -897,7 +928,10 @@
                 }
             }
             .padding(12)
-            .background(Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.055), lineWidth: 1)
+            )
         }
     }

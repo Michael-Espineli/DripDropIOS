@@ -26,7 +26,7 @@ struct CompanyAlerts: View {
             }
             .padding(8)
         }
-        .navigationTitle("Company Alerts")
+        .navigationTitle("Notification Center")
         .task {
             if let selectedCompany = masterDataManager.currentCompany {
                 do {
@@ -47,15 +47,18 @@ extension CompanyAlerts {
     var list: some View {
         VStack{
             if !VM.alertList.isEmpty {
-                laborContracts
+                notifications
                 Rectangle()
                     .frame(height: 1)
+            } else {
+                Text("No Notifications")
+                    .modifier(DismissButtonModifier())
             }
         }
     }
-    var laborContracts: some View {
+    var notifications: some View {
         VStack{
-            Text("Labor Contracts - \(VM.alertList.count)")
+            Text("Company Notifications - \(VM.alertList.count)")
                 .fontWeight(.bold)
             Divider()
             ForEach(VM.alertList){ alert in

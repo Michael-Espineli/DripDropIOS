@@ -217,9 +217,13 @@ extension ProductionDataService {
     }
     
     func getCompanyUserByDBUserId(companyId:String,userId:String) async throws -> CompanyUser{
-        return try await companyUsersCollection(companyId: companyId)
+        if let companyUser = try await companyUsersCollection(companyId: companyId)
             .whereField("userId", isEqualTo: userId)
-            .getDocuments(as:CompanyUser.self).first! // DEVELOPER PROPPERLY UNWRAP
+            .getDocuments(as:CompanyUser.self).first {
+            return companyUser
+        }
+
+        throw FireBaseRead.unableToRead
         
     }
     func getAllRateSheetByCompanyUserId(companyId: String, companyUserId: String) async throws -> [RateSheet]{
@@ -930,18 +934,14 @@ extension ProductionDataService {
             .getDocuments(as:Chat.self)
     }
     func getVisibleChats(userId:String, companyId:String?) async throws ->[Chat]{
-        var chats = try await getAllChatsByUser(userId: userId)
         if let companyId {
-            let companyChats = try await chatCollection()
-                .whereField("participantCompanyIds", arrayContains: companyId)
-                .order(by: "mostRecentChat", descending: true)
+            return try await chatCollection()
+                .whereField("companyId", isEqualTo: companyId)
                 .getDocuments(as:Chat.self)
-            chats.append(contentsOf: companyChats)
+                .sorted { $0.mostRecentChat > $1.mostRecentChat }
         }
 
-        return Dictionary(grouping: chats, by: \.id)
-            .compactMap { $0.value.first }
-            .sorted { $0.mostRecentChat > $1.mostRecentChat }
+        return try await getAllChatsByUser(userId: userId)
     }
     func getAllMessagesByChat(chatId: String) async throws ->[Message]{
         return try await messageCollection()

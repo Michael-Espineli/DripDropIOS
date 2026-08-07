@@ -139,7 +139,7 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable,Codable{
             return "Repair Request"
             
         case .chat:
-            return "Chat"
+            return "Messages"
             
         case .marketPlace:
             return "Market Place"
@@ -468,7 +468,7 @@ extension MenuCategory {
         case .jobs:
             return "Jobs"
         case .chat:
-            return "Chat"
+            return "Messages"
         case .invoice:
             return "Invoice"
         case .customers:

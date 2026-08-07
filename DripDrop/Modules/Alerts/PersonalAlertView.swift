@@ -24,6 +24,7 @@
                 Color.listColor.ignoresSafeArea()
                 list
             }
+            .navigationTitle("Notifications")
             .task {
                 if let user = masterDataManager.user {
                     do {
@@ -49,12 +50,7 @@
                         .modifier(DismissButtonModifier())
                 } else {
                     ForEach(VM.alerts){ alert in
-                        Button(action: {
-                            
-                        }, label: {
-                            Text("\(alert.name)")
-                                .modifier(ListButtonModifier())
-                        })
+                        DripDropAlertCardSmall(dataService: dataService, alert: alert)
                         Divider()
                     }
                 }

@@ -197,9 +197,14 @@ extension ServiceLocationDetailView {
                 Button(action: {
                     showEditSheet = true
                 }, label: {
-                    Text("Edit")
-                        .modifier(AddButtonModifier())
+                    Label("Edit", systemImage: "pencil")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 8)
+                        .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 })
+                .buttonStyle(.plain)
                 .sheet(isPresented: $showEditSheet, content: {
                     EditServiceLocationView(
                         dataService: dataService,
@@ -297,9 +302,14 @@ extension ServiceLocationDetailView {
                 Button(action: {
                     changeContact.toggle()
                 }, label: {
-                    Text("Change")
-                        .modifier(AddButtonModifier())
+                    Label("Change", systemImage: "person.crop.circle.badge.plus")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.poolBlue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 })
+                .buttonStyle(.plain)
                 .sheet(isPresented: $changeContact, content: {
                     if let location = masterDataManager.selectedServiceLocation {
                         ChangeServiceLocationContact(dataService: dataService, serviceLocation: location)
@@ -323,13 +333,10 @@ extension ServiceLocationDetailView {
             Divider().opacity(0.15)
         }
         .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(0.05))
-        )
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.055), lineWidth: 1)
         )
     }
 
@@ -383,13 +390,13 @@ extension ServiceLocationDetailView {
                         Button(action: {
                             scheduleLocationSetUp.toggle()
                         }, label: {
-                            Text("Schedule Set Up")
-                                .font(.subheadline.weight(.semibold))
+                            Label("Schedule Set Up", systemImage: "calendar.badge.plus")
+                                .font(.caption.weight(.semibold))
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(Capsule().fill(Color.primary.opacity(0.08)))
+                                .padding(.horizontal, 10)
+                                .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         })
-                        .modifier(AddButtonModifier())
+                        .buttonStyle(.plain)
                         .sheet(isPresented: $scheduleLocationSetUp, content: {
                             AddNewJobView(dataService: dataService, customerId: location.customerId)
                         })
@@ -397,13 +404,13 @@ extension ServiceLocationDetailView {
                         Button(action: {
                             showLocationSetUp.toggle()
                         }, label: {
-                            Text("Set Up Location")
-                                .font(.subheadline.weight(.semibold))
+                            Label("Set Up Location", systemImage: "sparkles")
+                                .font(.caption.weight(.semibold))
                                 .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(Capsule().fill(Color.primary.opacity(0.08)))
+                                .padding(.horizontal, 10)
+                                .background(Color.poolGreen.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         })
-                        .modifier(AddButtonModifier())
+                        .buttonStyle(.plain)
                         .sheet(isPresented: $showLocationSetUp, content: {
                             if let location = masterDataManager.selectedServiceLocation {
                                 ServiceLocationStartUpView(dataService: dataService, serviceLocation: location, isPresented: $showLocationSetUp)
@@ -544,15 +551,11 @@ private extension View {
     func ddCard() -> some View {
         self
             .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
     }
 
     func ddSectionTitle() -> some View {

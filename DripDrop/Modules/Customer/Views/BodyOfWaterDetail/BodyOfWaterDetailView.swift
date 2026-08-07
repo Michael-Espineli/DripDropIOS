@@ -177,9 +177,14 @@ extension BodyOfWaterDetailView {
             Button(action: {
                 showEditSheet = true
             }, label: {
-                Text("Edit")
-                    .modifier(AddButtonModifier())
+                Label("Edit", systemImage: "pencil")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 8)
+                    .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             })
+            .buttonStyle(.plain)
             .sheet(isPresented: $showEditSheet,onDismiss: {
                 
             }, content: {
@@ -280,9 +285,14 @@ extension BodyOfWaterDetailView {
                 Button(action: {
 
                 }, label: {
-                    Text("See History")
-                        .modifier(RedLinkModifier())
+                    Label("History", systemImage: "clock.arrow.circlepath")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.poolBlue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 })
+                .buttonStyle(.plain)
             }
         }
         .ddCard()
@@ -504,15 +514,11 @@ private extension View {
     func ddCard() -> some View {
         self
             .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            )
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
     }
 
     func ddSectionTitle() -> some View {

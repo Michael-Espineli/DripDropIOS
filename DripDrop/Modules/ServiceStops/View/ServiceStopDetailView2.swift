@@ -687,6 +687,7 @@ private struct ServiceStopFollowUpItem: Identifiable, Hashable {
     let status: String
     let sortDate: Date
     let amountCents: Int?
+    let partApproval: CustomerPartApproval?
 
     init(job: Job) {
         let titleText = [job.internalId, job.type]
@@ -700,6 +701,7 @@ private struct ServiceStopFollowUpItem: Identifiable, Hashable {
         self.status = job.operationStatus.rawValue
         self.sortDate = job.dateCreated
         self.amountCents = job.rate
+        self.partApproval = nil
     }
 
     init(repairRequest: RepairRequest) {
@@ -710,6 +712,7 @@ private struct ServiceStopFollowUpItem: Identifiable, Hashable {
         self.status = repairRequest.status.displayName
         self.sortDate = repairRequest.date
         self.amountCents = nil
+        self.partApproval = nil
     }
 
     init(partApproval: CustomerPartApproval) {
@@ -720,6 +723,7 @@ private struct ServiceStopFollowUpItem: Identifiable, Hashable {
         self.status = partApproval.displayStatus.capitalized
         self.sortDate = partApproval.displayDate
         self.amountCents = partApproval.displayTotalCents > 0 ? partApproval.displayTotalCents : nil
+        self.partApproval = partApproval
     }
 
     static func isOpenJob(_ job: Job) -> Bool {
@@ -741,6 +745,10 @@ private struct ServiceStopFollowUpView: View {
     let onRefresh: () async -> Void
 
     @State private var showPartApprovalSheet = false
+    @State private var showShoppingItemSheet = false
+    @State private var showRepairRequestSheet = false
+    @State private var showJobSheet = false
+    @State private var selectedPartApproval: CustomerPartApproval?
 
     private var groupedItems: [(kind: ServiceStopFollowUpKind, items: [ServiceStopFollowUpItem])] {
         ServiceStopFollowUpKind.allCases.map { kind in
@@ -788,6 +796,43 @@ private struct ServiceStopFollowUpView: View {
                 onCreated: onRefresh
             )
         }
+        .sheet(isPresented: $showShoppingItemSheet) {
+            ServiceStopShoppingListItemSheet(
+                dataService: dataService,
+                serviceStop: serviceStop,
+                onCreated: onRefresh
+            )
+        }
+        .sheet(isPresented: $showRepairRequestSheet, onDismiss: {
+            Task { await onRefresh() }
+        }) {
+            AddNewRepairRequest(
+                dataService: dataService,
+                isPresented: $showRepairRequestSheet,
+                customer: nil,
+                customerId: serviceStop.customerId,
+                serviceLocationId: serviceStop.serviceLocationId,
+                description: "Follow-up repair request from \(serviceStop.internalId)"
+            )
+        }
+        .sheet(isPresented: $showJobSheet, onDismiss: {
+            Task { await onRefresh() }
+        }) {
+            AddNewJobView(
+                dataService: dataService,
+                customerId: serviceStop.customerId,
+                isTechnicianCreateFlow: true,
+                canScheduleServiceStopsForOthers: false
+            )
+        }
+        .sheet(item: $selectedPartApproval) { approval in
+            ServiceStopPartApprovalResponseSheet(
+                dataService: dataService,
+                approval: approval,
+                serviceStop: serviceStop,
+                onSaved: onRefresh
+            )
+        }
     }
 
     private var header: some View {
@@ -814,15 +859,40 @@ private struct ServiceStopFollowUpView: View {
 
             HStack(spacing: 8) {
                 followUpMetric("\(items.count)", title: "Follow Up", systemImage: "exclamationmark.circle")
-                Button {
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                followUpActionButton(
+                    title: "Part Approval",
+                    systemImage: "checkmark.seal",
+                    tint: Color.poolGreen
+                ) {
                     showPartApprovalSheet = true
-                } label: {
-                    Label("Part Approval", systemImage: "plus.circle.fill")
-                        .font(.caption.weight(.semibold))
-                        .lineLimit(1)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.poolGreen)
+
+                followUpActionButton(
+                    title: "Shopping Item",
+                    systemImage: "cart.badge.plus",
+                    tint: Color.poolBlue
+                ) {
+                    showShoppingItemSheet = true
+                }
+
+                followUpActionButton(
+                    title: "Repair Request",
+                    systemImage: "wrench.and.screwdriver",
+                    tint: Color.orange
+                ) {
+                    showRepairRequestSheet = true
+                }
+
+                followUpActionButton(
+                    title: "Job",
+                    systemImage: "briefcase.badge.plus",
+                    tint: Color.indigo
+                ) {
+                    showJobSheet = true
+                }
             }
         }
         .padding(14)
@@ -921,9 +991,47 @@ private struct ServiceStopFollowUpView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
+
+            if item.kind == .partApproval, let approval = item.partApproval {
+                Button {
+                    selectedPartApproval = approval
+                } label: {
+                    Label("Manage Approval", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(Color.poolGreen.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.poolGreen)
+            }
         }
         .padding(12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func followUpActionButton(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.bold))
+
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .foregroundStyle(tint)
+            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private func followUpMetric(_ value: String, title: String, systemImage: String) -> some View {
@@ -938,6 +1046,556 @@ private struct ServiceStopFollowUpView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(.thinMaterial, in: Capsule())
+    }
+}
+
+private struct ServiceStopPartApprovalResponseSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    let dataService: any ProductionDataServiceProtocol
+    let approval: CustomerPartApproval
+    let serviceStop: ServiceStop
+    let onSaved: () async -> Void
+
+    @State private var responseNote = ""
+    @State private var isSaving = false
+    @State private var message: String?
+
+    private var targetCompanyId: String? {
+        if serviceStop.otherCompany, let mainCompanyId = serviceStop.mainCompanyId {
+            return mainCompanyId
+        }
+
+        return masterDataManager.currentCompany?.id
+    }
+
+    private var statusKey: String {
+        normalizedStatus(approval.approvalStatus ?? approval.status ?? "pending")
+    }
+
+    private var canRespond: Bool {
+        ["pending", "awaitingcustomerapproval", "needscustomerapproval"].contains(statusKey)
+    }
+
+    private var historyItems: [CustomerPartApprovalHistoryItem] {
+        var items: [CustomerPartApprovalHistoryItem] = []
+        let explicitHistory = approval.history ?? []
+        let hasRequestedHistory = explicitHistory.contains {
+            normalizedStatus($0.action ?? "") == "requested"
+        }
+
+        if !hasRequestedHistory, let requestedAt = approval.requestedAt ?? approval.createdAt {
+            items.append(
+                CustomerPartApprovalHistoryItem(
+                    action: "requested",
+                    status: "pending",
+                    note: approval.description,
+                    source: "technicianRequest",
+                    sourceLabel: "Approval requested",
+                    actorUserId: approval.requestedByUserId,
+                    actorUserName: approval.requestedByUserName,
+                    actorEmail: nil,
+                    createdAt: requestedAt
+                )
+            )
+        }
+
+        if !explicitHistory.isEmpty {
+            items.append(contentsOf: explicitHistory)
+        } else if let respondedAt = approval.respondedAt {
+            let respondedByTechnician = approval.respondedOnBehalfOfCustomer == true ||
+                approval.approvedInPerson == true ||
+                approval.deniedInPerson == true
+
+            items.append(
+                CustomerPartApprovalHistoryItem(
+                    action: approval.response ?? approval.displayStatus,
+                    status: approval.approvalStatus ?? approval.status,
+                    note: approval.responseNote,
+                    source: respondedByTechnician ? "technicianOnBehalfOfCustomer" : "customerApp",
+                    sourceLabel: respondedByTechnician ? "Technician on behalf of customer" : "Customer through app",
+                    actorUserId: approval.respondedByUserId,
+                    actorUserName: approval.respondedByUserName,
+                    actorEmail: approval.respondedByEmail,
+                    createdAt: respondedAt
+                )
+            )
+        }
+
+        return items.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        header
+                        responseCard
+                        historyCard
+
+                        if let message {
+                            Text(message)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(message.contains("Could") ? Color.poolRed : Color.poolGreen)
+                        }
+                    }
+                    .padding(14)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle("Part Approval")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                responseNote = approval.responseNote ?? ""
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolGreen)
+                    .frame(width: 42, height: 42)
+                    .background(Color.poolGreen.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(approval.displayTitle)
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(2)
+
+                    Text(approval.customerName ?? serviceStop.customerName)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(displayStatus(approval.displayStatus))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(statusColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(statusColor.opacity(0.12), in: Capsule())
+            }
+
+            if approval.displayTotalCents > 0 {
+                Text(DataBaseItemMoneyFormatter.moneyFromCents(approval.displayTotalCents))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var responseCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Customer Conversation", systemImage: "person.2.wave.2")
+                .font(.headline.weight(.semibold))
+
+            if canRespond {
+                TextEditor(text: $responseNote)
+                    .font(.subheadline)
+                    .frame(minHeight: 96)
+                    .padding(8)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                    }
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                    responseButton(
+                        title: "Approved",
+                        systemImage: "checkmark.circle.fill",
+                        tint: Color.poolGreen
+                    ) {
+                        Task { await saveResponse(approved: true) }
+                    }
+
+                    responseButton(
+                        title: "Denied",
+                        systemImage: "xmark.circle.fill",
+                        tint: Color.poolRed
+                    ) {
+                        Task { await saveResponse(approved: false) }
+                    }
+                }
+            } else {
+                Text("This approval already has a recorded response.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var historyCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("History", systemImage: "clock.arrow.circlepath")
+                .font(.headline.weight(.semibold))
+
+            if historyItems.isEmpty {
+                Text("No history recorded yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(historyItems) { item in
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(historyTitle(item))
+                                .font(.subheadline.weight(.semibold))
+
+                            Spacer()
+
+                            if let createdAt = item.createdAt {
+                                Text(createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text(item.sourceLabel ?? "Approval activity")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        if let actor = item.actorUserName, !actor.isEmpty {
+                            Text(actor)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if let note = item.note, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(note)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(10)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var statusColor: Color {
+        switch statusKey {
+        case "approved":
+            return Color.poolGreen
+        case "rejected", "denied", "declined":
+            return Color.poolRed
+        case "resolved", "installed":
+            return Color.poolBlue
+        default:
+            return Color.orange
+        }
+    }
+
+    private func responseButton(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if isSaving {
+                    ProgressView()
+                } else {
+                    Image(systemName: systemImage)
+                }
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .foregroundStyle(tint)
+            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(isSaving)
+    }
+
+    private func saveResponse(approved: Bool) async {
+        guard let companyId = targetCompanyId else {
+            message = "Missing company."
+            return
+        }
+
+        guard !isSaving else { return }
+
+        isSaving = true
+        defer { isSaving = false }
+
+        let userId = masterDataManager.user?.id ?? ""
+        let userName = [
+            masterDataManager.user?.firstName ?? "",
+            masterDataManager.user?.lastName ?? ""
+        ]
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackNote = approved ? "Approved in person" : "Denied in person"
+
+        do {
+            try await dataService.recordCustomerPartApprovalTechnicianResponse(
+                approval: approval,
+                companyId: companyId,
+                approved: approved,
+                note: responseNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallbackNote : responseNote,
+                actorUserId: userId,
+                actorUserName: userName,
+                actorEmail: masterDataManager.user?.email ?? "",
+                serviceStop: serviceStop
+            )
+            message = approved ? "Approval recorded." : "Denial recorded."
+            await onSaved()
+            dismiss()
+        } catch {
+            message = "Could not save response."
+            print("[ServiceStopPartApprovalResponseSheet][saveResponse] \(error)")
+        }
+    }
+
+    private func historyTitle(_ item: CustomerPartApprovalHistoryItem) -> String {
+        let rawTitle = item.status ?? item.action ?? "Activity"
+        return displayStatus(rawTitle)
+    }
+
+    private func displayStatus(_ status: String) -> String {
+        let normalized = normalizedStatus(status)
+        switch normalized {
+        case "rejected":
+            return "Denied"
+        case "approved":
+            return "Approved"
+        case "pending":
+            return "Pending"
+        default:
+            return status
+                .replacingOccurrences(of: "_", with: " ")
+                .replacingOccurrences(of: "-", with: " ")
+                .capitalized
+        }
+    }
+
+    private func normalizedStatus(_ status: String) -> String {
+        status
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
+}
+
+private struct ServiceStopShoppingListItemSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    let dataService: any ProductionDataServiceProtocol
+    let serviceStop: ServiceStop
+    let onCreated: () async -> Void
+
+    @State private var draft = ShoppingListItemDraft()
+    @State private var isSaving = false
+    @State private var message: String?
+    @State private var didConfigure = false
+
+    private var targetCompanyId: String? {
+        if serviceStop.otherCompany, let mainCompanyId = serviceStop.mainCompanyId {
+            return mainCompanyId
+        }
+
+        return masterDataManager.currentCompany?.id
+    }
+
+    private var canSave: Bool {
+        targetCompanyId != nil && draft.canSubmit && !isSaving
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        header
+
+                        ShoppingListItemDraftForm(
+                            draft: $draft,
+                            title: "Shopping Item",
+                            showCategoryPicker: false,
+                            showDescription: true
+                        )
+                        .padding(14)
+                        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                        if let message {
+                            Text(message)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(message.contains("Could") ? Color.poolRed : Color.poolGreen)
+                        }
+                    }
+                    .padding(14)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle("Shopping Item")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        Task { await saveItem() }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text("Create")
+                        }
+                    }
+                    .disabled(!canSave)
+                }
+            }
+            .onAppear {
+                configureDraftIfNeeded()
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(serviceStop.customerName, systemImage: "cart.badge.plus")
+                .font(.headline.weight(.semibold))
+
+            Text(serviceStop.address.streetAddress)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func configureDraftIfNeeded() {
+        guard !didConfigure else { return }
+        didConfigure = true
+        draft.category = serviceStop.jobId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .customer : .job
+        draft.status = .needToPurchase
+    }
+
+    private func saveItem() async {
+        guard let companyId = targetCompanyId,
+              let user = masterDataManager.user else {
+            message = "Missing company or user."
+            return
+        }
+
+        guard canSave else {
+            message = "Select an item and quantity."
+            return
+        }
+
+        isSaving = true
+        defer { isSaving = false }
+
+        let purchaserName = [
+            user.firstName,
+            user.lastName
+        ]
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let itemId = "comp_shop_\(UUID().uuidString)"
+        let jobId = serviceStop.jobId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let category: ShoppingListCategory = jobId.isEmpty ? .customer : .job
+        let prepKeys = uniqueNonEmpty([
+            jobId.isEmpty ? "" : "job:\(jobId)",
+            "customer:\(serviceStop.customerId)",
+            serviceStop.serviceLocationId.isEmpty ? "" : "serviceLocation:\(serviceStop.serviceLocationId)",
+            "serviceStop:\(serviceStop.id)",
+            serviceStop.techId.isEmpty ? "" : "user:\(serviceStop.techId)"
+        ])
+
+        let item = ShoppingListItem(
+            id: itemId,
+            category: category,
+            subCategory: draft.subCategory,
+            status: .needToPurchase,
+            purchaserId: user.id,
+            purchaserName: purchaserName.isEmpty ? serviceStop.tech : purchaserName,
+            genericItemId: draft.selectedDataBaseItem.universalEquipmentId ?? "",
+            name: draft.displayName,
+            description: draft.description,
+            datePurchased: nil,
+            quantity: draft.quantity,
+            jobId: jobId.isEmpty ? nil : jobId,
+            customerId: serviceStop.customerId,
+            customerName: serviceStop.customerName,
+            userId: serviceStop.techId,
+            userName: serviceStop.tech,
+            serviceStopId: serviceStop.id,
+            serviceStopInternalId: serviceStop.internalId,
+            serviceLocationId: serviceStop.serviceLocationId,
+            serviceLocationName: serviceStop.address.streetAddress,
+            scheduledDate: serviceStop.serviceDate,
+            prepKeys: prepKeys,
+            needsAction: true,
+            actionDate: serviceStop.serviceDate,
+            assignedTechIds: uniqueNonEmpty([serviceStop.techId, user.id]),
+            dbItemId: draft.selectedDataBaseItemId,
+            purchasedItem: nil,
+            invoiced: false,
+            plannedUnitCostCents: draft.plannedUnitCostCents,
+            plannedUnitPriceCents: draft.plannedUnitPriceCents,
+            plannedTotalCostCents: draft.plannedTotalCostCents,
+            plannedTotalPriceCents: draft.plannedTotalPriceCents
+        )
+
+        do {
+            try await dataService.addNewShoppingListItem(
+                companyId: companyId,
+                shoppingListItem: item
+            )
+            message = "Shopping item created."
+            await onCreated()
+            dismiss()
+        } catch {
+            message = "Could not create shopping item."
+            print("[ServiceStopShoppingListItemSheet][saveItem] \(error)")
+        }
+    }
+
+    private func uniqueNonEmpty(_ values: [String]) -> [String] {
+        var seen: Set<String> = []
+        return values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { seen.insert($0).inserted }
     }
 }
 
@@ -1256,6 +1914,7 @@ struct ServiceStopPartApprovalSheet: View {
             id: approvalId,
             companyId: companyId,
             companyName: masterDataManager.currentCompany?.name ?? serviceStop.companyName,
+            customerApprovalUrl: "https://dripdrop-poolapp.com/customer/part-approvals/\(approvalId)",
             customerId: serviceStop.customerId,
             customerUserId: linkedUserId,
             customerName: serviceStop.customerName,
@@ -1264,6 +1923,7 @@ struct ServiceStopPartApprovalSheet: View {
             billingEmail: customerEmail,
             serviceLocationId: serviceStop.serviceLocationId,
             serviceLocationName: serviceStop.address.streetAddress,
+            serviceLocationAddress: serviceStop.address.streetAddress,
             shoppingListItemId: "",
             shoppingListPath: "",
             itemName: itemName,
@@ -1286,7 +1946,45 @@ struct ServiceStopPartApprovalSheet: View {
             createdAt: Date(),
             updatedAt: Date(),
             requestedByUserId: userId,
-            requestedByUserName: userName.isEmpty ? "Technician" : userName
+            requestedByUserName: userName.isEmpty ? "Technician" : userName,
+            jobId: serviceStop.jobId,
+            jobName: serviceStop.jobName ?? "",
+            jobInternalId: serviceStop.jobName ?? serviceStop.jobId,
+            serviceStopId: serviceStop.id,
+            serviceStopInternalId: serviceStop.internalId,
+            scheduledServiceStopId: serviceStop.id,
+            scheduledServiceStopInternalId: serviceStop.internalId,
+            scheduledDate: serviceStop.serviceDate,
+            techId: serviceStop.techId,
+            techName: serviceStop.tech,
+            assignedTechId: serviceStop.techId,
+            assignedTechName: serviceStop.tech,
+            assignedToUserId: serviceStop.techId,
+            assignedToUserName: serviceStop.tech,
+            assignedTechIds: serviceStop.techId.isEmpty ? [] : [serviceStop.techId],
+            assignedTechNames: serviceStop.tech.isEmpty ? [] : [serviceStop.tech],
+            purchaserId: serviceStop.techId,
+            purchaserName: serviceStop.tech,
+            prepKeys: [
+                serviceStop.jobId.isEmpty ? "" : "job:\(serviceStop.jobId)",
+                "customer:\(serviceStop.customerId)",
+                serviceStop.serviceLocationId.isEmpty ? "" : "serviceLocation:\(serviceStop.serviceLocationId)",
+                "serviceStop:\(serviceStop.id)",
+                serviceStop.techId.isEmpty ? "" : "user:\(serviceStop.techId)"
+            ].filter { !$0.isEmpty },
+            history: [
+                CustomerPartApprovalHistoryItem(
+                    action: "requested",
+                    status: "pending",
+                    note: itemDescription,
+                    source: "technicianRequest",
+                    sourceLabel: "Approval requested",
+                    actorUserId: userId,
+                    actorUserName: userName.isEmpty ? "Technician" : userName,
+                    actorEmail: masterDataManager.user?.email ?? "",
+                    createdAt: Date()
+                )
+            ]
         )
 
         do {

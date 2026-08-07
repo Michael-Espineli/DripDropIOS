@@ -73,8 +73,8 @@ extension OtherCompanyProfileView {
     var actionBar: some View {
         HStack {
             // Internal Chat navigation template
-            NavigationLink(value: Route.initiateChat(dataService: dataService, userId: company.ownerId), label: {
-                Text("Internal Chat")
+            NavigationLink(value: Route.initiateChat(dataService: dataService, userId: company.id), label: {
+                Text("Message")
                     .font(.subheadline).bold()
                     .foregroundColor(.white)
                     .padding(.vertical, 10)

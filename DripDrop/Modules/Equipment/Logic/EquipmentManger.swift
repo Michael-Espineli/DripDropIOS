@@ -90,8 +90,9 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
     //                    CREATE
     //----------------------------------------------------
     func uploadEquipment(companyId:String,equipment:Equipment) async throws {
-        
-        try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: false)
+        var equipmentToSave = equipment
+        equipmentToSave.createdAt = equipmentToSave.createdAt ?? Date()
+        try equipmentCollection(companyId: companyId).document(equipmentToSave.id).setData(from:equipmentToSave, merge: false)
         
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
@@ -104,77 +105,77 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -191,28 +192,28 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             ]
@@ -234,77 +235,77 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -323,28 +324,28 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -363,28 +364,28 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Tires/Wheel",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Gear Box",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Turbine",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Hose",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             
@@ -402,7 +403,7 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .saltCell,
                     name: "Salt Cell",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             ]
@@ -419,7 +420,7 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .heater,
                     name: "Heater",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 //DEVELOPER HERE
@@ -515,12 +516,15 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        let createdAt = equipment.createdAt ?? Date()
+        let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
             Equipment.CodingKeys.type.stringValue:equipment.type,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.model.stringValue:equipment.model,
-            Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
+            Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue,
+            Equipment.CodingKeys.createdAt.stringValue: createdAt,
             Equipment.CodingKeys.status.stringValue:equipment.status,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
@@ -600,8 +604,9 @@ final class EquipmentManager:EquipmentManagerProtocol {
     //                    CREATE
     //----------------------------------------------------
     func uploadEquipment(companyId:String,equipment:Equipment) async throws {
-        
-        try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: false)
+        var equipmentToSave = equipment
+        equipmentToSave.createdAt = equipmentToSave.createdAt ?? Date()
+        try equipmentCollection(companyId: companyId).document(equipmentToSave.id).setData(from:equipmentToSave, merge: false)
         
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
@@ -614,77 +619,77 @@ final class EquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -701,28 +706,28 @@ final class EquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             
@@ -745,77 +750,77 @@ final class EquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Pressure Gauge",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Spring Nut Assembly",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Manifold",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Short Grid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 1",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 2",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 3",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 4",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 5",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 6",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .filter,
                     name: "Grid 7",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 
@@ -834,28 +839,28 @@ final class EquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Basket",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Lid",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "O-Ring",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .pump,
                     name: "Motor",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             
@@ -874,28 +879,28 @@ final class EquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Tires/Wheel",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Gear Box",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Turbine",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 EquipmentPart(
                     id: UUID().uuidString,
                     equipmentType: .cleaner,
                     name: "Hose",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             
@@ -913,7 +918,7 @@ final class EquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .saltCell,
                     name: "Salt Cell",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
             ]
@@ -930,7 +935,7 @@ final class EquipmentManager:EquipmentManagerProtocol {
                     id: UUID().uuidString,
                     equipmentType: .heater,
                     name: "Heater",
-                    date: equipment.dateInstalled,
+                    date: equipment.dateForGeneratedParts,
                     notes: ""
                 ),
                 //DEVELOPER HERE
@@ -1026,12 +1031,15 @@ final class EquipmentManager:EquipmentManagerProtocol {
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        let createdAt = equipment.createdAt ?? Date()
+        let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
             Equipment.CodingKeys.type.stringValue:equipment.type,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.model.stringValue:equipment.model,
-            Equipment.CodingKeys.dateInstalled.stringValue:equipment.dateInstalled,
+            Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue,
+            Equipment.CodingKeys.createdAt.stringValue: createdAt,
             Equipment.CodingKeys.status.stringValue:equipment.status,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
@@ -1055,7 +1063,42 @@ final class EquipmentManager:EquipmentManagerProtocol {
     //                    DELETE
     //----------------------------------------------------
     func deleteEquipment(companyId:String,equipmentId:String) async throws {
-        try await equipmentDoc(companyId: companyId, equipmentId: equipmentId).delete()
+        let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
+        let subcollections = [
+            "parts",
+            "serviceHistory",
+            "scheduledWork",
+            "equipmentMeasurements",
+            "equipmentMeasurments"
+        ]
+        var batch = db.batch()
+        var writeCount = 0
+
+        func commitIfNeeded() async throws {
+            guard writeCount >= 450 else { return }
+            try await batch.commit()
+            batch = db.batch()
+            writeCount = 0
+        }
+
+        func queueDelete(_ reference: DocumentReference) async throws {
+            batch.deleteDocument(reference)
+            writeCount += 1
+            try await commitIfNeeded()
+        }
+
+        for collectionName in subcollections {
+            let snapshot = try await equipmentRef.collection(collectionName).getDocuments()
+            for document in snapshot.documents {
+                try await queueDelete(document.reference)
+            }
+        }
+
+        try await queueDelete(equipmentRef)
+
+        if writeCount > 0 {
+            try await batch.commit()
+        }
     }
 
     //----------------------------------------------------

@@ -29,33 +29,83 @@ enum ChatVisibility: String, Codable, Hashable {
     case company
     case customer
     case companyToCompany
+    case companyInternal
+    case companyExternal
 }
 
 enum ConversationLinkType: String, Codable, Hashable, CaseIterable {
     case customer
     case serviceLocation
+    case bodyOfWater
     case repairRequest
     case serviceRequest
     case serviceStop
+    case recurringServiceStop
     case estimate
     case serviceAgreement
     case invoice
     case contract
     case job
+    case equipment
+    case purchase
+    case shoppingListItem
+    case databaseItem
+    case receipt
+    case vendor
+    case companyUser
+    case todo
     case other
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = Self.normalized(rawValue)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
+    static func normalized(_ rawValue:String) -> ConversationLinkType {
+        switch rawValue {
+        case "purchasedItem", "purchasedItems", "purchaseItem":
+            return .purchase
+        case "dataBaseItem", "databaseItems", "dbItem":
+            return .databaseItem
+        case "shoppingItem", "shoppingList":
+            return .shoppingListItem
+        case "bodyOfWaterDetail":
+            return .bodyOfWater
+        case "company_user":
+            return .companyUser
+        default:
+            return ConversationLinkType(rawValue: rawValue) ?? .other
+        }
+    }
 
     var displayName: String {
         switch self {
         case .customer: return "Customer"
         case .serviceLocation: return "Service Location"
+        case .bodyOfWater: return "Body of Water"
         case .repairRequest: return "Repair Request"
         case .serviceRequest: return "Service Request"
         case .serviceStop: return "Service Stop"
+        case .recurringServiceStop: return "Recurring Stop"
         case .estimate: return "Estimate"
         case .serviceAgreement: return "Service Agreement"
         case .invoice: return "Invoice"
         case .contract: return "Contract"
         case .job: return "Job"
+        case .equipment: return "Equipment"
+        case .purchase: return "Purchase"
+        case .shoppingListItem: return "Shopping Item"
+        case .databaseItem: return "Database Item"
+        case .receipt: return "Receipt"
+        case .vendor: return "Vendor"
+        case .companyUser: return "Company User"
+        case .todo: return "Todo"
         case .other: return "Link"
         }
     }
@@ -64,15 +114,83 @@ enum ConversationLinkType: String, Codable, Hashable, CaseIterable {
         switch self {
         case .customer: return "person.crop.circle"
         case .serviceLocation: return "mappin.and.ellipse"
+        case .bodyOfWater: return "drop"
         case .repairRequest: return "wrench.and.screwdriver"
         case .serviceRequest: return "tray.and.arrow.down"
         case .serviceStop: return "checklist"
+        case .recurringServiceStop: return "repeat"
         case .estimate: return "doc.text.magnifyingglass"
         case .serviceAgreement: return "signature"
         case .invoice: return "doc.richtext"
         case .contract: return "doc.badge.gearshape"
         case .job: return "hammer"
+        case .equipment: return "wrench.adjustable"
+        case .purchase: return "cart"
+        case .shoppingListItem: return "list.bullet.clipboard"
+        case .databaseItem: return "archivebox"
+        case .receipt: return "receipt"
+        case .vendor: return "building.2"
+        case .companyUser: return "person.2"
+        case .todo: return "checkmark.circle"
         case .other: return "link"
+        }
+    }
+
+    var mobileRouteString: String? {
+        switch self {
+        case .customer: return RouteString.customer.rawValue
+        case .serviceLocation, .bodyOfWater: return RouteString.customers.rawValue
+        case .equipment: return RouteString.equipmentDetailView.rawValue
+        case .repairRequest: return RouteString.repairRequest.rawValue
+        case .serviceRequest: return RouteString.leads.rawValue
+        case .serviceStop: return RouteString.serviceStop.rawValue
+        case .recurringServiceStop: return RouteString.serviceStops.rawValue
+        case .estimate, .serviceAgreement, .contract: return RouteString.contract.rawValue
+        case .invoice: return RouteString.accountsReceivableDetail.rawValue
+        case .job: return RouteString.job.rawValue
+        case .purchase: return RouteString.purchase.rawValue
+        case .shoppingListItem: return RouteString.shoppingListDetail.rawValue
+        case .databaseItem: return RouteString.dataBaseItem.rawValue
+        case .receipt: return RouteString.receipt.rawValue
+        case .vendor: return RouteString.vender.rawValue
+        case .companyUser: return RouteString.companyUserDetailView.rawValue
+        case .todo: return RouteString.toDoList.rawValue
+        case .other: return nil
+        }
+    }
+
+    var alertCategory: MacCategories {
+        switch self {
+        case .customer, .serviceLocation, .bodyOfWater:
+            return .customers
+        case .equipment:
+            return .equipment
+        case .repairRequest:
+            return .repairRequest
+        case .serviceRequest:
+            return .alerts
+        case .serviceStop, .recurringServiceStop:
+            return .serviceStops
+        case .estimate, .serviceAgreement, .contract:
+            return .contracts
+        case .invoice:
+            return .accountsReceivable
+        case .job:
+            return .jobs
+        case .purchase:
+            return .purchases
+        case .shoppingListItem, .todo:
+            return .shoppingList
+        case .databaseItem:
+            return .databaseItems
+        case .receipt:
+            return .receipts
+        case .vendor:
+            return .vender
+        case .companyUser:
+            return .companyUser
+        case .other:
+            return .alerts
         }
     }
 }
@@ -89,6 +207,20 @@ struct ConversationLink: Identifiable, Codable, Hashable {
     var status:String? = nil
     var amountLabel:String? = nil
     var routeString:String? = nil
+    var customerUserId:String? = nil
+    var collectionPath:String? = nil
+    var webPath:String? = nil
+    var companyWebPath:String? = nil
+    var clientWebPath:String? = nil
+    var mobileRoute:String? = nil
+    var deeplinkUrl:String? = nil
+    var sharePath:String? = nil
+    var shareUrl:String? = nil
+    var audience:String? = nil
+
+    var resolvedMobileRoute:String? {
+        mobileRoute ?? routeString ?? type.mobileRouteString
+    }
 }
 
 enum ChatMessageKind: String, Codable, Hashable {
@@ -113,6 +245,17 @@ struct Chat:Identifiable, Codable, Equatable{
     var customerId:String? = nil
     var serviceLocationId:String? = nil
     var contextLinks:[ConversationLink]? = nil
+    var companyName:String? = nil
+    var senderCompanyId:String? = nil
+    var receiverCompanyId:String? = nil
+    var customerUserId:String? = nil
+    var customerName:String? = nil
+    var audience:String? = nil
+    var targetType:String? = nil
+    var companyVisibility:String? = nil
+    var publicToCompanyId:String? = nil
+    var lastMessageKind:ChatMessageKind? = nil
+    var lastConversationLink:ConversationLink? = nil
 
     func displayTitle(currentUserId:String?) -> String {
         if let title, !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -158,6 +301,41 @@ struct Chat:Identifiable, Codable, Equatable{
 
         return readByUserIds?.contains(userId) != true
     }
+
+    var audienceKind:String {
+        if audience == "internal" || targetType == "companyUser" || visibility == .companyInternal {
+            return "internal"
+        }
+
+        return "external"
+    }
+
+    func unreadTargets(senderId:String, senderCompanyId:String?) -> (userIds:[String], companyIds:[String]) {
+        let normalizedSenderCompanyId = senderCompanyId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let participantByUserId = participants.reduce(into: [String:BasicUserInfo]()) { result, participant in
+            result[participant.userId] = participant
+        }
+        let internalChat = audienceKind == "internal"
+        let userIds = participantIds.filter { participantId in
+            guard !participantId.isEmpty, participantId != senderId else { return false }
+            if internalChat { return true }
+            guard !normalizedSenderCompanyId.isEmpty else { return true }
+            return participantByUserId[participantId]?.companyId != normalizedSenderCompanyId
+        }
+        let companyIds: [String]
+
+        if internalChat {
+            companyIds = []
+        } else if let participantCompanyIds {
+            companyIds = participantCompanyIds.filter { !$0.isEmpty && $0 != normalizedSenderCompanyId }
+        } else if let companyId, companyId != normalizedSenderCompanyId {
+            companyIds = [companyId]
+        } else {
+            companyIds = []
+        }
+
+        return (Array(Set(userIds)), Array(Set(companyIds)))
+    }
 }
 struct Message:Identifiable, Codable,Hashable{
     var id:String
@@ -171,7 +349,10 @@ struct Message:Identifiable, Codable,Hashable{
     var senderCompanyId:String? = nil
     var senderCompanyName:String? = nil
     var attachments:[ConversationLink]? = nil
+    var conversationLink:ConversationLink? = nil
     var actionTitle:String? = nil
+    var receiverId:String? = nil
+    var receiverCompanyId:String? = nil
 
     var previewText:String {
         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -179,12 +360,280 @@ struct Message:Identifiable, Codable,Hashable{
             return trimmedMessage
         }
 
-        if let attachment = attachments?.first {
+        if let attachment = messageLinks.first {
             return "\(attachment.type.displayName): \(attachment.title)"
         }
 
         return kind == .systemNote ? "System update" : "Message"
     }
+
+    var messageLinks:[ConversationLink] {
+        var linksByKey:[String:ConversationLink] = [:]
+        if let conversationLink {
+            linksByKey["\(conversationLink.type.rawValue):\(conversationLink.recordId)"] = conversationLink
+        }
+        for attachment in attachments ?? [] {
+            linksByKey["\(attachment.type.rawValue):\(attachment.recordId)"] = attachment
+        }
+        return Array(linksByKey.values)
+    }
+}
+
+extension ConversationLink {
+    func queryItems(companyId fallbackCompanyId:String?, audience fallbackAudience:String?, chatId:String?) -> [URLQueryItem] {
+        var items = [
+            URLQueryItem(name: "type", value: type.rawValue),
+            URLQueryItem(name: "id", value: recordId)
+        ]
+
+        if let companyId = companyId ?? fallbackCompanyId, !companyId.isEmpty {
+            items.append(URLQueryItem(name: "companyId", value: companyId))
+        }
+        if let customerId, !customerId.isEmpty {
+            items.append(URLQueryItem(name: "customerId", value: customerId))
+        }
+        if let customerUserId, !customerUserId.isEmpty {
+            items.append(URLQueryItem(name: "customerUserId", value: customerUserId))
+        }
+        if let audience = audience ?? fallbackAudience, !audience.isEmpty {
+            items.append(URLQueryItem(name: "audience", value: audience))
+        }
+        if let chatId, !chatId.isEmpty {
+            items.append(URLQueryItem(name: "chatId", value: chatId))
+        }
+
+        return items
+    }
+
+    func appURLString(companyId fallbackCompanyId:String?, audience fallbackAudience:String?, chatId:String?) -> String {
+        var components = URLComponents()
+        components.scheme = "dripdrop"
+        components.host = "share"
+        components.queryItems = queryItems(companyId: fallbackCompanyId, audience: fallbackAudience, chatId: chatId)
+        return components.url?.absoluteString ?? "dripdrop://share"
+    }
+
+    func resolvedSharePath(companyId fallbackCompanyId:String?, audience fallbackAudience:String?, chatId:String?) -> String {
+        var components = URLComponents()
+        components.path = "/share"
+        components.queryItems = queryItems(companyId: fallbackCompanyId, audience: fallbackAudience, chatId: chatId)
+        return components.string ?? "/share"
+    }
+
+    func resolvedWebPath(for audience:String) -> String {
+        if audience == "client", let clientWebPath, !clientWebPath.isEmpty {
+            return clientWebPath
+        }
+        if audience != "client", let companyWebPath, !companyWebPath.isEmpty {
+            return companyWebPath
+        }
+        if let webPath, !webPath.isEmpty {
+            let isCompanyPath = webPath.hasPrefix("/company") || webPath.contains("/company/")
+            let isClientPath = webPath.hasPrefix("/client") || webPath.contains("/client/")
+            if audience == "client", !isCompanyPath { return webPath }
+            if audience != "client", !isClientPath { return webPath }
+        }
+
+        let encodedId = recordId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? recordId
+        if audience == "client" {
+            switch type {
+            case .serviceRequest:
+                return "/client/service-requests/\(encodedId)"
+            case .repairRequest:
+                return "/client/repair-requests/\(encodedId)"
+            case .serviceStop:
+                return "/serviceStop/detail/\(encodedId)"
+            case .serviceAgreement, .estimate, .contract:
+                return "/client/service-agreements/\(encodedId)"
+            case .invoice:
+                return "/client/billing/invoices/\(encodedId)"
+            case .equipment:
+                return "/client/equipment/\(encodedId)"
+            case .bodyOfWater:
+                return "/client/pools-spas/\(encodedId)"
+            case .serviceLocation:
+                return "/client/my-pool"
+            default:
+                return ""
+            }
+        }
+
+        switch type {
+        case .serviceRequest:
+            return "/company/leads/\(encodedId)"
+        case .repairRequest:
+            return "/company/repair-requests/detail/\(encodedId)"
+        case .serviceStop:
+            return "/company/serviceStops/detail/\(encodedId)"
+        case .recurringServiceStop:
+            return "/company/recurringServiceStop/details/\(encodedId)"
+        case .estimate:
+            return "/company/leads/\(encodedId)"
+        case .serviceAgreement, .contract:
+            return "/company/sales/agreements/\(encodedId)"
+        case .invoice:
+            return "/company/sales/invoices/\(encodedId)"
+        case .job:
+            return "/company/jobs/detail/\(encodedId)"
+        case .customer:
+            return "/company/customers/details/\(encodedId)"
+        case .serviceLocation:
+            return "/company/serviceLocations/detail/\(encodedId)"
+        case .bodyOfWater:
+            return "/company/bodiesOfWater/detail/\(encodedId)"
+        case .equipment:
+            return "/company/equipment/detail/\(encodedId)"
+        case .purchase:
+            return "/company/purchased-items/detail/\(encodedId)"
+        case .receipt:
+            return "/company/receipts/detail/\(encodedId)"
+        case .shoppingListItem:
+            return "/company/shopping-list/detail/\(encodedId)"
+        case .databaseItem:
+            return "/company/items/detail/\(encodedId)"
+        case .vendor:
+            return "/company/vendors/detail/\(encodedId)"
+        case .companyUser:
+            return "/company/companyUsers/\(encodedId)/general"
+        case .todo:
+            return "/company/todo-list?todoId=\(encodedId)"
+        case .other:
+            return ""
+        }
+    }
+
+    func enriched(companyId fallbackCompanyId:String?, audience fallbackAudience:String?, chatId:String?) -> ConversationLink {
+        var copy = self
+        let resolvedCompanyId = copy.companyId ?? fallbackCompanyId
+        let resolvedAudience = copy.audience ?? fallbackAudience
+        copy.companyId = resolvedCompanyId
+        copy.audience = resolvedAudience
+        copy.mobileRoute = copy.mobileRoute ?? copy.resolvedMobileRoute
+        copy.webPath = copy.webPath ?? copy.resolvedWebPath(for: resolvedAudience ?? "company")
+        copy.sharePath = copy.sharePath ?? copy.resolvedSharePath(companyId: resolvedCompanyId, audience: resolvedAudience, chatId: chatId)
+        copy.deeplinkUrl = copy.deeplinkUrl ?? copy.appURLString(companyId: resolvedCompanyId, audience: resolvedAudience, chatId: chatId)
+        return copy
+    }
+
+    func relatedEntityDictionary(companyId fallbackCompanyId:String?, audience:String, chatId:String?) -> [String:Any] {
+        let resolvedCompanyId = companyId ?? fallbackCompanyId ?? ""
+        return [
+            "type": type.rawValue,
+            "id": recordId,
+            "label": title,
+            "companyId": resolvedCompanyId,
+            "collectionPath": collectionPath ?? "",
+            "webPath": resolvedWebPath(for: audience),
+            "deeplinkUrl": deeplinkUrl ?? appURLString(companyId: resolvedCompanyId, audience: audience, chatId: chatId)
+        ]
+    }
+
+    func notificationShareDictionary(companyId fallbackCompanyId:String?, audience:String, chatId:String?) -> [String:Any] {
+        let resolvedCompanyId = companyId ?? fallbackCompanyId ?? ""
+        return [
+            "type": type.rawValue,
+            "id": recordId,
+            "recordId": recordId,
+            "companyId": resolvedCompanyId,
+            "customerId": customerId ?? "",
+            "customerUserId": customerUserId ?? "",
+            "title": title,
+            "subtitle": subtitle ?? "",
+            "collectionPath": collectionPath ?? "",
+            "webPath": resolvedWebPath(for: audience),
+            "sharePath": sharePath ?? resolvedSharePath(companyId: resolvedCompanyId, audience: audience, chatId: chatId),
+            "shareUrl": shareUrl ?? resolvedSharePath(companyId: resolvedCompanyId, audience: audience, chatId: chatId),
+            "deeplinkUrl": deeplinkUrl ?? appURLString(companyId: resolvedCompanyId, audience: audience, chatId: chatId),
+            "mobileRoute": resolvedMobileRoute ?? "",
+            "audience": audience
+        ]
+    }
+}
+
+func dripDropRecipientAudience(chat:Chat, recipientUserId:String) -> String {
+    if chat.audienceKind == "internal" {
+        return "company"
+    }
+
+    let participant = chat.participants.first { $0.userId == recipientUserId }
+    if participant?.companyId?.isEmpty == false {
+        return "company"
+    }
+
+    return "client"
+}
+
+func dripDropChatNotificationPayload(
+    alertId:String,
+    chat:Chat,
+    message:Message,
+    preview:String,
+    link:ConversationLink?,
+    recipientUserId:String? = nil,
+    recipientCompanyId:String? = nil,
+    recipientAudience:String
+) -> [String:Any] {
+    let fallbackCompanyId = recipientCompanyId ?? link?.companyId ?? chat.companyId ?? chat.senderCompanyId ?? chat.receiverCompanyId ?? message.senderCompanyId ?? ""
+    let title = link.map { "\(message.senderName) shared \($0.type.displayName)" } ?? "New message from \(message.senderName)"
+    let route = link?.resolvedWebPath(for: recipientAudience) ?? (recipientAudience == "client" ? "/client/chat/details/\(message.chatId)" : "/companies-chat/detail/\(message.chatId)")
+    let relatedRoute = link?.resolvedMobileRoute ?? RouteString.chat.rawValue
+    let relatedCategory = link?.type.alertCategory ?? MacCategories.chat
+    var payload:[String:Any] = [
+        "id": alertId,
+        "companyId": fallbackCompanyId,
+        "title": title,
+        "name": title,
+        "message": preview,
+        "description": preview,
+        "status": "unread",
+        "read": false,
+        "severity": "info",
+        "type": link == nil ? "chat_message" : "chat_shared_record",
+        "source": "chat",
+        "sourceId": message.id,
+        "chatId": message.chatId,
+        "conversationId": message.chatId,
+        "route": route,
+        "category": relatedCategory.rawValue,
+        "itemId": link?.recordId ?? message.chatId,
+        "date": message.dateSent,
+        "audience": chat.audienceKind,
+        "targetScope": recipientUserId == nil ? "company" : "specific",
+        "assignedToUserId": recipientUserId ?? "",
+        "recipientUserId": recipientUserId ?? "",
+        "recipientCompanyId": recipientCompanyId ?? "",
+        "deliveryTargets": ["web", "ios"],
+        "channels": [
+            "dashboard": true,
+            "ios": true,
+            "push": true
+        ],
+        "createdByUserId": message.senderId,
+        "createdByName": message.senderName,
+        "createdByCompanyId": message.senderCompanyId ?? "",
+        "createdByCompanyName": message.senderCompanyName ?? "",
+        "createdAt": message.dateSent,
+        "updatedAt": Date()
+    ]
+
+    if let link {
+        payload["hasItem"] = true
+        payload["itemName"] = link.title
+        payload["mobileRoute"] = relatedRoute
+        payload["relatedEntity"] = link.relatedEntityDictionary(companyId: fallbackCompanyId, audience: recipientAudience, chatId: message.chatId)
+        payload["share"] = link.notificationShareDictionary(companyId: fallbackCompanyId, audience: recipientAudience, chatId: message.chatId)
+    } else {
+        payload["hasItem"] = false
+        payload["itemName"] = ""
+        payload["relatedEntity"] = [
+            "type": "chat",
+            "id": message.chatId,
+            "label": chat.title ?? "Conversation",
+            "companyId": fallbackCompanyId
+        ]
+    }
+
+    return payload
 }
 
 protocol ChatManagerProtocol {
@@ -362,6 +811,12 @@ final class ChatManager:ChatManagerProtocol {
         private func messageDocument(messageId:String)-> DocumentReference{
             messageCollection().document(messageId)
         }
+    private func personalAlertDocument(userId:String, alertId:String) -> DocumentReference {
+        db.collection("users").document(userId).collection("alerts").document(alertId)
+    }
+    private func companyAlertDocument(companyId:String, alertId:String) -> DocumentReference {
+        db.collection("companies").document(companyId).collection("alerts").document(alertId)
+    }
     //----------------------------------------------------
     //------------------  CRUD  --------------------------
     //----------------------------------------------------
@@ -374,19 +829,94 @@ final class ChatManager:ChatManagerProtocol {
             .setData(from:chat, merge: false)
     }
     func sendMessage(userId: String, message: Message) async throws {
-        try messageDocument(messageId: message.id)
-            .setData(from:message, merge: false)
         let chatRef = chatDocument(chatId: message.chatId)
+        var outboundMessage = message
+        var enrichedLink:ConversationLink? = nil
+
         if let chat = try? await chatRef.getDocument(as: Chat.self) {
-            let userTargets = chat.participantIds.filter { $0 != message.senderId }
-            let companyTargets = chat.participantCompanyIds ?? chat.companyId.map { [$0] } ?? []
-            try await chatRef.updateData([
-                "lastMessage": message.previewText,
-                "mostRecentChat": message.dateSent,
-                "userWhoHaveNotRead": FieldValue.arrayUnion(userTargets),
-                "companyIdsWhoHaveNotRead": FieldValue.arrayUnion(companyTargets),
-                "readByUserIds": [message.senderId]
-            ])
+            if let link = message.conversationLink ?? message.messageLinks.first {
+                enrichedLink = link.enriched(
+                    companyId: link.companyId ?? chat.companyId ?? chat.senderCompanyId ?? chat.receiverCompanyId,
+                    audience: link.audience ?? (message.senderCompanyId?.isEmpty == false ? "company" : "client"),
+                    chatId: message.chatId
+                )
+                outboundMessage.conversationLink = enrichedLink
+                outboundMessage.attachments = enrichedLink.map { [$0] }
+            }
+
+            let targets = chat.unreadTargets(
+                senderId: outboundMessage.senderId,
+                senderCompanyId: outboundMessage.senderCompanyId
+            )
+            outboundMessage.receiverId = targets.userIds.first
+            outboundMessage.receiverCompanyId = targets.companyIds.first
+
+            try messageDocument(messageId: outboundMessage.id)
+                .setData(from:outboundMessage, merge: false)
+
+            var updatePayload:[String:Any] = [
+                "lastMessage": outboundMessage.previewText,
+                "lastMessageKind": outboundMessage.kind?.rawValue ?? ChatMessageKind.text.rawValue,
+                "mostRecentChat": outboundMessage.dateSent,
+                "userWhoHaveNotRead": targets.userIds,
+                "companyIdsWhoHaveNotRead": targets.companyIds,
+                "readByUserIds": [outboundMessage.senderId],
+                "updatedAt": Date()
+            ]
+            if let enrichedLink {
+                updatePayload["lastConversationLink"] = try Firestore.Encoder().encode(enrichedLink)
+            } else {
+                updatePayload["lastConversationLink"] = FieldValue.delete()
+            }
+
+            try await chatRef.updateData(updatePayload)
+            try await createMessageNotifications(
+                chat: chat,
+                message: outboundMessage,
+                link: enrichedLink,
+                userTargets: targets.userIds,
+                companyTargets: targets.companyIds
+            )
+        } else {
+            try messageDocument(messageId: outboundMessage.id)
+                .setData(from:outboundMessage, merge: false)
+        }
+    }
+
+    private func createMessageNotifications(
+        chat:Chat,
+        message:Message,
+        link:ConversationLink?,
+        userTargets:[String],
+        companyTargets:[String]
+    ) async throws {
+        for recipientUserId in Set(userTargets) {
+            let recipientAudience = dripDropRecipientAudience(chat: chat, recipientUserId: recipientUserId)
+            let alertId = "alert_\(message.id)_\(recipientUserId)"
+            let payload = dripDropChatNotificationPayload(
+                alertId: alertId,
+                chat: chat,
+                message: message,
+                preview: message.previewText,
+                link: link,
+                recipientUserId: recipientUserId,
+                recipientAudience: recipientAudience
+            )
+            try await personalAlertDocument(userId: recipientUserId, alertId: alertId).setData(payload, merge: false)
+        }
+
+        for recipientCompanyId in Set(companyTargets) {
+            let alertId = "alert_\(message.id)_\(recipientCompanyId)"
+            let payload = dripDropChatNotificationPayload(
+                alertId: alertId,
+                chat: chat,
+                message: message,
+                preview: message.previewText,
+                link: link,
+                recipientCompanyId: recipientCompanyId,
+                recipientAudience: "company"
+            )
+            try await companyAlertDocument(companyId: recipientCompanyId, alertId: alertId).setData(payload, merge: false)
         }
     }
     //----------------------------------------------------
@@ -411,18 +941,14 @@ final class ChatManager:ChatManagerProtocol {
             .getDocuments(as:Chat.self)
     }
     func getVisibleChats(userId:String, companyId:String?) async throws ->[Chat]{
-        var chats = try await getAllChatsByUser(userId: userId)
         if let companyId {
-            let companyChats = try await chatCollection()
-                .whereField("participantCompanyIds", arrayContains: companyId)
-                .order(by: "mostRecentChat", descending: true)
+            return try await chatCollection()
+                .whereField("companyId", isEqualTo: companyId)
                 .getDocuments(as:Chat.self)
-            chats.append(contentsOf: companyChats)
+                .sorted { $0.mostRecentChat > $1.mostRecentChat }
         }
 
-        return Dictionary(grouping: chats, by: \.id)
-            .compactMap { $0.value.first }
-            .sorted { $0.mostRecentChat > $1.mostRecentChat }
+        return try await getAllChatsByUser(userId: userId)
     }
     func getAllMessagesByChat(chatId: String) async throws ->[Message]{
         return try await messageCollection()
@@ -501,6 +1027,20 @@ final class ChatManager:ChatManagerProtocol {
         chatListener?.remove()
         companyChatListener?.remove()
 
+        if let companyId {
+            self.companyChatListener = chatCollection()
+                .whereField("companyId", isEqualTo: companyId)
+                .addSnapshotListener { querySnapshot, error in
+                    guard let documents = querySnapshot?.documents else {
+                        print("There are no documents in the Company Chat Collection")
+                        return
+                    }
+                    companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
+                    emitMergedChats()
+                }
+            return
+        }
+
         self.chatListener = chatCollection()
             .whereField("participantIds", arrayContains: userId)
             .order(by: "mostRecentChat", descending: true)
@@ -510,19 +1050,6 @@ final class ChatManager:ChatManagerProtocol {
                     return
                 }
                 directChats = documents.compactMap({try? $0.data(as: Chat.self)})
-                emitMergedChats()
-            }
-
-        guard let companyId else { return }
-        self.companyChatListener = chatCollection()
-            .whereField("participantCompanyIds", arrayContains: companyId)
-            .order(by: "mostRecentChat", descending: true)
-            .addSnapshotListener { querySnapshot, error in
-                guard let documents = querySnapshot?.documents else {
-                    print("There are no documents in the Company Chat Collection")
-                    return
-                }
-                companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
                 emitMergedChats()
             }
     }
@@ -555,6 +1082,20 @@ final class ChatManager:ChatManagerProtocol {
         chatListener?.remove()
         companyChatListener?.remove()
 
+        if let companyId {
+            self.companyChatListener = chatCollection()
+                .whereField("companyId", isEqualTo: companyId)
+                .addSnapshotListener { querySnapshot, error in
+                    guard let documents = querySnapshot?.documents else {
+                        print("There are no documents in the Unread Company Chat Collection")
+                        return
+                    }
+                    companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
+                    emitMergedChats()
+                }
+            return
+        }
+
         self.chatListener = chatCollection()
             .whereField("participantIds", arrayContains: userId)
             .whereField("userWhoHaveNotRead", arrayContains: userId)
@@ -564,18 +1105,6 @@ final class ChatManager:ChatManagerProtocol {
                     return
                 }
                 directChats = documents.compactMap({try? $0.data(as: Chat.self)})
-                emitMergedChats()
-            }
-
-        guard let companyId else { return }
-        self.companyChatListener = chatCollection()
-            .whereField("companyIdsWhoHaveNotRead", arrayContains: companyId)
-            .addSnapshotListener { querySnapshot, error in
-                guard let documents = querySnapshot?.documents else {
-                    print("There are no documents in the Unread Company Chat Collection")
-                    return
-                }
-                companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
                 emitMergedChats()
             }
     }

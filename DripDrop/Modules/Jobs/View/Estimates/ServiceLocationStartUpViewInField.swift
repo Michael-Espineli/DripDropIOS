@@ -65,6 +65,9 @@ struct ServiceLocationStartUpViewInField: View {
     @State private var gateCode: String = ""
     @State private var locationNotes: String = ""
     @State private var saveMessage: String? = nil
+    @State private var savedServiceLocationPhotoUrls: [DripDropStoredImage] = []
+    @State private var surveyAutosaveTask: Task<Void, Never>? = nil
+    @State private var lastAutosavedSurveyFingerprint: String = ""
     @State private var didSeedSurveyDraft: Bool = false
     @State private var didLoadExistingSurveyDraft: Bool = false
     @State private var isLoadingSurveyDraft: Bool = false
@@ -119,6 +122,12 @@ struct ServiceLocationStartUpViewInField: View {
         .onChange(of: masterDataManager.currentCompany?.id) { _ in
             loadSurveyDraftIfNeeded()
         }
+        .onChange(of: surveyAutosaveFingerprint) { _ in
+            scheduleSurveyAutosave()
+        }
+        .onDisappear {
+            surveyAutosaveTask?.cancel()
+        }
     }
 }
 
@@ -126,19 +135,19 @@ struct ServiceLocationStartUpViewInField: View {
 //    ServiceLocationStartUpView(dataService: MockDataService(), serviceLocation: MockDataService.mockServiceLocation)
 //}
 extension ServiceLocationStartUpViewInField {
-    private func saveSurvey(companyId: String) async throws {
+    private func saveSurvey(companyId: String, includePendingPhotos: Bool) async throws {
         try await VM.createLocation(
             companyId: companyId,
             customerId: customerId,
             serviceLocationId: serviceLocationId,
             bodyOfWaterList: bodyOfWaterList,
             equipmentList: equipmentList,
-            bodyOfWaterImages: bodyOfWaterImages,
-            equipmentImages: equipmentImages,
+            bodyOfWaterImages: includePendingPhotos ? bodyOfWaterImages : [:],
+            equipmentImages: includePendingPhotos ? equipmentImages : [:],
             locationNickName: locationNickName,
             gateCode: gateCode,
             locationNotes: reportNotesForSave,
-            serviceLocationPhotos: serviceLocationPhotos
+            serviceLocationPhotos: includePendingPhotos ? serviceLocationPhotos : []
         )
     }
 
@@ -171,11 +180,13 @@ extension ServiceLocationStartUpViewInField {
                 selectedEquipmentId = ""
                 selectedEquipmentCategory = nil
                 didSeedSurveyDraft = true
+                markSurveyAutosaveBaseline()
             } catch {
                 print("Could not load existing survey draft")
                 print(error)
                 saveMessage = "Could not load existing survey"
                 seedSurveyDraftIfNeeded()
+                markSurveyAutosaveBaseline()
             }
         }
     }
@@ -237,9 +248,15 @@ extension ServiceLocationStartUpViewInField {
                 defaultEquipment(name: "Main Filter", type: .filter, bodyOfWaterId: selectedBOW.id)
             ]
         }
+
+        markSurveyAutosaveBaseline()
     }
 
     private func hydrateLocationFieldsIfPossible() {
+        if let serviceLocation, savedServiceLocationPhotoUrls.isEmpty {
+            savedServiceLocationPhotoUrls = serviceLocation.photoUrls ?? []
+        }
+
         guard !didHydrateLocationFields else { return }
 
         if let serviceLocation {
@@ -266,7 +283,8 @@ extension ServiceLocationStartUpViewInField {
             makeId: "",
             model: "",
             modelId: "",
-            dateInstalled: Date(),
+            dateInstalled: nil,
+            createdAt: Date(),
             status: .operational,
             needsService: false,
             cleanFilterPressure: type == .filter ? 15 : nil,
@@ -311,8 +329,8 @@ extension ServiceLocationStartUpViewInField {
                 surveyTextField(title: "Location Notes", text: $locationNotes, lineLimit: 3...6)
             }
 
-            if let storedImages = serviceLocation?.photoUrls, !storedImages.isEmpty {
-                DripDropStoredImageRow(images: storedImages)
+            if !savedServiceLocationPhotoUrls.isEmpty {
+                DripDropStoredImageRow(images: savedServiceLocationPhotoUrls)
             }
 
             PhotoContentView(selectedImages: $serviceLocationPhotos)
@@ -656,7 +674,7 @@ extension ServiceLocationStartUpViewInField {
             Button {
                 submitSurvey()
             } label: {
-                Label(VM.isLoading ? "Saving Survey" : "Save Survey", systemImage: "tray.and.arrow.down.fill")
+                Label(VM.isLoading ? "Saving Survey" : "Finish Survey", systemImage: "checkmark.circle.fill")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -744,7 +762,7 @@ extension ServiceLocationStartUpViewInField {
                     moveToNextStep()
                 }
             } label: {
-                Label(currentStep == .review ? "Save" : "Next", systemImage: currentStep == .review ? "tray.and.arrow.down.fill" : "chevron.right")
+                Label(currentStep == .review ? "Finish" : "Next", systemImage: currentStep == .review ? "checkmark.circle.fill" : "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
@@ -771,7 +789,7 @@ extension ServiceLocationStartUpViewInField {
 
                 Spacer(minLength: 8)
 
-                button
+                autosaveStatusPill
             }
 
             ProgressView(value: Double(currentStep.position), total: Double(SurveyGuideStep.allCases.count))
@@ -780,7 +798,7 @@ extension ServiceLocationStartUpViewInField {
             if let saveMessage {
                 Text(saveMessage)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(saveMessage == "Survey saved" ? Color.poolGreen : Color.poolRed)
+                    .foregroundStyle(saveMessageColor)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -812,20 +830,22 @@ extension ServiceLocationStartUpViewInField {
         .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
-    var button: some View {
-        Button {
-            submitSurvey()
-        } label: {
+    var autosaveStatusPill: some View {
+        HStack(spacing: 6) {
             if VM.isLoading {
                 ProgressView()
-                    .frame(width: 20, height: 20)
+                    .frame(width: 16, height: 16)
             } else {
-                Label("Save", systemImage: "tray.and.arrow.down.fill")
-                    .font(.caption.weight(.semibold))
+                Image(systemName: "checkmark.circle.fill")
             }
+
+            Text(VM.isLoading ? "Saving" : "Auto-save")
+                .font(.caption.weight(.semibold))
         }
-        .buttonStyle(.borderedProminent)
-        .disabled(VM.isLoading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(Color.poolGreen.opacity(0.16), in: Capsule())
+        .foregroundStyle(Color.poolGreen)
     }
 
     var bodyOfWaterPicker: some View {
@@ -1047,7 +1067,8 @@ extension ServiceLocationStartUpViewInField {
                 makeId: "",
                 model: "",
                 modelId: "",
-                dateInstalled: Date(),
+                dateInstalled: nil,
+                createdAt: Date(),
                 status: .operational,
                 needsService: false,
                 notes: "",
@@ -1062,27 +1083,54 @@ extension ServiceLocationStartUpViewInField {
         selectedEquipmentCategory = category
     }
 
-    func submitSurvey() {
+    func submitSurvey(
+        automated: Bool = false,
+        includePendingPhotos: Bool = true,
+        moveToReview: Bool = true
+    ) {
         Task {
-            guard !VM.isLoading else { return }
+            guard !VM.isLoading else {
+                if automated {
+                    scheduleSurveyAutosave()
+                }
+                return
+            }
+
+            let fingerprintBeingSaved = surveyAutosaveFingerprint
+            let companyIds = surveySaveCompanyIds
+            guard !companyIds.isEmpty else {
+                saveMessage = "Could not save survey"
+                return
+            }
 
             do {
-                if let company = masterDataManager.currentCompany {
-                    if serviceStop.otherCompany && serviceStop.contractedCompanyId != "" {
-                        try await saveSurvey(companyId: serviceStop.contractedCompanyId)
-                    }
+                saveMessage = automated ? "Autosaving..." : "Saving survey..."
 
-                    try await saveSurvey(companyId: company.id)
-                } else {
-                    print("no Company")
+                for companyId in companyIds {
+                    try await saveSurvey(companyId: companyId, includePendingPhotos: includePendingPhotos)
                 }
 
-                saveMessage = "Survey saved"
-                serviceLocationPhotos = []
-                bodyOfWaterImages = [:]
-                equipmentImages = [:]
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    currentStep = .review
+                if includePendingPhotos {
+                    if let primaryCompanyId = surveyPrimaryCompanyId {
+                        try? await refreshSavedSurveyDraft(companyId: primaryCompanyId)
+                    }
+
+                    serviceLocationPhotos = []
+                    bodyOfWaterImages = [:]
+                    equipmentImages = [:]
+                }
+
+                lastAutosavedSurveyFingerprint = includePendingPhotos ? surveyAutosaveFingerprint : fingerprintBeingSaved
+                saveMessage = automated ? "Autosaved" : "Survey saved"
+
+                if moveToReview {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        currentStep = .review
+                    }
+                }
+
+                if surveyAutosaveFingerprint != lastAutosavedSurveyFingerprint {
+                    scheduleSurveyAutosave()
                 }
             } catch {
                 print("error")
@@ -1110,6 +1158,94 @@ extension ServiceLocationStartUpViewInField {
         recommendationDetails = ""
         recommendationArea = .equipment
         recommendationPriority = .recommended
+    }
+
+    private var surveySaveCompanyIds: [String] {
+        var ids: [String] = []
+
+        if serviceStop.otherCompany,
+           !serviceStop.contractedCompanyId.isEmpty {
+            ids.append(serviceStop.contractedCompanyId)
+        }
+
+        if let companyId = masterDataManager.currentCompany?.id,
+           !companyId.isEmpty,
+           !ids.contains(companyId) {
+            ids.append(companyId)
+        }
+
+        return ids
+    }
+
+    private var surveyPrimaryCompanyId: String? {
+        if let companyId = masterDataManager.currentCompany?.id, !companyId.isEmpty {
+            return companyId
+        }
+
+        if serviceStop.otherCompany, !serviceStop.contractedCompanyId.isEmpty {
+            return serviceStop.contractedCompanyId
+        }
+
+        return nil
+    }
+
+    private func scheduleSurveyAutosave() {
+        let fingerprint = surveyAutosaveFingerprint
+        guard !fingerprint.isEmpty else { return }
+        guard fingerprint != lastAutosavedSurveyFingerprint else { return }
+        guard !surveySaveCompanyIds.isEmpty else { return }
+
+        surveyAutosaveTask?.cancel()
+        saveMessage = "Autosave pending"
+
+        let includePendingPhotos = hasPendingSurveyPhotos
+        let delay: UInt64 = includePendingPhotos ? 1_600_000_000 : 900_000_000
+
+        surveyAutosaveTask = Task {
+            do {
+                try await Task.sleep(nanoseconds: delay)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                submitSurvey(
+                    automated: true,
+                    includePendingPhotos: includePendingPhotos,
+                    moveToReview: false
+                )
+            }
+        }
+    }
+
+    private func markSurveyAutosaveBaseline() {
+        lastAutosavedSurveyFingerprint = surveyAutosaveFingerprint
+    }
+
+    private func refreshSavedSurveyDraft(companyId: String) async throws {
+        let previousSelectedBodyOfWater = selectedBOW
+        let existingSurvey = try await loadExistingSurveyDraft(companyIds: [companyId])
+
+        if !existingSurvey.bodyOfWaterList.isEmpty {
+            bodyOfWaterList = existingSurvey.bodyOfWaterList
+            selectedBOW =
+                bodyOfWaterList.first { $0.id == previousSelectedBodyOfWater.id } ??
+                bodyOfWaterList.first {
+                    $0.name.localizedCaseInsensitiveCompare(previousSelectedBodyOfWater.name) == .orderedSame
+                } ??
+                bodyOfWaterList[0]
+        }
+
+        equipmentList = existingSurvey.equipmentList
+
+        if let refreshedLocation = try? await VM.dataService.getServiceLocationById(
+            companyId: companyId,
+            locationId: serviceLocationId
+        ) {
+            savedServiceLocationPhotoUrls = refreshedLocation.photoUrls ?? []
+        }
     }
 
     func moveToNextStep() {
@@ -1163,9 +1299,155 @@ extension ServiceLocationStartUpViewInField {
     }
 
     var surveyPhotoCount: Int {
-        serviceLocationPhotos.count
+        savedServiceLocationPhotoUrls.count
+        + serviceLocationPhotos.count
+        + bodyOfWaterList.reduce(0) { $0 + ($1.photoUrls?.count ?? 0) }
+        + equipmentList.reduce(0) { $0 + ($1.photoUrls?.count ?? 0) }
         + bodyOfWaterImages.values.reduce(0) { $0 + $1.count }
         + equipmentImages.values.reduce(0) { $0 + $1.count }
+    }
+
+    private var hasPendingSurveyPhotos: Bool {
+        serviceLocationPhotos.isEmpty == false ||
+        bodyOfWaterImages.values.contains(where: { !$0.isEmpty }) ||
+        equipmentImages.values.contains(where: { !$0.isEmpty })
+    }
+
+    private var saveMessageColor: Color {
+        switch saveMessage ?? "" {
+        case "Survey saved", "Autosaved":
+            return Color.poolGreen
+        case "Autosave pending", "Autosaving...", "Saving survey...":
+            return Color.secondary
+        default:
+            return Color.poolRed
+        }
+    }
+
+    private var surveyAutosaveFingerprint: String {
+        [
+            locationNickName,
+            gateCode,
+            baseLocationNotes,
+            bodyOfWaterAutosaveFingerprint,
+            equipmentAutosaveFingerprint,
+            recommendationAutosaveFingerprint,
+            pendingPhotoAutosaveFingerprint
+        ]
+            .joined(separator: "||")
+    }
+
+    private var bodyOfWaterAutosaveFingerprint: String {
+        bodyOfWaterList
+            .sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }
+            .map { bodyOfWater in
+                [
+                    bodyOfWater.id,
+                    bodyOfWater.name,
+                    bodyOfWater.gallons,
+                    bodyOfWater.material,
+                    bodyOfWater.customerId,
+                    bodyOfWater.serviceLocationId,
+                    bodyOfWater.notes ?? "",
+                    bodyOfWater.shape ?? "",
+                    (bodyOfWater.length ?? []).joined(separator: ","),
+                    (bodyOfWater.depth ?? []).joined(separator: ","),
+                    (bodyOfWater.width ?? []).joined(separator: ","),
+                    "\(bodyOfWater.lastFilled.timeIntervalSince1970)",
+                    bodyOfWater.isActive ? "active" : "inactive"
+                ]
+                    .joined(separator: "~")
+            }
+            .joined(separator: "^")
+    }
+
+    private var equipmentAutosaveFingerprint: String {
+        equipmentList
+            .sorted { $0.id.localizedCaseInsensitiveCompare($1.id) == .orderedAscending }
+            .map { equipment in
+                let lastServiceDate = timestampString(equipment.lastServiceDate)
+                let nextServiceDate = timestampString(equipment.nextServiceDate)
+                let dateUninstalled = timestampString(equipment.dateUninstalled)
+
+                return [
+                    equipment.id,
+                    equipment.name,
+                    equipment.type.rawValue,
+                    equipment.typeId,
+                    equipment.make,
+                    equipment.makeId,
+                    equipment.model,
+                    equipment.modelId,
+                    equipment.universalEquipmentId,
+                    equipment.manualPdfLink,
+                    timestampString(equipment.dateInstalled),
+                    equipment.status.rawValue,
+                    equipment.needsService ? "needs-service" : "no-service",
+                    equipment.cleanFilterPressure.map(String.init) ?? "",
+                    equipment.currentPressure.map(String.init) ?? "",
+                    lastServiceDate,
+                    equipment.serviceFrequency.map(String.init) ?? "",
+                    equipment.serviceFrequencyEvery?.rawValue ?? "",
+                    nextServiceDate,
+                    equipment.notes,
+                    equipment.customerName,
+                    equipment.customerId,
+                    equipment.serviceLocationId,
+                    equipment.bodyOfWaterId,
+                    equipment.isActive ? "active" : "inactive",
+                    dateUninstalled
+                ]
+                    .joined(separator: "~")
+            }
+            .joined(separator: "^")
+    }
+
+    private func timestampString(_ date: Date?) -> String {
+        guard let date else {
+            return ""
+        }
+
+        return String(date.timeIntervalSince1970)
+    }
+
+    private var recommendationAutosaveFingerprint: String {
+        recommendationDrafts
+            .map { recommendation in
+                [
+                    recommendation.id,
+                    recommendation.title,
+                    recommendation.details,
+                    recommendation.area.rawValue,
+                    recommendation.priority.rawValue
+                ]
+                    .joined(separator: "~")
+            }
+            .joined(separator: "^")
+    }
+
+    private var pendingPhotoAutosaveFingerprint: String {
+        let serviceLocationFingerprint = dripDropImageFingerprint(serviceLocationPhotos)
+        let bodyFingerprints = bodyOfWaterImages
+            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
+            .map { "\($0.key):\(dripDropImageFingerprint($0.value))" }
+            .joined(separator: "^")
+        let equipmentFingerprints = equipmentImages
+            .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
+            .map { "\($0.key):\(dripDropImageFingerprint($0.value))" }
+            .joined(separator: "^")
+
+        return [
+            serviceLocationFingerprint,
+            bodyFingerprints,
+            equipmentFingerprints
+        ]
+            .joined(separator: "||")
+    }
+
+    private func dripDropImageFingerprint(_ images: [DripDropImage]) -> String {
+        images
+            .map { "\($0.id.uuidString):\($0.name)" }
+            .joined(separator: ",")
     }
 
     var reportNotesForSave: String {

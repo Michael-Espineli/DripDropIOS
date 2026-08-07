@@ -44,18 +44,18 @@ struct RouteStopCardView: View {
     @EnvironmentObject var dataService: ProductionDataService
 
     @StateObject var VM: RouteStopCardViewModel
+    let stop: ServiceStop
+    let index: Int
 
     init(dataService: any ProductionDataServiceProtocol, stop: ServiceStop, index: Int) {
         _VM = StateObject(wrappedValue: RouteStopCardViewModel(dataService: dataService))
-        _stop = State(wrappedValue: stop)
-        _index = State(wrappedValue: index)
+        self.stop = stop
+        self.index = index
     }
 
     @State var customer: Customer? = nil
     @State var showPhoneNumberPicker: Bool = false
     @State var phoneNumberPickerType: PhoneNumberPickerType? = nil
-    @State var stop: ServiceStop
-    @State var index: Int
 
     // MARK: - Body
     var body: some View {
@@ -190,6 +190,7 @@ extension RouteStopCardView {
                     .modifier(OutLineButtonModifier())
                     .padding(.top, 4)
                 }
+                routeFooter
             }
         }
 
@@ -225,6 +226,84 @@ extension RouteStopCardView {
                 }
             }
         }
+    }
+
+    private var routeFooter: some View {
+        HStack(spacing: 10) {
+            footerItem(
+                systemImage: "clock",
+                text: startTimeFooterText
+            )
+
+            Rectangle()
+                .fill(Color.basicFontText.opacity(0.18))
+                .frame(width: 1, height: 10)
+
+            footerItem(
+                systemImage: "timer",
+                text: durationFooterText
+            )
+
+            Spacer(minLength: 0)
+        }
+        .font(.caption2.weight(.medium))
+        .foregroundColor(Color.basicFontText.opacity(0.68))
+        .padding(.top, 2)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func footerItem(systemImage: String, text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.caption2.weight(.semibold))
+                .accessibilityHidden(true)
+
+            Text(text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private var startTimeFooterText: String {
+        guard let startTime = stop.startTime else {
+            return "Start not set"
+        }
+
+        return "Started \(time(date: startTime))"
+    }
+
+    private var durationFooterText: String {
+        if stop.duration > 0 {
+            return "Duration \(compactMinutes(stop.duration))"
+        }
+
+        if let startTime = stop.startTime,
+           let endTime = stop.endTime,
+           endTime > startTime {
+            return "Duration \(compactMinutes(minBetween(start: startTime, end: endTime)))"
+        }
+
+        if stop.estimatedDuration > 0 {
+            return "Est. \(compactMinutes(stop.estimatedDuration))"
+        }
+
+        return "Duration not set"
+    }
+
+    private func compactMinutes(_ minutes: Int) -> String {
+        let safeMinutes = max(minutes, 0)
+        let hours = safeMinutes / 60
+        let remainingMinutes = safeMinutes % 60
+
+        if hours > 0 && remainingMinutes > 0 {
+            return "\(hours)h \(remainingMinutes)m"
+        }
+
+        if hours > 0 {
+            return "\(hours)h"
+        }
+
+        return "\(remainingMinutes)m"
     }
 
     // ✅ FIXED — switch lives INSIDE the view

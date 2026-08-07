@@ -67,7 +67,17 @@ struct VehicalPickerView: View {
     @State var search: String = ""
     @State var customers: [Customer] = []
 
+    private var canUseCompanyVehicals: Bool {
+        companyUser?.canUseCompanyRouteVehicle ?? true
+    }
+
+    private var canUsePersonalVehical: Bool {
+        companyUser?.canUsePersonalRouteVehicle ?? false
+    }
+
     private var filteredVehicals: [Vehical] {
+        guard canUseCompanyVehicals else { return [] }
+
         let trimmedSearch = search.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedSearch.isEmpty else {
@@ -91,7 +101,7 @@ struct VehicalPickerView: View {
     private var personalVehical: Vehical? {
         guard let companyUser,
               let personalVehicle = effectivePersonalVehicle,
-              companyUser.allowPersonalVehicle == true || savedPersonalVehicle != nil
+              canUsePersonalVehical
         else { return nil }
         
         return personalVehicle.asVehical(ownerId: companyUser.userId)
@@ -176,7 +186,7 @@ extension VehicalPickerView {
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    Text("Choose a company fleet or approved personal vehicle, then confirm your selection.")
+                    Text(canUseCompanyVehicals ? "Choose a company fleet or approved personal vehicle, then confirm your selection." : "Choose an approved personal vehicle, then confirm your selection.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -229,16 +239,18 @@ extension VehicalPickerView {
 
                 Spacer()
 
-                Button {
-                    addVehical.toggle()
-                } label: {
-                    Label("Add", systemImage: "plus")
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Color.accentColor.opacity(0.14), in: Capsule())
+                if canUseCompanyVehicals {
+                    Button {
+                        addVehical.toggle()
+                    } label: {
+                        Label("Add", systemImage: "plus")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(Color.accentColor.opacity(0.14), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             if VM.isLoading {

@@ -162,15 +162,23 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         status: ShoppingListStatus,
         needsAction: Bool
     ) async throws {
+        let now = Date()
+        var updates: [String: Any] = [
+            "status": status.rawValue,
+            "needsAction": needsAction,
+            "actionDate": now
+        ]
+
+        if status == .purchased {
+            updates["datePurchased"] = now
+        }
+
         try await db
             .collection("companies")
             .document(companyId)
             .collection("shoppingList")
             .document(shoppingListItemId)
-            .updateData([
-                "status": status.rawValue,
-                "needsAction": needsAction
-            ])
+            .updateData(updates)
     }
     
     // MARK: - ShoppingList
@@ -3316,6 +3324,20 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         unreadChatListener?.remove()
         unreadCompanyChatListener?.remove()
 
+        if let companyId {
+            unreadCompanyChatListener = chatCollection()
+                .whereField("companyId", isEqualTo: companyId)
+                .addSnapshotListener { querySnapshot, error in
+                    guard let documents = querySnapshot?.documents else {
+                        print("- There are no documents in the Unread Company Chat Collection")
+                        return
+                    }
+                    companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
+                    emitMergedChats()
+                }
+            return
+        }
+
         unreadChatListener = chatCollection()
             .whereField("participantIds", arrayContains: userId)
             .whereField("userWhoHaveNotRead", arrayContains: userId)
@@ -3325,18 +3347,6 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
                     return
                 }
                 directChats = documents.compactMap({try? $0.data(as: Chat.self)})
-                emitMergedChats()
-            }
-
-        guard let companyId else { return }
-        unreadCompanyChatListener = chatCollection()
-            .whereField("companyIdsWhoHaveNotRead", arrayContains: companyId)
-            .addSnapshotListener { querySnapshot, error in
-                guard let documents = querySnapshot?.documents else {
-                    print("- There are no documents in the Unread Company Chat Collection")
-                    return
-                }
-                companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
                 emitMergedChats()
             }
     }
@@ -3462,6 +3472,20 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         chatListener?.remove()
         companyChatListener?.remove()
 
+        if let companyId {
+            companyChatListener = chatCollection()
+                .whereField("companyId", isEqualTo: companyId)
+                .addSnapshotListener { querySnapshot, error in
+                    guard let documents = querySnapshot?.documents else {
+                        print("[ProductionDataService] [addListenerForVisibleChats] - There are no company chat documents")
+                        return
+                    }
+                    companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
+                    emitMergedChats()
+                }
+            return
+        }
+
         chatListener = chatCollection()
             .whereField("participantIds", arrayContains: userId)
             .order(by: "mostRecentChat", descending: true)
@@ -3471,19 +3495,6 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
                     return
                 }
                 directChats = documents.compactMap({try? $0.data(as: Chat.self)})
-                emitMergedChats()
-            }
-
-        guard let companyId else { return }
-        companyChatListener = chatCollection()
-            .whereField("participantCompanyIds", arrayContains: companyId)
-            .order(by: "mostRecentChat", descending: true)
-            .addSnapshotListener { querySnapshot, error in
-                guard let documents = querySnapshot?.documents else {
-                    print("[ProductionDataService] [addListenerForVisibleChats] - There are no company chat documents")
-                    return
-                }
-                companyChats = documents.compactMap({try? $0.data(as: Chat.self)})
                 emitMergedChats()
             }
     }

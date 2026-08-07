@@ -69,6 +69,16 @@ struct ServiceStopStartPrompt: Identifiable, Equatable {
     let distanceMeters: CLLocationDistance
 }
 
+struct ServiceStopEndPrompt: Identifiable, Equatable {
+    var id: String { serviceStopId }
+
+    let serviceStopId: String
+    let customerName: String
+    let serviceType: String
+    let departureTime: Date
+    let distanceMeters: CLLocationDistance
+}
+
 @MainActor
 final class MobileDailyRouteDisplayViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
@@ -95,6 +105,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     @Published private(set) var previousRoutesNeedingReview: [ActiveRoute] = []
     @Published private(set) var recentActiveRoutes: [ActiveRoute] = []
     @Published private(set) var pendingServiceStopStartPrompt: ServiceStopStartPrompt?
+    @Published private(set) var pendingServiceStopEndPrompt: ServiceStopEndPrompt?
     init(dataService:any ProductionDataServiceProtocol, routeLocationManager: RouteLocationManager = RouteLocationManager()){
         self.dataService = dataService
         self.routeLocationManager = routeLocationManager
@@ -115,6 +126,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
 
                 self.currentLocation = location
                 await self.evaluateServiceStopArrival(for: location)
+                await self.evaluateServiceStopDeparture(for: location)
                 // Optional: Persist breadcrumb to Firestore here (throttle as needed)
                 if let active = self.activeRoute,
                    active.status == .inProgress,
@@ -224,6 +236,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     private var serviceStopArrivalTimes: [String: Date] = [:]
     private var dismissedServiceStopStartPromptIds: Set<String> = []
     private var notifiedServiceStopStartPromptIds: Set<String> = []
+    private var serviceStopDepartureTimes: [String: Date] = [:]
+    private var dismissedServiceStopEndPromptIds: Set<String> = []
+    private var notifiedServiceStopEndPromptIds: Set<String> = []
 
     // Summary log tracking
     @Published private(set) var currentSummaryLogId: String? = nil
@@ -400,23 +415,29 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             date: date,
             techId: user.id
         ) { [weak self] route in
-            self?.activeRoute = route
+            guard let self else { return }
+            self.activeRoute = route
             if let route {
-                self?.loadSelectedVehicleForActiveRoute(companyId: companyId, activeRoute: route)
+                self.loadSelectedVehicleForActiveRoute(companyId: companyId, activeRoute: route)
             }
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Active Route Listener:", route?.id ?? "nil")
-//            self?.recompute(companyId: companyId,whoCalled: "AR", user: user, date: date)
+            if !self.serviceStopList.isEmpty {
+                self.recompute(companyId: companyId, whoCalled: "AR", user: user, date: date)
+            }
         }
         dataService.listenRecurringRoute(
             companyId: companyId,
             techId: user.id,
             day: weekDay(date: date)
         ) { [weak self] route in
-            self?.recurringRoute = route
+            guard let self else { return }
+            self.recurringRoute = route
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Recurring Route Listener: ", route?.id ?? "nil")
-//            self?.recompute(companyId: companyId, whoCalled: "RR", user: user, date: date)
+            if !self.serviceStopList.isEmpty {
+                self.recompute(companyId: companyId, whoCalled: "RR", user: user, date: date)
+            }
         }
         dataService.listenServiceStops(
             companyId: companyId,
@@ -455,6 +476,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             
            //Update Service Stop List order based on order before checking differences
            self.serviceStopList = applyOrder(serviceStops: serviceStopList, serviceStopOrders: computedRoute.order)
+            self.serviceStopOrderList = computedRoute.order ?? []
 
             //Sees what the difference are between old and new Route
             let diff = ActiveRouteDiffer.diff(
@@ -524,8 +546,38 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 }
 
                 clearServiceStopStartPrompt(serviceStopId: serviceStopId)
+                clearServiceStopEndPrompt(serviceStopId: serviceStopId)
             } catch {
                 print("[MobileDailyRouteDisplayViewModel][startServiceStop] Error \(error)")
+            }
+        }
+    }
+
+    func finishServiceStop(companyId: String?, serviceStopId: String, endTime: Date = Date()) {
+        guard let companyId else { return }
+
+        Task {
+            do {
+                try await dataService.updateServicestopOperationStatus(
+                    companyId: companyId,
+                    serviceStopId: serviceStopId,
+                    operationStatus: .finished
+                )
+                try await dataService.updateServiceStopEndTime(
+                    companyId: companyId,
+                    serviceStopId: serviceStopId,
+                    endTime: endTime
+                )
+
+                if let index = serviceStopList.firstIndex(where: { $0.id == serviceStopId }) {
+                    serviceStopList[index].operationStatus = .finished
+                    serviceStopList[index].endTime = endTime
+                }
+
+                clearServiceStopEndPrompt(serviceStopId: serviceStopId)
+                clearServiceStopStartPrompt(serviceStopId: serviceStopId)
+            } catch {
+                print("[MobileDailyRouteDisplayViewModel][finishServiceStop] Error \(error)")
             }
         }
     }
@@ -928,9 +980,12 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         guard let activeRoute else {return}
         print("**  [MobileDailyRouteDisplayViewModel][reorderServiceStops]")
  
-        let newOrder = generateNewOrder(serviceStops: serviceStopList)
+        let newOrder = generateNewOrder(
+            serviceStops: serviceStopList,
+            existingOrder: activeRoute.order
+        )
+        applyActiveRouteOrder(newOrder)
         
-        #warning("[Developer ToDoList] Build a way to check to see if the order has changed before calling the API")
         Task{
             do {
                 try await dataService.updateActiveRouteOrderList(
@@ -938,21 +993,49 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                     activeRouteId: activeRoute.id,
                     serviceStopOrderList: newOrder
                 )
+                self.alertMessage = "Route order saved."
+                self.showAlert = true
             } catch {
                 print("  [MobileDailyRouteDisplayViewModel][reorderServiceStops] Error \(error)")
+                self.alertMessage = "Failed to save route order."
+                self.showAlert = true
             }
         }
     }
-    private func generateNewOrder(serviceStops:[ServiceStop])->[ServiceStopOrder]{
+    func autoOrderServiceStopsForRoute() {
+        let autoOrderedStops = RouteAutoOrderBuilder.order(
+            serviceStops: serviceStopList,
+            activeRoute: activeRoute,
+            currentLocation: currentRouteLocation
+        )
+
+        guard autoOrderedStops.map(\.id) != serviceStopList.map(\.id) else {
+            alertMessage = "Route is already in the suggested order."
+            showAlert = true
+            return
+        }
+
+        serviceStopList = autoOrderedStops
+    }
+
+    private func generateNewOrder(
+        serviceStops: [ServiceStop],
+        existingOrder: [ServiceStopOrder]? = nil
+    ) -> [ServiceStopOrder] {
         var workingOrderList:[ServiceStopOrder] = []
+        var existingByStopId: [String: ServiceStopOrder] = [:]
+        for item in existingOrder ?? [] where existingByStopId[item.serviceStopId] == nil {
+            existingByStopId[item.serviceStopId] = item
+        }
         print("**  [MobileDailyRouteDisplayViewModel][generateNewOrder]")
 
         for stop in serviceStops {
             
             let index:Int = serviceStops.firstIndex(of: stop) ?? 0
+            let existingOrderItem = existingByStopId[stop.id]
             
             let newOrder = ServiceStopOrder(
-                id: "com_ar_ss_ord_" + UUID().uuidString,
+                id: existingOrderItem?.id ?? "com_ar_ss_ord_" + UUID().uuidString,
                 order: index + 1,
                 serviceStopId: stop.id,
                 recurringServiceStopId: stop.recurringServiceStopId
@@ -965,15 +1048,34 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         guard let companyId else {return}
         guard let recurringRoute else {return}
         guard let activeRoute else {return}
-        guard let activeRouteOrder = activeRoute.order else {return}
+        let activeRouteOrder = activeRoute.order ?? generateNewOrder(serviceStops: serviceStopList)
+        let nextRecurringOrder = recurringOrderMatchingActiveOrder(
+            recurring: recurringRoute.order,
+            active: activeRouteOrder
+        )
+
+        var updatedRecurringRoute = recurringRoute
+        updatedRecurringRoute.order = nextRecurringOrder
+        self.recurringRoute = updatedRecurringRoute
+        self.ArOrderIsDifferentThanRrORder = false
         //Needs to be called by button and simply updates the Recurring Route order to reflect the new Active Route order.
         //** Need to figure out how to ignore service stops that are not recurring. Most likely by checking to see if the RSS ID is empty
-        FunctionsManager.shared.updateRecurringRouteOrderPermanently(
-            companyId: companyId,
-            routeId: recurringRoute.id,
-            recurringRouteOrder: recurringRoute.order,
-            serviceStopOrders: activeRouteOrder
-        )
+        Task {
+            do {
+                try await FunctionsManager.shared.updateRecurringRouteOrderPermanently(
+                    companyId: companyId,
+                    routeId: recurringRoute.id,
+                    recurringRouteOrder: recurringRoute.order,
+                    serviceStopOrders: activeRouteOrder
+                )
+                self.alertMessage = "Default route order updated."
+                self.showAlert = true
+            } catch {
+                print("  [MobileDailyRouteDisplayViewModel][reorderServiceStopsPermanently] Error \(error)")
+                self.alertMessage = "Failed to update default route order."
+                self.showAlert = true
+            }
+        }
     }
     
     private func applyOrder(
@@ -1028,8 +1130,13 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         guard let companyId else {return}
         guard let recurringRoute else {return}
         guard let activeRoute else {return}
-        guard let activeRouteOrder = activeRoute.order else {return}
-        let defaultOrder: [ServiceStopOrder] = reorderActiveToMatchRecurring(recurring: recurringRoute.order, active: activeRouteOrder)
+        let activeRouteOrder = activeRoute.order ?? generateNewOrder(serviceStops: serviceStopList)
+        let defaultOrder = activeOrderMatchingRecurringDefault(
+            recurring: recurringRoute.order,
+            active: activeRouteOrder
+        )
+        applyActiveRouteOrder(defaultOrder)
+
         Task{
             do {
                 try await dataService.updateActiveRouteOrderList(
@@ -1037,42 +1144,127 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                     activeRouteId: activeRoute.id,
                     serviceStopOrderList: defaultOrder
                 )
+                self.alertMessage = "Route order reset to default."
+                self.showAlert = true
             } catch {
                 print("  [MobileDailyRouteDisplayViewModel][resetOrderToMatchRecurringRoute] Error \(error)")
+                self.alertMessage = "Failed to reset route order."
+                self.showAlert = true
             }
         }
     }
-    private func reorderActiveToMatchRecurring(
+    private func activeOrderMatchingRecurringDefault(
         recurring: [recurringRouteOrder],
         active: [ServiceStopOrder]
     ) -> [ServiceStopOrder] {
 
-        // 1. Sorted recurring order
         let recurringSorted = recurring.sorted { $0.order < $1.order }
-
-        // 2. Dictionary of active stops by recurringServiceStopId
-        let activeDict = Dictionary(
-            uniqueKeysWithValues: active.map { ($0.recurringServiceStopId, $0) }
-        )
-
-        // 3. Build reordered recurring portion
+        let activeSorted = active.sorted { $0.order < $1.order }
+        var activeByRecurringId: [String: ServiceStopOrder] = [:]
+        for item in activeSorted where !item.recurringServiceStopId.isEmpty {
+            if activeByRecurringId[item.recurringServiceStopId] == nil {
+                activeByRecurringId[item.recurringServiceStopId] = item
+            }
+        }
+        
+        var usedServiceStopIds = Set<String>()
         var reorderedRecurringStops: [ServiceStopOrder] = []
-
         for r in recurringSorted {
-            if let match = activeDict[r.recurringServiceStopId] {
+            if let match = activeByRecurringId[r.recurringServiceStopId] {
                 reorderedRecurringStops.append(match)
+                usedServiceStopIds.insert(match.serviceStopId)
             }
         }
 
-        // 4. Non-recurring stops (keep their relative order)
-        let recurringIdSet = Set(recurring.map { $0.recurringServiceStopId })
-
-        let nonRecurringStops = active.filter {
-            !recurringIdSet.contains($0.recurringServiceStopId)
+        let remainingStops = activeSorted.filter {
+            !usedServiceStopIds.contains($0.serviceStopId)
         }
 
-        // 5. Merge back together
-        return reorderedRecurringStops + nonRecurringStops
+        return renumberActiveOrder(reorderedRecurringStops + remainingStops)
+    }
+
+    private func recurringOrderMatchingActiveOrder(
+        recurring: [recurringRouteOrder],
+        active: [ServiceStopOrder]
+    ) -> [recurringRouteOrder] {
+        let recurringSorted = recurring.sorted { $0.order < $1.order }
+        let activeSorted = active.sorted { $0.order < $1.order }
+        var recurringById: [String: recurringRouteOrder] = [:]
+
+        for item in recurringSorted where !item.recurringServiceStopId.isEmpty {
+            if recurringById[item.recurringServiceStopId] == nil {
+                recurringById[item.recurringServiceStopId] = item
+            }
+        }
+
+        var updatedOrder: [recurringRouteOrder] = []
+        var usedRecurringIds = Set<String>()
+
+        for stopOrder in activeSorted where !stopOrder.recurringServiceStopId.isEmpty {
+            if let existing = recurringById[stopOrder.recurringServiceStopId] {
+                updatedOrder.append(existing)
+                usedRecurringIds.insert(existing.recurringServiceStopId)
+            } else if let stop = serviceStopList.first(where: { $0.recurringServiceStopId == stopOrder.recurringServiceStopId }) {
+                updatedOrder.append(
+                    recurringRouteOrder(
+                        id: "com_rr_ord_" + UUID().uuidString,
+                        order: updatedOrder.count + 1,
+                        recurringServiceStopId: stop.recurringServiceStopId,
+                        customerId: stop.customerId,
+                        customerName: stop.customerName,
+                        locationId: stop.serviceLocationId
+                    )
+                )
+                usedRecurringIds.insert(stop.recurringServiceStopId)
+            }
+        }
+
+        updatedOrder.append(
+            contentsOf: recurringSorted.filter {
+                !usedRecurringIds.contains($0.recurringServiceStopId)
+            }
+        )
+
+        return updatedOrder.enumerated().map { index, item in
+            recurringRouteOrder(
+                id: item.id,
+                order: index + 1,
+                recurringServiceStopId: item.recurringServiceStopId,
+                customerId: item.customerId,
+                customerName: item.customerName,
+                locationId: item.locationId
+            )
+        }
+    }
+
+    private func applyActiveRouteOrder(_ order: [ServiceStopOrder]) {
+        let normalizedOrder = renumberActiveOrder(order)
+        serviceStopOrderList = normalizedOrder
+        serviceStopList = applyOrder(
+            serviceStops: serviceStopList,
+            serviceStopOrders: normalizedOrder
+        )
+
+        if var route = activeRoute {
+            route.order = normalizedOrder
+            activeRoute = route
+            let orderDiff = ArRrOrderDiffer.diff(
+                active: route,
+                recurring: recurringRoute
+            )
+            ArOrderIsDifferentThanRrORder = orderDiff.isDifferent
+        }
+    }
+
+    private func renumberActiveOrder(_ order: [ServiceStopOrder]) -> [ServiceStopOrder] {
+        order.enumerated().map { index, item in
+            ServiceStopOrder(
+                id: item.id,
+                order: index + 1,
+                serviceStopId: item.serviceStopId,
+                recurringServiceStopId: item.recurringServiceStopId
+            )
+        }
     }
 
     func confirmPendingServiceStopStart(companyId: String?) {
@@ -1085,12 +1277,30 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         )
     }
 
+    func confirmPendingServiceStopEnd(companyId: String?) {
+        guard let prompt = pendingServiceStopEndPrompt else { return }
+
+        finishServiceStop(
+            companyId: companyId,
+            serviceStopId: prompt.serviceStopId,
+            endTime: prompt.departureTime
+        )
+    }
+
     func dismissPendingServiceStopStartPrompt() {
         guard let prompt = pendingServiceStopStartPrompt else { return }
 
         dismissedServiceStopStartPromptIds.insert(prompt.serviceStopId)
         pendingServiceStopStartPrompt = nil
         NotificationViewModel.shared.cancelServiceStopStartPrompt(serviceStopId: prompt.serviceStopId)
+    }
+
+    func dismissPendingServiceStopEndPrompt() {
+        guard let prompt = pendingServiceStopEndPrompt else { return }
+
+        dismissedServiceStopEndPromptIds.insert(prompt.serviceStopId)
+        pendingServiceStopEndPrompt = nil
+        NotificationViewModel.shared.cancelServiceStopEndPrompt(serviceStopId: prompt.serviceStopId)
     }
 
     func arrivalTimeForServiceStop(_ serviceStopId: String) -> Date? {
@@ -1174,6 +1384,102 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             }
     }
 
+    private func evaluateServiceStopDeparture(for location: CLLocation) async {
+        guard let activeRoute,
+              activeRoute.status == .inProgress else {
+            pendingServiceStopEndPrompt = nil
+            return
+        }
+
+        let departedStops = departedStartedStops(for: location)
+        let departedStopIds = Set(departedStops.map { $0.stop.id })
+
+        clearDepartureStateForStopsNoLongerDeparted(departedStopIds: departedStopIds)
+
+        guard let nearest = departedStops.first else {
+            pendingServiceStopEndPrompt = nil
+            return
+        }
+
+        let stop = nearest.stop
+        let departureTime = serviceStopDepartureTimes[stop.id] ?? location.timestamp
+        serviceStopDepartureTimes[stop.id] = departureTime
+
+        guard !dismissedServiceStopEndPromptIds.contains(stop.id) else { return }
+
+        let prompt = ServiceStopEndPrompt(
+            serviceStopId: stop.id,
+            customerName: stop.customerName,
+            serviceType: stop.type,
+            departureTime: departureTime,
+            distanceMeters: nearest.distance
+        )
+
+        if pendingServiceStopEndPrompt != prompt {
+            pendingServiceStopEndPrompt = prompt
+        }
+
+        guard !notifiedServiceStopEndPromptIds.contains(stop.id) else { return }
+        notifiedServiceStopEndPromptIds.insert(stop.id)
+
+        await NotificationViewModel.shared.scheduleServiceStopEndPrompt(
+            serviceStopId: stop.id,
+            customerName: stop.customerName,
+            serviceType: stop.type,
+            departureTime: departureTime
+        )
+    }
+
+    private func departedStartedStops(
+        for location: CLLocation
+    ) -> [(index: Int, stop: ServiceStop, distance: CLLocationDistance)] {
+        serviceStopList
+            .enumerated()
+            .compactMap { index, stop -> (index: Int, stop: ServiceStop, distance: CLLocationDistance)? in
+                guard stop.operationStatus == .notFinished,
+                      stop.startTime != nil,
+                      stop.endTime == nil,
+                      Self.isUsableCoordinate(stop.address.coordinates) else {
+                    return nil
+                }
+
+                let stopLocation = CLLocation(
+                    latitude: stop.address.latitude,
+                    longitude: stop.address.longitude
+                )
+                let distance = location.distance(from: stopLocation)
+
+                guard distance > Self.serviceStopArrivalRadiusMeters else { return nil }
+
+                return (index, stop, distance)
+            }
+            .sorted { lhs, rhs in
+                if abs(lhs.distance - rhs.distance) < 10 {
+                    return lhs.index < rhs.index
+                }
+
+                return lhs.distance < rhs.distance
+            }
+    }
+
+    private func clearDepartureStateForStopsNoLongerDeparted(departedStopIds: Set<String>) {
+        let trackedStopIds = Set(serviceStopDepartureTimes.keys)
+            .union(dismissedServiceStopEndPromptIds)
+            .union(notifiedServiceStopEndPromptIds)
+
+        for serviceStopId in trackedStopIds where !departedStopIds.contains(serviceStopId) {
+            serviceStopDepartureTimes.removeValue(forKey: serviceStopId)
+            dismissedServiceStopEndPromptIds.remove(serviceStopId)
+            notifiedServiceStopEndPromptIds.remove(serviceStopId)
+            NotificationViewModel.shared.cancelServiceStopEndPrompt(serviceStopId: serviceStopId)
+        }
+
+        if let prompt = pendingServiceStopEndPrompt,
+           !departedStopIds.contains(prompt.serviceStopId) {
+            pendingServiceStopEndPrompt = nil
+        }
+    }
+
     private func clearArrivalStateForStopsNoLongerNearby(nearbyStopIds: Set<String>) {
         let trackedStopIds = Set(serviceStopArrivalTimes.keys)
             .union(dismissedServiceStopStartPromptIds)
@@ -1204,15 +1510,34 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         NotificationViewModel.shared.cancelServiceStopStartPrompt(serviceStopId: serviceStopId)
     }
 
+    private func clearServiceStopEndPrompt(serviceStopId: String) {
+        serviceStopDepartureTimes.removeValue(forKey: serviceStopId)
+        dismissedServiceStopEndPromptIds.remove(serviceStopId)
+        notifiedServiceStopEndPromptIds.remove(serviceStopId)
+
+        if pendingServiceStopEndPrompt?.serviceStopId == serviceStopId {
+            pendingServiceStopEndPrompt = nil
+        }
+
+        NotificationViewModel.shared.cancelServiceStopEndPrompt(serviceStopId: serviceStopId)
+    }
+
     private func resetServiceStopArrivalState() {
         if let prompt = pendingServiceStopStartPrompt {
             NotificationViewModel.shared.cancelServiceStopStartPrompt(serviceStopId: prompt.serviceStopId)
+        }
+        if let prompt = pendingServiceStopEndPrompt {
+            NotificationViewModel.shared.cancelServiceStopEndPrompt(serviceStopId: prompt.serviceStopId)
         }
 
         serviceStopArrivalTimes.removeAll()
         dismissedServiceStopStartPromptIds.removeAll()
         notifiedServiceStopStartPromptIds.removeAll()
         pendingServiceStopStartPrompt = nil
+        serviceStopDepartureTimes.removeAll()
+        dismissedServiceStopEndPromptIds.removeAll()
+        notifiedServiceStopEndPromptIds.removeAll()
+        pendingServiceStopEndPrompt = nil
     }
 
     private func reconcileServiceStopArrivalState() {
@@ -1233,6 +1558,25 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         if let prompt = pendingServiceStopStartPrompt,
            !unstartedStopIds.contains(prompt.serviceStopId) {
             pendingServiceStopStartPrompt = nil
+        }
+
+        let startedUnfinishedStopIds = Set(
+            serviceStopList
+                .filter { $0.operationStatus == .notFinished && $0.startTime != nil && $0.endTime == nil }
+                .map(\.id)
+        )
+
+        let trackedEndStopIds = Set(serviceStopDepartureTimes.keys)
+            .union(dismissedServiceStopEndPromptIds)
+            .union(notifiedServiceStopEndPromptIds)
+
+        for serviceStopId in trackedEndStopIds where !startedUnfinishedStopIds.contains(serviceStopId) {
+            clearServiceStopEndPrompt(serviceStopId: serviceStopId)
+        }
+
+        if let prompt = pendingServiceStopEndPrompt,
+           !startedUnfinishedStopIds.contains(prompt.serviceStopId) {
+            pendingServiceStopEndPrompt = nil
         }
     }
 
@@ -1469,50 +1813,64 @@ struct RouteOrderBuilder {
         existingOrder: [ServiceStopOrder]?
     ) -> [ServiceStopOrder] {
 
-        var order = existingOrder ?? []
+        let stopsById = Dictionary(uniqueKeysWithValues: serviceStops.map { ($0.id, $0) })
+        var order: [ServiceStopOrder] = []
+        var orderedStopIds = Set<String>()
+
+        for item in (existingOrder ?? []).sorted(by: { $0.order < $1.order }) {
+            guard let stop = stopsById[item.serviceStopId],
+                  orderedStopIds.insert(item.serviceStopId).inserted
+            else {
+                continue
+            }
+
+            order.append(
+                ServiceStopOrder(
+                    id: item.id,
+                    order: order.count + 1,
+                    serviceStopId: item.serviceStopId,
+                    recurringServiceStopId: resolvedRecurringServiceStopId(
+                        order: item,
+                        stop: stop
+                    )
+                )
+            )
+        }
         
         if let recurringRoute {
             //If route exists create activeRoute order from recurring route.
             //List of service stops IDs that were sorted in based on the recurring route.
             let sortedRecurringRouteOrderList = recurringRoute.order.sorted(by: { $0.order < $1.order })
-            var listOfOrderedServiceStopsIds: [String] = []
 // If route exists create activeRoute order from recurring route.List of service stops IDs that were sorted in based on the recurring route.
             print("    [RouteOrderBuilder][build] Recurring Route Exists")
             for rrOrder in sortedRecurringRouteOrderList {
-                if !order.contains(where: { $0.recurringServiceStopId == rrOrder.recurringServiceStopId }) {
-                    if let stop = serviceStops.first(where: {$0.recurringServiceStopId == rrOrder.recurringServiceStopId}) {
-                        
-                        listOfOrderedServiceStopsIds.append(stop.id)
-                        if !order.contains(where: { $0.serviceStopId == stop.id }) {
-                            order.append(
-                                ServiceStopOrder(
-                                    id: UUID().uuidString,
-                                    order: order.count + 1,
-                                    serviceStopId: stop.id,
-                                    recurringServiceStopId: stop.recurringServiceStopId
-                                )
-                            )
-                        }
-                    }
+                if let stop = serviceStops.first(where: { $0.recurringServiceStopId == rrOrder.recurringServiceStopId }),
+                   !orderedStopIds.contains(stop.id) {
+                    order.append(
+                        ServiceStopOrder(
+                            id: "com_ar_ss_ord_" + UUID().uuidString,
+                            order: order.count + 1,
+                            serviceStopId: stop.id,
+                            recurringServiceStopId: stop.recurringServiceStopId
+                        )
+                    )
+                    orderedStopIds.insert(stop.id)
                 }
             }
             
             print("    [RouteOrderBuilder][build] Adding Stops Not Included in Recurring Route")
             for stop in serviceStops {
                 //if the service stop has not been ordered yet, order the service stop
-                if !listOfOrderedServiceStopsIds.contains(stop.id) {
-                    if !order.contains(where: { $0.serviceStopId == stop.id }) {
-                        
-                        listOfOrderedServiceStopsIds.append(stop.id)
-                        order.append(
-                            ServiceStopOrder(
-                                id: UUID().uuidString,
-                                order: order.count + 1,
-                                serviceStopId: stop.id,
-                                recurringServiceStopId: stop.recurringServiceStopId
-                            )
+                if !orderedStopIds.contains(stop.id) {
+                    order.append(
+                        ServiceStopOrder(
+                            id: "com_ar_ss_ord_" + UUID().uuidString,
+                            order: order.count + 1,
+                            serviceStopId: stop.id,
+                            recurringServiceStopId: stop.recurringServiceStopId
                         )
-                    }
+                    )
+                    orderedStopIds.insert(stop.id)
                 }
             }
         } else {
@@ -1521,15 +1879,16 @@ struct RouteOrderBuilder {
             print("    [RouteOrderBuilder][build] Recurring Route DNE")
             for stop in serviceStops {
                 //Sees if service stops are not in order and adds stop that are not already ordered
-                if !order.contains(where: { $0.serviceStopId == stop.id }) {
+                if !orderedStopIds.contains(stop.id) {
                     order.append(
                         ServiceStopOrder(
-                            id: UUID().uuidString,
+                            id: "com_ar_ss_ord_" + UUID().uuidString,
                             order: order.count + 1,
                             serviceStopId: stop.id,
                             recurringServiceStopId: stop.recurringServiceStopId
                         )
                     )
+                    orderedStopIds.insert(stop.id)
                 }
             }
         }
@@ -1548,6 +1907,102 @@ struct RouteOrderBuilder {
                 recurringServiceStopId: item.recurringServiceStopId
             )
         }
+    }
+
+    private static func resolvedRecurringServiceStopId(
+        order: ServiceStopOrder,
+        stop: ServiceStop
+    ) -> String {
+        order.recurringServiceStopId.isEmpty
+            ? stop.recurringServiceStopId
+            : order.recurringServiceStopId
+    }
+}
+
+struct RouteAutoOrderBuilder {
+    static func order(
+        serviceStops: [ServiceStop],
+        activeRoute: ActiveRoute?,
+        currentLocation: CLLocation?
+    ) -> [ServiceStop] {
+        guard serviceStops.count > 1 else { return serviceStops }
+
+        let routeHasStarted = activeRoute.map { $0.status != .didNotStart } ?? false
+        let lockedStops = routeHasStarted
+            ? serviceStops.filter { $0.operationStatus != .notFinished }
+            : []
+        let reorderableStops = routeHasStarted
+            ? serviceStops.filter { $0.operationStatus == .notFinished }
+            : serviceStops
+
+        guard reorderableStops.count > 1 else { return serviceStops }
+
+        let startLocation = currentLocation
+            ?? lockedStops.reversed().compactMap(location(for:)).first
+            ?? reorderableStops.compactMap(location(for:)).first
+
+        guard let startLocation else { return serviceStops }
+
+        return lockedStops + nearestNeighborOrder(
+            stops: reorderableStops,
+            startLocation: startLocation
+        )
+    }
+
+    private static func nearestNeighborOrder(
+        stops: [ServiceStop],
+        startLocation: CLLocation
+    ) -> [ServiceStop] {
+        var remaining = stops
+        var ordered: [ServiceStop] = []
+        var cursor = startLocation
+
+        while !remaining.isEmpty {
+            guard let nextIndex = remaining
+                .enumerated()
+                .filter({ location(for: $0.element) != nil })
+                .min(by: { lhs, rhs in
+                    let lhsDistance = location(for: lhs.element)?.distance(from: cursor) ?? .greatestFiniteMagnitude
+                    let rhsDistance = location(for: rhs.element)?.distance(from: cursor) ?? .greatestFiniteMagnitude
+
+                    if abs(lhsDistance - rhsDistance) < 1 {
+                        return lhs.offset < rhs.offset
+                    }
+
+                    return lhsDistance < rhsDistance
+                })?
+                .offset
+            else {
+                ordered.append(contentsOf: remaining)
+                break
+            }
+
+            let nextStop = remaining.remove(at: nextIndex)
+            ordered.append(nextStop)
+
+            if let nextLocation = location(for: nextStop) {
+                cursor = nextLocation
+            }
+        }
+
+        return ordered
+    }
+
+    private static func location(for stop: ServiceStop) -> CLLocation? {
+        guard isValidCoordinate(stop.address.coordinates) else { return nil }
+
+        return CLLocation(
+            latitude: stop.address.latitude,
+            longitude: stop.address.longitude
+        )
+    }
+
+    private static func isValidCoordinate(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        coordinate.latitude.isFinite &&
+        coordinate.longitude.isFinite &&
+        abs(coordinate.latitude) <= 90 &&
+        abs(coordinate.longitude) <= 180 &&
+        !(coordinate.latitude == 0 && coordinate.longitude == 0)
     }
 }
 //Step C: Diffing Domain (Pure)
@@ -1569,11 +2024,24 @@ struct ActiveRouteDiffer {
         return ActiveRouteDiff(
             addedStopIds: Array(newIds.subtracting(oldIds)),
             removedStopIds: Array(oldIds.subtracting(newIds)),
-            orderChanged: old?.order != new.order,
+            orderChanged: !ordersMatch(old?.order, new.order),
             statusChanged: old?.status != new.status,
             old: old,
             new: new
         )
+    }
+
+    private static func ordersMatch(
+        _ lhs: [ServiceStopOrder]?,
+        _ rhs: [ServiceStopOrder]?
+    ) -> Bool {
+        orderSignature(lhs) == orderSignature(rhs)
+    }
+
+    private static func orderSignature(_ order: [ServiceStopOrder]?) -> [String] {
+        (order ?? [])
+            .sorted { $0.order < $1.order }
+            .map { "\($0.serviceStopId)|\($0.recurringServiceStopId)" }
     }
 }
 struct ArRrOrderDiff {
@@ -1585,61 +2053,85 @@ struct ArRrOrderDiff {
 struct ArRrOrderDiffer {
 
     static func diff(active: ActiveRoute, recurring: RecurringRoute?) -> ArRrOrderDiff {
-        if let recurring {
-            print("    [ArRrOrderDiffer][diff] Start")
-            //I only want to check stops that are in both recurring and active. and check the order of those. If they are moved over or one time I want to ignore
-            if let activeOrder = active.order {
-                print("    [ArRrOrderDiffer][diff] Active Order Exists")
-
-                let expectedIndex = Dictionary(
-                    uniqueKeysWithValues: recurring.order
-                        .sorted { $0.order < $1.order }
-                        .enumerated()
-                        .map { ($1.recurringServiceStopId, $0) }
-                )
-
-                let filtered = activeOrder
-                    .filter { expectedIndex[$0.recurringServiceStopId] != nil }
-                    .sorted { $0.order < $1.order }
-
-                var lastIndex = -1
-                print("    [ArRrOrderDiffer][diff] Filtered \(filtered)")
-
-                for stop in filtered {
-                    guard let index = expectedIndex[stop.recurringServiceStopId] else { continue }
-                    if index < lastIndex { return ArRrOrderDiff(
-                        active: active,
-                        recurring: recurring,
-                        isDifferent: true
-                    ) }
-                    lastIndex = index
-                }
-                print("    [ArRrOrderDiffer][diff] Ordered \(filtered)")
-                
-                return ArRrOrderDiff(
-                    active: active,
-                    recurring: recurring,
-                    isDifferent: false
-                )
-            } else {
-                print("    [ArRrOrderDiffer][diff] Active Order DNE")
-                //If there is no Active Route then it should return false. Because I will not display the button to update the Recurring Route. There is not need because it DNE
-
-                return ArRrOrderDiff(
-                    active: active,
-                    recurring: recurring,
-                    isDifferent: false
-                )
-            }
-        } else {
-            print("    [ArRrOrderDiffer][diff] Recurriug Order DNE")
-            //If there is no Recurring Route then it should return false. Because I will not display the button to update the Recurring Route. There is not need because it DNE
+        guard let recurring,
+              let activeOrder = active.order
+        else {
             return ArRrOrderDiff(
                 active: active,
                 recurring: recurring,
                 isDifferent: false
             )
         }
+
+        let activeRecurringIds = recurringIdsInActiveOrder(
+            active: activeOrder,
+            recurring: recurring.order
+        )
+        let defaultRecurringIds = recurringIdsInDefaultOrder(
+            active: activeOrder,
+            recurring: recurring.order
+        )
+        let hasComparableRoute = activeRecurringIds.count > 1 && defaultRecurringIds.count > 1
+
+        return ArRrOrderDiff(
+            active: active,
+            recurring: recurring,
+            isDifferent: hasComparableRoute && activeRecurringIds != defaultRecurringIds
+        )
+    }
+
+    private static func recurringIdsInActiveOrder(
+        active: [ServiceStopOrder],
+        recurring: [recurringRouteOrder]
+    ) -> [String] {
+        let recurringIds = Set(
+            recurring
+                .map(\.recurringServiceStopId)
+                .filter { !$0.isEmpty }
+        )
+        var seenIds = Set<String>()
+
+        return active
+            .sorted { $0.order < $1.order }
+            .compactMap { item in
+                let id = item.recurringServiceStopId
+                guard !id.isEmpty,
+                      recurringIds.contains(id),
+                      !seenIds.contains(id)
+                else {
+                    return nil
+                }
+
+                seenIds.insert(id)
+                return id
+            }
+    }
+
+    private static func recurringIdsInDefaultOrder(
+        active: [ServiceStopOrder],
+        recurring: [recurringRouteOrder]
+    ) -> [String] {
+        let activeRecurringIds = Set(
+            active
+                .map(\.recurringServiceStopId)
+                .filter { !$0.isEmpty }
+        )
+        var seenIds = Set<String>()
+
+        return recurring
+            .sorted { $0.order < $1.order }
+            .compactMap { item in
+                let id = item.recurringServiceStopId
+                guard !id.isEmpty,
+                      activeRecurringIds.contains(id),
+                      !seenIds.contains(id)
+                else {
+                    return nil
+                }
+
+                seenIds.insert(id)
+                return id
+            }
     }
     func isRelativeOrderCorrect(
         recurring: [recurringRouteOrder],

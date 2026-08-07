@@ -3142,31 +3142,31 @@ struct CompanyLeadsView: View {
 
     private var statsGrid: some View {
         LazyVGrid(columns: statColumns, spacing: 10) {
-            leadStat(title: "Pending", value: pendingCount, systemImage: "clock", tint: .poolBlue)
-            leadStat(title: "In Progress", value: inProgressCount, systemImage: "arrow.triangle.2.circlepath", tint: .orange)
-            leadStat(title: "Completed (30d)", value: completedRecentCount, systemImage: "checkmark.circle", tint: .poolGreen)
-            leadStat(title: "Cancelled (30d)", value: cancelledRecentCount, systemImage: "xmark.octagon", tint: .poolRed)
+            leadStat(title: "Pending", value: pendingCount, status: "Pending", systemImage: "clock", tint: .poolBlue)
+            leadStat(title: "In Progress", value: inProgressCount, status: "In Progress", systemImage: "arrow.triangle.2.circlepath", tint: .orange)
+            leadStat(title: "Completed (30d)", value: completedRecentCount, status: "Completed", systemImage: "checkmark.circle", tint: .poolGreen)
+            leadStat(title: "Cancelled (30d)", value: cancelledRecentCount, status: "Cancelled", systemImage: "xmark.octagon", tint: .poolRed)
         }
     }
 
     private var filtersCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Picker("Status", selection: $statusFilter) {
-                    ForEach(statusOptions, id: \.self) { status in
-                        Text(status).tag(status)
-                    }
-                }
-                .pickerStyle(.menu)
+            HStack(spacing: 10) {
+                LeadFilterMenu(
+                    title: "Status",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    selection: $statusFilter,
+                    options: statusOptions,
+                    tintForOption: { $0 == "All" ? .poolBlue : leadStatusColor($0) }
+                )
 
-                Picker("Source", selection: $sourceFilter) {
-                    ForEach(sourceOptions, id: \.self) { source in
-                        Text(source).tag(source)
-                    }
-                }
-                .pickerStyle(.menu)
-
-                Spacer()
+                LeadFilterMenu(
+                    title: "Source",
+                    systemImage: "square.and.arrow.down.on.square",
+                    selection: $sourceFilter,
+                    options: sourceOptions,
+                    tintForOption: { $0 == "All" ? .poolBlue : leadSourceColor($0) }
+                )
             }
 
             Text("\(filteredLeads.count) visible lead\(filteredLeads.count == 1 ? "" : "s")")
@@ -3220,33 +3220,58 @@ struct CompanyLeadsView: View {
         ]
     }
 
-    private func leadStat(title: String, value: Int, systemImage: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title)
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(.secondary)
+    private func leadStat(title: String, value: Int, status: String, systemImage: String, tint: Color) -> some View {
+        let isSelected = statusFilter == status
 
-                Spacer()
-
-                Image(systemName: systemImage)
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(tint)
-                    .frame(width: 28, height: 28)
-                    .background(tint.opacity(0.13), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        return Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                statusFilter = status
             }
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    Text(title)
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(isSelected ? tint : .secondary)
+                        .lineLimit(2)
 
-            Text("\(value)")
-                .font(.title2)
-                .fontWeight(.semibold)
+                    Spacer(minLength: 6)
+
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(isSelected ? .white : tint)
+                        .frame(width: 28, height: 28)
+                        .background(isSelected ? tint : tint.opacity(0.13), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
+
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    Text("\(value)")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+
+                    if isSelected {
+                        Text("Active")
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(tint)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(tint.opacity(0.12), in: Capsule())
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(isSelected ? tint.opacity(0.08) : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(isSelected ? tint.opacity(0.5) : Color.primary.opacity(0.08), lineWidth: isSelected ? 1.4 : 1)
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title) leads")
+        .accessibilityValue(isSelected ? "Selected" : "\(value)")
+        .accessibilityHint("Filters the lead list by \(status)")
     }
 
     private func emptyState(title: String, message: String, systemImage: String) -> some View {
@@ -3302,6 +3327,74 @@ struct CompanyLeadsView: View {
                     .sorted(by: { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }) ?? []
                 isLoading = false
             }
+    }
+}
+
+struct LeadFilterMenu: View {
+    let title: String
+    let systemImage: String
+    @Binding var selection: String
+    let options: [String]
+    let tintForOption: (String) -> Color
+
+    private var tint: Color {
+        tintForOption(selection)
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(options, id: \.self) { option in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        selection = option
+                    }
+                } label: {
+                    HStack {
+                        Text(option)
+
+                        if option == selection {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(tint)
+                    .frame(width: 30, height: 30)
+                    .background(tint.opacity(0.13), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundColor(.secondary)
+
+                    Text(selection)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+
+                Spacer(minLength: 4)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(tint.opacity(0.22), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title) filter")
+        .accessibilityValue(selection)
     }
 }
 

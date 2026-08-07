@@ -222,96 +222,7 @@ extension BillingJobList {
                             }
                         }
                     }, content: {
-                        VStack(alignment: .leading){
-                            HStack{
-                                Text("Start Date: ")
-                                DatePicker(selection: $startDate, displayedComponents: .date) {
-                                }
-                            }
-                            HStack{
-                                Text("End Date: ")
-                                
-                                DatePicker(selection: $endDate, displayedComponents: .date) {
-                                }
-                            }
-                            HStack{
-                                Text("Status: ")
-                                Spacer()
-                                Menu("Status  - \(selectedStatus.count)") {
-                                    Button(action: {
-                                        print("All Selected")
-                                        selectedStatus = []
-                                        for status in JobBillingStatus.allCases {
-                                            selectedStatus.append(status)
-                                        }
-                                        
-                                    }, label: {
-                                        Text("All \(selectedStatus == JobBillingStatus.allCases ? "✓" : "")")
-                                    })
-                                    
-                                    ForEach(JobBillingStatus.allCases,id:\.self) { status in
-                                        Button(action: {
-                                            if selectedStatus.contains(status) {
-                                                selectedStatus.removeAll(where: {$0 == status})
-                                                print("Removed \(status.rawValue)")
-                                            } else {
-                                                print("Added \(status.rawValue)")
-                                                
-                                                selectedStatus.append(status)
-                                            }
-                                        }, label: {
-                                            Text("\(status.rawValue) \(selectedStatus.contains(status) ? "✓" : "")")
-                                        })
-                                    }
-                                    Button(action: {
-                                        selectedStatus = []
-                                    }, label: {
-                                        Text("Clear \(selectedStatus == [] ? "✓" : "")")
-                                    })
-                                }
-                                .modifier(ListButtonModifier())
-                            }
-                            HStack{
-                                Text("Techs: ")
-                                Spacer()
-                                Menu("Techs \(techIds.count)") {
-                                    Button(action: {
-                                        print("All Selected")
-                                        techIds = []
-                                        for tech in companyUserVM.companyUsers {
-                                            techIds.append(tech.userId)
-                                        }
-                                        
-                                    }, label: {
-                                        Text("All \(techIds.count == companyUserVM.companyUsers.count ? "✓" : "")")
-                                    })
-                                    
-                                    ForEach(companyUserVM.companyUsers) { tech in
-                                        Button(action: {
-                                            if techIds.contains(tech.userId) {
-                                                techIds.removeAll(where: {$0 == tech.userId})
-                                                print("Removed \(tech.userName)")
-                                            } else {
-                                                print("Added \(tech.userName)")
-                                                
-                                                techIds.append(tech.userId)
-                                            }
-                                        }, label: {
-                                            Text("\(tech.userName) \(techIds.contains(tech.userId) ? "✓" : "")")
-                                        })
-                                    }
-                                    Button(action: {
-                                        techIds = []
-                                    }, label: {
-                                        Text("Clear \(techIds == [] ? "✓" : "")")
-                                    })
-                                }
-                            }
-                            Spacer()
-                            
-                        }
-                        .padding(8)
-                        
+                        billingJobFilterSheet
                     })
                     if let role = masterDataManager.role {
                         if role.permissionIdList.contains("412") {
@@ -356,5 +267,199 @@ extension BillingJobList {
             }
             
         }
+    }
+}
+
+private extension BillingJobList {
+    var billingJobFilterSheet: some View {
+        DripDropFilterSheet(
+            title: "Billing Job Filters",
+            isPresented: $showFilters,
+            isResetDisabled: billingJobActiveFilterCount == 0,
+            onReset: resetBillingJobFilters
+        ) {
+            DripDropFilterSummaryCard(
+                title: "\(jobVM.workOrders.count) billable jobs",
+                subtitle: "\(selectedStatus.count) billing status\(selectedStatus.count == 1 ? "" : "es") and \(techIds.count) tech\(techIds.count == 1 ? "" : "s") selected.",
+                systemImage: "doc.text.fill",
+                tint: .poolBlue
+            )
+
+            DripDropFilterSection(
+                title: "Date Range",
+                systemImage: "calendar",
+                tint: .poolBlue
+            ) {
+                DripDropFilterRow(
+                    title: "Start",
+                    subtitle: shortDate(date: startDate),
+                    systemImage: "calendar.badge.minus",
+                    tint: .poolBlue
+                ) {
+                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
+                        .labelsHidden()
+                }
+
+                DripDropFilterRow(
+                    title: "End",
+                    subtitle: shortDate(date: endDate),
+                    systemImage: "calendar.badge.plus",
+                    tint: .poolBlue
+                ) {
+                    DatePicker("End Date", selection: $endDate, displayedComponents: .date)
+                        .labelsHidden()
+                }
+            }
+
+            DripDropFilterSection(
+                title: "Billing",
+                systemImage: "line.3.horizontal.decrease.circle",
+                tint: .orange
+            ) {
+                DripDropFilterRow(
+                    title: "Status",
+                    subtitle: billingStatusMenuTitle,
+                    systemImage: "checklist",
+                    tint: .orange
+                ) {
+                    Menu {
+                        Button {
+                            selectedStatus = JobBillingStatus.allCases
+                        } label: {
+                            Label("All statuses", systemImage: allBillingStatusesSelected ? "checkmark" : "circle")
+                        }
+
+                        ForEach(JobBillingStatus.allCases, id: \.self) { status in
+                            Button {
+                                toggleBillingStatus(status)
+                            } label: {
+                                Label(status.rawValue, systemImage: selectedStatus.contains(status) ? "checkmark" : "circle")
+                            }
+                        }
+
+                        Button(role: .destructive) {
+                            selectedStatus = []
+                        } label: {
+                            Label("Clear statuses", systemImage: selectedStatus.isEmpty ? "checkmark" : "xmark")
+                        }
+                    } label: {
+                        DripDropFilterMenuLabel(title: billingStatusMenuTitle, tint: .orange)
+                    }
+                }
+
+                DripDropFilterRow(
+                    title: "Techs",
+                    subtitle: billingTechMenuTitle,
+                    systemImage: "person.2",
+                    tint: .poolGreen
+                ) {
+                    Menu {
+                        Button {
+                            techIds = companyUserVM.companyUsers.map(\.userId)
+                        } label: {
+                            Label("All techs", systemImage: allBillingTechsSelected ? "checkmark" : "circle")
+                        }
+
+                        ForEach(companyUserVM.companyUsers) { tech in
+                            Button {
+                                toggleBillingTech(tech.userId)
+                            } label: {
+                                Label(tech.userName, systemImage: techIds.contains(tech.userId) ? "checkmark" : "circle")
+                            }
+                        }
+
+                        Button(role: .destructive) {
+                            techIds = []
+                        } label: {
+                            Label("Clear techs", systemImage: techIds.isEmpty ? "checkmark" : "xmark")
+                        }
+                    } label: {
+                        DripDropFilterMenuLabel(title: billingTechMenuTitle, tint: .poolGreen)
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    var defaultBillingJobStatuses: [JobBillingStatus] {
+        [.draft, .estimate, .accepted, .inProgress]
+    }
+
+    var defaultBillingJobStartDate: Date {
+        Calendar.current.date(byAdding: .day, value: -300, to: Date()) ?? Date()
+    }
+
+    var billingJobActiveFilterCount: Int {
+        var count = 0
+
+        if !Calendar.current.isDate(startDate, inSameDayAs: defaultBillingJobStartDate) { count += 1 }
+        if !Calendar.current.isDate(endDate, inSameDayAs: Date()) { count += 1 }
+        if !usesDefaultBillingStatuses { count += 1 }
+        if !allBillingTechsSelected { count += 1 }
+
+        return count
+    }
+
+    var usesDefaultBillingStatuses: Bool {
+        selectedStatus.count == defaultBillingJobStatuses.count &&
+        defaultBillingJobStatuses.allSatisfy { selectedStatus.contains($0) }
+    }
+
+    var allBillingStatusesSelected: Bool {
+        selectedStatus.count == JobBillingStatus.allCases.count &&
+        JobBillingStatus.allCases.allSatisfy { selectedStatus.contains($0) }
+    }
+
+    var allBillingTechsSelected: Bool {
+        let allTechIds = companyUserVM.companyUsers.map(\.userId)
+
+        guard !allTechIds.isEmpty else {
+            return techIds.isEmpty
+        }
+
+        return techIds.count == allTechIds.count && allTechIds.allSatisfy { techIds.contains($0) }
+    }
+
+    var billingStatusMenuTitle: String {
+        if selectedStatus.isEmpty { return "None selected" }
+        if allBillingStatusesSelected { return "All statuses" }
+        if selectedStatus.count == 1 { return selectedStatus.first?.rawValue ?? "1 status" }
+        return "\(selectedStatus.count) selected"
+    }
+
+    var billingTechMenuTitle: String {
+        if techIds.isEmpty { return "None selected" }
+        if allBillingTechsSelected { return "All techs" }
+        if techIds.count == 1 {
+            guard let firstTechId = techIds.first else { return "1 tech" }
+
+            let techName = companyUserVM.companyUsers.first(where: { $0.userId == firstTechId })?.userName
+            return techName ?? "1 tech"
+        }
+        return "\(techIds.count) selected"
+    }
+
+    func toggleBillingStatus(_ status: JobBillingStatus) {
+        if selectedStatus.contains(status) {
+            selectedStatus.removeAll(where: { $0 == status })
+        } else {
+            selectedStatus.append(status)
+        }
+    }
+
+    func toggleBillingTech(_ userId: String) {
+        if techIds.contains(userId) {
+            techIds.removeAll(where: { $0 == userId })
+        } else {
+            techIds.append(userId)
+        }
+    }
+
+    func resetBillingJobFilters() {
+        startDate = defaultBillingJobStartDate
+        endDate = Date()
+        selectedStatus = defaultBillingJobStatuses
+        techIds = companyUserVM.companyUsers.map(\.userId)
     }
 }

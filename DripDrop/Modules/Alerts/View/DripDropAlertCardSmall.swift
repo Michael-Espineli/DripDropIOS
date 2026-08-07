@@ -218,9 +218,12 @@ struct DripDropAlertCardSmall: View {
             }
         }
         .task{
-            if let selectedCompany = masterDataManager.currentCompany {
+            let companyId = dripDropAlert.relatedEntity?.companyId
+                ?? dripDropAlert.share?.companyId
+                ?? masterDataManager.currentCompany?.id
+            if let companyId, !companyId.isEmpty {
                 do {
-                    try await VM.getAlertDestination(companyId: selectedCompany.id, alert: dripDropAlert)
+                    try await VM.getAlertDestination(companyId: companyId, alert: dripDropAlert)
                 } catch {
                     print("Error")
                     print(error)
@@ -235,11 +238,21 @@ struct DripDropAlertCardSmall: View {
 //}
 extension DripDropAlertCardSmall {
     var card: some View {
-            VStack{
+            VStack(alignment: .leading, spacing: 6){
                 Text("\(dripDropAlert.name)")
                     .fontWeight(.bold)
                 Text("\(dripDropAlert.description)")
                     .fontWeight(.light)
+                HStack(spacing: 8) {
+                    if let status = dripDropAlert.status, !status.isEmpty {
+                        Text(status.capitalized)
+                    }
+                    if let type = dripDropAlert.relatedEntity?.type ?? dripDropAlert.share?.type, !type.isEmpty {
+                        Text(type)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
             .modifier(ListButtonModifier())

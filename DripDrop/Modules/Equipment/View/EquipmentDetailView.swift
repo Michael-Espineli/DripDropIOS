@@ -914,7 +914,7 @@
 
                 detailRow(
                     title: "Installed",
-                    value: "\(shortDate(date: activeEquipment.dateInstalled)) (\(String(format: "%.1f", numberOfYearsBetween(activeEquipment.dateInstalled, Date()))) years)",
+                    value: installedDateSummary(for: activeEquipment.dateInstalled),
                     systemImage: "calendar"
                 )
             }
@@ -1041,6 +1041,12 @@
             }
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+
+        func installedDateSummary(for dateInstalled: Date?) -> String {
+            guard let dateInstalled else { return "Not set" }
+            let yearsInstalled = String(format: "%.1f", numberOfYearsBetween(dateInstalled, Date()))
+            return "\(shortDate(date: dateInstalled)) (\(yearsInstalled) years)"
         }
 
         func partRow(_ part: EquipmentPart) -> some View {

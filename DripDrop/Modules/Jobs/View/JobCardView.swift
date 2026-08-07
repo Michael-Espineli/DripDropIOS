@@ -29,7 +29,7 @@ struct JobCardView: View {
 
                 // Icon (match RepairRequestCardView)
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10)
+                    Circle()
                         .fill(getColorOperation(status: job.operationStatus).opacity(0.15))
                         .frame(width: 44, height: 44)
 
@@ -98,10 +98,10 @@ struct JobCardView: View {
             .padding(.leading,8)
         }
         .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
         }
         .task(id: job.id) {
             await loadUnresolvedCommentCount()
@@ -118,8 +118,8 @@ extension JobCardView {
         )
         .font(.caption.weight(.semibold))
         .foregroundStyle(Color.orange)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(Color.orange.opacity(0.12), in: Capsule())
         .accessibilityLabel("\(unresolvedCommentCount) unresolved job comments")
     }
@@ -170,7 +170,7 @@ struct StatusChip: View {
             .padding(.vertical, 4)
             .background(color.opacity(0.15))
             .foregroundStyle(color)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 

@@ -38,14 +38,13 @@ struct ShoppingListView: View {
     @State private var isLoading: Bool = false
     @State private var includeAllOutstanding: Bool = false
     @State private var showOtherOutstandingItems: Bool = false
+    @State private var showRecentlyPurchasedItems: Bool = false
 
     var body: some View {
         ZStack {
             Color.listColor.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                tabBar
-
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
                         headerCard
@@ -87,7 +86,7 @@ struct ShoppingListView: View {
                         Color.clear.frame(height: 90)
                     }
                     .padding(.horizontal, 14)
-                    .padding(.top, 12)
+                    .padding(.top, 4)
                 }
             }
 
@@ -98,7 +97,23 @@ struct ShoppingListView: View {
         .navigationTitle("Shopping Center")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Menu {
+                    ForEach(ShoppingCenterTab.allCases) { tab in
+                        Button {
+                            selectedTab = tab
+                        } label: {
+                            Label(
+                                tab.rawValue,
+                                systemImage: selectedTab == tab ? "checkmark" : tab.systemImage
+                            )
+                        }
+                    }
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.body.weight(.semibold))
+                }
+
                 Button {
                     showAddNewShoppingListItem.toggle()
                 } label: {
@@ -213,6 +228,10 @@ extension ShoppingListView {
             Button {
                 showOtherOutstandingItems.toggle()
                 includeAllOutstanding = showOtherOutstandingItems
+
+                Task {
+                    await reloadShoppingCenter()
+                }
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: showOtherOutstandingItems ? "chevron.up.circle" : "tray.full")
@@ -269,6 +288,72 @@ extension ShoppingListView {
         }
     }
 
+    private var recentlyPurchasedItemsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+
+            Button {
+                showRecentlyPurchasedItems.toggle()
+
+                Task {
+                    await reloadShoppingCenter()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: showRecentlyPurchasedItems ? "chevron.up.circle" : "cart.badge.checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(showRecentlyPurchasedItems ? "Hide Recent Purchases" : "Show Recent Purchases")
+                            .font(.subheadline.weight(.semibold))
+
+                        Text("Recently purchased shopping items you may need to correct.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    Spacer()
+
+                    if showRecentlyPurchasedItems {
+                        Text("\(shoppingVM.recentlyPurchasedItems.count)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(.thinMaterial, in: Capsule())
+                    } else {
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            if showRecentlyPurchasedItems {
+                if shoppingVM.recentlyPurchasedItems.isEmpty {
+                    emptyState(
+                        title: "No recent purchases.",
+                        message: "Purchased shopping items will appear here so mistakes are easier to fix.",
+                        systemImage: "cart.badge.checkmark"
+                    )
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(shoppingVM.recentlyPurchasedItems) { item in
+                            shoppingItemLink(item)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var routePrepSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
@@ -297,6 +382,7 @@ extension ShoppingListView {
             }
 
             otherOutstandingRouteItemsSection
+            recentlyPurchasedItemsSection
         }
         .shoppingCenterCard()
     }
@@ -535,6 +621,17 @@ extension ShoppingListView {
                     shoppingVM.routePrepItems
                 )
             }
+
+            if showRecentlyPurchasedItems {
+                try await shoppingVM.loadRecentlyPurchasedShoppingItems(
+                    companyId: company.id,
+                    limit: 100
+                )
+            } else {
+                shoppingVM.setRecentlyPurchasedItemsForCurrentContext(
+                    shoppingVM.routePrepItems
+                )
+            }
         } catch {
             print("[ShoppingListView][reloadShoppingCenter] Error")
             print(error)
@@ -542,46 +639,6 @@ extension ShoppingListView {
     }
 }
 extension ShoppingListView {
-
-    private var tabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(ShoppingCenterTab.allCases) { tab in
-                    Button {
-                        selectedTab = tab
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: tab.systemImage)
-                            Text(tab.rawValue)
-                        }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(selectedTab == tab ? .primary : .secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background(
-                            selectedTab == tab
-                            ? Color.accentColor.opacity(0.16)
-                            : Color.primary.opacity(0.06),
-                            in: Capsule()
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(
-                                    selectedTab == tab
-                                    ? Color.accentColor.opacity(0.28)
-                                    : Color.primary.opacity(0.08),
-                                    lineWidth: 1
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-        }
-        .background(.regularMaterial)
-    }
 
     private var headerSubtitle: String {
         switch selectedTab {
@@ -697,12 +754,12 @@ extension ShoppingListView {
     @ViewBuilder
     private func shoppingItemLink(_ item: ShoppingListItem) -> some View {
         if UIDevice.isIPhone {
-            NavigationLink(
-                value: Route.shoppingListDetail(
+            NavigationLink {
+                ShoppingListItemDetailView(
                     item: item,
                     dataService: dataService
                 )
-            ) {
+            } label: {
                 ShoppingListItemCardView(
                     dataService: dataService,
                     shoppingListItem: item

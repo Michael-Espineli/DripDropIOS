@@ -160,6 +160,10 @@ private extension EquipmentDetailStartUpView {
 
             serviceScheduleSection(equipment)
 
+            if let storedImages = equipment.wrappedValue.photoUrls, !storedImages.isEmpty {
+                DripDropStoredImageRow(images: storedImages)
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 Label("Equipment Photos", systemImage: "camera.fill")
                     .font(.headline.weight(.semibold))
@@ -239,11 +243,33 @@ private extension EquipmentDetailStartUpView {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
-            DatePicker("", selection: equipment.dateInstalled, displayedComponents: .date)
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 8) {
+                if equipment.wrappedValue.dateInstalled == nil {
+                    HStack {
+                        Text("Not set")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Set Date") {
+                            equipment.wrappedValue.dateInstalled = Date()
+                        }
+                        .font(.caption.weight(.semibold))
+                    }
+                } else {
+                    DatePicker("", selection: Binding(
+                        get: { equipment.wrappedValue.dateInstalled ?? Date() },
+                        set: { equipment.wrappedValue.dateInstalled = $0 }
+                    ), displayedComponents: .date)
+                    .labelsHidden()
+
+                    Button("Clear") {
+                        equipment.wrappedValue.dateInstalled = nil
+                    }
+                    .font(.caption.weight(.semibold))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 

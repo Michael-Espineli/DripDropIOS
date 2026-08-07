@@ -519,10 +519,15 @@ struct EquipmentCard: View {
             HStack {
                 Text("Installed")
                 Spacer()
-                Text(shortDate(date: equipment.dateInstalled))
-                Text("(\(String(format: "%.1f", numberOfYearsBetween(equipment.dateInstalled, Date()))) yrs)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                if let dateInstalled = equipment.dateInstalled {
+                    Text(shortDate(date: dateInstalled))
+                    Text("(\(String(format: "%.1f", numberOfYearsBetween(dateInstalled, Date()))) yrs)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Not set")
+                        .foregroundColor(.secondary)
+                }
             }
         }
         .font(.footnote)
@@ -1116,9 +1121,14 @@ private extension View {
                         Text("Installed: ")
                             .bold()
                         Spacer()
-                        Text(shortDate(date: equipment.dateInstalled))
-                        Text("(\(String(format: "%.1f", numberOfYearsBetween(equipment.dateInstalled, Date()))) years)")
-                            .font(.footnote)
+                        if let dateInstalled = equipment.dateInstalled {
+                            Text(shortDate(date: dateInstalled))
+                            Text("(\(String(format: "%.1f", numberOfYearsBetween(dateInstalled, Date()))) years)")
+                                .font(.footnote)
+                        } else {
+                            Text("Not set")
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 Spacer()
