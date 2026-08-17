@@ -97,11 +97,11 @@ struct TechnicianSelfScheduleWorkOfferView: View {
                 dataService: dataService,
                 selectedType: $selectedCompanyServiceStopType,
                 useCase: serviceStopTypeUseCase,
-                title: "Service Stop Type",
-                subtitle: "This controls the work type used for route/payroll rules."
+                title: "Pay Type",
+                subtitle: "This controls the pay type used for route and payroll rules."
             )
         } header: {
-            Text("Service Stop Type")
+            Text("Pay Type")
         }
     }
 

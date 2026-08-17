@@ -166,10 +166,10 @@ final class PayrollRateHistoryViewModel: ObservableObject {
         }
 
         guard let workTypeId = rate.workTypeId else {
-            return "No Work Type"
+            return "No Pay Type"
         }
 
-        return workTypesById[workTypeId]?.name ?? "Missing Work Type"
+        return workTypesById[workTypeId]?.name ?? "Missing Pay Type"
     }
 
     func workTypeIcon(for rate: TechnicianRate) -> String {
@@ -231,7 +231,7 @@ struct PayrollRateHistoryView: View {
             rateGroupsSection
         }
         .navigationTitle("Rate History")
-        .searchable(text: $viewModel.searchText, prompt: "Search technician, work type, or basis")
+        .searchable(text: $viewModel.searchText, prompt: "Search technician, pay type, or basis")
         .task {
             await viewModel.load()
         }

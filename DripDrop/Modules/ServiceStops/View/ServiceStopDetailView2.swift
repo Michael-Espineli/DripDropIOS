@@ -70,7 +70,8 @@ struct ServiceStopDetailView2: View {
     @State private var followUpItems: [ServiceStopFollowUpItem] = []
     @State private var isLoadingFollowUps = false
     @State private var followUpErrorMessage: String? = nil
-    @State private var pendingJobCompletionPrompt: FieldJobCompletionPrompt? = nil
+    @State private var linkedJobCompletionFlow: FieldJobCompletionFlow? = nil
+    @State private var shouldNavigateBackAfterLinkedJobFlowDismiss = false
     @State private var isCompletingLinkedJob = false
     
     private var serviceStop: ServiceStop? {
@@ -296,17 +297,58 @@ struct ServiceStopDetailView2: View {
         } message: {
             Text(finishErrorMessage ?? "")
         }
-        .alert(item: $pendingJobCompletionPrompt) { prompt in
-            Alert(
-                title: Text("Finish Linked Job?"),
-                message: Text("All linked job tasks are finished for \(prompt.jobLabel). Mark the job finished now?"),
-                primaryButton: .default(Text(isCompletingLinkedJob ? "Finishing..." : "Finish Job")) {
-                    completeLinkedJob(prompt)
-                },
-                secondaryButton: .cancel(Text("Keep Job Open")) {
-                    navigationManager.goBack()
+        .sheet(
+            isPresented: Binding(
+                get: { linkedJobCompletionFlow != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        linkedJobCompletionFlow = nil
+                    }
                 }
-            )
+            ),
+            onDismiss: {
+                guard shouldNavigateBackAfterLinkedJobFlowDismiss else { return }
+                shouldNavigateBackAfterLinkedJobFlowDismiss = false
+                navigationManager.goBack()
+            }
+        ) {
+            Group {
+                switch linkedJobCompletionFlow {
+                case .decision(let prompt):
+                    LinkedJobCompletionDecisionSheet(
+                        prompt: prompt,
+                        isFinishing: isCompletingLinkedJob,
+                        onFinishJob: {
+                            completeLinkedJob(prompt)
+                        },
+                        onScheduleAnotherStop: {
+                            linkedJobCompletionFlow = .schedule(prompt)
+                        },
+                        onKeepJobOpen: {
+                            linkedJobCompletionFlow = nil
+                        }
+                    )
+                case .schedule(let prompt):
+                    ScheduleServiceStopView(
+                        dataService: dataService,
+                        companyId: prompt.companyId,
+                        job: prompt.job,
+                        customerId: prompt.job.customerId,
+                        customerName: prompt.job.customerName,
+                        serviceLocationId: prompt.job.serviceLocationId,
+                        description: prompt.job.description,
+                        jobTaskList: prompt.jobTasks,
+                        plannedServiceStops: prompt.plannedServiceStops,
+                        prefilledJobTaskIds: prompt.prefilledJobTaskIds,
+                        handoffSourceServiceStop: prompt.serviceStop,
+                        serviceStopTypeUseCase: .jobVisit
+                    )
+                case .none:
+                    EmptyView()
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .interactiveDismissDisabled(isCompletingLinkedJob)
         }
     }
     func submitSkipReason() {
@@ -668,15 +710,217 @@ private enum ServiceStopFollowUpKind: String, CaseIterable {
     }
 }
 
+private enum FieldJobCompletionFlow {
+    case decision(FieldJobCompletionPrompt)
+    case schedule(FieldJobCompletionPrompt)
+}
+
 private struct FieldJobCompletionPrompt: Identifiable {
     let id = UUID()
     let companyId: String
     let jobId: String
+    let job: Job
+    let serviceStop: ServiceStop
     let jobLabel: String
     let serviceStopLabel: String
     let userId: String
     let userName: String
     let taskCount: Int
+    let unfinishedTaskCount: Int
+    let prefilledJobTaskIds: Set<String>
+    let jobTasks: [JobTask]
+    let plannedServiceStops: [JobPlannedServiceStop]
+
+    var sortedPlannedServiceStops: [JobPlannedServiceStop] {
+        plannedServiceStops.sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    var canFinishJob: Bool {
+        unfinishedTaskCount == 0
+    }
+}
+
+private struct LinkedJobCompletionDecisionSheet: View {
+    let prompt: FieldJobCompletionPrompt
+    let isFinishing: Bool
+    let onFinishJob: () -> Void
+    let onScheduleAnotherStop: () -> Void
+    let onKeepJobOpen: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    header
+                    plannedStopsSection
+                    actionsSection
+                }
+                .padding(16)
+                .padding(.bottom, 12)
+            }
+            .background(Color.listColor.ignoresSafeArea())
+            .navigationTitle("Linked Job")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        onKeepJobOpen()
+                    }
+                    .disabled(isFinishing)
+                }
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Service stop finished", systemImage: "checkmark.circle.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.green)
+
+            Text(prompt.jobLabel)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(prompt.canFinishJob
+                ? "All \(prompt.taskCount) linked job task(s) are finished from \(prompt.serviceStopLabel). Choose what happens next."
+                : "\(prompt.unfinishedTaskCount) linked job task(s) still need work. Schedule another stop to carry them forward."
+            )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var plannedStopsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Planned Stops", systemImage: "calendar.badge.clock")
+                .font(.headline)
+
+            if prompt.sortedPlannedServiceStops.isEmpty {
+                Text("No planned stops are set up for this job yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(prompt.sortedPlannedServiceStops) { plannedStop in
+                        plannedStopRow(plannedStop)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var actionsSection: some View {
+        VStack(spacing: 10) {
+            Button {
+                onScheduleAnotherStop()
+            } label: {
+                actionLabel(
+                    title: "Schedule Another Stop",
+                    subtitle: "Use a planned stop or create a blank follow-up.",
+                    systemImage: "calendar.badge.plus"
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isFinishing)
+
+            if prompt.canFinishJob {
+                Button {
+                    onFinishJob()
+                } label: {
+                    actionLabel(
+                        title: isFinishing ? "Finishing Job..." : "Finish Job",
+                        subtitle: "Close the linked job and keep the service stop finished.",
+                        systemImage: "checkmark.seal"
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isFinishing)
+            }
+
+            Button {
+                onKeepJobOpen()
+            } label: {
+                actionLabel(
+                    title: "Keep Job Open",
+                    subtitle: "Leave the job active and return to the route.",
+                    systemImage: "briefcase"
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isFinishing)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func plannedStopRow(_ plannedStop: JobPlannedServiceStop) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: plannedStop.serviceStopTypeImage.isEmpty ? "calendar" : plannedStop.serviceStopTypeImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.accent)
+                .frame(width: 34, height: 34)
+                .background(Color.accentColor.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(plannedStop.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text("\(plannedStop.serviceStopTypeName) - \(plannedStop.estimatedMinutes) min - \(plannedStop.taskIds.count) task(s)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func actionLabel(title: String, subtitle: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.accent)
+                .frame(width: 36, height: 36)
+                .background(Color.accentColor.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
 }
 
 private struct ServiceStopFollowUpItem: Identifiable, Hashable {
@@ -1406,7 +1650,7 @@ private struct ServiceStopPartApprovalResponseSheet: View {
     }
 }
 
-private struct ServiceStopShoppingListItemSheet: View {
+struct ServiceStopShoppingListItemSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var masterDataManager: MasterDataManager
 
@@ -3096,7 +3340,7 @@ extension ServiceStopDetailView2 {
                     }
 
                     if let serviceStop {
-                        recapActionButton("Finish", systemImage: "checkmark", tint: Color.poolGreen, foreground: .black) {
+                        recapActionButton("Finish", systemImage: "checkmark", tint: Color.poolGreen, foreground: .white) {
                             markFinished(serviceStop)
                         }
                     }
@@ -3679,8 +3923,32 @@ extension ServiceStopDetailView2 {
         guard job.operationStatus != .finished else { return nil }
 
         let jobTasks = try await dataService.getJobTasks(companyId: companyId, jobId: jobId)
-        let unfinishedTasks = jobTasks.filter { $0.status != .finished }
-        guard unfinishedTasks.isEmpty else { return nil }
+        let plannedServiceStops = (try? await dataService.fetchJobPlannedServiceStops(
+            companyId: companyId,
+            jobId: jobId
+        )) ?? []
+        let loadedStopTasks = VM.taskList.isEmpty
+            ? ((try? await dataService.getServiceStopTasks(companyId: companyId, serviceStopId: stop.id)) ?? [])
+            : VM.taskList
+        let finishedStopJobTaskIds = Set(loadedStopTasks.compactMap { task -> String? in
+            let jobTaskId = task.jobTaskId.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !jobTaskId.isEmpty, task.status == .finished else { return nil }
+            return jobTaskId
+        })
+        let unfinishedStopJobTaskIds = Set(loadedStopTasks.compactMap { task -> String? in
+            let jobTaskId = task.jobTaskId.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !jobTaskId.isEmpty, task.status != .finished else { return nil }
+            return jobTaskId
+        })
+        let unfinishedJobTaskIds = Set(jobTasks.compactMap { task -> String? in
+            if finishedStopJobTaskIds.contains(task.id) {
+                return nil
+            }
+
+            return task.status == .finished ? nil : task.id
+        })
+        let prefilledJobTaskIds = unfinishedStopJobTaskIds.intersection(unfinishedJobTaskIds)
+        guard unfinishedJobTaskIds.isEmpty || !prefilledJobTaskIds.isEmpty else { return nil }
 
         let jobLabel = [job.internalId, job.type]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -3690,11 +3958,17 @@ extension ServiceStopDetailView2 {
         return FieldJobCompletionPrompt(
             companyId: companyId,
             jobId: jobId,
+            job: job,
+            serviceStop: stop,
             jobLabel: jobLabel.isEmpty ? jobId : jobLabel,
             serviceStopLabel: serviceStopLabel(stop),
             userId: userId,
             userName: currentUserDisplayName,
-            taskCount: jobTasks.count
+            taskCount: jobTasks.count,
+            unfinishedTaskCount: unfinishedJobTaskIds.count,
+            prefilledJobTaskIds: prefilledJobTaskIds,
+            jobTasks: jobTasks,
+            plannedServiceStops: plannedServiceStops
         )
     }
 
@@ -3721,7 +3995,8 @@ extension ServiceStopDetailView2 {
                         userId: user.id,
                         stop: stop
                     ) {
-                        pendingJobCompletionPrompt = prompt
+                        shouldNavigateBackAfterLinkedJobFlowDismiss = true
+                        linkedJobCompletionFlow = .decision(prompt)
                         return
                     }
 
@@ -3746,10 +4021,14 @@ extension ServiceStopDetailView2 {
             defer { isCompletingLinkedJob = false }
 
             do {
-                try await dataService.updateJobOperationStatus(
+                let jobCompletionViewModel = JobDetailViewModel(dataService: dataService)
+                try await jobCompletionViewModel.markJobAsFinished(
                     companyId: prompt.companyId,
-                    jobId: prompt.jobId,
-                    operationStatus: .finished
+                    job: prompt.job,
+                    jobTasks: prompt.jobTasks,
+                    completedByUserId: prompt.userId,
+                    completedByUserName: prompt.userName,
+                    addCompletionComment: false
                 )
 
                 let comment = """
@@ -3778,8 +4057,7 @@ extension ServiceStopDetailView2 {
                     comment: jobComment
                 )
 
-                pendingJobCompletionPrompt = nil
-                navigationManager.goBack()
+                linkedJobCompletionFlow = nil
             } catch {
                 finishErrorMessage = error.localizedDescription
                 print("[ServiceStopDetailView2][completeLinkedJob] \(error)")

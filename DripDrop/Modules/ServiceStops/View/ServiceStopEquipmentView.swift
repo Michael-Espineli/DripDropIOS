@@ -235,6 +235,10 @@ struct EquipmentCard: View {
     @State private var showRepairRequestSheet: Bool = false
     @State private var showJobSheet: Bool = false
     @State private var showPartApprovalSheet: Bool = false
+    @State private var showRecordMaintenanceSheet: Bool = false
+    @State private var showRecordRepairSheet: Bool = false
+    @State private var showObservationAlert: Bool = false
+    @FocusState private var pressureFieldFocused: Bool
     
     private var equipment: Equipment? {
         VM.listOfEquipment.first { $0.id == equipmentId }
@@ -296,19 +300,21 @@ struct EquipmentCard: View {
                     }
                     
                     Spacer()
-                    
-                    Button("Edit") {
-                        showEquipment.toggle()
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+
+                    equipmentActionsMenu
                 }
-                
-                equipmentActionSection(equipment: equipment)
+
+                if let observationMessage {
+                    equipmentFeedbackMessage(observationMessage)
+                }
 
                 // Filter Section
                 if equipment.type == .filter {
                     filterSection(equipment: equipment)
+                }
+
+                if equipment.needsService {
+                    serviceScheduleSection(equipment: equipment)
                 }
                 
                 // Info Section
@@ -349,6 +355,37 @@ struct EquipmentCard: View {
                     onCreated: { }
                 )
             }
+            .sheet(isPresented: $showRecordMaintenanceSheet) {
+                RecordEquipmentMaintenanceView(
+                    dataService: dataService,
+                    equipment: equipment
+                ) {
+                    setObservationMessage("Maintenance recorded.", showAlert: true)
+                }
+            }
+            .sheet(isPresented: $showRecordRepairSheet) {
+                RecordEquipmentRepairView(
+                    dataService: dataService,
+                    equipment: equipment
+                ) {
+                    setObservationMessage("Repair recorded.", showAlert: true)
+                }
+            }
+            .alert("Equipment Update", isPresented: $showObservationAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(observationMessage ?? "")
+            }
+            .toolbar {
+                if pressureFieldFocused {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Done") {
+                            pressureFieldFocused = false
+                        }
+                    }
+                }
+            }
             .onAppear {
                 equipmentStatus = equipment.status
                 if let measurement = stopData.equipmentMeasurements.first(where: { $0.equipmentId == equipment.id }) {
@@ -367,7 +404,7 @@ struct EquipmentCard: View {
                         status: status
                     )
                 } catch {
-                    observationMessage = "Could not update equipment status."
+                    setObservationMessage("Could not update equipment status.", showAlert: true)
                 }
             }
         }
@@ -384,72 +421,124 @@ struct EquipmentCard: View {
     }
     
     @ViewBuilder
-    private func equipmentActionSection(equipment: Equipment) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-            equipmentActionButton(
-                title: "Repair Request",
-                systemImage: "wrench.and.screwdriver",
-                tint: .orange
-            ) {
+    private var equipmentActionsMenu: some View {
+        Menu {
+            Button {
+                showEquipment = true
+            } label: {
+                Label("Edit Equipment", systemImage: "square.and.pencil")
+            }
+
+            Divider()
+
+            Button {
                 showRepairRequestSheet = true
+            } label: {
+                Label("Repair Request", systemImage: "wrench.and.screwdriver")
             }
 
-            equipmentActionButton(
-                title: "Schedule Job",
-                systemImage: "calendar.badge.plus",
-                tint: Color.poolBlue
-            ) {
+            Button {
                 showJobSheet = true
+            } label: {
+                Label("Schedule Job", systemImage: "calendar.badge.plus")
             }
 
-            equipmentActionButton(
-                title: "Part Approval",
-                systemImage: "checkmark.seal",
-                tint: Color.poolGreen
-            ) {
+            Button {
                 showPartApprovalSheet = true
+            } label: {
+                Label("Part Approval", systemImage: "checkmark.seal")
             }
-        }
-    }
 
-    private func equipmentActionButton(
-        title: String,
-        systemImage: String,
-        tint: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+            Divider()
+
+            Button {
+                showRecordMaintenanceSheet = true
+            } label: {
+                Label("Record Maintenance", systemImage: "wrench.and.screwdriver.fill")
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            .foregroundStyle(tint)
+
+            Button {
+                showRecordRepairSheet = true
+            } label: {
+                Label("Record Repair", systemImage: "cross.case.fill")
+            }
+        } label: {
+            Label("Actions", systemImage: "ellipsis.circle")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Color.poolBlue.opacity(0.12), in: Capsule())
+                .foregroundStyle(Color.poolBlue)
         }
         .buttonStyle(.plain)
     }
 
     @ViewBuilder
+    private func equipmentFeedbackMessage(_ message: String) -> some View {
+        Text(message)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(isSuccessMessage(message) ? Color.poolGreen : Color.poolRed)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
     private func filterSection(equipment: Equipment) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            
-            HStack {
-                Text("Pressure")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Spacer()
-                
-                TextField("PSI", text: $pressure)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 80)
+
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Filter Pressure")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+
+                    HStack(spacing: 7) {
+                        TextField("0", text: $pressure)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .font(.headline.monospacedDigit())
+                            .focused($pressureFieldFocused)
+                            .frame(minWidth: 54, maxWidth: 86)
+
+                        Text("PSI")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 9)
+                    .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(pressureFieldFocused ? Color.poolBlue : Color(.separator).opacity(0.55), lineWidth: pressureFieldFocused ? 1.5 : 1)
+                    )
+                }
+                .layoutPriority(1)
+
+                Button {
+                    Task { await addEquipmentObservation(equipment: equipment) }
+                } label: {
+                    HStack(spacing: 7) {
+                        if isSavingObservation {
+                            ProgressView()
+                                .frame(width: 18, height: 18)
+                        } else {
+                            Image(systemName: "plus.circle.fill")
+                        }
+
+                        Text(isSavingObservation ? "Saving" : "Add Equipment Observation")
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.82)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .frame(width: 136)
+                    .frame(minHeight: 52)
+                    .background(Color.poolBlue.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .foregroundStyle(Color.poolBlue)
+                }
+                .buttonStyle(.plain)
+                .disabled(isSavingObservation)
             }
+
             if let cleanPressure = equipment.cleanFilterPressure {
                 
                 Divider()
@@ -481,32 +570,53 @@ struct EquipmentCard: View {
             }
             .font(.footnote)
 
-            Button {
-                Task { await addEquipmentObservation(equipment: equipment) }
-            } label: {
-                HStack {
-                    if isSavingObservation {
-                        ProgressView()
-                            .frame(width: 18, height: 18)
-                    } else {
-                        Image(systemName: "plus.circle.fill")
-                    }
-                    Text(isSavingObservation ? "Saving Observation" : "Add Equipment Observation")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 12)
-                .background(Color.poolBlue.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(isSavingObservation)
+        }
+    }
 
-            if let observationMessage {
-                Text(observationMessage)
+    @ViewBuilder
+    private func serviceScheduleSection(equipment: Equipment) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider()
+
+            HStack {
+                Label("Regular Service", systemImage: "calendar.badge.clock")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(observationMessage == "Equipment observation saved." ? Color.poolGreen : Color.poolRed)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if equipment.currentlyNeedsMaintenanceFollowUp {
+                    Text("Due")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Color.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.12), in: Capsule())
+                }
             }
+
+            if let frequency = equipment.serviceFrequency,
+               let every = equipment.serviceFrequencyEvery {
+                serviceScheduleRow("Frequency", "\(frequency) \(every.rawValue)\(frequency == 1 ? "" : "s")")
+            }
+
+            serviceScheduleRow("Last Serviced", shortDate(date: equipment.lastServiceDate))
+
+            if let nextServiceDate = equipment.maintenanceDueDateForFollowUp {
+                serviceScheduleRow("Next Service", shortDate(date: nextServiceDate))
+            } else {
+                serviceScheduleRow("Next Service", "Not set")
+            }
+        }
+        .font(.footnote)
+    }
+
+    private func serviceScheduleRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.primary)
         }
     }
     
@@ -659,15 +769,28 @@ struct EquipmentCard: View {
         return masterDataManager.currentCompany?.id
     }
 
+    private func isSuccessMessage(_ message: String) -> Bool {
+        [
+            "Equipment reading added.",
+            "Maintenance recorded.",
+            "Repair recorded."
+        ].contains(message)
+    }
+
+    private func setObservationMessage(_ message: String, showAlert: Bool = false) {
+        observationMessage = message
+        showObservationAlert = showAlert
+    }
+
     private func addEquipmentObservation(equipment: Equipment) async {
         let trimmedPressure = pressure.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let pressureValue = Int(trimmedPressure) else {
-            observationMessage = "Enter a valid PSI reading."
+            setObservationMessage("Enter a valid PSI reading.", showAlert: true)
             return
         }
 
         guard let companyId = targetCompanyId() else {
-            observationMessage = "No company selected."
+            setObservationMessage("No company selected.", showAlert: true)
             return
         }
 
@@ -715,9 +838,9 @@ struct EquipmentCard: View {
             }
 
             VM.EquipmentReadings[equipment] = measurement
-            observationMessage = "Equipment observation saved."
+            setObservationMessage("Equipment reading added.", showAlert: true)
         } catch {
-            observationMessage = "Could not save equipment observation."
+            setObservationMessage("Could not save equipment observation.", showAlert: true)
         }
 
         isSavingObservation = false

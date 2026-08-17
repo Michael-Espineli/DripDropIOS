@@ -12,6 +12,9 @@ struct CompanyWorkType: Identifiable, Codable, Hashable {
 
     var name: String
     var category: WorkCategory
+    var bucketId: String?
+    var bucketLabel: String?
+    var serviceStopCategory: ServiceStopCategory?
     var iconName: String?
     var isActive: Bool
 
@@ -19,7 +22,119 @@ struct CompanyWorkType: Identifiable, Codable, Hashable {
     var defaultStackBehavior: RateStackBehavior
 
     var sortOrder: Int
+    var createdAt: Date?
+    var createdByUserId: String?
+    var updatedAt: Date?
+    var updatedByUserId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case companyId
+        case name
+        case category
+        case bucketId
+        case bucketLabel
+        case serviceStopCategory
+        case iconName
+        case imageName
+        case isActive
+        case active
+        case defaultRateType
+        case defaultStackBehavior
+        case sortOrder
+        case createdAt
+        case createdByUserId
+        case updatedAt
+        case updatedByUserId
+        case stopPayBucketId
+        case stopPayBucketLabel
+    }
+
+    init(
+        id: String,
+        companyId: String,
+        name: String,
+        category: WorkCategory,
+        bucketId: String? = nil,
+        bucketLabel: String? = nil,
+        serviceStopCategory: ServiceStopCategory? = nil,
+        iconName: String? = nil,
+        isActive: Bool,
+        defaultRateType: RateType,
+        defaultStackBehavior: RateStackBehavior,
+        sortOrder: Int,
+        createdAt: Date? = nil,
+        createdByUserId: String? = nil,
+        updatedAt: Date? = nil,
+        updatedByUserId: String? = nil
+    ) {
+        self.id = id
+        self.companyId = companyId
+        self.name = name
+        self.category = category
+        self.bucketId = bucketId
+        self.bucketLabel = bucketLabel
+        self.serviceStopCategory = serviceStopCategory
+        self.iconName = iconName
+        self.isActive = isActive
+        self.defaultRateType = defaultRateType
+        self.defaultStackBehavior = defaultStackBehavior
+        self.sortOrder = sortOrder
+        self.createdAt = createdAt
+        self.createdByUserId = createdByUserId
+        self.updatedAt = updatedAt
+        self.updatedByUserId = updatedByUserId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+        companyId = try container.decodeIfPresent(String.self, forKey: .companyId) ?? ""
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        category = try container.decodeIfPresent(WorkCategory.self, forKey: .category) ?? .serviceCall
+        bucketId = try container.decodeIfPresent(String.self, forKey: .bucketId)
+            ?? container.decodeIfPresent(String.self, forKey: .stopPayBucketId)
+        bucketLabel = try container.decodeIfPresent(String.self, forKey: .bucketLabel)
+            ?? container.decodeIfPresent(String.self, forKey: .stopPayBucketLabel)
+        serviceStopCategory = try container.decodeIfPresent(ServiceStopCategory.self, forKey: .serviceStopCategory)
+        iconName = try container.decodeIfPresent(String.self, forKey: .iconName)
+            ?? container.decodeIfPresent(String.self, forKey: .imageName)
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive)
+            ?? container.decodeIfPresent(Bool.self, forKey: .active)
+            ?? true
+        defaultRateType = try container.decodeIfPresent(RateType.self, forKey: .defaultRateType) ?? category.suggestedDefaultRateType
+        defaultStackBehavior = try container.decodeIfPresent(RateStackBehavior.self, forKey: .defaultStackBehavior) ?? category.suggestedStackBehavior
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        createdByUserId = try container.decodeIfPresent(String.self, forKey: .createdByUserId)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        updatedByUserId = try container.decodeIfPresent(String.self, forKey: .updatedByUserId)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(id, forKey: .id)
+        try container.encode(companyId, forKey: .companyId)
+        try container.encode(name, forKey: .name)
+        try container.encode(category, forKey: .category)
+        try container.encodeIfPresent(bucketId, forKey: .bucketId)
+        try container.encodeIfPresent(bucketLabel, forKey: .bucketLabel)
+        try container.encodeIfPresent(serviceStopCategory, forKey: .serviceStopCategory)
+        try container.encodeIfPresent(iconName, forKey: .iconName)
+        try container.encode(isActive, forKey: .isActive)
+        try container.encode(defaultRateType, forKey: .defaultRateType)
+        try container.encode(defaultStackBehavior, forKey: .defaultStackBehavior)
+        try container.encode(sortOrder, forKey: .sortOrder)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(createdByUserId, forKey: .createdByUserId)
+        try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(updatedByUserId, forKey: .updatedByUserId)
+    }
 }
+
+typealias CompanyPayType = CompanyWorkType
 enum RateType: String, Codable, Hashable, CaseIterable {
     case flatPerStop
     case flatPerTask
@@ -81,6 +196,105 @@ struct TechnicianRate: Identifiable, Codable, Hashable {
 
     var reason: String?
     var previousRateId: String?
+
+    var payTypeId: String? {
+        get { workTypeId }
+        set { workTypeId = newValue }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case ratePlanId
+        case companyId
+        case technicianId
+        case payBasis
+        case workTypeId
+        case payTypeId
+        case amountCents
+        case rateType
+        case effectiveStartDate
+        case effectiveEndDate
+        case status
+        case createdAt
+        case createdByUserId
+        case reason
+        case previousRateId
+    }
+
+    init(
+        id: String,
+        ratePlanId: String,
+        companyId: String,
+        technicianId: String,
+        payBasis: PayBasis,
+        workTypeId: String?,
+        amountCents: Int,
+        rateType: RateType,
+        effectiveStartDate: Date,
+        effectiveEndDate: Date?,
+        status: RateStatus,
+        createdAt: Date,
+        createdByUserId: String,
+        reason: String?,
+        previousRateId: String?
+    ) {
+        self.id = id
+        self.ratePlanId = ratePlanId
+        self.companyId = companyId
+        self.technicianId = technicianId
+        self.payBasis = payBasis
+        self.workTypeId = workTypeId
+        self.amountCents = amountCents
+        self.rateType = rateType
+        self.effectiveStartDate = effectiveStartDate
+        self.effectiveEndDate = effectiveEndDate
+        self.status = status
+        self.createdAt = createdAt
+        self.createdByUserId = createdByUserId
+        self.reason = reason
+        self.previousRateId = previousRateId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(String.self, forKey: .id)
+        ratePlanId = try container.decode(String.self, forKey: .ratePlanId)
+        companyId = try container.decode(String.self, forKey: .companyId)
+        technicianId = try container.decode(String.self, forKey: .technicianId)
+        payBasis = try container.decode(PayBasis.self, forKey: .payBasis)
+        workTypeId = try container.decodeIfPresent(String.self, forKey: .payTypeId)
+            ?? container.decodeIfPresent(String.self, forKey: .workTypeId)
+        amountCents = try container.decode(Int.self, forKey: .amountCents)
+        rateType = try container.decode(RateType.self, forKey: .rateType)
+        effectiveStartDate = try container.decode(Date.self, forKey: .effectiveStartDate)
+        effectiveEndDate = try container.decodeIfPresent(Date.self, forKey: .effectiveEndDate)
+        status = try container.decode(RateStatus.self, forKey: .status)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        createdByUserId = try container.decode(String.self, forKey: .createdByUserId)
+        reason = try container.decodeIfPresent(String.self, forKey: .reason)
+        previousRateId = try container.decodeIfPresent(String.self, forKey: .previousRateId)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(id, forKey: .id)
+        try container.encode(ratePlanId, forKey: .ratePlanId)
+        try container.encode(companyId, forKey: .companyId)
+        try container.encode(technicianId, forKey: .technicianId)
+        try container.encode(payBasis, forKey: .payBasis)
+        try container.encodeIfPresent(workTypeId, forKey: .payTypeId)
+        try container.encode(amountCents, forKey: .amountCents)
+        try container.encode(rateType, forKey: .rateType)
+        try container.encode(effectiveStartDate, forKey: .effectiveStartDate)
+        try container.encodeIfPresent(effectiveEndDate, forKey: .effectiveEndDate)
+        try container.encode(status, forKey: .status)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(createdByUserId, forKey: .createdByUserId)
+        try container.encodeIfPresent(reason, forKey: .reason)
+        try container.encodeIfPresent(previousRateId, forKey: .previousRateId)
+    }
 }
 
 /*
@@ -132,14 +346,85 @@ struct CompanyServiceStopType: Identifiable, Codable, Hashable {
     var sortOrder: Int
     var category: ServiceStopCategory? = nil
 
-    // Example:
-    // Weekly Route -> [Routes]
-    // Route + Spa -> [Routes, Spa Add-On]
-    // Commercial Multi BOW -> [Commercial Base, Commercial Additional BOW]
+    // Compatibility for older linked-task pay type records.
     var defaultWorkTypeIds: [String]
 
     var createdAt: Date
     var createdByUserId: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case companyId
+        case name
+        case imageName
+        case iconName
+        case isActive
+        case active
+        case sortOrder
+        case category
+        case serviceStopCategory
+        case defaultWorkTypeIds
+        case createdAt
+        case createdByUserId
+    }
+
+    init(
+        id: String,
+        companyId: String,
+        name: String,
+        imageName: String?,
+        isActive: Bool,
+        sortOrder: Int,
+        category: ServiceStopCategory? = nil,
+        defaultWorkTypeIds: [String],
+        createdAt: Date,
+        createdByUserId: String
+    ) {
+        self.id = id
+        self.companyId = companyId
+        self.name = name
+        self.imageName = imageName
+        self.isActive = isActive
+        self.sortOrder = sortOrder
+        self.category = category
+        self.defaultWorkTypeIds = defaultWorkTypeIds
+        self.createdAt = createdAt
+        self.createdByUserId = createdByUserId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? ""
+        companyId = try container.decodeIfPresent(String.self, forKey: .companyId) ?? ""
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        imageName = try container.decodeIfPresent(String.self, forKey: .imageName)
+            ?? container.decodeIfPresent(String.self, forKey: .iconName)
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive)
+            ?? container.decodeIfPresent(Bool.self, forKey: .active)
+            ?? true
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
+        category = try container.decodeIfPresent(ServiceStopCategory.self, forKey: .serviceStopCategory)
+            ?? container.decodeIfPresent(ServiceStopCategory.self, forKey: .category)
+        defaultWorkTypeIds = try container.decodeIfPresent([String].self, forKey: .defaultWorkTypeIds) ?? []
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        createdByUserId = try container.decodeIfPresent(String.self, forKey: .createdByUserId) ?? ""
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(id, forKey: .id)
+        try container.encode(companyId, forKey: .companyId)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(imageName, forKey: .iconName)
+        try container.encode(isActive, forKey: .isActive)
+        try container.encode(sortOrder, forKey: .sortOrder)
+        try container.encodeIfPresent(category, forKey: .serviceStopCategory)
+        try container.encode(defaultWorkTypeIds, forKey: .defaultWorkTypeIds)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(createdByUserId, forKey: .createdByUserId)
+    }
 }
 
 extension CompanyServiceStopType {
@@ -474,6 +759,56 @@ struct TechnicianPayLineItem: Identifiable, Codable, Hashable {
     var taskName: String?
     var serviceStopTypeName: String?
     var serviceStopCategory: ServiceStopCategory?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case companyId
+        case technicianId
+        case technicianName
+        case workerType
+        case source
+        case serviceStopId
+        case serviceStopTaskId
+        case activeRouteId
+        case activeRouteLogId
+        case workTypeId = "payTypeId"
+        case workTypeName = "payTypeName"
+        case rateId
+        case rateAmountCents
+        case rateType
+        case payBasis
+        case quantity
+        case quantityUnit
+        case totalAmountCents
+        case completedDate
+        case calculatedAt
+        case calculationStatus
+        case approvedAt
+        case approvedByUserId
+        case paidAt
+        case paidByUserId
+        case voidedAt
+        case voidedByUserId
+        case voidReason
+        case payStatementId
+        case exportBatchId
+        case notes
+        case adminReviewNotes
+        case lineNumber
+        case lineReference
+        case paymentReference
+        case displayTitle
+        case displaySubtitle
+        case customerId
+        case customerName
+        case serviceLocationId
+        case serviceLocationAddress
+        case jobId
+        case jobInternalId
+        case taskName
+        case serviceStopTypeName
+        case serviceStopCategory
+    }
     
 }
 enum PayrollReferenceFormatter {
@@ -592,13 +927,13 @@ enum CompanyPayMode: String, Codable, Hashable, CaseIterable {
      payMode: .productionOnly,
      routePaySource: .serviceStopAndCompletedTasks,
      taskPaySource: .technicianRateThenTaskContractedRate,
-     allowMultipleWorkTypesPerStop: true,
+     allowMultipleWorkTypesPerStop: false,
      defaultStackBehavior: .stackable,
      allowTechnicianRateOverrides: true,
      allowManualPayAdjustments: true,
-     payCommercialAsSeparateWorkType: true,
-     paySpaAsSeparateWorkType: true,
-     payPerBodyOfWater: true,
+     payCommercialAsSeparateWorkType: false,
+     paySpaAsSeparateWorkType: false,
+     payPerBodyOfWater: false,
      lockPayAfterApproval: true,
      recalculateUnapprovedPayWhenRatesChange: false
  )

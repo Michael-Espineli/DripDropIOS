@@ -21,100 +21,108 @@ enum CompanyWorkTypeListFilter: String, CaseIterable, Identifiable {
 // MARK: - Default Seeds
 
 struct CompanyWorkTypeSeed: Identifiable, Hashable {
-    var id: String { name }
-
+    var id: String
     var name: String
     var category: WorkCategory
+    var bucketId: String
     var iconName: String
     var defaultRateType: RateType
     var defaultStackBehavior: RateStackBehavior
+}
+
+struct CompanyPayTypeBucket: Identifiable, Hashable {
+    var id: String
+    var label: String
+    var category: ServiceStopCategory
+
+    static let all: [CompanyPayTypeBucket] = [
+        CompanyPayTypeBucket(id: "route", label: "Routes", category: .route),
+        CompanyPayTypeBucket(id: "job", label: "Jobs", category: .job),
+        CompanyPayTypeBucket(id: "jobEstimate", label: "Job Estimates", category: .jobEstimate),
+        CompanyPayTypeBucket(id: "serviceAgreementEstimate", label: "Service Agreement Estimates", category: .serviceAgreementEstimate),
+        CompanyPayTypeBucket(id: "customerRelationship", label: "Customer Relationships", category: .customerRelationship)
+    ]
+
+    static func bucket(for id: String?) -> CompanyPayTypeBucket {
+        let trimmedId = id?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return all.first { $0.id == trimmedId } ?? all[0]
+    }
+
+    static func defaultBucket(for category: WorkCategory) -> CompanyPayTypeBucket {
+        switch category {
+        case .route, .commercial:
+            return bucket(for: "route")
+        case .serviceCall, .repair, .installation, .cleaning, .startup, .drainAndRefill, .extra, .custom:
+            return bucket(for: "job")
+        }
+    }
 }
 
 enum CompanyWorkTypeDefaultSeeds {
 
     static let poolCompanyDefaults: [CompanyWorkTypeSeed] = [
         CompanyWorkTypeSeed(
-            name: "Routes",
+            id: PayrollSystemSourceIds.recurringServiceStop,
+            name: "Residential",
             category: .route,
-            iconName: "figure.pool.swim",
+            bucketId: "route",
+            iconName: "house",
             defaultRateType: .flatPerStop,
             defaultStackBehavior: .stackable
         ),
         CompanyWorkTypeSeed(
-            name: "Spa Add-On",
-            category: .route,
-            iconName: "bubbles.and.sparkles",
-            defaultRateType: .flatPerStop,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Extra Route",
-            category: .route,
-            iconName: "plus.circle",
-            defaultRateType: .flatPerStop,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Clean Filter",
-            category: .cleaning,
-            iconName: "line.3.horizontal.decrease.circle",
-            defaultRateType: .flatPerTask,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Salt Cell Cleaning",
-            category: .cleaning,
-            iconName: "bolt.circle",
-            defaultRateType: .flatPerTask,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Service Call",
-            category: .serviceCall,
-            iconName: "phone",
-            defaultRateType: .flatPerStop,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Repair",
-            category: .repair,
-            iconName: "wrench.and.screwdriver",
-            defaultRateType: .flatPerTask,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Installation",
-            category: .installation,
-            iconName: "hammer",
-            defaultRateType: .flatPerTask,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Commercial Base",
+            id: PayrollSystemSourceIds.commercialRoute,
+            name: "Commercial",
             category: .commercial,
+            bucketId: "route",
             iconName: "building.2",
             defaultRateType: .flatPerStop,
             defaultStackBehavior: .stackable
         ),
         CompanyWorkTypeSeed(
-            name: "Commercial Additional Body of Water",
-            category: .commercial,
-            iconName: "drop",
-            defaultRateType: .perBodyOfWater,
-            defaultStackBehavior: .stackable
-        ),
-        CompanyWorkTypeSeed(
-            name: "Drain / Refill",
-            category: .drainAndRefill,
-            iconName: "drop.triangle",
+            id: PayrollSystemSourceIds.jobServiceStop,
+            name: "Filter Cleaning",
+            category: .cleaning,
+            bucketId: "job",
+            iconName: "sparkles",
             defaultRateType: .flatPerTask,
             defaultStackBehavior: .stackable
         ),
         CompanyWorkTypeSeed(
-            name: "Extra",
-            category: .extra,
-            iconName: "plus.square",
-            defaultRateType: .manual,
+            id: PayrollSystemSourceIds.jobSaltCellCleaning,
+            name: "Salt Cell Cleaning",
+            category: .cleaning,
+            bucketId: "job",
+            iconName: "drop",
+            defaultRateType: .flatPerTask,
+            defaultStackBehavior: .stackable
+        ),
+        CompanyWorkTypeSeed(
+            id: PayrollSystemSourceIds.jobEstimateServiceStop,
+            name: "Estimate",
+            category: .serviceCall,
+            bucketId: "jobEstimate",
+            iconName: "doc.text.magnifyingglass",
+            defaultRateType: .flatPerStop,
+            defaultStackBehavior: .stackable
+        ),
+        CompanyWorkTypeSeed(
+            id: PayrollSystemSourceIds.serviceAgreementEstimateServiceStop,
+            name: "Estimate",
+            category: .startup,
+            bucketId: "serviceAgreementEstimate",
+            iconName: "list.clipboard",
+            defaultRateType: .flatPerStop,
+            defaultStackBehavior: .stackable
+        ),
+        CompanyWorkTypeSeed(
+            id: PayrollSystemSourceIds.customerRelationshipServiceStop,
+            name: "Service Call",
+            category: .serviceCall,
+            bucketId: "customerRelationship",
+            iconName: "phone",
+            defaultRateType: .flatPerStop,
             defaultStackBehavior: .stackable
         )
     ]
@@ -210,7 +218,7 @@ final class CompanyWorkTypesViewModel: ObservableObject {
         do {
             workTypes = try await dataService.fetchCompanyWorkTypes(companyId: companyId)
         } catch {
-            alertMessage = "Could not load company work types. \(error.localizedDescription)"
+            alertMessage = "Could not load company pay types. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -231,7 +239,7 @@ final class CompanyWorkTypesViewModel: ObservableObject {
             try await dataService.saveCompanyWorkType(workType)
             upsertLocal(workType)
         } catch {
-            alertMessage = "Could not save work type. \(error.localizedDescription)"
+            alertMessage = "Could not save pay type. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -251,25 +259,31 @@ final class CompanyWorkTypesViewModel: ObservableObject {
     }
 
     func seedPoolCompanyDefaults(companyId: String) async {
-        let existingNames = Set(
-            workTypes.map {
-                normalizedName($0.name)
-            }
+        var existingKeys = Set(
+            workTypes.map { duplicateKey(name: $0.name, bucketId: $0.bucketId) }
         )
 
         var newWorkTypes: [CompanyWorkType] = []
-        var sortOrder = nextSortOrder
+        let appendingToExistingPayTypes = !workTypes.isEmpty
+        var sortOrder = appendingToExistingPayTypes ? nextSortOrder : 0
+        let sortOrderStep = appendingToExistingPayTypes ? 10 : 1
 
         for seed in CompanyWorkTypeDefaultSeeds.poolCompanyDefaults {
-            guard !existingNames.contains(normalizedName(seed.name)) else {
+            let bucket = CompanyPayTypeBucket.bucket(for: seed.bucketId)
+            let seedDuplicateKey = duplicateKey(name: seed.name, bucketId: bucket.id)
+
+            guard !existingKeys.contains(seedDuplicateKey) else {
                 continue
             }
 
             let workType = CompanyWorkType(
-                id: PayrollIdFactory.companyWorkTypeId(),
+                id: seed.id,
                 companyId: companyId,
                 name: seed.name,
                 category: seed.category,
+                bucketId: bucket.id,
+                bucketLabel: bucket.label,
+                serviceStopCategory: bucket.category,
                 iconName: seed.iconName,
                 isActive: true,
                 defaultRateType: seed.defaultRateType,
@@ -278,11 +292,12 @@ final class CompanyWorkTypesViewModel: ObservableObject {
             )
 
             newWorkTypes.append(workType)
-            sortOrder += 10
+            existingKeys.insert(seedDuplicateKey)
+            sortOrder += sortOrderStep
         }
 
         guard !newWorkTypes.isEmpty else {
-            alertMessage = "Default work types already exist."
+            alertMessage = "Default pay types already exist."
             showAlert = true
             return
         }
@@ -304,10 +319,10 @@ final class CompanyWorkTypesViewModel: ObservableObject {
                 return $0.sortOrder < $1.sortOrder
             }
 
-            alertMessage = "Added \(newWorkTypes.count) default work types."
+            alertMessage = "Added \(newWorkTypes.count) default pay types."
             showAlert = true
         } catch {
-            alertMessage = "Could not add default work types. \(error.localizedDescription)"
+            alertMessage = "Could not add default pay types. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -321,11 +336,11 @@ final class CompanyWorkTypesViewModel: ObservableObject {
 
         let duplicate = workTypes.contains {
             $0.id != workType.id &&
-            normalizedName($0.name) == normalizedName(trimmedName)
+            duplicateKey(name: $0.name, bucketId: $0.bucketId) == duplicateKey(name: trimmedName, bucketId: workType.bucketId)
         }
 
         guard !duplicate else {
-            return (false, "A work type named \(trimmedName) already exists.")
+            return (false, "A pay type named \(trimmedName) already exists.")
         }
 
         return (true, "")
@@ -351,6 +366,10 @@ final class CompanyWorkTypesViewModel: ObservableObject {
         name
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
+    }
+
+    private func duplicateKey(name: String, bucketId: String?) -> String {
+        "\(normalizedName(name))|\(CompanyPayTypeBucket.bucket(for: bucketId).id)"
     }
 }
 
@@ -378,8 +397,8 @@ struct CompanyWorkTypesView: View {
             filterSection
             workTypesSection
         }
-        .navigationTitle("Work Types")
-        .searchable(text: $viewModel.searchText, prompt: "Search work types")
+        .navigationTitle("Pay Types")
+        .searchable(text: $viewModel.searchText, prompt: "Search pay types")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -401,7 +420,7 @@ struct CompanyWorkTypesView: View {
         }
         .overlay {
             if viewModel.isLoading {
-                ProgressView("Loading work types...")
+                ProgressView("Loading pay types...")
                     .padding()
                     .background(.thinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -417,7 +436,7 @@ struct CompanyWorkTypesView: View {
                 }
             }
         }
-        .alert("Company Work Types", isPresented: $viewModel.showAlert) {
+        .alert("Company Pay Types", isPresented: $viewModel.showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.alertMessage)
@@ -443,7 +462,7 @@ struct CompanyWorkTypesView: View {
             Button {
                 editorRoute = CompanyWorkTypeEditorRoute(workType: nil)
             } label: {
-                Label("New Payroll Work Type", systemImage: "plus.circle")
+                Label("New Pay Type", systemImage: "plus.circle")
             }
 
             Button {
@@ -460,7 +479,7 @@ struct CompanyWorkTypesView: View {
         } header: {
             Text("Setup")
         } footer: {
-            Text("Work types are the payroll rows used for technician rates, mappings, and pay line items. Deactivate old work types instead of deleting them.")
+            Text("Pay types are the payroll rows used for technician rates and pay line items. Deactivate old pay types instead of deleting them.")
         }
     }
 
@@ -507,7 +526,7 @@ struct CompanyWorkTypesView: View {
                 }
             }
         } header: {
-            Text("Work Types")
+            Text("Pay Types")
         }
     }
 }
@@ -538,7 +557,7 @@ struct CompanyWorkTypeRowView: View {
                     }
                 }
 
-                Text("\(workType.category.title) • \(workType.defaultRateType.title)")
+                Text("\(workType.category.title) • \(CompanyPayTypeBucket.bucket(for: workType.bucketId).label) • \(workType.defaultRateType.title)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -583,22 +602,22 @@ struct CompanyWorkTypesEmptyState: View {
     private var emptyTitle: String {
         switch selectedFilter {
         case .active:
-            return "No active work types"
+            return "No active pay types"
         case .inactive:
-            return "No inactive work types"
+            return "No inactive pay types"
         case .all:
-            return "No work types yet"
+            return "No pay types yet"
         }
     }
 
     private var emptyMessage: String {
         switch selectedFilter {
         case .active:
-            return "Add your first work type or seed the default pool company work types."
+            return "Add your first pay type or seed the default pool company pay types."
         case .inactive:
-            return "Deactivated work types will show here."
+            return "Deactivated pay types will show here."
         case .all:
-            return "Work types are used as payroll rows for technician rates."
+            return "Pay types are used as payroll rows for technician rates."
         }
     }
 }
@@ -615,6 +634,7 @@ struct CompanyWorkTypeEditorView: View {
 
     @State private var name: String
     @State private var category: WorkCategory
+    @State private var selectedBucketId: String
     @State private var iconName: String
     @State private var isActive: Bool
     @State private var defaultRateType: RateType
@@ -639,9 +659,11 @@ struct CompanyWorkTypeEditorView: View {
         self.saveAction = saveAction
 
         let startingCategory = originalWorkType?.category ?? .custom
+        let startingBucket = CompanyPayTypeBucket.bucket(for: originalWorkType?.bucketId)
 
         _name = State(initialValue: originalWorkType?.name ?? "")
         _category = State(initialValue: startingCategory)
+        _selectedBucketId = State(initialValue: startingBucket.id)
         _iconName = State(initialValue: originalWorkType?.iconName ?? startingCategory.defaultIconName)
         _isActive = State(initialValue: originalWorkType?.isActive ?? true)
         _defaultRateType = State(initialValue: originalWorkType?.defaultRateType ?? startingCategory.suggestedDefaultRateType)
@@ -657,7 +679,7 @@ struct CompanyWorkTypeEditorView: View {
                 iconSection
                 advancedSection
             }
-            .navigationTitle(isEditing ? "Edit Work Type" : "New Work Type")
+            .navigationTitle(isEditing ? "Edit Pay Type" : "New Pay Type")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -674,14 +696,15 @@ struct CompanyWorkTypeEditorView: View {
                     }
                 }
             }
-            .onChange(of: category) { newCategory in
+            .onChange(of: category) { _, newCategory in
                 guard !isEditing else { return }
 
+                selectedBucketId = CompanyPayTypeBucket.defaultBucket(for: newCategory).id
                 iconName = newCategory.defaultIconName
                 defaultRateType = newCategory.suggestedDefaultRateType
                 defaultStackBehavior = newCategory.suggestedStackBehavior
             }
-            .alert("Work Type", isPresented: $showValidationAlert) {
+            .alert("Pay Type", isPresented: $showValidationAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(validationMessage)
@@ -699,11 +722,17 @@ struct CompanyWorkTypeEditorView: View {
                 }
             }
 
+            Picker("Bucket", selection: $selectedBucketId) {
+                ForEach(CompanyPayTypeBucket.all) { bucket in
+                    Text(bucket.label).tag(bucket.id)
+                }
+            }
+
             Toggle("Active", isOn: $isActive)
         } header: {
             Text("Basic")
         } footer: {
-            Text("Examples: Routes, Spa Add-On, Clean Filter, Service Call, Commercial Base.")
+            Text("Examples: Residential, Commercial, Filter Cleaning, Salt Cell Cleaning, Estimate, Service Call.")
         }
     }
 
@@ -805,6 +834,7 @@ struct CompanyWorkTypeEditorView: View {
         }
 
         let sortOrder = Int(sortOrderText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? defaultSortOrder
+        let bucket = CompanyPayTypeBucket.bucket(for: selectedBucketId)
 
         let trimmedIconName = iconName.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalIconName = trimmedIconName.isEmpty ? nil : trimmedIconName
@@ -814,6 +844,9 @@ struct CompanyWorkTypeEditorView: View {
             companyId: companyId,
             name: trimmedName,
             category: category,
+            bucketId: bucket.id,
+            bucketLabel: bucket.label,
+            serviceStopCategory: bucket.category,
             iconName: finalIconName,
             isActive: isActive,
             defaultRateType: defaultRateType,

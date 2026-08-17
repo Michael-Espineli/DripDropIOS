@@ -88,13 +88,17 @@ final class AddEquipmentViewModel: ObservableObject {
         let bodyOfWaterId = "comp_bow_" + UUID().uuidString
 
         if needsService {
-            guard let _ = serviceFrequency else { return }
+            guard let serviceFrequency,
+                  serviceFrequency > 0 else { return }
             guard let _ = serviceFrequencyEvery else { return }
         }
 
         if let customer {
             let fullName = customer.firstName + " " + customer.lastName
             let createdAt = Date()
+            let serviceFrequencyValue = needsService ? serviceFrequency : nil
+            let serviceFrequencyEveryValue = needsService ? serviceFrequencyEvery : nil
+            let lastServiceDateValue = needsService ? lastServiced : nil
             let equipment = Equipment(
                 id: bodyOfWaterId,
                 name: name,
@@ -110,13 +114,13 @@ final class AddEquipmentViewModel: ObservableObject {
                 createdAt: createdAt,
                 status: status,
                 needsService: needsService,
-                lastServiceDate: lastServiced,
-                serviceFrequency: serviceFrequency,
-                serviceFrequencyEvery: serviceFrequencyEvery,
+                lastServiceDate: lastServiceDateValue,
+                serviceFrequency: serviceFrequencyValue,
+                serviceFrequencyEvery: serviceFrequencyEveryValue,
                 nextServiceDate: getNextServiceDate(
-                    lastServiceDate: lastServiced,
-                    frequency: serviceFrequency,
-                    every: serviceFrequencyEvery
+                    lastServiceDate: lastServiceDateValue,
+                    frequency: serviceFrequencyValue,
+                    every: serviceFrequencyEveryValue
                 ),
                 notes: notes,
                 customerName: fullName,
@@ -154,6 +158,7 @@ struct AddEquipmentView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
     @StateObject var VM: AddEquipmentViewModel
     @State var bodyOfWater: BodyOfWater
+    @FocusState private var focusedInput: Bool
 
     init(dataService: any ProductionDataServiceProtocol, bodyOfWater: BodyOfWater) {
         _VM = StateObject(wrappedValue: AddEquipmentViewModel(dataService: dataService))
@@ -183,6 +188,14 @@ struct AddEquipmentView: View {
         .navigationBarHidden(true)
         .alert(VM.alertMessage ?? "", isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedInput = false
+                }
+            }
         }
         .task {
             if let currentCompany = masterDataManager.currentCompany {
@@ -234,6 +247,8 @@ extension AddEquipmentView {
                 GridRow2 {
                     Field(title: "Name") {
                         TextField("Name", text: $VM.name)
+                            .focused($focusedInput)
+                            .submitLabel(.done)
                             .textFieldStyle(.plain)
                     }
 
@@ -272,6 +287,8 @@ extension AddEquipmentView {
                                 VM.manualPdfLink = ""
                             }
                         ))
+                            .focused($focusedInput)
+                            .submitLabel(.done)
                             .textFieldStyle(.plain)
                     }
                     Field(title: "Model") {
@@ -284,6 +301,8 @@ extension AddEquipmentView {
                                 VM.manualPdfLink = ""
                             }
                         ))
+                            .focused($focusedInput)
+                            .submitLabel(.done)
                             .textFieldStyle(.plain)
                     }
                 }
@@ -304,6 +323,8 @@ extension AddEquipmentView {
 
                 Field(title: "Notes") {
                     TextField("Notes", text: $VM.notes, axis: .vertical)
+                        .focused($focusedInput)
+                        .submitLabel(.done)
                         .lineLimit(3...8)
                         .textFieldStyle(.plain)
                 }
@@ -339,10 +360,10 @@ extension AddEquipmentView {
                         Field(title: "Frequency") {
                             HStack(spacing: 10) {
                                 Picker("Every", selection: Binding(
-                                    get: { VM.serviceFrequency ?? 0 },
+                                    get: { VM.serviceFrequency ?? 1 },
                                     set: { VM.serviceFrequency = $0 }
                                 )) {
-                                    ForEach(0...100, id: \.self) { Text("\($0)").tag($0) }
+                                    ForEach(1...100, id: \.self) { Text("\($0)").tag($0) }
                                 }
                                 .pickerStyle(.menu)
 

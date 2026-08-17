@@ -775,7 +775,7 @@
                let serviceDate = activeEquipment.lastServiceDate,
                let every = activeEquipment.serviceFrequencyEvery,
                let frequency = activeEquipment.serviceFrequency,
-               let nextServiceDate = activeEquipment.nextServiceDate {
+               let nextServiceDate = activeEquipment.maintenanceDueDateForFollowUp {
 
                 Divider().opacity(0.35)
 
@@ -844,7 +844,7 @@
         }
 
         private func maintenanceTimingText(for equipment: Equipment) -> String {
-            guard let nextServiceDate = equipment.nextServiceDate else {
+            guard let nextServiceDate = equipment.maintenanceDueDateForFollowUp else {
                 return "Maintenance is required. No due date is set."
             }
 

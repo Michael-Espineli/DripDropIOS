@@ -38,7 +38,15 @@ final class FirebaseManager {
         }
 
         FirebaseApp.configure(options: options)
+        configureFirestorePersistence()
         self.app = FirebaseApp.app()
+    }
+
+    private func configureFirestorePersistence() {
+        let db = Firestore.firestore()
+        let settings = db.settings
+        settings.cacheSettings = PersistentCacheSettings()
+        db.settings = settings
     }
 
     var db: Firestore {

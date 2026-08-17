@@ -62,18 +62,12 @@ import Foundation
 
 struct PayEngine {
     let settings: CompanyPaySettings
-    let serviceStopTypes: [CompanyServiceStopType]
     let workTypes: [CompanyWorkType]
-    let mappings: [WorkTypeMapping]
     let rates: [TechnicianRate]
     let workers: [PayrollWorkerSnapshot]
 
     private var workTypesById: [String: CompanyWorkType] {
         Dictionary(uniqueKeysWithValues: workTypes.map { ($0.id, $0) })
-    }
-
-    private var serviceStopTypesById: [String: CompanyServiceStopType] {
-        Dictionary(uniqueKeysWithValues: serviceStopTypes.map { ($0.id, $0) })
     }
 
     private var workersByUserId: [String: PayrollWorkerSnapshot] {
@@ -132,7 +126,7 @@ struct PayEngine {
                         workTypeName: nil,
                         completedDate: serviceStop.serviceDate,
                         now: now,
-                        notes: "No service stop work type could be resolved. typeId: \(serviceStop.typeId), inferredSourceId: \(serviceStop.inferredPayrollServiceStopSourceId)"
+                        notes: "No service stop pay type could be resolved. typeId: \(serviceStop.typeId), inferredSourceId: \(serviceStop.inferredPayrollServiceStopSourceId)"
                     )
                 )
             } else if !settings.allowMultipleWorkTypesPerStop && stopWorkTypeIds.count > 1 {
@@ -146,11 +140,11 @@ struct PayEngine {
                         workTypeName: nil,
                         completedDate: serviceStop.serviceDate,
                         now: now,
-                        notes: "Multiple work types matched this service stop, but company settings do not allow multiple work types per stop."
+                        notes: "Multiple pay types matched this service stop, but company settings do not allow multiple pay types per stop."
                     )
                 )
             } else {
-                for workTypeId in stopWorkTypeIds {
+                for workTypeId in stopWorkTypeIds.prefix(1) {
                     lineItems.append(
                         makeServiceStopProductionLine(
                             companyId: companyId,
@@ -238,7 +232,7 @@ private extension PayEngine {
             guard primaryRate == nil else { return nil }
 
             payrollDebug(
-                "[serviceStopRate] No \(primaryPayBasis.rawValue) rate for stop work type \(workType?.name ?? workTypeId). Trying \(fallbackPayBasis.rawValue)."
+                "[serviceStopRate] No \(primaryPayBasis.rawValue) rate for stop pay type \(workType?.name ?? workTypeId). Trying \(fallbackPayBasis.rawValue)."
             )
 
             return activeRate(
@@ -262,7 +256,7 @@ private extension PayEngine {
                 workTypeName: workType?.name,
                 completedDate: serviceStop.serviceDate,
                 now: now,
-                notes: "No active production rate found for \(worker.userName) and work type \(workType?.name ?? workTypeId). Checked \(primaryPayBasis.rawValue) and \(fallbackPayBasis.rawValue)."
+                notes: "No active production rate found for \(worker.userName) and pay type \(workType?.name ?? workTypeId). Checked \(primaryPayBasis.rawValue) and \(fallbackPayBasis.rawValue)."
             )
         }
 
@@ -287,7 +281,7 @@ private extension PayEngine {
             now: now,
             notes: rate.payBasis == primaryPayBasis
                 ? nil
-                : "Used \(rate.payBasis.title) rate for stop-level payroll because the service stop work type is configured with \(primaryPayBasis.title) as its preferred pay basis."
+                : "Used \(rate.payBasis.title) rate for stop-level payroll because the service stop pay type is configured with \(primaryPayBasis.title) as its preferred pay basis."
         )
     }
 
@@ -351,22 +345,10 @@ private extension PayEngine {
         taskPaySource: TaskPaySource,
         now: Date
     ) -> TechnicianPayLineItem? {
-        print("")
-        print("serviceStop")
-        print(serviceStop)
-        print("task")
-        print(task)
-        print("taskPaySource")
-        print(taskPaySource)
-        print("")
-        print(task)
         let worker = taskWorker(serviceStop: serviceStop, task: task)
-        let sourceId = task.payrollTaskSourceId
+        let directPayTypeId = task.payTypeId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-        guard let workTypeId = mappedWorkTypeIds(
-            sourceType: .jobTaskType,
-            sourceId: sourceId
-        ).first else {
+        guard !directPayTypeId.isEmpty else {
             return needsReviewLine(
                 serviceStop: serviceStop,
                 serviceStopTask: task,
@@ -376,11 +358,12 @@ private extension PayEngine {
                 workTypeName: nil,
                 completedDate: serviceStop.serviceDate,
                 now: now,
-                notes: "No WorkTypeMapping found for task type: \(sourceId)"
+                notes: "No pay type selected for task: \(task.name)"
             )
         }
 
-        let workType = workTypesById[workTypeId]
+        let workType = workTypesById[directPayTypeId]
+        let resolvedWorkTypeName = task.payTypeName ?? workType?.name
 
         switch taskPaySource {
         case .technicianRate:
@@ -389,8 +372,8 @@ private extension PayEngine {
                 serviceStop: serviceStop,
                 task: task,
                 worker: worker,
-                workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeId: directPayTypeId,
+                workTypeName: resolvedWorkTypeName,
                 preferredRateType: workType?.defaultRateType,
                 now: now
             )
@@ -400,8 +383,8 @@ private extension PayEngine {
                 serviceStop: serviceStop,
                 task: task,
                 worker: worker,
-                workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeId: directPayTypeId,
+                workTypeName: resolvedWorkTypeName,
                 now: now
             )
 
@@ -411,8 +394,8 @@ private extension PayEngine {
                 serviceStop: serviceStop,
                 task: task,
                 worker: worker,
-                workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeId: directPayTypeId,
+                workTypeName: resolvedWorkTypeName,
                 preferredRateType: workType?.defaultRateType,
                 now: now,
                 returnNilWhenMissingRate: true
@@ -424,8 +407,8 @@ private extension PayEngine {
                 serviceStop: serviceStop,
                 task: task,
                 worker: worker,
-                workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeId: directPayTypeId,
+                workTypeName: resolvedWorkTypeName,
                 now: now
             )
 
@@ -435,8 +418,8 @@ private extension PayEngine {
                     serviceStop: serviceStop,
                     task: task,
                     worker: worker,
-                    workTypeId: workTypeId,
-                    workTypeName: workType?.name,
+                    workTypeId: directPayTypeId,
+                    workTypeName: resolvedWorkTypeName,
                     now: now
                 )
             }
@@ -446,8 +429,8 @@ private extension PayEngine {
                 serviceStop: serviceStop,
                 task: task,
                 worker: worker,
-                workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeId: directPayTypeId,
+                workTypeName: resolvedWorkTypeName,
                 preferredRateType: workType?.defaultRateType,
                 now: now
             )
@@ -458,8 +441,8 @@ private extension PayEngine {
                 serviceStop: serviceStop,
                 task: task,
                 worker: worker,
-                workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeId: directPayTypeId,
+                workTypeName: resolvedWorkTypeName,
                 minutes: task.actualTime,
                 now: now,
                 notes: "Hourly pay from task actualTime."
@@ -471,8 +454,8 @@ private extension PayEngine {
                 serviceStop: serviceStop,
                 task: task,
                 worker: worker,
-                workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeId: directPayTypeId,
+                workTypeName: resolvedWorkTypeName,
                 minutes: task.estimatedTime,
                 now: now,
                 notes: "Hourly pay from task estimatedTime."
@@ -516,8 +499,15 @@ private extension PayEngine {
                 workTypeName: workTypeName,
                 completedDate: serviceStop.serviceDate,
                 now: now,
-                notes: "No active technician task rate found for \(worker.userName) and work type \(workTypeName ?? workTypeId)."
+                notes: "No active technician task rate found for \(worker.userName) and pay type \(workTypeName ?? workTypeId)."
             )
+        }
+
+        guard rate.amountCents > 0 else {
+            payrollDebug(
+                "Skipping task pay line because technician task rate is 0. rateId: \(rate.id), taskId: \(task.id), workType: \(workTypeName ?? workTypeId)"
+            )
+            return nil
         }
 
         let quantityInfo = quantityAndUnit(
@@ -1022,87 +1012,30 @@ private extension PayEngine {
 
     func serviceStopWorkTypeIds(for serviceStop: ServiceStop) -> [String] {
         
-        payrollDebug("Resolving service stop work types")
+        payrollDebug("Resolving service stop pay types")
         payrollDebug("serviceStop.id: \(serviceStop.id)")
         payrollDebug("serviceStop.typeId: \(serviceStop.typeId)")
         payrollDebug("serviceStop.type: \(serviceStop.type)")
         payrollDebug("recurringServiceStopId: \(serviceStop.recurringServiceStopId)")
         payrollDebug("jobId: \(serviceStop.jobId)")
         payrollDebug("inferred sourceId: \(serviceStop.inferredPayrollServiceStopSourceId)")
-        payrollDebug("serviceStopTypes count: \(serviceStopTypes.count)")
-        payrollDebug("mappings count: \(mappings.count)")
         payrollDebug("workTypes count: \(workTypes.count)")
         
-        // 1. Preferred path:
-        // ServiceStop.typeId points to a real CompanyServiceStopType.
-        if let serviceStopType = serviceStopTypesById[serviceStop.typeId],
-           !serviceStopType.defaultWorkTypeIds.isEmpty {
-            return uniqueIds(serviceStopType.defaultWorkTypeIds)
-        }
-        payrollDebug("No CompanyServiceStopType match for typeId: \(serviceStop.typeId)")
+        // 1. New preferred path:
+        // A service stop has exactly one pay type.
+        let directPayTypeId = (serviceStop.payWorkTypeId ?? serviceStop.workTypeId ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // 2. Explicit fallback mapping path:
-        // Map whatever serviceStop.typeId currently is.
-        let explicitTypeIds = mappedWorkTypeIds(
-            sourceType: .serviceStopType,
-            sourceId: serviceStop.typeId
-        )
-        
-        payrollDebug("Explicit mapping workTypeIds for \(serviceStop.typeId): \(explicitTypeIds)")
-
-        if !explicitTypeIds.isEmpty {
-            return explicitTypeIds
+        if !directPayTypeId.isEmpty {
+            return [directPayTypeId]
         }
 
-        // 3. System fallback path:
-        // Since typeId is not hooked up, infer recurring vs job.
-        let inferredTypeIds = mappedWorkTypeIds(
-            sourceType: .serviceStopType,
-            sourceId: serviceStop.inferredPayrollServiceStopSourceId
-        )
-        
-        payrollDebug("Inferred mapping workTypeIds for \(serviceStop.inferredPayrollServiceStopSourceId): \(inferredTypeIds)")
-
-        return inferredTypeIds
-    }
-
-    func mappedWorkTypeIds(
-        sourceType: WorkTypeSource,
-        sourceId: String
-    ) -> [String] {
-        guard !sourceId.isBlank else {
-            payrollDebug("Mapping skipped because sourceId is blank for sourceType \(sourceType.rawValue)")
-            return []
+        // 2. If typeId already points directly at a CompanyPayType, use it.
+        if workTypesById[serviceStop.typeId] != nil {
+            return [serviceStop.typeId]
         }
 
-        payrollDebug("Looking for mapping sourceType: \(sourceType.rawValue), sourceId: \(sourceId)")
-        payrollDebug("Looking for mapping  companyId: \(settings.companyId)")
-
-        let matchingMappings = mappings.filter {
-//            $0.companyId == settings.companyId &&
-            $0.sourceType == sourceType &&
-            $0.sourceId == sourceId
-        }
-
-        payrollDebug("Matching mappings found: \(matchingMappings.count)")
-        if matchingMappings.isEmpty {
-            for mapping in mappings {
-                
-                payrollDebug("Looking for Mapping: \(mapping)")
-                print("")
-                payrollDebug("Looking for settings: \(settings.companyId), sourceId: \(mapping.companyId)")
-                payrollDebug("Looking for sourceType: \(sourceType), sourceId: \(mapping.sourceType)")
-                payrollDebug("Looking for sourceId: \(sourceId), sourceId: \(mapping.sourceId)")
-
-            }
-        }
-        for mapping in matchingMappings {
-            payrollDebug("Mapping: \(mapping.sourceType.rawValue) \(mapping.sourceId) -> \(mapping.workTypeId)")
-        }
-
-        let ids = matchingMappings.map { $0.workTypeId }
-        
-        return uniqueIds(ids)
+        return []
     }
 
     func activeRate(

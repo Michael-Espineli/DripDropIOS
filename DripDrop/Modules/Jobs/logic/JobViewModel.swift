@@ -31,6 +31,7 @@ final class JobViewModel:ObservableObject{
     @Published private(set) var filteredWorkOrders: [Job] = []
 
     @Published private(set) var unscheduledWorkOrders: [Job] = []
+    @Published private(set) var assignedUnfinishedJobCount: Int = 0
 
     @Published private(set) var dailyDisplayTechs: [DBUser] = []
     @Published private(set) var readingHistory: [StopData] = []
@@ -102,6 +103,12 @@ final class JobViewModel:ObservableObject{
     func getAllUnscheduledWorkOrders(companyId: String) async throws{
         self.unscheduledWorkOrders = try await dataService.getAllUnscheduledWorkOrders(companyId: companyId)
 
+    }
+    func getAssignedUnfinishedJobCount(companyId: String, userId: String) async throws {
+        let jobs = try await dataService.getAllWorkOrders(companyId: companyId)
+        self.assignedUnfinishedJobCount = jobs.filter { job in
+            job.adminId == userId && job.operationStatus != .finished
+        }.count
     }
     func getFiveServiceStops(companyId: String) async throws{
         setWorkOrders(try await dataService.getAllWorkOrdersSortedByTime(companyId: companyId, descending: true, count: 5), sortedNewestFirst: false)

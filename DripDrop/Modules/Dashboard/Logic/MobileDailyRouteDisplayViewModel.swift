@@ -422,9 +422,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             }
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Active Route Listener:", route?.id ?? "nil")
-            if !self.serviceStopList.isEmpty {
-                self.recompute(companyId: companyId, whoCalled: "AR", user: user, date: date)
-            }
+            self.refreshRoutePresentationFromCurrentState()
         }
         dataService.listenRecurringRoute(
             companyId: companyId,
@@ -435,9 +433,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             self.recurringRoute = route
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Recurring Route Listener: ", route?.id ?? "nil")
-            if !self.serviceStopList.isEmpty {
-                self.recompute(companyId: companyId, whoCalled: "RR", user: user, date: date)
-            }
+            self.refreshRoutePresentationFromCurrentState()
         }
         dataService.listenServiceStops(
             companyId: companyId,
@@ -486,8 +482,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             
             self.activeRoute = computedRoute
             
-            // 5️⃣ Makes update to Active Route if needed
-            dataService.applyRouteChanges(companyId:companyId,diff:diff,calledFrom: whoCalled) // Why does this get called 3 times on a new day
+            if whoCalled == "SS" {
+                dataService.applyRouteChanges(companyId:companyId,diff:diff,calledFrom: whoCalled)
+            }
             
             let orderDiff = ArRrOrderDiffer.diff(
                 active: computedRoute,
@@ -518,6 +515,28 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 }
             }
         }
+    }
+
+    private func refreshRoutePresentationFromCurrentState() {
+        guard let activeRoute else {
+            serviceStopOrderList = []
+            ArOrderIsDifferentThanRrORder = false
+            return
+        }
+
+        serviceStopOrderList = activeRoute.order ?? []
+        if !serviceStopList.isEmpty {
+            serviceStopList = applyOrder(
+                serviceStops: serviceStopList,
+                serviceStopOrders: activeRoute.order
+            )
+        }
+
+        let orderDiff = ArRrOrderDiffer.diff(
+            active: activeRoute,
+            recurring: recurringRoute
+        )
+        ArOrderIsDifferentThanRrORder = orderDiff.isDifferent
     }
     
     func updateServiceStopStatus(companyId:String, stopId: String, status: ServiceStopOperationStatus) {

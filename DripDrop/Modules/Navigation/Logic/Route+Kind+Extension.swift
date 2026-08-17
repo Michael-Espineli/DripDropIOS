@@ -282,6 +282,8 @@ extension Route {
             return 136
         case .offeredWork:
             return 137
+        case .poolEquipmentScanner:
+            return 138
         }
     }
 
@@ -614,6 +616,7 @@ extension Route {
              .feed,
              .chats,
              .equipmentList,
+             .poolEquipmentScanner,
              .routes,
              .settings,
              .userSettings,

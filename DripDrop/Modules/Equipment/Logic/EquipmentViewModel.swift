@@ -13,6 +13,7 @@ import MapKit
 @MainActor
 final class EquipmentViewModel:ObservableObject{
     private var dataService: any ProductionDataServiceProtocol
+    private let equipmentPageSize = 25
     init(dataService: any ProductionDataServiceProtocol) {
         self.dataService = dataService
     }
@@ -29,6 +30,8 @@ final class EquipmentViewModel:ObservableObject{
     @Published private(set) var equipment: Equipment? = nil
     @Published private(set) var part: EquipmentPart? = nil
     private var lastDocument:DocumentSnapshot? = nil
+    @Published private(set) var hasMoreEquipment: Bool = true
+    @Published private(set) var isLoadingEquipmentPage: Bool = false
 
     //ARRAYS
     @Published private(set) var listOfEquipment:[Equipment] = []
@@ -220,20 +223,34 @@ final class EquipmentViewModel:ObservableObject{
     //----------------------------------------------------
     //                    READ
     //----------------------------------------------------
-    func getAllEquipmentBy25(companyId:String) async throws{
-        
-
-        let (listOfEquipment,lastDocument) = try await dataService.getAllEquipmentCount(companyId: companyId, count: 25, lastDocument: lastDocument)
-        self.listOfEquipment.append(contentsOf: listOfEquipment)
-        if let lastDocument {
-            self.lastDocument = lastDocument
-
+    func getAllEquipmentBy25(companyId:String, reset: Bool = false) async throws{
+        if reset {
+            lastDocument = nil
+            hasMoreEquipment = true
+            listOfEquipment = []
+            displayEquipment = []
         }
+        guard !isLoadingEquipmentPage, hasMoreEquipment else { return }
+
+        isLoadingEquipmentPage = true
+        defer { isLoadingEquipmentPage = false }
+
+        let page = try await dataService.getAllEquipmentCount(
+            companyId: companyId,
+            count: equipmentPageSize,
+            lastDocument: lastDocument
+        )
+
+        self.listOfEquipment.append(contentsOf: page.equipmentList)
+        self.lastDocument = page.lastDocument
+        self.hasMoreEquipment = page.equipmentList.count == equipmentPageSize && page.lastDocument != nil
         filterEquipmentList()
     }
     func getAllEquipment(companyId: String) async throws {
         
         self.listOfEquipment = try await EquipmentManager.shared.getAllEquipment(companyId: companyId)
+        self.lastDocument = nil
+        self.hasMoreEquipment = false
         filterEquipmentList()
     }
     func getEquipmentSnapShot(companyId: String) async throws {

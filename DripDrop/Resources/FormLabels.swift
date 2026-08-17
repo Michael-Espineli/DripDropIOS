@@ -151,9 +151,11 @@ enum ServiceStopCategory: String, Identifiable, Hashable, CaseIterable, Codable 
         }
 
         switch typeId.trimmingCharacters(in: .whitespacesAndNewlines) {
-        case PayrollSystemSourceIds.recurringServiceStop:
+        case PayrollSystemSourceIds.recurringServiceStop,
+             PayrollSystemSourceIds.commercialRoute:
             return .route
-        case PayrollSystemSourceIds.jobServiceStop:
+        case PayrollSystemSourceIds.jobServiceStop,
+             PayrollSystemSourceIds.jobSaltCellCleaning:
             return .job
         case PayrollSystemSourceIds.jobEstimateServiceStop:
             return .jobEstimate

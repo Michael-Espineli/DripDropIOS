@@ -14,6 +14,39 @@
         case camera
     }
 
+    private enum ServiceReportDeliveryTone: Equatable {
+        case neutral
+        case success
+        case warning
+        case error
+
+        var tint: Color {
+            switch self {
+            case .neutral:
+                return .poolBlue
+            case .success:
+                return .poolGreen
+            case .warning:
+                return .orange
+            case .error:
+                return .red
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .neutral:
+                return "paperplane"
+            case .success:
+                return "checkmark.seal.fill"
+            case .warning:
+                return "exclamationmark.triangle.fill"
+            case .error:
+                return "xmark.octagon.fill"
+            }
+        }
+    }
+
     @MainActor
     final class ServiceStopRecapWorkSummaryViewModel: ObservableObject {
         @Published private(set) var jobs: [Job] = []
@@ -149,6 +182,12 @@
         @State var skipReason: String = ""
         @State var isLoading: Bool = true
         @State private var finishErrorMessage: String? = nil
+        @State private var showCustomerReportPreview = false
+        @State private var isSendingServiceReport = false
+        @State private var isFinishingAndSendingReport = false
+        @State private var serviceReportDeliveryMessage: String? = nil
+        @State private var serviceReportDeliveryTone: ServiceReportDeliveryTone = .neutral
+        @State private var lastServiceReportSendResult: ServiceReportSendResult? = nil
 
         // Photos
         @State var pickerType: photoPickerType? = nil
@@ -163,6 +202,8 @@
                 ScrollView(showsIndicators: true) {
                     VStack(spacing: 14) {
                         headerCard
+
+                        customerReportCard
 
                         outstandingWorkSummary
 
@@ -208,6 +249,17 @@
             } message: {
                 Text(finishErrorMessage ?? "")
             }
+            .sheet(isPresented: $showCustomerReportPreview) {
+                CustomerServiceReportPreviewSheet(
+                    serviceStop: serviceStop,
+                    stopData: stopData,
+                    tasks: tasks,
+                    bodiesOfWater: VM.bodiesOfWater,
+                    equipment: VM.listOfEquipment,
+                    storedPhotos: VM.loadedImages,
+                    pendingPhotoCount: VM.selectedDripDropPhotos.count
+                )
+            }
             .onAppear {
                 opStatus = serviceStop.operationStatus
             }
@@ -236,6 +288,83 @@
                 includeFinance: canViewFinanceSummary,
                 dataService: dataService
             )
+        }
+
+        @MainActor
+        private func sendServiceReportToCustomer() async -> Bool {
+            guard !isSendingServiceReport else { return false }
+            guard let company = masterDataManager.currentCompany else {
+                serviceReportDeliveryTone = .error
+                serviceReportDeliveryMessage = "Select a company before sending the service report."
+                return false
+            }
+
+            isSendingServiceReport = true
+            serviceReportDeliveryTone = .neutral
+            serviceReportDeliveryMessage = "Sending service report..."
+
+            do {
+                let result = try await FunctionsManager.shared.sendServiceReportOnFinish(
+                    companyId: company.id,
+                    stopId: serviceStop.id
+                )
+
+                lastServiceReportSendResult = result
+                if result.emailIsTurnedOff {
+                    serviceReportDeliveryTone = .warning
+                } else {
+                    serviceReportDeliveryTone = result.wasSent ? .success : .neutral
+                }
+                serviceReportDeliveryMessage = result.userFacingMessage
+                isSendingServiceReport = false
+                return result.wasSent
+            } catch {
+                serviceReportDeliveryTone = .error
+                serviceReportDeliveryMessage = error.localizedDescription
+                isSendingServiceReport = false
+                return false
+            }
+        }
+
+        @MainActor
+        private func finishAndSendReport() async {
+            guard !isFinishingAndSendingReport else { return }
+            guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
+                serviceReportDeliveryTone = .error
+                serviceReportDeliveryMessage = "Select a company and signed-in user before finishing the stop."
+                return
+            }
+
+            isFinishingAndSendingReport = true
+            serviceReportDeliveryTone = .neutral
+            serviceReportDeliveryMessage = "Finishing stop and preparing customer report..."
+
+            do {
+                opStatus = .finished
+                try await VM.updateServicestopOperationStatus(
+                    companyId: company.id,
+                    currentUserId: user.id,
+                    stop: serviceStop,
+                    operationStatus: .finished,
+                    sendServiceReport: false
+                )
+
+                let didSend = await sendServiceReportToCustomer()
+                isFinishingAndSendingReport = false
+
+                if didSend {
+                    navigationManager.goBack()
+                } else {
+                    serviceReportDeliveryTone = serviceReportDeliveryTone == .neutral ? .warning : serviceReportDeliveryTone
+                }
+            } catch {
+                opStatus = serviceStop.operationStatus
+                serviceReportDeliveryTone = .error
+                serviceReportDeliveryMessage = error.localizedDescription
+                finishErrorMessage = error.localizedDescription
+                isFinishingAndSendingReport = false
+                isSendingServiceReport = false
+            }
         }
 
         func submitSkipReason() {
@@ -328,6 +457,164 @@
             }
             .padding(16)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        var customerReportCard: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        sectionHeader("Customer Report", systemImage: "paperplane")
+
+                        Text("Preview the polished service recap before it goes to the customer.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer()
+
+                    reportStatusPill
+                }
+
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 8),
+                        GridItem(.flexible(), spacing: 8)
+                    ],
+                    spacing: 8
+                ) {
+                    reportMetricTile(
+                        title: "Readings",
+                        value: "\(stopData.readings.count)",
+                        systemImage: "drop.degreesign",
+                        tint: .poolBlue
+                    )
+                    reportMetricTile(
+                        title: "Dosages",
+                        value: "\(stopData.dosages.count)",
+                        systemImage: "testtube.2",
+                        tint: .poolGreen
+                    )
+                    reportMetricTile(
+                        title: "Tasks Done",
+                        value: "\(tasks.filter { $0.status == .finished }.count)/\(tasks.count)",
+                        systemImage: "checklist.checked",
+                        tint: .orange
+                    )
+                    reportMetricTile(
+                        title: "Photos",
+                        value: "\(reportPhotoCount)",
+                        systemImage: "photo.on.rectangle",
+                        tint: .purple
+                    )
+                }
+
+                if let serviceReportDeliveryMessage {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: serviceReportDeliveryTone.systemImage)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(serviceReportDeliveryTone.tint)
+                            .frame(width: 22)
+
+                        Text(serviceReportDeliveryMessage)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(serviceReportDeliveryTone.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        showCustomerReportPreview = true
+                    } label: {
+                        Label("Preview Report", systemImage: "doc.text.magnifyingglass")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: opStatus == .finished ? "arrow.down.to.line.compact" : "arrow.down")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 2)
+
+                        Text(opStatus == .finished ? "Use Send Report below when the customer should receive it." : "Use Finish & Send below when the stop is ready.")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        var reportStatusPill: some View {
+            let title: String
+            let tint: Color
+            let systemImage: String
+
+            if isSendingServiceReport || isFinishingAndSendingReport {
+                title = "Sending"
+                tint = .poolBlue
+                systemImage = "paperplane.fill"
+            } else if lastServiceReportSendResult?.wasSent == true {
+                title = "Sent"
+                tint = .poolGreen
+                systemImage = "checkmark.seal.fill"
+            } else if lastServiceReportSendResult?.emailIsTurnedOff == true {
+                title = "Email Off"
+                tint = .orange
+                systemImage = "exclamationmark.triangle.fill"
+            } else {
+                title = "Ready"
+                tint = .poolBlue
+                systemImage = "doc.text"
+            }
+
+            return Label(title, systemImage: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(tint.opacity(0.12), in: Capsule())
+        }
+
+        var reportPhotoCount: Int {
+            let savedPhotoCount = VM.loadedImages.count + (serviceStop.photoUrls?.count ?? 0)
+            return savedPhotoCount + VM.selectedDripDropPhotos.count + images.count
+        }
+
+        func reportMetricTile(title: String, value: String, systemImage: String, tint: Color) -> some View {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(tint)
+
+                    Spacer()
+
+                    Text(value)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
 
         var outstandingWorkSummary: some View {
@@ -605,16 +892,18 @@
                     switch opStatus {
                     case .finished:
                         Button {
-                            opStatus = .skipped
-                            showSkipReason = true
+                            Task {
+                                await sendServiceReportToCustomer()
+                            }
                         } label: {
-                            Label("Skip", systemImage: "forward")
+                            Label(isSendingServiceReport ? "Sending..." : "Send Report", systemImage: "paperplane.fill")
                                 .font(.subheadline.weight(.semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
-                                .background(Color.gray.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .background(Color.poolBlue.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
                         .buttonStyle(.plain)
+                        .disabled(isSendingServiceReport)
 
                         Button {
                             Task {
@@ -653,7 +942,7 @@
                                 }
                             }
                         } label: {
-                            Label("Finished", systemImage: "checkmark.circle")
+                            Label("Reopen", systemImage: "arrow.uturn.left")
                                 .font(.subheadline.weight(.semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
@@ -676,38 +965,26 @@
 
                         Button {
                             Task {
-                                if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
-                                    opStatus = .finished
-                                    do {
-                                        print("")
-                                        print("Finishing Screen")
-                                        print("-----------------")
-
-                                        try await VM.updateServicestopOperationStatus(
-                                            companyId: company.id,
-                                            currentUserId: user.id,
-                                            stop: serviceStop,
-                                            operationStatus: .finished
-                                        )
-                                        navigationManager.goBack()
-                                    } catch {
-                                        print("Failed To Updated Finish Stops \(serviceStop.id)")
-                                        print(error)
-                                        finishErrorMessage = error.localizedDescription
-                                        print("")
-                                    }
-                                } else {
-                                    print("Either Invalid Company or active Route")
-                                }
+                                await finishAndSendReport()
                             }
                         } label: {
-                            Label("Finish", systemImage: "checkmark")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            HStack(spacing: 8) {
+                                if isFinishingAndSendingReport {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Image(systemName: "paperplane.fill")
+                                }
+
+                                Text(isFinishingAndSendingReport ? "Finishing..." : "Finish & Send")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
                         .buttonStyle(.plain)
+                        .disabled(isFinishingAndSendingReport || isSendingServiceReport)
 
                     case .skipped:
                         Button {
@@ -1093,6 +1370,398 @@
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+    }
+
+    private struct CustomerServiceReportPreviewSheet: View {
+        @Environment(\.dismiss) private var dismiss
+
+        let serviceStop: ServiceStop
+        let stopData: StopData
+        let tasks: [ServiceStopTask]
+        let bodiesOfWater: [BodyOfWater]
+        let equipment: [Equipment]
+        let storedPhotos: [DripDropStoredImage]
+        let pendingPhotoCount: Int
+
+        private var completedTaskCount: Int {
+            tasks.filter { $0.status == .finished }.count
+        }
+
+        private var notesText: String {
+            let notes = (serviceStop.serviceNotes ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !notes.isEmpty { return notes }
+
+            let description = serviceStop.description.trimmingCharacters(in: .whitespacesAndNewlines)
+            return description.isEmpty ? "No technician notes were added for this stop." : description
+        }
+
+        private var addressText: String {
+            [
+                serviceStop.address.streetAddress,
+                [serviceStop.address.city, serviceStop.address.state]
+                    .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    .joined(separator: ", "),
+                serviceStop.address.zip,
+            ]
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .joined(separator: " ")
+        }
+
+        private var bodyOfWaterName: String {
+            bodiesOfWater.first { $0.id == stopData.bodyOfWaterId }?.name ?? "Body of Water"
+        }
+
+        var body: some View {
+            NavigationStack {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        hero
+                        quickSummary
+                        notesSection
+                        waterCareSection
+                        taskSection
+                        equipmentSection
+                        photoSection
+                    }
+                    .padding(14)
+                }
+                .background(Color.listColor.ignoresSafeArea())
+                .navigationTitle("Report Preview")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            dismiss()
+                        }
+                    }
+                }
+            }
+        }
+
+        private var hero: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(serviceStop.companyName.isEmpty ? "Service Report" : serviceStop.companyName)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+
+                        Text(serviceStop.customerName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Text(serviceStop.operationStatus.rawValue)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.poolBlue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.poolBlue.opacity(0.12), in: Capsule())
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    reportHeaderLine("Service Date", shortDate(date: serviceStop.serviceDate), "calendar")
+                    reportHeaderLine("Technician", serviceStop.tech.isEmpty ? "Technician" : serviceStop.tech, "person.crop.circle")
+                    reportHeaderLine("Location", addressText.isEmpty ? "Service location" : addressText, "mappin.and.ellipse")
+                }
+            }
+            .padding(18)
+            .background(.background, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+
+        private var quickSummary: some View {
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                spacing: 8
+            ) {
+                summaryTile("Readings", "\(stopData.readings.count)", "drop.degreesign", .poolBlue)
+                summaryTile("Dosages", "\(stopData.dosages.count)", "testtube.2", .poolGreen)
+                summaryTile("Tasks", "\(completedTaskCount)/\(tasks.count)", "checklist.checked", .orange)
+                summaryTile("Photos", "\(storedPhotos.count + pendingPhotoCount)", "photo.on.rectangle", .purple)
+            }
+        }
+
+        private var notesSection: some View {
+            reportSection("Technician Notes", systemImage: "text.bubble") {
+                Text(notesText)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+
+        private var waterCareSection: some View {
+            reportSection("Water Care", systemImage: "drop") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(bodyOfWaterName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    if stopData.readings.isEmpty && stopData.dosages.isEmpty && stopData.observation.isEmpty {
+                        previewEmptyState("No readings, dosages, or observations were captured.")
+                    } else {
+                        previewLineGroup(
+                            title: "Readings",
+                            items: stopData.readings.map {
+                                previewValueLine(name: $0.name ?? "Reading", amount: $0.amount, unit: $0.UOM)
+                            }
+                        )
+
+                        previewLineGroup(
+                            title: "Dosages",
+                            items: stopData.dosages.map {
+                                previewValueLine(name: $0.name ?? "Dosage", amount: $0.amount, unit: $0.UOM)
+                            }
+                        )
+
+                        if !stopData.observation.isEmpty {
+                            previewLineGroup(title: "Observations", items: stopData.observation)
+                        }
+                    }
+                }
+            }
+        }
+
+        private var taskSection: some View {
+            reportSection("Completed Work", systemImage: "checklist") {
+                if tasks.isEmpty {
+                    previewEmptyState("No tasks were added to this stop.")
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(tasks, id: \.id) { task in
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: task.status == .finished ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(task.status == .finished ? Color.poolGreen : Color.secondary)
+                                    .frame(width: 22)
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(task.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+
+                                    Text(task.status.rawValue)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer(minLength: 0)
+                            }
+                            .padding(10)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    }
+                }
+            }
+        }
+
+        private var equipmentSection: some View {
+            reportSection("Equipment", systemImage: "wrench.and.screwdriver") {
+                if equipment.isEmpty {
+                    previewEmptyState("No equipment was linked to this service location.")
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(equipment.prefix(6), id: \.id) { item in
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: "gearshape")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 22)
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(item.name.isEmpty ? item.type.rawValue : item.name)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+
+                                    Text([item.type.rawValue, item.make, item.model, item.status.displayName]
+                                        .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                                        .joined(separator: " • "))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+
+                                Spacer(minLength: 0)
+                            }
+                            .padding(10)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    }
+                }
+            }
+        }
+
+        private var photoSection: some View {
+            reportSection("Photos", systemImage: "camera") {
+                if storedPhotos.isEmpty && pendingPhotoCount == 0 {
+                    previewEmptyState("No photos were attached to this report.")
+                } else {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: 8),
+                            GridItem(.flexible(), spacing: 8)
+                        ],
+                        spacing: 8
+                    ) {
+                        ForEach(storedPhotos.prefix(6), id: \.id) { photo in
+                            AsyncImage(url: URL(string: photo.imageURL)) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                        .frame(height: 108)
+                                        .frame(maxWidth: .infinity)
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(height: 108)
+                                        .frame(maxWidth: .infinity)
+                                        .clipped()
+                                case .failure:
+                                    Image(systemName: "photo")
+                                        .font(.title2)
+                                        .foregroundStyle(.secondary)
+                                        .frame(height: 108)
+                                        .frame(maxWidth: .infinity)
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                            .background(.thinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+
+                        if pendingPhotoCount > 0 {
+                            VStack(spacing: 8) {
+                                Image(systemName: "icloud.and.arrow.up")
+                                    .font(.title2)
+                                    .foregroundStyle(.poolBlue)
+
+                                Text("\(pendingPhotoCount) pending upload")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(height: 108)
+                            .frame(maxWidth: .infinity)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    }
+                }
+            }
+        }
+
+        private func reportHeaderLine(_ title: String, _ value: String, _ systemImage: String) -> some View {
+            HStack(alignment: .top, spacing: 9) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(value)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+
+        private func summaryTile(_ title: String, _ value: String, _ systemImage: String, _ tint: Color) -> some View {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: systemImage)
+                        .foregroundStyle(tint)
+
+                    Spacer()
+
+                    Text(value)
+                        .font(.headline.weight(.bold))
+                }
+
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+
+        private func reportSection<Content: View>(
+            _ title: String,
+            systemImage: String,
+            @ViewBuilder content: () -> Content
+        ) -> some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Label(title, systemImage: systemImage)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                content()
+            }
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        private func previewLineGroup(title: String, items: [String]) -> some View {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(title)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+
+                if items.isEmpty {
+                    Text("None")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.35))
+                                .frame(width: 5, height: 5)
+                                .padding(.top, 7)
+
+                            Text(item)
+                                .font(.footnote)
+                                .foregroundStyle(.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+        }
+
+        private func previewValueLine(name: String, amount: String?, unit: String?) -> String {
+            let amountText = (amount ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let unitText = (unit ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if amountText.isEmpty && unitText.isEmpty {
+                return name
+            }
+
+            return [name, [amountText, unitText].filter { !$0.isEmpty }.joined(separator: " ")]
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                .joined(separator: ": ")
+        }
+
+        private func previewEmptyState(_ message: String) -> some View {
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
 

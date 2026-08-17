@@ -133,7 +133,9 @@ struct ChatInitiationView: View {
             if let participantInfo, let existingChat = try await findExistingChat(
                 currentUserId: user.id,
                 participant: participantInfo,
-                companyId: masterDataManager.currentCompany?.id
+                companyId: masterDataManager.role?.canViewOtherMessages == true
+                    ? masterDataManager.currentCompany?.id
+                    : nil
             ) {
                 print("[findOrCreateChat] existingChat \(existingChat)")
                 print("")

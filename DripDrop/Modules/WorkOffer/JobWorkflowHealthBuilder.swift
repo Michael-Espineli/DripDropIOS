@@ -303,7 +303,7 @@ enum JobWorkflowHealthBuilder {
                     severity: .warning,
                     category: .payroll,
                     title: "\(needsReview.count) payroll line(s) need review",
-                    message: "Some pay lines need rate, mapping, or admin review before payroll can be approved.",
+                    message: "Some pay lines need a pay type, rate, or admin review before payroll can be approved.",
                     actionTitle: "Review Actual",
                     destinationTab: "Actual"
                 )

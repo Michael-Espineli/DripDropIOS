@@ -21,8 +21,7 @@ enum CompanyServiceStopTypeListFilter: String, CaseIterable, Identifiable {
 // MARK: - Seed Model
 
 struct CompanyServiceStopTypeSeed: Identifiable, Hashable {
-    var id: String { name }
-
+    var id: String
     var name: String
     var imageName: String
     var category: ServiceStopCategory
@@ -33,93 +32,53 @@ enum CompanyServiceStopTypeDefaultSeeds {
 
     static let poolCompanyDefaults: [CompanyServiceStopTypeSeed] = [
         CompanyServiceStopTypeSeed(
-            name: "Weekly Route",
-            imageName: "figure.pool.swim",
+            id: PayrollSystemSourceIds.recurringServiceStop,
+            name: "Residential",
+            imageName: "house",
             category: .route,
-            workTypeCandidateGroups: [
-                ["Routes", "Route", "Weekly Route"]
-            ]
+            workTypeCandidateGroups: []
         ),
         CompanyServiceStopTypeSeed(
-            name: "Route + Spa",
-            imageName: "bubbles.and.sparkles",
-            category: .route,
-            workTypeCandidateGroups: [
-                ["Routes", "Route", "Weekly Route"],
-                ["Spa Add-On", "Spa", "Pool + Spa"]
-            ]
-        ),
-        CompanyServiceStopTypeSeed(
-            name: "Extra Route",
-            imageName: "plus.circle",
-            category: .route,
-            workTypeCandidateGroups: [
-                ["Extra Route", "Extra Routes"],
-                ["Routes", "Route"]
-            ]
-        ),
-        CompanyServiceStopTypeSeed(
-            name: "Job Visit",
-            imageName: "briefcase",
-            category: .job,
-            workTypeCandidateGroups: [
-                ["Service Call", "Job Visit", "Job"]
-            ]
-        ),
-        CompanyServiceStopTypeSeed(
-            name: "Service Call",
-            imageName: "phone",
-            category: .job,
-            workTypeCandidateGroups: [
-                ["Service Call"]
-            ]
-        ),
-        CompanyServiceStopTypeSeed(
-            name: "Commercial Route",
+            id: PayrollSystemSourceIds.commercialRoute,
+            name: "Commercial",
             imageName: "building.2",
             category: .route,
-            workTypeCandidateGroups: [
-                ["Commercial Base", "Commercial", "Commercial Route"]
-            ]
+            workTypeCandidateGroups: []
         ),
         CompanyServiceStopTypeSeed(
-            name: "Commercial Multi-BOW",
-            imageName: "building.2.crop.circle",
-            category: .route,
-            workTypeCandidateGroups: [
-                ["Commercial Base", "Commercial", "Commercial Route"],
-                ["Commercial Additional Body of Water", "Additional Body of Water", "Additional BOW"]
-            ]
+            id: PayrollSystemSourceIds.jobServiceStop,
+            name: "Filter Cleaning",
+            imageName: "sparkles",
+            category: .job,
+            workTypeCandidateGroups: []
         ),
         CompanyServiceStopTypeSeed(
-            name: "Service Agreement Estimate",
-            imageName: "list.clipboard",
-            category: .serviceAgreementEstimate,
-            workTypeCandidateGroups: [
-                ["Service Agreement Estimate", "Recurring Service Estimate", "Startup"]
-            ]
+            id: PayrollSystemSourceIds.jobSaltCellCleaning,
+            name: "Salt Cell Cleaning",
+            imageName: "drop",
+            category: .job,
+            workTypeCandidateGroups: []
         ),
         CompanyServiceStopTypeSeed(
-            name: "Startup",
-            imageName: "play.circle",
-            category: .serviceAgreementEstimate,
-            workTypeCandidateGroups: [
-                ["Startup", "Start Up"]
-            ]
-        ),
-        CompanyServiceStopTypeSeed(
+            id: PayrollSystemSourceIds.jobEstimateServiceStop,
             name: "Estimate",
             imageName: "doc.text.magnifyingglass",
             category: .jobEstimate,
             workTypeCandidateGroups: []
         ),
         CompanyServiceStopTypeSeed(
-            name: "Customer Relationship",
-            imageName: "person.wave.2",
+            id: PayrollSystemSourceIds.serviceAgreementEstimateServiceStop,
+            name: "Estimate",
+            imageName: "list.clipboard",
+            category: .serviceAgreementEstimate,
+            workTypeCandidateGroups: []
+        ),
+        CompanyServiceStopTypeSeed(
+            id: PayrollSystemSourceIds.customerRelationshipServiceStop,
+            name: "Service Call",
+            imageName: "phone",
             category: .customerRelationship,
-            workTypeCandidateGroups: [
-                ["Customer Relationship", "Customer Visit", "Follow Up"]
-            ]
+            workTypeCandidateGroups: []
         )
     ]
 }
@@ -249,7 +208,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             serviceStopTypes = try await serviceStopTypesTask
             workTypes = try await workTypesTask
         } catch {
-            alertMessage = "Could not load service stop types. \(error.localizedDescription)"
+            alertMessage = "Could not load pay types. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -270,7 +229,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             try await dataService.saveCompanyServiceStopType(serviceStopType)
             upsertLocal(serviceStopType)
         } catch {
-            alertMessage = "Could not save service stop type. \(error.localizedDescription)"
+            alertMessage = "Could not save pay type. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -290,24 +249,28 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
     }
 
     func seedPoolCompanyDefaults() async {
-        let existingNames = Set(
+        var existingKeys = Set(
             serviceStopTypes.map {
-                normalizedName($0.name)
+                duplicateKey(name: $0.name, category: $0.resolvedCategory())
             }
         )
 
         var newTypes: [CompanyServiceStopType] = []
-        var sortOrder = nextSortOrder
+        let appendingToExistingPayTypes = !serviceStopTypes.isEmpty
+        var sortOrder = appendingToExistingPayTypes ? nextSortOrder : 0
+        let sortOrderStep = appendingToExistingPayTypes ? 10 : 1
 
         for seed in CompanyServiceStopTypeDefaultSeeds.poolCompanyDefaults {
-            guard !existingNames.contains(normalizedName(seed.name)) else {
+            let seedDuplicateKey = duplicateKey(name: seed.name, category: seed.category)
+
+            guard !existingKeys.contains(seedDuplicateKey) else {
                 continue
             }
 
             let defaultWorkTypeIds = workTypeIdsForSeed(seed)
 
             let type = CompanyServiceStopType(
-                id: PayrollIdFactory.companyServiceStopTypeId(),
+                id: seed.id,
                 companyId: companyId,
                 name: seed.name,
                 imageName: seed.imageName,
@@ -320,11 +283,12 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             )
 
             newTypes.append(type)
-            sortOrder += 10
+            existingKeys.insert(seedDuplicateKey)
+            sortOrder += sortOrderStep
         }
 
         guard !newTypes.isEmpty else {
-            alertMessage = "Default service stop types already exist."
+            alertMessage = "Default pay types already exist."
             showAlert = true
             return
         }
@@ -345,25 +309,25 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             }
 
             if typesWithoutWorkTypes.isEmpty {
-                alertMessage = "Added \(newTypes.count) default service stop types."
+                alertMessage = "Added \(newTypes.count) default pay types."
             } else {
-                alertMessage = "Added \(newTypes.count) default service stop types. \(typesWithoutWorkTypes.count) type(s) have no default work types yet."
+                alertMessage = "Added \(newTypes.count) default pay types. \(typesWithoutWorkTypes.count) type(s) have no task pay links yet."
             }
 
             showAlert = true
         } catch {
-            alertMessage = "Could not add default service stop types. \(error.localizedDescription)"
+            alertMessage = "Could not add default pay types. \(error.localizedDescription)"
             showAlert = true
         }
     }
 
     func defaultWorkTypeNames(for serviceStopType: CompanyServiceStopType) -> String {
         let names = serviceStopType.defaultWorkTypeIds.map { workTypeId in
-            workTypesById[workTypeId]?.name ?? "Missing Work Type"
+            workTypesById[workTypeId]?.name ?? "Missing Pay Type"
         }
 
         if names.isEmpty {
-            return "No default work types"
+            return "No task pay links"
         }
 
         return names.joined(separator: " + ")
@@ -379,16 +343,19 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
         let trimmedName = serviceStopType.name.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedName.isEmpty else {
-            return (false, "Service stop type name is required.")
+            return (false, "Pay type name is required.")
         }
 
         let duplicate = serviceStopTypes.contains {
             $0.id != serviceStopType.id &&
-            normalizedName($0.name) == normalizedName(trimmedName)
+            duplicateKey(name: $0.name, category: $0.resolvedCategory()) == duplicateKey(
+                name: trimmedName,
+                category: serviceStopType.resolvedCategory()
+            )
         }
 
         guard !duplicate else {
-            return (false, "A service stop type named \(trimmedName) already exists.")
+            return (false, "A pay type named \(trimmedName) already exists.")
         }
 
         return (true, "")
@@ -459,6 +426,10 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             .replacingOccurrences(of: "_", with: "")
             .replacingOccurrences(of: "&", with: "and")
     }
+
+    private func duplicateKey(name: String, category: ServiceStopCategory) -> String {
+        "\(normalizedName(name))|\(category.rawValue)"
+    }
 }
 
 // MARK: - View
@@ -488,8 +459,8 @@ struct CompanyServiceStopTypesView: View {
             filterSection
             serviceStopTypesSection
         }
-        .navigationTitle("Service Stop Types")
-        .searchable(text: $viewModel.searchText, prompt: "Search service stop types")
+        .navigationTitle("Pay Types")
+        .searchable(text: $viewModel.searchText, prompt: "Search pay types")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -507,7 +478,7 @@ struct CompanyServiceStopTypesView: View {
         }
         .overlay {
             if viewModel.isLoading {
-                ProgressView("Loading service stop types...")
+                ProgressView("Loading pay types...")
                     .padding()
                     .background(.thinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -526,7 +497,7 @@ struct CompanyServiceStopTypesView: View {
                 }
             }
         }
-        .alert("Service Stop Types", isPresented: $viewModel.showAlert) {
+        .alert("Pay Types", isPresented: $viewModel.showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.alertMessage)
@@ -551,7 +522,7 @@ struct CompanyServiceStopTypesView: View {
 
             if viewModel.missingWorkTypeReferenceCount > 0 {
                 HStack {
-                    Label("Missing Work Type Links", systemImage: "exclamationmark.triangle")
+                    Label("Missing Pay Type Links", systemImage: "exclamationmark.triangle")
                     Spacer()
                     Text("\(viewModel.missingWorkTypeReferenceCount)")
                         .fontWeight(.semibold)
@@ -561,7 +532,7 @@ struct CompanyServiceStopTypesView: View {
             Button {
                 editorRoute = CompanyServiceStopTypeEditorRoute(serviceStopType: nil)
             } label: {
-                Label("New Service Stop Type", systemImage: "plus.circle")
+                Label("New Pay Type", systemImage: "plus.circle")
             }
 
             Button {
@@ -575,7 +546,7 @@ struct CompanyServiceStopTypesView: View {
         } header: {
             Text("Setup")
         } footer: {
-            Text("Service stop types define what a stop is. Their default work types tell payroll which work rows should be created when that kind of stop is finished.")
+            Text("Pay types define base stop pay and can link to additional task pay types.")
         }
     }
 
@@ -715,22 +686,22 @@ struct CompanyServiceStopTypesEmptyState: View {
     private var emptyTitle: String {
         switch selectedFilter {
         case .active:
-            return "No active service stop types"
+            return "No active pay types"
         case .inactive:
-            return "No inactive service stop types"
+            return "No inactive pay types"
         case .all:
-            return "No service stop types yet"
+            return "No pay types yet"
         }
     }
 
     private var emptyMessage: String {
         switch selectedFilter {
         case .active:
-            return "Add your first type or seed the default pool company service stop types."
+            return "Add your first pay type or seed the default company pay types."
         case .inactive:
-            return "Deactivated service stop types will show here."
+            return "Deactivated pay types will show here."
         case .all:
-            return "Service stop types help payroll understand what kind of stop was completed."
+            return "Pay types help payroll understand what kind of stop was completed."
         }
     }
 }
@@ -794,7 +765,7 @@ struct CompanyServiceStopTypeEditorView: View {
                 advancedSection
                 helpSection
             }
-            .navigationTitle(isEditing ? "Edit Stop Type" : "New Stop Type")
+            .navigationTitle(isEditing ? "Edit Pay Type" : "New Pay Type")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -809,7 +780,7 @@ struct CompanyServiceStopTypeEditorView: View {
                     }
                 }
             }
-            .alert("Service Stop Type", isPresented: $showValidationAlert) {
+            .alert("Pay Type", isPresented: $showValidationAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(validationMessage)
@@ -832,14 +803,14 @@ struct CompanyServiceStopTypeEditorView: View {
         } header: {
             Text("Basic")
         } footer: {
-            Text("Examples: Weekly Route, Job Visit, Job Estimate, Service Agreement Estimate, Customer Relationship.")
+            Text("Examples: Residential, Commercial, Filter Cleaning, Salt Cell Cleaning, Estimate, Service Call.")
         }
     }
 
     private var defaultWorkTypesSection: some View {
         Section {
             if workTypes.isEmpty {
-                Text("Create Company Work Types before assigning default work to service stop types.")
+                Text("Create company pay types before assigning task pay links.")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(workTypes) { workType in
@@ -874,9 +845,9 @@ struct CompanyServiceStopTypeEditorView: View {
                 }
             }
         } header: {
-            Text("Default Payroll Work Types")
+            Text("Linked Task Pay Types")
         } footer: {
-            Text("When this kind of service stop is finished, payroll will try to create pay lines for these work types.")
+            Text("When this pay type is used, payroll can create additional task pay lines for these pay types.")
         }
     }
 
@@ -933,7 +904,7 @@ struct CompanyServiceStopTypeEditorView: View {
                     .font(.headline)
 
                 Text("When creating or editing a service stop, set typeId to this record's id, type to this name, and typeImage to the selected icon.")
-                Text("The pay engine will read defaultWorkTypeIds from this record before falling back to inferred recurring/job mappings.")
+                Text("The pay engine will read linked pay type IDs from this record before falling back to inferred recurring/job sources.")
             }
             .font(.caption)
             .foregroundStyle(.secondary)

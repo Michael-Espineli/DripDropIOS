@@ -802,11 +802,11 @@ struct CreateJobWorkOfferView: View {
                 dataService: dataService,
                 selectedType: $selectedCompanyServiceStopType,
                 useCase: serviceStopTypeUseCase,
-                title: "Service Stop Type",
-                subtitle: "This is the default type used when this offer becomes a scheduled service stop."
+                title: "Pay Type",
+                subtitle: "This is the default pay type used when this offer becomes a scheduled service stop."
             )
         } header: {
-            Text("Service Stop Type")
+            Text("Pay Type")
         } footer: {
             Text("You can still change this later when scheduling, but choosing it now makes the offer and pay estimate more accurate.")
         }

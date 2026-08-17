@@ -2098,6 +2098,15 @@ struct MobileReimaginedOperationsSectionView: View {
                     permissionId: "60"
                 ),
                 MobileReimaginedSectionItem(
+                    title: "Equipment Scanner",
+                    subtitle: "Identify gear and pipe paths",
+                    systemImage: "viewfinder.circle.fill",
+                    tint: .poolBlue,
+                    route: .poolEquipmentScanner(dataService: dataService),
+                    permissionId: "60",
+                    featureFlag: .poolEquipmentScanner
+                ),
+                MobileReimaginedSectionItem(
                     title: "Shopping List",
                     subtitle: "Parts and supplies to buy",
                     systemImage: "cart.fill",
@@ -2553,26 +2562,27 @@ private struct MobileReimaginedSectionHub: View {
 
     private var sectionHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: systemImage)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 48, height: 48)
-                    .background(tint.opacity(0.14), in: Circle())
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-
+                    .foregroundStyle(.primary)
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: systemImage)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(tint)
+                            .frame(width: 48, height: 48)
+                            .background(tint.opacity(0.14), in: Circle())
+                    
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Spacer()
             }
+
+            Spacer()
+            
 
             HStack(spacing: 8) {
                 Label("Flag 14", systemImage: "flag.fill")

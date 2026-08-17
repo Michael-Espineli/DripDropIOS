@@ -127,7 +127,7 @@ struct AddJobTemplatePlannedStopSheet: View {
     private var serviceStopTypeCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             JobTemplateSectionHeader(
-                title: "Service Stop Type",
+                title: "Pay Type",
                 systemImage: "flag"
             )
 
@@ -152,11 +152,11 @@ struct AddJobTemplatePlannedStopSheet: View {
                 dataService: dataService,
                 selectedType: $selectedCompanyServiceStopType,
                 useCase: serviceStopTypeUseCase,
-                title: "Company Service Stop Type",
+                title: "Company Pay Type",
                 subtitle: "Choose the planned visit type for this template."
             )
 
-            Text("The selected type helps carry over planned labor and default work type expectations when creating jobs from this template.")
+            Text("The selected pay type helps carry over planned labor and pay expectations when creating jobs from this template.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -178,7 +178,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                 TextField("Example: Install Visit", text: $name)
                     .modifier(PlainTextFieldModifier())
 
-                Text("Leave blank to use the selected service stop type name.")
+                Text("Leave blank to use the selected pay type name.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -379,7 +379,7 @@ struct AddJobTemplatePlannedStopSheet: View {
 
     private func save() async {
         guard canSave else {
-            alertMessage = "Please enter a name or select a service stop type, and provide estimated minutes."
+            alertMessage = "Please enter a name or select a pay type, and provide estimated minutes."
             showAlert = true
             return
         }

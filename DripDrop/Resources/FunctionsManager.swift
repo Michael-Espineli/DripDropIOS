@@ -12,6 +12,46 @@ import FirebaseAuth
 import FirebaseFunctions
 import FirebaseFirestore
 
+struct ServiceReportSendResult: Equatable {
+    let status: Int
+    let account: String
+    let category: String
+    let customerActionUrl: String
+    let claimAccountUrl: String
+    let to: String
+    let intendedTo: String
+    let testMode: Bool
+
+    var wasSent: Bool {
+        status == 200 && account.localizedCaseInsensitiveContains("Successfully Sent")
+    }
+
+    var emailIsTurnedOff: Bool {
+        account.localizedCaseInsensitiveContains("turned off")
+    }
+
+    var recipientDisplayText: String {
+        if testMode, !intendedTo.isEmpty {
+            return "\(to) (test for \(intendedTo))"
+        }
+
+        return to
+    }
+
+    var userFacingMessage: String {
+        if wasSent {
+            let recipient = recipientDisplayText.trimmingCharacters(in: .whitespacesAndNewlines)
+            return recipient.isEmpty ? "Service report sent to the customer." : "Service report sent to \(recipient)."
+        }
+
+        if emailIsTurnedOff {
+            return "Service report email is turned off in email settings."
+        }
+
+        return account.isEmpty ? "Service report request completed." : account
+    }
+}
+
 final class FunctionsManager {
         //Starting The App
     private var auth: Auth { Auth.auth() }
@@ -170,10 +210,15 @@ final class FunctionsManager {
         }
     }
         // MARK: sendServiceReportOnFinish
-    func sendServiceReportOnFinish(companyId:String, stopId:String) async throws {
+    func sendServiceReportOnFinish(
+        companyId: String,
+        stopId: String,
+        serviceReportBaseUrl: String = "https://dripdrop-poolapp.com"
+    ) async throws -> ServiceReportSendResult {
         let payload: [String: Any]  = [
-            "companyId":companyId,
-            "serviceStopId":stopId,
+            "companyId": companyId,
+            "serviceStopId": stopId,
+            "serviceReportBaseUrl": serviceReportBaseUrl,
         ]
         
         let callable = functions.httpsCallable("sendServiceReportOnFinish")
@@ -183,6 +228,36 @@ final class FunctionsManager {
             throw FireBaseRead.unableToRead
         }
         print("    [FunctionsManager][sendServiceReportOnFinish] Sent Email \(json)")
+
+        let status = json["status"] as? Int ?? 500
+        let account = json["account"] as? String ?? ""
+        if status >= 400 {
+            let message: String
+            if let error = json["error"] as? String {
+                message = error
+            } else if let error = json["error"] {
+                message = "\(error)"
+            } else {
+                message = "Service report could not be sent."
+            }
+
+            throw NSError(
+                domain: "SendServiceReport",
+                code: status,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+
+        return ServiceReportSendResult(
+            status: status,
+            account: account,
+            category: json["category"] as? String ?? "",
+            customerActionUrl: json["customerActionUrl"] as? String ?? "",
+            claimAccountUrl: json["claimAccountUrl"] as? String ?? "",
+            to: json["to"] as? String ?? "",
+            intendedTo: json["intendedTo"] as? String ?? "",
+            testMode: json["testMode"] as? Bool ?? false
+        )
 
     }
         // MARK: createFirstRecurringServiceStop

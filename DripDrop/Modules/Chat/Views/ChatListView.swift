@@ -52,7 +52,11 @@ struct ChatListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if let user = masterDataManager.user {
-                chatVM.addListenerForVisibleChats(userId: user.id, companyId: masterDataManager.currentCompany?.id)
+                chatVM.addListenerForVisibleChats(
+                    userId: user.id,
+                    companyId: masterDataManager.currentCompany?.id,
+                    includeCompanyWideMessages: masterDataManager.role?.canViewOtherMessages == true
+                )
             } else{
                 print("No User")
             }

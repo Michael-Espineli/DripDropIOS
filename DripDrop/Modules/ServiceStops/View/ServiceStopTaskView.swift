@@ -609,6 +609,7 @@ struct ServiceStopTaskView: View {
     @StateObject var VM: ServiceStopTaskViewModel
 
     @State var serviceStopId: String
+    @State private var showShoppingItemSheet: Bool = false
     @Binding var taskList: [ServiceStopTask]
 
     private var serviceStop: ServiceStop? {
@@ -717,6 +718,15 @@ struct ServiceStopTaskView: View {
                 customerId: serviceStop?.customerId,
                 serviceLocationId: serviceStop?.serviceLocationId
             )
+        }
+        .sheet(isPresented: $showShoppingItemSheet) {
+            if let serviceStop {
+                ServiceStopShoppingListItemSheet(
+                    dataService: dataService,
+                    serviceStop: serviceStop,
+                    onCreated: {}
+                )
+            }
         }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
@@ -904,6 +914,22 @@ struct ServiceStopTaskView: View {
                         title: "Add Task To Current Stop",
                         subtitle: "Adds a one-off task to this service stop.",
                         systemImage: "checkmark.circle"
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+
+                Button {
+                    showShoppingItemSheet = true
+                } label: {
+                    addWorkButtonLabel(
+                        title: "Add Install Material",
+                        subtitle: "Create a shopping list item for parts or equipment needed at this stop.",
+                        systemImage: "cart.badge.plus"
                     )
                 }
                 .buttonStyle(.plain)

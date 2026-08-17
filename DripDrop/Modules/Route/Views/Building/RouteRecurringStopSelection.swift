@@ -119,11 +119,11 @@ struct RouteRecurringStopPickerView: View {
                         dataService: dataService,
                         selectedType: $selectedCompanyServiceStopType,
                         useCase: defaultUseCase,
-                        title: "Service Stop Type",
+                        title: "Pay Type",
                         subtitle: "Choose the type for this specific recurring stop."
                     )
                 } header: {
-                    Text("Stop Type")
+                    Text("Pay Type")
                 }
 
                 Section {

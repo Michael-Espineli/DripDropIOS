@@ -396,7 +396,13 @@ final class ServiceStopDetailViewModel:ObservableObject{
         }
     }
     
-    func updateServicestopOperationStatus(companyId:String,currentUserId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {
+    func updateServicestopOperationStatus(
+        companyId: String,
+        currentUserId: String,
+        stop: ServiceStop,
+        operationStatus: ServiceStopOperationStatus,
+        sendServiceReport: Bool = true
+    ) async throws {
         let oldStop = stop
         let completionSettings = await loadCompletionSettings(companyId: companyId, stop: stop)
 
@@ -435,9 +441,11 @@ final class ServiceStopDetailViewModel:ObservableObject{
         if operationStatus == .finished {
             try await dataService.updateServiceStopEndTime(companyId: companyId, serviceStopId: stop.id, endTime: finishTime)
 
-            if completionSettings.sendEmailOnFinish {
-                try? await FunctionsManager.shared.sendServiceReportOnFinish(companyId: companyId, stopId: stop.id)
+            if completionSettings.sendEmailOnFinish && sendServiceReport {
+                _ = try? await FunctionsManager.shared.sendServiceReportOnFinish(companyId: companyId, stopId: stop.id)
                 print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Sending Email")
+            } else if !sendServiceReport {
+                print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Email handled by caller")
             } else {
                 print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Email off for category \(stop.resolvedCategory.rawValue)")
             }

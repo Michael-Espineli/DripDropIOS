@@ -240,28 +240,18 @@ extension Equipment {
     }
 
     var maintenanceDueDateForFollowUp: Date? {
-        if let nextServiceDate {
-            return nextServiceDate
-        }
-
         guard let lastServiceDate,
               let serviceFrequency,
               serviceFrequency > 0,
               let serviceFrequencyEvery else {
-            return nil
+            return nextServiceDate
         }
 
-        let calendar = Calendar.current
-        switch serviceFrequencyEvery {
-        case .daily:
-            return calendar.date(byAdding: .day, value: serviceFrequency, to: lastServiceDate)
-        case .weekly:
-            return calendar.date(byAdding: .weekOfYear, value: serviceFrequency, to: lastServiceDate)
-        case .monthly:
-            return calendar.date(byAdding: .month, value: serviceFrequency, to: lastServiceDate)
-        case .yearly:
-            return calendar.date(byAdding: .year, value: serviceFrequency, to: lastServiceDate)
-        }
+        return getNextServiceDate(
+            lastServiceDate: lastServiceDate,
+            frequency: serviceFrequency,
+            every: serviceFrequencyEvery
+        ) ?? nextServiceDate
     }
 
     var currentlyNeedsMaintenanceFollowUp: Bool {
@@ -275,6 +265,178 @@ extension Equipment {
         let dueDay = calendar.startOfDay(for: dueDate)
 
         return dueDay <= followUpWindowEnd
+    }
+}
+
+struct UniversalEquipmentSuggestionSyncFlags {
+    let isCustomType: Bool
+    let isCustomMake: Bool
+    let isCustomModel: Bool
+}
+
+private let universalEquipmentSuggestionReconciledStatus = "Reconciled"
+
+private func cleanUniversalSuggestionText(_ value: String) -> String {
+    value.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+private func universalEquipmentSuggestionId(for equipmentId: String) -> String {
+    "unv_equ_sug_\(equipmentId)"
+}
+
+private func catalogEquipmentId(for equipment: Equipment) -> String {
+    let universalEquipmentId = cleanUniversalSuggestionText(equipment.universalEquipmentId)
+    if !universalEquipmentId.isEmpty {
+        return universalEquipmentId
+    }
+    return cleanUniversalSuggestionText(equipment.modelId)
+}
+
+private func universalEquipmentSuggestionFlags(for equipment: Equipment) -> UniversalEquipmentSuggestionSyncFlags {
+    let type = cleanUniversalSuggestionText(equipment.type.rawValue)
+    let make = cleanUniversalSuggestionText(equipment.make)
+    let model = cleanUniversalSuggestionText(equipment.model)
+
+    return UniversalEquipmentSuggestionSyncFlags(
+        isCustomType: !type.isEmpty && cleanUniversalSuggestionText(equipment.typeId).isEmpty,
+        isCustomMake: !make.isEmpty && cleanUniversalSuggestionText(equipment.makeId).isEmpty,
+        isCustomModel: !model.isEmpty && catalogEquipmentId(for: equipment).isEmpty
+    )
+}
+
+private func hasCustomUniversalEquipmentSuggestionValue(_ flags: UniversalEquipmentSuggestionSyncFlags) -> Bool {
+    flags.isCustomType || flags.isCustomMake || flags.isCustomModel
+}
+
+func syncUniversalEquipmentSuggestion(
+    db: Firestore,
+    companyId: String,
+    equipment: Equipment,
+    source: String
+) async throws {
+    let flags = universalEquipmentSuggestionFlags(for: equipment)
+
+    if hasCustomUniversalEquipmentSuggestionValue(flags) {
+        try await queueUniversalEquipmentSuggestion(
+            db: db,
+            companyId: companyId,
+            equipment: equipment,
+            source: source,
+            flags: flags
+        )
+        return
+    }
+
+    if !catalogEquipmentId(for: equipment).isEmpty {
+        try await markUniversalEquipmentSuggestionReconciled(
+            db: db,
+            equipment: equipment
+        )
+    }
+}
+
+private func queueUniversalEquipmentSuggestion(
+    db: Firestore,
+    companyId: String,
+    equipment: Equipment,
+    source: String,
+    flags: UniversalEquipmentSuggestionSyncFlags
+) async throws {
+    let equipmentId = cleanUniversalSuggestionText(equipment.id)
+    guard !companyId.isEmpty, !equipmentId.isEmpty else { return }
+
+    let suggestionId = universalEquipmentSuggestionId(for: equipmentId)
+    let suggestionRef = db.collection("universalEquipmentSuggestions").document(suggestionId)
+    let existingSuggestion = try? await suggestionRef.getDocument()
+    let existingStatus = cleanUniversalSuggestionText(existingSuggestion?.data()?["status"] as? String ?? "")
+    let currentUser = Auth.auth().currentUser
+
+    var payload: [String: Any] = [
+        "id": suggestionId,
+        "status": !existingStatus.isEmpty && existingStatus != universalEquipmentSuggestionReconciledStatus ? existingStatus : "New",
+        "source": source,
+        "companyId": companyId,
+        "companyName": "",
+        "createdByUserId": currentUser?.uid ?? "",
+        "createdByUserEmail": currentUser?.email ?? "",
+        "updatedAt": FieldValue.serverTimestamp(),
+        "equipmentId": equipmentId,
+        "equipmentName": cleanUniversalSuggestionText(equipment.name),
+        "customerId": cleanUniversalSuggestionText(equipment.customerId),
+        "customerName": cleanUniversalSuggestionText(equipment.customerName),
+        "serviceLocationId": cleanUniversalSuggestionText(equipment.serviceLocationId),
+        "bodyOfWaterId": cleanUniversalSuggestionText(equipment.bodyOfWaterId),
+        "type": cleanUniversalSuggestionText(equipment.type.rawValue),
+        "typeId": cleanUniversalSuggestionText(equipment.typeId),
+        "make": cleanUniversalSuggestionText(equipment.make),
+        "makeId": cleanUniversalSuggestionText(equipment.makeId),
+        "model": cleanUniversalSuggestionText(equipment.model),
+        "modelId": catalogEquipmentId(for: equipment),
+        "customCategoryRequested": flags.isCustomType,
+        "customMakeRequested": flags.isCustomMake,
+        "customModelRequested": flags.isCustomModel,
+        "notes": cleanUniversalSuggestionText(equipment.notes),
+    ]
+
+    if existingSuggestion?.exists != true {
+        payload["createdAt"] = FieldValue.serverTimestamp()
+        payload["createdAtMillis"] = Int(Date().timeIntervalSince1970 * 1000)
+    }
+
+    try await suggestionRef.setData(payload, merge: true)
+}
+
+private func markUniversalEquipmentSuggestionReconciled(
+    db: Firestore,
+    equipment: Equipment
+) async throws {
+    let equipmentId = cleanUniversalSuggestionText(equipment.id)
+    let universalEquipmentId = catalogEquipmentId(for: equipment)
+    guard !equipmentId.isEmpty, !universalEquipmentId.isEmpty else { return }
+
+    let suggestionRef = db.collection("universalEquipmentSuggestions").document(universalEquipmentSuggestionId(for: equipmentId))
+    let suggestionSnap = try? await suggestionRef.getDocument()
+    guard suggestionSnap?.exists == true else { return }
+
+    let currentUser = Auth.auth().currentUser
+    try await suggestionRef.updateData([
+        "status": universalEquipmentSuggestionReconciledStatus,
+        "reconciledAt": FieldValue.serverTimestamp(),
+        "reconciledByUserId": currentUser?.uid ?? "",
+        "reconciledByEmail": currentUser?.email ?? "",
+        "reconciledEquipmentId": equipmentId,
+        "reconciledUniversalEquipmentId": universalEquipmentId,
+        "reconciledType": cleanUniversalSuggestionText(equipment.type.rawValue),
+        "reconciledTypeId": cleanUniversalSuggestionText(equipment.typeId),
+        "reconciledMake": cleanUniversalSuggestionText(equipment.make),
+        "reconciledMakeId": cleanUniversalSuggestionText(equipment.makeId),
+        "reconciledModel": cleanUniversalSuggestionText(equipment.model),
+        "reconciledModelId": universalEquipmentId,
+        "reconciledManualPdfLink": cleanUniversalSuggestionText(equipment.manualPdfLink),
+        "updatedAt": FieldValue.serverTimestamp(),
+    ])
+}
+
+private func syncUniversalEquipmentSuggestionInBackground(
+    db: Firestore,
+    companyId: String,
+    equipmentRef: DocumentReference,
+    source: String,
+    mutate: @escaping (inout Equipment) -> Void
+) {
+    Task {
+        do {
+            var equipment = try await equipmentRef.getDocument(as: Equipment.self)
+            mutate(&equipment)
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipment,
+                source: source
+            )
+        } catch {
+            print("Error syncing universal equipment suggestion: \(error)")
+        }
     }
 }
 // MARK: - Maybe update
@@ -535,6 +697,16 @@ extension ProductionDataService {
         var equipmentToSave = equipment
         equipmentToSave.createdAt = equipmentToSave.createdAt ?? Date()
         try equipmentCollection(companyId: companyId).document(equipmentToSave.id).setData(from: equipmentToSave, merge: false)
+        do {
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipmentToSave,
+                source: "iosEquipmentCreate"
+            )
+        } catch {
+            print("Error creating universal equipment suggestion: \(error)")
+        }
     }
     func uploadEquipmentHistory(companyId:String,equipmentId:String,history:EquipmentServiceHistory) async throws {
         try equipmentServiceHistoryCollection(companyId: companyId,equipmentId:equipmentId).document(history.id).setData(from:history, merge: false)
@@ -615,6 +787,14 @@ extension ProductionDataService {
         equipmentRef.updateData([
             Equipment.CodingKeys.type.stringValue:category.rawValue
         ])
+        syncUniversalEquipmentSuggestionInBackground(
+            db: db,
+            companyId: companyId,
+            equipmentRef: equipmentRef,
+            source: "iosEquipmentCategoryEdit"
+        ) { equipment in
+            equipment.type = category
+        }
     }
 
     func updateEquipmentMake(companyId:String,equipmentId:String,make:String) throws {
@@ -622,12 +802,31 @@ extension ProductionDataService {
         equipmentRef.updateData([
             Equipment.CodingKeys.make.stringValue:make
         ])
+        syncUniversalEquipmentSuggestionInBackground(
+            db: db,
+            companyId: companyId,
+            equipmentRef: equipmentRef,
+            source: "iosEquipmentMakeEdit"
+        ) { equipment in
+            equipment.make = make
+            equipment.makeId = ""
+        }
     }
     func updateEquipmentModel(companyId:String,equipmentId:String,model:String) throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         equipmentRef.updateData([
             Equipment.CodingKeys.model.stringValue:model
         ])
+        syncUniversalEquipmentSuggestionInBackground(
+            db: db,
+            companyId: companyId,
+            equipmentRef: equipmentRef,
+            source: "iosEquipmentModelEdit"
+        ) { equipment in
+            equipment.model = model
+            equipment.modelId = ""
+            equipment.universalEquipmentId = ""
+        }
     }
     func updateEquipmentCatalogDetails(
         companyId:String,
@@ -652,6 +851,21 @@ extension ProductionDataService {
             Equipment.CodingKeys.universalEquipmentId.stringValue: universalEquipmentId,
             Equipment.CodingKeys.manualPdfLink.stringValue: manualPdfLink
         ])
+        syncUniversalEquipmentSuggestionInBackground(
+            db: db,
+            companyId: companyId,
+            equipmentRef: equipmentRef,
+            source: "iosEquipmentCatalogEdit"
+        ) { equipment in
+            equipment.type = category
+            equipment.typeId = typeId
+            equipment.make = make
+            equipment.makeId = makeId
+            equipment.model = model
+            equipment.modelId = modelId
+            equipment.universalEquipmentId = universalEquipmentId
+            equipment.manualPdfLink = manualPdfLink
+        }
     }
     func updateEquipmentDateInstalled(companyId:String,equipmentId:String,dateInstalled:Date?) throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
@@ -740,12 +954,28 @@ extension ProductionDataService {
     }
     func updateEquipmentCustomer(companyId:String,equipment:Equipment) async throws {
         try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: true)
+        do {
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipment,
+                source: "iosEquipmentCustomerEdit"
+            )
+        } catch {
+            print("Error syncing universal equipment suggestion: \(error)")
+        }
         
     }
     func updateEquipment(companyId:String,equipmentId:String,equipment:Equipment) async throws {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         let createdAt = equipment.createdAt ?? Date()
         let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
+        let cleanFilterPressureValue: Any = equipment.cleanFilterPressure.map { $0 as Any } ?? FieldValue.delete()
+        let currentPressureValue: Any = equipment.currentPressure.map { $0 as Any } ?? FieldValue.delete()
+        let lastServiceDateValue: Any = equipment.needsService ? (equipment.lastServiceDate.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyValue: Any = equipment.needsService ? (equipment.serviceFrequency.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyEveryValue: Any = equipment.needsService ? (equipment.serviceFrequencyEvery.map { $0.rawValue as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
             Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
@@ -760,17 +990,27 @@ extension ProductionDataService {
             Equipment.CodingKeys.createdAt.stringValue: createdAt,
             Equipment.CodingKeys.status.stringValue:equipment.status.rawValue,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
+            Equipment.CodingKeys.cleanFilterPressure.stringValue:cleanFilterPressureValue,
+            Equipment.CodingKeys.currentPressure.stringValue:currentPressureValue,
+            Equipment.CodingKeys.lastServiceDate.stringValue:lastServiceDateValue,
+            Equipment.CodingKeys.serviceFrequency.stringValue:serviceFrequencyValue,
+            Equipment.CodingKeys.serviceFrequencyEvery.stringValue:serviceFrequencyEveryValue,
+            Equipment.CodingKeys.nextServiceDate.stringValue:nextServiceDateValue,
+            Equipment.CodingKeys.notes.stringValue:equipment.notes,
+            Equipment.CodingKeys.customerName.stringValue:equipment.customerName,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,
             Equipment.CodingKeys.bodyOfWaterId.stringValue:equipment.bodyOfWaterId,
         ])
-        if equipment.needsService {
-            try await equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
-            ])
+        do {
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipment,
+                source: "iosEquipmentEdit"
+            )
+        } catch {
+            print("Error syncing universal equipment suggestion: \(error)")
         }
     }
     //DELETE

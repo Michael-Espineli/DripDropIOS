@@ -61,6 +61,10 @@ extension Role {
     var canScheduleServiceStopsForOthers: Bool {
         permissionIdList.contains("252")
     }
+
+    var canViewOtherMessages: Bool {
+        permissionIdList.contains("300")
+    }
 }
 
 

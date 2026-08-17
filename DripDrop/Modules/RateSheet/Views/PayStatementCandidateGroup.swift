@@ -608,7 +608,7 @@ struct PayStatementCandidateRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(group.lineItems.prefix(3)) { item in
-                    Text("• \(item.workTypeName ?? "Missing Work Type") — \(PayStatementMoneyFormatter.money(item.totalAmountCents))")
+                    Text("• \(item.workTypeName ?? "Missing Pay Type") — \(PayStatementMoneyFormatter.money(item.totalAmountCents))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

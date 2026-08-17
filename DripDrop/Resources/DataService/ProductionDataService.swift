@@ -1600,11 +1600,11 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             .document("main")
     }
 
-    // MARK: - Company Service Stop Types
-    // companies/{companyId}/companyServiceStopTypes/{serviceStopTypeId}
+    // MARK: - Company Pay Types
+    // companies/{companyId}/companyPayTypes/{payTypeId}
 
     func companyServiceStopTypesCollection(companyId: String) -> CollectionReference {
-        companyDoc(companyId: companyId).collection("companyServiceStopTypes")
+        companyDoc(companyId: companyId).collection("companyPayTypes")
     }
 
     func companyServiceStopTypeDoc(
@@ -1615,11 +1615,11 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             .document(serviceStopTypeId)
     }
 
-    // MARK: - Company Work Types
-    // companies/{companyId}/companyWorkTypes/{workTypeId}
+    // MARK: - Company Pay Types
+    // companies/{companyId}/companyPayTypes/{payTypeId}
 
     func companyWorkTypesCollection(companyId: String) -> CollectionReference {
-        companyDoc(companyId: companyId).collection("companyWorkTypes")
+        companyDoc(companyId: companyId).collection("companyPayTypes")
     }
 
     func companyWorkTypeDoc(
@@ -3513,6 +3513,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         self.serviceStopListener = listener
     }
     func addListenerForAllEquipment(companyId: String,amount:Int, completion: @escaping ([Equipment]) -> Void) {
+        equipmentListener?.remove()
         let listener = equipmentCollection(companyId: companyId)
             .limit(to: amount)
             .addSnapshotListener { querySnapshot, error in
@@ -3756,6 +3757,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     
     func removeEquipmentListener() {
         self.equipmentListener?.remove()
+        self.equipmentListener = nil
     }
     func removeSavedCompanyListener() {
         self.savedBusinessListener?.remove()

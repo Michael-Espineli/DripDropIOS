@@ -24,7 +24,7 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
 
     var fallbackTypeId: String {
         switch self {
-        case .jobVisit, .serviceCall:
+        case .jobVisit:
             return PayrollSystemSourceIds.jobServiceStop
 
         case .jobEstimate,
@@ -35,14 +35,17 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
              .startup:
             return PayrollSystemSourceIds.serviceAgreementEstimateServiceStop
 
-        case .customerRelationship:
+        case .customerRelationship,
+             .serviceCall:
             return PayrollSystemSourceIds.customerRelationshipServiceStop
 
         case .recurringRoute,
-             .routePlusSpa,
-             .commercialRoute,
-             .commercialMultiBow:
+             .routePlusSpa:
             return PayrollSystemSourceIds.recurringServiceStop
+
+        case .commercialRoute,
+             .commercialMultiBow:
+            return PayrollSystemSourceIds.commercialRoute
 
         case .unknown:
             return PayrollSystemSourceIds.unknownServiceStop
@@ -51,13 +54,13 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
 
     var category: ServiceStopCategory {
         switch self {
-        case .jobVisit, .serviceCall:
+        case .jobVisit:
             return .job
         case .jobEstimate, .estimate:
             return .jobEstimate
         case .serviceAgreementEstimate, .startup:
             return .serviceAgreementEstimate
-        case .customerRelationship, .unknown:
+        case .customerRelationship, .serviceCall, .unknown:
             return .customerRelationship
         case .recurringRoute,
              .routePlusSpa,
@@ -70,27 +73,27 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
     var fallbackName: String {
         switch self {
         case .jobVisit:
-            return "Job Visit"
+            return "Filter Cleaning"
         case .jobEstimate:
-            return "Job Estimate"
+            return "Estimate"
         case .serviceAgreementEstimate:
-            return "Service Agreement Estimate"
+            return "Estimate"
         case .customerRelationship:
-            return "Customer Relationship"
+            return "Service Call"
         case .recurringRoute:
-            return "Recurring Service Stop"
+            return "Residential"
         case .routePlusSpa:
             return "Route + Spa"
         case .serviceCall:
             return "Service Call"
         case .commercialRoute:
-            return "Commercial Route"
+            return "Commercial"
         case .commercialMultiBow:
-            return "Commercial Multi-BOW"
+            return "Commercial"
         case .startup:
-            return "Startup"
+            return "Estimate"
         case .estimate:
-            return "Job Estimate"
+            return "Estimate"
         case .unknown:
             return "Unknown Service Stop"
         }
@@ -99,15 +102,15 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
     var fallbackImageName: String {
         switch self {
         case .jobVisit:
-            return "briefcase"
+            return "sparkles"
         case .jobEstimate:
             return "doc.text.magnifyingglass"
         case .serviceAgreementEstimate:
             return "list.clipboard"
         case .customerRelationship:
-            return "person.wave.2"
+            return "phone"
         case .recurringRoute:
-            return "figure.pool.swim"
+            return "house"
         case .routePlusSpa:
             return "bubbles.and.sparkles"
         case .serviceCall:
@@ -128,30 +131,34 @@ enum ServiceStopTypeUseCase: String, Codable, Hashable, CaseIterable {
     var candidateNames: [String] {
         switch self {
         case .jobVisit:
-            return ["Job Visit", "Service Call", "Job"]
+            return ["Filter Cleaning", "Salt Cell Cleaning", "Job Visit", "Job"]
         case .jobEstimate:
-            return ["Job Estimate", "Estimate For Job", "Estimate", "Bid Visit"]
+            return ["Estimate", "Job Estimate", "Estimate For Job", "Bid Visit"]
         case .serviceAgreementEstimate:
-            return ["Service Agreement Estimate", "Recurring Service Estimate", "New Service Estimate", "Startup", "Start Up", "New Pool"]
+            return ["Estimate", "Service Agreement Estimate", "Recurring Service Estimate", "New Service Estimate", "Startup", "Start Up", "New Pool"]
         case .customerRelationship:
-            return ["Customer Relationship", "Customer Visit", "Follow Up", "Courtesy Visit", "Mistake Fix"]
+            return ["Service Call", "Customer Relationship", "Customer Visit", "Follow Up", "Courtesy Visit", "Mistake Fix"]
         case .recurringRoute:
-            return ["Weekly Route", "Residential Route", "Recurring Service Stop", "Standard Route", "Pool Route", "Route", "Routes"]
+            return ["Residential", "Residential Route", "Weekly Route", "Recurring Service Stop", "Standard Route", "Pool Route", "Route", "Routes"]
         case .routePlusSpa:
-            return ["Route + Spa", "Pool + Spa", "Weekly Route + Spa"]
+            return ["Route + Spa", "Residential + Spa", "Pool + Spa", "Weekly Route + Spa"]
         case .serviceCall:
-            return ["Service Call", "Job Visit"]
+            return ["Service Call", "Customer Relationship", "Customer Visit"]
         case .commercialRoute:
-            return ["Commercial Route", "Commercial"]
+            return ["Commercial", "Commercial Route"]
         case .commercialMultiBow:
-            return ["Commercial Multi-BOW", "Commercial Multi BOW", "Commercial Multi Body of Water"]
+            return ["Commercial Multi-BOW", "Commercial Multi BOW", "Commercial Multi Body of Water", "Commercial"]
         case .startup:
-            return ["Service Agreement Estimate", "Startup", "Start Up", "New Service Estimate"]
+            return ["Estimate", "Service Agreement Estimate", "Startup", "Start Up", "New Service Estimate"]
         case .estimate:
-            return ["Job Estimate", "Estimate"]
+            return ["Estimate", "Job Estimate"]
         case .unknown:
             return []
         }
+    }
+
+    var filtersPayTypesByCategory: Bool {
+        self != .unknown
     }
 }
 
@@ -163,7 +170,9 @@ struct ServiceStopTypeFields {
 
     var isSystemFallback: Bool {
         typeId == PayrollSystemSourceIds.recurringServiceStop ||
+        typeId == PayrollSystemSourceIds.commercialRoute ||
         typeId == PayrollSystemSourceIds.jobServiceStop ||
+        typeId == PayrollSystemSourceIds.jobSaltCellCleaning ||
         typeId == PayrollSystemSourceIds.jobEstimateServiceStop ||
         typeId == PayrollSystemSourceIds.serviceAgreementEstimateServiceStop ||
         typeId == PayrollSystemSourceIds.customerRelationshipServiceStop ||
@@ -177,15 +186,10 @@ enum ServiceStopTypeResolver {
         from serviceStopTypes: [CompanyServiceStopType],
         useCase: ServiceStopTypeUseCase
     ) -> CompanyServiceStopType? {
-        let activeTypes = serviceStopTypes
-            .filter { $0.isActive }
-            .sorted {
-                if $0.sortOrder == $1.sortOrder {
-                    return $0.name < $1.name
-                }
-
-                return $0.sortOrder < $1.sortOrder
-            }
+        let activeTypes = matchingTypes(
+            from: serviceStopTypes,
+            useCase: useCase
+        )
 
         for candidateName in useCase.candidateNames {
             if let exact = activeTypes.first(where: {
@@ -210,6 +214,33 @@ enum ServiceStopTypeResolver {
         }
 
         return nil
+    }
+
+    static func matchingTypes(
+        from serviceStopTypes: [CompanyServiceStopType],
+        useCase: ServiceStopTypeUseCase
+    ) -> [CompanyServiceStopType] {
+        serviceStopTypes
+            .filter { $0.isActive }
+            .filter { matches($0, useCase: useCase) }
+            .sorted {
+                if $0.sortOrder == $1.sortOrder {
+                    return $0.name < $1.name
+                }
+
+                return $0.sortOrder < $1.sortOrder
+            }
+    }
+
+    static func matches(
+        _ type: CompanyServiceStopType,
+        useCase: ServiceStopTypeUseCase
+    ) -> Bool {
+        guard useCase.filtersPayTypesByCategory else {
+            return true
+        }
+
+        return type.resolvedCategory(fallback: useCase.category) == useCase.category
     }
 
     static func serviceStopTypeFields(

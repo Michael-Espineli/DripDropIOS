@@ -498,7 +498,7 @@ struct PayrollLineItemReviewRow: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(lineItem.workTypeName ?? "Missing Work Type")
+                Text(lineItem.workTypeName ?? "Missing Pay Type")
                     .font(.headline)
 
                 Text(sourceSubtitle)

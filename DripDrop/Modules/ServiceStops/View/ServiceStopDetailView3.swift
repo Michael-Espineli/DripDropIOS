@@ -337,7 +337,7 @@ extension ServiceStopDetailView3 {
                 infoRow(icon: "play.circle", label: "Start", value: optionalDateText(stop.startTime))
                 infoRow(icon: "stop.circle", label: "End", value: optionalDateText(stop.endTime))
                 infoRow(icon: "clock", label: "Estimated Duration", value: displayMinAsMinAndHour(min: stop.estimatedDuration))
-                infoRow(icon: "tag", label: "Stop Type", value: stop.type)
+                infoRow(icon: "tag", label: "Pay Type", value: stop.type)
             }
         }
     }

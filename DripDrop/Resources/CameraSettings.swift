@@ -396,25 +396,39 @@ enum TesterStripImageSampler {
     }
 
     private struct PadBand {
-        let centerY: CGFloat
+        let center: CGPoint
         let score: CGFloat
+
+        var centerX: CGFloat { center.x }
+        var centerY: CGFloat { center.y }
     }
 
     private struct StripGeometry {
         let centerX: CGFloat
         let topY: CGFloat
         let height: CGFloat
+        let xSlopePerY: CGFloat
         let confidence: CGFloat
 
+        func x(atY y: CGFloat) -> CGFloat {
+            let midY = topY + (height / 2)
+            return centerX + ((y - midY) * xSlopePerY)
+        }
+
         func center(for ratio: CGFloat) -> CGPoint {
-            CGPoint(x: centerX, y: topY + (height * ratio))
+            let y = topY + (height * ratio)
+            return CGPoint(x: x(atY: y), y: y)
         }
 
         func searchRect(in bounds: CGRect, guideWidth: CGFloat) -> CGRect {
-            CGRect(
-                x: centerX - guideWidth * 0.62,
+            let topX = x(atY: topY)
+            let bottomX = x(atY: topY + height)
+            let horizontalPadding = guideWidth * 0.82
+
+            return CGRect(
+                x: min(topX, bottomX) - horizontalPadding,
                 y: topY,
-                width: guideWidth * 1.24,
+                width: abs(bottomX - topX) + (horizontalPadding * 2),
                 height: height
             )
             .insetBy(dx: -guideWidth * 0.18, dy: -height * 0.035)
@@ -516,6 +530,9 @@ enum TesterStripImageSampler {
                 "sampleCenterYRatio": center.y / CGFloat(pixelBuffer.height),
                 "sampleConfidence": target.score,
                 "stripGeometryConfidence": stripGeometry.confidence,
+                "stripXAxisSlope": stripGeometry.xSlopePerY,
+                "stripTopYRatio": stripGeometry.topY / CGFloat(pixelBuffer.height),
+                "stripHeightRatio": stripGeometry.height / CGFloat(pixelBuffer.height),
             ]
         }
 
@@ -661,7 +678,7 @@ enum TesterStripImageSampler {
             sampleSize.width * 0.86,
         ]
         let yStep = max(sampleSize.height * 0.42, 4)
-        var activeBandSamples: [(y: CGFloat, score: CGFloat)] = []
+        var activeBandSamples: [(center: CGPoint, score: CGFloat)] = []
         var bands: [PadBand] = []
 
         func finishBand() {
@@ -673,17 +690,20 @@ enum TesterStripImageSampler {
                 return
             }
 
+            let weightedX = activeBandSamples.reduce(CGFloat(0)) { partial, sample in
+                partial + (sample.center.x * max(sample.score, 0.001))
+            } / totalScore
             let weightedY = activeBandSamples.reduce(CGFloat(0)) { partial, sample in
-                partial + (sample.y * max(sample.score, 0.001))
+                partial + (sample.center.y * max(sample.score, 0.001))
             } / totalScore
             let bestScore = activeBandSamples.map(\.score).max() ?? 0
 
-            bands.append(PadBand(centerY: weightedY, score: bestScore))
+            bands.append(PadBand(center: CGPoint(x: weightedX, y: weightedY), score: bestScore))
             activeBandSamples.removeAll()
         }
 
         for y in stride(from: searchRect.minY, through: searchRect.maxY, by: yStep) {
-            let rowScores = xOffsets.compactMap { offset -> CGFloat? in
+            let rowCandidates = xOffsets.compactMap { offset -> (center: CGPoint, score: CGFloat)? in
                 let x = min(max(centerX + offset, searchRect.minX), searchRect.maxX)
                 guard let color = pixelBuffer.averageColor(
                     centeredAt: CGPoint(x: x, y: y),
@@ -692,20 +712,35 @@ enum TesterStripImageSampler {
                     return nil
                 }
 
-                return padColorScore(for: color)
+                let score = padColorScore(for: color)
+                guard score >= minimumPadDetectionScore * 0.72 else { return nil }
+
+                return (CGPoint(x: x, y: y), score)
             }
-            .filter { $0 >= minimumPadDetectionScore * 0.72 }
-            .sorted(by: >)
+            .sorted { $0.score > $1.score }
             let rowScore: CGFloat
 
-            if rowScores.count >= 2 {
-                rowScore = (rowScores[0] * 0.62) + (rowScores[1] * 0.38)
+            if rowCandidates.count >= 2 {
+                rowScore = (rowCandidates[0].score * 0.62) + (rowCandidates[1].score * 0.38)
             } else {
-                rowScore = rowScores.first ?? 0
+                rowScore = rowCandidates.first?.score ?? 0
             }
 
             if rowScore >= minimumPadDetectionScore {
-                activeBandSamples.append((y, rowScore))
+                let weightedRowCandidates = rowCandidates.prefix(3)
+                let totalWeight = weightedRowCandidates.reduce(CGFloat(0)) { partial, candidate in
+                    partial + max(candidate.score, 0.001)
+                }
+                let rowCenterX: CGFloat
+                if totalWeight > 0 {
+                    rowCenterX = weightedRowCandidates.reduce(CGFloat(0)) { partial, candidate in
+                        partial + (candidate.center.x * max(candidate.score, 0.001))
+                    } / totalWeight
+                } else {
+                    rowCenterX = centerX
+                }
+
+                activeBandSamples.append((CGPoint(x: rowCenterX, y: y), rowScore))
             } else {
                 finishBand()
             }
@@ -724,7 +759,7 @@ enum TesterStripImageSampler {
     ) -> StripGeometry {
         let ratios = TesterStripGuideMetrics.padCenterRatios
         guard bands.count >= 2 else {
-            return StripGeometry(centerX: centerX, topY: guideRect.minY, height: guideRect.height, confidence: 0)
+            return StripGeometry(centerX: centerX, topY: guideRect.minY, height: guideRect.height, xSlopePerY: 0, confidence: 0)
         }
 
         var bestGeometry: StripGeometry?
@@ -743,13 +778,20 @@ enum TesterStripImageSampler {
                         guard height >= minHeight, height <= maxHeight else { continue }
 
                         let topY = bands[leftBandIndex].centerY - (height * ratios[leftRatioIndex])
-                        let geometry = StripGeometry(centerX: centerX, topY: topY, height: height, confidence: 0)
+                        let geometry = StripGeometry(centerX: centerX, topY: topY, height: height, xSlopePerY: 0, confidence: 0)
                         let score = geometryScore(geometry, bands: bands, guideRect: guideRect)
 
                         if score > bestScore {
                             bestScore = score
                             let confidence = max(0, min(1, score / 62))
-                            bestGeometry = StripGeometry(centerX: centerX, topY: topY, height: height, confidence: confidence)
+                            let axis = xAxisFit(for: geometry, bands: bands)
+                            bestGeometry = StripGeometry(
+                                centerX: axis.centerX,
+                                topY: topY,
+                                height: height,
+                                xSlopePerY: axis.slope,
+                                confidence: confidence
+                            )
                         }
                     }
                 }
@@ -757,10 +799,50 @@ enum TesterStripImageSampler {
         }
 
         guard let bestGeometry, bestScore > 8 else {
-            return StripGeometry(centerX: centerX, topY: guideRect.minY, height: guideRect.height, confidence: 0)
+            return StripGeometry(centerX: centerX, topY: guideRect.minY, height: guideRect.height, xSlopePerY: 0, confidence: 0)
         }
 
         return bestGeometry
+    }
+
+    private static func xAxisFit(for geometry: StripGeometry, bands: [PadBand]) -> (centerX: CGFloat, slope: CGFloat) {
+        let ratios = TesterStripGuideMetrics.padCenterRatios
+        let rowTolerance = max(geometry.height * 0.052, 12)
+        let matchedBands = ratios.compactMap { ratio -> PadBand? in
+            let expectedY = geometry.topY + (geometry.height * ratio)
+
+            return bands
+                .filter { abs($0.centerY - expectedY) <= rowTolerance }
+                .min { abs($0.centerY - expectedY) < abs($1.centerY - expectedY) }
+        }
+
+        guard matchedBands.count >= 2 else { return (geometry.centerX, 0) }
+
+        let totalWeight = matchedBands.reduce(CGFloat(0)) { partial, band in
+            partial + max(band.score, 0.001)
+        }
+        guard totalWeight > 0 else { return (geometry.centerX, 0) }
+
+        let meanY = matchedBands.reduce(CGFloat(0)) { partial, band in
+            partial + (band.centerY * max(band.score, 0.001))
+        } / totalWeight
+        let meanX = matchedBands.reduce(CGFloat(0)) { partial, band in
+            partial + (band.centerX * max(band.score, 0.001))
+        } / totalWeight
+        let numerator = matchedBands.reduce(CGFloat(0)) { partial, band in
+            let weight = max(band.score, 0.001)
+            return partial + ((band.centerY - meanY) * (band.centerX - meanX) * weight)
+        }
+        let denominator = matchedBands.reduce(CGFloat(0)) { partial, band in
+            let weight = max(band.score, 0.001)
+            return partial + (pow(band.centerY - meanY, 2) * weight)
+        }
+        let rawSlope = denominator > 0 ? numerator / denominator : 0
+        let slope = max(min(rawSlope, 0.18), -0.18)
+        let midY = geometry.topY + (geometry.height / 2)
+        let fittedCenterX = meanX + ((midY - meanY) * slope)
+
+        return (fittedCenterX, slope)
     }
 
     private static func geometryScore(_ geometry: StripGeometry, bands: [PadBand], guideRect: CGRect) -> CGFloat {
@@ -819,9 +901,10 @@ enum TesterStripImageSampler {
                 .filter { $0.distance <= bandTolerance }
                 .min { $0.distance < $1.distance }?.index
             let matchedBand = matchedBandIndex.map { availableBands.remove(at: $0) }
+            let rowY = matchedBand?.centerY ?? expectedCenter.y
             let rowAnchoredCenter = CGPoint(
-                x: geometry.centerX,
-                y: matchedBand?.centerY ?? expectedCenter.y
+                x: matchedBand?.centerX ?? geometry.x(atY: rowY),
+                y: rowY
             )
             let detection = detectPadCenter(
                 in: pixelBuffer,
@@ -840,7 +923,7 @@ enum TesterStripImageSampler {
 
             if let matchedBand {
                 return PadDetection(
-                    center: CGPoint(x: geometry.centerX, y: matchedBand.centerY),
+                    center: matchedBand.center,
                     score: matchedBand.score
                 )
             }

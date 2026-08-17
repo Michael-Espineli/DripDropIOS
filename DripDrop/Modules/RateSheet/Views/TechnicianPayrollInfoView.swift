@@ -229,10 +229,10 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
         }
 
         guard let workTypeId = rate.workTypeId else {
-            return "No Work Type"
+            return "No Pay Type"
         }
 
-        return workTypes.first(where: { $0.id == workTypeId })?.name ?? "Missing Work Type"
+        return workTypes.first(where: { $0.id == workTypeId })?.name ?? "Missing Pay Type"
     }
 
     func workTypeIcon(for rate: TechnicianRate) -> String {
@@ -546,7 +546,7 @@ struct TechnicianPayrollLineItemRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(lineItem.workTypeName ?? "Missing Work Type")
+                    Text(lineItem.workTypeName ?? "Missing Pay Type")
                         .font(.headline)
 
                     Text(sourceText)

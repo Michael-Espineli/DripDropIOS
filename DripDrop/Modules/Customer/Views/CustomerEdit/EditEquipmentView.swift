@@ -62,77 +62,58 @@ final class EditEquipmentViewModel: ObservableObject {
         equipment: Equipment
     ) async throws {
 
+        var updatedEquipment = equipment
+        updatedEquipment.name = name
+        updatedEquipment.type = category
+        updatedEquipment.typeId = typeId
+        updatedEquipment.make = make
+        updatedEquipment.makeId = makeId
+        updatedEquipment.model = model
+        updatedEquipment.modelId = modelId
+        updatedEquipment.universalEquipmentId = universalEquipmentId
+        updatedEquipment.manualPdfLink = manualPdfLink
+        updatedEquipment.dateInstalled = dateInstalled
+        updatedEquipment.createdAt = equipment.createdAt ?? Date()
+        updatedEquipment.status = status
+        updatedEquipment.needsService = needsService
+        updatedEquipment.notes = notes
+
+        if let pressureInt = trimmedInt(cleanPressure) {
+            updatedEquipment.cleanFilterPressure = pressureInt
+        }
+        if let pressureInt = trimmedInt(currentPressure) {
+            updatedEquipment.currentPressure = pressureInt
+        }
+
         if needsService {
-            guard let validatedServiceFrequency = serviceFrequency else { throw FireBasePublish.unableToPublish }
+            guard let validatedServiceFrequency = serviceFrequency,
+                  validatedServiceFrequency > 0 else { throw FireBasePublish.unableToPublish }
             guard let validatedServiceFrequencyEvery = serviceFrequencyEvery else { throw FireBasePublish.unableToPublish }
             guard let validedNextDate = getNextServiceDate(
                 lastServiceDate: lastServiced,
-                frequency: serviceFrequency,
-                every: serviceFrequencyEvery
+                frequency: validatedServiceFrequency,
+                every: validatedServiceFrequencyEvery
             ) else { throw FireBasePublish.unableToPublish }
 
-            if equipment.serviceFrequency != serviceFrequency {
-                try dataService.updateEquipmentServiceFrequency(companyId: companyId, equipmentId: equipmentId, serviceFrequency: validatedServiceFrequency)
-            }
-            if equipment.serviceFrequencyEvery != serviceFrequencyEvery {
-                try dataService.updateEquipmentServiceFrequencyEvery(companyId: companyId, equipmentId: equipmentId, serviceFrequencyEvery: validatedServiceFrequencyEvery)
-            }
-            try dataService.updateEquipmentNextServiceDate(companyId: companyId, equipmentId: equipmentId, nextServiceDate: validedNextDate)
+            updatedEquipment.lastServiceDate = lastServiced
+            updatedEquipment.serviceFrequency = validatedServiceFrequency
+            updatedEquipment.serviceFrequencyEvery = validatedServiceFrequencyEvery
+            updatedEquipment.nextServiceDate = validedNextDate
+        } else {
+            updatedEquipment.lastServiceDate = nil
+            updatedEquipment.serviceFrequency = nil
+            updatedEquipment.serviceFrequencyEvery = nil
+            updatedEquipment.nextServiceDate = nil
         }
 
-        if equipment.name != name {
-            // NOTE: your original code passed notes instead of name—kept logic, but corrected param.
-            try dataService.updateEquipmentName(companyId: companyId, equipmentId: equipmentId, name: name)
-        }
-        let catalogChanged = equipment.type != category ||
-            equipment.typeId != typeId ||
-            equipment.make != make ||
-            equipment.makeId != makeId ||
-            equipment.model != model ||
-            equipment.modelId != modelId ||
-            equipment.universalEquipmentId != universalEquipmentId ||
-            equipment.manualPdfLink != manualPdfLink
-
-        if catalogChanged {
-            try dataService.updateEquipmentCatalogDetails(
-                companyId: companyId,
-                equipmentId: equipmentId,
-                category: category,
-                typeId: typeId,
-                make: make,
-                makeId: makeId,
-                model: model,
-                modelId: modelId,
-                universalEquipmentId: universalEquipmentId,
-                manualPdfLink: manualPdfLink
-            )
-        }
-        if equipment.status != status {
-            try dataService.updateEquipmentStatus(companyId: companyId, equipmentId: equipmentId, status: status)
-        }
-        if equipment.dateInstalled != dateInstalled {
-            try dataService.updateEquipmentDateInstalled(companyId: companyId, equipmentId: equipmentId, dateInstalled: dateInstalled)
-        }
-        if equipment.createdAt == nil {
-            try dataService.updateEquipmentCreatedAt(companyId: companyId, equipmentId: equipmentId, createdAt: Date())
-        }
-
-        if let pressureInt = Int(cleanPressure), equipment.cleanFilterPressure != pressureInt {
-            try dataService.updateEquipmentCleanFilterPressure(companyId: companyId, equipmentId: equipmentId, cleanFilterPressure: pressureInt)
-        }
-        if let pressureInt = Int(currentPressure), equipment.currentPressure != pressureInt {
-            try dataService.updateEquipmentCurrentPressure(companyId: companyId, equipmentId: equipmentId, currentPressure: pressureInt)
-        }
-
-        if equipment.lastServiceDate != lastServiced {
-            try dataService.updateEquipmentCleanLastServiceDate(companyId: companyId, equipmentId: equipmentId, lastServiceDate: lastServiced)
-        }
-        if equipment.notes != notes {
-            try dataService.updateEquipmentNotes(companyId: companyId, equipmentId: equipmentId, notes: notes)
-        }
+        try await dataService.updateEquipment(companyId: companyId, equipmentId: equipmentId, equipment: updatedEquipment)
 
         self.alertMessage = "Updated"
         self.showAlert.toggle()
+    }
+
+    private func trimmedInt(_ text: String) -> Int? {
+        Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }
 
@@ -142,6 +123,7 @@ struct EditEquipmentView: View {
     @EnvironmentObject var dataService: ProductionDataService
     @StateObject var VM: EditEquipmentViewModel
     @State var equipment: Equipment
+    @FocusState private var focusedInput: Bool
 
     init(dataService: any ProductionDataServiceProtocol, equipment: Equipment) {
         _VM = StateObject(wrappedValue: EditEquipmentViewModel(dataService: dataService))
@@ -173,6 +155,14 @@ struct EditEquipmentView: View {
         .navigationBarHidden(true)
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedInput = false
+                }
+            }
         }
         .alert(isPresented: $VM.showDeleteConfirmation) {
             Alert(
@@ -268,6 +258,8 @@ extension EditEquipmentView {
                 GridRow2 {
                     Field(title: "Name") {
                         TextField("Name", text: $VM.name)
+                            .focused($focusedInput)
+                            .submitLabel(.done)
                             .textFieldStyle(.plain)
                     }
 
@@ -292,7 +284,10 @@ extension EditEquipmentView {
                                 VM.universalEquipmentId = ""
                                 VM.manualPdfLink = ""
                             }
-                        )).textFieldStyle(.plain)
+                        ))
+                        .focused($focusedInput)
+                        .submitLabel(.done)
+                        .textFieldStyle(.plain)
                     }
                     Field(title: "Model") {
                         TextField("Model", text: Binding(
@@ -303,7 +298,10 @@ extension EditEquipmentView {
                                 VM.universalEquipmentId = ""
                                 VM.manualPdfLink = ""
                             }
-                        )).textFieldStyle(.plain)
+                        ))
+                        .focused($focusedInput)
+                        .submitLabel(.done)
+                        .textFieldStyle(.plain)
                     }
                 }
 
@@ -340,17 +338,23 @@ extension EditEquipmentView {
                     Field(title: "Clean Filter Pressure") {
                         TextField("0", text: $VM.cleanPressure)
                             .keyboardType(.numberPad)
+                            .focused($focusedInput)
+                            .submitLabel(.done)
                             .textFieldStyle(.plain)
                     }
                     Field(title: "Current Pressure") {
                         TextField("0", text: $VM.currentPressure)
                             .keyboardType(.numberPad)
+                            .focused($focusedInput)
+                            .submitLabel(.done)
                             .textFieldStyle(.plain)
                     }
                 }
 
                 Field(title: "Notes") {
                     TextField("Notes", text: $VM.notes, axis: .vertical)
+                        .focused($focusedInput)
+                        .submitLabel(.done)
                         .lineLimit(3...8)
                         .textFieldStyle(.plain)
                 }
@@ -386,10 +390,10 @@ extension EditEquipmentView {
                         Field(title: "Frequency") {
                             HStack(spacing: 10) {
                                 Picker("Every", selection: Binding(
-                                    get: { VM.serviceFrequency ?? 0 },
+                                    get: { VM.serviceFrequency ?? 1 },
                                     set: { VM.serviceFrequency = $0 }
                                 )) {
-                                    ForEach(0...100, id: \.self) { Text("\($0)").tag($0) }
+                                    ForEach(1...100, id: \.self) { Text("\($0)").tag($0) }
                                 }
                                 .pickerStyle(.menu)
 

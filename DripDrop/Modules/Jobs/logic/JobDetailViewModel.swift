@@ -921,7 +921,8 @@ final class JobDetailViewModel:ObservableObject{
         companyId: String,
         job: Job,
         completedByUserId: String = "",
-        completedByUserName: String = ""
+        completedByUserName: String = "",
+        addCompletionComment: Bool = true
     ) async throws {
         //Update Data Model
         try await dataService.updateJobOperationStatus(companyId: companyId, jobId: job.id, operationStatus: .finished)
@@ -951,12 +952,32 @@ final class JobDetailViewModel:ObservableObject{
             }
         }
 
-        try await addJobKeyMomentComment(
+        if addCompletionComment {
+            try await addJobKeyMomentComment(
+                companyId: companyId,
+                jobId: job.id,
+                userId: completedByUserId,
+                userName: completedByName,
+                comment: "Job finished by \(completedByName)."
+            )
+        }
+    }
+
+    func markJobAsFinished(
+        companyId: String,
+        job: Job,
+        jobTasks: [JobTask],
+        completedByUserId: String = "",
+        completedByUserName: String = "",
+        addCompletionComment: Bool = true
+    ) async throws {
+        self.jobTaskList = jobTasks
+        try await markJobAsFinished(
             companyId: companyId,
-            jobId: job.id,
-            userId: completedByUserId,
-            userName: completedByName,
-            comment: "Job finished by \(completedByName)."
+            job: job,
+            completedByUserId: completedByUserId,
+            completedByUserName: completedByUserName,
+            addCompletionComment: addCompletionComment
         )
     }
     func updateTaskHelperFunction(

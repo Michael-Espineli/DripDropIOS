@@ -75,6 +75,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "Alerts and Notifications"
         case 14:
             return "iOS Reimagined Main"
+        case 15:
+            return "Pool Equipment Scanner"
         default:
             return ""
         }
@@ -106,6 +108,8 @@ struct FeatureFlag: Identifiable, Codable, Hashable {
             return "Enables the shared alerts and notifications framework for dashboard alerts and future iOS notification delivery."
         case 14:
             return "Enables the reimagined iOS main dashboard with route calendar access, technician repair requests, and assigned admin jobs."
+        case 15:
+            return "Enables the iOS pool equipment scanner for identifying equipment, mapping above-ground pipe pathways, and collecting technician-confirmed learning feedback."
         default:
             return ""
         }
@@ -124,6 +128,7 @@ enum FeatureFlagKey: String, CaseIterable {
     case todoList = "feature_flag_010"
     case alertsAndNotifications = "feature_flag_011"
     case iosReimaginedMain = "feature_flag_014"
+    case poolEquipmentScanner = "feature_flag_015"
 }
 
 struct AlertNotification: Identifiable, Codable, Hashable {

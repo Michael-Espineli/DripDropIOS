@@ -40,6 +40,7 @@ final class CompanyPaySettingsViewModel: ObservableObject {
                 if existingSettings.companyId.isBlank {
                     existingSettings.companyId = companyId
                 }
+                existingSettings.allowMultipleWorkTypesPerStop = false
                 settings = existingSettings
             } else {
                 settings = .defaultSettings(companyId: companyId)
@@ -57,6 +58,7 @@ final class CompanyPaySettingsViewModel: ObservableObject {
         do {
             var settingsToSave = settings
             settingsToSave.companyId = companyId
+            settingsToSave.allowMultipleWorkTypesPerStop = false
             try await dataService.saveCompanyPaySettings(companyId: companyId, settingsToSave)
             settings = settingsToSave
             alertMessage = "Pay settings saved."
@@ -190,10 +192,8 @@ struct CompanyPaySettingsView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
-            Toggle(
-                "Allow multiple work types on one stop",
-                isOn: $viewModel.settings.allowMultipleWorkTypesPerStop
-            )
+            Label("One pay type per stop", systemImage: "1.circle")
+                .foregroundStyle(.secondary)
 
             Picker("Default stacking", selection: $viewModel.settings.defaultStackBehavior) {
                 ForEach(RateStackBehavior.selectableCases, id: \.self) { behavior in

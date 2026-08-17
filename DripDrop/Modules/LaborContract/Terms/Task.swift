@@ -34,6 +34,8 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
     var type : JobTaskType
     var contractedRate : Int //Cents
     var estimatedTime : Int //Minutes
+    var payTypeId: String?
+    var payTypeName: String?
     var status : JobTaskStatus
     
     var customerApproval : Bool
@@ -61,6 +63,8 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
         case type
         case contractedRate
         case estimatedTime
+        case payTypeId
+        case payTypeName
         case status
         case customerApproval
         case actualTime
@@ -85,6 +89,8 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
         type: JobTaskType,
         contractedRate: Int,
         estimatedTime: Int,
+        payTypeId: String? = nil,
+        payTypeName: String? = nil,
         status: JobTaskStatus,
         customerApproval: Bool,
         actualTime: Int,
@@ -107,6 +113,8 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
         self.type = type
         self.contractedRate = contractedRate
         self.estimatedTime = estimatedTime
+        self.payTypeId = payTypeId
+        self.payTypeName = payTypeName
         self.status = status
         self.customerApproval = customerApproval
         self.actualTime = actualTime
@@ -133,6 +141,8 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
         type = (try? container.decode(JobTaskType.self, forKey: .type)) ?? .basic
         contractedRate = JobTask.decodeInt(container, forKey: .contractedRate)
         estimatedTime = JobTask.decodeInt(container, forKey: .estimatedTime)
+        payTypeId = JobTask.decodeString(container, forKey: .payTypeId)
+        payTypeName = JobTask.decodeString(container, forKey: .payTypeName)
         status = (try? container.decode(JobTaskStatus.self, forKey: .status)) ?? .unassigned
         customerApproval = (try? container.decode(Bool.self, forKey: .customerApproval)) ?? false
         actualTime = JobTask.decodeInt(container, forKey: .actualTime)
@@ -213,6 +223,8 @@ struct LaborContractTask: Identifiable, Codable, Hashable, TaskItem {
     var serviceLocationId : String
     var bodyOfWaterId : String
     var shoppingListItemId : String
+    var payTypeId: String?
+    var payTypeName: String?
 }
 
 struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
@@ -244,6 +256,8 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
     var serviceLocationId : String
     var bodyOfWaterId : String
     var shoppingListItemId : String
+    var payTypeId: String?
+    var payTypeName: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -267,6 +281,8 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
         case serviceLocationId
         case bodyOfWaterId
         case shoppingListItemId
+        case payTypeId
+        case payTypeName
     }
 
     init(
@@ -290,7 +306,9 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
         equipmentId: String,
         serviceLocationId: String,
         bodyOfWaterId: String,
-        shoppingListItemId: String
+        shoppingListItemId: String,
+        payTypeId: String? = nil,
+        payTypeName: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -313,6 +331,8 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
         self.serviceLocationId = serviceLocationId
         self.bodyOfWaterId = bodyOfWaterId
         self.shoppingListItemId = shoppingListItemId
+        self.payTypeId = payTypeId
+        self.payTypeName = payTypeName
     }
 
     init(from decoder: Decoder) throws {
@@ -339,6 +359,8 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
         serviceLocationId = try container.decodeIfPresent(String.self, forKey: .serviceLocationId) ?? ""
         bodyOfWaterId = try container.decodeIfPresent(String.self, forKey: .bodyOfWaterId) ?? ""
         shoppingListItemId = try container.decodeIfPresent(String.self, forKey: .shoppingListItemId) ?? ""
+        payTypeId = try container.decodeIfPresent(String.self, forKey: .payTypeId)
+        payTypeName = try container.decodeIfPresent(String.self, forKey: .payTypeName)
     }
 
     private static func decodeIdInfo(

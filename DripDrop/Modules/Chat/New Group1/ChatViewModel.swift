@@ -140,8 +140,11 @@ final class ChatViewModel:ObservableObject{
     func getallChatsByUser(userId: String) async throws {
         self.listOfChats = try await dataService.getAllChatsByUser(userId: userId)
     }
-    func getVisibleChats(userId: String, companyId:String?) async throws {
-        self.listOfChats = try await dataService.getVisibleChats(userId: userId, companyId: companyId)
+    func getVisibleChats(userId: String, companyId:String?, includeCompanyWideMessages: Bool = false) async throws {
+        self.listOfChats = try await dataService.getVisibleChats(
+            userId: userId,
+            companyId: includeCompanyWideMessages ? companyId : nil
+        )
     }
     func getSpecificChat(companyId: String,contractId:String) async throws {
         self.chat = try await dataService.getSpecificChat(chatId: contractId)
@@ -185,10 +188,13 @@ final class ChatViewModel:ObservableObject{
             self?.listOfChats = chats
         }
     }
-    func addListenerForVisibleChats(userId:String, companyId:String?){
+    func addListenerForVisibleChats(userId:String, companyId:String?, includeCompanyWideMessages: Bool = false){
         print("Adding Visible Chat Listener")
 
-         dataService.addListenerForVisibleChats(userId: userId, companyId: companyId) { [weak self] chats in
+         dataService.addListenerForVisibleChats(
+            userId: userId,
+            companyId: includeCompanyWideMessages ? companyId : nil
+         ) { [weak self] chats in
             self?.listOfChats = chats
         }
     }
@@ -200,10 +206,13 @@ final class ChatViewModel:ObservableObject{
              self?.listOfUnreadChats = chats
         }
     }
-    func addListenForUnReadChats(userId:String, companyId:String?){
+    func addListenForUnReadChats(userId:String, companyId:String?, includeCompanyWideMessages: Bool = false){
         print("Adding Company-Aware Unread Chat Listener")
 
-         dataService.addListenerForUnreadChats(userId: userId, companyId: companyId) { [weak self] chats in
+         dataService.addListenerForUnreadChats(
+            userId: userId,
+            companyId: includeCompanyWideMessages ? companyId : nil
+         ) { [weak self] chats in
              self?.unreadChatCount = chats.count
              self?.listOfUnreadChats = chats
         }

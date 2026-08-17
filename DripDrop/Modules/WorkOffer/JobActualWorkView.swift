@@ -202,7 +202,7 @@ struct JobActualWorkView: View {
             )
 
             if needsReviewCount > 0 {
-                Text("Some pay lines need review because a rate, mapping, or calculation rule was missing when payroll was generated.")
+                Text("Some pay lines need review because a pay type, rate, or calculation rule was missing when payroll was generated.")
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
@@ -403,7 +403,7 @@ struct JobActualPayLineRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(lineItem.workTypeName ?? "Missing Work Type")
+                    Text(lineItem.workTypeName ?? "Missing Pay Type")
                         .font(.subheadline.weight(.semibold))
 
                     Text(sourceText)

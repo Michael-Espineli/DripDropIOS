@@ -910,14 +910,31 @@ extension ProductionDataService {
                     print("      [ProductionDataService][applyRouteChanges] New Active Route: Tech Name: \(diff.new.techName)")
                     _ = try await uploadRoute(companyId: companyId, activeRoute: diff.new)
                 } else {
+                    guard let oldRoute = diff.old else { return }
                     let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: diff.new.id)
-                    try await ref.updateData([
-                        ActiveRoute.CodingKeys.serviceStopsIds.rawValue: diff.new.serviceStopsIds,
-                        ActiveRoute.CodingKeys.totalStops.rawValue: diff.new.totalStops,
-                        ActiveRoute.CodingKeys.finishedStops.rawValue: diff.new.finishedStops,
-                        ActiveRoute.CodingKeys.durationMin.rawValue: diff.new.durationMin,
-                        ActiveRoute.CodingKeys.status.rawValue: diff.new.status.rawValue
-                    ])
+                    var updates: [String: Any] = [:]
+
+                    if oldRoute.serviceStopsIds != diff.new.serviceStopsIds {
+                        updates[ActiveRoute.CodingKeys.serviceStopsIds.rawValue] = diff.new.serviceStopsIds
+                    }
+                    if oldRoute.totalStops != diff.new.totalStops {
+                        updates[ActiveRoute.CodingKeys.totalStops.rawValue] = diff.new.totalStops
+                    }
+                    if oldRoute.finishedStops != diff.new.finishedStops {
+                        updates[ActiveRoute.CodingKeys.finishedStops.rawValue] = diff.new.finishedStops
+                    }
+                    if oldRoute.durationMin != diff.new.durationMin {
+                        updates[ActiveRoute.CodingKeys.durationMin.rawValue] = diff.new.durationMin
+                    }
+                    if oldRoute.status != diff.new.status {
+                        updates[ActiveRoute.CodingKeys.status.rawValue] = diff.new.status.rawValue
+                    }
+
+                    if !updates.isEmpty {
+                        try await ref.updateData(updates)
+                    } else {
+                        print("    [ProductionDataService][applyRouteChanges] No scalar route changes")
+                    }
 
                     //If Order is Changed make updates to Ar Order
                     if diff.orderChanged {
@@ -931,14 +948,8 @@ extension ProductionDataService {
                     } else {
                         print("    [ProductionDataService][applyRouteChanges] No Change To Order")
                     }
-//                    if Status has changed make updates
-                    if diff.statusChanged {
-                     print("    [ProductionDataService][applyRouteChanges]Update Status Changed")
-                        try await ref.updateData([
-                            "status": diff.new.status.rawValue
-                        ])
-                    } else {
-                        print("    [ProductionDataService][applyRouteChanges] No Change To Status")
+                    if updates.isEmpty && !diff.orderChanged {
+                        print("    [ProductionDataService][applyRouteChanges] No active route write needed")
                     }
                 }
             } catch {

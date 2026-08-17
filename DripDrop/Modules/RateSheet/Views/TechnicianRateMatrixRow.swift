@@ -448,7 +448,7 @@ struct TechnicianRateMatrixView: View {
             }
         }
         .navigationTitle("Technician Rates")
-        .searchable(text: $viewModel.searchText, prompt: "Search work types")
+        .searchable(text: $viewModel.searchText, prompt: "Search pay types")
         .task {
             guard let currentCompany = masterDataManager.currentCompany else { return }
             await viewModel.load(companyId: currentCompany.id)
@@ -536,7 +536,7 @@ struct TechnicianRateMatrixView: View {
         } header: {
             Text("Setup")
         } footer: {
-            Text("Pick one technician at a time and set their rates by work type. This is easier to use on iPhone than a spreadsheet-style grid.")
+            Text("Pick one technician at a time and set their rates by pay type. This is easier to use on iPhone than a spreadsheet-style grid.")
         }
     }
 
@@ -621,9 +621,9 @@ struct TechnicianRateMatrixView: View {
         Section {
             if viewModel.matrixRows.isEmpty {
                 ContentUnavailableView(
-                    "No Work Types",
+                    "No Pay Types",
                     systemImage: "list.bullet.rectangle",
-                    description: Text("Create Company Work Types before setting technician rates.")
+                    description: Text("Create company pay types before setting technician rates.")
                 )
             } else if let currentCompany = masterDataManager.currentCompany {
                 ForEach(viewModel.matrixRows) { row in
@@ -651,7 +651,7 @@ struct TechnicianRateMatrixView: View {
         } header: {
             Text("Rates")
         } footer: {
-            Text("Tap any work type to add a starting rate or create a rate increase. Existing rates are expired instead of overwritten.")
+            Text("Tap any pay type to add a starting rate or create a rate increase. Existing rates are expired instead of overwritten.")
         }
     }
 
@@ -950,7 +950,7 @@ struct TechnicianRateEditorView: View {
             }
 
             HStack {
-                Text("Work Type")
+                Text("Pay Type")
                 Spacer()
                 Text(row.title)
                     .foregroundStyle(.secondary)

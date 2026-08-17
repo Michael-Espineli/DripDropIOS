@@ -71,6 +71,34 @@ struct EquipmentCardView: View {
                             }
                         }
                     }
+                    if let frequency = equipment.serviceFrequency,
+                       let every = equipment.serviceFrequencyEvery {
+                        HStack {
+                            Text("Service Frequency: ")
+                                .bold()
+                            Spacer()
+                            Text("\(frequency) \(every.rawValue)\(frequency == 1 ? "" : "s")")
+                        }
+                    }
+                    HStack {
+                        Text("Last Serviced: ")
+                            .bold()
+                        Spacer()
+                        Text(shortDate(date: equipment.lastServiceDate))
+                    }
+                    HStack {
+                        Text("Next Service: ")
+                            .bold()
+                        Spacer()
+                        Text(shortDate(date: equipment.maintenanceDueDateForFollowUp))
+                    }
+                    if equipment.currentlyNeedsMaintenanceFollowUp {
+                        HStack {
+                            Spacer()
+                            Text("Service Due")
+                                .modifier(YellowButtonModifier())
+                        }
+                    }
                     Spacer()
                 }
             }

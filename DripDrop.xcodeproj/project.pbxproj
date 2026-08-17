@@ -787,6 +787,7 @@
 		6DCF60232EC4678000FCDA13 /* EquipmentList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCF601A2EC4678000FCDA13 /* EquipmentList.swift */; };
 		6DCF60242EC4678000FCDA13 /* EquipmentCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCF60182EC4678000FCDA13 /* EquipmentCardView.swift */; };
 		6DCF60252EC4678000FCDA13 /* EquipmentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCF60192EC4678000FCDA13 /* EquipmentDetailView.swift */; };
+		6D5C0F022FC8000000A1515A /* PoolEquipmentScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5C0F012FC8000000A1515A /* PoolEquipmentScannerView.swift */; };
 		6DCF60272EC7FA2E00FCDA13 /* GenericLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCF60262EC7FA2E00FCDA13 /* GenericLoadingView.swift */; };
 		6DCF60292EC8DA9000FCDA13 /* StripeConnectedAccountConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCF60282EC8DA9000FCDA13 /* StripeConnectedAccountConfigView.swift */; };
 		6DCF602B2EC8DB4700FCDA13 /* MangeStripeSubscriptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCF602A2EC8DB4700FCDA13 /* MangeStripeSubscriptionsView.swift */; };
@@ -1623,6 +1624,7 @@
 		6DCF60182EC4678000FCDA13 /* EquipmentCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentCardView.swift; sourceTree = "<group>"; };
 		6DCF60192EC4678000FCDA13 /* EquipmentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentDetailView.swift; sourceTree = "<group>"; };
 		6DCF601A2EC4678000FCDA13 /* EquipmentList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentList.swift; sourceTree = "<group>"; };
+		6D5C0F012FC8000000A1515A /* PoolEquipmentScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolEquipmentScannerView.swift; sourceTree = "<group>"; };
 		6DCF601B2EC4678000FCDA13 /* EquipmentPartDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentPartDetailView.swift; sourceTree = "<group>"; };
 		6DCF601C2EC4678000FCDA13 /* EquipmentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentPicker.swift; sourceTree = "<group>"; };
 		6DCF601D2EC4678000FCDA13 /* EquipmentStatusPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentStatusPicker.swift; sourceTree = "<group>"; };
@@ -4162,6 +4164,7 @@
 				6DCF60182EC4678000FCDA13 /* EquipmentCardView.swift */,
 				6DCF60192EC4678000FCDA13 /* EquipmentDetailView.swift */,
 				6DCF601A2EC4678000FCDA13 /* EquipmentList.swift */,
+				6D5C0F012FC8000000A1515A /* PoolEquipmentScannerView.swift */,
 				6DCF601B2EC4678000FCDA13 /* EquipmentPartDetailView.swift */,
 				6DCF601C2EC4678000FCDA13 /* EquipmentPicker.swift */,
 				6DCF601D2EC4678000FCDA13 /* EquipmentStatusPicker.swift */,
@@ -5222,6 +5225,7 @@
 				6DCF60212EC4678000FCDA13 /* AddEquipmentView.swift in Sources */,
 				6DCF60222EC4678000FCDA13 /* EquipmentPicker.swift in Sources */,
 				6DCF60232EC4678000FCDA13 /* EquipmentList.swift in Sources */,
+				6D5C0F022FC8000000A1515A /* PoolEquipmentScannerView.swift in Sources */,
 				6DCF60242EC4678000FCDA13 /* EquipmentCardView.swift in Sources */,
 				6DCF60252EC4678000FCDA13 /* EquipmentDetailView.swift in Sources */,
 				6D38D1802C19457D003EB3DB /* ContractCardView.swift in Sources */,

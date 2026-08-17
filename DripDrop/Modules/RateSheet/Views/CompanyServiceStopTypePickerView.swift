@@ -39,6 +39,15 @@ final class CompanyServiceStopTypePickerViewModel: ObservableObject {
             }
     }
 
+    func activeServiceStopTypes(
+        useCase: ServiceStopTypeUseCase
+    ) -> [CompanyServiceStopType] {
+        ServiceStopTypeResolver.matchingTypes(
+            from: serviceStopTypes,
+            useCase: useCase
+        )
+    }
+
     func loadIfNeeded() async {
         guard !hasLoaded else { return }
 
@@ -88,8 +97,8 @@ struct CompanyServiceStopTypePickerView: View {
         dataService: any ProductionDataServiceProtocol,
         selectedType: Binding<CompanyServiceStopType?>,
         useCase: ServiceStopTypeUseCase,
-        title: String = "Service Stop Type",
-        subtitle: String = "Choose what kind of stop this is. Payroll will use this to create the correct pay lines.",
+        title: String = "Pay Type",
+        subtitle: String = "Choose the base pay type for this stop.",
         preferredTypeId: String? = nil
     ) {
         _viewModel = StateObject(
@@ -126,12 +135,12 @@ struct CompanyServiceStopTypePickerView: View {
             }
 
             if let errorMessage = viewModel.errorMessage {
-                Text("Could not load service stop types: \(errorMessage)")
+                Text("Could not load pay types: \(errorMessage)")
                     .font(.caption)
                     .foregroundStyle(.red)
             }
 
-            if viewModel.activeServiceStopTypes.isEmpty && !viewModel.isLoading {
+            if viewModel.activeServiceStopTypes(useCase: useCase).isEmpty && !viewModel.isLoading {
                 fallbackCard
             } else {
                 Button {
@@ -149,6 +158,9 @@ struct CompanyServiceStopTypePickerView: View {
         .onChange(of: preferredTypeId) { _ in
             applyPreferredOrSuggestedTypeIfNeeded(forcePreferred: true)
         }
+        .onChange(of: useCase) { _, _ in
+            applyPreferredOrSuggestedTypeIfNeeded(forcePreferred: false)
+        }
         .sheet(isPresented: $showTypePicker) {
             typePickerSheet
         }
@@ -156,8 +168,19 @@ struct CompanyServiceStopTypePickerView: View {
 
     private func applyPreferredOrSuggestedTypeIfNeeded(forcePreferred: Bool) {
         if forcePreferred, let preferredTypeId {
-            selectedType = viewModel.type(id: preferredTypeId)
-            return
+            let preferredType = viewModel.type(id: preferredTypeId)
+            if let preferredType,
+               ServiceStopTypeResolver.matches(preferredType, useCase: useCase) {
+                selectedType = preferredType
+                return
+            } else {
+                selectedType = nil
+            }
+        }
+
+        if let selectedType,
+           !ServiceStopTypeResolver.matches(selectedType, useCase: useCase) {
+            self.selectedType = nil
         }
 
         if selectedType == nil {
@@ -179,7 +202,7 @@ struct CompanyServiceStopTypePickerView: View {
                 Text(fields.type)
                     .font(.subheadline.weight(.semibold))
 
-                Text("Fallback type. Add Company Service Stop Types later for more control.")
+                Text("Fallback pay type. Add company pay types later for more control.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -202,7 +225,7 @@ struct CompanyServiceStopTypePickerView: View {
 
                     Text(typeSubtitle(selectedType))
                         .font(.caption)
-                        .foregroundStyle(selectedType.defaultWorkTypeIds.isEmpty ? .orange : .secondary)
+                        .foregroundStyle(.secondary)
                 }
             } else {
                 Image(systemName: "mappin.and.ellipse")
@@ -210,7 +233,7 @@ struct CompanyServiceStopTypePickerView: View {
                     .foregroundStyle(.secondary)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Choose service stop type")
+                    Text("Choose pay type")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
 
@@ -233,7 +256,7 @@ struct CompanyServiceStopTypePickerView: View {
     private var typePickerSheet: some View {
         NavigationStack {
             List {
-                ForEach(viewModel.activeServiceStopTypes) { type in
+                ForEach(viewModel.activeServiceStopTypes(useCase: useCase)) { type in
                     Button {
                         selectedType = type
                         showTypePicker = false
@@ -248,7 +271,7 @@ struct CompanyServiceStopTypePickerView: View {
 
                                 Text(typeSubtitle(type))
                                     .font(.caption)
-                                    .foregroundStyle(type.defaultWorkTypeIds.isEmpty ? .orange : .secondary)
+                                    .foregroundStyle(.secondary)
                             }
 
                             Spacer()
@@ -283,11 +306,7 @@ struct CompanyServiceStopTypePickerView: View {
     }
 
     private func typeSubtitle(_ type: CompanyServiceStopType) -> String {
-        if type.defaultWorkTypeIds.isEmpty {
-            return "No default work types assigned."
-        }
-
-        return "\(type.defaultWorkTypeIds.count) default payroll work type(s)"
+        type.resolvedCategory(fallback: useCase.category).title
     }
 
     private func selectedTypePreview(_ type: CompanyServiceStopType) -> some View {
@@ -299,15 +318,9 @@ struct CompanyServiceStopTypePickerView: View {
                 Text(type.name)
                     .font(.subheadline.weight(.semibold))
 
-                if type.defaultWorkTypeIds.isEmpty {
-                    Text("No default work types assigned.")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                } else {
-                    Text("\(type.defaultWorkTypeIds.count) default payroll work type(s)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(typeSubtitle(type))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()

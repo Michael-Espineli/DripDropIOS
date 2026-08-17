@@ -217,7 +217,7 @@ extension AddNewServiceStop {
                         dataService: dataService,
                         selectedType: $VM.selectedCompanyServiceStopType,
                         useCase: .customerRelationship,
-                        subtitle: "Choose what kind of one-time stop this is. Payroll can use this to resolve the correct work type."
+                        subtitle: "Choose the pay type for this one-time stop."
                     )
                 }
             }

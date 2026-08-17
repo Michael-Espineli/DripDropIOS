@@ -38,8 +38,7 @@ struct EquipmentList: View {
         .task {
             if let company = masterDataManager.currentCompany {
                 do {
-                    try await equipmentVM.getAllEquipment(companyId: company.id)
-//                    try await equipmentVM.getAllEquipmentBy25(companyId: company.id)
+                    try await equipmentVM.getAllEquipmentBy25(companyId: company.id, reset: true)
                 } catch {
                     print("[EquipmentList][task]equipmentVM.getAllEquipmentBy25")
                     print(error)
@@ -74,6 +73,33 @@ extension EquipmentList {
                                 .padding(.horizontal,8)
                         })
                     }
+                }
+                if equipmentVM.hasMoreEquipment {
+                    Button {
+                        guard let company = masterDataManager.currentCompany else { return }
+                        Task {
+                            do {
+                                try await equipmentVM.getAllEquipmentBy25(companyId: company.id)
+                            } catch {
+                                print("[EquipmentList][loadMore] equipmentVM.getAllEquipmentBy25")
+                                print(error)
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            if equipmentVM.isLoadingEquipmentPage {
+                                ProgressView()
+                            }
+                            Text(equipmentVM.isLoadingEquipmentPage ? "Loading..." : "Load More")
+                                .font(.headline)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(equipmentVM.isLoadingEquipmentPage)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4)
                 }
             }
         }

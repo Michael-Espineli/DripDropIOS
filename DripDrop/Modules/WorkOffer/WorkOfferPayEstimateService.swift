@@ -9,9 +9,7 @@ import Foundation
 
 struct WorkOfferPayEstimateContext {
     var settings: CompanyPaySettings
-    var serviceStopTypes: [CompanyServiceStopType]
     var workTypes: [CompanyWorkType]
-    var mappings: [WorkTypeMapping]
     var rates: [TechnicianRate]
     var workers: [PayrollWorkerSnapshot]
 }
@@ -22,10 +20,6 @@ struct WorkOfferPayEstimateService {
 
     private var workTypesById: [String: CompanyWorkType] {
         Dictionary(uniqueKeysWithValues: context.workTypes.map { ($0.id, $0) })
-    }
-
-    private var serviceStopTypesById: [String: CompanyServiceStopType] {
-        Dictionary(uniqueKeysWithValues: context.serviceStopTypes.map { ($0.id, $0) })
     }
 
     func estimate(
@@ -95,11 +89,11 @@ struct WorkOfferPayEstimateService {
                         quantityUnit: .each,
                         totalAmountCents: 0,
                         calculationStatus: .needsReview,
-                        notes: "No service stop work type could be resolved for this offer."
+                        notes: "No service stop pay type could be resolved for this offer."
                     )
                 )
             } else {
-                for workTypeId in stopWorkTypeIds {
+                for workTypeId in stopWorkTypeIds.prefix(1) {
                     lines.append(
                         estimateLineFromTechnicianRate(
                             companyId: companyId,
@@ -143,21 +137,21 @@ struct WorkOfferPayEstimateService {
         taskPaySource: TaskPaySource,
         date: Date
     ) -> WorkOfferPayEstimateLine? {
-        guard let workTypeId = mappedWorkTypeIds(
-            sourceType: .jobTaskType,
-            sourceId: task.type.rawValue
-        ).first else {
+        let workTypeId = task.payTypeId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        guard !workTypeId.isEmpty else {
             return needsReviewTaskLine(
                 task: task,
-                notes: "No WorkTypeMapping found for task type \(task.type.rawValue)."
+                notes: "No pay type selected for task \(task.name)."
             )
         }
 
         let workType = workTypesById[workTypeId]
+        let workTypeName = task.payTypeName ?? workType?.name
 
         switch taskPaySource {
         case .technicianRate:
-            return estimateLineFromTechnicianRate(
+            return estimateTaskLineFromTechnicianRate(
                 companyId: companyId,
                 worker: worker,
                 source: .serviceStopTask,
@@ -178,11 +172,11 @@ struct WorkOfferPayEstimateService {
             return flatTaskLine(
                 task: task,
                 workTypeId: workTypeId,
-                workTypeName: workType?.name
+                workTypeName: workTypeName
             )
 
         case .technicianRateThenTaskContractedRate:
-            let techLine = estimateLineFromTechnicianRate(
+            guard let techLine = estimateTaskLineFromTechnicianRate(
                 companyId: companyId,
                 worker: worker,
                 source: .serviceStopTask,
@@ -194,7 +188,9 @@ struct WorkOfferPayEstimateService {
                 estimatedMinutes: task.estimatedTime,
                 date: date,
                 returnNeedsReviewWhenMissing: false
-            )
+            ) else {
+                return nil
+            }
 
             if techLine.calculationStatus == .calculated {
                 return techLine
@@ -204,7 +200,7 @@ struct WorkOfferPayEstimateService {
                 return flatTaskLine(
                     task: task,
                     workTypeId: workTypeId,
-                    workTypeName: workType?.name
+                    workTypeName: workTypeName
                 )
             }
 
@@ -215,11 +211,11 @@ struct WorkOfferPayEstimateService {
                 return flatTaskLine(
                     task: task,
                     workTypeId: workTypeId,
-                    workTypeName: workType?.name
+                    workTypeName: workTypeName
                 )
             }
 
-            return estimateLineFromTechnicianRate(
+            return estimateTaskLineFromTechnicianRate(
                 companyId: companyId,
                 worker: worker,
                 source: .serviceStopTask,
@@ -238,7 +234,7 @@ struct WorkOfferPayEstimateService {
                 worker: worker,
                 task: task,
                 workTypeId: workTypeId,
-                workTypeName: workType?.name,
+                workTypeName: workTypeName,
                 date: date
             )
 
@@ -383,6 +379,42 @@ struct WorkOfferPayEstimateService {
         )
     }
 
+    private func estimateTaskLineFromTechnicianRate(
+        companyId: String,
+        worker: CompanyUser,
+        source: PayLineItemSource,
+        sourceTaskId: String?,
+        title: String,
+        workTypeId: String,
+        payBasis: PayBasis,
+        preferredRateType: RateType?,
+        estimatedMinutes: Int,
+        date: Date,
+        returnNeedsReviewWhenMissing: Bool = true
+    ) -> WorkOfferPayEstimateLine? {
+        let line = estimateLineFromTechnicianRate(
+            companyId: companyId,
+            worker: worker,
+            source: source,
+            sourceTaskId: sourceTaskId,
+            title: title,
+            workTypeId: workTypeId,
+            payBasis: payBasis,
+            preferredRateType: preferredRateType,
+            estimatedMinutes: estimatedMinutes,
+            date: date,
+            returnNeedsReviewWhenMissing: returnNeedsReviewWhenMissing
+        )
+
+        if source == .serviceStopTask,
+           line.calculationStatus == .calculated,
+           line.rateAmountCents <= 0 {
+            return nil
+        }
+
+        return line
+    }
+
     private func needsReviewTaskLine(
         task: JobTask,
         notes: String
@@ -408,40 +440,11 @@ struct WorkOfferPayEstimateService {
         selectedServiceStopType: CompanyServiceStopType?,
         serviceStopTypeUseCase: ServiceStopTypeUseCase
     ) -> [String] {
-        if let selectedServiceStopType,
-           !selectedServiceStopType.defaultWorkTypeIds.isEmpty {
-            return uniqueIds(selectedServiceStopType.defaultWorkTypeIds)
-        }
-
         if let selectedServiceStopType {
-            let mappedIds = mappedWorkTypeIds(
-                sourceType: .serviceStopType,
-                sourceId: selectedServiceStopType.id
-            )
-
-            if !mappedIds.isEmpty {
-                return mappedIds
-            }
+            return [selectedServiceStopType.id]
         }
 
-        return mappedWorkTypeIds(
-            sourceType: .serviceStopType,
-            sourceId: serviceStopTypeUseCase.fallbackTypeId
-        )
-    }
-
-    private func mappedWorkTypeIds(
-        sourceType: WorkTypeSource,
-        sourceId: String
-    ) -> [String] {
-        let ids = context.mappings
-            .filter {
-                $0.sourceType == sourceType &&
-                $0.sourceId == sourceId
-            }
-            .map { $0.workTypeId }
-
-        return uniqueIds(ids)
+        return [serviceStopTypeUseCase.fallbackTypeId].filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     private func activeRate(

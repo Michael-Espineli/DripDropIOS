@@ -116,11 +116,11 @@ struct ScheduleAcceptedWorkOfferView: View {
                 dataService: dataService,
                 selectedType: $selectedCompanyServiceStopType,
                 useCase: serviceStopTypeUseCase,
-                title: "Service Stop Type",
-                subtitle: "Payroll uses this to determine the base work type for this scheduled stop."
+                title: "Pay Type",
+                subtitle: "Payroll uses this to determine the base pay type for this scheduled stop."
             )
         } header: {
-            Text("Service Stop Type")
+            Text("Pay Type")
         }
     }
 

@@ -297,6 +297,7 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "292", name: "Create Fleet", description: "", category: "Management"),
         PermissionModel(id: "294", name: "Update Fleet", description: "", category: "Management"),
         PermissionModel(id: "296", name: "Delete Fleet", description: "", category: "Management"),
+        PermissionModel(id: "300", name: "View Other Messages", description: "Can view company and customer conversations they are not directly included in.", category: "Management"),
 
         PermissionModel(id: "400", name: "Finance", description: "", category: "Finance"),
         PermissionModel(id: "410", name: "Finished Jobs", description: "", category: "Finance"),
@@ -360,7 +361,7 @@ final class PermissionViewModel:ObservableObject{
         "40","42","44","46","50","52","54","56","60","62","64","66",
         "200","210","220","230","232","234","236","240","242","244","246",
         "250","252","254","256","260","262","264","266","280","282","284","286",
-        "290","292","294","296",
+        "290","292","294","296","300",
         "400","410","412","414","416","420",
         "600","610","612","614","616","620","622","624","626",
         "800","810","812","814","816","820","822","824","826","830","832","834","836",

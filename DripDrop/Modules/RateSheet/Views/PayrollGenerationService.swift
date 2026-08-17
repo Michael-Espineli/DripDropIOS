@@ -7,9 +7,7 @@ import Foundation
 
 struct CompanyPayContext {
     var settings: CompanyPaySettings
-    var serviceStopTypes: [CompanyServiceStopType]
     var workTypes: [CompanyWorkType]
-    var mappings: [WorkTypeMapping]
     var rates: [TechnicianRate]
     var workers: [PayrollWorkerSnapshot]
 }
@@ -43,9 +41,7 @@ final class PayrollGenerationService {
 
         let engine = PayEngine(
             settings: context.settings,
-            serviceStopTypes: context.serviceStopTypes,
             workTypes: context.workTypes,
-            mappings: context.mappings,
             rates: context.rates,
             workers: context.workers
         )
@@ -77,18 +73,14 @@ final class PayrollGenerationService {
     ) async throws -> CompanyPayContext {
 
         async let settingsTask = dataService.fetchCompanyPaySettings(companyId: companyId)
-        async let serviceStopTypesTask = dataService.fetchCompanyServiceStopTypes(companyId: companyId)
         async let workTypesTask = dataService.fetchCompanyWorkTypes(companyId: companyId)
-        async let mappingsTask = dataService.fetchWorkTypeMappings(companyId: companyId)
         async let ratesTask = dataService.fetchTechnicianRates(companyId: companyId)
         async let companyUsersTask = dataService.fetchCompanyUsers(companyId: companyId)
 
         let settings = try await settingsTask
             ?? CompanyPaySettings.defaultSettings(companyId: companyId)
 
-        let serviceStopTypes = try await serviceStopTypesTask
         let workTypes = try await workTypesTask
-        let mappings = try await mappingsTask
         let rates = try await ratesTask
         let companyUsers = try await companyUsersTask
 
@@ -98,9 +90,7 @@ final class PayrollGenerationService {
 
         return CompanyPayContext(
             settings: settings,
-            serviceStopTypes: serviceStopTypes,
             workTypes: workTypes,
-            mappings: mappings,
             rates: rates,
             workers: workers
         )

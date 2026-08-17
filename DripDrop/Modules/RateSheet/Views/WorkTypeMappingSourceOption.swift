@@ -92,16 +92,16 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             WorkTypeMappingSourceOption(
                 sourceType: .serviceStopType,
                 sourceId: PayrollSystemSourceIds.recurringServiceStop,
-                title: "Recurring Service Stop",
-                subtitle: "Fallback for current recurring route stops",
-                systemImage: "repeat"
+                title: "Residential",
+                subtitle: "Fallback for residential route stops",
+                systemImage: "house"
             ),
             WorkTypeMappingSourceOption(
                 sourceType: .serviceStopType,
                 sourceId: PayrollSystemSourceIds.jobServiceStop,
-                title: "Job Service Stop",
-                subtitle: "Fallback for current job-based stops",
-                systemImage: "briefcase"
+                title: "Filter Cleaning",
+                subtitle: "Fallback for job-based stops",
+                systemImage: "sparkles"
             ),
             WorkTypeMappingSourceOption(
                 sourceType: .serviceStopType,
@@ -120,9 +120,9 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             WorkTypeMappingSourceOption(
                 sourceType: .serviceStopType,
                 sourceId: PayrollSystemSourceIds.customerRelationshipServiceStop,
-                title: "Customer Relationship",
-                subtitle: "Fallback for open-ended customer visits",
-                systemImage: "person.wave.2"
+                title: "Service Call",
+                subtitle: "Fallback for customer relationship visits",
+                systemImage: "phone"
             ),
             WorkTypeMappingSourceOption(
                 sourceType: .serviceStopType,
@@ -221,7 +221,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             workTypes = try await workTypesTask
             serviceStopTypes = try await serviceStopTypesTask
         } catch {
-            alertMessage = "Could not load work type mappings. \(error.localizedDescription)"
+            alertMessage = "Could not load pay type links. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -242,7 +242,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             try await dataService.saveWorkTypeMapping(mapping)
             upsertLocal(mapping)
         } catch {
-            alertMessage = "Could not save mapping. \(error.localizedDescription)"
+            alertMessage = "Could not save pay type link. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -259,14 +259,14 @@ final class WorkTypeMappingsViewModel: ObservableObject {
 
             mappings.removeAll { $0.id == mapping.id }
         } catch {
-            alertMessage = "Could not delete mapping. \(error.localizedDescription)"
+            alertMessage = "Could not delete pay type link. \(error.localizedDescription)"
             showAlert = true
         }
     }
 
     func seedSuggestedDefaults(companyId:String) async {
         guard !activeWorkTypes.isEmpty else {
-            alertMessage = "Create company work types before seeding mappings."
+            alertMessage = "Create company pay types before seeding pay type links."
             showAlert = true
             return
         }
@@ -303,15 +303,15 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         appendMappingIfPossible(
             sourceType: .serviceStopType,
             sourceId: PayrollSystemSourceIds.recurringServiceStop,
-            candidateNames: ["Routes", "Route", "Weekly Route"],
+            candidateNames: ["Residential", "Residential Route", "Routes", "Route", "Weekly Route"],
             category: .route
         )
 
         appendMappingIfPossible(
             sourceType: .serviceStopType,
             sourceId: PayrollSystemSourceIds.jobServiceStop,
-            candidateNames: ["Service Call", "Job", "Job Visit", "Repair"],
-            category: .serviceCall
+            candidateNames: ["Filter Cleaning", "Salt Cell Cleaning", "Job", "Job Visit"],
+            category: .cleaning
         )
 
         appendMappingIfPossible(
@@ -324,14 +324,14 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         appendMappingIfPossible(
             sourceType: .serviceStopType,
             sourceId: PayrollSystemSourceIds.serviceAgreementEstimateServiceStop,
-            candidateNames: ["Service Agreement Estimate", "Recurring Service Estimate", "Startup"],
-            category: .serviceCall
+            candidateNames: ["Estimate", "Service Agreement Estimate", "Recurring Service Estimate", "Startup"],
+            category: .startup
         )
 
         appendMappingIfPossible(
             sourceType: .serviceStopType,
             sourceId: PayrollSystemSourceIds.customerRelationshipServiceStop,
-            candidateNames: ["Customer Relationship", "Customer Visit", "Follow Up"],
+            candidateNames: ["Service Call", "Customer Relationship", "Customer Visit", "Follow Up"],
             category: .serviceCall
         )
 
@@ -372,7 +372,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         )
 
         guard !newMappings.isEmpty else {
-            alertMessage = "No new suggested mappings were found. You may already have them, or the matching work types do not exist yet."
+            alertMessage = "No new suggested pay type links were found. You may already have them, or the matching pay types do not exist yet."
             showAlert = true
             return
         }
@@ -387,10 +387,10 @@ final class WorkTypeMappingsViewModel: ObservableObject {
 
             mappings.append(contentsOf: newMappings)
 
-            alertMessage = "Added \(newMappings.count) suggested mappings."
+            alertMessage = "Added \(newMappings.count) suggested pay type links."
             showAlert = true
         } catch {
-            alertMessage = "Could not add suggested mappings. \(error.localizedDescription)"
+            alertMessage = "Could not add suggested pay type links. \(error.localizedDescription)"
             showAlert = true
         }
     }
@@ -399,11 +399,11 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         switch mapping.sourceType {
         case .serviceStopType:
             if mapping.sourceId == PayrollSystemSourceIds.recurringServiceStop {
-                return "Recurring Service Stop"
+                return "Residential"
             }
 
             if mapping.sourceId == PayrollSystemSourceIds.jobServiceStop {
-                return "Job Service Stop"
+                return "Filter Cleaning"
             }
 
             if mapping.sourceId == PayrollSystemSourceIds.jobEstimateServiceStop {
@@ -415,7 +415,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             }
 
             if mapping.sourceId == PayrollSystemSourceIds.customerRelationshipServiceStop {
-                return "Customer Relationship"
+                return "Service Call"
             }
 
             if mapping.sourceId == PayrollSystemSourceIds.unknownServiceStop {
@@ -442,7 +442,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
     }
 
     func workTypeTitle(for mapping: WorkTypeMapping) -> String {
-        workTypesById[mapping.workTypeId]?.name ?? "Missing Work Type"
+        workTypesById[mapping.workTypeId]?.name ?? "Missing Pay Type"
     }
 
     func workTypeIconName(for mapping: WorkTypeMapping) -> String {
@@ -460,7 +460,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
 
     private func validate(companyId:String,_ mapping: WorkTypeMapping) -> (isValid: Bool, message: String) {
         guard mapping.companyId == companyId else {
-            return (false, "Mapping company ID does not match the current company.")
+            return (false, "Pay type link company ID does not match the current company.")
         }
 
         guard !mapping.sourceId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -468,7 +468,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         }
 
         guard workTypesById[mapping.workTypeId] != nil else {
-            return (false, "Select a valid company work type.")
+            return (false, "Select a valid company pay type.")
         }
 
         let exactDuplicate = mappings.contains {
@@ -479,7 +479,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         }
 
         guard !exactDuplicate else {
-            return (false, "This exact mapping already exists.")
+            return (false, "This exact pay type link already exists.")
         }
 
         if !mapping.sourceType.allowsMultipleMappingsPerSource {
@@ -490,10 +490,10 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             }
 
             if let existingSameSource {
-                let existingWorkTypeName = workTypesById[existingSameSource.workTypeId]?.name ?? "another work type"
+                let existingWorkTypeName = workTypesById[existingSameSource.workTypeId]?.name ?? "another pay type"
                 return (
                     false,
-                    "\(mapping.sourceType.title) '\(mapping.sourceId)' is already mapped to \(existingWorkTypeName). Edit the existing mapping instead."
+                    "\(mapping.sourceType.title) '\(mapping.sourceId)' is already linked to \(existingWorkTypeName). Edit the existing link instead."
                 )
             }
         }
@@ -539,7 +539,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         category: WorkCategory?
     ) -> CompanyWorkType? {
         for candidateName in candidateNames {
-            if let exact = activeWorkTypes.first(where: {
+            if let exact = scopedWorkTypes(category: category).first(where: {
                 normalized($0.name) == normalized(candidateName)
             }) {
                 return exact
@@ -547,7 +547,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         }
 
         for candidateName in candidateNames {
-            if let contains = activeWorkTypes.first(where: {
+            if let contains = scopedWorkTypes(category: category).first(where: {
                 normalized($0.name).contains(normalized(candidateName)) ||
                 normalized(candidateName).contains(normalized($0.name))
             }) {
@@ -560,6 +560,15 @@ final class WorkTypeMappingsViewModel: ObservableObject {
         }
 
         return nil
+    }
+
+    private func scopedWorkTypes(category: WorkCategory?) -> [CompanyWorkType] {
+        guard let category else {
+            return activeWorkTypes
+        }
+
+        let matchingCategory = activeWorkTypes.filter { $0.category == category }
+        return matchingCategory.isEmpty ? activeWorkTypes : matchingCategory
     }
 
     private func normalized(_ value: String) -> String {
@@ -596,8 +605,8 @@ struct WorkTypeMappingsView: View {
             filterSection
             mappingsSection
         }
-        .navigationTitle("Task & Fallback Mappings")
-        .searchable(text: $viewModel.searchText, prompt: "Search mappings")
+        .navigationTitle("Task & Fallback Pay Types")
+        .searchable(text: $viewModel.searchText, prompt: "Search pay type links")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -620,7 +629,7 @@ struct WorkTypeMappingsView: View {
         }
         .overlay {
             if viewModel.isLoading {
-                ProgressView("Loading mappings...")
+                ProgressView("Loading pay type links...")
                     .padding()
                     .background(.thinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -640,7 +649,7 @@ struct WorkTypeMappingsView: View {
                 }
             }
         }
-        .alert("Work Type Mappings", isPresented: $viewModel.showAlert) {
+        .alert("Pay Type Links", isPresented: $viewModel.showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.alertMessage)
@@ -650,14 +659,14 @@ struct WorkTypeMappingsView: View {
     private var summarySection: some View {
         Section {
             HStack {
-                Label("Fallback Stop Mappings", systemImage: "mappin.and.ellipse")
+                Label("Fallback Stop Links", systemImage: "mappin.and.ellipse")
                 Spacer()
                 Text("\(viewModel.serviceStopMappingCount)")
                     .fontWeight(.semibold)
             }
 
             HStack {
-                Label("Task Mappings", systemImage: "checklist")
+                Label("Task Pay Links", systemImage: "checklist")
                 Spacer()
                 Text("\(viewModel.taskMappingCount)")
                     .fontWeight(.semibold)
@@ -665,7 +674,7 @@ struct WorkTypeMappingsView: View {
 
             if viewModel.missingWorkTypeCount > 0 {
                 HStack {
-                    Label("Missing Work Types", systemImage: "exclamationmark.triangle")
+                    Label("Missing Pay Types", systemImage: "exclamationmark.triangle")
                     Spacer()
                     Text("\(viewModel.missingWorkTypeCount)")
                         .fontWeight(.semibold)
@@ -679,13 +688,13 @@ struct WorkTypeMappingsView: View {
                     }
                 }
             } label: {
-                Label("Add Suggested Task & Fallback Mappings", systemImage: "sparkles")
+                Label("Add Suggested Task & Fallback Links", systemImage: "sparkles")
             }
             .disabled(viewModel.isSaving || viewModel.activeWorkTypes.isEmpty)
         } header: {
             Text("Setup")
         } footer: {
-            Text("Service Stop Types are the primary place to choose stop pay work types. These mappings cover fallback stop sources and task types that should create extra pay.")
+            Text("Pay Types are the primary place to choose stop pay. These links cover fallback stop sources and task types that should create extra pay.")
         }
     }
 
@@ -728,7 +737,7 @@ struct WorkTypeMappingsView: View {
                 }
             }
         } header: {
-            Text("Mappings")
+            Text("Pay Type Links")
         }
     }
 }
@@ -797,10 +806,10 @@ struct WorkTypeMappingsEmptyState: View {
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
 
-            Text("No mappings yet")
+            Text("No pay type links yet")
                 .font(.headline)
 
-            Text("Add suggested mappings or create a mapping manually. Service stop types handle normal stop pay; these mappings handle fallback stop sources and payable tasks.")
+            Text("Add suggested pay type links or create one manually. Pay types handle normal stop pay; these links handle fallback stop sources and payable tasks.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -882,7 +891,7 @@ struct WorkTypeMappingEditorView: View {
                 workTypeSection
                 helpSection
             }
-            .navigationTitle(isEditing ? "Edit Mapping" : "New Mapping")
+            .navigationTitle(isEditing ? "Edit Pay Type Link" : "New Pay Type Link")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -908,7 +917,7 @@ struct WorkTypeMappingEditorView: View {
                     ?? JobTaskType.cleanFilter.rawValue
                 }
             }
-            .alert("Work Type Mapping", isPresented: $showValidationAlert) {
+            .alert("Pay Type Link", isPresented: $showValidationAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(validationMessage)
@@ -982,7 +991,7 @@ struct WorkTypeMappingEditorView: View {
     private var workTypeSection: some View {
         Section {
             if workTypes.isEmpty {
-                Text("Create at least one Company Work Type before adding mappings.")
+                Text("Create at least one company pay type before adding links.")
                     .foregroundStyle(.secondary)
             } else {
                 Picker("Maps To", selection: $selectedWorkTypeId) {
@@ -1004,9 +1013,9 @@ struct WorkTypeMappingEditorView: View {
                 }
             }
         } header: {
-            Text("Company Work Type")
+            Text("Company Pay Type")
         } footer: {
-            Text("This is the payroll work type that will be used to find technician rates.")
+            Text("This is the pay type that will be used to find technician rates.")
         }
     }
 
@@ -1016,9 +1025,9 @@ struct WorkTypeMappingEditorView: View {
                 Text("Examples")
                     .font(.headline)
 
-            Text("system_recurring_service_stop -> Routes")
-            Text("system_job_service_stop -> Service Call")
-                Text("Clean Filter → Clean Filter")
+            Text("system_recurring_service_stop -> Residential")
+            Text("system_job_service_stop -> Filter Cleaning")
+                Text("Clean Filter → Filter Cleaning")
                 Text("Repair → Repair")
                 Text("Install → Installation")
             }
@@ -1077,7 +1086,7 @@ struct WorkTypeMappingEditorView: View {
 
     private func save(companyId:String) {
         guard !selectedWorkTypeId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            validationMessage = "Select a company work type."
+            validationMessage = "Select a company pay type."
             showValidationAlert = true
             return
         }

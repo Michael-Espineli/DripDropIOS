@@ -879,6 +879,7 @@ struct ScheduleEquipmentRepairJobView: View {
 
 struct EquipmentServiceRecordShell: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedInput: Bool
 
     let title: String
     let subtitle: String
@@ -918,6 +919,14 @@ struct EquipmentServiceRecordShell: View {
         }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedInput = false
+                }
+            }
         }
     }
 
@@ -1031,6 +1040,8 @@ struct EquipmentServiceRecordShell: View {
             HStack(spacing: 10) {
                 TextField("Part name", text: $VM.currentPartName)
                     .font(.subheadline)
+                    .focused($focusedInput)
+                    .submitLabel(.done)
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
@@ -1087,6 +1098,8 @@ struct EquipmentServiceRecordShell: View {
 
             TextField("Description", text: $VM.description, axis: .vertical)
                 .font(.subheadline)
+                .focused($focusedInput)
+                .submitLabel(.done)
                 .lineLimit(4, reservesSpace: true)
                 .padding(12)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -1143,6 +1156,8 @@ struct EquipmentServiceRecordShell: View {
 
             TextField(title, text: text)
                 .font(.subheadline)
+                .focused($focusedInput)
+                .submitLabel(.done)
                 .padding(12)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
@@ -1204,6 +1219,7 @@ struct EquipmentServiceRecordShell: View {
 
 struct EquipmentScheduleJobShell: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedInput: Bool
 
     let title: String
     let subtitle: String
@@ -1242,6 +1258,14 @@ struct EquipmentScheduleJobShell: View {
         }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedInput = false
+                }
+            }
         }
     }
 
@@ -1320,6 +1344,8 @@ struct EquipmentScheduleJobShell: View {
 
                 TextField("Description", text: $VM.jobDescription, axis: .vertical)
                     .font(.subheadline)
+                    .focused($focusedInput)
+                    .submitLabel(.done)
                     .lineLimit(4, reservesSpace: true)
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))

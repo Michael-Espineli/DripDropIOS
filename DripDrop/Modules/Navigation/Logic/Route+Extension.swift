@@ -151,6 +151,8 @@ extension Route {
             return "Equipment Detail View"
         case .equipmentList:
             return "Equipment List"
+        case .poolEquipmentScanner:
+            return "Equipment Scanner"
         case .routes:
             return "Routes"
         case .settings:

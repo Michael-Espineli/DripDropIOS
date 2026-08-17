@@ -443,10 +443,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
 
     // MARK: - Company Service Stop Types
-    // companies/{companyId}/companyServiceStopTypes/{serviceStopTypeId}
+    // companies/{companyId}/companyPayTypes/{payTypeId}
 
     func companyServiceStopTypesCollection(companyId: String) -> CollectionReference {
-        companyDoc(companyId: companyId).collection("companyServiceStopTypes")
+        companyDoc(companyId: companyId).collection("companyPayTypes")
     }
 
     func companyServiceStopTypeDoc(
@@ -457,11 +457,11 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             .document(serviceStopTypeId)
     }
 
-    // MARK: - Company Work Types
-    // companies/{companyId}/companyWorkTypes/{workTypeId}
+    // MARK: - Company Pay Types
+    // companies/{companyId}/companyPayTypes/{payTypeId}
 
     func companyWorkTypesCollection(companyId: String) -> CollectionReference {
-        companyDoc(companyId: companyId).collection("companyWorkTypes")
+        companyDoc(companyId: companyId).collection("companyPayTypes")
     }
 
     func companyWorkTypeDoc(
@@ -636,38 +636,86 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     ) async throws -> [CompanyServiceStopType] {
         [
             CompanyServiceStopType(
-                id: "comp_ss_type_weekly_route",
+                id: PayrollSystemSourceIds.recurringServiceStop,
                 companyId: companyId,
-                name: "Weekly Route",
-                imageName: "figure.pool.swim",
+                name: "Residential",
+                imageName: "house",
                 isActive: true,
-                sortOrder: 10,
-                defaultWorkTypeIds: ["comp_work_type_routes"],
+                sortOrder: 0,
+                category: .route,
+                defaultWorkTypeIds: [],
                 createdAt: Date(),
                 createdByUserId: "mock_admin_user"
             ),
             CompanyServiceStopType(
-                id: "comp_ss_type_route_spa",
+                id: PayrollSystemSourceIds.commercialRoute,
                 companyId: companyId,
-                name: "Route + Spa",
-                imageName: "bubbles.and.sparkles",
+                name: "Commercial",
+                imageName: "building.2",
                 isActive: true,
-                sortOrder: 20,
-                defaultWorkTypeIds: [
-                    "comp_work_type_routes",
-                    "comp_work_type_spa_add_on"
-                ],
+                sortOrder: 1,
+                category: .route,
+                defaultWorkTypeIds: [],
                 createdAt: Date(),
                 createdByUserId: "mock_admin_user"
             ),
             CompanyServiceStopType(
-                id: "comp_ss_type_service_call",
+                id: PayrollSystemSourceIds.jobServiceStop,
+                companyId: companyId,
+                name: "Filter Cleaning",
+                imageName: "sparkles",
+                isActive: true,
+                sortOrder: 2,
+                category: .job,
+                defaultWorkTypeIds: [],
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            ),
+            CompanyServiceStopType(
+                id: PayrollSystemSourceIds.jobSaltCellCleaning,
+                companyId: companyId,
+                name: "Salt Cell Cleaning",
+                imageName: "drop",
+                isActive: true,
+                sortOrder: 3,
+                category: .job,
+                defaultWorkTypeIds: [],
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            ),
+            CompanyServiceStopType(
+                id: PayrollSystemSourceIds.jobEstimateServiceStop,
+                companyId: companyId,
+                name: "Estimate",
+                imageName: "doc.text.magnifyingglass",
+                isActive: true,
+                sortOrder: 4,
+                category: .jobEstimate,
+                defaultWorkTypeIds: [],
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            ),
+            CompanyServiceStopType(
+                id: PayrollSystemSourceIds.serviceAgreementEstimateServiceStop,
+                companyId: companyId,
+                name: "Estimate",
+                imageName: "list.clipboard",
+                isActive: true,
+                sortOrder: 5,
+                category: .serviceAgreementEstimate,
+                defaultWorkTypeIds: [],
+                createdAt: Date(),
+                createdByUserId: "mock_admin_user"
+            ),
+            CompanyServiceStopType(
+                id: PayrollSystemSourceIds.customerRelationshipServiceStop,
                 companyId: companyId,
                 name: "Service Call",
                 imageName: "phone",
                 isActive: true,
-                sortOrder: 30,
-                defaultWorkTypeIds: ["comp_work_type_service_call"],
+                sortOrder: 6,
+                category: .customerRelationship,
+                defaultWorkTypeIds: [],
                 createdAt: Date(),
                 createdByUserId: "mock_admin_user"
             )
@@ -714,21 +762,21 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
                 companyId: companyId,
                 sourceType: .serviceStopType,
                 sourceId: PayrollSystemSourceIds.recurringServiceStop,
-                workTypeId: "comp_work_type_routes"
+                workTypeId: PayrollSystemSourceIds.recurringServiceStop
             ),
             WorkTypeMapping(
                 id: "comp_work_map_mock_job",
                 companyId: companyId,
                 sourceType: .serviceStopType,
                 sourceId: PayrollSystemSourceIds.jobServiceStop,
-                workTypeId: "comp_work_type_service_call"
+                workTypeId: PayrollSystemSourceIds.jobServiceStop
             ),
             WorkTypeMapping(
                 id: "comp_work_map_mock_clean_filter",
                 companyId: companyId,
                 sourceType: .jobTaskType,
                 sourceId: JobTaskType.cleanFilter.rawValue,
-                workTypeId: "comp_work_type_clean_filter"
+                workTypeId: PayrollSystemSourceIds.jobServiceStop
             )
         ]
     }
@@ -6888,27 +6936,38 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         let createdAt = equipment.createdAt ?? Date()
         let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
+        let cleanFilterPressureValue: Any = equipment.cleanFilterPressure.map { $0 as Any } ?? FieldValue.delete()
+        let currentPressureValue: Any = equipment.currentPressure.map { $0 as Any } ?? FieldValue.delete()
+        let lastServiceDateValue: Any = equipment.needsService ? (equipment.lastServiceDate.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyValue: Any = equipment.needsService ? (equipment.serviceFrequency.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyEveryValue: Any = equipment.needsService ? (equipment.serviceFrequencyEvery.map { $0.rawValue as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type,
+            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
+            Equipment.CodingKeys.makeId.stringValue:equipment.makeId,
             Equipment.CodingKeys.model.stringValue:equipment.model,
+            Equipment.CodingKeys.modelId.stringValue:equipment.modelId,
+            Equipment.CodingKeys.universalEquipmentId.stringValue:equipment.universalEquipmentId,
+            Equipment.CodingKeys.manualPdfLink.stringValue:equipment.manualPdfLink,
             Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue,
             Equipment.CodingKeys.createdAt.stringValue: createdAt,
-            Equipment.CodingKeys.status.stringValue:equipment.status,
+            Equipment.CodingKeys.status.stringValue:equipment.status.rawValue,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
+            Equipment.CodingKeys.cleanFilterPressure.stringValue:cleanFilterPressureValue,
+            Equipment.CodingKeys.currentPressure.stringValue:currentPressureValue,
+            Equipment.CodingKeys.lastServiceDate.stringValue:lastServiceDateValue,
+            Equipment.CodingKeys.serviceFrequency.stringValue:serviceFrequencyValue,
+            Equipment.CodingKeys.serviceFrequencyEvery.stringValue:serviceFrequencyEveryValue,
+            Equipment.CodingKeys.nextServiceDate.stringValue:nextServiceDateValue,
+            Equipment.CodingKeys.notes.stringValue:equipment.notes,
+            Equipment.CodingKeys.customerName.stringValue:equipment.customerName,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,
             Equipment.CodingKeys.bodyOfWaterId.stringValue:equipment.bodyOfWaterId,
         ])
-        if equipment.needsService {
-            try await equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
-            ])
-        }
     }
     func updateEquipmentCustomer(companyId:String,equipment:Equipment) async throws {
         try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: true)
@@ -8612,6 +8671,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         self.serviceStopListener = listener
     }
     func addListenerForAllEquipment(companyId: String,amount:Int, completion: @escaping ([Equipment]) -> Void) {
+        equipmentListener?.remove()
         let listener = equipmentCollection(companyId: companyId)
             .limit(to: amount)
             .addSnapshotListener { querySnapshot, error in
@@ -8906,6 +8966,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func removeEquipmentListener() {
         self.equipmentListener?.remove()
+        self.equipmentListener = nil
     }
     func removeSavedCompanyListener() {
         self.savedBusinessListener?.remove()

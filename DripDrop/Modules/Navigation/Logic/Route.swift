@@ -90,6 +90,7 @@ enum Route {
     case chats(dataService:any ProductionDataServiceProtocol)//Are these the Same
     
     case equipmentList(dataService:any ProductionDataServiceProtocol)
+    case poolEquipmentScanner(dataService:any ProductionDataServiceProtocol)
     case routes(dataService:any ProductionDataServiceProtocol)
     case settings(dataService:any ProductionDataServiceProtocol)
     case userSettings(dataService:any ProductionDataServiceProtocol)
@@ -439,6 +440,8 @@ extension Route:View {
             ChatListView(dataService: dataService)
         case .equipmentList(dataService: let dataService):
             EquipmentList(dataService: dataService)
+        case .poolEquipmentScanner(dataService: let dataService):
+            PoolEquipmentScannerView(dataService: dataService)
         case .routes(dataService: let dataService):
             RouteManagmentView2(dataService: dataService)
         case .settings(dataService: let dataService):

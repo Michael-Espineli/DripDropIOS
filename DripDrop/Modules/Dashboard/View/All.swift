@@ -57,7 +57,11 @@ struct All: View {
         .task{
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                 do {
-                    try await VM.onLoad(companyId: company.id, user: user)
+                    try await VM.onLoad(
+                        companyId: company.id,
+                        user: user,
+                        includeCompanyWideMessages: masterDataManager.role?.canViewOtherMessages == true
+                    )
                 } catch {
                     print("onLoad - [All]")
                     print(error)

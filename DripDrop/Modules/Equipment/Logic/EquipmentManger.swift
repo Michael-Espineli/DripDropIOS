@@ -93,6 +93,16 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
         var equipmentToSave = equipment
         equipmentToSave.createdAt = equipmentToSave.createdAt ?? Date()
         try equipmentCollection(companyId: companyId).document(equipmentToSave.id).setData(from:equipmentToSave, merge: false)
+        do {
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipmentToSave,
+                source: "iosEquipmentManagerCreate"
+            )
+        } catch {
+            print("Error creating universal equipment suggestion: \(error)")
+        }
         
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
@@ -518,29 +528,41 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         let createdAt = equipment.createdAt ?? Date()
         let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
+        let cleanFilterPressureValue: Any = equipment.cleanFilterPressure.map { $0 as Any } ?? FieldValue.delete()
+        let currentPressureValue: Any = equipment.currentPressure.map { $0 as Any } ?? FieldValue.delete()
+        let lastServiceDateValue: Any = equipment.needsService ? (equipment.lastServiceDate.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyValue: Any = equipment.needsService ? (equipment.serviceFrequency.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyEveryValue: Any = equipment.needsService ? (equipment.serviceFrequencyEvery.map { $0.rawValue as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type,
+            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
+            Equipment.CodingKeys.makeId.stringValue:equipment.makeId,
             Equipment.CodingKeys.model.stringValue:equipment.model,
+            Equipment.CodingKeys.modelId.stringValue:equipment.modelId,
+            Equipment.CodingKeys.universalEquipmentId.stringValue:equipment.universalEquipmentId,
+            Equipment.CodingKeys.manualPdfLink.stringValue:equipment.manualPdfLink,
             Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue,
             Equipment.CodingKeys.createdAt.stringValue: createdAt,
-            Equipment.CodingKeys.status.stringValue:equipment.status,
+            Equipment.CodingKeys.status.stringValue:equipment.status.rawValue,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
+            Equipment.CodingKeys.cleanFilterPressure.stringValue:cleanFilterPressureValue,
+            Equipment.CodingKeys.currentPressure.stringValue:currentPressureValue,
+            Equipment.CodingKeys.lastServiceDate.stringValue:lastServiceDateValue,
+            Equipment.CodingKeys.serviceFrequency.stringValue:serviceFrequencyValue,
+            Equipment.CodingKeys.serviceFrequencyEvery.stringValue:serviceFrequencyEveryValue,
+            Equipment.CodingKeys.nextServiceDate.stringValue:nextServiceDateValue,
+            Equipment.CodingKeys.notes.stringValue:equipment.notes,
+            Equipment.CodingKeys.customerName.stringValue:equipment.customerName,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,
             Equipment.CodingKeys.bodyOfWaterId.stringValue:equipment.bodyOfWaterId,
         ])
-        if equipment.needsService {
-            try await equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
-            ])
-        }
     }
     func addListenerForAllEquipment(companyId: String,amount:Int, completion: @escaping ([Equipment]) -> Void) {
+        equipmentListener?.remove()
         let listener = equipmentCollection(companyId: companyId)
             .limit(to: amount)
             .addSnapshotListener { querySnapshot, error in
@@ -556,6 +578,7 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
     }
     func removeEquipmentListener() {
         self.equipmentListener?.remove()
+        self.equipmentListener = nil
 
     }
     //----------------------------------------------------
@@ -607,6 +630,16 @@ final class EquipmentManager:EquipmentManagerProtocol {
         var equipmentToSave = equipment
         equipmentToSave.createdAt = equipmentToSave.createdAt ?? Date()
         try equipmentCollection(companyId: companyId).document(equipmentToSave.id).setData(from:equipmentToSave, merge: false)
+        do {
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipmentToSave,
+                source: "iosEquipmentManagerCreate"
+            )
+        } catch {
+            print("Error creating universal equipment suggestion: \(error)")
+        }
         
     }
     func addNewEquipmentWithParts(companyId: String,equipment:Equipment) async throws {
@@ -1033,30 +1066,61 @@ final class EquipmentManager:EquipmentManagerProtocol {
         let equipmentRef = equipmentDoc(companyId: companyId, equipmentId: equipmentId)
         let createdAt = equipment.createdAt ?? Date()
         let dateInstalledValue: Any = equipment.dateInstalled.map { $0 as Any } ?? FieldValue.delete()
+        let cleanFilterPressureValue: Any = equipment.cleanFilterPressure.map { $0 as Any } ?? FieldValue.delete()
+        let currentPressureValue: Any = equipment.currentPressure.map { $0 as Any } ?? FieldValue.delete()
+        let lastServiceDateValue: Any = equipment.needsService ? (equipment.lastServiceDate.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyValue: Any = equipment.needsService ? (equipment.serviceFrequency.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let serviceFrequencyEveryValue: Any = equipment.needsService ? (equipment.serviceFrequencyEvery.map { $0.rawValue as Any } ?? FieldValue.delete()) : FieldValue.delete()
+        let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type,
+            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
+            Equipment.CodingKeys.makeId.stringValue:equipment.makeId,
             Equipment.CodingKeys.model.stringValue:equipment.model,
+            Equipment.CodingKeys.modelId.stringValue:equipment.modelId,
+            Equipment.CodingKeys.universalEquipmentId.stringValue:equipment.universalEquipmentId,
+            Equipment.CodingKeys.manualPdfLink.stringValue:equipment.manualPdfLink,
             Equipment.CodingKeys.dateInstalled.stringValue: dateInstalledValue,
             Equipment.CodingKeys.createdAt.stringValue: createdAt,
-            Equipment.CodingKeys.status.stringValue:equipment.status,
+            Equipment.CodingKeys.status.stringValue:equipment.status.rawValue,
             Equipment.CodingKeys.needsService.stringValue:equipment.needsService,
+            Equipment.CodingKeys.cleanFilterPressure.stringValue:cleanFilterPressureValue,
+            Equipment.CodingKeys.currentPressure.stringValue:currentPressureValue,
+            Equipment.CodingKeys.lastServiceDate.stringValue:lastServiceDateValue,
+            Equipment.CodingKeys.serviceFrequency.stringValue:serviceFrequencyValue,
+            Equipment.CodingKeys.serviceFrequencyEvery.stringValue:serviceFrequencyEveryValue,
+            Equipment.CodingKeys.nextServiceDate.stringValue:nextServiceDateValue,
+            Equipment.CodingKeys.notes.stringValue:equipment.notes,
+            Equipment.CodingKeys.customerName.stringValue:equipment.customerName,
             Equipment.CodingKeys.customerId.stringValue:equipment.customerId,
             Equipment.CodingKeys.serviceLocationId.stringValue:equipment.serviceLocationId,
             Equipment.CodingKeys.bodyOfWaterId.stringValue:equipment.bodyOfWaterId,
         ])
-        if equipment.needsService {
-            try await equipmentRef.updateData([
-                Equipment.CodingKeys.lastServiceDate.stringValue:equipment.lastServiceDate as Any,
-                Equipment.CodingKeys.serviceFrequency.stringValue:equipment.serviceFrequency as Any,
-                Equipment.CodingKeys.serviceFrequencyEvery.stringValue:equipment.serviceFrequencyEvery as Any,
-                Equipment.CodingKeys.nextServiceDate.stringValue:equipment.nextServiceDate as Any,
-            ])
+        do {
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipment,
+                source: "iosEquipmentManagerEdit"
+            )
+        } catch {
+            print("Error syncing universal equipment suggestion: \(error)")
         }
     }
     func updateEquipmentCustomer(companyId:String,equipment:Equipment) async throws {
         try equipmentCollection(companyId: companyId).document(equipment.id).setData(from:equipment, merge: true)
+        do {
+            try await syncUniversalEquipmentSuggestion(
+                db: db,
+                companyId: companyId,
+                equipment: equipment,
+                source: "iosEquipmentManagerCustomerEdit"
+            )
+        } catch {
+            print("Error syncing universal equipment suggestion: \(error)")
+        }
 
     }
     //----------------------------------------------------
@@ -1105,6 +1169,7 @@ final class EquipmentManager:EquipmentManagerProtocol {
     //------------------  FUNCTIONS  ---------------------
     //----------------------------------------------------
     func addListenerForAllEquipment(companyId: String,amount:Int, completion: @escaping ([Equipment]) -> Void) {
+        equipmentListener?.remove()
         let listener = equipmentCollection(companyId: companyId)
             .limit(to: amount)
             .addSnapshotListener { querySnapshot, error in
@@ -1120,6 +1185,7 @@ final class EquipmentManager:EquipmentManagerProtocol {
     }
     func removeEquipmentListener() {
         self.equipmentListener?.remove()
+        self.equipmentListener = nil
 
     }
 }

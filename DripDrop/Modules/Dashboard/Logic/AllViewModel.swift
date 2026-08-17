@@ -50,7 +50,7 @@ final class AllViewModel:ObservableObject{
     @Published private(set) var recentActivityList: [RecentActivityModel] = []
     
     
-    func onLoad(companyId:String,user:DBUser) async throws {
+    func onLoad(companyId:String,user:DBUser, includeCompanyWideMessages: Bool = false) async throws {
         print("")
         print("All View Model - On Load")
         
@@ -86,11 +86,13 @@ final class AllViewModel:ObservableObject{
 //        print("Purchase List Count \(String(describing: purchaseCount))")
 //        
         self.isAlertLoading = false
-        dataService.addListenerForUnreadChats(userId: user.id, companyId: companyId) { [weak self] chats in
+        let readableCompanyId = includeCompanyWideMessages ? companyId : nil
+
+        dataService.addListenerForUnreadChats(userId: user.id, companyId: readableCompanyId) { [weak self] chats in
             self?.unreadChatCount = chats.count
             self?.listOfUnreadChats = chats
         }
-        dataService.addListenerForVisibleChats(userId: user.id, companyId: companyId) { [weak self] chats in
+        dataService.addListenerForVisibleChats(userId: user.id, companyId: readableCompanyId) { [weak self] chats in
             self?.listOfChats = chats
         }
         self.isChatLoading = false

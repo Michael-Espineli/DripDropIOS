@@ -26,7 +26,7 @@ struct CompanyPayrollAdminHomeView: View {
 
     private var setupSection: some View {
         Section("Setup") {
-            if let currentCompany = masterDataManager.currentCompany {
+            if masterDataManager.currentCompany != nil {
                 NavigationLink {
                     CompanyPaySettingsView(
                         dataService: dataService
@@ -38,21 +38,6 @@ struct CompanyPayrollAdminHomeView: View {
                         subtitle: "Company payroll rules, hourly settings, and approval behavior"
                     )
                 }
-                if let currentCompany = masterDataManager.currentCompany, let user = masterDataManager.user {
-                    NavigationLink {
-                        CompanyServiceStopTypesView(
-                            companyId: currentCompany.id,
-                            currentUserId: user.id,
-                            dataService: dataService
-                        )
-                    } label: {
-                        PayrollAdminNavRow(
-                            iconName: "mappin.and.ellipse",
-                            title: "Service Stop Types",
-                            subtitle: "Choose the payroll work types each scheduled stop should use"
-                        )
-                    }
-                }
                 NavigationLink {
                     CompanyWorkTypesView(
                         dataService: dataService
@@ -60,20 +45,8 @@ struct CompanyPayrollAdminHomeView: View {
                 } label: {
                     PayrollAdminNavRow(
                         iconName: "list.bullet.rectangle",
-                        title: "Payroll Work Types",
-                        subtitle: "The payroll rows that technicians can have rates for"
-                    )
-                }
-                
-                NavigationLink {
-                    WorkTypeMappingsView(
-                        dataService: dataService
-                    )
-                } label: {
-                    PayrollAdminNavRow(
-                        iconName: "arrow.triangle.branch",
-                        title: "Task & Source Mappings",
-                        subtitle: "Map payable task types and fallback stop sources to payroll work"
+                        title: "Pay Types",
+                        subtitle: "Group pay types by route, job, estimate, and relationship buckets"
                     )
                 }
                 if let user = masterDataManager.user {
@@ -86,7 +59,7 @@ struct CompanyPayrollAdminHomeView: View {
                         PayrollAdminNavRow(
                             iconName: "tablecells",
                             title: "Technician Rate Matrix",
-                            subtitle: "Set each technician's rate for each work type"
+                            subtitle: "Set each technician's rate for each pay type"
                         )
                     }
                 }

@@ -63,6 +63,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
     @Published var selectedPlannedServiceStop: JobPlannedServiceStop?
     @Published private(set) var editingServiceStop: ServiceStop?
     @Published private(set) var editingServiceStopTasks: [ServiceStopTask] = []
+    @Published private(set) var handoffJobTaskIds: Set<String> = []
+    private var handoffSourceServiceStop: ServiceStop?
 
     @Published private(set) var taskTypes: [String] = []
 
@@ -72,12 +74,16 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         description: String,
         jobTaskList: [JobTask],
         plannedServiceStops: [JobPlannedServiceStop] = [],
-        editingServiceStop: ServiceStop? = nil
+        editingServiceStop: ServiceStop? = nil,
+        prefilledJobTaskIds: Set<String> = [],
+        handoffSourceServiceStop: ServiceStop? = nil
     ) async throws {
         self.description = description
         self.jobTaskList = jobTaskList
         self.plannedServiceStops = plannedServiceStops
         self.editingServiceStop = editingServiceStop
+        self.handoffJobTaskIds = prefilledJobTaskIds
+        self.handoffSourceServiceStop = handoffSourceServiceStop
 
         self.taskTypes = [
             "Basic",
@@ -121,6 +127,9 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             self.manualPayOverrideCents = editingServiceStop.manualPayOverrideCents ?? 0
             self.manualPayOverrideNotes = editingServiceStop.manualPayOverrideNotes ?? ""
             estimateTime(tasks: selectedJobTaskList)
+        } else if !prefilledJobTaskIds.isEmpty {
+            self.selectedJobTaskList = carriedJobTasks()
+            estimateTime(tasks: selectedJobTaskList)
         }
 
         setPlaceholderRouteSnapshot()
@@ -145,15 +154,20 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         selectedPlannedServiceStop = plannedStop
 
         guard let plannedStop else {
+            if !handoffJobTaskIds.isEmpty {
+                selectedJobTaskList = carriedJobTasks()
+                estimateTime(tasks: selectedJobTaskList)
+            }
             return
         }
 
         description = plannedStop.description
 
         let plannedTaskIds = Set(plannedStop.taskIds)
-        selectedJobTaskList = jobTaskList.filter { task in
+        let plannedTasks = jobTaskList.filter { task in
             plannedTaskIds.contains(task.id) && isTaskSelectable(task)
         }
+        selectedJobTaskList = mergeUniqueTasks(carriedJobTasks() + plannedTasks)
 
         if selectedJobTaskList.isEmpty {
             estimatedTime = plannedStop.estimatedMinutes
@@ -163,6 +177,10 @@ final class ScheduleServiceStopViewModel: ObservableObject {
     }
 
     func isTaskSelectable(_ task: JobTask) -> Bool {
+        if handoffJobTaskIds.contains(task.id) {
+            return true
+        }
+
         if editingServiceStopTasks.contains(where: { $0.jobTaskId == task.id }) {
             return true
         }
@@ -173,6 +191,10 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         case .accepted, .offered, .scheduled, .finished, .inProgress:
             return false
         }
+    }
+
+    func isHandoffTask(_ task: JobTask) -> Bool {
+        handoffJobTaskIds.contains(task.id)
     }
 
     func onChangeOfDayOrTech(companyId: String) async throws {
@@ -193,6 +215,43 @@ final class ScheduleServiceStopViewModel: ObservableObject {
         self.routeSnapshotProjectedFinish = "3:45 PM"
         self.routeSnapshotNextStop = "Next stop placeholder"
         self.routeSnapshotOpenTasks = 12
+    }
+
+    private func carriedJobTasks() -> [JobTask] {
+        jobTaskList.filter { handoffJobTaskIds.contains($0.id) }
+    }
+
+    private func mergeUniqueTasks(_ tasks: [JobTask]) -> [JobTask] {
+        var seen = Set<String>()
+
+        return tasks.filter { task in
+            seen.insert(task.id).inserted
+        }
+    }
+
+    private func cleanupHandedOffTasks(companyId: String) async throws {
+        guard let sourceStop = handoffSourceServiceStop else { return }
+
+        let selectedHandoffTaskIds = Set(selectedJobTaskList.map(\.id)).intersection(handoffJobTaskIds)
+        guard !selectedHandoffTaskIds.isEmpty else { return }
+
+        let sourceTasks = try await dataService.getServiceStopTasks(
+            companyId: companyId,
+            serviceStopId: sourceStop.id
+        )
+
+        for sourceTask in sourceTasks {
+            guard selectedHandoffTaskIds.contains(sourceTask.jobTaskId),
+                  sourceTask.status != .finished else {
+                continue
+            }
+
+            try await dataService.deleteServiceStopTask(
+                companyId: companyId,
+                serviceStopId: sourceStop.id,
+                taskId: sourceTask.id
+            )
+        }
     }
 
     private func syncShoppingItemsForScheduledTasks(
@@ -384,6 +443,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 serviceStopId: serviceStopId,
                 serviceStopInternalId: internalId
             )
+
+            try await cleanupHandedOffTasks(companyId: companyId)
 
             self.alertMessage = "Successfully Uploaded"
             self.showAlert = true
@@ -584,7 +645,9 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             equipmentId: task.equipmentId,
             serviceLocationId: serviceLocationId,
             bodyOfWaterId: task.bodyOfWaterId,
-            shoppingListItemId: task.dataBaseItemId
+            shoppingListItemId: task.dataBaseItemId,
+            payTypeId: task.payTypeId,
+            payTypeName: task.payTypeName
         )
     }
 
@@ -922,6 +985,8 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                 }
             }
 
+            try await cleanupHandedOffTasks(companyId: companyId)
+
             self.alertMessage = "Successfully Uploaded"
             self.showAlert = true
             self.isLoading = false
@@ -945,6 +1010,8 @@ struct ScheduleServiceStopView: View {
     @State var jobTaskList: [JobTask]
     @State var plannedServiceStops: [JobPlannedServiceStop]
     @State var editingServiceStop: ServiceStop?
+    @State var prefilledJobTaskIds: Set<String>
+    @State var handoffSourceServiceStop: ServiceStop?
 
     let companyId: String
     let serviceStopTypeUseCase: ServiceStopTypeUseCase
@@ -962,6 +1029,8 @@ struct ScheduleServiceStopView: View {
         jobTaskList: [JobTask],
         plannedServiceStops: [JobPlannedServiceStop] = [],
         editingServiceStop: ServiceStop? = nil,
+        prefilledJobTaskIds: Set<String> = [],
+        handoffSourceServiceStop: ServiceStop? = nil,
         serviceStopTypeUseCase: ServiceStopTypeUseCase = .jobVisit
     ) {
         _VM = StateObject(wrappedValue: ScheduleServiceStopViewModel(dataService: dataService))
@@ -973,6 +1042,8 @@ struct ScheduleServiceStopView: View {
         _jobTaskList = State(wrappedValue: jobTaskList)
         _plannedServiceStops = State(wrappedValue: plannedServiceStops)
         _editingServiceStop = State(wrappedValue: editingServiceStop)
+        _prefilledJobTaskIds = State(wrappedValue: prefilledJobTaskIds)
+        _handoffSourceServiceStop = State(wrappedValue: handoffSourceServiceStop)
 
         self.companyId = companyId
         self.serviceStopTypeUseCase = serviceStopTypeUseCase
@@ -1049,7 +1120,9 @@ struct ScheduleServiceStopView: View {
                         description: description,
                         jobTaskList: jobTaskList,
                         plannedServiceStops: plannedServiceStops,
-                        editingServiceStop: editingServiceStop
+                        editingServiceStop: editingServiceStop,
+                        prefilledJobTaskIds: prefilledJobTaskIds,
+                        handoffSourceServiceStop: handoffSourceServiceStop
                     )
                 } catch {
                     print(error)
@@ -1150,20 +1223,6 @@ extension ScheduleServiceStopView {
                 )
             } else {
                 VStack(spacing: 8) {
-                    Button {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
-                            VM.applyPlannedServiceStop(nil)
-                        }
-                    } label: {
-                        plannedStopSourceRow(
-                            title: "Blank service stop",
-                            subtitle: "Start without a planned stop template.",
-                            systemImage: "plus.circle",
-                            isSelected: VM.selectedPlannedServiceStop == nil
-                        )
-                    }
-                    .buttonStyle(.plain)
-
                     ForEach(plannedServiceStops.sorted(by: { $0.sortOrder < $1.sortOrder })) { plannedStop in
                         Button {
                             withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
@@ -1179,6 +1238,20 @@ extension ScheduleServiceStopView {
                         }
                         .buttonStyle(.plain)
                     }
+
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                            VM.applyPlannedServiceStop(nil)
+                        }
+                    } label: {
+                        plannedStopSourceRow(
+                            title: "Blank service stop",
+                            subtitle: "Start without a planned stop template.",
+                            systemImage: "plus.circle",
+                            isSelected: VM.selectedPlannedServiceStop == nil
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -1188,7 +1261,7 @@ extension ScheduleServiceStopView {
 
     var serviceStopTypeCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader("Stop Type", systemImage: "mappin.and.ellipse")
+            sectionHeader("Pay Type", systemImage: "mappin.and.ellipse")
 
             if resolvedCompanyId.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -1196,7 +1269,7 @@ extension ScheduleServiceStopView {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.orange)
 
-                    Text("Company ID is required to load service stop types. This stop will use the fallback job service stop type if scheduled.")
+                    Text("Company ID is required to load pay types. This stop will use a fallback pay type if scheduled.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1208,10 +1281,10 @@ extension ScheduleServiceStopView {
                     dataService: VM.dataService,
                     selectedType: $selectedCompanyServiceStopType,
                     useCase: serviceStopTypeUseCase,
-                    title: "Service Stop Type",
+                    title: "Pay Type",
                     subtitle: VM.selectedPlannedServiceStop == nil
-                    ? "Payroll uses this type to decide which work type rates apply when this stop is finished."
-                    : "Using the service stop type from the selected planned stop.",
+                    ? "Payroll uses this pay type when this stop is finished."
+                    : "Using the pay type from the selected planned stop.",
                     preferredTypeId: VM.selectedPlannedServiceStop?.serviceStopTypeId
                 )
             }
@@ -1657,9 +1730,17 @@ extension ScheduleServiceStopView {
 
         } else {
             let isSelected = VM.selectedJobTaskList.contains(where: { $0.id == task.id })
+            let isHandoffTask = VM.isHandoffTask(task)
 
             return AnyView(
                 Button {
+                    if isHandoffTask && isSelected {
+                        #if os(iOS)
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        #endif
+                        return
+                    }
+
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                         if isSelected {
                             VM.selectedJobTaskList.removeAll(where: { $0.id == task.id })
@@ -1684,7 +1765,7 @@ extension ScheduleServiceStopView {
                                 .foregroundStyle(.primary)
                                 .lineLimit(1)
 
-                            Text("\(task.type) • \(task.status.rawValue)")
+                            Text("\(task.type) • \(task.status.rawValue)\(isHandoffTask ? " • Carry over" : "")")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)

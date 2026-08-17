@@ -278,10 +278,12 @@ struct Chat:Identifiable, Codable, Equatable{
         return participants.first?.userName ?? "Conversation"
     }
 
-    func isVisibleTo(userId:String, companyId:String?) -> Bool {
+    func isVisibleTo(userId:String, companyId:String?, includeCompanyWide: Bool = false) -> Bool {
         if participantIds.contains(userId) {
             return true
         }
+
+        guard includeCompanyWide else { return false }
 
         guard let companyId else { return false }
         return participantCompanyIds?.contains(companyId) == true || self.companyId == companyId
@@ -735,7 +737,9 @@ final class MockChatManager:ChatManagerProtocol {
 
     }
     func getVisibleChats(userId:String, companyId:String?) async throws ->[Chat]{
-        return mockContracts.filter { $0.isVisibleTo(userId: userId, companyId: companyId) }
+        return mockContracts.filter {
+            $0.isVisibleTo(userId: userId, companyId: companyId, includeCompanyWide: companyId != nil)
+        }
     }
 
     func getAllMessagesByChat(chatId: String) async throws ->[Message]{
@@ -760,7 +764,9 @@ final class MockChatManager:ChatManagerProtocol {
 print("Added Chat Listener")
     }
     func addListenerForVisibleChats(userId:String,companyId:String?,completion:@escaping (_ serviceStops:[Chat]) -> Void){
-        completion(mockContracts.filter { $0.isVisibleTo(userId: userId, companyId: companyId) })
+        completion(mockContracts.filter {
+            $0.isVisibleTo(userId: userId, companyId: companyId, includeCompanyWide: companyId != nil)
+        })
     }
     func addListenerForUnreadChats(userId:String,completion:@escaping (_ serviceStops:[Chat]) -> Void){
         print("Added Chat Listener")

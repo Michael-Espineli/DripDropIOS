@@ -132,7 +132,7 @@ struct AddJobPlannedServiceStopView: View {
                 dataService: dataService,
                 selectedType: $selectedCompanyServiceStopType,
                 useCase: serviceStopTypeUseCase,
-                title: "Company Service Stop Type",
+                title: "Company Pay Type",
                 subtitle: "Choose the planned type for this job visit."
             )
 
@@ -156,7 +156,7 @@ struct AddJobPlannedServiceStopView: View {
                 TextField("Example: First install visit", text: $name)
                     .modifier(PlainTextFieldModifier())
 
-                Text("Leave blank to use the selected service stop type name.")
+                Text("Leave blank to use the selected pay type name.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -348,7 +348,7 @@ struct AddJobPlannedServiceStopView: View {
 
     private func save() async {
         guard canSave else {
-            alertMessage = "Please provide a planned stop name or service stop type and estimated minutes."
+            alertMessage = "Please provide a planned stop name or pay type and estimated minutes."
             showAlert = true
             return
         }

@@ -144,6 +144,8 @@ func convertRouteToString(route:Route) -> RouteString {
         return .vehicalDetailView
     case .equipmentList(dataService: _):
         return .equipmentList
+    case .poolEquipmentScanner(dataService: _):
+        return .equipmentList
     case .routes(dataService: _):
         return .routes
     case .settings(dataService: _):

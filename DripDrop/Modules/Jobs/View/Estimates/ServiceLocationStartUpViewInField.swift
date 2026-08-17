@@ -274,7 +274,12 @@ extension ServiceLocationStartUpViewInField {
         type: EquipmentCategory,
         bodyOfWaterId: String
     ) -> Equipment {
-        Equipment(
+        let createdAt = Date()
+        let receivesRegularService = type == .filter || type == .saltCell
+        let lastServiceDate = receivesRegularService ? createdAt : nil
+        let serviceFrequency = receivesRegularService ? 6 : nil
+        let serviceFrequencyEvery: EquipmentFrequency? = receivesRegularService ? .monthly : nil
+        return Equipment(
             id: UUID().uuidString,
             name: name,
             type: type,
@@ -284,15 +289,19 @@ extension ServiceLocationStartUpViewInField {
             model: "",
             modelId: "",
             dateInstalled: nil,
-            createdAt: Date(),
+            createdAt: createdAt,
             status: .operational,
-            needsService: false,
+            needsService: receivesRegularService,
             cleanFilterPressure: type == .filter ? 15 : nil,
             currentPressure: type == .filter ? 20 : nil,
-            lastServiceDate: Date(),
-            serviceFrequency: type == .filter ? 6 : nil,
-            serviceFrequencyEvery: type == .filter ? .monthly : nil,
-            nextServiceDate: Date(),
+            lastServiceDate: lastServiceDate,
+            serviceFrequency: serviceFrequency,
+            serviceFrequencyEvery: serviceFrequencyEvery,
+            nextServiceDate: getNextServiceDate(
+                lastServiceDate: lastServiceDate,
+                frequency: serviceFrequency,
+                every: serviceFrequencyEvery
+            ),
             notes: "",
             customerName: serviceStop.customerName,
             customerId: customerId,
@@ -670,19 +679,6 @@ extension ServiceLocationStartUpViewInField {
         VStack(alignment: .leading, spacing: 10) {
             surveySummaryCard
             reportPreviewCard
-
-            Button {
-                submitSurvey()
-            } label: {
-                Label(VM.isLoading ? "Saving Survey" : "Finish Survey", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.poolGreen, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .foregroundStyle(Color.black)
-            }
-            .buttonStyle(.plain)
-            .disabled(VM.isLoading)
         }
     }
 
@@ -762,12 +758,12 @@ extension ServiceLocationStartUpViewInField {
                     moveToNextStep()
                 }
             } label: {
-                Label(currentStep == .review ? "Finish" : "Next", systemImage: currentStep == .review ? "checkmark.circle.fill" : "chevron.right")
+                Label(currentStep == .review ? "Save Survey" : "Next", systemImage: currentStep == .review ? "checkmark.circle.fill" : "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)
-                    .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .foregroundStyle(Color.white)
+                    .background(currentStep == .review ? Color.poolGreen : Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .foregroundStyle(currentStep == .review ? Color.black : Color.white)
             }
             .buttonStyle(.plain)
             .disabled(VM.isLoading)
@@ -775,10 +771,10 @@ extension ServiceLocationStartUpViewInField {
     }
 
     var surveyToolbar: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Survey Guide")
+                    Text(currentStep.title)
                         .font(.headline.weight(.semibold))
 
                     Text("\(currentStep.stepLabel) of \(SurveyGuideStep.allCases.count) - \(serviceStop.customerName)")
@@ -789,41 +785,39 @@ extension ServiceLocationStartUpViewInField {
 
                 Spacer(minLength: 8)
 
-                autosaveStatusPill
-            }
-
-            ProgressView(value: Double(currentStep.position), total: Double(SurveyGuideStep.allCases.count))
-                .tint(Color.poolBlue)
-
-            if let saveMessage {
-                Text(saveMessage)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(saveMessageColor)
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                Menu {
                     ForEach(SurveyGuideStep.allCases) { step in
                         Button {
                             withAnimation(.easeInOut(duration: 0.18)) {
                                 currentStep = step
                             }
                         } label: {
-                            Label(step.shortTitle, systemImage: step.systemImage)
-                                .font(.caption.weight(.semibold))
-                                .lineLimit(1)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 7)
-                                .background(
-                                    currentStep == step ? Color.poolBlue.opacity(0.14) : Color.listColor.opacity(0.75),
-                                    in: Capsule()
-                                )
-                                .foregroundStyle(currentStep == step ? Color.poolBlue : Color.primary)
+                            Label(step.title, systemImage: step.systemImage)
                         }
-                        .buttonStyle(.plain)
                     }
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 34, height: 34)
+                        .background(Color.poolBlue.opacity(0.12), in: Circle())
+                        .foregroundStyle(Color.poolBlue)
                 }
-                .padding(.vertical, 2)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Choose survey step")
+            }
+
+            ProgressView(value: Double(currentStep.position), total: Double(SurveyGuideStep.allCases.count))
+                .tint(Color.poolBlue)
+
+            HStack(spacing: 8) {
+                autosaveStatusPill
+
+                if let saveMessage {
+                    Text(saveMessage)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(saveMessageColor)
+                        .lineLimit(1)
+                }
             }
         }
         .padding(10)

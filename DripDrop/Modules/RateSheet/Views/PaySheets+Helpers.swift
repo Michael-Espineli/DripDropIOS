@@ -11,7 +11,9 @@ import Foundation
 
 enum PayrollSystemSourceIds {
 static let recurringServiceStop = "system_recurring_service_stop"
+static let commercialRoute = "system_recurring_commercial_pay_type"
 static let jobServiceStop = "system_job_service_stop"
+static let jobSaltCellCleaning = "system_job_salt_cell_cleaning_pay_type"
 static let jobEstimateServiceStop = "system_job_estimate_service_stop"
 static let serviceAgreementEstimateServiceStop = "system_service_agreement_estimate_service_stop"
 static let customerRelationshipServiceStop = "system_customer_relationship_service_stop"
@@ -41,14 +43,14 @@ static func dripDropProductionDefault(companyId: String) -> CompanyPaySettings {
         routePaySource: .serviceStopAndCompletedTasks,
         taskPaySource: .technicianRateThenTaskContractedRate,
         hourlyPaySource: .none,
-        allowMultipleWorkTypesPerStop: true,
+        allowMultipleWorkTypesPerStop: false,
         defaultStackBehavior: .stackable,
         allowTechnicianRateOverrides: true,
         allowManualPayAdjustments: false,
-        payCommercialAsSeparateWorkType: true,
-        paySpaAsSeparateWorkType: true,
-        payPerBodyOfWater: true,
-        commercialMultiBodyPayStyle: .basePlusAdditionalBodyRate,
+        payCommercialAsSeparateWorkType: false,
+        paySpaAsSeparateWorkType: false,
+        payPerBodyOfWater: false,
+        commercialMultiBodyPayStyle: .singleCommercialRate,
         lockPayAfterApproval: true,
         recalculateUnapprovedPayWhenRatesChange: true
     )
@@ -81,14 +83,14 @@ static func hybridDefault(companyId: String) -> CompanyPaySettings {
         routePaySource: .serviceStopAndCompletedTasks,
         taskPaySource: .technicianRateThenTaskContractedRate,
         hourlyPaySource: .activeRouteDuration,
-        allowMultipleWorkTypesPerStop: true,
+        allowMultipleWorkTypesPerStop: false,
         defaultStackBehavior: .stackable,
         allowTechnicianRateOverrides: true,
         allowManualPayAdjustments: false,
-        payCommercialAsSeparateWorkType: true,
-        paySpaAsSeparateWorkType: true,
-        payPerBodyOfWater: true,
-        commercialMultiBodyPayStyle: .basePlusAdditionalBodyRate,
+        payCommercialAsSeparateWorkType: false,
+        paySpaAsSeparateWorkType: false,
+        payPerBodyOfWater: false,
+        commercialMultiBodyPayStyle: .singleCommercialRate,
         lockPayAfterApproval: true,
         recalculateUnapprovedPayWhenRatesChange: true
     )
@@ -148,7 +150,7 @@ var title: String {
 var helpText: String {
     switch self {
     case .productionOnly:
-        return "Technicians are paid based on completed stops, tasks, and work types."
+        return "Technicians are paid based on completed stops, tasks, and pay types."
     case .hourlyOnly:
         return "Technicians are paid based on time worked, usually from an active route or time log."
     case .hybrid:
@@ -216,7 +218,7 @@ var title: String {
 var helpText: String {
     switch self {
     case .technicianRate:
-        return "Use the technician's active rate for the task's mapped work type."
+        return "Use the technician's active rate for the task's pay type."
     case .taskContractedRate:
         return "Use ServiceStopTask.contractedRate."
     case .technicianRateThenTaskContractedRate:
@@ -307,16 +309,16 @@ var title: String {
     }
 }
 
-var helpText: String {
-    switch self {
-    case .stackable:
-        return "Multiple matching work types can all pay on the same stop."
-    case .exclusive:
-        return "Only one matching rate should win."
+    var helpText: String {
+        switch self {
+        case .stackable:
+            return "This pay type can pay alongside completed task pay."
+        case .exclusive:
+            return "Only one matching rate should win."
     case .replacesBase:
-        return "This work type replaces the normal base pay."
+        return "This pay type replaces the normal base pay."
     case .modifier:
-        return "This work type modifies another rate."
+        return "This pay type modifies another rate."
     }
 }
 }
@@ -382,7 +384,7 @@ extension WorkCategory {
     var defaultIconName: String {
         switch self {
         case .route:
-            return "figure.pool.swim"
+            return "house"
         case .serviceCall:
             return "phone"
         case .repair:
@@ -503,17 +505,17 @@ extension WorkTypeSource {
     var helpText: String {
         switch self {
         case .serviceStopType:
-            return "Maps fallback service stop source IDs to payroll work. Real company service stop types should use their default payroll work types."
+            return "Maps fallback service stop source IDs to pay types."
         case .jobTaskType:
             return "Maps ServiceStopTask.type values like Clean Filter, Repair, or Install."
         case .recurringServiceStopTaskType:
-            return "Maps recurring-service task templates to payroll work."
+            return "Maps recurring-service task templates to pay types."
         case .bodyOfWaterType:
-            return "Maps a body-of-water type to payroll work."
+            return "Maps a body-of-water type to pay types."
         case .serviceLocationType:
-            return "Maps a service location type to payroll work."
+            return "Maps a service location type to pay types."
         case .manualTag:
-            return "Maps a custom manual tag to payroll work."
+            return "Maps a custom manual tag to pay types."
         }
     }
 

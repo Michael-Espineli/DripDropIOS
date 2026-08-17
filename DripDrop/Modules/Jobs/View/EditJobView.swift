@@ -525,7 +525,7 @@ extension EditJobView {
             HStack{
                 Text("Job Type")
                     .bold(true)
-                Picker("Service Stop Type", selection: $serviceStopTemplate) {
+                Picker("Pay Type", selection: $serviceStopTemplate) {
                     Text("Pick Type").tag(ServiceStopTemplate(id: "", name: "", type: "", typeImage: "", dateCreated: Date(), color: ""))
                     ForEach(settingsVM.serviceStopTemplates){ template in
                         Text(template.name).tag(template)

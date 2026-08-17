@@ -176,6 +176,8 @@ final class WorkOfferSchedulingService {
                 serviceLocationId: jobTask.serviceLocationId.isEmpty ? job.serviceLocationId : jobTask.serviceLocationId,
                 bodyOfWaterId: jobTask.bodyOfWaterId,
                 shoppingListItemId: jobTask.shoppingListItemId ?? "",
+                payTypeId: jobTask.payTypeId,
+                payTypeName: jobTask.payTypeName
 //                dataBaseItemId: jobTask.dataBaseItemId
 
             )

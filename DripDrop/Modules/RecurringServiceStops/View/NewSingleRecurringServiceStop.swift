@@ -457,7 +457,7 @@ extension NewSingleRecurringServiceStop {
 
     var serviceStopTypeCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader("Stop Type", systemImage: "mappin.and.ellipse")
+            sectionHeader("Pay Type", systemImage: "mappin.and.ellipse")
 
             if let currentCompany = masterDataManager.currentCompany {
                 
@@ -466,8 +466,8 @@ extension NewSingleRecurringServiceStop {
                         dataService: VM.dataService,
                         selectedType: $selectedCompanyServiceStopType,
                         useCase: serviceStopTypeUseCase,
-                        title: "Service Stop Type",
-                        subtitle: "Payroll uses this type to decide which work type rates apply when this stop is finished."
+                        title: "Pay Type",
+                        subtitle: "Payroll uses this pay type when this stop is finished."
                     )
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -475,7 +475,7 @@ extension NewSingleRecurringServiceStop {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.orange)
 
-                    Text("Company ID is required to load service stop types. This stop will use the fallback job service stop type if scheduled.")
+                    Text("Company ID is required to load pay types. This stop will use a fallback pay type if scheduled.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

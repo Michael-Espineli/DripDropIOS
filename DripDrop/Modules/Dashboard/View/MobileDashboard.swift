@@ -18,10 +18,12 @@ struct MobileDashboard: View {
     @StateObject var shoppingListVM : ShoppingListViewModel
     @StateObject var repairRequestVM : RepairRequestViewModel
     @StateObject var purchaseVM : PurchasesViewModel
+    @StateObject var jobVM : JobViewModel
     
     init(dataService:any ProductionDataServiceProtocol){
         _shoppingListVM = StateObject(wrappedValue: ShoppingListViewModel(dataService: dataService))
         _repairRequestVM = StateObject(wrappedValue: RepairRequestViewModel(dataService: dataService))
+        _jobVM = StateObject(wrappedValue: JobViewModel(dataService: dataService))
         _toDoVM = StateObject(wrappedValue: ToDoViewModel(dataService: dataService))
         _recurringRouteVM = StateObject(wrappedValue: RecurringRouteViewModel(dataService: dataService))
         _purchaseVM = StateObject(wrappedValue: PurchasesViewModel(dataService: dataService))
@@ -107,6 +109,11 @@ struct MobileDashboard: View {
                 } catch {
                     print(error)
                 }
+                do {
+                    try await jobVM.getAssignedUnfinishedJobCount(companyId: company.id, userId: user.id)
+                } catch {
+                    print(error)
+                }
             }
             isLoading = false
         }
@@ -171,7 +178,7 @@ extension MobileDashboard{
             dashboardActionTile(
                 title: "Pending Jobs",
                 systemImage: "briefcase",
-                badgeCount: 12
+                badgeCount: jobVM.assignedUnfinishedJobCount
             )
         }
         .buttonStyle(.plain)

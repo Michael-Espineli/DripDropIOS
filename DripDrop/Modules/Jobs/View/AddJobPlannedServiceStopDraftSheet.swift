@@ -110,7 +110,7 @@ struct AddJobPlannedServiceStopDraftSheet: View {
 
     private var typeCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Company Service Stop Type", systemImage: "flag")
+            Label("Company Pay Type", systemImage: "flag")
                 .font(.headline.weight(.semibold))
 
             CompanyServiceStopTypePickerView(
@@ -118,11 +118,11 @@ struct AddJobPlannedServiceStopDraftSheet: View {
                 dataService: dataService,
                 selectedType: $selectedCompanyServiceStopType,
                 useCase: fallbackUseCase,
-                title: "Service Stop Type",
-                subtitle: "Choose the company service stop type for this planned visit."
+                title: "Pay Type",
+                subtitle: "Choose the company pay type for this planned visit."
             )
 
-            Text("Company service stop types are used for planning, scheduling, payroll mappings, and templates.")
+            Text("Company pay types are used for planning, scheduling, payroll, and templates.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -287,13 +287,13 @@ struct AddJobPlannedServiceStopDraftSheet: View {
 
     private func saveDraftStop() {
         guard canSave else {
-            alertMessage = "Please select a company service stop type and estimated minutes."
+            alertMessage = "Please select a company pay type and estimated minutes."
             showAlert = true
             return
         }
 
         guard let selectedCompanyServiceStopType else {
-            alertMessage = "Please select a company service stop type."
+            alertMessage = "Please select a company pay type."
             showAlert = true
             return
         }

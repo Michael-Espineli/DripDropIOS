@@ -120,7 +120,7 @@ struct TechnicianPayrollHistoryDetailView: View {
         }
         .navigationTitle("Rate History")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $searchText, prompt: "Search work type, basis, or notes")
+        .searchable(text: $searchText, prompt: "Search pay type, basis, or notes")
     }
 
     private var summarySection: some View {
@@ -194,10 +194,10 @@ struct TechnicianPayrollHistoryDetailView: View {
         }
 
         guard let workTypeId = rate.workTypeId else {
-            return "No Work Type"
+            return "No Pay Type"
         }
 
-        return workTypesById[workTypeId]?.name ?? "Missing Work Type"
+        return workTypesById[workTypeId]?.name ?? "Missing Pay Type"
     }
 
     private func workTypeIcon(for rate: TechnicianRate) -> String {
