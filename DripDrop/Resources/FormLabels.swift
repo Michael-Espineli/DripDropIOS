@@ -216,11 +216,7 @@ enum ShoppingListStatus:String, Codable, CaseIterable, Identifiable {
         return self.rawValue
     }
     case needToPurchase = "Need to Purchase"
-    case needsCustomerApproval = "Needs Customer Approval"
-    case readyToPurchase = "Ready to Purchase"
-    case customerRejected = "Customer Rejected"
     case purchased = "Purchased"
-    case delivered = "Delivered"
     case installed = "Installed"
     case invoiced = "Invoiced"
 
@@ -240,15 +236,15 @@ enum ShoppingListStatus:String, Codable, CaseIterable, Identifiable {
         case "needtopurchase", "needpurchase":
             return .needToPurchase
         case "needscustomerapproval", "customerapproval", "pendingapproval":
-            return .needsCustomerApproval
+            return .needToPurchase
         case "readytopurchase", "approved":
-            return .readyToPurchase
+            return .needToPurchase
         case "customerrejected", "rejected":
-            return .customerRejected
+            return .needToPurchase
         case "purchased":
             return .purchased
         case "delivered":
-            return .delivered
+            return .installed
         case "installed":
             return .installed
         case "invoiced", "paid":

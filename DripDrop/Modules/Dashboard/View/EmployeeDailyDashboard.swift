@@ -82,6 +82,7 @@ struct EmployeeDailyDashboard: View {
     
     @State var duration: Int = 0
     @State var listOfShoppingListItems: Int = 0
+    @State private var totalPurchasableShoppingListItems: Int = 0
 
     @State var idItem: IdInfo? = nil
 
@@ -320,11 +321,17 @@ struct EmployeeDailyDashboard: View {
         guard let company = masterDataManager.currentCompany,
               let user = masterDataManager.user else {
             listOfShoppingListItems = 0
+            totalPurchasableShoppingListItems = 0
             return
         }
 
         Task {
             do {
+                let totalPurchasableItems = try await dataService.getShoppingListItemStatusCount(
+                    companyId: company.id,
+                    status: .needToPurchase
+                )
+
                 let prepKeys = ShoppingPrepKeyBuilder.keysForRoute(
                     serviceStops: VM.serviceStopList,
                     userId: user.id
@@ -332,6 +339,7 @@ struct EmployeeDailyDashboard: View {
 
                 guard !prepKeys.isEmpty else {
                     listOfShoppingListItems = 0
+                    totalPurchasableShoppingListItems = totalPurchasableItems
                     return
                 }
 
@@ -341,9 +349,13 @@ struct EmployeeDailyDashboard: View {
                     needsAction: true
                 )
 
-                listOfShoppingListItems = routePrepItems.count
+                listOfShoppingListItems = routePrepItems.filter { item in
+                    item.status == .needToPurchase
+                }.count
+                totalPurchasableShoppingListItems = totalPurchasableItems
             } catch {
                 listOfShoppingListItems = 0
+                totalPurchasableShoppingListItems = 0
                 print("[EmployeeDailyDashboard][refreshShoppingListBadge] Error", error)
             }
         }
@@ -508,7 +520,8 @@ extension EmployeeDailyDashboard {
             } label: {
                 dashboardToolbarIcon(
                     systemImage: "cart",
-                    badgeCount: listOfShoppingListItems
+                    badgeCount: listOfShoppingListItems,
+                    secondaryBadgeCount: totalPurchasableShoppingListItems
                 )
             }
             .buttonStyle(.plain)
@@ -2361,9 +2374,10 @@ extension EmployeeDailyDashboard {
 
     private func dashboardToolbarIcon(
         systemImage: String,
-        badgeCount: Int
+        badgeCount: Int,
+        secondaryBadgeCount: Int = 0
     ) -> some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.primary)
@@ -2371,15 +2385,42 @@ extension EmployeeDailyDashboard {
                 .background(.thinMaterial, in: Circle())
 
             if badgeCount > 0 {
-                Text("\(badgeCount)")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(minWidth: 18, minHeight: 18)
-                    .padding(2)
-                    .background(Color.red, in: Circle())
-                    .offset(x: 5, y: -5)
+                toolbarCountBadge(
+                    count: badgeCount,
+                    tint: .red
+                )
+                .offset(x: 15, y: -15)
+            }
+
+            if secondaryBadgeCount > 0 {
+                toolbarCountBadge(
+                    count: secondaryBadgeCount,
+                    tint: Color.poolBlue
+                )
+                .offset(x: 15, y: 15)
             }
         }
+        .frame(width: 46, height: 46)
+    }
+
+    private func toolbarCountBadge(
+        count: Int,
+        tint: Color
+    ) -> some View {
+        Text(toolbarBadgeText(count))
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.white)
+            .frame(minWidth: 18, minHeight: 18)
+            .padding(.horizontal, toolbarBadgeText(count).count > 1 ? 4 : 0)
+            .background(tint, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(Color.white, lineWidth: 1)
+            }
+    }
+
+    private func toolbarBadgeText(_ count: Int) -> String {
+        count > 99 ? "99+" : "\(count)"
     }
 
     private var loadingOverlay: some View {

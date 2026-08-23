@@ -771,10 +771,7 @@ extension ShoppingListItemDetailView {
 
     private func statusTint(_ item: ShoppingListItem) -> Color {
         switch item.status {
-        case .installed:
-            return .green
-
-        case .delivered, .invoiced:
+        case .installed, .invoiced:
             return .green
 
         case .purchased:
@@ -782,15 +779,6 @@ extension ShoppingListItemDetailView {
 
         case .needToPurchase:
             return .orange
-
-        case .readyToPurchase:
-            return .poolGreen
-
-        case .needsCustomerApproval:
-            return .purple
-
-        case .customerRejected:
-            return .poolRed
         }
     }
 }

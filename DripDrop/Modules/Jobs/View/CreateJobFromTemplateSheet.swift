@@ -287,8 +287,8 @@ struct CreateJobFromTemplateSheet: View {
             )
 
             JobTemplateDetailSummaryRow(
-                title: "Job Type",
-                value: template.jobType.isEmpty ? "-" : template.jobType
+                title: "Default Priority",
+                value: template.defaultIssuePriorityDisplayName
             )
 
             JobTemplateDetailMoneyRow(

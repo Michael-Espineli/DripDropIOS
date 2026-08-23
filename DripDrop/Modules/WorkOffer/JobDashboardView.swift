@@ -19,6 +19,8 @@ struct JobDashboardView: View {
     let summary: JobDashboardSummary
     let healthReport: JobWorkflowHealthReport
     let serviceLocation: ServiceLocation?
+    let sourceRepairRequest: RepairRequest?
+    let dataService: any ProductionDataServiceProtocol
     let operationStatus: JobOperationStatus?
     let billingStatus: JobBillingStatus?
     
@@ -94,6 +96,22 @@ struct JobDashboardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(4)
+            }
+
+            if let sourceRepairRequest {
+                NavigationLink(
+                    value: Route.repairRequest(
+                        repairRequest: sourceRepairRequest,
+                        dataService: dataService
+                    )
+                ) {
+                    JobDashboardNavigationRow(
+                        title: "Repair Request",
+                        subtitle: "Open the source repair request.",
+                        systemImage: "wrench.and.screwdriver"
+                    )
+                }
+                .buttonStyle(.plain)
             }
 
             HStack(spacing: 10) {

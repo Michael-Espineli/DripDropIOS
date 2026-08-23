@@ -25,7 +25,7 @@ struct JobDetailView: View {
 
     @State var job:Job
 
-    @State var view:String = "Info"
+    @State var view:String = "Overview"
     @State var jobId:String = "J"
 
     @State private var showAdminSelector: Bool = false
@@ -221,7 +221,7 @@ struct JobDetailView: View {
             }
 
                 switch view {
-                case "Info":
+                case "Overview":
                     if VM.isEdit {
                         editInfo
                     } else {
@@ -608,7 +608,7 @@ extension JobDetailView {
 
     private func jobDetailTabIcon(_ option: String) -> String {
         switch option {
-        case "Info": return "doc.text.fill"
+        case "Overview": return "doc.text.fill"
         case "Tasks": return "checklist"
         case "Offers": return "paperplane.fill"
         case "Schedule": return "calendar"
@@ -652,6 +652,8 @@ extension JobDetailView {
             summary: VM.dashboardSummary(for: job),
             healthReport: VM.workflowHealthReport(for: job),
             serviceLocation: VM.serviceLocation,
+            sourceRepairRequest: VM.sourceRepairRequest,
+            dataService: dataService,
             operationStatus: VM.operationStatus,
             billingStatus: VM.billingStatus,
             onNavigateToHealthIssue: { destination in
@@ -3504,9 +3506,9 @@ extension JobDetailView {
             .buttonStyle(.plain)
 
             Button {
-                view = "Info"
+                view = "Overview"
             } label: {
-                Label("Info", systemImage: "chevron.right")
+                Label("Overview", systemImage: "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -3665,7 +3667,7 @@ extension JobDetailView {
                                 systemImage: "square.and.pencil"
                             ) {
                                 showBillingActionsSheet = false
-                                view = "Info"
+                                view = "Overview"
                                 VM.isEdit = true
                             }
 

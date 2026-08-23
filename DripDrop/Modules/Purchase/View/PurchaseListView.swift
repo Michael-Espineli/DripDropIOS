@@ -51,7 +51,7 @@ struct PurchaseListView: View{
     @State var showAddNewPurchase = false
     
     var body: some View{
-        ZStack {
+        ZStack(alignment: .bottomTrailing) {
             Color.listColor.ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -96,6 +96,10 @@ struct PurchaseListView: View{
                 .refreshable {
                     await reloadPurchases()
                 }
+            }
+
+            if UIDevice.isIPhone {
+                purchaseActionDock
             }
         }
         //Initial Loading of the purchase Items
@@ -233,29 +237,31 @@ struct PurchaseListView: View{
             AddNewReceipt(dataService: dataService)
         })
         .toolbar{
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    showSearch.toggle()
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                }
+            if !UIDevice.isIPhone {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showSearch.toggle()
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
 
-                Button {
-                    showFilerOptions.toggle()
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                }
+                    Button {
+                        showFilerOptions.toggle()
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                    }
 
-                Button {
-                    Task { await reloadPurchases() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
+                    Button {
+                        Task { await reloadPurchases() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
 
-                Button {
-                    showAddNewPurchase.toggle()
-                } label: {
-                    Image(systemName: "plus")
+                    Button {
+                        showAddNewPurchase.toggle()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }
@@ -320,6 +326,79 @@ extension PurchaseListView {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(.thinMaterial, in: Capsule())
+    }
+
+    var purchaseActionDock: some View {
+        VStack(spacing: 10) {
+            Button {
+                showFilerOptions.toggle()
+            } label: {
+                mobileDockIcon(
+                    systemName: "slider.horizontal.3",
+                    tint: .poolBlue,
+                    isSelected: showFilerOptions
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                Task { await reloadPurchases() }
+            } label: {
+                mobileDockIcon(
+                    systemName: "arrow.clockwise",
+                    tint: .orange,
+                    isSelected: false
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                showAddNewPurchase.toggle()
+            } label: {
+                mobileDockIcon(
+                    systemName: "plus",
+                    tint: .poolGreen,
+                    isSelected: false
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                    showSearch.toggle()
+                }
+            } label: {
+                mobileDockIcon(
+                    systemName: "magnifyingglass",
+                    tint: .poolBlue,
+                    isSelected: showSearch
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(7)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .padding(.trailing, 14)
+        .padding(.bottom, 18)
+    }
+
+    private func mobileDockIcon(
+        systemName: String,
+        tint: Color,
+        isSelected: Bool
+    ) -> some View {
+        Image(systemName: systemName)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(isSelected ? Color.white : tint)
+            .frame(width: 40, height: 40)
+            .background(
+                isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.13)),
+                in: Circle()
+            )
     }
 
     var filterSheet: some View {

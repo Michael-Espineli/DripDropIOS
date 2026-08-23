@@ -66,6 +66,31 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         }
     }
 
+    private func getCompanySalesDocuments<T: Decodable>(
+        collectionName: String,
+        companyId: String,
+        as type: T.Type
+    ) async throws -> [T] {
+        guard !companyId.isEmpty else { return [] }
+
+        let snapshot = try await db
+            .collection(collectionName)
+            .whereField("companyId", isEqualTo: companyId)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            try? document.data(as: T.self)
+        }
+    }
+
+    func getSalesAgreements(companyId: String) async throws -> [SalesAgreement] {
+        try await getCompanySalesDocuments(
+            collectionName: "salesAgreements",
+            companyId: companyId,
+            as: SalesAgreement.self
+        )
+    }
+
     func getSalesAgreements(companyId: String, customerId: String) async throws -> [SalesAgreement] {
         try await getCustomerSalesDocuments(
             collectionName: "salesAgreements",
@@ -75,12 +100,28 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         )
     }
 
+    func getSalesBillingSubscriptions(companyId: String) async throws -> [SalesBillingSubscription] {
+        try await getCompanySalesDocuments(
+            collectionName: "salesBillingSubscriptions",
+            companyId: companyId,
+            as: SalesBillingSubscription.self
+        )
+    }
+
     func getSalesBillingSubscriptions(companyId: String, customerId: String) async throws -> [SalesBillingSubscription] {
         try await getCustomerSalesDocuments(
             collectionName: "salesBillingSubscriptions",
             companyId: companyId,
             customerId: customerId,
             as: SalesBillingSubscription.self
+        )
+    }
+
+    func getSalesInvoices(companyId: String) async throws -> [SalesInvoice] {
+        try await getCompanySalesDocuments(
+            collectionName: "salesInvoices",
+            companyId: companyId,
+            as: SalesInvoice.self
         )
     }
 
@@ -198,6 +239,21 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             try? document.data(as: ShoppingListItem.self)
         }
     }
+
+    func getShoppingListItemStatusCount(
+        companyId: String,
+        status: ShoppingListStatus
+    ) async throws -> Int {
+        return Int(try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .whereField("status", isEqualTo: status.rawValue)
+            .count
+            .getAggregation(source: .server)
+            .count)
+    }
+
     func getShoppingListItemsForPrepKeys(
         companyId: String,
         prepKeys: [String],

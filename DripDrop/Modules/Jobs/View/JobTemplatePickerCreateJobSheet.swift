@@ -181,9 +181,7 @@ struct JobTemplatePickerCreateJobSheet: View {
                                 }
 
                                 HStack(spacing: 6) {
-                                    if !template.jobType.isEmpty {
-                                        Text(template.jobType)
-                                    }
+                                    Text("Priority \(template.defaultIssuePriorityDisplayName)")
 
                                     if template.defaultRateCents > 0 {
                                         Text("•")

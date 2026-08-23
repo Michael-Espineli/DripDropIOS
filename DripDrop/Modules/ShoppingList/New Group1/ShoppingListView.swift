@@ -79,7 +79,7 @@ struct ShoppingListView: View {
                                 systemImage: "cart.badge.checkmark",
                                 items: shoppingVM.purchasedButNotInstalledItems,
                                 emptyTitle: "No purchased items need action.",
-                                emptyMessage: "Purchased items that still need install/delivery will appear here."
+                                emptyMessage: "Purchased items that still need installation will appear here."
                             )
                         }
 
@@ -762,7 +762,8 @@ extension ShoppingListView {
             } label: {
                 ShoppingListItemCardView(
                     dataService: dataService,
-                    shoppingListItem: item
+                    shoppingListItem: item,
+                    compact: true
                 )
             }
             .buttonStyle(.plain)
@@ -772,7 +773,8 @@ extension ShoppingListView {
             } label: {
                 ShoppingListItemCardView(
                     dataService: dataService,
-                    shoppingListItem: item
+                    shoppingListItem: item,
+                    compact: true
                 )
             }
             .buttonStyle(.plain)

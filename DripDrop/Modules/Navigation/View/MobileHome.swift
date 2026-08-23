@@ -2157,7 +2157,7 @@ struct MobileReimaginedMarketingSectionView: View {
             tint: .poolYellow,
             requiredPermissionId: nil,
             unavailableTitle: "Marketing unavailable.",
-            unavailableMessage: "Marketing is currently off by feature flag 7.",
+            unavailableMessage: "Marketing is currently unavailable for this company.",
             items: marketingItems
         )
     }
@@ -2212,16 +2212,16 @@ struct MobileReimaginedFinanceSectionView: View {
                     subtitle: "Estimate list and approvals",
                     systemImage: "doc.text.magnifyingglass",
                     tint: .pink,
+                    route: .estimates(dataService: dataService),
                     permissionId: "620",
-                    featureFlag: .marketing,
-                    isPlaceholder: true
+                    featureFlag: .marketing
                 ),
                 MobileReimaginedSectionItem(
                     title: "Service Agreements",
                     subtitle: "Recurring service agreements",
                     systemImage: "doc.text.fill",
                     tint: .poolGreen,
-                    route: .contracts(dataService: dataService),
+                    route: .serviceAgreements(dataService: dataService),
                     requiresSalesFlag: true
                 ),
                 MobileReimaginedSectionItem(
@@ -2231,6 +2231,20 @@ struct MobileReimaginedFinanceSectionView: View {
                     tint: .purple,
                     route: .invoices(dataService: dataService),
                     requiresSalesFlag: true
+                ),
+                MobileReimaginedSectionItem(
+                    title: "Receipts",
+                    subtitle: "Uploaded vendor receipts",
+                    systemImage: "doc.richtext.fill",
+                    tint: .orange,
+                    route: .receipts(dataService: dataService)
+                ),
+                MobileReimaginedSectionItem(
+                    title: "Purchased Items",
+                    subtitle: "Items from receipts and vendors",
+                    systemImage: "cart.fill",
+                    tint: .poolYellow,
+                    route: .purchases(dataService: dataService)
                 ),
                 MobileReimaginedSectionItem(
                     title: "Payment History",
@@ -2245,8 +2259,8 @@ struct MobileReimaginedFinanceSectionView: View {
                     subtitle: "Customer billing subscriptions",
                     systemImage: "repeat.circle.fill",
                     tint: .pink,
-                    requiresSalesFlag: true,
-                    isPlaceholder: true
+                    route: .salesBillingSubscriptions(dataService: dataService),
+                    requiresSalesFlag: true
                 ),
                 MobileReimaginedSectionItem(
                     title: "Payroll",
@@ -2512,15 +2526,15 @@ private struct MobileReimaginedSectionHub: View {
 
                     if !masterDataManager.featureFlagsLoaded {
                         emptyState(
-                            title: "Loading feature flags.",
-                            message: "This section will appear after feature flags load.",
-                            systemImage: "flag"
+                            title: "Loading tools.",
+                            message: "This section will appear shortly.",
+                            systemImage: "clock"
                         )
                     } else if !isSalesFeatureAvailable {
                         emptyState(
                             title: "Sales unavailable.",
-                            message: "Sales is currently turned off by feature flag 4.",
-                            systemImage: "flag.slash"
+                            message: "Sales is currently unavailable for this company.",
+                            systemImage: "slash.circle"
                         )
                     } else if !hasSectionAccess {
                         emptyState(
@@ -2578,27 +2592,6 @@ private struct MobileReimaginedSectionHub: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Spacer()
-            
-
-            HStack(spacing: 8) {
-                Label("Flag 14", systemImage: "flag.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(tint.opacity(0.12), in: Capsule())
-
-                if let role = masterDataManager.role {
-                    Label("\(role.permissionIdList.count) Permissions", systemImage: "lock.shield")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(.thinMaterial, in: Capsule())
                 }
             }
         }

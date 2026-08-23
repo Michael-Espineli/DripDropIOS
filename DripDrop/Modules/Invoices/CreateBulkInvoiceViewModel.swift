@@ -321,7 +321,5 @@ final class CreateBulkInvoiceViewModel:ObservableObject{
        }
         self.alertMessage = "Successfully Sent"
         self.showAlertMessage.toggle()
-
-       print(json)
     }
 }

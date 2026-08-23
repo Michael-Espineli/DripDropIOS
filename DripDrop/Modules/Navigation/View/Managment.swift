@@ -145,15 +145,6 @@ extension Managment {
                     .padding(.vertical, 7)
                     .background(.thinMaterial, in: Capsule())
 
-                if let role = masterDataManager.role {
-                    Label("\(role.permissionIdList.count) Permissions", systemImage: "lock.shield")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(.thinMaterial, in: Capsule())
-                }
-
                 Spacer()
             }
         }

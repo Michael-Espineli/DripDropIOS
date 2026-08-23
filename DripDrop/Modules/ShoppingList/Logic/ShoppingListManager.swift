@@ -80,9 +80,9 @@ extension ShoppingListItem {
 extension ShoppingListStatus {
     var needsShoppingAction: Bool {
         switch self {
-        case .delivered, .installed, .invoiced:
+        case .installed, .invoiced:
             return false
-        case .needToPurchase, .needsCustomerApproval, .readyToPurchase, .customerRejected, .purchased:
+        case .needToPurchase, .purchased:
             return true
         }
     }

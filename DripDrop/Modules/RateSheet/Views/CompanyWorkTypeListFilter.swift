@@ -51,8 +51,10 @@ struct CompanyPayTypeBucket: Identifiable, Hashable {
 
     static func defaultBucket(for category: WorkCategory) -> CompanyPayTypeBucket {
         switch category {
-        case .route, .commercial:
+        case .route, .maintenance, .commercial:
             return bucket(for: "route")
+        case .estimate:
+            return bucket(for: "jobEstimate")
         case .serviceCall, .repair, .installation, .cleaning, .startup, .drainAndRefill, .extra, .custom:
             return bucket(for: "job")
         }

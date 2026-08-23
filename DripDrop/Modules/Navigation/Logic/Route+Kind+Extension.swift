@@ -278,6 +278,12 @@ extension Route {
             return 134
         case .sales:
             return 135
+        case .estimates:
+            return 139
+        case .serviceAgreements:
+            return 140
+        case .salesBillingSubscriptions:
+            return 141
         case .todoItemDetail:
             return 136
         case .offeredWork:
@@ -351,6 +357,12 @@ extension Route {
         case .leads:
             break
         case .sales:
+            break
+        case .estimates:
+            break
+        case .serviceAgreements:
+            break
+        case .salesBillingSubscriptions:
             break
         case .serviceStops:
             break
@@ -601,6 +613,9 @@ extension Route {
              .billingJobs,
              .leads,
              .sales,
+             .estimates,
+             .serviceAgreements,
+             .salesBillingSubscriptions,
              .serviceStops,
              .purchases,
              .receipts,

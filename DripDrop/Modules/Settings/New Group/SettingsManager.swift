@@ -21,6 +21,15 @@ struct JobTemplate: Identifiable, Codable, Hashable {
     var jobType: String
     var jobTypeImage: String?
 
+    var defaultIssuePriorityLevel: Int?
+    var defaultIssuePriorityLabel: String?
+    var issuePriorityLevel: Int?
+    var issuePriorityLabel: String?
+    var priorityLevel: Int?
+    var priorityLabel: String?
+    var solutionTier: Int?
+    var solutionTierLabel: String?
+
     var defaultRateCents: Int
     var defaultLaborCostCents: Int
 
@@ -40,6 +49,14 @@ struct JobTemplate: Identifiable, Codable, Hashable {
         description: String = "",
         jobType: String = "",
         jobTypeImage: String? = nil,
+        defaultIssuePriorityLevel: Int? = nil,
+        defaultIssuePriorityLabel: String? = nil,
+        issuePriorityLevel: Int? = nil,
+        issuePriorityLabel: String? = nil,
+        priorityLevel: Int? = nil,
+        priorityLabel: String? = nil,
+        solutionTier: Int? = nil,
+        solutionTierLabel: String? = nil,
         defaultRateCents: Int = 0,
         defaultLaborCostCents: Int = 0,
         color: String? = nil,
@@ -56,6 +73,14 @@ struct JobTemplate: Identifiable, Codable, Hashable {
         self.description = description
         self.jobType = jobType
         self.jobTypeImage = jobTypeImage
+        self.defaultIssuePriorityLevel = defaultIssuePriorityLevel
+        self.defaultIssuePriorityLabel = defaultIssuePriorityLabel
+        self.issuePriorityLevel = issuePriorityLevel
+        self.issuePriorityLabel = issuePriorityLabel
+        self.priorityLevel = priorityLevel
+        self.priorityLabel = priorityLabel
+        self.solutionTier = solutionTier
+        self.solutionTierLabel = solutionTierLabel
         self.defaultRateCents = defaultRateCents
         self.defaultLaborCostCents = defaultLaborCostCents
         self.color = color
@@ -74,6 +99,14 @@ struct JobTemplate: Identifiable, Codable, Hashable {
         case description
         case jobType
         case jobTypeImage
+        case defaultIssuePriorityLevel
+        case defaultIssuePriorityLabel
+        case issuePriorityLevel
+        case issuePriorityLabel
+        case priorityLevel
+        case priorityLabel
+        case solutionTier
+        case solutionTierLabel
         case defaultRateCents
         case defaultLaborCostCents
         case color
@@ -94,6 +127,14 @@ struct JobTemplate: Identifiable, Codable, Hashable {
         description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
         jobType = try container.decodeIfPresent(String.self, forKey: .jobType) ?? ""
         jobTypeImage = try container.decodeIfPresent(String.self, forKey: .jobTypeImage)
+        defaultIssuePriorityLevel = try container.decodeIfPresent(Int.self, forKey: .defaultIssuePriorityLevel)
+        defaultIssuePriorityLabel = try container.decodeIfPresent(String.self, forKey: .defaultIssuePriorityLabel)
+        issuePriorityLevel = try container.decodeIfPresent(Int.self, forKey: .issuePriorityLevel)
+        issuePriorityLabel = try container.decodeIfPresent(String.self, forKey: .issuePriorityLabel)
+        priorityLevel = try container.decodeIfPresent(Int.self, forKey: .priorityLevel)
+        priorityLabel = try container.decodeIfPresent(String.self, forKey: .priorityLabel)
+        solutionTier = try container.decodeIfPresent(Int.self, forKey: .solutionTier)
+        solutionTierLabel = try container.decodeIfPresent(String.self, forKey: .solutionTierLabel)
         defaultRateCents = try container.decodeIfPresent(Int.self, forKey: .defaultRateCents) ?? 0
         defaultLaborCostCents = try container.decodeIfPresent(Int.self, forKey: .defaultLaborCostCents) ?? 0
         color = try container.decodeIfPresent(String.self, forKey: .color)

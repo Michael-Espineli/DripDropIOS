@@ -55,6 +55,7 @@ final class AddNewJobViewModel:ObservableObject{
     @Published var duration:String = "0"
     @Published var rate:String = "0"
     @Published var laborCost:String = "0"
+    @Published var issuePriority: JobIssuePriorityLevel? = nil
     
 
     @Published var jobId:String = ""
@@ -404,7 +405,7 @@ final class AddNewJobViewModel:ObservableObject{
         let laborCostInt = Int(laborCostDouble*100)
 
         let fullCustomerName = customer.firstName + " " + customer.lastName
-        let job = Job(
+        var job = Job(
             id: jobId,
             internalId: jobInternalId,
             type: "",
@@ -434,6 +435,9 @@ final class AddNewJobViewModel:ObservableObject{
             invoiceType: nil,
             invoiceNotes: nil
         )
+        if let issuePriority {
+            job.setIssuePriority(issuePriority)
+        }
         try await dataService.uploadWorkOrder(companyId: companyId, workOrder: job)
         //Planned Service Stops
         for plannedStop in plannedServiceStops {
@@ -532,6 +536,7 @@ final class AddNewJobViewModel:ObservableObject{
         description = startingTemplate.description
         rate = String(Double(startingTemplate.defaultRateCents) / 100.0)
         laborCost = String(Double(startingTemplate.defaultLaborCostCents) / 100.0)
+        issuePriority = startingTemplate.normalizedDefaultIssuePriority
 
         let copiedTasks = templateTasks.map { templateTask in
             JobTask(
@@ -923,6 +928,16 @@ var headerCard: some View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(.thinMaterial, in: Capsule())
+
+            if let issuePriority = VM.issuePriority {
+                Label("Priority \(issuePriority.displayName)", systemImage: "flag")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(.thinMaterial, in: Capsule())
+            }
 
             Spacer()
         }

@@ -56,9 +56,9 @@ final class JobDetailViewModel:ObservableObject{
     @Published var taskGroupItems : [JobTaskGroupItem] = []
     @Published var description: String = "Tasks"
 
-    @Published private(set) var chosenView: String = "Info"
+    @Published private(set) var chosenView: String = "Overview"
     @Published private(set) var viewOptionList:[String] = [
-        "Info",
+        "Overview",
         "Tasks",
         "Offers",
         "Schedule",
@@ -117,6 +117,7 @@ final class JobDetailViewModel:ObservableObject{
     @Published private(set) var senderCompany:Company? = nil
     
     @Published private(set) var laborContract:LaborContract? = nil
+    @Published private(set) var sourceRepairRequest: RepairRequest? = nil
     
     @Published private(set) var operationStatus:JobOperationStatus? = nil
     @Published private(set) var billingStatus:JobBillingStatus? = nil
@@ -172,6 +173,18 @@ final class JobDetailViewModel:ObservableObject{
   
         self.operationStatus = job.operationStatus
         self.billingStatus = job.billingStatus
+        self.sourceRepairRequest = nil
+        if let sourceRepairRequestId = job.sourceRepairRequestId,
+           !sourceRepairRequestId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            do {
+                self.sourceRepairRequest = try await dataService.getSpecificRepairRequest(
+                    companyId: companyId,
+                    repairRequestId: sourceRepairRequestId
+                )
+            } catch {
+                print("[][load source repair request] Error \(error)")
+            }
+        }
         var updatedLaborCost = 0
         var employeeMin = 0
             //Other Company Stuff

@@ -233,38 +233,39 @@ final class JobViewModel:ObservableObject{
         } else {
             equipmentInside = equipment
         }
-        try await dataService.uploadWorkOrder(companyId: companyId,
-                                              workOrder: Job(id: jobId, 
-                                                             internalId: "J",
-                                                             type: "..Loading",
-                                                             dateCreated: dateCreated,
-                                                             description: description,
-                                                             operationStatus: operationStatus,
-                                                             billingStatus: billingStatus,
-                                                             customerId: customerId,
-                                                             customerName: customerName,
-                                                             serviceLocationId: serviceLocationId,
-                                                             serviceStopIds: serviceStopIds,
-                                                             //Developer Check Out
-                                                             laborContractIds: [],
-                                                             adminId: adminId,
-                                                             adminName: adminName,
-                                                             rate: rate,
-                                                             laborCost: laborCost,
-                                                             otherCompany: false,
-                                                             receivedLaborContractId: "",
-                                                             receiverId: "",
-                                                             senderId : companyId,
-                                                             dateEstimateAccepted: nil,
-                                                             estimateAcceptedById: nil,
-                                                             estimateAcceptType: nil,
-                                                             estimateAcceptedNotes: nil,
-                                                             invoiceDate: nil,
-                                                             invoiceRef: nil,
-                                                             invoiceType: nil,
-                                                             invoiceNotes: nil
-                                                            )
+        var job = Job(
+            id: jobId,
+            internalId: "J",
+            type: "..Loading",
+            dateCreated: dateCreated,
+            description: description,
+            operationStatus: operationStatus,
+            billingStatus: billingStatus,
+            customerId: customerId,
+            customerName: customerName,
+            serviceLocationId: serviceLocationId,
+            serviceStopIds: serviceStopIds,
+            //Developer Check Out
+            laborContractIds: [],
+            adminId: adminId,
+            adminName: adminName,
+            rate: rate,
+            laborCost: laborCost,
+            otherCompany: false,
+            receivedLaborContractId: "",
+            receiverId: "",
+            senderId : companyId,
+            dateEstimateAccepted: nil,
+            estimateAcceptedById: nil,
+            estimateAcceptType: nil,
+            estimateAcceptedNotes: nil,
+            invoiceDate: nil,
+            invoiceRef: nil,
+            invoiceType: nil,
+            invoiceNotes: nil
         )
+        job.setIssuePriority(jobTemplate.normalizedDefaultIssuePriority)
+        try await dataService.uploadWorkOrder(companyId: companyId, workOrder: job)
         
             print("Uploaded")
    

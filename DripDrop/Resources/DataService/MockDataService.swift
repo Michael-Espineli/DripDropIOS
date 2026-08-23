@@ -27,12 +27,24 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func isFeatureFlagEnabled(_ flagId: String) async throws -> Bool {
         try await getFeatureFlag(flagId: flagId)?.enabled ?? false
     }
+
+    func getSalesAgreements(companyId: String) async throws -> [SalesAgreement] {
+        return []
+    }
     
     func getSalesAgreements(companyId: String, customerId: String) async throws -> [SalesAgreement] {
         return []
     }
+
+    func getSalesBillingSubscriptions(companyId: String) async throws -> [SalesBillingSubscription] {
+        return []
+    }
     
     func getSalesBillingSubscriptions(companyId: String, customerId: String) async throws -> [SalesBillingSubscription] {
+        return []
+    }
+
+    func getSalesInvoices(companyId: String) async throws -> [SalesInvoice] {
         return []
     }
     
@@ -141,6 +153,14 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     ) async throws -> [ShoppingListItem] {
         return []
     }
+
+    func getShoppingListItemStatusCount(
+        companyId: String,
+        status: ShoppingListStatus
+    ) async throws -> Int {
+        return 0
+    }
+
     func getShoppingListItemsForPrepKeys(
         companyId: String,
         prepKeys: [String],

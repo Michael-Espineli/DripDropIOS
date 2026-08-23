@@ -54,7 +54,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 //class AppDelegate: UIResponder, UIApplicationDelegate {
 //
 //    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-//        StripeAPI.defaultPublishableKey = "pk_test_51P39vqAUNYvyj1aECiK7vjZuhGR9WP7j4pW5ISV64mMAOLcaHFt4NSpy6QhjVdYW8aqOfHmAbhYgRMceLCCluX3J00y6jOIAbZ"
+//        StripeAPI.defaultPublishableKey = "<configured by subscription checkout response>"
 //        // do any other necessary launch configuration
 //        return true
 //    }

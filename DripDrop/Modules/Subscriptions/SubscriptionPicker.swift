@@ -165,7 +165,7 @@ struct SubscriptionPicker: View {
                                                     print("Get Subscription Payment Intent 1 ")
                                                     VM.selectedSubscription = subscription
                                                     if let company = masterDataManager.currentCompany, let stripeId = company.stripeId, let subscription = VM.selectedSubscription {
-                                                        try await VM.preparePaymentSheet(stripeId: stripeId, subscription: subscription)
+                                                        try await VM.preparePaymentSheet(stripeId: stripeId, companyId: company.id, subscription: subscription)
                                                     }
                                                 } catch {
                                                     print(error)

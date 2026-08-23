@@ -87,6 +87,11 @@ protocol ProductionDataServiceProtocol: Equatable {
         companyId: String,
         limit: Int
     ) async throws -> [ShoppingListItem]
+
+    func getShoppingListItemStatusCount(
+        companyId: String,
+        status: ShoppingListStatus
+    ) async throws -> Int
     // MARK: - Job Templates
 
     func fetchJobTemplates(
@@ -537,8 +542,11 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getAllContactsByCustomer(companyId:String,customerId:String) async throws -> [Contact]
     
     // MARK: - Shared Sales Billing
+    func getSalesAgreements(companyId:String) async throws -> [SalesAgreement]
     func getSalesAgreements(companyId:String,customerId:String) async throws -> [SalesAgreement]
+    func getSalesBillingSubscriptions(companyId:String) async throws -> [SalesBillingSubscription]
     func getSalesBillingSubscriptions(companyId:String,customerId:String) async throws -> [SalesBillingSubscription]
+    func getSalesInvoices(companyId:String) async throws -> [SalesInvoice]
     func getSalesInvoices(companyId:String,customerId:String) async throws -> [SalesInvoice]
     func getSalesPayments(companyId:String,customerId:String) async throws -> [SalesPayment]
     //----------------------------------------------------
@@ -1766,6 +1774,8 @@ extension ProductionDataServiceProtocol {
             approvalUpdates["shoppingListGeneratedAt"] = approval.shoppingListGeneratedAt ?? now
         } else {
             approvalUpdates["inPersonDeniedByUserId"] = actorUserId
+            approvalUpdates["shoppingListItemId"] = ""
+            approvalUpdates["shoppingListPath"] = ""
         }
 
         batch.setData(approvalUpdates, forDocument: approvalRef, merge: true)
@@ -1776,13 +1786,19 @@ extension ProductionDataServiceProtocol {
                 .document(cleanCompanyId)
                 .collection("shoppingList")
                 .document(shoppingListItemId)
+            if !approved {
+                batch.deleteDocument(shoppingRef)
+                try await batch.commit()
+                return
+            }
+
             let quantity = approval.quantity ?? "1"
             let quantityValue = Double(quantity) ?? 1
             let unitCostCents = approval.plannedUnitCostCents ?? 0
             let unitPriceCents = approval.plannedUnitPriceCents ?? 0
             let totalCostCents = approval.plannedTotalCostCents ?? Int((Double(unitCostCents) * quantityValue).rounded())
             let totalPriceCents = approval.plannedTotalPriceCents ?? Int((Double(unitPriceCents) * quantityValue).rounded())
-            let shoppingStatus = approved ? ShoppingListStatus.readyToPurchase.rawValue : ShoppingListStatus.customerRejected.rawValue
+            let shoppingStatus = ShoppingListStatus.needToPurchase.rawValue
             let prepKeys = uniqueNonEmpty([
                 jobId.isEmpty ? "" : "job:\(jobId)",
                 approval.customerId.map { "customer:\($0)" } ?? "",

@@ -246,8 +246,28 @@ final class ReceiptViewModel:ObservableObject{
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     func filterReceipts(filter:String,purchases:[Receipt]){
-        var list:[Receipt] = []
-        self.filteredReceipts = list
+        let cleanFilter = filter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        guard !cleanFilter.isEmpty else {
+            self.filteredReceipts = purchases
+            return
+        }
+
+        self.filteredReceipts = purchases.filter { receipt in
+            let searchableValues = [
+                receipt.invoiceNum ?? "",
+                receipt.storeName ?? "",
+                receipt.tech ?? "",
+                shortDate(date: receipt.date ?? Date()),
+                String(receipt.numberOfItems),
+                String(format: "%.2f", receipt.cost),
+                String(format: "%.2f", receipt.costAfterTax)
+            ]
+
+            return searchableValues
+                .map { $0.lowercased() }
+                .contains { $0.contains(cleanFilter) }
+        }
     }
 
 }

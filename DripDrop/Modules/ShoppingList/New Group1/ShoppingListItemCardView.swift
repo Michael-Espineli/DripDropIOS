@@ -88,41 +88,46 @@ struct ShoppingListItemCardView: View {
 
     let dataService: any ProductionDataServiceProtocol
     let shoppingListItem: ShoppingListItem
+    let compact: Bool
 
     @StateObject private var viewModel: ShoppingListItemCardViewModel
 
     init(
         dataService: any ProductionDataServiceProtocol,
-        shoppingListItem: ShoppingListItem
+        shoppingListItem: ShoppingListItem,
+        compact: Bool = false
     ) {
         self.dataService = dataService
         self.shoppingListItem = shoppingListItem
+        self.compact = compact
         _viewModel = StateObject(
             wrappedValue: ShoppingListItemCardViewModel(dataService: dataService)
         )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: compact ? 7 : 12) {
             topRow
 
             if !shoppingListItem.description.isEmpty {
                 Text(shoppingListItem.description)
-                    .font(.caption)
+                    .font(compact ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(compact ? 1 : 2)
             }
 
             contextRows
 
             moneyRows
 
-            footerBadges
+            if !compact {
+                footerBadges
+            }
         }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(compact ? 10 : 12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: compact ? 14 : 18, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: compact ? 14 : 18, style: .continuous)
                 .stroke(statusTint.opacity(0.22), lineWidth: 1)
         }
         .task(id: shoppingListItem.id) {
@@ -141,25 +146,25 @@ struct ShoppingListItemCardView: View {
 extension ShoppingListItemCardView {
 
     private var topRow: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: compact ? 9 : 12) {
             ZStack {
                 Circle()
                     .fill(statusTint.opacity(0.14))
-                    .frame(width: 40, height: 40)
+                    .frame(width: compact ? 32 : 40, height: compact ? 32 : 40)
 
                 Image(systemName: iconName)
-                    .font(.body.weight(.semibold))
+                    .font((compact ? Font.caption : Font.body).weight(.semibold))
                     .foregroundStyle(statusTint)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: compact ? 2 : 4) {
                 Text(displayName)
-                    .font(.subheadline.weight(.semibold))
+                    .font((compact ? Font.caption : Font.subheadline).weight(.semibold))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(compact ? 1 : 2)
 
                 Text("\(shoppingListItem.subCategory.rawValue) • Qty: \(quantityText)")
-                    .font(.caption)
+                    .font(compact ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -171,10 +176,10 @@ extension ShoppingListItemCardView {
     }
 
     private var contextRows: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: compact ? 3 : 6) {
             if let contextText {
                 Label(contextText, systemImage: contextIcon)
-                    .font(.caption)
+                    .font(compact ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -182,7 +187,7 @@ extension ShoppingListItemCardView {
             if let serviceLocationName = shoppingListItem.serviceLocationName,
                !serviceLocationName.isEmpty {
                 Label(serviceLocationName, systemImage: "mappin.and.ellipse")
-                    .font(.caption)
+                    .font(compact ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -190,7 +195,7 @@ extension ShoppingListItemCardView {
             if let serviceStopInternalId = shoppingListItem.serviceStopInternalId,
                !serviceStopInternalId.isEmpty {
                 Label("Stop \(serviceStopInternalId)", systemImage: "calendar.badge.clock")
-                    .font(.caption)
+                    .font(compact ? .caption2 : .caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -215,7 +220,7 @@ extension ShoppingListItemCardView {
                     )
                 }
             }
-        } else if hasPlannedMoney || hasDatabaseItemPricingContext {
+        } else if !compact && (hasPlannedMoney || hasDatabaseItemPricingContext) {
             Label("No customer price set", systemImage: "exclamationmark.triangle")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.orange)
@@ -256,10 +261,10 @@ extension ShoppingListItemCardView {
 
     private var statusBadge: some View {
         Text(shoppingListItem.status.rawValue)
-            .font(.caption2.weight(.bold))
+            .font(.caption2.weight(compact ? .semibold : .bold))
             .foregroundStyle(statusTint)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
+            .padding(.horizontal, compact ? 7 : 9)
+            .padding(.vertical, compact ? 4 : 5)
             .background(statusTint.opacity(0.12), in: Capsule())
     }
 
@@ -289,18 +294,18 @@ extension ShoppingListItemCardView {
         title: String,
         value: String
     ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: compact ? 1 : 2) {
             Text(title)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Text(value)
-                .font(.caption.weight(.semibold))
+                .font((compact ? Font.caption2 : Font.caption).weight(.semibold))
                 .foregroundStyle(.primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(9)
-        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(compact ? 7 : 9)
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: compact ? 10 : 12, style: .continuous))
     }
 }
 

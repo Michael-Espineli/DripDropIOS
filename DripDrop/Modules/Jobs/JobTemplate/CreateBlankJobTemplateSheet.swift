@@ -16,7 +16,7 @@ struct CreateBlankJobTemplateSheet: View {
 
     @State private var name: String = ""
     @State private var description: String = ""
-    @State private var jobType: String = ""
+    @State private var defaultIssuePriority: JobIssuePriorityLevel = .defaultLevel
     @State private var defaultRateCents: Int = 0
     @State private var defaultLaborCostCents: Int = 0
     @State private var locked: Bool = false
@@ -111,12 +111,18 @@ struct CreateBlankJobTemplateSheet: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Job Type")
+                Text("Default Job Priority")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("Example: Install", text: $jobType)
-                    .modifier(PlainTextFieldModifier())
+                Picker("Default Job Priority", selection: $defaultIssuePriority) {
+                    ForEach(JobIssuePriorityLevel.allCases) { priority in
+                        Text(priority.displayName)
+                            .tag(priority)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -229,17 +235,17 @@ struct CreateBlankJobTemplateSheet: View {
         defer { isSaving = false }
 
         do {
-            let template = JobTemplate(
+            var template = JobTemplate(
                 companyId: companyId,
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                 description: description,
-                jobType: jobType,
                 defaultRateCents: defaultRateCents,
                 defaultLaborCostCents: defaultLaborCostCents,
                 isActive: true,
                 locked: locked,
                 createdByUserId: userId
             )
+            template.setDefaultIssuePriority(defaultIssuePriority)
 
             try await dataService.saveJobTemplate(template)
 

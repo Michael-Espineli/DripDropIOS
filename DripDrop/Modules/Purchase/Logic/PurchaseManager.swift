@@ -652,7 +652,7 @@ final class PurchasedItemWorkflowService {
             try? await shoppingDocument(companyId: companyId, shoppingItemId: shoppingItemId)
                 .updateData([
                     "purchasedItem": FieldValue.delete(),
-                    "status": ShoppingListStatus.readyToPurchase.rawValue,
+                    "status": ShoppingListStatus.needToPurchase.rawValue,
                     "datePurchased": FieldValue.delete(),
                     "invoiced": false,
                     "needsAction": true,
@@ -751,7 +751,7 @@ final class PurchasedItemWorkflowService {
             try? await shoppingDocument(companyId: companyId, shoppingItemId: shoppingItemId)
                 .updateData([
                     "purchasedItem": FieldValue.delete(),
-                    "status": ShoppingListStatus.readyToPurchase.rawValue,
+                    "status": ShoppingListStatus.needToPurchase.rawValue,
                     "datePurchased": FieldValue.delete(),
                     "invoiced": false,
                     "needsAction": true,

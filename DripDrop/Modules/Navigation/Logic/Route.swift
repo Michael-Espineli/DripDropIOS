@@ -56,6 +56,9 @@ enum Route {
     case billingJobs(dataService:any ProductionDataServiceProtocol)
     case leads(dataService:any ProductionDataServiceProtocol)
     case sales(dataService:any ProductionDataServiceProtocol)
+    case estimates(dataService:any ProductionDataServiceProtocol)
+    case serviceAgreements(dataService:any ProductionDataServiceProtocol)
+    case salesBillingSubscriptions(dataService:any ProductionDataServiceProtocol)
 
     case serviceStops(dataService:any ProductionDataServiceProtocol)
     case purchases(dataService:any ProductionDataServiceProtocol)
@@ -351,6 +354,12 @@ extension Route:View {
             CompanyLeadsView(dataService: dataService)
         case .sales(dataService: let dataService):
             FeatureFlaggedSalesRouteView(dataService: dataService)
+        case .estimates(dataService: let dataService):
+            SalesAgreementsListView(dataService: dataService, mode: .estimates)
+        case .serviceAgreements(dataService: let dataService):
+            SalesAgreementsListView(dataService: dataService, mode: .serviceAgreements)
+        case .salesBillingSubscriptions(dataService: let dataService):
+            SalesBillingSubscriptionsListView(dataService: dataService)
             
             
         case .managementTables(let dataService):
@@ -579,7 +588,7 @@ extension Route:View {
             JobPostDetailView(dataService: dataService, jobPost: jobPost)
         //Invoices
         case .invoices(dataService: let dataService):
-            Invoices()
+            Invoices(dataService: dataService)
             
         //All Contracts
             //B to C

@@ -344,6 +344,7 @@ extension WorkCategory {
     static var selectableCases: [WorkCategory] {
         [
             .route,
+            .maintenance,
             .serviceCall,
             .repair,
             .installation,
@@ -351,6 +352,7 @@ extension WorkCategory {
             .commercial,
             .startup,
             .drainAndRefill,
+            .estimate,
             .extra,
             .custom
         ]
@@ -360,6 +362,8 @@ extension WorkCategory {
         switch self {
         case .route:
             return "Route"
+        case .maintenance:
+            return "Maintenance"
         case .serviceCall:
             return "Service Call"
         case .repair:
@@ -374,6 +378,8 @@ extension WorkCategory {
             return "Startup"
         case .drainAndRefill:
             return "Drain / Refill"
+        case .estimate:
+            return "Estimate"
         case .extra:
             return "Extra"
         case .custom:
@@ -385,6 +391,8 @@ extension WorkCategory {
         switch self {
         case .route:
             return "house"
+        case .maintenance:
+            return "figure.pool.swim"
         case .serviceCall:
             return "phone"
         case .repair:
@@ -399,6 +407,8 @@ extension WorkCategory {
             return "play.circle"
         case .drainAndRefill:
             return "drop"
+        case .estimate:
+            return "doc.text.magnifyingglass"
         case .extra:
             return "plus.circle"
         case .custom:
@@ -410,6 +420,8 @@ extension WorkCategory {
         switch self {
         case .route:
             return .flatPerStop
+        case .maintenance:
+            return .flatPerStop
         case .serviceCall:
             return .flatPerStop
         case .repair:
@@ -424,6 +436,8 @@ extension WorkCategory {
             return .flatPerStop
         case .drainAndRefill:
             return .flatPerTask
+        case .estimate:
+            return .flatPerStop
         case .extra:
             return .manual
         case .custom:
@@ -435,6 +449,8 @@ extension WorkCategory {
         switch self {
         case .route:
             return .stackable
+        case .maintenance:
+            return .stackable
         case .serviceCall:
             return .stackable
         case .repair:
@@ -448,6 +464,8 @@ extension WorkCategory {
         case .startup:
             return .stackable
         case .drainAndRefill:
+            return .stackable
+        case .estimate:
             return .stackable
         case .extra:
             return .stackable
@@ -606,7 +624,7 @@ extension CompanyWorkType {
         }
 
         switch category {
-        case .route, .serviceCall, .commercial, .startup:
+        case .route, .maintenance, .serviceCall, .commercial, .startup, .estimate:
             return .serviceStop
 
         case .repair, .installation, .cleaning, .drainAndRefill, .extra, .custom:

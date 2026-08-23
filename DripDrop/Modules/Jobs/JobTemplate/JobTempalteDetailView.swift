@@ -230,7 +230,7 @@ struct JobTemplateDetailView: View {
                     Text(VM.template.name)
                         .font(.title3.weight(.semibold))
 
-                    Text(VM.template.jobType.isEmpty ? "Job Template" : VM.template.jobType)
+                    Text("Priority \(VM.template.defaultIssuePriorityDisplayName)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -341,6 +341,11 @@ struct JobTemplateDetailView: View {
             JobTemplateDetailSummaryRow(
                 title: "Status",
                 value: VM.template.isActive ? "Active" : "Inactive"
+            )
+
+            JobTemplateDetailSummaryRow(
+                title: "Default Priority",
+                value: VM.template.defaultIssuePriorityDisplayName
             )
 
             JobTemplateDetailSummaryRow(
@@ -629,7 +634,7 @@ struct EditJobTemplateSheet: View {
 
     @State private var name: String
     @State private var description: String
-    @State private var jobType: String
+    @State private var defaultIssuePriority: JobIssuePriorityLevel
     @State private var defaultRateCents: Int
     @State private var defaultLaborCostCents: Int
     @State private var isActive: Bool
@@ -651,7 +656,7 @@ struct EditJobTemplateSheet: View {
         _template = State(initialValue: template)
         _name = State(initialValue: template.name)
         _description = State(initialValue: template.description)
-        _jobType = State(initialValue: template.jobType)
+        _defaultIssuePriority = State(initialValue: template.normalizedDefaultIssuePriority)
         _defaultRateCents = State(initialValue: template.defaultRateCents)
         _defaultLaborCostCents = State(initialValue: template.defaultLaborCostCents)
         _isActive = State(initialValue: template.isActive)
@@ -719,12 +724,18 @@ struct EditJobTemplateSheet: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Job Type")
+                Text("Default Job Priority")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("Job Type", text: $jobType)
-                    .modifier(PlainTextFieldModifier())
+                Picker("Default Job Priority", selection: $defaultIssuePriority) {
+                    ForEach(JobIssuePriorityLevel.allCases) { priority in
+                        Text(priority.displayName)
+                            .tag(priority)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -860,7 +871,7 @@ struct EditJobTemplateSheet: View {
             var updated = template
             updated.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
             updated.description = description
-            updated.jobType = jobType
+            updated.setDefaultIssuePriority(defaultIssuePriority)
             updated.defaultRateCents = defaultRateCents
             updated.defaultLaborCostCents = defaultLaborCostCents
             updated.isActive = isActive

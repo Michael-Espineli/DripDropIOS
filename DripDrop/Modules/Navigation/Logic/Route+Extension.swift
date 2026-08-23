@@ -18,6 +18,12 @@ extension Route {
             return "Leads"
         case .sales:
             return "Sales"
+        case .estimates:
+            return "Estimates"
+        case .serviceAgreements:
+            return "Service Agreements"
+        case .salesBillingSubscriptions:
+            return "Billing Subscriptions"
         case .employeeMainDailyDisplayView:
             return "Employee Dashboard"
         case .operation:

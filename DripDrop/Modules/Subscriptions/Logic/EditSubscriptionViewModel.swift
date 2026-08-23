@@ -39,9 +39,7 @@ final class EditSubscriptionViewModel: ObservableObject{
                     "subscriptionId": "stripeId",
                     "stripeVersion": "2023-10-16",
                 ]
-                print(data)
                 let result = try await Functions.functions().httpsCallable("cancelStripeSubscription").call(data)
-                print(result)
                 guard let _ = result.data as? [String: Any] else {
                         // Handle error
                     print("Failed to Parse JSON")
@@ -63,9 +61,7 @@ final class EditSubscriptionViewModel: ObservableObject{
                         "subscriptionId": "stripeId",
                         "stripeVersion": "2023-10-16",
                     ]
-                    print(data)
                     let result = try await Functions.functions().httpsCallable("updateStripeSubscription").call(data)
-                    print(result)
                     guard let _ = result.data as? [String: Any] else {
                             // Handle error
                         print("Failed to Parse JSON")

@@ -39,9 +39,11 @@ final class TechListViewModel:ObservableObject{
         dataService.removeInviteListener()
     }
     func onChangeOfSelectedStatus(companyId:String,status:String) async throws {
-        
-        self.companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
-        
+        self.companyUsers = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: status)
+    }
+    func getPendingInvites(companyId: String) async throws {
+        self.pendingInviteList = try await dataService.getAllCompanyInvites(comapnyId: companyId)
+            .filter { InviteStatusValue.isPending($0.status) }
     }
     func getOneTech(techId: String) async throws{
         self.specificTech = try await dataService.getOneUser(userId: techId)

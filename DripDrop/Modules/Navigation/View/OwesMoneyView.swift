@@ -38,9 +38,9 @@ struct OwesMoneyView: View {
 
                     if !masterDataManager.featureFlagsLoaded {
                         emptyState(
-                            title: "Loading feature flags.",
-                            message: "Sales availability will appear after feature flags load.",
-                            systemImage: "flag"
+                            title: "Loading sales tools.",
+                            message: "Sales availability will appear shortly.",
+                            systemImage: "clock"
                         )
                     } else if let role = masterDataManager.role {
                         if role.permissionIdList.contains("400") && masterDataManager.isFeatureEnabled(.sales) {
@@ -48,8 +48,8 @@ struct OwesMoneyView: View {
                         } else if !masterDataManager.isFeatureEnabled(.sales) {
                             emptyState(
                                 title: "Sales unavailable.",
-                                message: "Sales is currently turned off by feature flag 4.",
-                                systemImage: "flag.slash"
+                                message: "Sales is currently unavailable for this company.",
+                                systemImage: "slash.circle"
                             )
                         } else {
                             emptyState(
@@ -159,15 +159,6 @@ extension OwesMoneyView {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .background(.thinMaterial, in: Capsule())
-
-                if let role = masterDataManager.role {
-                    Label("\(role.permissionIdList.count) Permissions", systemImage: "lock.shield")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(.thinMaterial, in: Capsule())
-                }
 
                 Spacer()
             }

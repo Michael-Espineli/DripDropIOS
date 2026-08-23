@@ -65,7 +65,6 @@ final class StripeViewModel:ObservableObject{
             "stripeVersion":"2023-10-16",
             "total":total
         ]
-        print(data)
         let result = try await Functions.functions().httpsCallable("createPaymentIntent").call(data)
         
         guard let json = result.data as? [String: Any],
@@ -97,7 +96,6 @@ final class StripeViewModel:ObservableObject{
             "stripeVersion":"2023-10-16",
             "total":1000
         ]
-        print(data)
         let result = try await Functions.functions().httpsCallable("setUpPaymentIntent").call(data)
         
         guard let json = result.data as? [String: Any],

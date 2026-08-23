@@ -146,15 +146,6 @@ extension Finance {
                     .padding(.vertical, 7)
                     .background(.thinMaterial, in: Capsule())
 
-                if let role = masterDataManager.role {
-                    Label("\(role.permissionIdList.count) Permissions", systemImage: "lock.shield")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(.thinMaterial, in: Capsule())
-                }
-
                 Spacer()
             }
         }
@@ -910,13 +901,6 @@ struct SalesFinanceView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Feature Flag 4", systemImage: "flag")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(.thinMaterial, in: Capsule())
-
             Text("Sales")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(.primary)

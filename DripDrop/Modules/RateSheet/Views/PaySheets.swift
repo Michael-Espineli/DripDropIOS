@@ -161,6 +161,7 @@ extension RateType {
 
 enum WorkCategory: String, Codable, Hashable {
     case route
+    case maintenance
     case serviceCall
     case repair
     case installation
@@ -168,6 +169,7 @@ enum WorkCategory: String, Codable, Hashable {
     case commercial
     case startup
     case drainAndRefill
+    case estimate
     case extra
     case custom
 }

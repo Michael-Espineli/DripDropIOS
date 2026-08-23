@@ -48,18 +48,12 @@
                         "stripeVersion": "2023-10-16",
                     ]
 
-                    print(data)
-
                     let result = try await Functions.functions().httpsCallable("createStripeAccountLink").call(data)
-
-                    print(result)
 
                     guard let json = result.data as? [String: Any] else {
                         print("Failed to Parse JSON")
                         return
                     }
-
-                    print(json)
 
                     guard let accountLink = json["accountLink"] as? String else {
                         print("Failed to Get Account Link")

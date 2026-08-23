@@ -405,7 +405,7 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
 
         let fullCustomerName = customer.firstName + " " + customer.lastName
 
-        let job = Job(
+        var job = Job(
             id: jobId,
             internalId: jobInternalId,
             type: "",
@@ -435,6 +435,7 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
             invoiceType: nil,
             invoiceNotes: nil
         )
+        job.sourceRepairRequestId = repairRequest?.id
 
         try await dataService.uploadWorkOrder(
             companyId: companyId,

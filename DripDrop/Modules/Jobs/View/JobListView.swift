@@ -495,6 +495,15 @@ extension JobListView {
                     }, content: {
                         jobFilterSheet
                     })
+                    NavigationLink(value: Route.jobTemplates(dataService: dataService)) {
+                        if UIDevice.isIPhone {
+                            mobileDockIcon(systemName: "square.stack.3d.up", tint: .purple)
+                        } else {
+                            Image(systemName: "square.stack.3d.up")
+                                .modifier(FilterIconModifer())
+                        }
+                    }
+                    .padding(UIDevice.isIPhone ? 0 : 10)
                     if let role = masterDataManager.role {
                         if role.canCreateAnyJob {
                             Button(action: {

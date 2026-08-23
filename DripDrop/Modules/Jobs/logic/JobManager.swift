@@ -44,6 +44,14 @@ struct Job: Identifiable, Codable, Hashable{
     //status
     var operationStatus : JobOperationStatus //Estimate Pending, Unscheduled, Scheduled, In Progress, Finished
     var billingStatus : JobBillingStatus // Draft, Estimate, Accepted, InProgress, Invoiced, Paid, Comped
+
+    var issuePriorityLevel: Int? = nil
+    var issuePriorityLabel: String? = nil
+    var priorityLevel: Int? = nil
+    var priorityLabel: String? = nil
+    var solutionTier: Int? = nil
+    var solutionTierLabel: String? = nil
+    var sourceRepairRequestId: String? = nil
     
     //refrences
     var customerId : String

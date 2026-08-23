@@ -26,7 +26,7 @@ final class JobTemplateWorkflowService {
         templateName: String,
         createdByUserId: String
     ) async throws -> JobTemplate {
-        let template = JobTemplate(
+        var template = JobTemplate(
             companyId: companyId,
             name: templateName,
             description: sourceJob.description,
@@ -38,6 +38,9 @@ final class JobTemplateWorkflowService {
             isActive: true,
             locked: false,
             createdByUserId: createdByUserId
+        )
+        template.setDefaultIssuePriority(
+            sourceJob.normalizedIssuePriority ?? .defaultLevel
         )
 
         let taskIdMap = Dictionary(
@@ -131,7 +134,7 @@ final class JobTemplateWorkflowService {
     ) async throws -> Job {
         let newJobId = "comp_job_" + UUID().uuidString
 
-        let newJob = Job(
+        var newJob = Job(
             id: newJobId,
             internalId: newInternalId,
             type: sourceJob.type,
@@ -163,6 +166,9 @@ final class JobTemplateWorkflowService {
             invoiceType: nil,
             invoiceNotes: nil
         )
+        if let issuePriority = sourceJob.normalizedIssuePriority {
+            newJob.setIssuePriority(issuePriority)
+        }
 
         let copiedTasks = copyJobTasks(
             companyId: companyId,
@@ -259,10 +265,10 @@ final class JobTemplateWorkflowService {
 
         let newJobId = "comp_job_" + UUID().uuidString
 
-        let newJob = Job(
+        var newJob = Job(
             id: newJobId,
             internalId: newInternalId,
-            type: template.jobType,
+            type: template.jobType.isEmpty ? template.name : template.jobType,
             dateCreated: Date(),
             description: template.description,
             operationStatus: .estimatePending,
@@ -291,6 +297,7 @@ final class JobTemplateWorkflowService {
             invoiceType: nil,
             invoiceNotes: nil
         )
+        newJob.setIssuePriority(template.normalizedDefaultIssuePriority)
 
         let copiedTasks = templateTasks.map { templateTask in
             JobTask(

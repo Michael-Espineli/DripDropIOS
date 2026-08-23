@@ -23,6 +23,7 @@ final class SubscriptionPickerViewModel: ObservableObject{
     @Published var customerSheet: CustomerSheet?
     @Published var isPaymentSheetPresented: Bool = false
     @Published var subscriptionId: String? = nil
+    @Published var stripeCustomerId: String? = nil
     
     @Published var detailedSub:StripeSubscription? = nil
     
@@ -38,21 +39,24 @@ final class SubscriptionPickerViewModel: ObservableObject{
     func deselectSubscription(){
         self.selectedSubscription = nil
         self.paymentSheet = nil
+        self.subscriptionId = nil
+        self.stripeCustomerId = nil
     }
-    func preparePaymentSheet(stripeId:String,subscription:StripeSubscription) async throws{
+    func preparePaymentSheet(stripeId:String, companyId: String, subscription:StripeSubscription) async throws{
         if subscription.name != .free{
             print("--preparePaymentSheet--")
             let data:[String:Any] = [
                 "customerId": stripeId,
+                "companyId": companyId,
                 "stripeVersion": "2023-10-16",
                 "priceId": subscription.stripePriceId
             ]
-            print(data)
             let result = try await Functions.functions().httpsCallable("createSubscriptionPaymentIntent").call(data)
-            print(result)
             guard let json = result.data as? [String: Any],
                   let subscriptionId = json["subscriptionId"] as? String,
                   let publishableKey = json["publishableKey"] as? String,
+                  let customerId = json["customerId"] as? String,
+                  let ephemeralKey = json["ephemeralKey"] as? String,
                   let clientSecret = json["clientSecret"] as? String else {
                     // Handle error
                 print("Failed to Parse JSON")
@@ -61,8 +65,10 @@ final class SubscriptionPickerViewModel: ObservableObject{
             
             print("Successfully Parsed JSON")
             STPAPIClient.shared.publishableKey = publishableKey
+            self.stripeCustomerId = customerId
             
             var configuration = PaymentSheet.Configuration()
+            configuration.customer = .init(id: customerId, ephemeralKeySecret: ephemeralKey)
             configuration.allowsDelayedPaymentMethods = false
                 //        configuration.primaryButtonLabel = "Subscribe"
             configuration.primaryButtonLabel = "Subscribe \(Double(subscription.price)/100) /Month"
@@ -114,8 +120,8 @@ final class SubscriptionPickerViewModel: ObservableObject{
                         name: subscription.name,
                         price: subscription.price,
                         started: Date(),
-                        status: "Active",
-                        stripeCustomerId: "",
+                        status: "active",
+                        stripeCustomerId: stripeCustomerId ?? "",
                         stripePriceId: subscription.stripePriceId,
                         stripeProductId: subscription.stripeProductId,
                         stripeSubscriptionId: subscriptionId,
@@ -133,7 +139,7 @@ final class SubscriptionPickerViewModel: ObservableObject{
                             name: subscription.name,
                             price: subscription.price,
                             started: Date(),
-                            status: "Active",
+                            status: "active",
                             stripeCustomerId: "",
                             stripePriceId: "",
                             stripeProductId: "",
