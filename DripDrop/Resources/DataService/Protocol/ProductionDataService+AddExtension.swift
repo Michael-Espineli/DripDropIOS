@@ -13,6 +13,13 @@ import SwiftUI
 import CoreLocation
 import MapKit
 import FirebaseStorage
+
+private let genericItemPartPurchaseAvailabilityPayload: [String: Any] = [
+    "active": true,
+    "availableForPartPurchase": true,
+    "partPurchaseAvailable": true
+]
+
 extension ProductionDataService {
  
  
@@ -570,7 +577,10 @@ extension ProductionDataService {
         print(genericItem.id)
         try await GenericItemCollection(companyId: companyId).document(genericItem.id)
             .updateData([
-                "storeItems": DBArray
+                "storeItems": DBArray,
+                "active": true,
+                "availableForPartPurchase": true,
+                "partPurchaseAvailable": true
             ])
         
     }
@@ -579,8 +589,9 @@ extension ProductionDataService {
         
     }
     func createDataBaseItem(companyId:String,genericItem : GenericItem) async throws {
-        
-        try GenericItemDocument(companyId: companyId, genericItemId: genericItem.id).setData(from:genericItem, merge: false)
+        let document = GenericItemDocument(companyId: companyId, genericItemId: genericItem.id)
+        try document.setData(from:genericItem, merge: false)
+        try await document.setData(genericItemPartPurchaseAvailabilityPayload, merge: true)
     }
     func createIntialGenericDataBaseItems(companyId:String) async throws{
         let genericItems:[GenericItem] = [
@@ -600,8 +611,9 @@ extension ProductionDataService {
         ]
         
         for item in genericItems {
-            try GenericItemDocument(companyId: companyId, genericItemId: item.id).setData(from:item, merge:false)
-            
+            let document = GenericItemDocument(companyId: companyId, genericItemId: item.id)
+            try document.setData(from:item, merge:false)
+            try await document.setData(genericItemPartPurchaseAvailabilityPayload, merge: true)
         }
         
     }

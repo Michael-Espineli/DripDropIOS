@@ -269,6 +269,11 @@ extension ServiceStopDetailView3 {
                 icon: "checklist"
             )
             metricCard(
+                title: "Shopping",
+                value: "\(VM.shoppingListItems.count)",
+                icon: "cart"
+            )
+            metricCard(
                 title: "Photos",
                 value: "\(VM.loadedImages.count)",
                 icon: "photo.on.rectangle"
@@ -311,6 +316,7 @@ extension ServiceStopDetailView3 {
     private func workContent(_ stop: ServiceStop) -> some View {
         VStack(spacing: 14) {
             taskSection(stop)
+            shoppingListSection
             observationsSection
         }
     }
@@ -410,6 +416,77 @@ extension ServiceStopDetailView3 {
             )
             .frame(minHeight: 220)
         }
+    }
+
+    private var shoppingListSection: some View {
+        sectionCard(title: "Shopping List", systemImage: "cart") {
+            if VM.shoppingListItems.isEmpty {
+                emptyState(
+                    title: "No shopping list items linked to this stop.",
+                    systemImage: "cart"
+                )
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(VM.shoppingListItems) { item in
+                        shoppingListItemRow(item)
+                    }
+                }
+            }
+        }
+    }
+
+    private func shoppingListItemRow(_ item: ShoppingListItem) -> some View {
+        let isUpdating = VM.updatingDeliveredItemIds.contains(item.id)
+        let isDelivered = item.status == .delivered
+        let isCompleted = item.status == .installed || item.status == .invoiced
+
+        return HStack(alignment: .top, spacing: 12) {
+            Image(systemName: shoppingItemIcon(item))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(shoppingStatusColor(item.status))
+                .frame(width: 32, height: 32)
+                .background(shoppingStatusColor(item.status).opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(shoppingItemName(item))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text("\(item.subCategory.rawValue) • Qty: \(shoppingQuantityText(item))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                if !item.description.isEmpty {
+                    Text(item.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 8) {
+                statusChip(item.status.rawValue, color: shoppingStatusColor(item.status))
+
+                Button {
+                    markShoppingListItemDelivered(item)
+                } label: {
+                    Label(
+                        deliveredButtonTitle(isDelivered: isDelivered, isUpdating: isUpdating),
+                        systemImage: isDelivered ? "checkmark.circle.fill" : "shippingbox"
+                    )
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                }
+                .buttonStyle(.bordered)
+                .disabled(isUpdating || isDelivered || isCompleted)
+            }
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var observationsSection: some View {
@@ -668,6 +745,27 @@ extension ServiceStopDetailView3 {
         }
     }
 
+    private func markShoppingListItemDelivered(_ item: ShoppingListItem) {
+        guard let company = masterDataManager.currentCompany else {
+            alertMessage = "Missing company context."
+            showAlert = true
+            return
+        }
+
+        Task {
+            do {
+                try await VM.markShoppingListItemDelivered(
+                    companyId: company.id,
+                    item: item
+                )
+            } catch {
+                alertMessage = "Unable to mark this shopping item delivered."
+                showAlert = true
+                print("ServiceStopDetailView3 delivered error", error)
+            }
+        }
+    }
+
     private func selectedCompanyUser(fallbackStop: ServiceStop) -> CompanyUser {
         if let selected = VM.companyUsers.first(where: { $0.userId == editTechnicianId }) {
             return selected
@@ -860,6 +958,64 @@ extension ServiceStopDetailView3 {
         }
         .padding(12)
         .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func shoppingItemName(_ item: ShoppingListItem) -> String {
+        if !item.name.isEmpty {
+            return item.name
+        }
+
+        if let purchasedItem = item.purchasedItem,
+           !purchasedItem.isEmpty {
+            return purchasedItem
+        }
+
+        return "Shopping Item"
+    }
+
+    private func shoppingQuantityText(_ item: ShoppingListItem) -> String {
+        guard let quantity = item.quantity,
+              !quantity.isEmpty else {
+            return "-"
+        }
+
+        return quantity
+    }
+
+    private func shoppingItemIcon(_ item: ShoppingListItem) -> String {
+        switch item.subCategory {
+        case .chemical:
+            return "drop"
+        case .part:
+            return "wrench.and.screwdriver"
+        case .custom:
+            return "shippingbox"
+        case .dataBase:
+            return "tray.full"
+        }
+    }
+
+    private func shoppingStatusColor(_ status: ShoppingListStatus) -> Color {
+        switch status {
+        case .needToPurchase:
+            return .orange
+        case .purchased:
+            return .blue
+        case .delivered, .installed, .invoiced:
+            return .poolGreen
+        }
+    }
+
+    private func deliveredButtonTitle(isDelivered: Bool, isUpdating: Bool) -> String {
+        if isUpdating {
+            return "Saving"
+        }
+
+        if isDelivered {
+            return "Delivered"
+        }
+
+        return "Mark Delivered"
     }
 }
 

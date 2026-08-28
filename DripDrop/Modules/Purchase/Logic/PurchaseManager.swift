@@ -148,6 +148,39 @@ final class PurchasedItemsManager {
         return try await PurchaseItemDocument(purchaseItemId: itemId, companyId: companyId).getDocument(as: PurchasedItem.self)
     }
 
+    @discardableResult
+    func addPurchasedItemsListener(
+        companyId: String,
+        startDate: Date,
+        endDate: Date,
+        onChange: @escaping (Result<[PurchasedItem], Error>) -> Void
+    ) -> ListenerRegistration {
+        PurchaseItemCollection(companyId: companyId)
+            .whereField("date", isGreaterThan: startDate)
+            .whereField("date", isLessThan: endDate)
+            .order(by: "date", descending: true)
+            .addSnapshotListener { snapshot, error in
+                if let error {
+                    onChange(.failure(error))
+                    return
+                }
+
+                guard let documents = snapshot?.documents else {
+                    onChange(.success([]))
+                    return
+                }
+
+                do {
+                    let purchasedItems = try documents.map { document in
+                        try document.data(as: PurchasedItem.self)
+                    }
+                    onChange(.success(purchasedItems))
+                } catch {
+                    onChange(.failure(error))
+                }
+            }
+    }
+
     func getItemsBasedOnDBItem(companyId: String,DataBaseItemSku:String) async throws -> [PurchasedItem] {
         let calendar = Calendar.current
         let previousMonth = calendar.date(byAdding: .month, value: -30, to: Date())!

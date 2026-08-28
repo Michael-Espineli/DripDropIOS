@@ -1034,6 +1034,7 @@ private struct MobileReimaginedMainDashboard: View {
 
     private var dashboardAlerts: [DripDropAlert] {
         alertVM.alertList
+            .filter { ($0.status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "archived" }
             .sorted { $0.date > $1.date }
             .prefix(3)
             .map { $0 }
@@ -2108,10 +2109,10 @@ struct MobileReimaginedOperationsSectionView: View {
                 ),
                 MobileReimaginedSectionItem(
                     title: "Shopping List",
-                    subtitle: "Parts and supplies to buy",
+                    subtitle: "Company-wide materials to buy",
                     systemImage: "cart.fill",
                     tint: .poolYellow,
-                    route: .shoppingList(dataService: dataService)
+                    route: .companyShoppingList(dataService: dataService)
                 )
             ]
         )
@@ -2549,7 +2550,7 @@ private struct MobileReimaginedSectionHub: View {
                             systemImage: "square.grid.2x2"
                         )
                     } else {
-                        LazyVGrid(columns: columns, spacing: 10) {
+                        VStack(spacing: 10) {
                             ForEach(visibleItems) { item in
                                 if let route = item.route, !item.isPlaceholder {
                                     NavigationLink(value: route) {
@@ -2636,7 +2637,7 @@ private struct MobileReimaginedSectionHub: View {
                 .padding(.top, 4)
         }
         .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 94, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(
             item.isPlaceholder ? AnyShapeStyle(Color.pink.opacity(0.08)) : AnyShapeStyle(.background),
             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -2708,13 +2709,6 @@ private struct MobileReimaginedSectionHub: View {
     private var isSalesFeatureAvailable: Bool {
         !requiresSalesFlag || masterDataManager.isFeatureEnabled(.sales)
     }
-
-    private var columns: [GridItem] {
-        [
-            GridItem(.flexible(), spacing: 10),
-            GridItem(.flexible(), spacing: 10)
-        ]
-    }
 }
 
 private enum MobilePurchaseReconciliationFilters {
@@ -2723,9 +2717,7 @@ private enum MobilePurchaseReconciliationFilters {
         !purchase.invoiced &&
         purchase.returned != true &&
         !isPersonalPurchase(purchase) &&
-        !hasShoppingConnection(purchase) &&
-        !hasJobConnection(purchase) &&
-        !hasCustomerConnection(purchase)
+        !hasShoppingConnection(purchase)
     }
 
     static func needsTechnicianReconciliation(_ purchase: PurchasedItem, technicianId: String) -> Bool {
@@ -3253,6 +3245,27 @@ private struct MobilePurchaseReconciliationView: View {
             }
         }
 
+        func clean(_ value: String?) -> String {
+            (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        func mergeInQueries(field: String, values: [String], label: String) async {
+            let cleanValues = Array(Set(values.map { clean($0) }.filter { !$0.isEmpty }))
+
+            for chunk in cleanValues.chunked(into: 10) {
+                do {
+                    mergeSnapshot(
+                        try await collectionRef
+                            .whereField(field, in: chunk)
+                            .limit(to: shoppingCandidateFetchLimit)
+                            .getDocuments()
+                    )
+                } catch {
+                    print("[MobilePurchaseReconciliationView][\(label)] \(error)")
+                }
+            }
+        }
+
         do {
             mergeSnapshot(
                 try await collectionRef
@@ -3300,16 +3313,39 @@ private struct MobilePurchaseReconciliationView: View {
             purchaseIdStartIndex = purchaseIdEndIndex
         }
 
+        let purchaseJobIds = purchases.map {
+            firstNonEmpty($0.jobId, $0.workOrderId ?? "", $0.assignedJobId ?? "")
+        }
+        let purchaseCustomerIds = purchases.map(\.customerId)
+        let purchaseDatabaseIds = purchases.map(\.itemId)
+
+        await mergeInQueries(field: "jobId", values: purchaseJobIds, label: "shoppingByJob")
+        await mergeInQueries(field: "customerId", values: purchaseCustomerIds, label: "shoppingByCustomer")
+        await mergeInQueries(field: "dbItemId", values: purchaseDatabaseIds, label: "shoppingByDatabaseItem")
+        await mergeInQueries(field: "genericItemId", values: purchaseDatabaseIds, label: "shoppingByGenericItem")
+
+        let purchaseJobIdSet = Set(purchaseJobIds.map { clean($0) }.filter { !$0.isEmpty })
+        let purchaseCustomerIdSet = Set(purchaseCustomerIds.map { clean($0) }.filter { !$0.isEmpty })
+        let purchaseDatabaseIdSet = Set(purchaseDatabaseIds.map { clean($0) }.filter { !$0.isEmpty })
+
         return itemsById.values
             .filter { item in
                 let purchasedItem = item.purchasedItem?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 let reverseLinkedToLoadedPurchase = purchaseIdSet.contains(purchasedItem)
+                let itemDatabaseIds = [
+                    item.dbItemId,
+                    item.genericItemId
+                ].map { clean($0) }
                 let belongsToTech = item.purchaserId == technicianId ||
                     item.userId == technicianId ||
                     item.assignedTechIds.contains(technicianId) ||
                     reverseLinkedToLoadedPurchase
+                let matchesLoadedPurchaseContext =
+                    purchaseJobIdSet.contains(clean(item.jobId)) ||
+                    purchaseCustomerIdSet.contains(clean(item.customerId)) ||
+                    itemDatabaseIds.contains { purchaseDatabaseIdSet.contains($0) }
 
-                return belongsToTech &&
+                return (belongsToTech || matchesLoadedPurchaseContext) &&
                     (reverseLinkedToLoadedPurchase || item.status.needsShoppingAction) &&
                     (purchasedItem.isEmpty || reverseLinkedToLoadedPurchase)
             }
@@ -3982,6 +4018,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
     @State private var showingCustomerPicker = false
     @State private var showingJobPicker = false
     @State private var showingSplitSheet = false
+    @State private var showingAllShoppingCandidates = false
     @State private var selectedCustomer = MobilePurchaseReconciliationDefaults.emptyCustomer()
     @State private var selectedJob = MobilePurchaseReconciliationDefaults.emptyJob()
 
@@ -4211,7 +4248,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                ForEach(shoppingCandidates.prefix(5)) { item in
+                ForEach(Array(shoppingCandidates.prefix(showingAllShoppingCandidates ? shoppingCandidates.count : 5))) { item in
                     Button {
                         Task {
                             await onConnectShoppingItem(purchase, item)
@@ -4221,6 +4258,23 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                         shoppingItemSummary(item, connected: false)
                     }
                     .buttonStyle(.plain)
+                    .disabled(isUpdating)
+                }
+
+                if shoppingCandidates.count > 5 {
+                    Button {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                            showingAllShoppingCandidates.toggle()
+                        }
+                    } label: {
+                        Label(
+                            showingAllShoppingCandidates ? "Show Fewer Matches" : "Show \(shoppingCandidates.count - 5) More Matches",
+                            systemImage: showingAllShoppingCandidates ? "chevron.up" : "chevron.down"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                     .disabled(isUpdating)
                 }
             }

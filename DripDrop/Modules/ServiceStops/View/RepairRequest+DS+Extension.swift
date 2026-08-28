@@ -40,6 +40,10 @@ extension ProductionDataService {
     func repairRequestDocument(companyId:String,repairRequestId:String)-> DocumentReference{
         repairRequestCollection(companyId: companyId).document(repairRequestId)
     }
+    func repairRequestCommentsCollection(companyId: String, repairRequestId: String) -> CollectionReference {
+        repairRequestDocument(companyId: companyId, repairRequestId: repairRequestId)
+            .collection("comments")
+    }
     func RepairRequestImageRefrence(companyId:String,id:String)->StorageReference {
         storage.child("companies").child(companyId).child("repairRequests").child(id)
     }
@@ -47,6 +51,15 @@ extension ProductionDataService {
     func uploadRepairRequest(companyId:String,repairRequest:RepairRequest) async throws {
         
         try repairRequestCollection(companyId: companyId).document(repairRequest.id).setData(from:repairRequest, merge: false)
+    }
+    func addRepairRequestComment(
+        companyId: String,
+        repairRequestId: String,
+        comment: JobComment
+    ) async throws {
+        try repairRequestCommentsCollection(companyId: companyId, repairRequestId: repairRequestId)
+            .document(comment.id)
+            .setData(from: comment, merge: false)
     }
         //Read
     func getSpecificRepairRequest(companyId:String,repairRequestId:String) async throws ->RepairRequest{
@@ -58,6 +71,11 @@ extension ProductionDataService {
         
         return try await repairRequestCollection(companyId: companyId)
             .getDocuments(as:RepairRequest.self)
+    }
+    func getRepairRequestComments(companyId: String, repairRequestId: String) async throws -> [JobComment] {
+        try await repairRequestCommentsCollection(companyId: companyId, repairRequestId: repairRequestId)
+            .order(by: "date", descending: true)
+            .getDocuments(as: JobComment.self)
     }
     
     func getRepairRequestsByCustomer(companyId: String,customerId:String) async throws ->[RepairRequest]{

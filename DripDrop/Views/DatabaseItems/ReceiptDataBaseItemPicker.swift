@@ -324,7 +324,7 @@ struct ReceiptDataBaseItemPicker: View {
             description: "",
             dateUpdated: Date(),
             sku: "",
-            billable: false,
+            billable: true,
             color: "",
             size: "",
             UOM: .ft

@@ -18,7 +18,7 @@ import FirebaseStorage
 final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject {
 
 
-    var storage = Storage.storage().reference()
+    lazy var storage = Storage.storage().reference()
     let id = UUID().uuidString
 
     func getFeatureFlags() async throws -> [FeatureFlag] {

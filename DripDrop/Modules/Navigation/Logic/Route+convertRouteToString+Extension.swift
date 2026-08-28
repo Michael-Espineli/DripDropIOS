@@ -47,6 +47,8 @@ func convertRouteToString(route:Route) -> RouteString {
         return .pendingJobs
     case .shoppingList(dataService: _):
         return .shoppingList
+    case .companyShoppingList(dataService: _):
+        return .companyShoppingList
     case .purchasedItemsList(dataService: _):
         return .purchasedItemsList
     case .map(dataService: _):

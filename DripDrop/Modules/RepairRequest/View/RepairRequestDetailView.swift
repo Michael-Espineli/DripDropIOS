@@ -9,13 +9,17 @@ import SwiftUI
 @MainActor
 final class RepairRequestDetailViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
-    let repairRequest: RepairRequest
+    @Published private(set) var repairRequest: RepairRequest
     init(dataService:any ProductionDataServiceProtocol,repairRequest:RepairRequest){
         self.dataService = dataService
         self.repairRequest = repairRequest
     }
     @Published private(set) var workOrder: Job? = nil
     @Published private(set) var customer: Customer? = nil
+    @Published private(set) var serviceLocation: ServiceLocation? = nil
+    @Published private(set) var bodyOfWater: BodyOfWater? = nil
+    @Published private(set) var equipment: Equipment? = nil
+    @Published private(set) var comments: [JobComment] = []
     
     @Published var status:RepairRequestStatus = .unresolved
     @Published var equipmentStatus: EquipmentStatus = .operational
@@ -26,6 +30,10 @@ final class RepairRequestDetailViewModel:ObservableObject{
     @Published var jobId:String = ""
     @Published var returnJobId:String = ""
     @Published var description:String = ""
+    @Published var newComment:String = ""
+    @Published var commentsLoading:Bool = false
+    @Published var isAddingComment:Bool = false
+    @Published var commentMessage:String? = nil
     
     @Published var showAlert:Bool = false
     @Published var alertMessage:String = ""
@@ -62,24 +70,148 @@ final class RepairRequestDetailViewModel:ObservableObject{
 
     func onLoad(companyId: String?){
         Task{
-            self.status = repairRequest.status.selectableValue
-            self.photoUrls = repairRequest.photoUrls
-            self.jobIdList = repairRequest.jobIds
-            self.description = repairRequest.description
-                do {
-                    if let companyId {
-                        if repairRequest.customerId != "" {
-                            self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: repairRequest.customerId)
-                        }
-                        if let equipmentId = repairRequest.equipmentId, !equipmentId.isEmpty {
-                            let equipment = try await dataService.getSinglePieceOfEquipment(companyId: companyId, equipmentId: equipmentId)
-                            self.equipmentStatus = equipment.status
-                        }
-                    }
-                } catch {
-                    print("[RepairRequestDetailViewModel][onLoad] Error: \(error)")
-                }
+            await applyRepairRequestState(companyId: companyId)
         }
+    }
+
+    func refreshRepairRequest(companyId: String?) async {
+        guard let companyId else {
+            await applyRepairRequestState(companyId: nil)
+            return
+        }
+
+        do {
+            self.repairRequest = try await dataService.getSpecificRepairRequest(companyId: companyId, repairRequestId: repairRequest.id)
+        } catch {
+            print("[RepairRequestDetailViewModel][refreshRepairRequest] Error: \(error)")
+        }
+
+        await applyRepairRequestState(companyId: companyId)
+    }
+
+    private func applyRepairRequestState(companyId: String?) async {
+        self.status = repairRequest.status.selectableValue
+        self.photoUrls = repairRequest.photoUrls
+        self.jobIdList = repairRequest.jobIds
+        self.description = repairRequest.description
+        self.serviceLocation = nil
+        self.bodyOfWater = nil
+        self.equipment = nil
+
+        guard let companyId else { return }
+
+        do {
+            if repairRequest.customerId != "" {
+                self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: repairRequest.customerId)
+            }
+        } catch {
+            print("[RepairRequestDetailViewModel][applyRepairRequestState][customer] Error: \(error)")
+        }
+
+        await loadSiteContext(companyId: companyId)
+        await loadComments(companyId: companyId)
+    }
+
+    func loadSiteContext(companyId: String) async {
+        let locationId = cleanId(repairRequest.locationId)
+        let bodyOfWaterId = cleanId(repairRequest.bodyOfWaterId)
+        let equipmentId = cleanId(repairRequest.equipmentId)
+
+        if !locationId.isEmpty {
+            do {
+                self.serviceLocation = try await dataService.getServiceLocationById(companyId: companyId, locationId: locationId)
+            } catch {
+                print("[RepairRequestDetailViewModel][loadSiteContext][location] Error: \(error)")
+            }
+        }
+
+        if !bodyOfWaterId.isEmpty {
+            do {
+                self.bodyOfWater = try await dataService.getSpecificBodyOfWater(companyId: companyId, bodyOfWaterId: bodyOfWaterId)
+            } catch {
+                print("[RepairRequestDetailViewModel][loadSiteContext][bodyOfWater] Error: \(error)")
+            }
+        }
+
+        if !equipmentId.isEmpty {
+            do {
+                let equipment = try await dataService.getSinglePieceOfEquipment(companyId: companyId, equipmentId: equipmentId)
+                self.equipment = equipment
+                self.equipmentStatus = equipment.status
+
+                if self.serviceLocation == nil, !equipment.serviceLocationId.isEmpty {
+                    self.serviceLocation = try? await dataService.getServiceLocationById(companyId: companyId, locationId: equipment.serviceLocationId)
+                }
+
+                if self.bodyOfWater == nil, !equipment.bodyOfWaterId.isEmpty {
+                    self.bodyOfWater = try? await dataService.getSpecificBodyOfWater(companyId: companyId, bodyOfWaterId: equipment.bodyOfWaterId)
+                }
+            } catch {
+                print("[RepairRequestDetailViewModel][loadSiteContext][equipment] Error: \(error)")
+            }
+        }
+    }
+
+    func loadComments(companyId: String?) async {
+        guard let companyId else { return }
+
+        commentsLoading = true
+        defer { commentsLoading = false }
+
+        do {
+            comments = try await dataService.getRepairRequestComments(companyId: companyId, repairRequestId: repairRequest.id)
+        } catch {
+            commentMessage = "Could not load comments"
+            print("[RepairRequestDetailViewModel][loadComments] Error: \(error)")
+        }
+    }
+
+    func addComment(companyId: String?, userId: String?, userName: String) async {
+        let trimmedComment = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedComment.isEmpty else { return }
+        guard let companyId else {
+            commentMessage = "Missing company"
+            return
+        }
+        guard let userId, !userId.isEmpty else {
+            commentMessage = "Missing signed-in user"
+            return
+        }
+
+        isAddingComment = true
+        defer { isAddingComment = false }
+
+        let comment = JobComment(
+            id: "comp_rr_com_" + UUID().uuidString,
+            jobId: repairRequest.id,
+            companyId: companyId,
+            userId: userId,
+            userName: userName,
+            authorId: userId,
+            authorName: userName,
+            date: Date(),
+            comment: trimmedComment,
+            resolved: false
+        )
+
+        do {
+            try await dataService.addRepairRequestComment(
+                companyId: companyId,
+                repairRequestId: repairRequest.id,
+                comment: comment
+            )
+            newComment = ""
+            commentMessage = "Comment added"
+            comments.insert(comment, at: 0)
+        } catch {
+            commentMessage = "Could not add comment"
+            print("[RepairRequestDetailViewModel][addComment] Error: \(error)")
+        }
+    }
+
+    private func cleanId(_ value: String?) -> String {
+        value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
     
     func onChangeOfSeletectedImage(companyId:String?){
@@ -229,6 +361,8 @@ struct RepairRequestDetailView: View {
                 VStack(spacing: 14) {
                     header
                     formCard
+                    siteContextCard
+                    commentsCard
                     jobList
                     currentPhotos
                 }
@@ -238,9 +372,12 @@ struct RepairRequestDetailView: View {
             }
         }
         .sheet(isPresented: $showEdit, onDismiss: {
-            
+            Task {
+                await VM.refreshRepairRequest(companyId: masterDataManager.currentCompany?.id)
+                repairRequest = VM.repairRequest
+            }
         }, content: {
-            EditRepairRequest(dataService: dataService, repairRequest: repairRequest)
+            EditRepairRequest(dataService: dataService, repairRequest: VM.repairRequest)
         })
         .toolbar{
             Button(action: {
@@ -269,9 +406,6 @@ struct RepairRequestDetailView: View {
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
-        .onChange(of: VM.description, perform: { change in
-            VM.updateDescription(companyId: masterDataManager.currentCompany?.id)
-        })
         .onChange(of: VM.newPhotoUrls, perform: { image in
             VM.onChangeOfSeletectedImage(companyId: masterDataManager.currentCompany?.id)
         })
@@ -324,7 +458,7 @@ extension RepairRequestDetailView {
 
     var formCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader("Request Details", systemImage: "person.text.rectangle")
+            sectionHeader("Overview", systemImage: "person.text.rectangle")
 
             VStack(alignment: .leading, spacing: 8) {
                 Label("Status", systemImage: "checklist")
@@ -377,48 +511,175 @@ extension RepairRequestDetailView {
                 systemImage: "calendar"
             )
 
-            VStack(alignment: .leading, spacing: 6) {
-                Label("Description", systemImage: "text.alignleft")
+            detailRow(title: "Customer", value: repairRequest.customerName, systemImage: "person")
+            detailRow(title: "Requested By", value: repairRequest.requesterName, systemImage: "person.crop.circle")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Issue", systemImage: "text.alignleft")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("Description", text: $VM.description, axis: .vertical)
+                Text(VM.description.isEmpty ? "No description added." : VM.description)
                     .font(.subheadline)
-                    .lineLimit(5, reservesSpace: true)
+                    .foregroundStyle(VM.description.isEmpty ? .secondary : .primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
 
-            Group {
-                detailRow(title: "Customer", value: repairRequest.customerName, systemImage: "person")
+    var siteContextCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("Site", systemImage: "mappin.and.ellipse")
 
-                if let id = repairRequest.locationId {
-                    detailRow(title: "Location ID", value: id, systemImage: "mappin.and.ellipse")
+            if let serviceLocation = VM.serviceLocation {
+                detailRow(
+                    title: "Location",
+                    value: locationSummary(serviceLocation),
+                    systemImage: "house"
+                )
+
+                if let notes = serviceLocation.notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    detailRow(title: "Location Notes", value: notes, systemImage: "note.text")
                 }
+            } else {
+                emptyState("No location selected.", systemImage: "mappin.slash")
+            }
 
-                if let id = repairRequest.bodyOfWaterId {
-                    detailRow(title: "Body of Water ID", value: id, systemImage: "drop")
-                }
+            if let bodyOfWater = VM.bodyOfWater {
+                detailRow(
+                    title: "Body of Water",
+                    value: bodyOfWaterSummary(bodyOfWater),
+                    systemImage: "drop"
+                )
+            }
 
-                if let id = repairRequest.equipmentId {
-                    detailRow(title: "Equipment ID", value: id, systemImage: "wrench.and.screwdriver")
+            if let equipment = VM.equipment {
+                detailRow(
+                    title: "Equipment",
+                    value: equipmentSummary(equipment),
+                    systemImage: "wrench.and.screwdriver"
+                )
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label("Equipment Status", systemImage: "gauge.with.dots.needle.bottom.50percent")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Equipment Status", systemImage: "gauge.with.dots.needle.bottom.50percent")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                        Picker("Equipment Status", selection: $VM.equipmentStatus) {
-                            ForEach(EquipmentStatus.operationalStatusCases, id: \.self) { status in
-                                Text(status.displayName).tag(status)
-                            }
+                    Picker("Equipment Status", selection: $VM.equipmentStatus) {
+                        ForEach(EquipmentStatus.operationalStatusCases, id: \.self) { status in
+                            Text(status.displayName).tag(status)
                         }
-                        .pickerStyle(.menu)
                     }
-                    .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .pickerStyle(.menu)
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var commentsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionHeader("Comments", systemImage: "text.bubble")
+
+                Spacer()
+
+                Button {
+                    Task {
+                        await VM.loadComments(companyId: masterDataManager.currentCompany?.id)
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 34, height: 34)
+                        .background(.thinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Refresh repair request comments")
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $VM.newComment)
+                        .font(.subheadline)
+                        .frame(minHeight: 96)
+                        .padding(8)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                        }
+
+                    if VM.newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Add a note for this repair request...")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 16)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if let message = VM.commentMessage {
+                        Text(message)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(message == "Comment added" ? Color.poolGreen : Color.poolRed)
+                            .lineLimit(2)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        Task {
+                            await VM.addComment(
+                                companyId: masterDataManager.currentCompany?.id,
+                                userId: masterDataManager.user?.id,
+                                userName: currentUserDisplayName
+                            )
+                        }
+                    } label: {
+                        if VM.isAddingComment {
+                            ProgressView()
+                                .frame(width: 20, height: 20)
+                        } else {
+                            Label("Add Comment", systemImage: "plus.message.fill")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(VM.isAddingComment || VM.newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            if VM.commentsLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+                .padding(.vertical, 18)
+            } else if VM.comments.isEmpty {
+                emptyState("No comments yet.", systemImage: "text.bubble")
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(VM.comments.sorted(by: commentSort)) { comment in
+                        commentRow(comment)
+                    }
                 }
             }
         }
@@ -601,6 +862,107 @@ extension RepairRequestDetailView {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 22)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    func commentRow(_ comment: JobComment) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(comment.userName ?? comment.authorName ?? "Unknown")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text(commentDateText(comment.date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            Text(comment.comment)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    var currentUserDisplayName: String {
+        let first = masterDataManager.user?.firstName ?? ""
+        let last = masterDataManager.user?.lastName ?? ""
+        let name = "\(first) \(last)".trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return name.isEmpty ? "Technician" : name
+    }
+
+    func locationSummary(_ location: ServiceLocation) -> String {
+        let title = location.nickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? location.address.streetAddress
+            : location.nickName
+        let address = addressSummary(location.address)
+        let gateCode = location.gateCode.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var parts = [title.isEmpty ? "Location" : title]
+        if !address.isEmpty, address != title {
+            parts.append(address)
+        }
+        if !gateCode.isEmpty {
+            parts.append("Gate: \(gateCode)")
+        }
+
+        return parts.joined(separator: "\n")
+    }
+
+    func addressSummary(_ address: Address) -> String {
+        let cityLine = [address.city, address.state, address.zip]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        return [address.streetAddress, cityLine]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+    }
+
+    func bodyOfWaterSummary(_ bodyOfWater: BodyOfWater) -> String {
+        let name = bodyOfWater.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Body of water"
+            : bodyOfWater.name
+
+        let details = [bodyOfWater.gallons, bodyOfWater.material]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " • ")
+
+        return details.isEmpty ? name : "\(name)\n\(details)"
+    }
+
+    func equipmentSummary(_ equipment: Equipment) -> String {
+        let name = equipment.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? equipment.type.rawValue
+            : equipment.name
+        let details = [equipment.type.rawValue, equipment.make, equipment.model]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " • ")
+
+        if details.isEmpty {
+            return "\(name)\n\(equipment.status.displayName)"
+        }
+
+        return "\(name)\n\(details)\n\(equipment.status.displayName)"
+    }
+
+    func commentSort(_ lhs: JobComment, _ rhs: JobComment) -> Bool {
+        (lhs.date ?? .distantPast) > (rhs.date ?? .distantPast)
+    }
+
+    func commentDateText(_ date: Date?) -> String {
+        guard let date else { return "Pending" }
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     func statusTint(_ status: RepairRequestStatus) -> Color {

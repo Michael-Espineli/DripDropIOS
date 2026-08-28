@@ -9,14 +9,20 @@
 import Foundation
 import UIKit
 import FirebaseCore
+import UserNotifications
 
-class AppDelegate: NSObject, UIApplicationDelegate {
+extension Notification.Name {
+    static let dripDropNotificationRouteRequested = Notification.Name("dripDropNotificationRouteRequested")
+}
+
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     // swiftlint: disable line_length
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
 //        FirebaseApp.configure()
         FirebaseManager.shared.configure()
+        UNUserNotificationCenter.current().delegate = self
         #if DEBUG
         // Optional: connect to Firestore emulator for local testing
         // let settings = Firestore.firestore().settings
@@ -45,6 +51,26 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func setupMyApp() {
         // TODO: Add any intialization steps here.
         print("Application Set up!")
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: .dripDropNotificationRouteRequested,
+                object: nil,
+                userInfo: response.notification.request.content.userInfo
+            )
+        }
     }
 }
 

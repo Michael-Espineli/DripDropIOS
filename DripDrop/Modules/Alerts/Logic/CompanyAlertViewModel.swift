@@ -458,6 +458,9 @@ final class CompanyAlertViewModel:ObservableObject{
                         print(" Please Build out")
 #warning("Update 2.5 Build out")
 
+                    case .companyShoppingList:
+                        
+        #warning("Update 2.5   please build out")
                     }
                 }
             } else {
@@ -733,6 +736,9 @@ final class CompanyAlertViewModel:ObservableObject{
                     print(" please build out")
                     
     #warning("Update 2.5   please build out")
+                case .companyShoppingList:
+                    
+    #warning("Update 2.5   please build out")
                 }
             
         }
@@ -895,6 +901,9 @@ final class CompanyAlertViewModel:ObservableObject{
         #warning("Update 2.5   please build out")
                     case .employeeMainDailyDisplayView:
                         print(" please build out")
+                        
+        #warning("Update 2.5   please build out")
+                    case .companyShoppingList:
                         
         #warning("Update 2.5   please build out")
                     }
@@ -1168,6 +1177,9 @@ final class CompanyAlertViewModel:ObservableObject{
                     print(" please build out")
     #warning("Update 2.5   please build out")
                     
+                case .companyShoppingList:
+                    
+    #warning("Update 2.5   please build out")
                 }
             
         }

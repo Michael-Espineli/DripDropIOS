@@ -61,9 +61,11 @@ final class PayrollGenerationService {
             generatedLineItems: generatedLineItems,
             existingLineItems: existingLineItems,
             settings: context.settings
-        )
+        ).filter { $0.totalAmountCents > 0 }
 
-        try await dataService.saveTechnicianPayLineItems(lineItemsToSave)
+        if !lineItemsToSave.isEmpty {
+            try await dataService.saveTechnicianPayLineItems(lineItemsToSave)
+        }
 
         return lineItemsToSave
     }

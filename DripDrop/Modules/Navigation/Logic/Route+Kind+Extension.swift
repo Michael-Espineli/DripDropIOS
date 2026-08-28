@@ -38,6 +38,8 @@ extension Route {
             return 14
         case .shoppingList:
             return 15
+        case .companyShoppingList:
+            return 801
         case .purchasedItemsList:
             return 16
         case .map:
@@ -322,6 +324,8 @@ extension Route {
             break
         case .shoppingList:
             break
+        case .companyShoppingList:
+            break
         case .purchasedItemsList:
             break
         case .map:
@@ -595,6 +599,7 @@ extension Route {
              .toDoList,
              .pendingJobs,
              .shoppingList,
+             .companyShoppingList,
              .purchasedItemsList,
              .map,
              .dailyDisplay,

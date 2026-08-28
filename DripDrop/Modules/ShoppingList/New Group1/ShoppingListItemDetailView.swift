@@ -185,6 +185,13 @@ extension ShoppingListItemDetailView {
                 )
 
                 statusActionButton(
+                    title: "Delivered",
+                    status: .delivered,
+                    currentItem: item,
+                    systemImage: "shippingbox"
+                )
+
+                statusActionButton(
                     title: "Installed",
                     status: .installed,
                     currentItem: item,
@@ -771,7 +778,7 @@ extension ShoppingListItemDetailView {
 
     private func statusTint(_ item: ShoppingListItem) -> Color {
         switch item.status {
-        case .installed, .invoiced:
+        case .delivered, .installed, .invoiced:
             return .green
 
         case .purchased:

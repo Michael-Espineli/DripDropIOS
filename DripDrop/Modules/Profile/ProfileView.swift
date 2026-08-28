@@ -43,6 +43,7 @@ struct ProfileView: View {
                     Section {
                         VStack(spacing: 12) {
                             Divider().opacity(0)
+                            personalVehicleLink
                             if masterDataManager.isFeatureEnabled(.companyUserProfileHistory) {
                                 companyUserPaysheetLink
                                 companyUserHistoryLink
@@ -341,6 +342,247 @@ struct CompanyUserProfileHistoryView: View {
     }
 }
 
+struct PersonalVehicleDetailView: View {
+    @Environment(\.locale) private var locale
+
+    let companyUser: CompanyUser
+    let companyName: String?
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    summaryCard
+                    accessCard
+
+                    if let personalVehicle {
+                        detailsCard(personalVehicle)
+                    }
+
+                    Color.clear.frame(height: 18)
+                }
+                .padding(14)
+            }
+        }
+        .navigationTitle("Personal Vehicle")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private extension PersonalVehicleDetailView {
+    var personalVehicle: PersonalVehicle? {
+        companyUser.personalVehicle
+    }
+
+    var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if let personalVehicle {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "car.fill")
+                        .font(.title.weight(.semibold))
+                        .foregroundStyle(Color.poolBlue)
+                        .frame(width: 58, height: 58)
+                        .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(personalVehicle.displayName)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(.primary)
+
+                        Text(personalVehicleDescription(personalVehicle))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        vehicleAccessBadge
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                if !companyUser.canUsePersonalRouteVehicle {
+                    warningRow("This personal vehicle is saved, but it is not currently enabled for route use.")
+                }
+            } else {
+                emptyState(
+                    title: "No personal vehicle saved.",
+                    message: "Personal vehicle details will appear here once they are added.",
+                    systemImage: "car"
+                )
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var accessCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("Route Access", systemImage: "car.2")
+
+            VStack(spacing: 8) {
+                detailRow(
+                    title: "Allowed Vehicles",
+                    value: routeVehicleAccessLabel(companyUser.normalizedRouteVehicleAccess),
+                    systemImage: "car.2"
+                )
+
+                detailRow(
+                    title: "User",
+                    value: companyUser.userName,
+                    systemImage: "person"
+                )
+
+                if let companyName, !companyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    detailRow(
+                        title: "Company",
+                        value: companyName,
+                        systemImage: "building.2"
+                    )
+                }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    func detailsCard(_ personalVehicle: PersonalVehicle) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("Vehicle Info", systemImage: "info.circle")
+
+            VStack(spacing: 8) {
+                detailRow(title: "Nickname", value: optionalValue(personalVehicle.nickName), systemImage: "tag")
+                detailRow(title: "Type", value: optionalValue(personalVehicle.vehicalType), systemImage: "car")
+                detailRow(title: "Year", value: optionalValue(personalVehicle.year), systemImage: "calendar")
+                detailRow(title: "Make", value: optionalValue(personalVehicle.make), systemImage: "wrench.and.screwdriver")
+                detailRow(title: "Model", value: optionalValue(personalVehicle.model), systemImage: "car.side")
+                detailRow(title: "Color", value: optionalValue(personalVehicle.color), systemImage: "paintpalette")
+                detailRow(title: "Plate", value: optionalValue(personalVehicle.plate), systemImage: "number")
+                detailRow(title: "Mileage", value: mileageLabel(personalVehicle.miles), systemImage: "gauge.with.dots.needle.bottom.50percent")
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    var vehicleAccessBadge: some View {
+        let color = companyUser.canUsePersonalRouteVehicle ? Color.poolGreen : Color.orange
+        let title = companyUser.canUsePersonalRouteVehicle ? "Route Ready" : "Not Route Enabled"
+
+        return Text(title)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(color.opacity(0.13), in: Capsule())
+    }
+
+    func sectionHeader(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+
+    func detailRow(title: String, value: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 30, height: 30)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(value.isEmpty ? "Not set" : value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    func emptyState(title: String, message: String, systemImage: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    func warningRow(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.subheadline)
+                .foregroundStyle(.orange)
+
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    func routeVehicleAccessLabel(_ value: String) -> String {
+        switch value {
+        case "personal":
+            return "Personal vehicle"
+        case "both":
+            return "Company or personal"
+        default:
+            return "Company vehicle"
+        }
+    }
+
+    func personalVehicleDescription(_ vehicle: PersonalVehicle) -> String {
+        let description = [
+            vehicle.color,
+            vehicle.year,
+            vehicle.make,
+            vehicle.model,
+            vehicle.vehicalType
+        ]
+        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter { !$0.isEmpty }
+        .joined(separator: " ")
+
+        return description.isEmpty ? "Personal Vehicle" : description
+    }
+
+    func optionalValue(_ value: String?) -> String {
+        value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    func mileageLabel(_ miles: Double?) -> String {
+        guard let miles else {
+            return ""
+        }
+
+        return Measurement(value: miles, unit: UnitLength.miles)
+            .formatted(.measurement(width: .abbreviated, usage: .road).locale(locale))
+    }
+}
+
 #Preview {
     ProfileView(dataService: MockDataService())
         .environmentObject(NavigationStateManager())
@@ -369,6 +611,51 @@ extension ProfileView {
         HStack {
             Spacer(minLength: 0)
             editProfileButton
+        }
+    }
+
+    var personalVehicleLink: some View {
+        Group {
+            if let companyUser = masterDataManager.companyUser {
+                NavigationLink {
+                    PersonalVehicleDetailView(
+                        companyUser: companyUser,
+                        companyName: masterDataManager.currentCompany?.name
+                    )
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: companyUser.personalVehicle == nil ? "car" : "car.fill")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 40, height: 40)
+                            .background(Color.poolBlue.opacity(0.14), in: Circle())
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("My Personal Vehicle")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                            Text(personalVehicleSubtitle(for: companyUser))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(16)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -464,6 +751,22 @@ extension ProfileView {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    func personalVehicleSubtitle(for companyUser: CompanyUser) -> String {
+        guard let personalVehicle = companyUser.personalVehicle else {
+            return "No personal vehicle saved"
+        }
+
+        let plate = personalVehicle.plate?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let accessNote = companyUser.canUsePersonalRouteVehicle ? "" : " - not enabled for routes"
+
+        if plate.isEmpty {
+            return "\(personalVehicle.displayName)\(accessNote)"
+        }
+
+        return "\(personalVehicle.displayName) - \(plate)\(accessNote)"
     }
 
     var rateSheet: some View {

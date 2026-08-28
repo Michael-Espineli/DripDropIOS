@@ -532,6 +532,10 @@ extension VehicalPickerView {
             )
             
             savedPersonalVehicle = personalVehicle
+            var updatedCompanyUser = companyUser
+            updatedCompanyUser.allowPersonalVehicle = true
+            updatedCompanyUser.personalVehicle = personalVehicle
+            masterDataManager.companyUser = updatedCompanyUser
             VM.selectedVehical = personalVehicle.asVehical(ownerId: companyUser.userId)
             
             #if os(iOS)

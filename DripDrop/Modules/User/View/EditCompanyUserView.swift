@@ -29,183 +29,41 @@ struct EditCompanyUserView: View {
     @State var showAlert:Bool = false
     @State var alertMessage:String = ""
     var body: some View {
-        ZStack{
-            Color.listColor.ignoresSafeArea()
-            VStack{
-                HStack{
-                    if companyUser.roleId != selectedRole.id || companyUser.status != status || companyUser.workerType != workerType{
-                        Button(action: {
-                            Task{
-                                if let company = masterDataManager.currentCompany,
-                                   let user = masterDataManager.user {
-                                    //DEVELOPER - I think I might put employment history under each user so that a specific company to edit the Roles
-                                    do {
-                                        try await VM.updateCompanyUser(
-                                            companyId:company.id,
-                                            user: companyUser,
-                                            userId: companyUser.userId,
-                                            userName: companyUser.userName,
-                                            roleId: selectedRole.id,
-                                            roleName: selectedRole.name,
-                                            dateCreated: companyUser.dateCreated,
-                                            status: status,
-                                            workerType:workerType
-                                        )
-                                        alertMessage = "Successfully"
-                                        showAlert = true
-                                        print(alertMessage)
-                                        companyUser.roleId = selectedRole.id
-                                        companyUser.roleName = selectedRole.name
-                                        companyUser.status = status
-                                        companyUser.workerType = workerType
-                                    } catch {
-                                        print(error)
-                                    }
-                                }
-                            }
-                        },
-                               label: {
-                            Text("Save")
-                                .modifier(SubmitButtonModifier())
-                            
-                        })
-                    }
-                    Spacer()
-                    Button(action: {
-                        dismiss()
-                    }, label: {
-                        Image(systemName: "xmark")
-                            .modifier(DismissButtonModifier())
-                    })
-                }
-                VStack{
-                    if let dbuser = VM.user {
-                        if UIDevice.isIPhone {
-                            if let urlString = dbuser.photoUrl,let url = URL(string: urlString){
-                                AsyncImage(url: url){ image in
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                        .foregroundColor(Color.white)
-                                        .frame(maxWidth:50 ,maxHeight:50)
-                                        .cornerRadius(50)
-                                } placeholder: {
-                                    Image(systemName:"person.circle")
-                                        .resizable()
-                                        .scaledToFill()
-                                        .foregroundColor(Color.basicFontText)
-                                        .frame(maxWidth:50 ,maxHeight:50)
-                                        .cornerRadius(50)
-                                }
-                            } else {
-                                Image(systemName:"person.circle")
-                                    .resizable()
-                                    .scaledToFill()
-                                    .foregroundColor(Color.basicFontText)
-                                    .frame(maxWidth:50 ,maxHeight:50)
-                                    .cornerRadius(50)
-                            }
-                        } else {
-                            if let urlString = dbuser.photoUrl,let url = URL(string: urlString){
-                                AsyncImage(url: url){ image in
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                        .foregroundColor(Color.white)
-                                        .frame(maxWidth:150 ,maxHeight:150)
-                                        .cornerRadius(150)
-                                } placeholder: {
-                                    Image(systemName:"person.circle")
-                                        .resizable()
-                                        .scaledToFill()
-                                        .foregroundColor(Color.basicFontText)
-                                        .frame(maxWidth:150 ,maxHeight:150)
-                                        .cornerRadius(150)
-                                }
-                            } else {
-                                Image(systemName:"person.circle")
-                                    .resizable()
-                                    .scaledToFill()
-                                    .foregroundColor(Color.basicFontText)
-                                    .frame(maxWidth:150 ,maxHeight:150)
-                                    .cornerRadius(150)
-                            }
-                        }
-                        Text("\(companyUser.userName)")
-                        Rectangle()
-                            .frame(height: 1)
-                        HStack{
-                            Text("Email: ")
-                                Text("\(dbuser.email)")
-                            
-                            Spacer()
+        NavigationStack {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
 
-                        }
-                        HStack{
-                            Text("Bio: ")
-                            if let bio = dbuser.bio {
-                                Text("\(bio)")
-                            }
-                            Spacer()
-
-                        }
-                        HStack{
-                            Text("Phone Number: +(619)490-6830")
-                            Spacer()
-                        }
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        editHeaderCard
+                        assignmentCard
+                        userInfoCard
                     }
+                    .padding(14)
                 }
-                HStack{
-                    Text("Date Created: ")
-                        Text("\(fullDate(date:companyUser.dateCreated))")
-                    
-                    Spacer()
-
-                }
-                Rectangle()
-                    .frame(height: 4)
-
-                HStack{
-                    Text("Position : ")
-                    Text("\(companyUser.roleName)")
-                    Spacer()
-                    Picker("", selection: $selectedRole) {
-                        Text("Pick Role")
-                        ForEach(VM.roleList) {
-                            Text($0.name ).tag($0)
-                            
-                        }
-                    }
-                }
-            
-                HStack{
-                    Text("WorkerType: ")
-                    Text("\(companyUser.workerType.rawValue)")
-                
-                    Spacer()
-                 
-                }
-                Picker("", selection: $workerType) {
-                    ForEach(WorkerTypeEnum.allCases,id:\.self) {
-                        Text($0.rawValue).tag($0)
-                    }
-                }
-                
-                .pickerStyle(.segmented)
-                Picker("Active", selection: $active) {
-                        Text("Active").tag(true)
-                        Text("In Active").tag(false)
-                }
-                
-                .pickerStyle(.segmented)
-                Spacer()
             }
-            .padding(8)
+            .navigationTitle("Edit Team Member")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        Task { await saveChanges() }
+                    }
+                    .disabled(!hasChanges)
+                }
+            }
         }
         .task {
             if let company = masterDataManager.currentCompany{
                 do {
                     status = companyUser.status
+                    workerType = companyUser.workerType
                     selectedRole.id = companyUser.roleId
                     selectedRole.name = companyUser.roleName
                     try await VM.onFirstLoad(companyId: company.id,userId:companyUser.userId)
@@ -224,6 +82,205 @@ struct EditCompanyUserView: View {
         .alert(alertMessage, isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         }
+    }
+
+    private var hasChanges: Bool {
+        companyUser.roleId != selectedRole.id ||
+        companyUser.status != status ||
+        companyUser.workerType != workerType
+    }
+
+    private var editHeaderCard: some View {
+        HStack(alignment: .top, spacing: 12) {
+            userAvatar
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(companyUser.userName.isEmpty ? "Team Member" : companyUser.userName)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text(companyUser.roleName.isEmpty ? "No role assigned" : companyUser.roleName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("Created \(fullDate(date: companyUser.dateCreated))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .editCompanyUserCard(material: true)
+    }
+
+    private var assignmentCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Role & Access", systemImage: "person.badge.key")
+                .font(.headline.weight(.semibold))
+
+            VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Role")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Picker("Role", selection: $selectedRole) {
+                        Text("Pick Role").tag(Role(id: "", name: "", permissionIdList: [], listOfUserIdsToManage: [], color: "", description: ""))
+                        ForEach(VM.roleList) { role in
+                            Text(role.name).tag(role)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .editCompanyUserControl()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Worker Type")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Picker("Worker Type", selection: $workerType) {
+                        ForEach(WorkerTypeEnum.allCases, id: \.self) { type in
+                            Text(type.rawValue.isEmpty ? "Not Assigned" : type.rawValue).tag(type)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .editCompanyUserControl()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Status")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Picker("Status", selection: $status) {
+                        ForEach([CompanyUserStatus.active, .pending, .past], id: \.self) { status in
+                            Text(status.rawValue).tag(status)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .editCompanyUserControl()
+            }
+        }
+        .editCompanyUserCard()
+    }
+
+    private var userInfoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Profile", systemImage: "person.text.rectangle")
+                .font(.headline.weight(.semibold))
+
+            if let dbuser = VM.user {
+                profileRow(title: "Email", value: dbuser.email, systemImage: "envelope")
+                profileRow(title: "Bio", value: dbuser.bio ?? "No bio provided.", systemImage: "text.alignleft")
+                profileRow(title: "Phone", value: "+(619)490-6830", systemImage: "phone")
+            } else {
+                Text("Profile details will appear after the user loads.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+        .editCompanyUserCard()
+    }
+
+    @ViewBuilder
+    private var userAvatar: some View {
+        if let urlString = VM.user?.photoUrl, let url = URL(string: urlString) {
+            AsyncImage(url: url) { image in
+                image
+                    .resizable()
+                    .scaledToFill()
+            } placeholder: {
+                Image(systemName:"person.crop.circle.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 58, height: 58)
+            .clipShape(Circle())
+        } else {
+            Image(systemName:"person.crop.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(.secondary)
+                .frame(width: 58, height: 58)
+        }
+    }
+
+    private func profileRow(title: String, value: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 30, height: 30)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(value.isEmpty ? "-" : value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func saveChanges() async {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        do {
+            try await VM.updateCompanyUser(
+                companyId: company.id,
+                user: companyUser,
+                userId: companyUser.userId,
+                userName: companyUser.userName,
+                roleId: selectedRole.id,
+                roleName: selectedRole.name,
+                dateCreated: companyUser.dateCreated,
+                status: status,
+                workerType: workerType
+            )
+
+            companyUser.roleId = selectedRole.id
+            companyUser.roleName = selectedRole.name
+            companyUser.status = status
+            companyUser.workerType = workerType
+            alertMessage = "Team member updated."
+            showAlert = true
+        } catch {
+            alertMessage = "Could not update team member."
+            showAlert = true
+            print(error)
+        }
+    }
+}
+
+private extension View {
+    func editCompanyUserCard(material: Bool = false) -> some View {
+        self
+            .padding(16)
+            .background(
+                material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+    }
+
+    func editCompanyUserControl() -> some View {
+        self
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 

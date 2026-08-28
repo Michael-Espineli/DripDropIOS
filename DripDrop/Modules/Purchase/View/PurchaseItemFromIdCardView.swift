@@ -24,8 +24,8 @@ struct PurchaseItemFromIdCardView: View {
                     Spacer()
                     Text("\(String(format: "%0.f",item.quantity))")
                     Text("X")
-                    Text("$ \(String(format: "%2.f",item.price))")
-                    Text("$ \(String(format: "%2.f",item.price * item.quantity))")
+                    Text(PurchaseMoneyFormatter.string(fromStoredCents: item.price))
+                    Text(PurchaseMoneyFormatter.string(fromStoredCents: item.price * item.quantity))
                         .padding(.leading,8)
                 }
             }

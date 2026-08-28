@@ -36,6 +36,9 @@ struct DripDropApp: App {
                 .onOpenURL { incomingURL in
                     handleIncomingURL(incomingURL)
                 }
+                .onReceive(NotificationCenter.default.publisher(for: .dripDropNotificationRouteRequested)) { notification in
+                    handleNotificationRoute(notification.userInfo)
+                }
             //                .onOpenURL { incomingURL in
             //                    let stripeHandled = StripeAPI.handleURLCallback(with: incomingURL)
             //                    if (!stripeHandled) {
@@ -80,6 +83,27 @@ struct DripDropApp: App {
                 masterDataManager.selectedID = route.id
             }
         }
+    }
+
+    private func handleNotificationRoute(_ userInfo: [AnyHashable: Any]?) {
+        guard let userInfo else { return }
+
+        let route = userInfo["route"] as? String
+        let intent = userInfo["notificationIntent"] as? String
+        let shouldOpenDailyRoute =
+            route == RouteString.employeeMainDailyDisplayView.rawValue ||
+            route == RouteString.routes.rawValue ||
+            intent == "serviceStopStartPrompt" ||
+            intent == "serviceStopEndPrompt"
+
+        guard shouldOpenDailyRoute else { return }
+
+        masterDataManager.selectedID = userInfo["serviceStopId"] as? String ?? ""
+        masterDataManager.tabViewSelection = "Dashboard"
+        masterDataManager.mobileHomeScreen = .routing
+        navigationManager.replace(stack: [
+            Route.employeeMainDailyDisplayView(dataService: dataService)
+        ])
     }
 
     @MainActor
@@ -200,4 +224,3 @@ struct DripDropApp: App {
         }
     }
 }
-

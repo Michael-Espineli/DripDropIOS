@@ -52,9 +52,11 @@ struct PurchaseDetailView: View {
     @State var invoiced:Bool = false
     @State var displayCustomerName = ""
     @State var displayJobName = ""
+    @State private var displayShoppingListItemName = ""
 
     @State var selectedCustomerPicker:Bool = false
     @State var selectedJobPicker:Bool = false
+    @State private var selectedShoppingListPicker = false
     @State private var jobPickerStartDate = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
     @State private var jobPickerEndDate = Date()
 
@@ -122,11 +124,13 @@ struct PurchaseDetailView: View {
             notes = purchase.notes
             displayCustomerName = purchase.customerName
             displayJobName = purchase.jobId
+            displayShoppingListItemName = purchase.shoppingListItemId?.isEmpty == false ? "Linked" : ""
             invoiced = purchase.invoiced
             do {
                 if let company = masterDataManager.currentCompany {
           
                     try await storeVM.getSingleStore(companyId: company.id, storeId: purchase.venderId)
+                    await loadLinkedShoppingListItemName(companyId: company.id, shoppingListItemId: purchase.shoppingListItemId)
                 } else {
                     print("No Customer")
                 }
@@ -154,9 +158,15 @@ struct PurchaseDetailView: View {
                 notes = item.notes
                 displayCustomerName = item.customerName
                 displayJobName = item.jobId
+                displayShoppingListItemName = item.shoppingListItemId?.isEmpty == false ? "Linked" : ""
                 invoiced = item.invoiced
                 customerSearchTerm = ""
                 useablePurchaseItem = item
+                if let company = masterDataManager.currentCompany {
+                    Task {
+                        await loadLinkedShoppingListItemName(companyId: company.id, shoppingListItemId: item.shoppingListItemId)
+                    }
+                }
             }
         }
         .onChange(of: jobEntity, perform: { job in
@@ -169,6 +179,10 @@ struct PurchaseDetailView: View {
                         displayJobName = job.internalId.isEmpty ? job.id : job.internalId
                         var updatedPurchase = useablePurchaseItem
                         updatedPurchase.jobId = job.id
+                        updatedPurchase.workOrderId = job.id
+                        updatedPurchase.assignedJobId = job.id
+                        updatedPurchase.assignedToJob = true
+                        updatedPurchase.assignmentStatus = "assignedToJob"
                         self.purchase = updatedPurchase
                         self.useablePurchaseItem = updatedPurchase
                     } catch {
@@ -306,9 +320,9 @@ extension PurchaseDetailView{
 
                     if let useablePurchaseItem {
                         VStack(alignment: .leading, spacing: 10){
-                            metricRow("Price", value: useablePurchaseItem.price.formatted(.currency(code: "USD")))
+                            metricRow("Price", value: PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.price))
                             metricRow("Quantity", value: useablePurchaseItem.quantityString)
-                            metricRow("Price After Tax", value: useablePurchaseItem.totalAfterTax.formatted(.currency(code: "USD")))
+                            metricRow("Price After Tax", value: PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.totalAfterTax))
                             metricRow("Date", value: fullDate(date: useablePurchaseItem.date))
                             metricRow("Billable", value: useablePurchaseItem.billable ? "Yes" : "No")
                             metricRow("Returned", value: useablePurchaseItem.returned == true ? "Yes" : "No")
@@ -400,10 +414,10 @@ extension PurchaseDetailView{
                         if let useablePurchaseItem {
                             
                             VStack(alignment: .leading){
-                                Text("Price : \(useablePurchaseItem.price, format: .currency(code: "USD"))")
+                                Text("Price : \(PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.price))")
                                 
                                 Text("Quantity : \(useablePurchaseItem.quantityString)")
-                                Text("Price After Tax : \(useablePurchaseItem.totalAfterTax, format: .currency(code: "USD"))")
+                                Text("Price After Tax : \(PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.totalAfterTax))")
                                 
                                 Text(fullDate(date:useablePurchaseItem.date))
                                 Text("Billable : \(useablePurchaseItem.billable ? "Yes" : "No")")
@@ -533,12 +547,14 @@ extension PurchaseDetailView{
         ZStack{
             if UIDevice.isIPhone {
                 VStack(spacing: 14){
+                    searchForShoppingList
                     searchForJob
                     searchForCustomer
                 }
                 .padding(.horizontal, 12)
             } else {
                 HStack(alignment: .top, spacing: 14){
+                    searchForShoppingList
                     searchForJob
                     searchForCustomer
                 }
@@ -563,10 +579,12 @@ extension PurchaseDetailView{
             Button {
                 selectedJobPicker.toggle()
             } label: {
-                Label(displayJobName.isEmpty ? "Select Job" : "Change Job", systemImage: "link.badge.plus")
-                    .frame(maxWidth: .infinity)
+                purchaseAssignmentButtonLabel(
+                    title: displayJobName.isEmpty ? "Select Job" : "Change Job",
+                    systemImage: "link.badge.plus"
+                )
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.plain)
             .sheet(isPresented: $selectedJobPicker, content: {
                 PurchaseJobPickerSheet(
                     selectedJob: $jobEntity,
@@ -595,10 +613,12 @@ extension PurchaseDetailView{
                 Button {
                     selectedCustomerPicker.toggle()
                 } label: {
-                    Label(displayCustomerName.isEmpty ? "Select Customer" : "Change Customer", systemImage: "person.badge.plus")
-                        .frame(maxWidth: .infinity)
+                    purchaseAssignmentButtonLabel(
+                        title: displayCustomerName.isEmpty ? "Select Customer" : "Change Customer",
+                        systemImage: "person.badge.plus"
+                    )
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
                 .sheet(isPresented: $selectedCustomerPicker, content: {
                     CustomerPickerScreen(dataService: dataService, customer: $customerEntity)
                 })
@@ -606,7 +626,52 @@ extension PurchaseDetailView{
             .purchaseSurface()
         
     }
-    
+
+    var searchForShoppingList: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Shopping List", systemImage: "list.bullet.clipboard")
+                .font(.headline.weight(.semibold))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Connected Item")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(displayShoppingListItemName.isEmpty ? "Not connected" : displayShoppingListItemName)
+                    .font(.subheadline.weight(.semibold))
+                    .textSelection(.enabled)
+            }
+
+            Button {
+                selectedShoppingListPicker.toggle()
+            } label: {
+                purchaseAssignmentButtonLabel(
+                    title: displayShoppingListItemName.isEmpty ? "Select Shopping Item" : "Change Shopping Item",
+                    systemImage: "cart.badge.plus"
+                )
+            }
+            .buttonStyle(.plain)
+            .sheet(isPresented: $selectedShoppingListPicker) {
+                PurchaseShoppingListPickerSheet(dataService: dataService) { item in
+                    Task {
+                        await connectShoppingListItem(item)
+                    }
+                }
+                .presentationDetents([.medium, .large])
+            }
+        }
+        .purchaseSurface()
+    }
+
+    private func purchaseAssignmentButtonLabel(title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
 }
 
 private extension PurchaseDetailView {
@@ -695,6 +760,85 @@ private extension PurchaseDetailView {
         } catch {
             purchaseWorkflowError = error.localizedDescription
             print("[PurchaseDetailView][splitCurrentPurchase] \(error)")
+        }
+    }
+
+    func connectShoppingListItem(_ item: ShoppingListItem) async {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        let currentPurchase = useablePurchaseItem ?? purchase
+        let companyRef = Firestore.firestore()
+            .collection("companies")
+            .document(company.id)
+        let purchaseRef = companyRef
+            .collection("purchasedItems")
+            .document(currentPurchase.id)
+        let shoppingRef = companyRef
+            .collection("shoppingList")
+            .document(item.id)
+        let now = Date()
+
+        isPurchaseWorkflowUpdating = true
+        purchaseWorkflowError = nil
+        defer { isPurchaseWorkflowUpdating = false }
+
+        do {
+            if let previousShoppingItemId = currentPurchase.shoppingListItemId,
+               !previousShoppingItemId.isEmpty,
+               previousShoppingItemId != item.id {
+                try? await companyRef
+                    .collection("shoppingList")
+                    .document(previousShoppingItemId)
+                    .updateData([
+                        "purchasedItem": FieldValue.delete(),
+                        "status": ShoppingListStatus.needToPurchase.rawValue,
+                        "needsAction": true,
+                        "actionDate": now
+                    ])
+            }
+
+            try await purchaseRef.updateData([
+                "shoppingListItemId": item.id,
+                "status": "Connected to Shopping List"
+            ])
+
+            try await shoppingRef.updateData([
+                "purchasedItem": currentPurchase.id,
+                "status": ShoppingListStatus.purchased.rawValue,
+                "needsAction": ShoppingListStatus.purchased.needsShoppingAction,
+                "datePurchased": now,
+                "actionDate": now
+            ])
+
+            var updatedPurchase = currentPurchase
+            updatedPurchase.shoppingListItemId = item.id
+            updatedPurchase.status = "Connected to Shopping List"
+            purchase = updatedPurchase
+            useablePurchaseItem = updatedPurchase
+            displayShoppingListItemName = item.name.isEmpty ? item.id : item.name
+            selectedShoppingListPicker = false
+        } catch {
+            purchaseWorkflowError = error.localizedDescription
+            print("[PurchaseDetailView][connectShoppingListItem] \(error)")
+        }
+    }
+
+    func loadLinkedShoppingListItemName(companyId: String, shoppingListItemId: String?) async {
+        guard let shoppingListItemId,
+              !shoppingListItemId.isEmpty else {
+            displayShoppingListItemName = ""
+            return
+        }
+
+        do {
+            let item = try await dataService.getSpecificShoppingListItem(
+                companyId: companyId,
+                shoppingListItemId: shoppingListItemId
+            )
+            displayShoppingListItemName = item.name.isEmpty ? shoppingListItemId : item.name
+        } catch {
+            displayShoppingListItemName = "Linked"
+            print("[PurchaseDetailView][loadLinkedShoppingListItemName] \(error)")
         }
     }
 }
@@ -832,7 +976,7 @@ struct PurchasedItemSplitSheet: View {
 
             HStack(spacing: 8) {
                 splitPill(title: "Current Qty", value: PurchaseSplitFormatting.quantity(purchase.quantity))
-                splitPill(title: "Unit Cost", value: purchase.price.formatted(.currency(code: "USD")))
+                splitPill(title: "Unit Cost", value: PurchaseMoneyFormatter.string(fromStoredCents: purchase.price))
             }
         }
         .splitSheetCard()
@@ -1080,6 +1224,181 @@ private struct SplitSheetCardModifier: ViewModifier {
 private extension View {
     func splitSheetCard() -> some View {
         modifier(SplitSheetCardModifier())
+    }
+}
+
+private struct PurchaseShoppingListPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var masterDataManager: MasterDataManager
+
+    let dataService: any ProductionDataServiceProtocol
+    let onSelect: (ShoppingListItem) -> Void
+
+    @State private var items: [ShoppingListItem] = []
+    @State private var searchTerm = ""
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private var filteredItems: [ShoppingListItem] {
+        let clean = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !clean.isEmpty else { return sortedItems }
+
+        return sortedItems.filter { item in
+            [
+                item.id,
+                item.name,
+                item.description,
+                item.status.rawValue,
+                item.category.rawValue,
+                item.customerName ?? "",
+                item.jobId ?? "",
+                item.purchaserName,
+                item.dbItemId ?? ""
+            ]
+            .joined(separator: " ")
+            .lowercased()
+            .contains(clean)
+        }
+    }
+
+    private var sortedItems: [ShoppingListItem] {
+        items.sorted {
+            if $0.status == $1.status {
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+
+            return $0.status.rawValue < $1.status.rawValue
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+
+                    TextField("Search shopping list", text: $searchTerm)
+                        .submitLabel(.search)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(14)
+
+                List {
+                    if let errorMessage {
+                        Section {
+                            Text(errorMessage)
+                                .foregroundStyle(.red)
+                        }
+                    }
+
+                    Section {
+                        if isLoading {
+                            HStack {
+                                Spacer()
+                                ProgressView("Loading shopping list...")
+                                Spacer()
+                            }
+                            .padding(.vertical, 24)
+                        } else if filteredItems.isEmpty {
+                            ContentUnavailableView(
+                                "No Shopping Items Found",
+                                systemImage: "cart",
+                                description: Text("Adjust the search term or create a shopping list item first.")
+                            )
+                        } else {
+                            ForEach(filteredItems) { item in
+                                Button {
+                                    onSelect(item)
+                                    dismiss()
+                                } label: {
+                                    shoppingItemRow(item)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } header: {
+                        Text("\(filteredItems.count) Shopping Items")
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+            .navigationTitle("Select Shopping Item")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+            .task {
+                await loadItems()
+            }
+        }
+    }
+
+    private func shoppingItemRow(_ item: ShoppingListItem) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: item.purchasedItem?.isEmpty == false ? "checkmark.circle.fill" : "cart")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(item.purchasedItem?.isEmpty == false ? Color.poolGreen : .secondary)
+                .frame(width: 30, height: 30)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name.isEmpty ? "Shopping Item" : item.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text(shoppingSubtitle(item))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                Text(item.status.rawValue)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func shoppingSubtitle(_ item: ShoppingListItem) -> String {
+        [
+            item.customerName ?? "",
+            item.jobId ?? "",
+            item.quantity.map { "Qty \($0)" } ?? "",
+            item.purchaserName
+        ]
+        .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        .joined(separator: " / ")
+    }
+
+    @MainActor
+    private func loadItems() async {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            items = try await dataService.getAllShoppingListItemsByCompany(companyId: company.id)
+        } catch {
+            errorMessage = "Could not load shopping list items."
+            print("[PurchaseShoppingListPickerSheet][loadItems] \(error)")
+        }
     }
 }
 

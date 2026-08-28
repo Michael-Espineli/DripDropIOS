@@ -331,7 +331,7 @@ struct JobPurchasedItemSelectorView: View {
                     Text(item.name)
                         .font(.subheadline.weight(.semibold))
                     Spacer()
-                    Text(JobMaterialsMoneyFormatter.moneyFromDollars(item.totalAfterTax))
+                    Text(JobMaterialsMoneyFormatter.money(Int(item.totalAfterTax.rounded())))
                         .font(.subheadline.weight(.semibold))
                 }
 

@@ -127,7 +127,6 @@ private extension UserSettings {
     var settingsContent: some View {
         VStack(spacing: 14) {
             companySettings
-            displayPreferences
             accountSettings
             signOutButton
         }

@@ -632,9 +632,9 @@ extension AddNewReceipt {
                 }
             })
             HStack{
-                Text("SubTotal: \(VM.subTotal, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                Text("Tax: \(VM.tax, format: .currency(code: "USD").precision(.fractionLength(2)))")
-                Text("Total: \(VM.total, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                Text("SubTotal: \(PurchaseMoneyFormatter.string(fromStoredCents: VM.subTotal))")
+                Text("Tax: \(PurchaseMoneyFormatter.string(fromStoredCents: VM.tax))")
+                Text("Total: \(PurchaseMoneyFormatter.string(fromStoredCents: VM.total))")
             }
         }
         .background(Color.listColor)

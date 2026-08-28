@@ -49,7 +49,9 @@ extension Route {
         case .pendingJobs:
             return "Pending Jobs"
         case .shoppingList:
-            return "Shopping List"
+            return "Shopping Center"
+        case .companyShoppingList:
+            return "Company Shopping List"
         case .purchasedItemsList:
             return "Purchased Items"
         case .map:

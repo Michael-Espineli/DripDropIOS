@@ -30,6 +30,7 @@ enum Route {
     case toDoList(dataService:any ProductionDataServiceProtocol)
     case pendingJobs(dataService:any ProductionDataServiceProtocol)
     case shoppingList(dataService:any ProductionDataServiceProtocol)
+    case companyShoppingList(dataService:any ProductionDataServiceProtocol)
     case purchasedItemsList(dataService:any ProductionDataServiceProtocol)
     case map(dataService:any ProductionDataServiceProtocol)
     case dailyDisplay(dataService:any ProductionDataServiceProtocol)
@@ -389,6 +390,8 @@ extension Route:View {
             Text("Pending Job List")
         case .shoppingList(dataService: let dataService):
             ShoppingListView(dataService: dataService)
+        case .companyShoppingList(dataService: let dataService):
+            CompanyShoppingListView(dataService: dataService)
         case .purchasedItemsList(dataService: let dataService):
             UserPurchasedItems(dataService: dataService)
         case .map(dataService: let dataService):

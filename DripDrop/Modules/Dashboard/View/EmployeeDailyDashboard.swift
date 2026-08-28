@@ -1620,18 +1620,18 @@ extension EmployeeDailyDashboard {
         let isCurrentRoute = route.id == VM.activeRoute?.id
         let shouldStopRoute = route.status != .finished || route.endTime == nil
 
-        VM.updateRouteEndtMilage(
-            companyId: masterDataManager.currentCompany?.id,
-            route: route,
-            syncSelectedVehicle: isCurrentRoute
-        )
-
         if shouldStopRoute {
-            VM.stopActiveRoute(
+            VM.finishRouteWithEndMileage(
                 companyId: masterDataManager.currentCompany?.id,
                 companyName: masterDataManager.currentCompany?.name,
                 user: masterDataManager.user,
                 route: route
+            )
+        } else {
+            VM.updateRouteEndtMilage(
+                companyId: masterDataManager.currentCompany?.id,
+                route: route,
+                syncSelectedVehicle: isCurrentRoute
             )
         }
 

@@ -346,7 +346,7 @@ extension ReceiptListView {
 
     private var receiptTotalDisplay: String {
         let total = receiptList.reduce(0) { $0 + $1.costAfterTax }
-        return total.formatted(.currency(code: "USD").precision(.fractionLength(0)))
+        return PurchaseMoneyFormatter.string(fromStoredDollars: total)
     }
 
     private var receiptFileCount: Int {

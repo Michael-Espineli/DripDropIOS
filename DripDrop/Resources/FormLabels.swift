@@ -217,6 +217,7 @@ enum ShoppingListStatus:String, Codable, CaseIterable, Identifiable {
     }
     case needToPurchase = "Need to Purchase"
     case purchased = "Purchased"
+    case delivered = "Delivered"
     case installed = "Installed"
     case invoiced = "Invoiced"
 
@@ -244,7 +245,7 @@ enum ShoppingListStatus:String, Codable, CaseIterable, Identifiable {
         case "purchased":
             return .purchased
         case "delivered":
-            return .installed
+            return .delivered
         case "installed":
             return .installed
         case "invoiced", "paid":

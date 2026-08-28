@@ -56,15 +56,13 @@ final class JobDetailViewModel:ObservableObject{
     @Published var taskGroupItems : [JobTaskGroupItem] = []
     @Published var description: String = "Tasks"
 
-    @Published private(set) var chosenView: String = "Overview"
+    @Published private(set) var chosenView: String = "Plans"
     @Published private(set) var viewOptionList:[String] = [
-        "Overview",
-        "Tasks",
-        "Offers",
-        "Schedule",
-        "Materials",
+        "Plans",
+        "Planned",
         "Actual",
-        "Billing"
+        "Billing",
+        "History"
     ]
     @Published private(set) var jobTaskList:[JobTask] = []
     @Published private(set) var comments: [JobComment] = []

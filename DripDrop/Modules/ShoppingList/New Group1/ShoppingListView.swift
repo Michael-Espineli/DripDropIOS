@@ -782,8 +782,392 @@ extension ShoppingListView {
     }
 }
 
+struct CompanyShoppingListView: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    let dataService: any ProductionDataServiceProtocol
+
+    @StateObject private var shoppingVM: ShoppingListViewModel
+    @State private var searchTerm = ""
+    @State private var selectedStatus: ShoppingListStatus?
+    @State private var showAddNewShoppingListItem = false
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
+        _shoppingVM = StateObject(
+            wrappedValue: ShoppingListViewModel(dataService: dataService)
+        )
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    headerCard
+                    filterCard
+                    itemsSection
+
+                    Color.clear.frame(height: 90)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+            }
+
+            if isLoading {
+                loadingOverlay
+            }
+        }
+        .navigationTitle("Company Shopping List")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button {
+                    Task { await reloadCompanyShoppingList() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                }
+
+                Button {
+                    showAddNewShoppingListItem.toggle()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                }
+            }
+        }
+        .sheet(isPresented: $showAddNewShoppingListItem, onDismiss: {
+            Task { await reloadCompanyShoppingList() }
+        }) {
+            NavigationStack {
+                AddNewItemToShoppingList(dataService: dataService)
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .task {
+            await reloadCompanyShoppingList()
+        }
+        .refreshable {
+            await reloadCompanyShoppingList()
+        }
+    }
+}
+
+private extension CompanyShoppingListView {
+    var headerCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "list.bullet.clipboard")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 52, height: 52)
+                    .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Company Shopping List")
+                        .font(.title3.weight(.semibold))
+
+                    Text("All shopping items across jobs, customers, route prep, and personal lists.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+            }
+
+            HStack(spacing: 8) {
+                headerPill(title: "\(openItems.count)", label: "Open", systemImage: "tray.full")
+                headerPill(title: "\(purchasedItems.count)", label: "Purchased", systemImage: "cart.badge.checkmark")
+                headerPill(title: "\(companyItems.count)", label: "Total", systemImage: "number")
+                Spacer()
+            }
+        }
+        .companyShoppingListSurface(material: true)
+    }
+
+    var filterCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+
+                TextField("Search company shopping list", text: $searchTerm)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+            }
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    statusFilterButton(
+                        title: "All",
+                        count: companyItems.count,
+                        isSelected: selectedStatus == nil
+                    ) {
+                        selectedStatus = nil
+                    }
+
+                    ForEach(ShoppingListStatus.allCases) { status in
+                        statusFilterButton(
+                            title: status.rawValue,
+                            count: companyItems.filter { $0.status == status }.count,
+                            isSelected: selectedStatus == status
+                        ) {
+                            selectedStatus = status
+                        }
+                    }
+                }
+                .padding(.vertical, 1)
+            }
+        }
+        .companyShoppingListSurface()
+    }
+
+    var itemsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                title: selectedStatus?.rawValue ?? "All Items",
+                subtitle: "Company-wide shopping list items, separate from Shopping Center route prep.",
+                systemImage: selectedStatus == nil ? "list.bullet" : "line.3.horizontal.decrease.circle",
+                count: filteredItems.count
+            )
+
+            if let errorMessage {
+                emptyState(
+                    title: "Could not load shopping list.",
+                    message: errorMessage,
+                    systemImage: "exclamationmark.triangle"
+                )
+            } else if filteredItems.isEmpty {
+                emptyState(
+                    title: "No shopping items found.",
+                    message: "Try another search or status filter.",
+                    systemImage: "cart"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(filteredItems) { item in
+                        NavigationLink(value: Route.shoppingListDetail(item: item, dataService: dataService)) {
+                            ShoppingListItemCardView(
+                                dataService: dataService,
+                                shoppingListItem: item,
+                                compact: true
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .companyShoppingListSurface()
+    }
+
+    var companyItems: [ShoppingListItem] {
+        shoppingVM.allShoppingItems.sorted { lhs, rhs in
+            if lhs.status == rhs.status {
+                return sortDate(lhs) > sortDate(rhs)
+            }
+
+            return lhs.status.rawValue < rhs.status.rawValue
+        }
+    }
+
+    var filteredItems: [ShoppingListItem] {
+        let statusFiltered = companyItems.filter { item in
+            selectedStatus.map { item.status == $0 } ?? true
+        }
+
+        let cleanSearch = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !cleanSearch.isEmpty else { return statusFiltered }
+
+        return statusFiltered.filter { item in
+            [
+                item.name,
+                item.description,
+                item.status.rawValue,
+                item.category.rawValue,
+                item.subCategory.rawValue,
+                item.customerName ?? "",
+                item.jobId ?? "",
+                item.userName ?? "",
+                item.purchaserName,
+                item.dbItemId ?? "",
+                item.purchasedItem ?? ""
+            ]
+            .joined(separator: " ")
+            .lowercased()
+            .contains(cleanSearch)
+        }
+    }
+
+    var openItems: [ShoppingListItem] {
+        companyItems.filter { $0.status.needsShoppingAction }
+    }
+
+    var purchasedItems: [ShoppingListItem] {
+        companyItems.filter { $0.status == .purchased }
+    }
+
+    func sortDate(_ item: ShoppingListItem) -> Date {
+        item.actionDate ?? item.datePurchased ?? .distantPast
+    }
+
+    func statusFilterButton(
+        title: String,
+        count: Int,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(title)
+                Text("\(count)")
+                    .font(.caption2.weight(.bold))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(.thinMaterial, in: Capsule())
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(isSelected ? .white : .primary)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .background(
+                isSelected ? AnyShapeStyle(Color.poolBlue) : AnyShapeStyle(.thinMaterial),
+                in: Capsule()
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    func sectionHeader(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        count: Int
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 34, height: 34)
+                .background(.thinMaterial, in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline.weight(.semibold))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Text("\(count)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(.thinMaterial, in: Capsule())
+        }
+    }
+
+    func emptyState(
+        title: String,
+        message: String,
+        systemImage: String
+    ) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    func headerPill(
+        title: String,
+        label: String,
+        systemImage: String
+    ) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: systemImage)
+            Text(title)
+                .fontWeight(.bold)
+            Text(label)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.thinMaterial, in: Capsule())
+    }
+
+    var loadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.08)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView()
+
+                Text("Loading company shopping list...")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(22)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+    }
+
+    @MainActor
+    func reloadCompanyShoppingList() async {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            try await shoppingVM.getAllShoppingListItemsByCompany(companyId: company.id)
+        } catch {
+            errorMessage = error.localizedDescription
+            print("[CompanyShoppingListView][reloadCompanyShoppingList] \(error)")
+        }
+    }
+}
+
 private extension View {
     func shoppingCenterCard(material: Bool = false) -> some View {
+        self
+            .padding(16)
+            .background(
+                material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
+    }
+
+    func companyShoppingListSurface(material: Bool = false) -> some View {
         self
             .padding(16)
             .background(

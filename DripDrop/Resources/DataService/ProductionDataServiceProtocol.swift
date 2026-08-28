@@ -567,6 +567,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func uploadUserAccess(userId : String,companyId:String,userAccess:UserAccess) async throws
     func addCompanyUser(companyId:String,companyUser:CompanyUser) async throws
     func addNewRateSheet(companyId:String,companyUserId:String,rateSheet:RateSheet) async throws
+    func createNewPerformanceReview(companyId:String,companyUser:CompanyUser,performaceHistory:PerformaceHistory) async throws
     func uploadPurchaseItem(companyId: String,purchaseItem : PurchasedItem) async throws
     func uploadingCustomerMonthlySummary(companyId:String,customer:Customer,customerMonthlySummary:CustomerMonthlySummary) async throws
     func uploadCSVCustomerToFireStore(companyId:String,customer: CSVCustomer) async throws
@@ -658,6 +659,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws
     func addWorkOrderComment(companyId: String, workOrderId: String, comment: JobComment) async throws
+    func addRepairRequestComment(companyId: String, repairRequestId: String, comment: JobComment) async throws
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws
     func addPurchaseItemsToWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws
     func uploadStopData(companyId:String,stopData:StopData) async throws
@@ -708,6 +710,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getAllRateSheetByCompanyUserId(companyId: String, companyUserId: String) async throws -> [RateSheet]
     func getAllCompanyUsers(companyId:String) async throws -> [CompanyUser]
     func getAllCompanyUsersByStatus(companyId:String,status:String) async throws -> [CompanyUser]
+    func getPerformaceReivewByUserId(companyId:String,companyUserId:String) async throws -> [PerformaceHistory]
     func getNumberOfItemsPurchasedIn30Days(companyId: String) async throws->(total:Double,totalBillable:Double,Invoiced:Double,TotalSpent:Double,totalSoldInDollars:Double,TotalSpentBillable:Double,TotalBilled:Double,NonBillableList:[PurchasedItem])
     func getNumberOfItemsPurchasedAndBilledIn30Days(companyId: String) async throws -> Double
     func getPurchasesCountForTechId(companyId:String,userId:String) async throws ->Int
@@ -911,6 +914,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getWorkOrdersBySomething(companyId:String,count:Int,lastDocument:DocumentSnapshot?) async throws -> (serviceStops:[Job],lastDocument:DocumentSnapshot?)
     func getWorkOrderById(companyId: String,workOrderId:String) async throws -> Job
     func getWorkOrderComments(companyId: String, workOrderId: String) async throws -> [JobComment]
+    func getRepairRequestComments(companyId: String, repairRequestId: String) async throws -> [JobComment]
     func getAllPastJobsBasedOnCustomer(companyId: String, customer: Customer) async throws -> [Job]
     func getAllFutureJobsBasedOnCustomer(companyId: String, customer: Customer) async throws -> [Job]
     func getSingleRoute(companyId:String,recurringRouteId:String) async throws -> RecurringRoute
@@ -1248,6 +1252,13 @@ protocol ProductionDataServiceProtocol: Equatable {
         actorUserName: String,
         actorEmail: String,
         serviceStop: ServiceStop?
+    ) async throws
+    func markCustomerPartApprovalDelivered(
+        approval: CustomerPartApproval,
+        companyId: String,
+        shoppingListItemId: String,
+        actorUserId: String,
+        actorUserName: String
     ) async throws
     func getRecurringServiceStopTasks(companyId:String,recurringServiceStopId:String) async throws -> [RecurringServiceStopTask]
     func updateRecurringServiceStopTaskStatus(companyId:String,recurringServiceStopId:String,taskId:String,status:JobTaskStatus)
@@ -1872,6 +1883,69 @@ extension ProductionDataServiceProtocol {
                 "updatedAt": now
             ], forDocument: shoppingRef, merge: true)
         }
+
+        try await batch.commit()
+    }
+
+    func markCustomerPartApprovalDelivered(
+        approval: CustomerPartApproval,
+        companyId: String,
+        shoppingListItemId: String,
+        actorUserId: String,
+        actorUserName: String
+    ) async throws {
+        let cleanCompanyId = companyId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let approvalId = approval.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanShoppingListItemId = shoppingListItemId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !cleanCompanyId.isEmpty,
+              !approvalId.isEmpty,
+              !cleanShoppingListItemId.isEmpty else {
+            return
+        }
+
+        let now = Date()
+        let responderName = actorUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Technician"
+            : actorUserName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let db = Firestore.firestore()
+        let batch = db.batch()
+        let approvalRef = db.collection("customerPartApprovals").document(approvalId)
+        let shoppingRef = db
+            .collection("companies")
+            .document(cleanCompanyId)
+            .collection("shoppingList")
+            .document(cleanShoppingListItemId)
+        let historyItem: [String: Any] = [
+            "id": "cpa_hist_\(UUID().uuidString)",
+            "action": "delivered",
+            "status": "delivered",
+            "note": "Part marked delivered from service stop follow-up.",
+            "source": "technicianFollowUp",
+            "sourceLabel": "Technician follow-up",
+            "actorUserId": actorUserId,
+            "actorUserName": responderName,
+            "createdAt": now
+        ]
+
+        batch.setData([
+            "fulfillmentStatus": "delivered",
+            "deliveredAt": now,
+            "deliveredByUserId": actorUserId,
+            "deliveredByUserName": responderName,
+            "updatedAt": now,
+            "history": FieldValue.arrayUnion([historyItem])
+        ], forDocument: approvalRef, merge: true)
+
+        batch.updateData([
+            "status": ShoppingListStatus.delivered.rawValue,
+            "needsAction": ShoppingListStatus.delivered.needsShoppingAction,
+            "actionDate": now,
+            "deliveredAt": now,
+            "deliveredByUserId": actorUserId,
+            "deliveredByUserName": responderName,
+            "updatedAt": now
+        ], forDocument: shoppingRef)
 
         try await batch.commit()
     }

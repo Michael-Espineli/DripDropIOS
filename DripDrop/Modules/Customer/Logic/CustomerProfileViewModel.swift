@@ -376,6 +376,24 @@ struct CustomerPartApproval: Identifiable, Codable, Hashable {
     }
 
     var isOpen: Bool {
+        let normalizedFulfillment = (fulfillmentStatus ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        if [
+            "delivered",
+            "resolved",
+            "installed",
+            "invoiced",
+            "paid",
+            "cancelled",
+            "canceled",
+            "completed",
+            "fulfilled"
+        ].contains(normalizedFulfillment) {
+            return false
+        }
+
         let normalized = (approvalStatus ?? status ?? fulfillmentStatus ?? "pending")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()

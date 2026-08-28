@@ -38,7 +38,7 @@ struct PurchaseListView: View{
     
     @State private var selection: PurchasedItem.ID? = nil
     
-    @State var purchaseFilterOption:PurchaseFilterOptions = .all
+    @State var purchaseFilterOption:PurchaseFilterOptions = .billableAndNotInvoiced
     @State var purchaseSortOption:PurchaseSortOptions = .purchaseDateFirst
     @State var techIds:[String] = []
     @State var showSummary = false
@@ -102,22 +102,11 @@ struct PurchaseListView: View{
                 purchaseActionDock
             }
         }
-        //Initial Loading of the purchase Items
         .task{
-            if let company = masterDataManager.currentCompany {
-                do {
-                    try await purchaseVM.getTechs(companyId: company.id)
-                    print("Received \(purchaseVM.techList.count) techs \(purchaseVM.techList)")
-                    for tech in purchaseVM.techList {
-                        techIds.append(tech.userId)
-                    }
-                    try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: techIds)
-                    purchasedItems = purchaseVM.purchasedItems
-                } catch {
-                    print(error)
-                    
-                }
-            }
+            await configurePurchaseListener()
+        }
+        .onDisappear {
+            purchaseVM.stopPurchasesListener()
         }
         /*
          //Loading new Purchase Items with Change in sorting Options
@@ -202,12 +191,25 @@ struct PurchaseListView: View{
          */
         //Searches through the purchase item list
         .onChange(of: searchTerm){ term in
-            if searchTerm == "" {
-                purchasedItems = purchaseVM.purchasedItems
-            } else {
-                purchaseVM.filterPurchaseList(filterTerm: searchTerm, purchasedItems: purchaseVM.purchasedItems)
-                purchasedItems = purchaseVM.filteredPurchasedItems
-            }
+            syncDisplayedPurchases()
+        }
+        .onChange(of: purchaseVM.purchasedItems) { items in
+            syncDisplayedPurchases()
+        }
+        .onChange(of: purchaseSortOption) { sort in
+            restartPurchaseListener()
+        }
+        .onChange(of: purchaseFilterOption) { filter in
+            restartPurchaseListener()
+        }
+        .onChange(of: startViewingDate) { date in
+            restartPurchaseListener()
+        }
+        .onChange(of: endViewingDate) { date in
+            restartPurchaseListener()
+        }
+        .onChange(of: techIds) { techs in
+            restartPurchaseListener()
         }
         
         //
@@ -281,7 +283,7 @@ extension PurchaseListView {
                 }
                 Spacer()
                 if let total = purchaseVM.totalSpentOnBillables {
-                    Text(total, format: .currency(code: "USD"))
+                    Text(PurchaseMoneyFormatter.string(fromStoredCents: total))
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
@@ -531,7 +533,7 @@ extension PurchaseListView {
         if !Calendar.current.isDate(startViewingDate, inSameDayAs: defaultPurchaseStartDate) { count += 1 }
         if !Calendar.current.isDate(endViewingDate, inSameDayAs: defaultPurchaseEndDate) { count += 1 }
         if purchaseSortOption != .purchaseDateFirst { count += 1 }
-        if purchaseFilterOption != .all { count += 1 }
+        if purchaseFilterOption != .billableAndNotInvoiced { count += 1 }
         if !allPurchaseTechsSelected { count += 1 }
 
         return count
@@ -570,7 +572,7 @@ extension PurchaseListView {
     func resetPurchaseFilters() {
         startViewingDate = defaultPurchaseStartDate
         endViewingDate = defaultPurchaseEndDate
-        purchaseFilterOption = .all
+        purchaseFilterOption = .billableAndNotInvoiced
         purchaseSortOption = .purchaseDateFirst
         techIds = purchaseVM.techList.map(\.userId)
     }
@@ -580,14 +582,53 @@ extension PurchaseListView {
         guard let company = masterDataManager.currentCompany else { return }
 
         do {
-            try await techVM.getAllCompanyTechs(companyId: company.id)
+            try await purchaseVM.getTechs(companyId: company.id)
             if techIds.isEmpty {
-                techIds = techVM.techList.map(\.id)
+                techIds = purchaseVM.techList.map(\.userId)
             }
-            try await purchaseVM.filterAndSortSelected(companyId: company.id, filter: purchaseFilterOption, sort: purchaseSortOption, startDate: startViewingDate, endDate: endViewingDate, techIds: Array(Set(techIds)))
-            purchasedItems = purchaseVM.purchasedItems
+            restartPurchaseListener()
+            syncDisplayedPurchases()
         } catch {
             print(error)
+        }
+    }
+
+    @MainActor
+    func configurePurchaseListener() async {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        do {
+            try await purchaseVM.getTechs(companyId: company.id)
+            if techIds.isEmpty {
+                techIds = purchaseVM.techList.map(\.userId)
+            }
+            restartPurchaseListener()
+        } catch {
+            print(error)
+        }
+    }
+
+    @MainActor
+    func restartPurchaseListener() {
+        guard let company = masterDataManager.currentCompany else { return }
+
+        purchaseVM.listenForPurchases(
+            companyId: company.id,
+            filter: purchaseFilterOption,
+            sort: purchaseSortOption,
+            startDate: startViewingDate,
+            endDate: endViewingDate,
+            techIds: Array(Set(techIds))
+        )
+    }
+
+    @MainActor
+    func syncDisplayedPurchases() {
+        if searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            purchasedItems = purchaseVM.purchasedItems
+        } else {
+            purchaseVM.filterPurchaseList(filterTerm: searchTerm, purchasedItems: purchaseVM.purchasedItems)
+            purchasedItems = purchaseVM.filteredPurchasedItems
         }
     }
 

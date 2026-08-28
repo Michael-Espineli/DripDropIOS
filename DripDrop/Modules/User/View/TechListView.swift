@@ -105,39 +105,16 @@ struct TechListView: View {
 
 extension TechListView {
     private var directoryHeader: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "person.2.fill")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Color.poolBlue)
-                    .frame(width: 48, height: 48)
-                    .background(Color.poolBlue.opacity(0.14), in: Circle())
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Users")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    Text(directorySubtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-            }
-
-            HStack(spacing: 8) {
-                directoryMetric(title: "Showing", value: "\(displayedDirectoryCount)", tint: .poolBlue)
-                directoryMetric(title: "Active", value: "\(VM.companyUsers.count)", tint: .poolGreen)
-                directoryMetric(title: "Pending", value: "\(VM.pendingInviteList.count)", tint: .orange)
-            }
+        HStack(spacing: 8) {
+            directoryMetric(title: "Showing", value: "\(displayedDirectoryCount)", tint: .poolBlue)
+            directoryMetric(title: "Active", value: "\(VM.companyUsers.count)", tint: .poolGreen)
+            directoryMetric(title: "Pending", value: "\(VM.pendingInviteList.count)", tint: .orange)
         }
-        .padding(16)
+        .padding(10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .padding(.horizontal, 14)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     private var directoryList: some View {
@@ -305,9 +282,9 @@ extension TechListView {
     }
 
     private func directoryMetric(title: String, value: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 6) {
             Text(value)
-                .font(.headline.weight(.bold))
+                .font(.subheadline.weight(.bold))
                 .foregroundStyle(tint)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -317,8 +294,9 @@ extension TechListView {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
         .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 

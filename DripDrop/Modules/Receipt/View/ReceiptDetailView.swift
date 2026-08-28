@@ -151,8 +151,8 @@ extension ReceiptDetailView {
 
                 Text("\(activeReceipt.id)")
                 Text("Number Of Items: \(String(activeReceipt.numberOfItems))")
-                Text("Cost $\(String(format:"%2.f",activeReceipt.cost))")
-                Text("Cost After Tax $\(String(format:"%2.f",activeReceipt.costAfterTax))")
+                Text("Cost \(PurchaseMoneyFormatter.string(fromStoredCents: activeReceipt.cost))")
+                Text("Cost After Tax \(PurchaseMoneyFormatter.string(fromStoredCents: activeReceipt.costAfterTax))")
             }
             images
         }

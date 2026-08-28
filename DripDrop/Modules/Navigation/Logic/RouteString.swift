@@ -18,6 +18,7 @@ enum RouteString:String,Codable {
     case toDoList  = "toDoList"
     case pendingJobs  = "pendingJobs"
     case shoppingList  = "shoppingList"
+    case companyShoppingList  = "companyShoppingList"
     case purchasedItemsList  = "purchasedItemsList"
     case map  = "map"
     case dailyDisplay  = "dailyDisplay"
@@ -128,6 +129,8 @@ extension RouteString {
         case .pendingJobs:
             return false
         case .shoppingList:
+            return false
+        case .companyShoppingList:
             return false
         case .purchasedItemsList:
             return false

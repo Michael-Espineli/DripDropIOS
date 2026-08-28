@@ -268,15 +268,24 @@ struct TechnicianPayrollInfoView: View {
     }
 
     var body: some View {
-        List {
-            technicianSection
-            dateRangeSection
-            summarySection
-            filterSection
-            lineItemsSection
-            statementsSection
-            currentRatesSection
-            payrollHistoryNavigationSection
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    payrollInfoHeaderCard
+                    payrollDateRangeCard
+                    payrollSummaryCard
+                    payrollFilterCard
+                    payrollLineItemsCard
+                    payrollStatementsCard
+                    payrollCurrentRatesCard
+                    payrollHistoryCard
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
+            }
         }
         .navigationTitle("Payroll Info")
         .navigationBarTitleDisplayMode(.inline)
@@ -301,6 +310,340 @@ struct TechnicianPayrollInfoView: View {
         }
     }
 
+    private var payrollInfoHeaderCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.text.rectangle")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 44, height: 44)
+                    .background(Color.poolBlue.opacity(0.14), in: Circle())
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(viewModel.companyUser.payrollDisplayName)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+
+                    Text("\(viewModel.companyUser.workerType.rawValue) • \(viewModel.companyUser.status.rawValue)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+
+            Text("Review pay lines, statements, rates, and history for this team member.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var payrollDateRangeCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            payrollSectionHeader("Pay Period", systemImage: "calendar")
+
+            rowContainer {
+                DatePicker(
+                    "Start",
+                    selection: $viewModel.startDate,
+                    displayedComponents: .date
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+
+            rowContainer {
+                DatePicker(
+                    "End",
+                    selection: $viewModel.endDate,
+                    displayedComponents: .date
+                )
+                .font(.subheadline.weight(.semibold))
+            }
+
+            Button {
+                Task {
+                    await viewModel.load(forceRefresh: true)
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Load Date Range")
+                    Spacer()
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            Text("Line items and statements are shown for this date range. Year-to-date uses the current calendar year.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var payrollSummaryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            payrollSectionHeader("Summary", systemImage: "chart.bar")
+
+            LazyVGrid(columns: summaryColumns, spacing: 8) {
+                payrollSummaryTile(
+                    title: "Outstanding",
+                    value: TechnicianPayrollMoneyFormatter.money(viewModel.outstandingTotalCents),
+                    systemImage: "clock.badge.exclamationmark",
+                    tint: .orange
+                )
+                payrollSummaryTile(
+                    title: "Approved",
+                    value: TechnicianPayrollMoneyFormatter.money(viewModel.approvedTotalCents),
+                    systemImage: "checkmark.circle",
+                    tint: .poolGreen
+                )
+                payrollSummaryTile(
+                    title: "Paid",
+                    value: TechnicianPayrollMoneyFormatter.money(viewModel.paidTotalCents),
+                    systemImage: "dollarsign.circle",
+                    tint: .poolBlue
+                )
+                payrollSummaryTile(
+                    title: "YTD Paid",
+                    value: TechnicianPayrollMoneyFormatter.money(viewModel.yearToDatePaidCents),
+                    systemImage: "chart.line.uptrend.xyaxis",
+                    tint: .primary
+                )
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var payrollFilterCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            payrollSectionHeader("Pay Lines", systemImage: "line.3.horizontal.decrease.circle")
+
+            Picker("Pay Lines", selection: $viewModel.selectedFilter) {
+                ForEach(TechnicianPayrollInfoFilter.allCases) { filter in
+                    Text(filter.rawValue).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var payrollLineItemsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            payrollSectionHeader("Pay Line Items", systemImage: "list.bullet.rectangle")
+
+            if viewModel.filteredLineItems.isEmpty {
+                payrollEmptyState(
+                    title: "No Pay Lines",
+                    message: "No pay line items match this filter.",
+                    systemImage: "list.bullet.rectangle"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(viewModel.filteredLineItems) { item in
+                        rowContainer {
+                            TechnicianPayrollLineItemRow(lineItem: item)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var payrollStatementsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            payrollSectionHeader("Pay Statements", systemImage: "doc.text")
+
+            if viewModel.userStatements.isEmpty {
+                payrollEmptyState(
+                    title: "No Statements",
+                    message: "No pay statements found for this technician.",
+                    systemImage: "doc.text"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(viewModel.userStatements.prefix(5)) { statement in
+                        NavigationLink {
+                            TechnicianPayStatementDetailView(
+                                statement: statement,
+                                currentUserId: viewModel.companyUser.userId,
+                                dataService: viewModel.dataService
+                            )
+                        } label: {
+                            rowContainer {
+                                TechnicianPayrollStatementRow(statement: statement)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            Text("Shows recent statements for this technician.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var payrollCurrentRatesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            payrollSectionHeader("Current Rates", systemImage: "tablecells")
+
+            if viewModel.currentRates.isEmpty {
+                payrollEmptyState(
+                    title: "No Current Rates",
+                    message: "This technician does not have active rates.",
+                    systemImage: "tablecells"
+                )
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(viewModel.currentRates) { rate in
+                        rowContainer {
+                            TechnicianPayrollRateRow(
+                                rate: rate,
+                                workTypeName: viewModel.workTypeName(for: rate),
+                                workTypeIcon: viewModel.workTypeIcon(for: rate)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var payrollHistoryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            payrollSectionHeader("History", systemImage: "clock.arrow.circlepath")
+
+            NavigationLink {
+                TechnicianPayrollHistoryDetailView(
+                    companyUser: viewModel.companyUser,
+                    rates: viewModel.recentRateHistory,
+                    workTypes: viewModel.workTypes
+                )
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .background(.thinMaterial, in: Circle())
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Rate History")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("View previous rates, raises, scheduled rates, and notes.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    Spacer()
+
+                    Text("\(viewModel.recentRateHistory.count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(.thinMaterial, in: Capsule())
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var summaryColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8),
+        ]
+    }
+
+    private func payrollSectionHeader(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+    }
+
+    private func rowContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(12)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func payrollSummaryTile(title: String, value: String, systemImage: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(tint)
+
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func payrollEmptyState(title: String, message: String, systemImage: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
     private var technicianSection: some View {
         Section("Technician") {
             TechnicianPayrollDetailRow(
@@ -318,10 +661,6 @@ struct TechnicianPayrollInfoView: View {
                 value: viewModel.companyUser.status.rawValue
             )
 
-            TechnicianPayrollDetailRow(
-                title: "User ID",
-                value: viewModel.companyUser.userId
-            )
         }
     }
 

@@ -1425,18 +1425,18 @@ extension WorkPreviewBasedOnCompany {
         guard let route = routeBeingEnded else { return }
         let shouldStopRoute = route.status != .finished || route.endTime == nil
 
-        mobileDailyVM.updateRouteEndtMilage(
-            companyId: masterDataManager.currentCompany?.id,
-            route: route,
-            syncSelectedVehicle: route.id == mobileDailyVM.activeRoute?.id
-        )
-
         if shouldStopRoute {
-            mobileDailyVM.stopActiveRoute(
+            mobileDailyVM.finishRouteWithEndMileage(
                 companyId: masterDataManager.currentCompany?.id,
                 companyName: masterDataManager.currentCompany?.name,
                 user: masterDataManager.user,
                 route: route
+            )
+        } else {
+            mobileDailyVM.updateRouteEndtMilage(
+                companyId: masterDataManager.currentCompany?.id,
+                route: route,
+                syncSelectedVehicle: route.id == mobileDailyVM.activeRoute?.id
             )
         }
 

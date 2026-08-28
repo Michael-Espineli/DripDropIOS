@@ -56,6 +56,8 @@ final class ServiceStopDetailViewModel:ObservableObject{
     @Published var EquipmentReadings: [Equipment: EquipmentMeasurements] = [:]
     @Published private(set) var selectedInputIdList: [String] = []
     @Published private(set) var companyUsers: [CompanyUser] = []
+    @Published private(set) var shoppingListItems: [ShoppingListItem] = []
+    @Published private(set) var updatingDeliveredItemIds: Set<String> = []
     
     @Published private(set) var readingTemplates: [SavedReadingsTemplate] = []
     @Published private(set) var dosageTemplates: [SavedDosageTemplate] = []
@@ -227,6 +229,11 @@ final class ServiceStopDetailViewModel:ObservableObject{
         let SSTasks = try await dataService.getServiceStopTasks(companyId: companyId, serviceStopId: serviceStop.id)
         
         self.taskList = SSTasks
+        self.shoppingListItems = try await loadShoppingListItems(
+            companyId: companyId,
+            serviceStop: serviceStop,
+            tasks: SSTasks
+        )
         print("  [ServiceStopDetailView][onInitialLoad] got \(taskList.count) tasks")
 //        if serviceStop.recurringServiceStopId != "" {
 //            print("")
@@ -277,6 +284,143 @@ final class ServiceStopDetailViewModel:ObservableObject{
 //        }
         print("[ServiceStopDtailViewModel][onInitalLoad] got Tasks")
             
+    }
+
+    private func loadShoppingListItems(
+        companyId: String,
+        serviceStop: ServiceStop,
+        tasks: [ServiceStopTask]
+    ) async throws -> [ShoppingListItem] {
+        var keys = Set(ShoppingPrepKeyBuilder.keysForServiceStop(serviceStop))
+
+        for task in tasks {
+            if !task.jobTaskId.isEmpty {
+                keys.insert("jobTask:\(task.jobTaskId)")
+            }
+
+            if !task.shoppingListItemId.isEmpty {
+                let shoppingListItemId = task.shoppingListItemId
+                keys.insert("shoppingListItem:\(shoppingListItemId)")
+            }
+        }
+        let prepKeys = Array(keys)
+
+        async let actionItems = dataService.getShoppingListItemsForPrepKeys(
+            companyId: companyId,
+            prepKeys: prepKeys,
+            needsAction: true
+        )
+        async let completedItems = dataService.getShoppingListItemsForPrepKeys(
+            companyId: companyId,
+            prepKeys: prepKeys,
+            needsAction: false
+        )
+
+        let linkedShoppingItemIds = Set(tasks.map {
+            $0.shoppingListItemId.trimmingCharacters(in: .whitespacesAndNewlines)
+        }.filter { !$0.isEmpty })
+        let linkedJobTaskIds = Set(tasks.map { $0.jobTaskId.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+
+        var items = try await (actionItems + completedItems).dedupedById()
+        let fetchedItemIds = Set(items.map(\.id))
+        let missingLinkedItemIds = linkedShoppingItemIds.subtracting(fetchedItemIds)
+
+        for itemId in missingLinkedItemIds {
+            if let item = try? await dataService.getSpecificShoppingListItem(
+                companyId: companyId,
+                shoppingListItemId: itemId
+            ) {
+                items.append(item)
+            }
+        }
+
+        return items
+            .dedupedById()
+            .filter { item in
+                itemMatchesServiceStop(
+                    item,
+                    serviceStop: serviceStop,
+                    linkedShoppingItemIds: linkedShoppingItemIds,
+                    linkedJobTaskIds: linkedJobTaskIds
+                )
+            }
+            .sorted { first, second in
+                let firstDate = first.actionDate ?? first.datePurchased ?? Date.distantPast
+                let secondDate = second.actionDate ?? second.datePurchased ?? Date.distantPast
+
+                if first.status != second.status {
+                    return shoppingStatusSortRank(first.status) < shoppingStatusSortRank(second.status)
+                }
+
+                return firstDate > secondDate
+            }
+    }
+
+    private func itemMatchesServiceStop(
+        _ item: ShoppingListItem,
+        serviceStop: ServiceStop,
+        linkedShoppingItemIds: Set<String>,
+        linkedJobTaskIds: Set<String>
+    ) -> Bool {
+        if (item.serviceStopId ?? "") == serviceStop.id {
+            return true
+        }
+
+        if linkedShoppingItemIds.contains(item.id) {
+            return true
+        }
+
+        if let linkedTaskId = item.linkedTaskId,
+           linkedJobTaskIds.contains(linkedTaskId) {
+            return true
+        }
+
+        if let jobId = item.jobId,
+           !jobId.isEmpty,
+           jobId == serviceStop.jobId {
+            return true
+        }
+
+        return (item.serviceLocationId ?? "") == serviceStop.serviceLocationId &&
+            (item.customerId ?? "") == serviceStop.customerId
+    }
+
+    private func shoppingStatusSortRank(_ status: ShoppingListStatus) -> Int {
+        switch status {
+        case .needToPurchase:
+            return 0
+        case .purchased:
+            return 1
+        case .delivered:
+            return 2
+        case .installed:
+            return 3
+        case .invoiced:
+            return 4
+        }
+    }
+
+    func markShoppingListItemDelivered(
+        companyId: String,
+        item: ShoppingListItem
+    ) async throws {
+        guard item.status != .delivered else { return }
+
+        updatingDeliveredItemIds.insert(item.id)
+        defer { updatingDeliveredItemIds.remove(item.id) }
+
+        try await dataService.updateShoppingListStatus(
+            companyId: companyId,
+            shoppingListItemId: item.id,
+            status: .delivered,
+            needsAction: ShoppingListStatus.delivered.needsShoppingAction
+        )
+
+        if let index = shoppingListItems.firstIndex(where: { $0.id == item.id }) {
+            shoppingListItems[index].status = .delivered
+            shoppingListItems[index].needsAction = ShoppingListStatus.delivered.needsShoppingAction
+            shoppingListItems[index].actionDate = Date()
+        }
     }
     
     func finishServiceStop(companyId:String,currentUserId:String,stop:ServiceStop,operationStatus:ServiceStopOperationStatus) async throws {

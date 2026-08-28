@@ -457,7 +457,7 @@ extension ShoppingListItemCardView {
     private var statusTint: Color {
         let status = shoppingListItem.status.rawValue.lowercased()
 
-        if status.contains("installed") {
+        if status.contains("delivered") || status.contains("installed") {
             return .green
         }
 

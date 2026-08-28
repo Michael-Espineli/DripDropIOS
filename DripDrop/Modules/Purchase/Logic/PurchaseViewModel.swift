@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import FirebaseFirestore
 enum PurchaseFilterOptions:String, CaseIterable{
     case all
     case billable
@@ -94,8 +95,9 @@ final class PurchasesViewModel:ObservableObject{
     @Published private(set) var chemicalsFromWorkOrder: Double? = nil
     @Published private(set) var miscPartsFromWorkOrder: Double? = nil
     @Published private(set) var totalSpentOnWO: Double? = nil
-    @Published private(set) var selectedFilter:PurchaseFilterOptions = .billable
+    @Published private(set) var selectedFilter:PurchaseFilterOptions = .billableAndNotInvoiced
     @Published private(set) var selectedSort:PurchaseSortOptions = .purchaseDateFirst
+    private var purchasedItemsListener: ListenerRegistration?
 
 
 
@@ -400,6 +402,48 @@ final class PurchasesViewModel:ObservableObject{
     func getPurchasesSnapShot(companyId:String) async throws {
         
     }
+    func listenForPurchases(
+        companyId: String,
+        filter: PurchaseFilterOptions,
+        sort: PurchaseSortOptions,
+        startDate: Date,
+        endDate: Date,
+        techIds: [String]
+    ) {
+        self.selectedFilter = filter
+        self.selectedSort = sort
+        purchasedItemsListener?.remove()
+
+        purchasedItemsListener = PurchasedItemsManager.shared.addPurchasedItemsListener(
+            companyId: companyId,
+            startDate: startDate,
+            endDate: endDate
+        ) { [weak self] result in
+            Task { @MainActor in
+                guard let self else { return }
+
+                switch result {
+                case .success(let purchasedItems):
+                    let filteredItems = self.filterAndSortPurchases(
+                        purchasedItems,
+                        filter: filter,
+                        sort: sort,
+                        techIds: techIds
+                    )
+
+                    self.purchasedItems = filteredItems
+                    self.summaryOfPurchasedItems(purchasedItems: filteredItems)
+                case .failure(let error):
+                    print("[PurchasesViewModel][listenForPurchases] \(error)")
+                }
+            }
+        }
+    }
+
+    func stopPurchasesListener() {
+        purchasedItemsListener?.remove()
+        purchasedItemsListener = nil
+    }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                            Editing Recordings
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -439,27 +483,28 @@ final class PurchasesViewModel:ObservableObject{
 
         
 
-        var totalSpentBillableCount = 0
-        var totalSpentNonBillableCount = 0
-        var itemsBillableCount = 0
-        var itemsNonBillableCount = 0
+        var totalSpentBillableCount: Double = 0
+        var totalSpentNonBillableCount: Double = 0
+        var itemsBillableCount: Double = 0
+        var itemsNonBillableCount: Double = 0
 
         for item in purchasedItems {
             if item.billable {
-                totalSpentBillableCount = totalSpentBillableCount + Int(item.totalAfterTax)
-                itemsBillableCount = itemsBillableCount + Int(item.quantity)
+                totalSpentBillableCount += item.totalAfterTax
+                itemsBillableCount += item.quantity
 
             } else {
-                totalSpentNonBillableCount = totalSpentNonBillableCount + Int(item.totalAfterTax)
-                itemsNonBillableCount = itemsNonBillableCount + Int(item.quantity)
+                totalSpentNonBillableCount += item.totalAfterTax
+                itemsNonBillableCount += item.quantity
 
             }
         }
-        self.totalSpentBillable = Double(totalSpentBillableCount)
-        self.totalSpentOnBillables = Double(totalSpentNonBillableCount)
+        self.totalSpentBillable = totalSpentBillableCount
+        self.totalSpentOnBillables = totalSpentBillableCount
+        self.totalSpent = totalSpentBillableCount + totalSpentNonBillableCount
 
-        self.itemsPurchasedBillable = Double(itemsBillableCount)
-        self.itemsPurchased = Double(itemsNonBillableCount)
+        self.itemsPurchasedBillable = itemsBillableCount
+        self.itemsPurchased = itemsBillableCount + itemsNonBillableCount
     }
     //
     // Listeners
@@ -553,5 +598,46 @@ final class PurchasesViewModel:ObservableObject{
     }
     func getPurchaseById(companyId:String,purchaseId:String) async throws {
         self.purchasedItem = try await PurchasedItemsManager.shared.getSingleItem(itemId: purchaseId, companyId: companyId)
+    }
+
+    private func filterAndSortPurchases(
+        _ purchasedItems: [PurchasedItem],
+        filter: PurchaseFilterOptions,
+        sort: PurchaseSortOptions,
+        techIds: [String]
+    ) -> [PurchasedItem] {
+        let selectedTechIds = Set(techIds)
+
+        guard !selectedTechIds.isEmpty else {
+            return []
+        }
+
+        let filteredItems = purchasedItems.filter { item in
+            guard selectedTechIds.contains(item.techId) else { return false }
+
+            switch filter {
+            case .all:
+                return true
+            case .billable:
+                return item.billable
+            case .nonBillable:
+                return !item.billable
+            case .billableAndNotInvoiced:
+                return item.billable && !item.invoiced
+            case .billableAndInvoiced:
+                return item.billable && item.invoiced
+            }
+        }
+
+        switch sort {
+        case .priceHigh:
+            return filteredItems.sorted { $0.price > $1.price }
+        case .priceLow:
+            return filteredItems.sorted { $0.price < $1.price }
+        case .purchaseDateFirst:
+            return filteredItems.sorted { $0.date > $1.date }
+        case .purchaseDateLast:
+            return filteredItems.sorted { $0.date < $1.date }
+        }
     }
 }

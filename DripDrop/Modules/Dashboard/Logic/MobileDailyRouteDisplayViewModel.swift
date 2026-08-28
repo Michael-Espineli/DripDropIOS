@@ -686,6 +686,14 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         route.endTime = endTime
 
         dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: route.id, status: .finished)
+        if let endMilage = route.endMilage {
+            syncRouteVehicleMileage(
+                companyId: companyId,
+                route: route,
+                miles: endMilage,
+                syncSelectedVehicle: route.id == activeRoute?.id
+            )
+        }
         
         if route.id == activeRoute?.id {
             self.activeRoute = route
@@ -834,6 +842,74 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         }
     }
 
+    private func syncRouteVehicleMileage(
+        companyId: String,
+        route: ActiveRoute,
+        miles: Double,
+        syncSelectedVehicle: Bool
+    ) {
+        if syncSelectedVehicle {
+            selectedVehical.miles = miles
+            updateActiveRouteSelectedVehicle(companyId: companyId, activeRouteId: route.id, miles: miles)
+            updateSelectedCompanyFleetMileage(companyId: companyId, miles: miles)
+        }
+
+        if route.vehicleSource == "Personal" {
+            let ownerId = route.personalVehicleOwnerId ?? currentCompanyUser?.userId
+            var personalVehicle = route.personalVehicle ?? currentCompanyUser?.personalVehicle
+            personalVehicle?.miles = miles
+
+            if let ownerId,
+               let personalVehicle {
+                dataService.updateActiveRoutePersonalVehicle(
+                    companyId: companyId,
+                    activeRouteId: route.id,
+                    ownerId: ownerId,
+                    personalVehicle: personalVehicle
+                )
+
+                if ownerId == currentCompanyUser?.userId,
+                   let companyUserId = currentCompanyUser?.id {
+                    let allowPersonalVehicle = currentCompanyUser?.allowPersonalVehicle ?? true
+
+                    Task {
+                        do {
+                            try await dataService.updateCompanyUserPersonalVehicle(
+                                companyId: companyId,
+                                companyUserId: companyUserId,
+                                allowPersonalVehicle: allowPersonalVehicle,
+                                personalVehicle: personalVehicle
+                            )
+                        } catch {
+                            print("[MobileDailyRouteDisplayViewModel][syncRouteVehicleMileage] \(error)")
+                        }
+                    }
+                }
+            }
+
+            return
+        }
+
+        let routeVehicleId = route.vehicalId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !routeVehicleId.isEmpty else { return }
+
+        if syncSelectedVehicle && routeVehicleId == selectedVehical.id {
+            return
+        }
+
+        Task {
+            do {
+                try await dataService.updateVehicalMilage(
+                    companyId: companyId,
+                    vehicalId: routeVehicleId,
+                    miles: miles
+                )
+            } catch {
+                print("[MobileDailyRouteDisplayViewModel][syncRouteVehicleMileage] \(error)")
+            }
+        }
+    }
+
     private func routeEndTime(for route: ActiveRoute) -> Date {
         if Calendar.current.isDate(route.date, inSameDayAs: Date()) {
             return Date()
@@ -874,8 +950,19 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             endMilage: milage
         )
         if syncSelectedVehicle {
-            updateActiveRouteSelectedVehicle(companyId: companyId, activeRouteId: route.id, miles: milage)
-            updateSelectedCompanyFleetMileage(companyId: companyId, miles: milage)
+            syncRouteVehicleMileage(
+                companyId: companyId,
+                route: route,
+                miles: milage,
+                syncSelectedVehicle: true
+            )
+        } else {
+            syncRouteVehicleMileage(
+                companyId: companyId,
+                route: route,
+                miles: milage,
+                syncSelectedVehicle: false
+            )
         }
 
         if let startMilage = route.startMilage {
@@ -891,6 +978,48 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             activeRoute = route
             endMilage = milage
         }
+    }
+
+    func finishRouteWithEndMileage(
+        companyId: String?,
+        companyName: String?,
+        user: DBUser?,
+        route routeToFinish: ActiveRoute? = nil
+    ) {
+        print("  [MobileDailyRouteDisplayViewModel][finishRouteWithEndMileage]")
+
+        guard let companyId else { return }
+        guard let companyName else { return }
+        guard let user else { return }
+        guard var route = routeToFinish ?? activeRoute else { return }
+        guard let milage = Double(inputEndMilage) else { return }
+
+        dataService.updateActiveRouteEndMilage(
+            companyId: companyId,
+            activeRouteId: route.id,
+            endMilage: milage
+        )
+
+        if let startMilage = route.startMilage {
+            dataService.updateActiveRouteDistnace(
+                companyId: companyId,
+                activeRouteId: route.id,
+                distance: milage - startMilage
+            )
+        }
+
+        route.endMilage = milage
+        if route.id == activeRoute?.id {
+            activeRoute = route
+            endMilage = milage
+        }
+
+        stopActiveRoute(
+            companyId: companyId,
+            companyName: companyName,
+            user: user,
+            route: route
+        )
     }
     
     func cancelMove(){

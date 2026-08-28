@@ -6,6 +6,17 @@
 //
 
 import SwiftUI
+
+enum PurchaseMoneyFormatter {
+    static func string(fromStoredCents cents: Double) -> String {
+        (cents / 100).formatted(.currency(code: "USD"))
+    }
+
+    static func string(fromStoredDollars dollars: Double) -> String {
+        dollars.formatted(.currency(code: "USD"))
+    }
+}
+
 struct PurchasesCardView: View{
     var item: PurchasedItem
     
@@ -32,7 +43,7 @@ struct PurchasesCardView: View{
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text(item.totalAfterTax, format: .currency(code: "USD"))
+                        Text(PurchaseMoneyFormatter.string(fromStoredCents: item.totalAfterTax))
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.primary)
                         Text(shortDate(date: item.date))

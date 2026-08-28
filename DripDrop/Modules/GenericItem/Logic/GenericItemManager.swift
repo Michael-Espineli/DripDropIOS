@@ -14,6 +14,13 @@ import SwiftUI
 import CoreLocation
 import MapKit
 import Darwin
+
+private let genericItemPartPurchaseAvailabilityPayload: [String: Any] = [
+    "active": true,
+    "availableForPartPurchase": true,
+    "partPurchaseAvailable": true
+]
+
 struct GenericItem:Identifiable,Codable{
     var id : String
     var commonName: String
@@ -55,8 +62,9 @@ final class MockGenericItemManager:GenericItemManagerProtocol {
         
     }
     func createDataBaseItem(companyId:String,genericItem : GenericItem) async throws {
-
-        try GenericItemDocument(companyId: companyId, genericItemId: genericItem.id).setData(from:genericItem, merge: false)
+        let document = GenericItemDocument(companyId: companyId, genericItemId: genericItem.id)
+        try document.setData(from:genericItem, merge: false)
+        try await document.setData(genericItemPartPurchaseAvailabilityPayload, merge: true)
     }
     func createIntialGenericDataBaseItems(companyId:String) async throws{
         let genericItems:[GenericItem] = [
@@ -76,7 +84,9 @@ final class MockGenericItemManager:GenericItemManagerProtocol {
         ]
 
         for item in genericItems {
-             try GenericItemDocument(companyId: companyId, genericItemId: item.id).setData(from:item, merge: false)
+            let document = GenericItemDocument(companyId: companyId, genericItemId: item.id)
+            try document.setData(from:item, merge: false)
+            try await document.setData(genericItemPartPurchaseAvailabilityPayload, merge: true)
         }
         
     }
@@ -115,7 +125,10 @@ final class MockGenericItemManager:GenericItemManagerProtocol {
         print(genericItem.id)
         let ref = GenericItemCollection(companyId: companyId).document(genericItem.id)
          ref.updateData([
-            "storeItems": DBArray
+            "storeItems": DBArray,
+            "active": true,
+            "availableForPartPurchase": true,
+            "partPurchaseAvailable": true
         ]) { err in
             if let err = err {
                 print("Error updating document: \(err)")
@@ -141,8 +154,9 @@ final class GenericItemManager:GenericItemManagerProtocol {
         
     }
     func createDataBaseItem(companyId:String,genericItem : GenericItem) async throws {
-
-     try GenericItemDocument(companyId: companyId, genericItemId: genericItem.id).setData(from:genericItem, merge: false)
+        let document = GenericItemDocument(companyId: companyId, genericItemId: genericItem.id)
+        try document.setData(from:genericItem, merge: false)
+        try await document.setData(genericItemPartPurchaseAvailabilityPayload, merge: true)
     }
     func createIntialGenericDataBaseItems(companyId:String) async throws{
         let genericItems:[GenericItem] = [
@@ -162,8 +176,9 @@ final class GenericItemManager:GenericItemManagerProtocol {
         ]
 
         for item in genericItems {
-            try GenericItemDocument(companyId: companyId, genericItemId: item.id).setData(from:item, merge:false)
-
+            let document = GenericItemDocument(companyId: companyId, genericItemId: item.id)
+            try document.setData(from:item, merge:false)
+            try await document.setData(genericItemPartPurchaseAvailabilityPayload, merge: true)
         }
         
     }
@@ -202,7 +217,10 @@ final class GenericItemManager:GenericItemManagerProtocol {
         print(genericItem.id)
         let ref = GenericItemCollection(companyId: companyId).document(genericItem.id)
          ref.updateData([
-            "storeItems": DBArray
+            "storeItems": DBArray,
+            "active": true,
+            "availableForPartPurchase": true,
+            "partPurchaseAvailable": true
         ]) { err in
             if let err = err {
                 print("Error updating document: \(err)")

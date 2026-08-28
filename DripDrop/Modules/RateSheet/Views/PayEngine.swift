@@ -92,10 +92,17 @@ struct PayEngine {
         }
 
         if let manualPayOverrideCents = serviceStop.manualPayOverrideCents {
+            guard manualPayOverrideCents > 0 else {
+                payrollDebug(
+                    "Skipping manual payroll line because manualPayOverrideCents is 0. serviceStopId: \(serviceStop.id)"
+                )
+                return []
+            }
+
             return [
                 manualPayOverrideLine(
                     serviceStop: serviceStop,
-                    amountCents: max(0, manualPayOverrideCents),
+                    amountCents: manualPayOverrideCents,
                     now: now
                 )
             ]
@@ -182,7 +189,7 @@ struct PayEngine {
         }()
 
         guard effectiveTaskPaySource != .none else {
-            return lineItems
+            return payableLineItems(lineItems)
         }
 
         for task in finishedTasks {
@@ -197,7 +204,21 @@ struct PayEngine {
             }
         }
 
-        return lineItems
+        return payableLineItems(lineItems)
+    }
+
+    private func payableLineItems(_ lineItems: [TechnicianPayLineItem]) -> [TechnicianPayLineItem] {
+        lineItems.filter { lineItem in
+            let shouldKeep = lineItem.totalAmountCents > 0
+
+            if !shouldKeep {
+                payrollDebug(
+                    "Skipping generated payroll line because totalAmountCents is 0. lineId: \(lineItem.id), status: \(lineItem.calculationStatus.rawValue)"
+                )
+            }
+
+            return shouldKeep
+        }
     }
 }
 

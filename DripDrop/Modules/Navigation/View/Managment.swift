@@ -836,30 +836,33 @@ extension Managment {
                     .background(Color.accentColor.opacity(0.12), in: Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(title)
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.primary)
-
-                        if let countText {
-                            Text(countText)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                                .background(.thinMaterial, in: Capsule())
-                        }
-                    }
+                    Text(title)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer(minLength: 0)
 
-                seeMore()
+                VStack(alignment: .trailing, spacing: 8) {
+                    if let countText {
+                        Text(countText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+
+                    seeMore()
+                }
             }
 
             if shouldShowStats {

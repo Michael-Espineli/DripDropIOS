@@ -13,6 +13,12 @@ import SwiftUI
 import CoreLocation
 import MapKit
 
+private let mockGenericItemPartPurchaseAvailabilityPayload: [String: Any] = [
+    "active": true,
+    "availableForPartPurchase": true,
+    "partPurchaseAvailable": true
+]
+
 
 @MainActor
 final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
@@ -3614,7 +3620,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         print(genericItem.id)
         let ref = GenericItemCollection(companyId: companyId).document(genericItem.id)
         ref.updateData([
-            "storeItems": DBArray
+            "storeItems": DBArray,
+            "active": true,
+            "availableForPartPurchase": true,
+            "partPurchaseAvailable": true
         ]) { err in
             if let err = err {
                 print("Error updating document: \(err)")
@@ -3629,8 +3638,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
     }
     func createDataBaseItem(companyId:String,genericItem : GenericItem) async throws {
-        
-        try GenericItemDocument(companyId: companyId, genericItemId: genericItem.id).setData(from:genericItem, merge: false)
+        let document = GenericItemDocument(companyId: companyId, genericItemId: genericItem.id)
+        try document.setData(from:genericItem, merge: false)
+        try await document.setData(mockGenericItemPartPurchaseAvailabilityPayload, merge: true)
     }
     func createIntialGenericDataBaseItems(companyId:String) async throws{
         let genericItems:[GenericItem] = [
@@ -3650,8 +3660,9 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         ]
         
         for item in genericItems {
-            try GenericItemDocument(companyId: companyId, genericItemId: item.id).setData(from:item, merge:false)
-            
+            let document = GenericItemDocument(companyId: companyId, genericItemId: item.id)
+            try document.setData(from:item, merge:false)
+            try await document.setData(mockGenericItemPartPurchaseAvailabilityPayload, merge: true)
         }
         
     }
@@ -4244,6 +4255,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         comment: JobComment
     ) async throws {}
     
+    func addRepairRequestComment(
+        companyId: String,
+        repairRequestId: String,
+        comment: JobComment
+    ) async throws {}
+    
     func addPurchaseItemsToInstallationWorkOrder(workOrder:Job,companyId: String,ids:[String])async throws {
             //DEVELOPER REMOVE THIS FUNCTION
     }
@@ -4423,6 +4440,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         return try await companyUsersCollection(companyId: companyId)
             .whereField("status", isEqualTo: status)
             .getDocuments(as:CompanyUser.self)
+    }
+    func createNewPerformanceReview(companyId:String,companyUser:CompanyUser,performaceHistory:PerformaceHistory) async throws {
+        
+    }
+    func getPerformaceReivewByUserId(companyId:String,companyUserId:String) async throws -> [PerformaceHistory] {
+        return MockDataService.mockPerformaceHistory
     }
     func getNumberOfItemsPurchasedIn30Days(companyId: String) async throws->(total:Double,totalBillable:Double,Invoiced:Double,TotalSpent:Double,totalSoldInDollars:Double,TotalSpentBillable:Double,TotalBilled:Double,NonBillableList:[PurchasedItem]){
         
@@ -5787,6 +5810,10 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func getWorkOrderComments(companyId: String, workOrderId: String) async throws -> [JobComment] {
+        []
+    }
+    
+    func getRepairRequestComments(companyId: String, repairRequestId: String) async throws -> [JobComment] {
         []
     }
     
@@ -10054,36 +10081,44 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             userId: UUID().uuidString,
             userName: "John Doe",
             date: Date(),
-            description: "Description",
+            description: "Resolved a tricky route issue and documented the customer follow-up clearly.",
             photoUrls: [],
-            performaceHistoryType: .kudo
+            performaceHistoryType: .kudo,
+            visibleToTechnician: false,
+            createdByName: "Management"
         ),
         PerformaceHistory(
             id: UUID().uuidString,
             userId: UUID().uuidString,
             userName: "John Doe",
             date: Date(),
-            description: "Description",
+            description: "Needs coaching on closing photos before marking a stop complete.",
             photoUrls: [],
-            performaceHistoryType: .kudo
+            performaceHistoryType: .coaching,
+            visibleToTechnician: false,
+            createdByName: "Management"
         ),
         PerformaceHistory(
             id: UUID().uuidString,
             userId: UUID().uuidString,
             userName: "John Doe",
             date: Date(),
-            description: "Description",
+            description: "Customer reported gate was left unlocked after service.",
             photoUrls: [],
-            performaceHistoryType: .complaint
+            performaceHistoryType: .complaint,
+            visibleToTechnician: false,
+            createdByName: "Management"
         ),
         PerformaceHistory(
             id: UUID().uuidString,
             userId: UUID().uuidString,
             userName: "John Doe",
             date: Date(),
-            description: "Description",
+            description: "Observed consistent start times across the last week of assigned stops.",
             photoUrls: [],
-            performaceHistoryType: .complaint
+            performaceHistoryType: .observation,
+            visibleToTechnician: true,
+            createdByName: "Management"
         )
     ]
     static let mockShoppingListItem : ShoppingListItem = ShoppingListItem(

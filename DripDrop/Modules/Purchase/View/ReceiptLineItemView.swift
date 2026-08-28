@@ -40,14 +40,14 @@ struct ReceiptLineItemView: View {
                 ZStack{
                     Text("0,000.00")
                         .foregroundColor(Color.clear)
-                    Text("\(String(format:"%.2f",line.price))")
+                    Text(PurchaseMoneyFormatter.string(fromStoredCents: line.price))
                 }
                 Rectangle()
                     .frame(width: 1,height: 10)
                 ZStack{
                     Text("0,000.00")
                         .foregroundColor(Color.clear)
-                    Text("\(String(format:"%.2f",line.total))")
+                    Text(PurchaseMoneyFormatter.string(fromStoredCents: line.total))
                 }
             }
         }

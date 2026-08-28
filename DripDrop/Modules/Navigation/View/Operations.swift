@@ -180,6 +180,8 @@
                         offeredWork
                     }
 
+                    shoppingList
+
                     if role.permissionIdList.contains("30") {
                         repairRequests
                     }
@@ -503,6 +505,76 @@
             )
         }
 
+        var shoppingList: some View {
+            operationsCard(
+                title: "Shopping List",
+                subtitle: "Open materials, route prep items, and purchased items that still need action.",
+                systemImage: "list.bullet.clipboard",
+                countText: VM.listOfShoppingListItems.isEmpty ? nil : "\(VM.listOfShoppingListItems.count)",
+                seeMore: {
+                    if UIDevice.isIPhone {
+                        AnyView(
+                            NavigationLink(value: Route.companyShoppingList(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    } else {
+                        AnyView(
+                            NavigationLink(value: Route.companyShoppingList(dataService: dataService)) {
+                                seeMoreLabel
+                            }
+                            .buttonStyle(.plain)
+                        )
+                    }
+                },
+                stats: {
+                    VStack(spacing: 8) {
+                        statRow(title: "Open Items", value: "\(VM.listOfShoppingListItems.count)", systemImage: "cart")
+                    }
+                },
+                preview: {
+                    if shouldShowFullPreview {
+                        if VM.listOfShoppingListItems.isEmpty {
+                            emptyPreviewTile("No Shopping Items", systemImage: "cart")
+                        } else {
+                            horizontalPreviewList {
+                                ForEach(VM.listOfShoppingListItems) { item in
+                                    if UIDevice.isIPhone {
+                                        NavigationLink(
+                                            value: Route.shoppingListDetail(
+                                                item: item,
+                                                dataService: dataService
+                                            )
+                                        ) {
+                                            previewTile(
+                                                title: item.name,
+                                                subtitle: item.customerName ?? item.jobId ?? item.status.rawValue,
+                                                systemImage: "cart"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        Button {
+                                            masterDataManager.selectedShoppingListItem = item
+                                            masterDataManager.selectedCategory = .shoppingList
+                                        } label: {
+                                            previewTile(
+                                                title: item.name,
+                                                subtitle: item.customerName ?? item.jobId ?? item.status.rawValue,
+                                                systemImage: "cart"
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         var repairRequests: some View {
             operationsCard(
                 title: "Repair Requests",
@@ -698,30 +770,33 @@
                         .background(Color.accentColor.opacity(0.12), in: Circle())
 
                     VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text(title)
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.primary)
-
-                            if let countText {
-                                Text(countText)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 5)
-                                    .background(.thinMaterial, in: Capsule())
-                            }
-                        }
+                        Text(title)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         Text(subtitle)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 0)
 
-                    seeMore()
+                    VStack(alignment: .trailing, spacing: 8) {
+                        if let countText {
+                            Text(countText)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(.thinMaterial, in: Capsule())
+                        }
+
+                        seeMore()
+                    }
                 }
 
                 if shouldShowStats {
@@ -763,11 +838,8 @@
         }
 
         func horizontalPreviewList<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    content()
-                }
-                .padding(.vertical, 2)
+            VStack(spacing: 8) {
+                content()
             }
         }
 
@@ -776,42 +848,38 @@
             subtitle: String,
             systemImage: String
         ) -> some View {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Image(systemName: systemImage)
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .frame(width: 34, height: 34)
-                        .background(.thinMaterial, in: Circle())
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 34, height: 34)
+                    .background(.thinMaterial, in: Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title.isEmpty ? "-" : title)
-                        .font(.caption.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(2)
 
                     if !subtitle.isEmpty {
                         Text(subtitle)
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
                 }
 
                 Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
-            .frame(width: 142, height: 118)
             .padding(12)
-            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(Color.primary.opacity(0.06), lineWidth: 1)
             )
         }

@@ -981,6 +981,8 @@ private struct ServiceStopFollowUpItem: Identifiable, Hashable {
 }
 
 private struct ServiceStopFollowUpView: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
     let dataService: any ProductionDataServiceProtocol
     let serviceStop: ServiceStop
     let items: [ServiceStopFollowUpItem]
@@ -993,6 +995,8 @@ private struct ServiceStopFollowUpView: View {
     @State private var showRepairRequestSheet = false
     @State private var showJobSheet = false
     @State private var selectedPartApproval: CustomerPartApproval?
+    @State private var deliveringPartApprovalIds: Set<String> = []
+    @State private var followUpActionMessage: String?
 
     private var groupedItems: [(kind: ServiceStopFollowUpKind, items: [ServiceStopFollowUpItem])] {
         ServiceStopFollowUpKind.allCases.map { kind in
@@ -1007,6 +1011,14 @@ private struct ServiceStopFollowUpView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     header
+
+                    if let followUpActionMessage {
+                        messageCard(
+                            followUpActionMessage,
+                            systemImage: followUpActionMessage.contains("Unable") ? "exclamationmark.triangle" : "checkmark.circle",
+                            tint: followUpActionMessage.contains("Unable") ? Color.poolRed : Color.poolGreen
+                        )
+                    }
 
                     if isLoading {
                         loadingCard
@@ -1162,13 +1174,17 @@ private struct ServiceStopFollowUpView: View {
         .padding(.vertical, 18)
     }
 
-    private func messageCard(_ message: String, systemImage: String) -> some View {
+    private func messageCard(
+        _ message: String,
+        systemImage: String,
+        tint: Color = Color.poolRed
+    ) -> some View {
         Label(message, systemImage: systemImage)
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Color.poolRed)
+            .foregroundStyle(tint)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
-            .background(Color.poolRed.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func followUpSection(_ kind: ServiceStopFollowUpKind, items: [ServiceStopFollowUpItem]) -> some View {
@@ -1196,62 +1212,207 @@ private struct ServiceStopFollowUpView: View {
     }
 
     private func followUpRow(_ item: ServiceStopFollowUpItem) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
+        let isPartApproval = item.kind == .partApproval
+
+        return VStack(alignment: .leading, spacing: isPartApproval ? 6 : 10) {
+            HStack(alignment: .top, spacing: isPartApproval ? 8 : 10) {
                 Image(systemName: item.kind.systemImage)
+                    .font((isPartApproval ? Font.caption : Font.body).weight(.semibold))
                     .foregroundStyle(item.kind.tint)
-                    .frame(width: 28, height: 28)
+                    .frame(width: isPartApproval ? 24 : 28, height: isPartApproval ? 24 : 28)
                     .background(item.kind.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: isPartApproval ? 2 : 4) {
                     Text(item.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(2)
+                        .font((isPartApproval ? Font.caption : Font.subheadline).weight(.semibold))
+                        .lineLimit(isPartApproval ? 1 : 2)
 
                     Text(item.sortDate.formatted(date: .abbreviated, time: .omitted))
-                        .font(.caption)
+                        .font(isPartApproval ? .caption2 : .caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer(minLength: 8)
 
                 Text(item.status)
-                    .font(.caption.weight(.semibold))
+                    .font((isPartApproval ? Font.caption2 : Font.caption).weight(.semibold))
                     .foregroundStyle(item.kind.tint)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, isPartApproval ? 7 : 8)
+                    .padding(.vertical, isPartApproval ? 3 : 4)
                     .background(item.kind.tint.opacity(0.12), in: Capsule())
             }
 
             if !item.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(item.detail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if isPartApproval {
+                    Text(item.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text(item.detail)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
-            if let amountCents = item.amountCents {
+            if let amountCents = item.amountCents, !isPartApproval {
                 Text(DataBaseItemMoneyFormatter.moneyFromCents(amountCents))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
 
             if item.kind == .partApproval, let approval = item.partApproval {
-                Button {
-                    selectedPartApproval = approval
-                } label: {
-                    Label("Manage Approval", systemImage: "person.crop.circle.badge.checkmark")
-                        .font(.caption.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(Color.poolGreen.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                HStack(spacing: 8) {
+                    if let amountCents = item.amountCents {
+                        Text(DataBaseItemMoneyFormatter.moneyFromCents(amountCents))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        selectedPartApproval = approval
+                    } label: {
+                        Label("Details", systemImage: "info.circle")
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(Color.poolGreen)
+
+                    if partApprovalCanBeDelivered(approval) {
+                        let isDelivering = deliveringPartApprovalIds.contains(approval.id)
+
+                        Button {
+                            markPartApprovalDelivered(approval)
+                        } label: {
+                            HStack(spacing: 5) {
+                                if isDelivering {
+                                    ProgressView()
+                                        .controlSize(.mini)
+                                } else {
+                                    Image(systemName: "shippingbox")
+                                }
+
+                                Text("Delivered")
+                            }
+                            .font(.caption.weight(.semibold))
+                            .lineLimit(1)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .tint(Color.poolBlue)
+                        .disabled(isDelivering)
+                    }
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.poolGreen)
             }
         }
-        .padding(12)
+        .padding(isPartApproval ? 9 : 12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var targetCompanyId: String? {
+        if serviceStop.otherCompany, let mainCompanyId = serviceStop.mainCompanyId {
+            return mainCompanyId
+        }
+
+        return masterDataManager.currentCompany?.id
+    }
+
+    private func partApprovalCanBeDelivered(_ approval: CustomerPartApproval) -> Bool {
+        guard linkedShoppingListItemId(for: approval) != nil,
+              !partApprovalIsDelivered(approval) else {
+            return false
+        }
+
+        let approvalStatus = normalizedFollowUpStatus(approval.approvalStatus ?? approval.status)
+        let fulfillmentStatus = normalizedFollowUpStatus(approval.fulfillmentStatus)
+
+        return approvalStatus == "approved" ||
+            approvalStatus == "readytopurchase" ||
+            approvalStatus == "purchased" ||
+            fulfillmentStatus.contains("approved") ||
+            fulfillmentStatus.contains("purchase")
+    }
+
+    private func partApprovalIsDelivered(_ approval: CustomerPartApproval) -> Bool {
+        let fulfillmentStatus = normalizedFollowUpStatus(approval.fulfillmentStatus)
+        let status = normalizedFollowUpStatus(approval.status)
+
+        return [
+            "delivered",
+            "installed",
+            "invoiced",
+            "paid",
+            "completed",
+            "fulfilled"
+        ].contains(fulfillmentStatus) || [
+            "delivered",
+            "installed",
+            "invoiced",
+            "paid",
+            "completed",
+            "fulfilled"
+        ].contains(status)
+    }
+
+    private func linkedShoppingListItemId(for approval: CustomerPartApproval) -> String? {
+        if let shoppingListItemId = approval.shoppingListItemId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !shoppingListItemId.isEmpty {
+            return shoppingListItemId
+        }
+
+        let path = approval.shoppingListPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return path.split(separator: "/").last.map(String.init)
+    }
+
+    private func normalizedFollowUpStatus(_ status: String?) -> String {
+        (status ?? "")
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    private func markPartApprovalDelivered(_ approval: CustomerPartApproval) {
+        guard let companyId = targetCompanyId,
+              let shoppingListItemId = linkedShoppingListItemId(for: approval) else {
+            followUpActionMessage = "Unable to find a linked shopping item for this approval."
+            return
+        }
+
+        guard !deliveringPartApprovalIds.contains(approval.id) else {
+            return
+        }
+
+        Task { @MainActor in
+            deliveringPartApprovalIds.insert(approval.id)
+            defer { deliveringPartApprovalIds.remove(approval.id) }
+
+            let userId = masterDataManager.user?.id ?? ""
+            let userName = [
+                masterDataManager.user?.firstName ?? "",
+                masterDataManager.user?.lastName ?? ""
+            ]
+                .joined(separator: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            do {
+                try await dataService.markCustomerPartApprovalDelivered(
+                    approval: approval,
+                    companyId: companyId,
+                    shoppingListItemId: shoppingListItemId,
+                    actorUserId: userId,
+                    actorUserName: userName
+                )
+                followUpActionMessage = "Part marked delivered."
+                await onRefresh()
+            } catch {
+                followUpActionMessage = "Unable to mark this part delivered."
+                print("[ServiceStopFollowUpView][markPartApprovalDelivered] \(error)")
+            }
+        }
     }
 
     private func followUpActionButton(

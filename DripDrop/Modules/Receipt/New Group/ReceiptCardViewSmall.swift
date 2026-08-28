@@ -37,7 +37,7 @@ struct ReceiptCardViewSmall: View {
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text(receipt.costAfterTax, format: .currency(code: "USD"))
+                        Text(PurchaseMoneyFormatter.string(fromStoredDollars: receipt.costAfterTax))
                             .font(.subheadline.weight(.bold))
                             .foregroundStyle(.primary)
 
@@ -66,7 +66,7 @@ struct ReceiptCardViewSmall: View {
                 }
 
                 if receipt.cost > 0, receipt.cost != receipt.costAfterTax {
-                    Text("Before tax \(receipt.cost, format: .currency(code: "USD"))")
+                    Text("Before tax \(PurchaseMoneyFormatter.string(fromStoredDollars: receipt.cost))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

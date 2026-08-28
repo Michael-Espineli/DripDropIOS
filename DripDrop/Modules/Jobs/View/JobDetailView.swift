@@ -25,7 +25,7 @@ struct JobDetailView: View {
 
     @State var job:Job
 
-    @State var view:String = "Overview"
+    @State var view:String = "Plans"
     @State var jobId:String = "J"
 
     @State private var showAdminSelector: Bool = false
@@ -221,7 +221,7 @@ struct JobDetailView: View {
             }
 
                 switch view {
-                case "Overview":
+                case "Plans", "Overview":
                     if VM.isEdit {
                         editInfo
                     } else {
@@ -235,6 +235,9 @@ struct JobDetailView: View {
                             Text("Cancel")
                         })
                     }
+
+                case "Planned":
+                    plannedWebDetailView
 
                 case "Tasks":
                     if VM.isEdit {
@@ -266,6 +269,8 @@ struct JobDetailView: View {
                     
                 case "Billing":
                     billingView
+                case "History":
+                    historyView
                 default:
                     info
                 }
@@ -525,7 +530,7 @@ extension JobDetailView {
     }
 
     private func jobDetailTabButton(_ option: String) -> some View {
-        let isSelected = view == option
+        let isSelected = jobDetailTabIsSelected(option)
 
         return Button {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
@@ -553,6 +558,21 @@ extension JobDetailView {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private func jobDetailTabIsSelected(_ option: String) -> Bool {
+        if view == option {
+            return true
+        }
+
+        switch option {
+        case "Plans":
+            return view == "Overview"
+        case "Planned":
+            return ["Tasks", "Offers", "Schedule", "Materials"].contains(view)
+        default:
+            return false
+        }
     }
 
     private func compactJobDetailChip(title: String, systemImage: String, tint: Color) -> some View {
@@ -608,6 +628,8 @@ extension JobDetailView {
 
     private func jobDetailTabIcon(_ option: String) -> String {
         switch option {
+        case "Plans": return "square.grid.2x2.fill"
+        case "Planned": return "checklist"
         case "Overview": return "doc.text.fill"
         case "Tasks": return "checklist"
         case "Offers": return "paperplane.fill"
@@ -615,6 +637,7 @@ extension JobDetailView {
         case "Materials": return "cart.fill"
         case "Actual": return "hammer.fill"
         case "Billing": return "creditcard.fill"
+        case "History": return "clock.arrow.circlepath"
         default: return "square.grid.2x2.fill"
         }
     }
@@ -660,7 +683,7 @@ extension JobDetailView {
                 view = destination
             },
             onGoToPlan: {
-                view = "Tasks"
+                view = "Planned"
             },
             onGoToOffers: {
                 view = "Offers"
@@ -768,9 +791,9 @@ extension JobDetailView {
 //            .buttonStyle(.plain)
 
             Button {
-                view = "Billing"
+                view = "Planned"
             } label: {
-                Label("Billing", systemImage: "chevron.right")
+                Label("Planned", systemImage: "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -785,6 +808,193 @@ extension JobDetailView {
 //            billingActionsSheet
 //                .presentationDetents([.medium, .large])
 //        }
+    }
+
+    var plannedWebDetailView: some View {
+        let summary = VM.dashboardSummary(for: job)
+
+        return ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Planned")
+                                    .font(.title3.weight(.semibold))
+
+                                Text("Tasks, visits, work offers, and materials for \(job.internalId).")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "checklist")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 36, height: 36)
+                                .background(.thinMaterial, in: Circle())
+                        }
+
+                        HStack(spacing: 10) {
+                            JobDashboardSummaryChip(
+                                title: "Revenue",
+                                value: JobDashboardMoneyFormatter.money(summary.plannedRevenueCents),
+                                systemImage: "dollarsign.circle"
+                            )
+
+                            JobDashboardSummaryChip(
+                                title: "Labor",
+                                value: JobDashboardMoneyFormatter.money(summary.plannedLaborCents),
+                                systemImage: "person.text.rectangle"
+                            )
+
+                            JobDashboardSummaryChip(
+                                title: "Products",
+                                value: JobDashboardMoneyFormatter.money(summary.plannedMaterialPriceCents),
+                                systemImage: "cart"
+                            )
+                        }
+                    }
+                    .basicCard()
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        sectionHeader("Planned Work", systemImage: "square.grid.2x2")
+
+                        Button {
+                            view = "Tasks"
+                        } label: {
+                            JobDashboardNavigationRow(
+                                title: "Tasks",
+                                subtitle: "\(VM.jobTaskList.count) task(s), \(VM.plannedLaborMinutes) planned minutes.",
+                                systemImage: "checklist"
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            view = "Schedule"
+                        } label: {
+                            JobDashboardNavigationRow(
+                                title: "Planned & Scheduled Visits",
+                                subtitle: "\(VM.plannedServiceStops.count) planned, \(VM.scheduledServiceStopCount) scheduled.",
+                                systemImage: "calendar.badge.clock"
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            view = "Offers"
+                        } label: {
+                            JobDashboardNavigationRow(
+                                title: "Work Offers",
+                                subtitle: "\(summary.openOfferCount) open, \(summary.acceptedOfferCount) accepted.",
+                                systemImage: "paperplane"
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            view = "Materials"
+                        } label: {
+                            JobDashboardNavigationRow(
+                                title: "Materials",
+                                subtitle: "\(VM.shoppingItemList.count) planned item(s), \(VM.purchasedItems.count) purchased item(s).",
+                                systemImage: "cart"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .basicCard()
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        sectionHeader("Plan Snapshot", systemImage: "doc.text")
+
+                        JobDashboardDetailRow(
+                            title: "Planned Service Labor",
+                            value: JobDashboardMoneyFormatter.money(summary.plannedServiceStopLaborCents)
+                        )
+
+                        JobDashboardDetailRow(
+                            title: "Planned Task Labor",
+                            value: JobDashboardMoneyFormatter.money(summary.plannedTaskLaborCents)
+                        )
+
+                        JobDashboardDetailRow(
+                            title: "Planned Material Cost",
+                            value: JobDashboardMoneyFormatter.money(summary.plannedMaterialCostCents)
+                        )
+
+                        JobDashboardDetailRow(
+                            title: "Projected Profit",
+                            value: JobDashboardMoneyFormatter.money(summary.plannedProfitCents),
+                            valueIsWarning: summary.plannedProfitCents < 0
+                        )
+                    }
+                    .basicCard()
+
+                    Color.clear.frame(height: 90)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack(spacing: 12) {
+                Button {
+                    view = "Plans"
+                } label: {
+                    Label("Plans", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    view = "Actual"
+                } label: {
+                    Label("Actual", systemImage: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.regularMaterial)
+        }
+    }
+
+    var historyView: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    sectionHeader("History", systemImage: "clock.arrow.circlepath")
+                    Spacer()
+                    Text("\(VM.comments.count) comment\(VM.comments.count == 1 ? "" : "s")")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(.thinMaterial, in: Capsule())
+                }
+
+                Text("Job comments and activity notes for \(job.internalId).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(Color.listColor)
+
+            commentsView
+        }
     }
 
     var editInfo: some View {
@@ -3506,9 +3716,9 @@ extension JobDetailView {
             .buttonStyle(.plain)
 
             Button {
-                view = "Overview"
+                view = "Plans"
             } label: {
-                Label("Overview", systemImage: "chevron.right")
+                Label("Plans", systemImage: "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -3667,7 +3877,7 @@ extension JobDetailView {
                                 systemImage: "square.and.pencil"
                             ) {
                                 showBillingActionsSheet = false
-                                view = "Overview"
+                                view = "Plans"
                                 VM.isEdit = true
                             }
 

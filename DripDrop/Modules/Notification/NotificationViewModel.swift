@@ -49,6 +49,8 @@ final class NotificationViewModel {
         content.sound = .default
         content.categoryIdentifier = "SERVICE_STOP_START_PROMPT"
         content.userInfo = [
+            "notificationIntent": "serviceStopStartPrompt",
+            "route": RouteString.employeeMainDailyDisplayView.rawValue,
             "serviceStopId": serviceStopId,
             "serviceType": serviceType
         ]
@@ -86,6 +88,8 @@ final class NotificationViewModel {
         content.sound = .default
         content.categoryIdentifier = "SERVICE_STOP_END_PROMPT"
         content.userInfo = [
+            "notificationIntent": "serviceStopEndPrompt",
+            "route": RouteString.employeeMainDailyDisplayView.rawValue,
             "serviceStopId": serviceStopId,
             "serviceType": serviceType
         ]
