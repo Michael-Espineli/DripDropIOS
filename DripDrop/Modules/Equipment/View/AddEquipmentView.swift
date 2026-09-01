@@ -35,6 +35,7 @@ final class AddEquipmentViewModel: ObservableObject {
     @Published var selectedUniversalEquipment: UniversalEquipment? = nil
 
     @Published var category: EquipmentCategory = .filter
+    @Published var customTypeName: String = ""
     @Published var typeId: String = ""
     @Published var name: String = ""
     @Published var showSelectEquipment: Bool = false
@@ -46,6 +47,7 @@ final class AddEquipmentViewModel: ObservableObject {
     @Published var universalEquipmentId: String = ""
     @Published var manualPdfLink: String = ""
     @Published var dateInstalled: Date? = nil
+    @Published var cleanFilterPressure: String = ""
     @Published var status: EquipmentStatus = .operational
     @Published var notes: String = ""
 
@@ -58,7 +60,12 @@ final class AddEquipmentViewModel: ObservableObject {
 
     func onLoad(companyId: String, bodyOfWater: BodyOfWater) async throws {
         self.customer = try await dataService.getCustomerById(companyId: companyId, customerId: bodyOfWater.customerId)
-        self.equipmentTypes = try await dataService.getUniversalEquipmentTypes()
+        do {
+            self.equipmentTypes = try await dataService.getUniversalEquipmentTypes()
+        } catch {
+            print("Unable to load universal equipment types: \(error)")
+            self.equipmentTypes = []
+        }
     }
 
     func onChangeOfSelectedType() {
@@ -99,10 +106,20 @@ final class AddEquipmentViewModel: ObservableObject {
             let serviceFrequencyValue = needsService ? serviceFrequency : nil
             let serviceFrequencyEveryValue = needsService ? serviceFrequencyEvery : nil
             let lastServiceDateValue = needsService ? lastServiced : nil
+            let cleanFilterPressureValue: Int?
+
+            if category == .filter || customTypeName.localizedCaseInsensitiveContains("filter") {
+                let digits = cleanFilterPressure.filter { $0.isNumber }
+                cleanFilterPressureValue = digits.isEmpty ? nil : Int(digits)
+            } else {
+                cleanFilterPressureValue = nil
+            }
+
             let equipment = Equipment(
                 id: bodyOfWaterId,
                 name: name,
                 type: category,
+                customTypeName: customTypeName,
                 typeId: typeId,
                 make: make,
                 makeId: makeId,
@@ -114,6 +131,7 @@ final class AddEquipmentViewModel: ObservableObject {
                 createdAt: createdAt,
                 status: status,
                 needsService: needsService,
+                cleanFilterPressure: cleanFilterPressureValue,
                 lastServiceDate: lastServiceDateValue,
                 serviceFrequency: serviceFrequencyValue,
                 serviceFrequencyEvery: serviceFrequencyEveryValue,
@@ -137,6 +155,7 @@ final class AddEquipmentViewModel: ObservableObject {
 
         // reset
         self.name = ""
+        self.customTypeName = ""
         self.typeId = ""
         self.make = ""
         self.makeId = ""
@@ -145,6 +164,7 @@ final class AddEquipmentViewModel: ObservableObject {
         self.universalEquipmentId = ""
         self.manualPdfLink = ""
         self.dateInstalled = nil
+        self.cleanFilterPressure = ""
         self.notes = ""
         self.status = .operational
         self.needsService = false
@@ -253,7 +273,16 @@ extension AddEquipmentView {
                     }
 
                     Field(title: "Category") {
-                        Picker("Category", selection: $VM.category) {
+                        Picker("Category", selection: Binding(
+                            get: { VM.category },
+                            set: { nextCategory in
+                                VM.category = nextCategory
+                                VM.typeId = ""
+                                if nextCategory != .other {
+                                    VM.customTypeName = ""
+                                }
+                            }
+                        )) {
                             ForEach(EquipmentCategory.allCases, id: \.self) { c in
                                 Text(c.rawValue).tag(c)
                             }
@@ -262,9 +291,19 @@ extension AddEquipmentView {
                     }
                 }
 
+                if VM.category == .other {
+                    Field(title: "Custom Category") {
+                        TextField("Custom category", text: $VM.customTypeName)
+                            .focused($focusedInput)
+                            .submitLabel(.done)
+                            .textFieldStyle(.plain)
+                    }
+                }
+
                 EquipmentCatalogSelectionControl(
                     dataService: VM.dataService,
                     category: $VM.category,
+                    customTypeName: $VM.customTypeName,
                     typeId: $VM.typeId,
                     make: $VM.make,
                     makeId: $VM.makeId,
@@ -318,6 +357,16 @@ extension AddEquipmentView {
                             }
                         }
                         .pickerStyle(.menu)
+                    }
+                }
+
+                if VM.category == .filter || VM.customTypeName.localizedCaseInsensitiveContains("filter") {
+                    Field(title: "Clean Filter Pressure (PSI)") {
+                        TextField("e.g., 25", text: $VM.cleanFilterPressure)
+                            .focused($focusedInput)
+                            .keyboardType(.numberPad)
+                            .submitLabel(.done)
+                            .textFieldStyle(.plain)
                     }
                 }
 
@@ -690,6 +739,7 @@ private struct StatusPill: View {
 struct EquipmentCatalogSelectionControl: View {
     let dataService: any ProductionDataServiceProtocol
     @Binding var category: EquipmentCategory
+    var customTypeName: Binding<String> = .constant("")
     @Binding var typeId: String
     @Binding var make: String
     @Binding var makeId: String
@@ -698,54 +748,46 @@ struct EquipmentCatalogSelectionControl: View {
     @Binding var universalEquipmentId: String
     @Binding var manualPdfLink: String
     @Binding var name: String
+    var showsCatalogMatchLabel: Bool = false
+    var allowsCustomCatalogEntries: Bool = true
 
     @State private var showCatalog = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Make & Model")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-                .textCase(.uppercase)
-
-            VStack(spacing: 8) {
-                Button(action: clearCatalogIds) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "square.and.pencil")
-
-                        Text("Use custom make & model")
-                            .fontWeight(.semibold)
-
-                        Spacer()
+            HStack(spacing: 8) {
+                if showsCatalogMatchLabel {
+                    Label {
+                        Text("Catalog Match")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                    } icon: {
+                        Image(systemName: "list.bullet.rectangle")
                     }
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemBackground))
-                    .foregroundColor(.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .font(.subheadline.weight(.semibold))
                 }
-                .buttonStyle(.plain)
+
+                Text("Make & Model")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .textCase(.uppercase)
+
+                Spacer(minLength: 6)
 
                 Button(action: { showCatalog = true }) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass")
-                        Text("Search equipment catalog")
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    Label("Search Catalog", systemImage: "magnifyingglass")
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.poolBlue.opacity(0.12), in: Capsule())
+                        .foregroundColor(.poolBlue)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Search equipment catalog")
             }
 
             if !modelId.isEmpty || !makeId.isEmpty {
@@ -789,14 +831,48 @@ struct EquipmentCatalogSelectionControl: View {
         .sheet(isPresented: $showCatalog) {
             EquipmentCatalogSelectionSheet(
                 dataService: dataService,
-                onCustom: {
-                    clearCatalogIds()
+                allowsCustomCatalogEntries: allowsCustomCatalogEntries,
+                onCustomType: { typeName in
+                    applyCatalogType(name: typeName, typeId: "")
+                    make = ""
+                    makeId = ""
+                    model = ""
+                    modelId = ""
+                    universalEquipmentId = ""
+                    manualPdfLink = ""
+                    if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        name = typeName
+                    }
+                    showCatalog = false
+                },
+                onCustomMake: { selectedType, makeName in
+                    applyCatalogType(name: selectedType.name, typeId: selectedType.id)
+                    make = makeName
+                    makeId = ""
+                    model = ""
+                    modelId = ""
+                    universalEquipmentId = ""
+                    manualPdfLink = ""
+                    showCatalog = false
+                },
+                onCustomModel: { selectedType, selectedMake, modelName in
+                    applyCatalogType(name: selectedType.name, typeId: selectedType.id)
+                    make = selectedMake.name
+                    makeId = selectedMake.id
+                    model = modelName
+                    modelId = ""
+                    universalEquipmentId = ""
+                    manualPdfLink = ""
+                    if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        name = modelName
+                    }
                     showCatalog = false
                 },
                 onSelect: { selectedType, selectedMake, selectedModel in
-                    if let matchedCategory = EquipmentCategory(rawValue: selectedModel.type) ?? EquipmentCategory(rawValue: selectedType.name) {
-                        category = matchedCategory
-                    }
+                    applyCatalogType(
+                        name: selectedModel.type.isEmpty ? selectedType.name : selectedModel.type,
+                        typeId: selectedType.id
+                    )
                     typeId = selectedType.id
                     make = selectedMake.name
                     makeId = selectedMake.id
@@ -822,11 +898,26 @@ struct EquipmentCatalogSelectionControl: View {
         universalEquipmentId = ""
         manualPdfLink = ""
     }
+
+    private func applyCatalogType(name typeName: String, typeId nextTypeId: String) {
+        let trimmedTypeName = typeName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let matchedCategory = EquipmentCategory(rawValue: trimmedTypeName) {
+            category = matchedCategory
+            customTypeName.wrappedValue = matchedCategory == .other ? customTypeName.wrappedValue : ""
+        } else {
+            category = .other
+            customTypeName.wrappedValue = trimmedTypeName
+        }
+        typeId = nextTypeId
+    }
 }
 
 private struct EquipmentCatalogSelectionSheet: View {
     let dataService: any ProductionDataServiceProtocol
-    let onCustom: () -> Void
+    let allowsCustomCatalogEntries: Bool
+    let onCustomType: (String) -> Void
+    let onCustomMake: (UniversalEquipmentType, String) -> Void
+    let onCustomModel: (UniversalEquipmentType, UniversalEquipmentMake, String) -> Void
     let onSelect: (UniversalEquipmentType, UniversalEquipmentMake, UniversalEquipment) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -835,6 +926,9 @@ private struct EquipmentCatalogSelectionSheet: View {
     @State private var equipmentModels: [UniversalEquipment] = []
     @State private var selectedType: UniversalEquipmentType?
     @State private var selectedMake: UniversalEquipmentMake?
+    @State private var customTypeName = ""
+    @State private var customMakeName = ""
+    @State private var customModelName = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
 
@@ -856,33 +950,28 @@ private struct EquipmentCatalogSelectionSheet: View {
 
                 ScrollView {
                     VStack(spacing: 12) {
-                        Card {
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack {
-                                    if selectedType != nil || selectedMake != nil {
+                        if selectedType != nil || selectedMake != nil {
+                            Card {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    HStack {
                                         Button(action: goBack) {
                                             Label("Back", systemImage: "chevron.left")
                                                 .fontWeight(.semibold)
                                         }
+                                        Spacer()
                                     }
-                                    Spacer()
-                                    Button("Use custom make/model") {
-                                        onCustom()
-                                        dismiss()
+
+                                    if let selectedType {
+                                        detailRow("Type", selectedType.name)
                                     }
-                                    .fontWeight(.semibold)
-                                }
 
-                                if let selectedType {
-                                    detailRow("Type", selectedType.name)
-                                }
-
-                                if let selectedMake {
-                                    detailRow("Make", selectedMake.name)
+                                    if let selectedMake {
+                                        detailRow("Make", selectedMake.name)
+                                    }
                                 }
                             }
+                            .padding(.horizontal, 16)
                         }
-                        .padding(.horizontal, 16)
 
                         if let errorMessage {
                             Text(errorMessage)
@@ -897,13 +986,20 @@ private struct EquipmentCatalogSelectionSheet: View {
                         }
 
                         VStack(spacing: 10) {
-                            RowButton(title: "Use custom make/model") {
-                                onCustom()
-                                dismiss()
-                            }
-
                             if let selectedType {
                                 if let selectedMake {
+                                    if allowsCustomCatalogEntries {
+                                        customCatalogEntry(
+                                            title: "Custom Model",
+                                            placeholder: "Enter model",
+                                            text: $customModelName,
+                                            actionTitle: "Use Custom Model"
+                                        ) {
+                                            onCustomModel(selectedType, selectedMake, customModelName.trimmingCharacters(in: .whitespacesAndNewlines))
+                                            dismiss()
+                                        }
+                                    }
+
                                     listHeader("Models", count: equipmentModels.count)
 
                                     ForEach(equipmentModels) { equipment in
@@ -913,6 +1009,18 @@ private struct EquipmentCatalogSelectionSheet: View {
                                         }
                                     }
                                 } else {
+                                    if allowsCustomCatalogEntries {
+                                        customCatalogEntry(
+                                            title: "Custom Make",
+                                            placeholder: "Enter make",
+                                            text: $customMakeName,
+                                            actionTitle: "Use Custom Make"
+                                        ) {
+                                            onCustomMake(selectedType, customMakeName.trimmingCharacters(in: .whitespacesAndNewlines))
+                                            dismiss()
+                                        }
+                                    }
+
                                     listHeader("Makes", count: equipmentMakes.count)
 
                                     ForEach(equipmentMakes) { make in
@@ -923,6 +1031,18 @@ private struct EquipmentCatalogSelectionSheet: View {
                                     }
                                 }
                             } else {
+                                if allowsCustomCatalogEntries {
+                                    customCatalogEntry(
+                                        title: "Custom Category",
+                                        placeholder: "Enter category",
+                                        text: $customTypeName,
+                                        actionTitle: "Use Custom Category"
+                                    ) {
+                                        onCustomType(customTypeName.trimmingCharacters(in: .whitespacesAndNewlines))
+                                        dismiss()
+                                    }
+                                }
+
                                 listHeader("Categories", count: equipmentTypes.count)
 
                                 ForEach(equipmentTypes) { type in
@@ -966,6 +1086,41 @@ private struct EquipmentCatalogSelectionSheet: View {
         .padding(.top, 4)
     }
 
+    private func customCatalogEntry(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        actionTitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        let trimmedText = text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return Card {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(title, systemImage: "square.and.pencil")
+                    .font(.subheadline.weight(.semibold))
+
+                TextField(placeholder, text: text)
+                    .textFieldStyle(.plain)
+                    .submitLabel(.done)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                Button(action: action) {
+                    Label(actionTitle, systemImage: "plus.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(trimmedText.isEmpty ? Color(.tertiarySystemFill) : Color.poolBlue.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .foregroundColor(trimmedText.isEmpty ? .secondary : .poolBlue)
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedText.isEmpty)
+            }
+        }
+    }
+
     private func goBack() {
         errorMessage = nil
         if selectedMake != nil {
@@ -986,7 +1141,7 @@ private struct EquipmentCatalogSelectionSheet: View {
             let loaded = try await dataService.getUniversalEquipmentTypes()
             equipmentTypes = loaded.sorted { $0.name < $1.name }
         } catch {
-            errorMessage = "Unable to load equipment categories."
+            errorMessage = "Unable to load catalog categories. You can enter a custom category."
         }
         isLoading = false
     }
@@ -998,7 +1153,7 @@ private struct EquipmentCatalogSelectionSheet: View {
             let loaded = try await dataService.getUniversalEquipmentBrandsByType(type: type)
             equipmentMakes = loaded.sorted { $0.name < $1.name }
         } catch {
-            errorMessage = "Unable to load equipment makes."
+            errorMessage = "Unable to load catalog makes. You can enter a custom make."
         }
         isLoading = false
     }
@@ -1010,7 +1165,7 @@ private struct EquipmentCatalogSelectionSheet: View {
             let loaded = try await dataService.getUniversalEquipmentByTypeAndBrand(type: type, make: make)
             equipmentModels = loaded.sorted { $0.model < $1.model }
         } catch {
-            errorMessage = "Unable to load equipment models."
+            errorMessage = "Unable to load catalog models. You can enter a custom model."
         }
         isLoading = false
     }

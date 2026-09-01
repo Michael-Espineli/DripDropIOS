@@ -49,6 +49,10 @@ struct JobDetailView: View {
     @State var operationStatus:JobOperationStatus = .estimatePending
     
     @State var billingStatus:JobBillingStatus = .draft
+
+    private var jobDeleteLocked: Bool {
+        job.operationStatus == .finished || VM.operationStatus == .finished
+    }
     
     @State var customer:Customer = Customer(
         id: "",
@@ -364,6 +368,12 @@ struct JobDetailView: View {
         .alert("Delete Job?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 Task {
+                    guard !jobDeleteLocked else {
+                        VM.alertMessage = "Finished jobs cannot be deleted."
+                        VM.showAlert = true
+                        return
+                    }
+
                     guard let company = masterDataManager.currentCompany else {
                         VM.alertMessage = "Missing Company"
                         VM.showAlert = true
@@ -383,15 +393,18 @@ struct JobDetailView: View {
                         dismiss()
                     } catch {
                         print(error)
-                        VM.alertMessage = "Could not delete job."
+                        VM.alertMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                         VM.showAlert = true
                     }
                 }
             }
+            .disabled(jobDeleteLocked)
 
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This will delete this job and related records. This cannot be undone.")
+            Text(jobDeleteLocked
+                ? "Finished jobs cannot be deleted."
+                : "This will delete this job and related records. This cannot be undone.")
         }
         .onChange(of: showBillingActionsSheet) { isShowing in
             guard !isShowing, pendingDeleteConfirmation else { return }
@@ -2060,11 +2073,17 @@ extension JobDetailView {
                 HStack{
                     Spacer()
                     Button(action: {
-                        showDeleteConfirmation.toggle()
+                        if jobDeleteLocked {
+                            VM.alertMessage = "Finished jobs cannot be deleted."
+                            VM.showAlert = true
+                        } else {
+                            showDeleteConfirmation.toggle()
+                        }
                     }, label: {
                         Text("Delete")
                             .modifier(DismissButtonModifier())
                     })
+                    .disabled(jobDeleteLocked)
                 }
             }
         }
@@ -3913,7 +3932,7 @@ extension JobDetailView {
                                 }
                             }
 
-                            jobBillingDeleteActionRow {
+                            jobBillingDeleteActionRow(disabled: jobDeleteLocked) {
                                 pendingDeleteConfirmation = true
                                 showBillingActionsSheet = false
                             }
@@ -3975,6 +3994,7 @@ extension JobDetailView {
     }
 
     private func jobBillingDeleteActionRow(
+        disabled: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -3990,7 +4010,7 @@ extension JobDetailView {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.red)
 
-                    Text("Delete this job and related planned work.")
+                    Text(disabled ? "Finished jobs cannot be deleted." : "Delete this job and related planned work.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
@@ -4006,5 +4026,7 @@ extension JobDetailView {
             .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.55 : 1)
     }
 }

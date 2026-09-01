@@ -28,6 +28,7 @@ struct ShoppingListItemDetailView: View {
     @State private var receivedItem: ShoppingListItem? = nil
     @State private var shoppingListItem: ShoppingListItem? = nil
     @State private var dataBaseItem: DataBaseItem? = nil
+    @State private var productItem: GenericItem? = nil
 
     @State private var description: String = ""
     @State private var isSavingDescription: Bool = false
@@ -291,11 +292,11 @@ extension ShoppingListItemDetailView {
 
     @ViewBuilder
     private func moneyCard(_ item: ShoppingListItem) -> some View {
-        if hasPlannedMoney(item) || hasCustomerPrice(item) || databaseItemId(for: item) != nil {
+        if hasPlannedMoney(item) || hasCustomerPrice(item) || productItemId(for: item) != nil || databaseItemId(for: item) != nil {
             VStack(alignment: .leading, spacing: 14) {
                 sectionHeader(
                     title: "Customer Price",
-                    subtitle: "Uses the linked database item's sellPrice when available.",
+                    subtitle: "Uses the linked product or vendor item sell price when available.",
                     systemImage: "dollarsign.circle"
                 )
 
@@ -528,9 +529,21 @@ extension ShoppingListItemDetailView {
 
     private func loadDataBaseItem(for item: ShoppingListItem) async {
         dataBaseItem = nil
+        productItem = nil
 
-        guard let company = masterDataManager.currentCompany,
-              let databaseItemId = databaseItemId(for: item) else {
+        guard let company = masterDataManager.currentCompany else {
+            return
+        }
+
+        if let productItemId = productItemId(for: item) {
+            productItem = try? await shoppingVM.dataService.getDataBaseItem(
+                companyId: company.id,
+                genericItemId: productItemId
+            )
+            return
+        }
+
+        guard let databaseItemId = databaseItemId(for: item) else {
             return
         }
 
@@ -549,6 +562,26 @@ extension ShoppingListItemDetailView {
         if item.subCategory == .dataBase,
            !item.genericItemId.isEmpty {
             return item.genericItemId
+        }
+
+        return nil
+    }
+
+    private func productItemId(for item: ShoppingListItem) -> String? {
+        if let productId = item.productId,
+           !productId.isEmpty {
+            return productId
+        }
+
+        if item.subCategory == .product,
+           !item.genericItemId.isEmpty {
+            return item.genericItemId
+        }
+
+        if item.itemType == ShoppingListSubCategory.product.rawValue,
+           let itemId = item.itemId,
+           !itemId.isEmpty {
+            return itemId
         }
 
         return nil
@@ -708,6 +741,16 @@ extension ShoppingListItemDetailView {
             return item.name
         }
 
+        if let productName = item.productName,
+           !productName.isEmpty {
+            return productName
+        }
+
+        if let dbItemName = item.dbItemName,
+           !dbItemName.isEmpty {
+            return dbItemName
+        }
+
         if let purchasedItem = item.purchasedItem,
            !purchasedItem.isEmpty {
             return purchasedItem
@@ -728,6 +771,13 @@ extension ShoppingListItemDetailView {
     }
 
     private func customerUnitPriceCents(_ item: ShoppingListItem) -> Int? {
+        if let productItem {
+            let sellPrice = productItem.productSellPriceCents
+            if sellPrice > 0 {
+                return sellPrice
+            }
+        }
+
         if let sellPrice = dataBaseItem?.sellPrice,
            sellPrice > 0 {
             return Int(sellPrice.rounded())
@@ -737,10 +787,17 @@ extension ShoppingListItemDetailView {
     }
 
     private func customerTotalPriceCents(_ item: ShoppingListItem) -> Int? {
+        let quantity = Double(item.quantity ?? "") ?? 1
+
+        if let productItem {
+            let sellPrice = productItem.productSellPriceCents
+            if sellPrice > 0 {
+                return Int((Double(sellPrice) * quantity).rounded())
+            }
+        }
+
         if let sellPrice = dataBaseItem?.sellPrice,
            sellPrice > 0 {
-            let quantity = Double(item.quantity ?? "") ?? 1
-
             return Int((sellPrice * quantity).rounded())
         }
 
@@ -749,6 +806,9 @@ extension ShoppingListItemDetailView {
 
     private func itemIcon(_ item: ShoppingListItem) -> String {
         switch item.subCategory {
+        case .product:
+            return "shippingbox.fill"
+
         case .chemical:
             return "drop"
 

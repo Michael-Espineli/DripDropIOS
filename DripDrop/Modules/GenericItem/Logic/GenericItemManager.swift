@@ -21,23 +21,100 @@ private let genericItemPartPurchaseAvailabilityPayload: [String: Any] = [
     "partPurchaseAvailable": true
 ]
 
-struct GenericItem:Identifiable,Codable{
+struct GenericItem: Identifiable, Codable, Hashable {
     var id : String
     var commonName: String
     var specificName: String
+    var name: String?
 
     var category : String
+    var subCategory: String?
     var description : String
     var dateUpdated : Date
     var sku : String
     var rate : Double
     var sellPrice : Double
+    var billingRate: Double?
+    var billable: Bool?
     var UOM : String
+    var active: Bool?
+    var availableForPartPurchase: Bool?
+    var partPurchaseAvailable: Bool?
 
     var storeItems : [String]
     var storeItemsIds : [String]
+    var vendorItemIds: [String]?
+    var preferredVendorItemId: String?
+    var source: String?
 
 
+}
+
+extension GenericItem {
+    static var emptyProductCatalogItem: GenericItem {
+        GenericItem(
+            id: "",
+            commonName: "",
+            specificName: "",
+            category: "",
+            description: "",
+            dateUpdated: Date(),
+            sku: "",
+            rate: 0,
+            sellPrice: 0,
+            UOM: "",
+            storeItems: [],
+            storeItemsIds: []
+        )
+    }
+
+    var productDisplayName: String {
+        let candidates = [name, commonName, specificName, description, id]
+
+        return candidates
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? "Product"
+    }
+
+    var productDescription: String {
+        let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedDescription.isEmpty {
+            return trimmedDescription
+        }
+
+        return specificName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var productSellPriceCents: Int {
+        Int((billingRate ?? sellPrice).rounded())
+    }
+
+    var isAvailableForPartPurchase: Bool {
+        if let availableForPartPurchase {
+            return availableForPartPurchase
+        }
+
+        if let partPurchaseAvailable {
+            return partPurchaseAvailable
+        }
+
+        return active != false
+    }
+
+    var productSearchText: String {
+        [
+            id,
+            productDisplayName,
+            specificName,
+            category,
+            subCategory ?? "",
+            description,
+            sku,
+            UOM
+        ]
+            .joined(separator: " ")
+            .lowercased()
+    }
 }
 
 protocol GenericItemManagerProtocol {

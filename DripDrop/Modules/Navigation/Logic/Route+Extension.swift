@@ -88,9 +88,9 @@ extension Route {
         case .receipts:
             return "Receipts"
         case .databaseItems:
-            return "Data Base Items"
+            return "Vendor Items"
         case .genericItems:
-            return "Generic Items"
+            return "Product Catalog"
         case .venders:
             return "Venders"
         case .users:
@@ -130,11 +130,11 @@ extension Route {
         case .serviceStop(serviceStop: _):
             return "Service Stop"
         case .dataBaseItem(dataBaseItem: _):
-            return "Data Base Item"
+            return "Vendor Item"
         case .contract(contract: _):
             return "Contract"
         case .genericItem:
-            return "Generic Item"
+            return "Product"
         case .readingTemplate:
             return "Reading Template"
         case .dosageTemplate:

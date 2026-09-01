@@ -24,6 +24,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
 
     @Published var isEdit: Bool = false
     @Published var rate: Double = 0
+    @Published private(set) var job: Job? = nil
     
     @Published var name: String = ""
     @Published var contractedRateString: String = "0"
@@ -92,6 +93,10 @@ final class AddNewTaskToJobViewModel:ObservableObject{
     func onLoad(companyId:String,jobId:String,serviceLocationId:String) async throws {
         print("")
         print("On Load serviceLocationId:\(serviceLocationId) - jobId:\(jobId)")
+        self.job = try? await dataService.getWorkOrderById(
+            companyId: companyId,
+            workOrderId: jobId
+        )
         self.bodyOfWaterList = try await dataService.getAllBodiesOfWaterByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
         self.equipmentList = try await dataService.getEquipmentByServiceLocationId(companyId: companyId, serviceLocationId: serviceLocationId)
     }
@@ -183,6 +188,9 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         )
         if selectedTaskType == .install || selectedTaskType == .replace {
             let shoppingListItemId = "comp_sli_" + UUID().uuidString
+            let shoppingListActive = job?.activatesShoppingListMaterials ?? true
+            let customerId = job?.customerId ?? ""
+            let customerName = job?.customerName ?? ""
             task.shoppingListItemId = shoppingListItemId
             //Add Shopping List Item For Install and Replace
             let shoppingListItem = ShoppingListItem(
@@ -198,10 +206,19 @@ final class AddNewTaskToJobViewModel:ObservableObject{
                 datePurchased: nil,
                 quantity: quantityString,
                 jobId: jobId,
-                customerId: "",
-                customerName: "",
+                customerId: customerId,
+                customerName: customerName,
                 userId: nil,
                 userName: nil,
+                serviceLocationId: serviceLocationId,
+                prepKeys: ShoppingPrepKeyBuilder.keysForJobMaterial(
+                    jobId: jobId,
+                    customerId: customerId,
+                    serviceLocationId: serviceLocationId
+                ),
+                needsAction: shoppingListActive && ShoppingListStatus.needToPurchase.needsShoppingAction,
+                shoppingListActive: shoppingListActive,
+                actionDate: shoppingListActive ? Date() : nil,
                 dbItemId: dataBaseItem.id,
                 purchasedItem: nil,
                 invoiced: true,
@@ -330,6 +347,15 @@ final class AddNewTaskToJobViewModel:ObservableObject{
                 customerName: "",
                 userId: nil,
                 userName: nil,
+                serviceLocationId: serviceLocationId,
+                prepKeys: ShoppingPrepKeyBuilder.keysForJobMaterial(
+                    jobId: jobId,
+                    customerId: "",
+                    serviceLocationId: serviceLocationId
+                ),
+                needsAction: false,
+                shoppingListActive: false,
+                actionDate: nil,
                 dbItemId: dataBaseItem.id,
                 purchasedItem: nil,
                 invoiced: true,

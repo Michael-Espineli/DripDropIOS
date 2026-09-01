@@ -155,11 +155,11 @@ extension ReceiptDatabaseListView {
                 .font(.title2)
                 .foregroundStyle(.secondary)
 
-            Text(hasActiveFilters ? "No matching items." : "No database items yet.")
+            Text(hasActiveFilters ? "No matching items." : "No vendor items yet.")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
 
-            Text(hasActiveFilters ? "Clear search or filters to expand the database list." : "Add a database item to set material details and customer pricing.")
+            Text(hasActiveFilters ? "Clear search or filters to expand the vendor item list." : "Add a vendor item to set purchase details and customer pricing.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

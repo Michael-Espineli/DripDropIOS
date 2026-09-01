@@ -58,7 +58,10 @@ struct PermissionCategoryGroup: Identifiable {
 }
 
 enum PermissionSelectionHelper {
-    private static let childPrefixes = ["Create", "Update", "Delete", "Respond"]
+    private static let childPrefixes = ["Create", "Update", "Delete", "Respond", "Send", "Recommend"]
+    private static let explicitParentNamesById: [String: String] = [
+        "628": "Service Agreements"
+    ]
 
     static func categoryGroups(from permissions: [PermissionModel]) -> [PermissionCategoryGroup] {
         var categoryNames: [String] = []
@@ -204,6 +207,10 @@ enum PermissionSelectionHelper {
     }
 
     private static func parentName(for permission: PermissionModel) -> String? {
+        if let explicitParentName = explicitParentNamesById[permission.id] {
+            return explicitParentName
+        }
+
         let lowercaseName = permission.name.lowercased()
 
         for prefix in childPrefixes {
@@ -305,6 +312,11 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "414", name: "Update Finished Jobs", description: "", category: "Finance"),
         PermissionModel(id: "416", name: "Delete Finished Jobs", description: "", category: "Finance"),
         PermissionModel(id: "420", name: "Payroll Information", description: "Can view payroll setup, pay statements, and technician pay line items.", category: "Finance"),
+        PermissionModel(id: "430", name: "Service Agreements", description: "Can view service agreements.", category: "Finance"),
+        PermissionModel(id: "432", name: "Create Service Agreements", description: "Can create service agreements.", category: "Finance"),
+        PermissionModel(id: "434", name: "Update Service Agreements", description: "Can edit service agreements.", category: "Finance"),
+        PermissionModel(id: "436", name: "Delete Service Agreements", description: "Can delete service agreements.", category: "Finance"),
+        PermissionModel(id: "438", name: "Send Service Agreements", description: "Can send service agreements to customers.", category: "Finance"),
         
         PermissionModel(id: "600", name: "Marketing", description: "", category: "Marketing"),
         PermissionModel(id: "610", name: "Leads", description: "", category: "Marketing"),
@@ -315,6 +327,8 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "622", name: "Respond Estiamtes", description: "", category: "Marketing"),
         PermissionModel(id: "624", name: "Update Estiamtes", description: "", category: "Marketing"),
         PermissionModel(id: "626", name: "Delete Estiamtes", description: "", category: "Marketing"),
+        PermissionModel(id: "627", name: "Recommend Initial Survey Price", description: "Can save a recommended service agreement price from an initial survey service stop.", category: "Marketing"),
+        PermissionModel(id: "628", name: "Send Service Agreements From Field", description: "Can create and send a service agreement from an initial survey in the field.", category: "Finance"),
 
         PermissionModel(id: "800", name: "Settings", description: "", category: "Settings"),
         PermissionModel(id: "810", name: "Company Information", description: "", category: "Settings"),
@@ -333,10 +347,10 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "842", name: "Create Readings and Dosages", description: "", category: "Settings"),
         PermissionModel(id: "844", name: "Update Readings and Dosages", description: "", category: "Settings"),
         PermissionModel(id: "846", name: "Delete Readings and Dosages", description: "", category: "Settings"),
-        PermissionModel(id: "850", name: "Database Items", description: "", category: "Settings"),
-        PermissionModel(id: "852", name: "Create Database Items", description: "", category: "Settings"),
-        PermissionModel(id: "854", name: "Update Database Items", description: "", category: "Settings"),
-        PermissionModel(id: "856", name: "Delete Database Items", description: "", category: "Settings"),
+        PermissionModel(id: "850", name: "Product Catalog and Vendor Items", description: "", category: "Settings"),
+        PermissionModel(id: "852", name: "Create Vendor Items", description: "", category: "Settings"),
+        PermissionModel(id: "854", name: "Update Vendor Items", description: "", category: "Settings"),
+        PermissionModel(id: "856", name: "Delete Vendor Items", description: "", category: "Settings"),
         PermissionModel(id: "860", name: "User Roles", description: "", category: "Settings"),
         PermissionModel(id: "862", name: "Create User Roles", description: "", category: "Settings"),
         PermissionModel(id: "864", name: "Update User Roles", description: "", category: "Settings"),
@@ -362,8 +376,8 @@ final class PermissionViewModel:ObservableObject{
         "200","210","220","230","232","234","236","240","242","244","246",
         "250","252","254","256","260","262","264","266","280","282","284","286",
         "290","292","294","296","300",
-        "400","410","412","414","416","420",
-        "600","610","612","614","616","620","622","624","626",
+        "400","410","412","414","416","420","430","432","434","436","438",
+        "600","610","612","614","616","620","622","624","626","627","628",
         "800","810","812","814","816","820","822","824","826","830","832","834","836",
         "840","842","844","846","850","852","854","856","860","862","864","866",
         "870","872","874","876","880","882","884","886",

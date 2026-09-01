@@ -95,7 +95,7 @@ extension ReportType {
         case .vehicle:
             return "Vehicles and active routes"
         case .purchases:
-            return "Purchased items and database items"
+            return "Purchased items and vendor items"
         case .payroll:
             return "Technician payroll line items"
         case .futurePayroll:

@@ -59,11 +59,15 @@ final class ShoppingListViewModel:ObservableObject{
     serviceLocationId: String?,
     serviceLocationName: String?,
     purchaserName: String?,
-    name: String
+    name: String,
+    shoppingListActive: Bool = true
 ) async throws {
 
     let id = "comp_shop_" + UUID().uuidString
     let status: ShoppingListStatus = .needToPurchase
+    let cleanItemId = itemId ?? ""
+    let productId = subCategory == .product ? cleanItemId : ""
+    let vendorItemId = subCategory == .dataBase ? cleanItemId : ""
 
     let prepKeys = buildPrepKeys(
         category: category,
@@ -80,7 +84,9 @@ final class ShoppingListViewModel:ObservableObject{
         status: status,
         purchaserId: purchaserId,
         purchaserName: purchaserName ?? "",
-        genericItemId: itemId ?? "",
+        genericItemId: productId,
+        productId: productId.isEmpty ? nil : productId,
+        productName: productId.isEmpty ? nil : name,
         name: name,
         description: description,
         datePurchased: datePurchased,
@@ -101,11 +107,15 @@ final class ShoppingListViewModel:ObservableObject{
         scheduledDate: nil,
 
         prepKeys: prepKeys,
-        needsAction: status.needsShoppingAction,
-        actionDate: Date(),
+        needsAction: shoppingListActive && status.needsShoppingAction,
+        shoppingListActive: shoppingListActive,
+        actionDate: shoppingListActive ? Date() : nil,
         assignedTechIds: userId == nil ? [] : [userId!],
 
-        dbItemId: itemId,
+        dbItemId: vendorItemId.isEmpty ? nil : vendorItemId,
+        dbItemName: vendorItemId.isEmpty ? nil : name,
+        itemId: cleanItemId.isEmpty ? nil : cleanItemId,
+        itemType: subCategory.rawValue,
         purchasedItem: nil,
         invoiced: false,
 
@@ -124,24 +134,45 @@ final class ShoppingListViewModel:ObservableObject{
     func loadRoutePrepShoppingItems(
         companyId: String,
         userId: String,
-        serviceStops: [ServiceStop]
+        serviceStops: [ServiceStop],
+        timeScope: ShoppingCenterTimeScope = .thisWeek,
+        referenceDate: Date = Date()
     ) async throws {
         let prepKeys = ShoppingPrepKeyBuilder.keysForRoute(
             serviceStops: serviceStops,
             userId: userId
         )
+        let prepContext = ShoppingRoutePrepContext(serviceStops: serviceStops)
 
-        let items = try await dataService.getShoppingListItemsForPrepKeys(
+        let prepKeyItems = try await dataService.getShoppingListItemsForPrepKeys(
             companyId: companyId,
             prepKeys: prepKeys,
             needsAction: true
         )
-        .sortedForShoppingPrep()
+        let userScopeItems = try await dataService.getShoppingListItemsForUserScope(
+            companyId: companyId,
+            userId: userId,
+            limit: 150
+        )
+        let legacyUserItems = try await dataService.getAllShoppingListItemsByUser(
+            companyId: companyId,
+            userId: userId
+        )
+        let items = uniqueShoppingItems(prepKeyItems + userScopeItems + legacyUserItems)
+            .filter { item in
+                item.isOutstandingShoppingAction &&
+                item.isNeeded(
+                    in: timeScope,
+                    referenceDate: referenceDate,
+                    routeContext: prepContext
+                )
+            }
+            .sortedForShoppingPrep()
 
         self.routePrepItems = items
 
         self.myItems = items.filter { item in
-            item.category == .personal || item.userId == userId
+            item.isAssociatedWithShoppingUser(userId)
         }
 
         self.jobItems = items.filter { item in
@@ -161,12 +192,17 @@ final class ShoppingListViewModel:ObservableObject{
     
     func loadOutstandingShoppingItems(
         companyId: String,
-        limit: Int = 100
+        limit: Int = 100,
+        timeScope: ShoppingCenterTimeScope = .all,
+        referenceDate: Date = Date()
     ) async throws {
         let items = try await dataService.getOutstandingShoppingListItemsPage(
             companyId: companyId,
             limit: limit
         )
+        .filter { item in
+            item.isNeeded(in: timeScope, referenceDate: referenceDate)
+        }
         .sortedForShoppingPrep()
 
         self.outstandingItems = items
@@ -252,7 +288,9 @@ final class ShoppingListViewModel:ObservableObject{
     }
     //Setters for private Functions
     func setOutstandingItemsForCurrentContext(_ items: [ShoppingListItem]) {
-        self.outstandingItems = items.sortedForShoppingPrep()
+        self.outstandingItems = items
+            .filter { $0.isOutstandingShoppingAction }
+            .sortedForShoppingPrep()
     }
 
     func setRecentlyPurchasedItemsForCurrentContext(_ items: [ShoppingListItem]) {
@@ -381,14 +419,6 @@ extension ShoppingListViewModel {
      */
 }
 private extension ShoppingListItem {
-    var isOutstandingShoppingAction: Bool {
-        let value = status.rawValue.lowercased()
-
-        return value.contains("need") ||
-        value.contains("purchase") ||
-        value.contains("purchased")
-    }
-
     func matchesRoutePrepContext(_ context: ShoppingRoutePrepContext) -> Bool {
         if let serviceStopId,
            !serviceStopId.isEmpty,
@@ -421,6 +451,18 @@ private extension ShoppingListItem {
         }
 
         return false
+    }
+
+    func isNeeded(
+        in scope: ShoppingCenterTimeScope,
+        referenceDate: Date,
+        routeContext: ShoppingRoutePrepContext
+    ) -> Bool {
+        if scope == .today && matchesRoutePrepContext(routeContext) {
+            return true
+        }
+
+        return isNeeded(in: scope, referenceDate: referenceDate)
     }
 }
 private func uniqueShoppingItems(_ items: [ShoppingListItem]) -> [ShoppingListItem] {

@@ -41,6 +41,11 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     var jobId : String //Seen
     var jobName : String? //Seen
     var serviceNotes : String?
+    var serviceAgreementId: String? = nil
+    var salesAgreementId: String? = nil
+    var agreementId: String? = nil
+    var serviceAgreementTitle: String? = nil
+    var serviceAgreementStatus: String? = nil
     
     var operationStatus : ServiceStopOperationStatus
     var billingStatus : ServiceStopBillingStatus
@@ -63,6 +68,18 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     var defaultWorkTypeIds: [String]?
     var manualPayOverrideCents: Int?
     var manualPayOverrideNotes: String?
+    var recommendedServiceAgreementPriceCents: Int?
+    var fieldRecommendedServiceAgreementPriceCents: Int?
+    var recommendedServiceAgreementRateType: String?
+    var recommendedServiceAgreementNotes: String?
+    var recommendedServiceAgreementByUserId: String?
+    var recommendedServiceAgreementByUserName: String?
+    var recommendedServiceAgreementAt: Date?
+    var recommendedJobEstimatePriceCents: Int?
+    var fieldJobPlanRecommendedPriceCents: Int?
+    var fieldJobPlanTitle: String?
+    var fieldJobPlanNotes: String?
+    var fieldJobPlanTier: Int?
     
     init(
         id: String,
@@ -107,7 +124,14 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         workTypeName: String? = nil,
         defaultWorkTypeIds: [String]? = nil,
         manualPayOverrideCents: Int? = nil,
-        manualPayOverrideNotes: String? = nil
+        manualPayOverrideNotes: String? = nil,
+        recommendedServiceAgreementPriceCents: Int? = nil,
+        fieldRecommendedServiceAgreementPriceCents: Int? = nil,
+        recommendedServiceAgreementRateType: String? = nil,
+        recommendedServiceAgreementNotes: String? = nil,
+        recommendedServiceAgreementByUserId: String? = nil,
+        recommendedServiceAgreementByUserName: String? = nil,
+        recommendedServiceAgreementAt: Date? = nil
 
     ){
         
@@ -161,6 +185,13 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
         self.defaultWorkTypeIds = defaultWorkTypeIds
         self.manualPayOverrideCents = manualPayOverrideCents
         self.manualPayOverrideNotes = manualPayOverrideNotes
+        self.recommendedServiceAgreementPriceCents = recommendedServiceAgreementPriceCents
+        self.fieldRecommendedServiceAgreementPriceCents = fieldRecommendedServiceAgreementPriceCents
+        self.recommendedServiceAgreementRateType = recommendedServiceAgreementRateType
+        self.recommendedServiceAgreementNotes = recommendedServiceAgreementNotes
+        self.recommendedServiceAgreementByUserId = recommendedServiceAgreementByUserId
+        self.recommendedServiceAgreementByUserName = recommendedServiceAgreementByUserName
+        self.recommendedServiceAgreementAt = recommendedServiceAgreementAt
     }
     
         enum CodingKeys:String, CodingKey {
@@ -189,6 +220,11 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case jobId = "jobId"
             case jobName = "jobName"
             case serviceNotes = "serviceNotes"
+            case serviceAgreementId = "serviceAgreementId"
+            case salesAgreementId = "salesAgreementId"
+            case agreementId = "agreementId"
+            case serviceAgreementTitle = "serviceAgreementTitle"
+            case serviceAgreementStatus = "serviceAgreementStatus"
             case operationStatus = "operationStatus"
             case billingStatus = "billingStatus"
             case includeReadings = "includeReadings"
@@ -207,6 +243,18 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case defaultWorkTypeIds = "legacyDefaultWorkTypeIds"
             case manualPayOverrideCents = "manualPayOverrideCents"
             case manualPayOverrideNotes = "manualPayOverrideNotes"
+            case recommendedServiceAgreementPriceCents = "recommendedServiceAgreementPriceCents"
+            case fieldRecommendedServiceAgreementPriceCents = "fieldRecommendedServiceAgreementPriceCents"
+            case recommendedServiceAgreementRateType = "recommendedServiceAgreementRateType"
+            case recommendedServiceAgreementNotes = "recommendedServiceAgreementNotes"
+            case recommendedServiceAgreementByUserId = "recommendedServiceAgreementByUserId"
+            case recommendedServiceAgreementByUserName = "recommendedServiceAgreementByUserName"
+            case recommendedServiceAgreementAt = "recommendedServiceAgreementAt"
+            case recommendedJobEstimatePriceCents = "recommendedJobEstimatePriceCents"
+            case fieldJobPlanRecommendedPriceCents = "fieldJobPlanRecommendedPriceCents"
+            case fieldJobPlanTitle = "fieldJobPlanTitle"
+            case fieldJobPlanNotes = "fieldJobPlanNotes"
+            case fieldJobPlanTier = "fieldJobPlanTier"
         }
     static func == (lhs: ServiceStop, rhs: ServiceStop) -> Bool {
         return lhs.id == rhs.id &&

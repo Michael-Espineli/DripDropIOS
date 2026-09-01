@@ -174,7 +174,7 @@ extension EquipmentPickerByServiceLocationId {
                 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(datum.name.isEmpty ? datum.type.rawValue : datum.name)
+                        Text(datum.name.isEmpty ? datum.typeDisplayName : datum.name)
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(.primary)
                             .lineLimit(2)
@@ -274,7 +274,7 @@ private extension EquipmentPickerByServiceLocationId {
         return VM.listOfEquipment.filter { datum in
             [
                 datum.name,
-                datum.type.rawValue,
+                datum.typeDisplayName,
                 datum.make,
                 datum.model,
                 datum.status.displayName
@@ -315,10 +315,10 @@ private extension EquipmentPickerByServiceLocationId {
             .joined(separator: " ")
         
         if makeModel.isEmpty {
-            return datum.type.rawValue
+            return datum.typeDisplayName
         }
         
-        return "\(datum.type.rawValue) • \(makeModel)"
+        return "\(datum.typeDisplayName) • \(makeModel)"
     }
     
     func equipmentIcon(for type: EquipmentCategory) -> String {
@@ -339,6 +339,8 @@ private extension EquipmentPickerByServiceLocationId {
             return "switch.2"
         case .autoChlorinator:
             return "drop.circle"
+        case .other:
+            return "wrench.and.screwdriver"
         }
     }
     

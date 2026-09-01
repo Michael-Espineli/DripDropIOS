@@ -56,7 +56,7 @@ struct AddNewDatabaseItem: View {
                 .padding(.bottom, 24)
             }
         }
-        .navigationTitle("Add Database Item")
+        .navigationTitle("Add Vendor Item")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -72,7 +72,7 @@ struct AddNewDatabaseItem: View {
                 .disabled(!canSubmit)
             }
         }
-        .alert("Database Item", isPresented: $showAlert) {
+        .alert("Vendor Item", isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(alertMessage)
@@ -104,7 +104,7 @@ extension AddNewDatabaseItem {
                 .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Database Item")
+                Text("Vendor Item")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.primary)
 
@@ -345,7 +345,7 @@ extension AddNewDatabaseItem {
                 resetForm()
                 dismiss()
             } catch {
-                alertMessage = "Unable to add this database item."
+                alertMessage = "Unable to add this vendor item."
                 showAlert = true
                 print(error)
             }

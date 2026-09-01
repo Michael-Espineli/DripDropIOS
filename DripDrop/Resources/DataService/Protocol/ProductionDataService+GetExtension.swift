@@ -73,7 +73,6 @@ extension ProductionDataService {
     }
     func getPersonalAlerts(userId:String) async throws -> [DripDropAlert] {
         return try await personalAlertCollection(userId: userId)
-            .order(by: "date", descending: true)
             .getDocuments(as:DripDropAlert.self)
     }
     func getDripDropAlertsCount(companyId:String) async throws -> Int {
@@ -82,7 +81,6 @@ extension ProductionDataService {
     }
     func getDripDropAlerts(companyId:String) async throws -> [DripDropAlert] {
         return try await alertCollection(companyId: companyId)
-            .order(by: "date", descending: true)
             .getDocuments(as:DripDropAlert.self)
     }
 
@@ -839,21 +837,22 @@ extension ProductionDataService {
         return try await shoppingListCollection(companyId: companyId)
             .whereField("purchaserId", isEqualTo: userId)
             .getDocuments(as:ShoppingListItem.self)
+            .filter { $0.shoppingListActive }
     }
     func getAllShoppingListItemsByUserCount(companyId: String, userId: String) async throws -> Int {
-        
-        //MEMORY LEAK
-        return try await shoppingListCollection(companyId: companyId)
+        let items = try await shoppingListCollection(companyId: companyId)
             .whereField("purchaserId", isEqualTo: userId)
-            .count.getAggregation(source: .server).count as! Int
-        //        return 0
+            .getDocuments(as:ShoppingListItem.self)
+
+        return items.filter { $0.isOutstandingShoppingAction }.count
     }
     func getShoppingListItemByUserAndStatusCount(companyId: String, userId:String, status: ShoppingListStatus) async throws -> Int {
-        return try await shoppingListCollection(companyId: companyId)
+        let items = try await shoppingListCollection(companyId: companyId)
             .whereField("purchaserId", isEqualTo: userId)
             .whereField("status", isEqualTo: status.rawValue)
-            .count.getAggregation(source: .server).count as! Int
-        
+            .getDocuments(as:ShoppingListItem.self)
+
+        return items.filter { $0.shoppingListActive }.count
     }
 
     func getAllShoppingListItemsByUserForCategory(companyId: String, userId: String,category:String) async throws -> [ShoppingListItem] {
@@ -861,6 +860,7 @@ extension ProductionDataService {
             .whereField("purchaserId", isEqualTo: userId)
             .whereField("category", isEqualTo: category)
             .getDocuments(as:ShoppingListItem.self)
+            .filter { $0.shoppingListActive }
     }
     func getAllShoppingListItemsByUserForJob(companyId: String, jobId: String,category:String) async throws -> [ShoppingListItem]{
         return try await shoppingListCollection(companyId: companyId)

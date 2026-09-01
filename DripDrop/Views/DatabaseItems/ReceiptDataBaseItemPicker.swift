@@ -91,7 +91,7 @@ struct ReceiptDataBaseItemPicker: View {
             .onChange(of: searchTerm) { term in
                 filterItems(term)
             }
-            .alert("Database Items", isPresented: $showLoadError) {
+            .alert("Vendor Items", isPresented: $showLoadError) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(loadErrorMessage)
@@ -114,7 +114,7 @@ struct ReceiptDataBaseItemPicker: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Database Item")
+                    Text("Vendor Item")
                         .font(.title3.weight(.semibold))
 
                     Text("Choose an item from your company database.")
@@ -287,10 +287,10 @@ struct ReceiptDataBaseItemPicker: View {
                 .font(.title2)
                 .foregroundStyle(.secondary)
 
-            Text(hasSearch ? "No matching items." : "No database items yet.")
+            Text(hasSearch ? "No matching items." : "No vendor items yet.")
                 .font(.subheadline.weight(.semibold))
 
-            Text(hasSearch ? "Create a new database item using this search term." : "Create a database item to use it on receipts, jobs, and material planning.")
+            Text(hasSearch ? "Create a new vendor item using this search term." : "Create a vendor item to use it on receipts, purchases, and material planning.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

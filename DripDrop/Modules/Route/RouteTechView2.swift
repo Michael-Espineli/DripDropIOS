@@ -26,8 +26,16 @@ struct RouteTechView2: View {
     var body: some View {
         VStack {
             if let route {
-                
                 HStack{
+                    Button(action: {
+                        VM.toggleExpandedRoute(route)
+                    }, label: {
+                        Image(systemName: VM.isExpanded(route) ? "chevron.down.square" : "chevron.right.square")
+                            .font(.subheadline)
+                            .padding(8)
+                            .background(Color.gray.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    })
                     VStack{
                         Text(route.tech)
                             .font(.headline)
@@ -50,28 +58,6 @@ struct RouteTechView2: View {
                             .background(Color.gray.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     })
-                    Button(action: {
-                        if let selectedRoute = VM.selectedRoute, selectedRoute.id == route.id {
-                            VM.selectedRoute = nil
-                        } else {
-                            VM.selectedRoute = route
-                        }
-                    }, label: {
-                            if let selectedRoute = VM.selectedRoute, selectedRoute.id == route.id {
-                                Image(systemName: "chevron.down.square")
-                                    .font(.subheadline)
-                                    .padding(8)
-                                    .background(Color.gray.opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            } else {
-                                Image(systemName: "chevron.right.square")
-                                    .font(.subheadline)
-                                    .padding(8)
-                                    .background(Color.gray.opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
-                        
-                    })
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 10)
@@ -79,12 +65,13 @@ struct RouteTechView2: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color(.systemBackground).opacity(0.75))
                 )
-                if let selectedRoute = VM.selectedRoute, selectedRoute.id == route.id {
-                    ForEach(route.order) { order in
+                if VM.isExpanded(route) {
+                    ForEach(route.order.sorted(by: { $0.order < $1.order })) { order in
                         RecurringRouteStopView2(
                             order: order,
                             day: day,
-                            tech: tech
+                            tech: tech,
+                            route: route
                         )
                     }
                     .padding(.leading, 8)
@@ -101,12 +88,13 @@ struct RecurringRouteStopView2: View {
     init(
         order: recurringRouteOrder,
         day: DaysOfWeek,
-        tech: CompanyUser
+        tech: CompanyUser,
+        route: RecurringRoute
     ){
         _order = State(wrappedValue: order)
         _day = State(wrappedValue: day)
         _tech = State(wrappedValue: tech)
-        
+        _route = State(wrappedValue: route)
     }
     var stop: RecurringServiceStop? {
         VM.stop(for: order.recurringServiceStopId)
@@ -115,6 +103,7 @@ struct RecurringRouteStopView2: View {
     @State var order: recurringRouteOrder
     @State var day: DaysOfWeek
     @State var tech: CompanyUser
+    @State var route: RecurringRoute
     
     @State var showNewRoute : Bool = false
     var body: some View {
@@ -203,14 +192,16 @@ struct RecurringRouteStopView2: View {
                 VM.editRecurringServiceStop.toggle()
                 VM.selectedDay = day
                 VM.selectedTech = tech
+                VM.selectedRoute = route
                 VM.selectedRecurringServiceStop = stop
             }) {
-                Image(systemName: "pencil")
+                Image(systemName: "ellipsis")
                     .font(.subheadline)
                     .padding(8)
                     .background(Color.gray.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
+            .disabled(stop == nil)
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 10)

@@ -16,6 +16,7 @@ final class EditEquipmentViewModel: ObservableObject {
     }
 
     @Published var category: EquipmentCategory = .pump
+    @Published var customTypeName: String = ""
     @Published var typeId: String = ""
     @Published var name: String = ""
     @Published var make: String = ""
@@ -65,6 +66,7 @@ final class EditEquipmentViewModel: ObservableObject {
         var updatedEquipment = equipment
         updatedEquipment.name = name
         updatedEquipment.type = category
+        updatedEquipment.customTypeName = category == .other ? customTypeName : ""
         updatedEquipment.typeId = typeId
         updatedEquipment.make = make
         updatedEquipment.makeId = makeId
@@ -176,6 +178,7 @@ struct EditEquipmentView: View {
         }
         .task {
             VM.category = equipment.type
+            VM.customTypeName = equipment.customTypeName
             VM.typeId = equipment.typeId
             VM.name = equipment.name
             VM.make = equipment.make
@@ -264,12 +267,30 @@ extension EditEquipmentView {
                     }
 
                     Field(title: "Category") {
-                        Picker("Category", selection: $VM.category) {
+                        Picker("Category", selection: Binding(
+                            get: { VM.category },
+                            set: { nextCategory in
+                                VM.category = nextCategory
+                                VM.typeId = ""
+                                if nextCategory != .other {
+                                    VM.customTypeName = ""
+                                }
+                            }
+                        )) {
                             ForEach(EquipmentCategory.allCases, id: \.self) { c in
                                 Text(c.rawValue).tag(c)
                             }
                         }
                         .pickerStyle(.menu)
+                    }
+                }
+
+                if VM.category == .other {
+                    Field(title: "Custom Category") {
+                        TextField("Custom category", text: $VM.customTypeName)
+                            .focused($focusedInput)
+                            .submitLabel(.done)
+                            .textFieldStyle(.plain)
                     }
                 }
 
@@ -308,6 +329,7 @@ extension EditEquipmentView {
                 EquipmentCatalogSelectionControl(
                     dataService: VM.dataService,
                     category: $VM.category,
+                    customTypeName: $VM.customTypeName,
                     typeId: $VM.typeId,
                     make: $VM.make,
                     makeId: $VM.makeId,

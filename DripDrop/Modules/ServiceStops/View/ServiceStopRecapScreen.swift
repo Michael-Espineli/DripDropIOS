@@ -162,6 +162,7 @@
 
         @EnvironmentObject var navigationManager: NavigationStateManager
         @EnvironmentObject var masterDataManager: MasterDataManager
+        @EnvironmentObject private var routeVM: MobileDailyRouteDisplayViewModel
 
         @EnvironmentObject var dataService: ProductionDataService
         @EnvironmentObject var VM: ServiceStopDetailViewModel
@@ -228,8 +229,11 @@
             .alert("Provide skip reason", isPresented: $showSkipReason) {
                 TextField("reason", text: $skipReason)
                 Button("OK", action: submitSkipReason)
+                Button("Cancel", role: .cancel) {
+                    skipReason = ""
+                }
             } message: {
-                Text("Will send to customer and manager")
+                Text("Reason will be saved with the stop.")
                     .font(.footnote)
             }
             .alert(
@@ -337,42 +341,112 @@
 
             isFinishingAndSendingReport = true
             serviceReportDeliveryTone = .neutral
-            serviceReportDeliveryMessage = "Finishing stop and preparing customer report..."
+            serviceReportDeliveryMessage = "Finishing stop and queueing customer report..."
+            opStatus = .finished
+            let previousStop = routeVM.optimisticallyFinishServiceStop(serviceStop)
+            navigationManager.goBack()
 
             do {
-                opStatus = .finished
                 try await VM.updateServicestopOperationStatus(
                     companyId: company.id,
                     currentUserId: user.id,
                     stop: serviceStop,
                     operationStatus: .finished,
-                    sendServiceReport: false
+                    sendServiceReport: true
                 )
 
-                let didSend = await sendServiceReportToCustomer()
                 isFinishingAndSendingReport = false
-
-                if didSend {
-                    navigationManager.goBack()
-                } else {
-                    serviceReportDeliveryTone = serviceReportDeliveryTone == .neutral ? .warning : serviceReportDeliveryTone
-                }
             } catch {
                 opStatus = serviceStop.operationStatus
+                routeVM.restoreServiceStopAfterOptimisticUpdate(previousStop ?? serviceStop)
                 serviceReportDeliveryTone = .error
                 serviceReportDeliveryMessage = error.localizedDescription
                 finishErrorMessage = error.localizedDescription
+                routeVM.alertMessage = error.localizedDescription
+                routeVM.showAlert = true
                 isFinishingAndSendingReport = false
                 isSendingServiceReport = false
             }
         }
 
-        func submitSkipReason() {
-            if skipReason == "" {
-                print("Did not Provide a Reason")
-            } else {
-                print("You skipped because \(skipReason)")
+        private func markSkipped(reason: String) {
+            guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
+                serviceReportDeliveryTone = .error
+                serviceReportDeliveryMessage = "Select a company and signed-in user before skipping the stop."
+                return
             }
+
+            opStatus = .skipped
+            let previousStop = routeVM.optimisticallySkipServiceStop(serviceStop)
+            navigationManager.goBack()
+
+            Task {
+                do {
+                    try await VM.updateServicestopOperationStatus(
+                        companyId: company.id,
+                        currentUserId: user.id,
+                        stop: serviceStop,
+                        operationStatus: .skipped
+                    )
+
+                    if serviceStop.otherCompany && serviceStop.contractedCompanyId != "" {
+                        try await VM.updateServicestopOperationStatus(
+                            companyId: serviceStop.contractedCompanyId,
+                            currentUserId: user.id,
+                            stop: serviceStop,
+                            operationStatus: .skipped
+                        )
+                    }
+                } catch {
+                    opStatus = serviceStop.operationStatus
+                    routeVM.restoreServiceStopAfterOptimisticUpdate(previousStop ?? serviceStop)
+                    serviceReportDeliveryTone = .error
+                    serviceReportDeliveryMessage = error.localizedDescription
+                    finishErrorMessage = error.localizedDescription
+                    routeVM.alertMessage = error.localizedDescription
+                    routeVM.showAlert = true
+                    return
+                }
+
+                do {
+                    try await saveSkipReasonIfNeeded(companyId: company.id, reason: reason)
+                } catch {
+                    serviceReportDeliveryTone = .error
+                    serviceReportDeliveryMessage = "Stop skipped, but the skip reason did not save."
+                    finishErrorMessage = error.localizedDescription
+                    routeVM.alertMessage = "Stop skipped, but the skip reason did not save: \(error.localizedDescription)"
+                    routeVM.showAlert = true
+                }
+            }
+        }
+
+        private func saveSkipReasonIfNeeded(companyId: String, reason: String) async throws {
+            let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedReason.isEmpty else { return }
+
+            let existingNotes = (serviceStop.serviceNotes ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let skipNote = "Skipped: \(trimmedReason)"
+            let notesToSave: String
+
+            if existingNotes.isEmpty {
+                notesToSave = skipNote
+            } else if existingNotes.contains(skipNote) {
+                notesToSave = serviceStop.serviceNotes ?? existingNotes
+            } else {
+                notesToSave = "\(serviceStop.serviceNotes ?? existingNotes)\n\n\(skipNote)"
+            }
+
+            try await VM.updateServiceNotes(
+                companyId: companyId,
+                serviceStopId: serviceStop.id,
+                serviceNotes: notesToSave
+            )
+        }
+
+        func submitSkipReason() {
+            let reason = skipReason
+            skipReason = ""
+            markSkipped(reason: reason)
         }
     }
 
@@ -909,6 +983,7 @@
                             Task {
                                 if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                                     opStatus = .notFinished
+                                    let previousStop = routeVM.optimisticallyReopenServiceStop(serviceStop)
                                     do {
                                         print("")
                                         try await VM.updateServicestopOperationStatus(
@@ -933,10 +1008,10 @@
                                     } catch {
                                         print("Failed To Updated Finish Stops \(serviceStop.id)")
                                         print(error)
+                                        routeVM.restoreServiceStopAfterOptimisticUpdate(previousStop ?? serviceStop)
+                                        opStatus = serviceStop.operationStatus
                                         print("")
                                     }
-
-                                    navigationManager.goBack()
                                 } else {
                                     print("Either Invalid Company or active Route")
                                 }
@@ -952,7 +1027,6 @@
 
                     case .notFinished:
                         Button {
-                            opStatus = .skipped
                             showSkipReason = true
                         } label: {
                             Label("Skip", systemImage: "forward")
@@ -991,6 +1065,7 @@
                             Task {
                                 if let serviceStop = masterDataManager.selectedServiceStops,
                                    let company = masterDataManager.currentCompany, let user = masterDataManager.user {
+                                    let previousStop = routeVM.optimisticallyReopenServiceStop(serviceStop)
                                     do {
                                         opStatus = .notFinished
 
@@ -1010,6 +1085,8 @@
                                             operationStatus: .notFinished
                                         )
                                     } catch {
+                                        routeVM.restoreServiceStopAfterOptimisticUpdate(previousStop ?? serviceStop)
+                                        opStatus = serviceStop.operationStatus
                                         print("Error")
                                     }
                                 }
@@ -1576,11 +1653,11 @@
                                     .frame(width: 22)
 
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(item.name.isEmpty ? item.type.rawValue : item.name)
+                                    Text(item.name.isEmpty ? item.typeDisplayName : item.name)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.primary)
 
-                                    Text([item.type.rawValue, item.make, item.model, item.status.displayName]
+                                    Text([item.typeDisplayName, item.make, item.model, item.status.displayName]
                                         .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
                                         .joined(separator: " • "))
                                         .font(.caption)
@@ -1807,6 +1884,10 @@
                         Text("\(measurements.status)")
                     case .controlSystem:
                         Text("Light")
+                            .bold(true)
+                        Text("\(measurements.status)")
+                    case .other:
+                        Text(equipment.typeDisplayName)
                             .bold(true)
                         Text("\(measurements.status)")
                     }

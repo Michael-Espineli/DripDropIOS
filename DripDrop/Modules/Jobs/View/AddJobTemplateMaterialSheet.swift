@@ -199,7 +199,7 @@ struct AddJobTemplateMaterialSheet: View {
                 )
             }
 
-            Text("These values are saved as a planning snapshot. If database item pricing changes later, this template keeps the expected values unless you update it.")
+            Text("These values are saved as a planning snapshot. If product or vendor item pricing changes later, this template keeps the expected values unless you update it.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)

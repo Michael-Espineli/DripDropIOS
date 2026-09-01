@@ -329,6 +329,18 @@ enum EquipmentCategory:String,Codable,CaseIterable {
     case cleaner = "Cleaner"
     case controlSystem = "Control System"
     case autoChlorinator = "Auto Chlorinator"
+    case other = "Other"
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawType = (try? container.decode(String.self)) ?? ""
+        self = EquipmentCategory(rawValue: rawType) ?? .other
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 enum EquipmentServiceType:String,Codable,CaseIterable {
     case repair = "Repair"

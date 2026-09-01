@@ -134,10 +134,10 @@ struct AddNewShoppingListItemToNewJob: View {
 
     private var routePrepDescription: String {
         if let serviceLocationId, !serviceLocationId.isEmpty {
-            return "This material will be connected to the job, customer, and service location for route prep."
+            return "This material will be saved on the job plan and stays out of Shopping Center until the estimate is accepted."
         }
 
-        return "This material will be connected to the job and customer. Add service location context later for more accurate route prep."
+        return "This material will be saved on the job plan. Add service location context later for route prep after the estimate is accepted."
     }
 
     private var submitButton: some View {
@@ -173,7 +173,8 @@ struct AddNewShoppingListItemToNewJob: View {
             customerId: customerId,
             customerName: customerName,
             serviceLocationId: serviceLocationId,
-            serviceLocationName: serviceLocationName
+            serviceLocationName: serviceLocationName,
+            shoppingListActive: false
         )
 
         shoppingList.append(item)

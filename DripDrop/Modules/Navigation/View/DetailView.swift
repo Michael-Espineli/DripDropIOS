@@ -124,9 +124,9 @@ struct DetailView: View {
                         }
                     case .genericItems:
                         if let genericItem = masterDataManager.selectedGenericItem {
-                            Text("\(genericItem.commonName)")
+                            Text("\(genericItem.productDisplayName)")
                         } else {
-                            Text("Select A Generic Item")
+                            Text("Select a Product")
                         }
                         //Internal Routes
                     case .routeBuilder:

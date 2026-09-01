@@ -63,6 +63,8 @@ final class ServiceStopDetailViewModel:ObservableObject{
     @Published private(set) var dosageTemplates: [SavedDosageTemplate] = []
     
     @Published var taskList: [ServiceStopTask] = []
+    @Published private(set) var isLoadingInitialDetails: Bool = false
+    @Published private(set) var isLoadingTasks: Bool = false
     
     @Published var loadedImages:[DripDropStoredImage] = []
     @Published var selectedDripDropPhotos:[DripDropImage] = []
@@ -160,6 +162,13 @@ final class ServiceStopDetailViewModel:ObservableObject{
 
     
     func onInitalLoad(companyId:String,serviceStop:ServiceStop,userId:String) async throws {
+        self.isLoadingInitialDetails = true
+        self.isLoadingTasks = true
+        defer {
+            self.isLoadingInitialDetails = false
+            self.isLoadingTasks = false
+        }
+
         //Get ServiceLocation Info
         print("")
         print("  [ServiceStopDtailViewModel][onInitalLoad] Start ")
@@ -435,6 +444,31 @@ final class ServiceStopDetailViewModel:ObservableObject{
             if let duration = serviceStopDurationMinutes(startTime: stop.startTime, endTime: finishTime) {
                 updatedStop.duration = duration
             }
+
+            let completionSettings = await loadCompletionSettings(companyId: companyId, stop: stop)
+            try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: stop.id)
+
+            let hasUploadedPhoto = !loadedImages.isEmpty || !(stop.photoUrls ?? []).isEmpty
+            if completionSettings.requirePhotoOnFinish && !hasUploadedPhoto {
+                throw NSError(
+                    domain: "ServiceStopCompletion",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "A photo is required before this service stop can be finished."
+                    ]
+                )
+            }
+
+            try await dataService.finishServiceStopImmediately(
+                companyId: companyId,
+                serviceStop: stop,
+                endTime: finishTime,
+                duration: updatedStop.duration,
+                completedByUserId: currentUserId,
+                sendServiceReport: completionSettings.sendEmailOnFinish
+            )
+            print("Queued service stop completion work for \(stop.id)")
+            return
         }
         // 1. Update the service stop operation status in your backend.
         try await dataService.updateServicestopOperationStatus(companyId: companyId, serviceStopId: stop.id, operationStatus: operationStatus)
@@ -479,6 +513,31 @@ final class ServiceStopDetailViewModel:ObservableObject{
             if let duration = serviceStopDurationMinutes(startTime: stop.startTime, endTime: finishTime) {
                 updatedStop.duration = duration
             }
+
+            let completionSettings = await loadCompletionSettings(companyId: companyId, stop: stop)
+            try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: stop.id)
+
+            let hasUploadedPhoto = !loadedImages.isEmpty || !(stop.photoUrls ?? []).isEmpty
+            if completionSettings.requirePhotoOnFinish && !hasUploadedPhoto {
+                throw NSError(
+                    domain: "ServiceStopCompletion",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "A photo is required before this service stop can be finished."
+                    ]
+                )
+            }
+
+            try await dataService.finishServiceStopImmediately(
+                companyId: companyId,
+                serviceStop: stop,
+                endTime: finishTime,
+                duration: updatedStop.duration,
+                completedByUserId: currentUserId,
+                sendServiceReport: completionSettings.sendEmailOnFinish
+            )
+            print("Queued service stop completion work for \(stop.id)")
+            return
         }
         
         // 1. Update the service stop operation status in your backend.
@@ -578,6 +637,17 @@ final class ServiceStopDetailViewModel:ObservableObject{
                     ]
                 )
             }
+
+            try await dataService.finishServiceStopImmediately(
+                companyId: companyId,
+                serviceStop: stop,
+                endTime: finishTime,
+                duration: updatedStop.duration,
+                completedByUserId: currentUserId,
+                sendServiceReport: completionSettings.sendEmailOnFinish && sendServiceReport
+            )
+            print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Queued service stop completion work")
+            return
         }
 
         print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] - Finishing Service Stop")

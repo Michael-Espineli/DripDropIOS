@@ -438,7 +438,9 @@ struct CreateJobWorkOfferView: View {
     @State private var title: String = ""
     @State private var notes: String = ""
     @State private var proposedStartDate: Date = Date()
-    @State private var includeDate: Bool = false
+    @State private var includeDate: Bool = true
+    @State private var completionDeadlineAt: Date = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var timelineNotes: String = ""
 
     @State private var isLoading: Bool = false
     @State private var isSaving: Bool = false
@@ -472,6 +474,7 @@ struct CreateJobWorkOfferView: View {
     private var canSave: Bool {
         guard !availableSelectedTaskIds.isEmpty else { return false }
         guard unavailableSelectedTaskCount == 0 else { return false }
+        guard !includeDate || completionDeadlineAt >= proposedStartDate else { return false }
 
         switch offerType {
         case .directUser:
@@ -876,21 +879,30 @@ struct CreateJobWorkOfferView: View {
 
     private var scheduleSection: some View {
         Section {
-            Toggle("Include proposed date", isOn: $includeDate)
+            Toggle("Include available-from time", isOn: $includeDate)
 
             if includeDate {
                 DatePicker(
-                    "Proposed Date",
+                    "Available From",
                     selection: $proposedStartDate,
                     displayedComponents: [.date, .hourAndMinute]
                 )
             }
 
+            DatePicker(
+                "Complete By",
+                selection: $completionDeadlineAt,
+                displayedComponents: [.date, .hourAndMinute]
+            )
+
+            TextField("Timeline notes", text: $timelineNotes, axis: .vertical)
+                .lineLimit(3, reservesSpace: true)
+
             Toggle("Allow technician self-scheduling", isOn: $allowsTechnicianSelfScheduling)
         } header: {
-            Text("Proposed Schedule")
+            Text("Job Timeline")
         } footer: {
-            Text("If self-scheduling is allowed, the accepted technician can create the scheduled service stop from their work center.")
+            Text("Technicians see the completion deadline before accepting. If self-scheduling is allowed, the accepted technician can create the scheduled service stop from their work center.")
         }
     }
 
@@ -944,6 +956,10 @@ struct CreateJobWorkOfferView: View {
 
         if offerType == .externalCompany {
             return "External company offers are not supported yet."
+        }
+
+        if includeDate && completionDeadlineAt < proposedStartDate {
+            return "The completion deadline must be after the available-from time."
         }
 
         return ""
@@ -1053,7 +1069,9 @@ struct CreateJobWorkOfferView: View {
                 serviceLocationName: serviceLocation?.nickName ?? "",
                 address: serviceLocation?.address,
                 proposedStartDate: includeDate ? proposedStartDate : nil,
-                proposedEndDate: nil,
+                proposedEndDate: completionDeadlineAt,
+                completionDeadlineAt: completionDeadlineAt,
+                timelineNotes: timelineNotes,
                 estimatedMinutes: estimatedMinutes,
                 allowsTechnicianSelfScheduling: allowsTechnicianSelfScheduling,
                 paySource: paySource,

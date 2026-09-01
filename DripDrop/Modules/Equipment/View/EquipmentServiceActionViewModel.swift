@@ -966,7 +966,7 @@ struct EquipmentServiceRecordShell: View {
                     .padding(.vertical, 7)
                     .background(.thinMaterial, in: Capsule())
 
-                Label(equipment.type.rawValue, systemImage: "gearshape")
+                Label(equipment.typeDisplayName, systemImage: "gearshape")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

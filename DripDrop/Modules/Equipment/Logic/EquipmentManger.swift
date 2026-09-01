@@ -536,7 +536,7 @@ final class MockEquipmentManager:EquipmentManagerProtocol {
         let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.type.stringValue:equipment.typeStorageValue,
             Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.makeId.stringValue:equipment.makeId,
@@ -1074,7 +1074,7 @@ final class EquipmentManager:EquipmentManagerProtocol {
         let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.type.stringValue:equipment.typeStorageValue,
             Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.makeId.stringValue:equipment.makeId,

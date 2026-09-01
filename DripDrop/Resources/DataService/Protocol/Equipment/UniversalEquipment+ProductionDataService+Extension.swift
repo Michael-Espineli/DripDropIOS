@@ -13,12 +13,12 @@ import SwiftUI
 import CoreLocation
 import MapKit
 struct UniversalEquipmentType:Identifiable, Codable,Hashable{
-    let id :String
+    var id :String
     let name: String
     let description : String
 }
 struct UniversalEquipmentMake:Identifiable, Codable,Hashable{
-    let id :String
+    var id :String
     let name: String
     let description : String
     let types : [String]
@@ -41,6 +41,23 @@ struct UniversalPart:Identifiable, Codable,Hashable{
     let model: String
     let manualPdfLink: String
 }
+
+private func universalCatalogString(_ data: [String: Any], _ key: String) -> String {
+    if let value = data[key] as? String {
+        return value
+    }
+
+    if let value = data[key] {
+        return String(describing: value)
+    }
+
+    return ""
+}
+
+private func universalCatalogStringArray(_ data: [String: Any], _ key: String) -> [String] {
+    data[key] as? [String] ?? []
+}
+
 extension ProductionDataService {
     func UniversalEquipmentStatsDoc() -> DocumentReference{
         db.collection("universal").document("equipment")
@@ -63,28 +80,66 @@ extension ProductionDataService {
     func getUniversalEquipmentTypes() async throws -> [UniversalEquipmentType] {
         print("getUniversalEquipmentTypes")
 
-        return try await UniversalEquipmentTypesCollection()
-            .getDocuments(as:UniversalEquipmentType.self)
+        let snapshot = try await UniversalEquipmentTypesCollection().getDocuments()
+        return snapshot.documents.map { document in
+            let data = document.data()
+            return UniversalEquipmentType(
+                id: universalCatalogString(data, "id").isEmpty ? document.documentID : universalCatalogString(data, "id"),
+                name: universalCatalogString(data, "name"),
+                description: universalCatalogString(data, "description")
+            )
+        }
     }
     func getUniversalEquipmentBrandsByType(type:UniversalEquipmentType) async throws -> [UniversalEquipmentMake] {
         print("getUniversalEquipmentBrandsByType")
-        return try await UniversalEquipmentMakesCollection()
+        let snapshot = try await UniversalEquipmentMakesCollection()
             .whereField("types", arrayContains: type.id)
-            .getDocuments(as:UniversalEquipmentMake.self)
+            .getDocuments()
+        return snapshot.documents.map { document in
+            let data = document.data()
+            return UniversalEquipmentMake(
+                id: universalCatalogString(data, "id").isEmpty ? document.documentID : universalCatalogString(data, "id"),
+                name: universalCatalogString(data, "name"),
+                description: universalCatalogString(data, "description"),
+                types: universalCatalogStringArray(data, "types")
+            )
+        }
     }
     func getUniversalEquipmentByTypeAndBrand(type:UniversalEquipmentType,make:UniversalEquipmentMake) async throws -> [UniversalEquipment] {
         print("getUniversalEquipmentByTypeAndBrand")
         
-        return try await UniversalEquipmentCollection()
+        let snapshot = try await UniversalEquipmentCollection()
             .whereField("typeId", isEqualTo: type.id)
             .whereField("makeId", isEqualTo: make.id)
-            .getDocuments(as:UniversalEquipment.self)
+            .getDocuments()
+        return snapshot.documents.map { document in
+            let data = document.data()
+            return UniversalEquipment(
+                id: universalCatalogString(data, "id").isEmpty ? document.documentID : universalCatalogString(data, "id"),
+                name: universalCatalogString(data, "name"),
+                typeId: universalCatalogString(data, "typeId"),
+                type: universalCatalogString(data, "type"),
+                makeId: universalCatalogString(data, "makeId"),
+                make: universalCatalogString(data, "make"),
+                model: universalCatalogString(data, "model").isEmpty ? universalCatalogString(data, "name") : universalCatalogString(data, "model"),
+                manualPdfLink: universalCatalogString(data, "manualPdfLink")
+            )
+        }
     }
     func getUniversalEquipmentPartsEquipment(equipmentId:String) async throws -> [UniversalPart] {
         print("getUniversalEquipmentPartsEquipment")
 
-        return try await UniversalEquipmentPartsCollection(equipmentId:equipmentId)
-            .getDocuments(as:UniversalPart.self)
+        let snapshot = try await UniversalEquipmentPartsCollection(equipmentId:equipmentId).getDocuments()
+        return snapshot.documents.map { document in
+            let data = document.data()
+            return UniversalPart(
+                id: universalCatalogString(data, "id").isEmpty ? document.documentID : universalCatalogString(data, "id"),
+                name: universalCatalogString(data, "name"),
+                make: universalCatalogString(data, "make"),
+                model: universalCatalogString(data, "model"),
+                manualPdfLink: universalCatalogString(data, "manualPdfLink")
+            )
+        }
     }
     //UPDATE
     //DELETE

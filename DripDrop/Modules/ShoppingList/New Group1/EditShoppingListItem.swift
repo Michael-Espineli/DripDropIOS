@@ -46,6 +46,19 @@ final class EditShoppingListItemViewModel: ObservableObject {
         purchaserName: String?,
         name: String
     ) async throws {
+        let cleanItemId = itemId ?? ""
+        let productId = subCategory == .product ? cleanItemId : ""
+        let vendorItemId = subCategory == .dataBase ? cleanItemId : ""
+        let genericItemId: String
+
+        if subCategory == .product {
+            genericItemId = productId.isEmpty ? original.genericItemId : productId
+        } else if subCategory == .dataBase {
+            genericItemId = original.genericItemId
+        } else {
+            genericItemId = ""
+        }
+
         // Build updated item by preserving original id and status, updating fields as needed
         let updated = ShoppingListItem(
             id: original.id,
@@ -54,7 +67,9 @@ final class EditShoppingListItemViewModel: ObservableObject {
             status: original.status, // preserve current status
             purchaserId: purchaserId,
             purchaserName: purchaserName ?? original.purchaserName,
-            genericItemId: original.genericItemId,
+            genericItemId: genericItemId,
+            productId: productId.isEmpty ? nil : productId,
+            productName: productId.isEmpty ? nil : name,
             name: name,
             description: description,
             datePurchased: datePurchased,
@@ -62,7 +77,10 @@ final class EditShoppingListItemViewModel: ObservableObject {
             jobId: jobId,
             customerId: customerId ?? original.customerId,
             customerName: customerName ?? original.customerName,
-            dbItemId: itemId,
+            dbItemId: vendorItemId.isEmpty ? nil : vendorItemId,
+            dbItemName: vendorItemId.isEmpty ? nil : name,
+            itemId: cleanItemId.isEmpty ? nil : cleanItemId,
+            itemType: subCategory.rawValue,
             invoiced: true
         )
 
@@ -112,6 +130,7 @@ struct EditShoppingListItem: View {
         category: .chems, subCategory: .bushing, description: "",
         dateUpdated: Date(), sku: "", billable: false, color: "", size: "", UOM: .ft
     )
+    @State private var productItem: GenericItem = .emptyProductCatalogItem
 
     // Search state (parity with Add flow)
     @State private var search: String = ""
@@ -147,6 +166,11 @@ struct EditShoppingListItem: View {
                 name = dbItem.name
             }
         }
+        .onChange(of: productItem) { product in
+            if product.id != "" {
+                name = product.productDisplayName
+            }
+        }
         .onChange(of: search) { term in
             if term != "" {
                 VM.filterDataBaseList(filterTerm: term, items: VM.dataBaseItems)
@@ -164,7 +188,27 @@ struct EditShoppingListItem: View {
         self.itemType = item.subCategory
         self.quantity = item.quantity ?? "1"
         self.name = item.name
-        // If you want to pre-link a database item, you can resolve it here using item.dbItemId
+
+        if item.subCategory == .product {
+            let productId = item.productId ?? (item.genericItemId.isEmpty ? "" : item.genericItemId)
+            if !productId.isEmpty {
+                var existingProduct = GenericItem.emptyProductCatalogItem
+                existingProduct.id = productId
+                existingProduct.name = item.productName ?? item.name
+                existingProduct.commonName = item.productName ?? item.name
+                existingProduct.description = item.description
+                existingProduct.rate = Double(item.plannedUnitCostCents ?? 0)
+                existingProduct.sellPrice = Double(item.plannedUnitPriceCents ?? 0)
+                productItem = existingProduct
+            }
+        }
+
+        if item.subCategory == .dataBase,
+           let dbItemId = item.dbItemId,
+           !dbItemId.isEmpty {
+            dataBaseItem.id = dbItemId
+            dataBaseItem.name = item.dbItemName ?? item.name
+        }
     }
 
     private var form: some View {
@@ -182,7 +226,8 @@ struct EditShoppingListItem: View {
                 name: $name,
                 quantity: $quantity,
                 addNewItem: .constant(false),
-                dataBaseItem: $dataBaseItem
+                dataBaseItem: $dataBaseItem,
+                productItem: $productItem
             )
             VStack(alignment: .leading, spacing: 6) {
                 Text("Description")
@@ -214,14 +259,14 @@ struct EditShoppingListItem: View {
                         category: type,
                         subCategory: itemType,
                         purchaserId: user.id,
-                        itemId: dataBaseItem.id.isEmpty ? item.dbItemId : dataBaseItem.id,
+                        itemId: selectedItemId,
                         quantity: quantity,
                         description: descriptionText,
                         jobId: item.jobId,
                         customerId: item.customerId,
                         customerName: item.customerName,
                         purchaserName: purchaserName,
-                        name: name
+                        name: selectedItemName
                     )
                     dismiss()
                 } catch {
@@ -234,6 +279,48 @@ struct EditShoppingListItem: View {
                 .modifier(SubmitButtonModifier())
         })
         .padding(.horizontal, 8)
+    }
+
+    private var selectedItemId: String? {
+        switch itemType {
+        case .product:
+            if !productItem.id.isEmpty {
+                return productItem.id
+            }
+
+            return item.productId ?? (item.genericItemId.isEmpty ? nil : item.genericItemId)
+
+        case .dataBase:
+            if !dataBaseItem.id.isEmpty {
+                return dataBaseItem.id
+            }
+
+            return item.dbItemId
+
+        case .chemical, .part, .custom:
+            return nil
+        }
+    }
+
+    private var selectedItemName: String {
+        switch itemType {
+        case .product:
+            if !productItem.id.isEmpty {
+                return productItem.productDisplayName
+            }
+
+            return item.productName ?? name
+
+        case .dataBase:
+            if !dataBaseItem.id.isEmpty {
+                return dataBaseItem.name
+            }
+
+            return item.dbItemName ?? name
+
+        case .chemical, .part, .custom:
+            return name
+        }
     }
 }
 

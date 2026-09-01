@@ -14,6 +14,23 @@ struct CreateShoppingListItemView: View {
     @Binding var quantity : String
     @Binding var addNewItem:Bool
     @Binding var dataBaseItem:DataBaseItem
+    @Binding var productItem: GenericItem
+
+    init(
+        itemType: Binding<ShoppingListSubCategory>,
+        name: Binding<String>,
+        quantity: Binding<String>,
+        addNewItem: Binding<Bool>,
+        dataBaseItem: Binding<DataBaseItem>,
+        productItem: Binding<GenericItem> = .constant(.emptyProductCatalogItem)
+    ) {
+        _itemType = itemType
+        _name = name
+        _quantity = quantity
+        _addNewItem = addNewItem
+        _dataBaseItem = dataBaseItem
+        _productItem = productItem
+    }
 
     var body: some View {
         VStack{
@@ -22,13 +39,34 @@ struct CreateShoppingListItemView: View {
 //                    ForEach(ShoppingListSubCategory.allCases,id:\.self) { category in
 //                        Text(category.rawValue).tag(category)
 //                    }
-                    Text(ShoppingListSubCategory.dataBase.rawValue).tag(ShoppingListSubCategory.dataBase)
+                    Text(ShoppingListSubCategory.product.rawValue).tag(ShoppingListSubCategory.product)
                     Text(ShoppingListSubCategory.custom.rawValue).tag(ShoppingListSubCategory.custom)
 
                 }
                 .pickerStyle(.segmented)
             }
             switch itemType {
+            case .product:
+                VStack{
+                    HStack{
+                        Button(action: {
+                            addNewItem.toggle()
+                        }, label: {
+                            ZStack{
+                                if productItem.id == "" {
+                                    Text("Select Product")
+                                } else {
+                                    Text(productItem.productDisplayName)
+                                }
+                            }
+                            .modifier(AddButtonModifier())
+                        })
+                        Spacer()
+                    }
+                    .sheet(isPresented: $addNewItem, content: {
+                        ProductCatalogPicker(dataService: dataService, product: $productItem, onlyPartPurchaseAvailable: true)
+                    })
+                }
             case .chemical:
                 VStack{
                     Text("chemical View")
@@ -60,7 +98,7 @@ struct CreateShoppingListItemView: View {
                         }, label: {
                             ZStack{
                                 if dataBaseItem.id == "" {
-                                    Text("Add New Item")
+                                    Text("Select Vendor Item")
                                 } else {
                                     Text(dataBaseItem.name)
                                 }

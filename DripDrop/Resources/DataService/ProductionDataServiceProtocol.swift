@@ -67,6 +67,12 @@ protocol ProductionDataServiceProtocol: Equatable {
         needsAction: Bool
     ) async throws -> [ShoppingListItem]
 
+    func getShoppingListItemsForUserScope(
+        companyId: String,
+        userId: String,
+        limit: Int
+    ) async throws -> [ShoppingListItem]
+
     @discardableResult
     func syncShoppingListItemsForScheduledJobTasks(
         companyId: String,
@@ -91,6 +97,12 @@ protocol ProductionDataServiceProtocol: Equatable {
     func getShoppingListItemStatusCount(
         companyId: String,
         status: ShoppingListStatus
+    ) async throws -> Int
+
+    @discardableResult
+    func activateShoppingListItemsForAcceptedJob(
+        companyId: String,
+        jobId: String
     ) async throws -> Int
     // MARK: - Job Templates
 
@@ -463,6 +475,8 @@ protocol ProductionDataServiceProtocol: Equatable {
     func addDripDropAlert(companyId:String,dripDropAlert:DripDropAlert) async throws
     func getDripDropAlerts(companyId:String) async throws -> [DripDropAlert]
     func getDripDropAlertsCount(companyId:String) async throws -> Int
+    func updateDripDropAlertStatus(companyId:String, alertId:String, status:String) async throws
+    func updatePersonalAlertStatus(userId:String, alertId:String, status:String) async throws
     func uploadServiceLocationImage(companyId: String,serviceLocationId:String, image: DripDropImage) async throws ->(path:String, name:String)
 
     
@@ -1276,7 +1290,38 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,newServiceStop:ServiceStop) async throws // Developer Break Out into Induvidual and Delete
     func updateServiceStopAddress(companyId:String,serviceStopId:String,address:Address) async throws
     func updateServiceStopServiceNotes(companyId:String,serviceStopId:String,serviceNotes:String) async throws
+    func updateInitialSurveyServiceAgreementRecommendation(
+        companyId: String,
+        serviceStopId: String,
+        recommendedPriceCents: Int,
+        rateType: String,
+        notes: String,
+        recommendedByUserId: String,
+        recommendedByUserName: String
+    ) async throws
+    func updateFieldJobEstimatePlan(
+        companyId: String,
+        serviceStopId: String,
+        planId: String,
+        title: String,
+        notes: String,
+        recommendedPriceCents: Int,
+        planTier: Int,
+        taskCount: Int,
+        plannedStopCount: Int,
+        materialCount: Int,
+        recommendedByUserId: String,
+        recommendedByUserName: String
+    ) async throws
     func updateServicestopOperationStatus(companyId:String,serviceStopId:String,operationStatus:ServiceStopOperationStatus) async throws
+    func finishServiceStopImmediately(
+        companyId: String,
+        serviceStop: ServiceStop,
+        endTime: Date,
+        duration: Int?,
+        completedByUserId: String,
+        sendServiceReport: Bool
+    ) async throws
     func updateServicestopBillingStatus(companyId:String,serviceStop:ServiceStop,billingStatus:ServiceStopBillingStatus) async throws
     func updateServiceStopStartTime(companyId:String,serviceStopId:String,startTime:Date) async throws
     func updateServiceStopEndTime(companyId:String,serviceStopId:String,endTime:Date) async throws
@@ -1810,6 +1855,13 @@ extension ProductionDataServiceProtocol {
             let totalCostCents = approval.plannedTotalCostCents ?? Int((Double(unitCostCents) * quantityValue).rounded())
             let totalPriceCents = approval.plannedTotalPriceCents ?? Int((Double(unitPriceCents) * quantityValue).rounded())
             let shoppingStatus = ShoppingListStatus.needToPurchase.rawValue
+            let productId = nonEmpty(approval.productId) ?? nonEmpty(approval.genericItemId) ?? ""
+            let productName = nonEmpty(approval.productName) ?? (productId.isEmpty ? "" : approval.displayTitle)
+            let vendorItemId = productId.isEmpty ? (nonEmpty(approval.dbItemId) ?? "") : ""
+            let shoppingItemType = productId.isEmpty
+                ? (approval.subCategory ?? (vendorItemId.isEmpty ? ShoppingListSubCategory.part.rawValue : ShoppingListSubCategory.dataBase.rawValue))
+                : ShoppingListSubCategory.product.rawValue
+            let shoppingItemId = productId.isEmpty ? vendorItemId : productId
             let prepKeys = uniqueNonEmpty([
                 jobId.isEmpty ? "" : "job:\(jobId)",
                 approval.customerId.map { "customer:\($0)" } ?? "",
@@ -1822,11 +1874,13 @@ extension ProductionDataServiceProtocol {
             batch.setData([
                 "id": shoppingListItemId,
                 "category": jobId.isEmpty ? ShoppingListCategory.customer.rawValue : ShoppingListCategory.job.rawValue,
-                "subCategory": approval.subCategory ?? (approval.dbItemId?.isEmpty == false ? ShoppingListSubCategory.dataBase.rawValue : ShoppingListSubCategory.part.rawValue),
+                "subCategory": shoppingItemType,
                 "status": shoppingStatus,
                 "purchaserId": nonEmpty(approval.purchaserId) ?? techId,
                 "purchaserName": nonEmpty(approval.purchaserName) ?? techName,
-                "genericItemId": approval.genericItemId ?? "",
+                "genericItemId": productId,
+                "productId": productId,
+                "productName": productName,
                 "name": approval.displayTitle,
                 "description": approval.description ?? "",
                 "quantity": quantity,
@@ -1857,10 +1911,10 @@ extension ProductionDataServiceProtocol {
                 "assignedTechName": techName,
                 "assignedToUserId": techId,
                 "assignedToUserName": techName,
-                "dbItemId": approval.dbItemId ?? "",
-                "dbItemName": approval.dbItemName ?? approval.displayTitle,
-                "itemId": approval.dbItemId ?? "",
-                "itemType": approval.subCategory ?? (approval.dbItemId?.isEmpty == false ? ShoppingListSubCategory.dataBase.rawValue : ShoppingListSubCategory.part.rawValue),
+                "dbItemId": vendorItemId,
+                "dbItemName": vendorItemId.isEmpty ? "" : (approval.dbItemName ?? approval.displayTitle),
+                "itemId": shoppingItemId,
+                "itemType": shoppingItemType,
                 "purchasedItem": approval.shoppingListItemId == nil ? "" : (approval.shoppingListItemId ?? ""),
                 "invoiced": false,
                 "cost": unitCostCents,

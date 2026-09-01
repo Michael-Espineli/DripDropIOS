@@ -389,7 +389,12 @@ extension Route:View {
         case .pendingJobs(dataService: let dataService):
             Text("Pending Job List")
         case .shoppingList(dataService: let dataService):
-            ShoppingListView(dataService: dataService)
+            ShoppingListView(
+                dataService: dataService,
+                initialTab: .outstanding,
+                initialTimeScope: .thisWeek,
+                includeAllOutstandingByDefault: false
+            )
         case .companyShoppingList(dataService: let dataService):
             CompanyShoppingListView(dataService: dataService)
         case .purchasedItemsList(dataService: let dataService):

@@ -206,6 +206,7 @@ final class JobTemplateWorkflowService {
             jobId: newJobId,
             customerId: customerId,
             customerName: customerName,
+            serviceLocationId: serviceLocationId,
             purchaserId: createdByUserId,
             purchaserName: admin.userName
         )
@@ -362,6 +363,15 @@ final class JobTemplateWorkflowService {
                 customerName: customerName,
                 userId: nil,
                 userName: nil,
+                serviceLocationId: serviceLocationId,
+                prepKeys: ShoppingPrepKeyBuilder.keysForJobMaterial(
+                    jobId: newJobId,
+                    customerId: customerId,
+                    serviceLocationId: serviceLocationId
+                ),
+                needsAction: false,
+                shoppingListActive: false,
+                actionDate: nil,
                 dbItemId: templateItem.dbItemId,
                 purchasedItem: nil,
                 invoiced: false,
@@ -427,6 +437,7 @@ final class JobTemplateWorkflowService {
         jobId: String,
         customerId: String,
         customerName: String,
+        serviceLocationId: String,
         purchaserId: String,
         purchaserName: String
     ) -> [ShoppingListItem] {
@@ -448,6 +459,15 @@ final class JobTemplateWorkflowService {
                 customerName: customerName,
                 userId: nil,
                 userName: nil,
+                serviceLocationId: serviceLocationId,
+                prepKeys: ShoppingPrepKeyBuilder.keysForJobMaterial(
+                    jobId: jobId,
+                    customerId: customerId,
+                    serviceLocationId: serviceLocationId
+                ),
+                needsAction: false,
+                shoppingListActive: false,
+                actionDate: nil,
                 dbItemId: item.dbItemId,
                 purchasedItem: nil,
                 invoiced: false,

@@ -572,6 +572,8 @@ final class PoolEquipmentScannerViewModel: ObservableObject {
             return searchText.contains("control") || searchText.contains("automation")
         case .autoChlorinator:
             return searchText.contains("chlorinator") || searchText.contains("feeder")
+        case .other:
+            return false
         }
     }
 
@@ -915,7 +917,8 @@ private extension PoolEquipmentScannerView {
                 modelId: draft.modelId,
                 universalEquipmentId: universalEquipmentIdBinding(draft),
                 manualPdfLink: draft.manualPdfLink,
-                name: draft.confirmedName
+                name: draft.confirmedName,
+                allowsCustomCatalogEntries: false
             )
 
             if let predictedUniversalEquipmentId = draft.wrappedValue.predictedUniversalEquipmentId,
@@ -930,7 +933,7 @@ private extension PoolEquipmentScannerView {
                 Picker("Existing match", selection: matchedEquipmentBinding(draft)) {
                     Text("New equipment").tag("")
                     ForEach(VM.existingEquipment) { equipment in
-                        Text(equipment.name.isEmpty ? equipment.type.rawValue : equipment.name).tag(equipment.id)
+                        Text(equipment.name.isEmpty ? equipment.typeDisplayName : equipment.name).tag(equipment.id)
                     }
                 }
                 .pickerStyle(.menu)

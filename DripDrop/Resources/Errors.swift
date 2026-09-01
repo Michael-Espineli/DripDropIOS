@@ -66,6 +66,22 @@ enum JobError: Error {
     case invalidJobType
 
 }
+enum DeleteProtectionError: LocalizedError {
+    case finishedJob
+    case finishedServiceStop
+    case jobHasFinishedServiceStop
+
+    var errorDescription: String? {
+        switch self {
+        case .finishedJob:
+            return "Finished jobs cannot be deleted."
+        case .finishedServiceStop:
+            return "Finished service stops cannot be deleted."
+        case .jobHasFinishedServiceStop:
+            return "Jobs with finished service stops cannot be deleted."
+        }
+    }
+}
 enum RepairRequestError: Error {
 
     case invalidCustomer

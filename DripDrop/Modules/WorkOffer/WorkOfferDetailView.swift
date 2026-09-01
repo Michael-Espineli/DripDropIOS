@@ -205,21 +205,28 @@ struct WorkOfferDetailView: View {
     }
 
     private var scheduleSection: some View {
-        Section("Schedule") {
+        Section("Timeline") {
             if let proposedStartDate = offer.proposedStartDate {
                 WorkOfferDetailRow(
-                    title: "Proposed Start",
+                    title: "Available From",
                     value: WorkOfferDetailDateFormatter.shortDateTime(proposedStartDate)
                 )
             } else {
-                WorkOfferDetailRow(title: "Proposed Start", value: "-")
+                WorkOfferDetailRow(title: "Available From", value: "-")
             }
 
-            if let proposedEndDate = offer.proposedEndDate {
+            if let completionDeadline = offer.completionDeadlineAt ?? offer.proposedEndDate {
                 WorkOfferDetailRow(
-                    title: "Proposed End",
-                    value: WorkOfferDetailDateFormatter.shortDateTime(proposedEndDate)
+                    title: "Complete By",
+                    value: WorkOfferDetailDateFormatter.shortDateTime(completionDeadline)
                 )
+            } else {
+                WorkOfferDetailRow(title: "Complete By", value: "No deadline set")
+            }
+
+            if let timelineNotes = offer.timelineNotes?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !timelineNotes.isEmpty {
+                WorkOfferDetailRow(title: "Timeline Notes", value: timelineNotes)
             }
 
             if !offer.serviceStopId.isEmpty {

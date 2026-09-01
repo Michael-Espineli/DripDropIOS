@@ -19,7 +19,10 @@ struct ShoppingListView: View {
     init(
         dataService: any ProductionDataServiceProtocol,
         routeServiceStops: [ServiceStop]? = nil,
-        routeDate: Date? = nil
+        routeDate: Date? = nil,
+        initialTab: ShoppingCenterTab = .routePrep,
+        initialTimeScope: ShoppingCenterTimeScope = .thisWeek,
+        includeAllOutstandingByDefault: Bool = false
     ) {
         self.providedRouteServiceStops = routeServiceStops
         self.routeDate = routeDate
@@ -31,13 +34,19 @@ struct ShoppingListView: View {
         _routeVM = StateObject(
             wrappedValue: MobileDailyRouteDisplayViewModel(dataService: dataService)
         )
+
+        _selectedTab = State(initialValue: initialTab)
+        _selectedTimeScope = State(initialValue: initialTimeScope)
+        _includeAllOutstanding = State(initialValue: includeAllOutstandingByDefault)
+        _showOtherOutstandingItems = State(initialValue: includeAllOutstandingByDefault)
     }
 
-    @State private var selectedTab: ShoppingCenterTab = .routePrep
+    @State private var selectedTab: ShoppingCenterTab
+    @State private var selectedTimeScope: ShoppingCenterTimeScope
     @State private var showAddNewShoppingListItem: Bool = false
     @State private var isLoading: Bool = false
-    @State private var includeAllOutstanding: Bool = false
-    @State private var showOtherOutstandingItems: Bool = false
+    @State private var includeAllOutstanding: Bool
+    @State private var showOtherOutstandingItems: Bool
     @State private var showRecentlyPurchasedItems: Bool = false
 
     var body: some View {
@@ -59,11 +68,11 @@ struct ShoppingListView: View {
                         case .myItems:
                             itemSection(
                                 title: "My Items",
-                                subtitle: "Personal or truck-stock items assigned to you.",
+                                subtitle: "All active shopping items assigned to you for \(selectedTimeScope.prepDescription).",
                                 systemImage: "person.crop.circle",
                                 items: shoppingVM.myItems,
-                                emptyTitle: "No personal prep items.",
-                                emptyMessage: "Personal shopping items for this route will appear here."
+                                emptyTitle: "No assigned prep items.",
+                                emptyMessage: "Your assigned shopping items for this scope will appear here."
                             )
 
                         case .customers:
@@ -143,6 +152,11 @@ struct ShoppingListView: View {
                 await reloadShoppingCenter()
             }
         }
+        .onChange(of: selectedTimeScope) { _, _ in
+            Task {
+                await reloadShoppingCenter()
+            }
+        }
         .refreshable {
             await reloadShoppingCenter()
         }
@@ -175,7 +189,7 @@ extension ShoppingListView {
             HStack(spacing: 8) {
                 headerPill(
                     title: "\(shoppingVM.routePrepItems.count)",
-                    label: "Route",
+                    label: "Prep",
                     systemImage: "map"
                 )
 
@@ -193,8 +207,35 @@ extension ShoppingListView {
 
                 Spacer()
             }
+
+            timeScopePicker
         }
         .shoppingCenterCard(material: true)
+    }
+
+    private var timeScopePicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(ShoppingCenterTimeScope.allCases) { scope in
+                    Button {
+                        guard selectedTimeScope != scope else { return }
+                        selectedTimeScope = scope
+                    } label: {
+                        Label(scope.rawValue, systemImage: scope.systemImage)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(selectedTimeScope == scope ? .primary : .secondary)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 8)
+                            .background(
+                                selectedTimeScope == scope ? Color.accentColor.opacity(0.16) : Color.clear,
+                                in: Capsule()
+                            )
+                            .background(.thinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private var routeContextServiceStops: [ServiceStop] {
@@ -358,7 +399,7 @@ extension ShoppingListView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 title: "Route Prep",
-                subtitle: "Items connected to \(routeContextLabel), jobs, customers, service locations, or your personal list.",
+                subtitle: "Your active shopping items needed \(selectedTimeScope.prepDescription), including route, job, customer, and personal items.",
                 systemImage: "map",
                 count: shoppingVM.routePrepItems.count
             )
@@ -392,7 +433,7 @@ extension ShoppingListView {
             HStack(alignment: .top) {
                 sectionHeader(
                     title: "Outstanding",
-                    subtitle: "Open shopping actions. Use company-wide mode for planning ahead.",
+                    subtitle: "Open shopping actions for \(selectedTimeScope.prepDescription). Use company-wide mode only when planning for everyone.",
                     systemImage: "exclamationmark.circle",
                     count: shoppingVM.outstandingItems.count
                 )
@@ -440,7 +481,7 @@ extension ShoppingListView {
     private var groupedByCustomerSection: some View {
         groupedSection(
             title: "Customer Items",
-            subtitle: "Open customer-specific shopping actions for the route context.",
+            subtitle: "Customer-specific shopping actions assigned to you for \(selectedTimeScope.prepDescription).",
             systemImage: "person.text.rectangle",
             items: shoppingVM.customerItems,
             groupTitle: { item in
@@ -454,7 +495,7 @@ extension ShoppingListView {
     private var groupedByJobSection: some View {
         groupedSection(
             title: "Job Items",
-            subtitle: "Open job material items connected to this route context.",
+            subtitle: "Approved job material items assigned to you for \(selectedTimeScope.prepDescription).",
             systemImage: "briefcase",
             items: shoppingVM.jobItems,
             groupTitle: { item in
@@ -606,13 +647,17 @@ extension ShoppingListView {
             try await shoppingVM.loadRoutePrepShoppingItems(
                 companyId: company.id,
                 userId: user.id,
-                serviceStops: routeContextServiceStops
+                serviceStops: routeContextServiceStops,
+                timeScope: selectedTimeScope,
+                referenceDate: routeDate ?? Date()
             )
 
             if includeAllOutstanding || showOtherOutstandingItems {
                 try await shoppingVM.loadOutstandingShoppingItems(
                     companyId: company.id,
-                    limit: 100
+                    limit: 100,
+                    timeScope: selectedTimeScope,
+                    referenceDate: routeDate ?? Date()
                 )
             } else {
                 // In normal technician mode, outstanding mirrors route-prep scope.
@@ -643,15 +688,15 @@ extension ShoppingListView {
     private var headerSubtitle: String {
         switch selectedTab {
         case .routePrep:
-            return "Prep materials before leaving for today’s route."
+            return "Prep your assigned materials for \(selectedTimeScope.prepDescription)."
         case .outstanding:
-            return "Plan ahead using open shopping actions."
+            return "Plan ahead using active shopping actions."
         case .myItems:
-            return "Truck stock and personal assigned shopping items."
+            return "Shopping actions assigned to you."
         case .customers:
-            return "Customer-specific items connected to route prep."
+            return "Customer-specific items assigned to you."
         case .jobs:
-            return "Job materials connected to route prep."
+            return "Approved job materials assigned to you."
         case .purchased:
             return "Purchased items that still need follow-up."
         }
@@ -970,7 +1015,9 @@ private extension CompanyShoppingListView {
     }
 
     var companyItems: [ShoppingListItem] {
-        shoppingVM.allShoppingItems.sorted { lhs, rhs in
+        shoppingVM.allShoppingItems
+            .filter { $0.shoppingListActive }
+            .sorted { lhs, rhs in
             if lhs.status == rhs.status {
                 return sortDate(lhs) > sortDate(rhs)
             }

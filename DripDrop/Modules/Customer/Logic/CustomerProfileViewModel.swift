@@ -298,6 +298,10 @@ struct CustomerPartApproval: Identifiable, Codable, Hashable {
     var dbItemId: String?
     var dbItemName: String?
     var genericItemId: String?
+    var productId: String?
+    var productName: String?
+    var itemId: String?
+    var itemType: String?
     var subCategory: String?
     var plannedUnitCostCents: Int?
     var plannedUnitPriceCents: Int?
@@ -354,7 +358,7 @@ struct CustomerPartApproval: Identifiable, Codable, Hashable {
     var history: [CustomerPartApprovalHistoryItem]?
 
     var displayTitle: String {
-        itemName ?? name ?? dbItemName ?? "Part Approval"
+        itemName ?? name ?? productName ?? dbItemName ?? "Part Approval"
     }
 
     var displayStatus: String {

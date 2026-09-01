@@ -27,6 +27,8 @@ struct ToDoDetailView: View {
     @State private var description: String = ""
     @State private var title: String = ""
     @State private var isSaving: Bool = false
+    @State private var isAddingCustomerNote: Bool = false
+    @State private var customerNoteMessage: String? = nil
 
     var body: some View {
         ScrollView {
@@ -38,6 +40,9 @@ struct ToDoDetailView: View {
                 } else if let toDo = currentTodo {
                     headerCard(toDo)
                     editorCard(toDo)
+                    if linkedCustomerId(for: toDo) != nil {
+                        customerNoteActionCard(toDo)
+                    }
                     metadataCard(toDo)
                 } else {
                     emptyState
@@ -265,6 +270,58 @@ private extension ToDoDetailView {
         .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
+    func customerNoteActionCard(_ toDo: ToDo) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "text.bubble.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolBlue.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Customer Notes")
+                        .font(.headline)
+
+                    Text(linkedCustomerName(for: toDo) ?? "Linked customer")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+            }
+
+            if let customerNoteMessage {
+                Text(customerNoteMessage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(customerNoteMessage == "Added to customer notes." ? Color.poolGreen : Color.poolRed)
+                    .lineLimit(2)
+            }
+
+            Button {
+                Task {
+                    await addTodoToCustomerNotes(toDo)
+                }
+            } label: {
+                if isAddingCustomerNote {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                } else {
+                    Label("Add to Customer Notes", systemImage: "plus.message.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isAddingCustomerNote)
+        }
+        .padding(16)
+        .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
     func metadataRow(_ title: String, _ value: String, systemImage: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: systemImage)
@@ -283,6 +340,130 @@ private extension ToDoDetailView {
             }
 
             Spacer(minLength: 0)
+        }
+    }
+
+    func linkedCustomerId(for toDo: ToDo) -> String? {
+        if let linkedCustomerId = toDo.linkedCustomerId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !linkedCustomerId.isEmpty {
+            return linkedCustomerId
+        }
+
+        guard let relatedEntity = toDo.relatedEntity else {
+            return nil
+        }
+
+        let relatedType = relatedEntity.type
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard relatedType == "customer" || relatedType == "customers" else {
+            return nil
+        }
+
+        let relatedId = relatedEntity.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        return relatedId.isEmpty ? nil : relatedId
+    }
+
+    func linkedCustomerName(for toDo: ToDo) -> String? {
+        guard let relatedEntity = toDo.relatedEntity else {
+            return nil
+        }
+
+        let relatedType = relatedEntity.type
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard relatedType == "customer" || relatedType == "customers" else {
+            return nil
+        }
+
+        let label = relatedEntity.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return label.isEmpty ? nil : label
+    }
+
+    var currentUserDisplayName: String {
+        let first = masterDataManager.user?.firstName ?? ""
+        let last = masterDataManager.user?.lastName ?? ""
+        let fullName = "\(first) \(last)".trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !fullName.isEmpty {
+            return fullName
+        }
+
+        return masterDataManager.user?.email ?? "Company user"
+    }
+
+    func customerNoteText(for toDo: ToDo) -> String {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? toDo.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            : title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDescription = description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? toDo.description.trimmingCharacters(in: .whitespacesAndNewlines)
+            : description.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var lines = [
+            "Todo \(toDo.issueKey): \(cleanTitle)",
+            "Status: \(status.title())",
+            "Priority: \(toDo.priorityLabel)"
+        ]
+
+        if !cleanDescription.isEmpty {
+            lines.append("")
+            lines.append(cleanDescription)
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    @MainActor
+    func addTodoToCustomerNotes(_ toDo: ToDo) async {
+        guard let company = masterDataManager.currentCompany else {
+            customerNoteMessage = "Missing company."
+            return
+        }
+
+        guard let customerId = linkedCustomerId(for: toDo) else {
+            customerNoteMessage = "Todo is not linked to a customer."
+            return
+        }
+
+        isAddingCustomerNote = true
+        defer { isAddingCustomerNote = false }
+
+        let userId = masterDataManager.user?.id ?? toDo.createdByUserId
+        let authorName = currentUserDisplayName
+        let now = Date()
+        let noteText = customerNoteText(for: toDo)
+        let note = CustomerNote(
+            storedId: "comp_cus_note_\(UUID().uuidString)",
+            companyId: company.id,
+            customerId: customerId,
+            customerName: linkedCustomerName(for: toDo),
+            userId: userId,
+            userName: authorName,
+            authorId: userId,
+            authorName: authorName,
+            note: noteText,
+            comment: noteText,
+            audience: .all,
+            visibility: CustomerNoteAudience.all.rawValue,
+            resolved: false,
+            date: now,
+            createdAt: now,
+            updatedAt: now
+        )
+
+        do {
+            try await toDoVM.dataService.uploadCustomerNote(
+                companyId: company.id,
+                customerId: customerId,
+                note: note
+            )
+            customerNoteMessage = "Added to customer notes."
+        } catch {
+            customerNoteMessage = "Could not add customer note."
+            print("[ToDoDetailView][addTodoToCustomerNotes] \(error)")
         }
     }
 

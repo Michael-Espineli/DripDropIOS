@@ -34,11 +34,8 @@ struct EquipmentDetailStartUpView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ForEach($equipmentList) { $equipment in
-                if equipment.id == selectedEquipmentId {
-                    equipmentDetailCard($equipment)
-                }
-                
+            if let selectedEquipment = equipmentList.first(where: { $0.id == selectedEquipmentId }) {
+                equipmentDetailCard(equipmentBinding(for: selectedEquipment))
             }
         }
         .onAppear(perform: {
@@ -74,6 +71,7 @@ struct EquipmentDetailStartUpView: View {
             print("")
             print("Change Of Selected Photos")
             print(images)
+            guard !selectedEquipmentId.isEmpty else { return }
             photos[selectedEquipmentId] = images
         })
     }
@@ -84,6 +82,21 @@ struct EquipmentDetailStartUpView: View {
 //}
 
 private extension EquipmentDetailStartUpView {
+    func equipmentBinding(for equipment: Equipment) -> Binding<Equipment> {
+        Binding(
+            get: {
+                equipmentList.first { $0.id == equipment.id } ?? equipment
+            },
+            set: { updatedEquipment in
+                guard let index = equipmentList.firstIndex(where: { $0.id == equipment.id }) else {
+                    return
+                }
+
+                equipmentList[index] = updatedEquipment
+            }
+        )
+    }
+
     func equipmentDetailCard(_ equipment: Binding<Equipment>) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             equipmentHeader(equipment)
@@ -91,25 +104,29 @@ private extension EquipmentDetailStartUpView {
             VStack(spacing: 10) {
                 startupTextField(title: "Name", text: equipment.name)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Catalog Match", systemImage: "list.bullet.rectangle")
-                        .font(.subheadline.weight(.semibold))
-
-                    EquipmentCatalogSelectionControl(
-                        dataService: dataService,
-                        category: equipment.type,
-                        typeId: equipment.typeId,
-                        make: equipment.make,
-                        makeId: equipment.makeId,
-                        model: equipment.model,
-                        modelId: equipment.modelId,
-                        universalEquipmentId: equipment.universalEquipmentId,
-                        manualPdfLink: equipment.manualPdfLink,
-                        name: equipment.name
-                    )
-                }
+                EquipmentCatalogSelectionControl(
+                    dataService: dataService,
+                    category: equipment.type,
+                    customTypeName: equipment.customTypeName,
+                    typeId: equipment.typeId,
+                    make: equipment.make,
+                    makeId: equipment.makeId,
+                    model: equipment.model,
+                    modelId: equipment.modelId,
+                    universalEquipmentId: equipment.universalEquipmentId,
+                    manualPdfLink: equipment.manualPdfLink,
+                    name: equipment.name,
+                    showsCatalogMatchLabel: true
+                )
                 .padding(10)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                if equipment.wrappedValue.type == .other {
+                    startupTextField(
+                        title: "Custom Category",
+                        text: equipment.customTypeName
+                    )
+                }
 
                 LazyVGrid(
                     columns: fieldColumns,
@@ -140,6 +157,14 @@ private extension EquipmentDetailStartUpView {
                                 equipment.wrappedValue.manualPdfLink = ""
                             }
                         )
+                    )
+                }
+
+                if equipment.wrappedValue.isFilterEquipment {
+                    startupTextField(
+                        title: "Clean Filter Pressure (PSI)",
+                        text: optionalIntStringBinding(equipment.cleanFilterPressure),
+                        keyboardType: .numberPad
                     )
                 }
 
@@ -192,7 +217,7 @@ private extension EquipmentDetailStartUpView {
                     .font(.headline.weight(.semibold))
                     .lineLimit(2)
 
-                Text(equipment.wrappedValue.type.rawValue)
+                Text(equipment.wrappedValue.typeDisplayName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -215,23 +240,34 @@ private extension EquipmentDetailStartUpView {
     func startupTextField(
         title: String,
         text: Binding<String>,
-        lineLimit: ClosedRange<Int>? = nil
+        lineLimit: ClosedRange<Int>? = nil,
+        keyboardType: UIKeyboardType = .default
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
 
             if let lineLimit {
                 TextField(title, text: text, axis: .vertical)
                     .lineLimit(lineLimit)
+                    .keyboardType(keyboardType)
                     .padding(10)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                    )
                     .foregroundColor(Color.basicFontText)
             } else {
                 TextField(title, text: text)
+                    .keyboardType(keyboardType)
                     .padding(10)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                    )
                     .foregroundColor(Color.basicFontText)
             }
         }
@@ -241,7 +277,7 @@ private extension EquipmentDetailStartUpView {
         VStack(alignment: .leading, spacing: 6) {
             Text("Date Installed")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
 
             VStack(alignment: .leading, spacing: 8) {
                 if equipment.wrappedValue.dateInstalled == nil {
@@ -270,6 +306,10 @@ private extension EquipmentDetailStartUpView {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
             .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+            )
         }
     }
 
@@ -277,7 +317,7 @@ private extension EquipmentDetailStartUpView {
         VStack(alignment: .leading, spacing: 6) {
             Text("Status")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
 
             Menu {
                 ForEach(EquipmentStatus.allCases, id: \.self) { status in
@@ -300,6 +340,10 @@ private extension EquipmentDetailStartUpView {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(10)
                 .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                )
             }
             .buttonStyle(.plain)
         }
@@ -320,7 +364,7 @@ private extension EquipmentDetailStartUpView {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Last Serviced")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.primary.opacity(0.72))
 
                         DatePicker(
                             "",
@@ -331,12 +375,16 @@ private extension EquipmentDetailStartUpView {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
                         .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                        )
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Frequency")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.primary.opacity(0.72))
 
                         HStack(spacing: 8) {
                             Picker("Every", selection: optionalIntBinding(equipment.serviceFrequency, defaultValue: 1)) {
@@ -356,6 +404,10 @@ private extension EquipmentDetailStartUpView {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(10)
                         .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                        )
                     }
                 }
             }
@@ -365,8 +417,11 @@ private extension EquipmentDetailStartUpView {
     }
 
     func deleteEquipment(_ equipment: Equipment) {
-        equipmentList.removeAll { $0.id == equipment.id }
+        let removedEquipmentId = equipment.id
         selectedEquipmentId = ""
+        selectedPhotos = []
+        photos[removedEquipmentId] = nil
+        equipmentList.removeAll { $0.id == removedEquipmentId }
     }
 
     var fieldColumns: [GridItem] {
@@ -420,6 +475,8 @@ private extension EquipmentDetailStartUpView {
             return "switch.2"
         case .autoChlorinator:
             return "drop.degreesign.fill"
+        case .other:
+            return "wrench.and.screwdriver.fill"
         }
     }
 
@@ -441,6 +498,18 @@ private extension EquipmentDetailStartUpView {
         Binding(
             get: { value.wrappedValue ?? .monthly },
             set: { value.wrappedValue = $0 }
+        )
+    }
+
+    func optionalIntStringBinding(_ value: Binding<Int?>) -> Binding<String> {
+        Binding(
+            get: {
+                value.wrappedValue.map(String.init) ?? ""
+            },
+            set: { newValue in
+                let digits = newValue.filter { $0.isNumber }
+                value.wrappedValue = digits.isEmpty ? nil : Int(digits)
+            }
         )
     }
 }

@@ -461,10 +461,10 @@ private struct MobileReimaginedMainDashboard: View {
             workOffersSnapshotHeader
 
             LazyVGrid(columns: quickActionColumns, spacing: 8) {
-                snapshotMetric(title: "Direct", value: "\(workOfferSnapshot.directOfferCount)", tint: .poolBlue)
-                snapshotMetric(title: "Board", value: "\(workOfferSnapshot.boardOfferCount)", tint: .poolGreen)
-                snapshotMetric(title: "Accepted", value: "\(workOfferSnapshot.acceptedOfferCount)", tint: .orange)
-                snapshotMetric(title: "Scheduled", value: "\(workOfferSnapshot.scheduledOfferCount)", tint: .purple)
+                snapshotMetric(title: "Pending", value: "\(workOfferSnapshot.pendingOfferCount)", tint: .poolBlue)
+                snapshotMetric(title: "Boards", value: "\(workOfferSnapshot.boardOfferCount)", tint: .poolGreen)
+                snapshotMetric(title: "Current", value: "\(workOfferSnapshot.currentOfferCount)", tint: .orange)
+                snapshotMetric(title: "Rejected 30d", value: "\(workOfferSnapshot.rejectedRecentOfferCount)", tint: .red)
             }
 
             if let workOfferSnapshotError {
@@ -882,27 +882,31 @@ private struct MobileReimaginedMainDashboard: View {
     }
 
     private func alertRow(_ alert: DripDropAlert) -> some View {
-        HStack(alignment: .top, spacing: 11) {
-            statusDot(color: .poolRed)
+        let tint = alertTint(alert)
+
+        return HStack(alignment: .top, spacing: 11) {
+            statusDot(color: tint)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(alert.name)
+                Text(alert.displayTitle)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text(alert.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                if !alert.displayDescription.isEmpty {
+                    Text(alert.displayDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
 
             Spacer(minLength: 0)
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(alert.category.rawValue)
+                Text(alert.displayCategoryTitle)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.poolRed)
+                    .foregroundStyle(tint)
                     .lineLimit(1)
 
                 Text(shortDate(date: alert.date))
@@ -911,7 +915,7 @@ private struct MobileReimaginedMainDashboard: View {
             }
         }
         .padding(12)
-        .background(Color.poolRed.opacity(0.075), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(tint.opacity(0.075), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func todoSnapshotRow(_ todo: MobileDashboardTodoSnapshotItem) -> some View {
@@ -1021,6 +1025,23 @@ private struct MobileReimaginedMainDashboard: View {
             .background(color.opacity(0.12), in: Circle())
     }
 
+    private func alertTint(_ alert: DripDropAlert) -> Color {
+        if alert.isArchived {
+            return .secondary
+        }
+
+        switch alert.displaySeverityTitle {
+        case "Critical":
+            return .poolRed
+        case "Warning":
+            return .orange
+        case "Success":
+            return .poolGreen
+        default:
+            return alert.isUnread ? .poolBlue : .secondary
+        }
+    }
+
     private var dashboardLoadIdentity: String {
         "\(masterDataManager.currentCompany?.id ?? "no-company")-\(masterDataManager.user?.id ?? "no-user")-\(masterDataManager.featureFlagsLoaded)-\(masterDataManager.isFeatureEnabled(.alertsAndNotifications))"
     }
@@ -1034,7 +1055,7 @@ private struct MobileReimaginedMainDashboard: View {
 
     private var dashboardAlerts: [DripDropAlert] {
         alertVM.alertList
-            .filter { ($0.status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "archived" }
+            .filter { $0.needsAttention }
             .sorted { $0.date > $1.date }
             .prefix(3)
             .map { $0 }
@@ -1154,7 +1175,7 @@ private struct MobileReimaginedMainDashboard: View {
         case .all:
             return "Dashboard"
         case .routing:
-            return "Route"
+            return "Dashboard"
         case .operations:
             return "Operations"
         case .finance:
@@ -1179,7 +1200,7 @@ private struct MobileReimaginedMainDashboard: View {
         case .all:
             return "square.grid.2x2"
         case .routing:
-            return "map"
+            return "list.dash"
         case .operations:
             return "wrench.and.screwdriver"
         case .finance:
@@ -1204,7 +1225,7 @@ private struct MobileReimaginedMainDashboard: View {
         case .all:
             return "Overview"
         case .routing:
-            return "Route board"
+            return "Today's work"
         case .operations:
             return "Jobs and work"
         case .finance:
@@ -1340,7 +1361,7 @@ private struct MobileReimaginedMainDashboard: View {
 
         if masterDataManager.isFeatureEnabled(.alertsAndNotifications) {
             do {
-                try await alertVM.getAlertsByCompany(companyId: company.id)
+                try await alertVM.getAlertsByCompany(companyId: company.id, userId: user.id)
             } catch {
                 print("[MobileReimaginedMainDashboard][startDashboardListeners][alerts]")
                 print(error)
@@ -1370,6 +1391,9 @@ private struct MobileReimaginedMainDashboard: View {
         workOfferSnapshotError = nil
 
         do {
+            let now = Date()
+            let rejectedStartDate = Calendar.current.date(byAdding: .day, value: -30, to: now) ?? now
+
             async let directTask = dataService.fetchWorkOffersForUser(
                 companyId: companyId,
                 userId: companyUser.userId
@@ -1386,24 +1410,51 @@ private struct MobileReimaginedMainDashboard: View {
             let directOffers = try await directTask
             let boardOffers = try await boardTask
             let acceptedOffers = try await acceptedTask
-            let acceptedUserOffers = (directOffers + boardOffers + acceptedOffers)
+            let directOfferRecords = directOffers.filter(\.isWorkOfferRecord)
+            let boardOfferRecords = boardOffers.filter(\.isWorkOfferRecord)
+            let acceptedOfferRecords = acceptedOffers.filter(\.isWorkOfferRecord)
+            let offerRecords = directOfferRecords + boardOfferRecords + acceptedOfferRecords
+            let openDirectOffers = directOfferRecords.filter {
+                $0.status == .sent ||
+                $0.status == .viewed ||
+                $0.status == .posted
+            }
+            let openBoardOffers = boardOfferRecords.filter {
+                $0.status == .posted ||
+                $0.status == .viewed
+            }
+            let pendingOffers = (openDirectOffers + openBoardOffers)
+                .mobileDashboardUniqueWorkOffers()
+            let currentOffers = offerRecords
                 .mobileDashboardUniqueWorkOffers()
                 .filter {
-                    $0.acceptedByUserId == companyUser.userId ||
-                    $0.offeredToUserId == companyUser.userId
+                    (
+                        $0.status == .accepted ||
+                        $0.status == .scheduled ||
+                        $0.status == .inProgress ||
+                        $0.status == .completed
+                    ) &&
+                    (
+                        $0.acceptedByUserId == companyUser.userId ||
+                        $0.offeredToUserId == companyUser.userId
+                    )
+                }
+            let recentRejectedOffers = (directOfferRecords + acceptedOfferRecords)
+                .mobileDashboardUniqueWorkOffers()
+                .filter {
+                    $0.status == .rejected &&
+                    ($0.rejectedAt ?? $0.createdAt) >= rejectedStartDate &&
+                    (
+                        $0.acceptedByUserId == companyUser.userId ||
+                        $0.offeredToUserId == companyUser.userId
+                    )
                 }
 
             workOfferSnapshot = MobileDashboardWorkOfferSnapshot(
-                directOfferCount: directOffers.openDirectOfferCount,
-                boardOfferCount: boardOffers.openBoardOfferCount,
-                acceptedOfferCount: acceptedUserOffers.filter {
-                    $0.status == .accepted ||
-                    $0.status == .scheduled ||
-                    $0.status == .inProgress ||
-                    $0.status == .completed
-                }.count,
-                scheduledOfferCount: acceptedUserOffers.scheduledOfferCount,
-                readyToScheduleCount: acceptedUserOffers.acceptedReadyToScheduleCount
+                pendingOfferCount: pendingOffers.count,
+                boardOfferCount: openBoardOffers.count,
+                currentOfferCount: currentOffers.count,
+                rejectedRecentOfferCount: recentRejectedOffers.count
             )
         } catch {
             workOfferSnapshot = .empty
@@ -1820,26 +1871,20 @@ private struct MobileDashboardTodoSnapshotItem: Identifiable {
 }
 
 private struct MobileDashboardWorkOfferSnapshot {
-    let directOfferCount: Int
+    let pendingOfferCount: Int
     let boardOfferCount: Int
-    let acceptedOfferCount: Int
-    let scheduledOfferCount: Int
-    let readyToScheduleCount: Int
+    let currentOfferCount: Int
+    let rejectedRecentOfferCount: Int
 
     static let empty = MobileDashboardWorkOfferSnapshot(
-        directOfferCount: 0,
+        pendingOfferCount: 0,
         boardOfferCount: 0,
-        acceptedOfferCount: 0,
-        scheduledOfferCount: 0,
-        readyToScheduleCount: 0
+        currentOfferCount: 0,
+        rejectedRecentOfferCount: 0
     )
 
-    var openOfferCount: Int {
-        directOfferCount + boardOfferCount
-    }
-
     var subtitle: String {
-        "\(openOfferCount) open, \(readyToScheduleCount) ready to schedule"
+        "\(pendingOfferCount) pending, \(currentOfferCount) current, \(rejectedRecentOfferCount) rejected in 30d"
     }
 }
 
@@ -2223,6 +2268,7 @@ struct MobileReimaginedFinanceSectionView: View {
                     systemImage: "doc.text.fill",
                     tint: .poolGreen,
                     route: .serviceAgreements(dataService: dataService),
+                    permissionId: "430",
                     requiresSalesFlag: true
                 ),
                 MobileReimaginedSectionItem(
@@ -2403,8 +2449,16 @@ struct MobileReimaginedCompanySettingsSectionView: View {
                     permissionId: "840"
                 ),
                 MobileReimaginedSectionItem(
-                    title: "Database Items",
-                    subtitle: "Parts, chemicals, and items",
+                    title: "Product Catalog",
+                    subtitle: "Products used on jobs and invoices",
+                    systemImage: "shippingbox.fill",
+                    tint: .poolBlue,
+                    route: .genericItems(dataService: dataService),
+                    permissionId: "850"
+                ),
+                MobileReimaginedSectionItem(
+                    title: "Vendor Items",
+                    subtitle: "Vendor-specific purchase items",
                     systemImage: "shippingbox.fill",
                     tint: .poolYellow,
                     route: .databaseItems(dataService: dataService),
@@ -3949,10 +4003,10 @@ private struct MobilePurchaseReconciliationPurchaseRow: View {
 
     private var databaseLabel: String {
         if let databaseItem {
-            return databaseItem.name.isEmpty ? "Database item linked" : databaseItem.name
+            return databaseItem.name.isEmpty ? "Vendor item linked" : databaseItem.name
         }
 
-        return purchase.itemId.isEmpty ? "No database item" : "Database item linked"
+        return purchase.itemId.isEmpty ? "No vendor item" : "Vendor item linked"
     }
 
     private var jobLabel: String {
@@ -4177,9 +4231,9 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
 
     private var databaseSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionTitle("Database Item", systemImage: "square.stack.3d.up")
+            sectionTitle("Vendor Item", systemImage: "square.stack.3d.up")
 
-            Text(databaseItem?.name.isEmpty == false ? databaseItem!.name : (purchase.itemId.isEmpty ? "No database item connected" : "Database item linked"))
+            Text(databaseItem?.name.isEmpty == false ? databaseItem!.name : (purchase.itemId.isEmpty ? "No vendor item connected" : "Vendor item linked"))
                 .font(.subheadline.weight(.semibold))
 
             if let detailLine = databaseItem?.detailLine, !detailLine.isEmpty {
@@ -4594,13 +4648,13 @@ extension MobileHome {
                                     }, label: {
                                         if masterDataManager.mobileHomeScreen == .routing {
                                             HStack{
-                                                Text("Route")
+                                                Text("Dashboard")
                                             }
                                             .modifier(EditButtonModifier())
                                             .bold()
                                         } else {
                                             HStack{
-                                                Text("Route")
+                                                Text("Dashboard")
                                             }
                                             .font(.subheadline.weight(.semibold))
                                             .padding(.horizontal, 16)

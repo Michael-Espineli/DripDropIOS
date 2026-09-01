@@ -28,6 +28,34 @@
 
 import Foundation
 
+enum PlannedRouteAssignmentMode {
+    case route
+    case merge
+    case stop
+
+    var title: String {
+        switch self {
+        case .route:
+            return "Assign Whole Route"
+        case .merge:
+            return "Merge Route"
+        case .stop:
+            return "Assign RSS"
+        }
+    }
+
+    var saveTitle: String {
+        switch self {
+        case .route:
+            return "Assign Route"
+        case .merge:
+            return "Merge Route"
+        case .stop:
+            return "Assign RSS"
+        }
+    }
+}
+
 @MainActor
 final class RouteBoardViewModel: ObservableObject {
 
@@ -57,6 +85,12 @@ final class RouteBoardViewModel: ObservableObject {
 
     @Published var showDeleteRSS: Bool = false
     @Published var showModifyRSS: Bool = false
+    @Published var showAssignmentSheet: Bool = false
+    @Published var assignmentMode: PlannedRouteAssignmentMode = .route
+    @Published var assignmentDay: DaysOfWeek = .monday
+    @Published var assignmentTechId: String = ""
+    @Published var assignmentDestinationRouteId: String = ""
+    @Published var expandedRouteId: String? = nil
     
     //For New Route
     @Published private(set) var currentRouteRecurringStops: [RecurringServiceStop] = []
@@ -182,6 +216,159 @@ final class RouteBoardViewModel: ObservableObject {
     func stop(for recurringServiceStopId: String) -> RecurringServiceStop? {
         recurringStops.first(where: {$0.id == recurringServiceStopId})
 
+    }
+    func orderedStops(for route: RecurringRoute) -> [RecurringServiceStop] {
+        route.order
+            .sorted { $0.order < $1.order }
+            .compactMap { stop(for: $0.recurringServiceStopId) }
+    }
+    func toggleExpandedRoute(_ route: RecurringRoute) {
+        expandedRouteId = expandedRouteId == route.id ? nil : route.id
+    }
+    func isExpanded(_ route: RecurringRoute) -> Bool {
+        expandedRouteId == route.id
+    }
+    var assignmentTechOptions: [CompanyUser] {
+        companyUsers.sorted { $0.userName.localizedCaseInsensitiveCompare($1.userName) == .orderedAscending }
+    }
+    var assignmentDestinationRoutes: [RecurringRoute] {
+        recurringRoutes
+            .filter { $0.id != selectedRoute?.id }
+            .sorted {
+                if $0.day.numberValue != $1.day.numberValue {
+                    return $0.day.numberValue < $1.day.numberValue
+                }
+
+                return technicianName(for: $0)
+                    .localizedCaseInsensitiveCompare(technicianName(for: $1)) == .orderedAscending
+            }
+    }
+    var assignmentStopCount: Int {
+        assignmentStopsForCurrentSelection().count
+    }
+    var assignmentCanSave: Bool {
+        if assignmentStopCount == 0 {
+            return false
+        }
+
+        switch assignmentMode {
+        case .merge:
+            return !assignmentDestinationRouteId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .route, .stop:
+            return !assignmentTechId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+    var assignmentCurrentSummary: String {
+        if assignmentMode == .stop, let stop = selectedRecurringServiceStop {
+            return "\(stop.customerName) - \(stop.day.rawValue) - \(stop.tech)"
+        }
+
+        guard let route = selectedRoute else {
+            return "No route selected"
+        }
+
+        return "\(route.day.rawValue) - \(technicianName(for: route)) - \(route.order.count) stops"
+    }
+    func destinationRouteLabel(_ route: RecurringRoute) -> String {
+        "\(route.day.rawValue) - \(technicianName(for: route)) (\(route.order.count) stops)"
+    }
+    func prepareAssignment(mode: PlannedRouteAssignmentMode) {
+        assignmentMode = mode
+
+        switch mode {
+        case .merge:
+            assignmentDestinationRouteId = assignmentDestinationRoutes.first?.id ?? ""
+        case .stop:
+            assignmentDay = selectedRecurringServiceStop?.day ?? selectedDay ?? .monday
+            assignmentTechId = selectedRecurringServiceStop?.techId ?? selectedTech?.userId ?? ""
+            assignmentDestinationRouteId = ""
+        case .route:
+            assignmentDay = selectedRoute?.day ?? selectedDay ?? .monday
+            assignmentTechId = selectedRoute?.techId ?? selectedTech?.userId ?? ""
+            assignmentDestinationRouteId = ""
+        }
+
+        showAssignmentSheet = true
+    }
+    func resetAssignmentState(clearSelections: Bool = false) {
+        assignmentMode = .route
+        assignmentDay = .monday
+        assignmentTechId = ""
+        assignmentDestinationRouteId = ""
+
+        if clearSelections {
+            selectedRoute = nil
+            selectedRecurringServiceStop = nil
+            selectedTech = nil
+            selectedDay = nil
+        }
+    }
+    func savePlannedRouteAssignment(companyId: String?) async -> Bool {
+        guard let companyId else {
+            alertMessage = "Select a company before assigning routes."
+            showAlert = true
+            return false
+        }
+
+        let stopsToAssign = assignmentStopsForCurrentSelection()
+        guard !stopsToAssign.isEmpty else {
+            alertMessage = "No recurring service stops were found for this action."
+            showAlert = true
+            return false
+        }
+
+        if assignmentMode != .stop,
+           let selectedRoute,
+           stopsToAssign.count != selectedRoute.order.count {
+            alertMessage = "Some recurring service stops could not be loaded. Refresh and try again."
+            showAlert = true
+            return false
+        }
+
+        let destinationRoute: RecurringRoute?
+        if assignmentMode == .merge {
+            destinationRoute = recurringRoutes.first(where: { $0.id == assignmentDestinationRouteId })
+        } else {
+            destinationRoute = nil
+        }
+        let targetDay = destinationRoute?.day ?? assignmentDay
+        let targetTechId = destinationRoute?.techId ?? assignmentTechId
+        let targetTechName = destinationRoute?.tech ?? technicianName(forTechId: targetTechId)
+
+        guard !targetTechId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            alertMessage = assignmentMode == .merge ? "Select a destination route." : "Select a technician."
+            showAlert = true
+            return false
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            for stop in stopsToAssign {
+                let updatedStop = reassignedRecurringServiceStop(
+                    stop,
+                    day: targetDay,
+                    techId: targetTechId,
+                    techName: targetTechName
+                )
+                try await FunctionsManager.shared.updateRecurringServiceStop(
+                    companyId: companyId,
+                    recurringServiceStop: updatedStop,
+                    syncRoute: true,
+                    destinationRouteId: destinationRoute?.id
+                )
+            }
+
+            alertMessage = assignmentMode == .merge ? "Route merged successfully." : "Recurring service stops assigned successfully."
+            showAlert = true
+            resetAssignmentState(clearSelections: true)
+            return true
+        } catch {
+            alertMessage = error.localizedDescription
+            showAlert = true
+            return false
+        }
     }
     private func reconcileRoutesWithStops() {
         print("    [RouteBoardViewModel][reconcileRoutesWithStops] Current Route : \(recurringRoutes.count)")
@@ -683,5 +870,54 @@ final class RouteBoardViewModel: ObservableObject {
         }
 
         return "\(customer.firstName) \(customer.lastName)"
+    }
+    private func technicianName(for route: RecurringRoute) -> String {
+        technicianName(forTechId: route.techId, fallback: route.tech)
+    }
+    private func technicianName(forTechId techId: String, fallback: String = "") -> String {
+        companyUsers.first { $0.userId == techId || $0.id == techId }?.userName
+            ?? (fallback.isEmpty ? techId : fallback)
+    }
+    private func assignmentStopsForCurrentSelection() -> [RecurringServiceStop] {
+        switch assignmentMode {
+        case .stop:
+            return selectedRecurringServiceStop.map { [$0] } ?? []
+        case .route, .merge:
+            guard let selectedRoute else { return [] }
+            return orderedStops(for: selectedRoute)
+        }
+    }
+    private func reassignedRecurringServiceStop(
+        _ stop: RecurringServiceStop,
+        day: DaysOfWeek,
+        techId: String,
+        techName: String
+    ) -> RecurringServiceStop {
+        RecurringServiceStop(
+            id: stop.id,
+            internalId: stop.internalId,
+            type: stop.type,
+            typeId: stop.typeId,
+            typeImage: stop.typeImage,
+            customerName: stop.customerName,
+            customerId: stop.customerId,
+            address: stop.address,
+            tech: techName,
+            techId: techId,
+            dateCreated: stop.dateCreated,
+            startDate: stop.startDate,
+            endDate: stop.endDate,
+            noEndDate: stop.noEndDate,
+            frequency: stop.frequency,
+            day: day,
+            description: stop.description,
+            lastCreated: stop.lastCreated,
+            serviceLocationId: stop.serviceLocationId,
+            estimatedTime: stop.estimatedTime,
+            otherCompany: stop.otherCompany,
+            laborContractId: stop.laborContractId,
+            contractedCompanyId: stop.contractedCompanyId,
+            mainCompanyId: stop.mainCompanyId
+        )
     }
 }

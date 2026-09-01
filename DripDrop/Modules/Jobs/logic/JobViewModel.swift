@@ -428,6 +428,12 @@ final class JobViewModel:ObservableObject{
             if billingStatus != updatingJob.billingStatus {
                 print("Change in Billing Status")
                 try await dataService.updateJobBillingStatus(companyId: companyId, jobId: updatingJob.id, billingStatus: billingStatus)
+                if billingStatus == .accepted {
+                    try await dataService.activateShoppingListItemsForAcceptedJob(
+                        companyId: companyId,
+                        jobId: updatingJob.id
+                    )
+                }
             }
             if String(updatingJob.rate) != rate {
                 if let rate = Int(rate) {

@@ -53,7 +53,7 @@ struct DataBaseItemView: View {
                 .padding(.bottom, 24)
             }
         }
-        .navigationTitle("Database Item")
+        .navigationTitle("Vendor Item")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem {

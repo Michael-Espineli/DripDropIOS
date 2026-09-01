@@ -174,6 +174,23 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     ) async throws -> [ShoppingListItem] {
         return []
     }
+
+    func getShoppingListItemsForUserScope(
+        companyId: String,
+        userId: String,
+        limit: Int = 100
+    ) async throws -> [ShoppingListItem] {
+        return []
+    }
+
+    @discardableResult
+    func activateShoppingListItemsForAcceptedJob(
+        companyId: String,
+        jobId: String
+    ) async throws -> Int {
+        return 0
+    }
+
     @discardableResult
     func syncShoppingListItemsForScheduledJobTasks(
         companyId: String,
@@ -1599,6 +1616,31 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateServiceStopServiceNotes(companyId: String, serviceStopId: String, serviceNotes: String) async throws {
     }
+    func updateInitialSurveyServiceAgreementRecommendation(
+        companyId: String,
+        serviceStopId: String,
+        recommendedPriceCents: Int,
+        rateType: String,
+        notes: String,
+        recommendedByUserId: String,
+        recommendedByUserName: String
+    ) async throws {
+    }
+    func updateFieldJobEstimatePlan(
+        companyId: String,
+        serviceStopId: String,
+        planId: String,
+        title: String,
+        notes: String,
+        recommendedPriceCents: Int,
+        planTier: Int,
+        taskCount: Int,
+        plannedStopCount: Int,
+        materialCount: Int,
+        recommendedByUserId: String,
+        recommendedByUserName: String
+    ) async throws {
+    }
     func updateServiceStopIsInvoiced(companyId:String,serviceStopId:String,isInvoiced:Bool) async throws{
         
     }
@@ -1615,6 +1657,17 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateServicestopOperationStatus(companyId: String, serviceStopId: String, operationStatus: ServiceStopOperationStatus) async throws {
             //DEVELOPER
         
+    }
+
+    func finishServiceStopImmediately(
+        companyId: String,
+        serviceStop: ServiceStop,
+        endTime: Date,
+        duration: Int?,
+        completedByUserId: String,
+        sendServiceReport: Bool
+    ) async throws {
+            //DEVELOPER
     }
     
     func updateServicestopBillingStatus(companyId: String, serviceStop: ServiceStop, billingStatus: ServiceStopBillingStatus) async throws {
@@ -1945,6 +1998,12 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func getDripDropAlertsCount(companyId:String) async throws -> Int {
         return 1
+    }
+    func updateDripDropAlertStatus(companyId:String, alertId:String, status:String) async throws {
+        
+    }
+    func updatePersonalAlertStatus(userId:String, alertId:String, status:String) async throws {
+        
     }
     func getLaborContract(companyId: String, laborContractId: String) async throws -> ReccuringLaborContract {
         return MockDataService.mockRecurringLaborContracts.first!
@@ -3756,8 +3815,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
             "290","292","294","296",
-            "400","410","412","414","416",
-            "600","610","612","614","616","620","622","624","626",
+            "400","410","412","414","416","430","432","434","436","438",
+            "600","610","612","614","616","620","622","624","626","627","628",
             "800","810","812","814","816","820","822","824","826","830","832","834","836",
             "840","842","844","846","850","852","854","856","860","862","864","866",
             "870","872","874","876","880","882","884","886",
@@ -3770,8 +3829,8 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
             "200","210","220","230","232","234","236","240","242","244","246",
             "250","252","254","256","260","262","264","266","280","282","284","286",
             "290","292","294","296",
-            "400",
-            "600","610","612","614","616","620","622","624","626",
+            "400","430","432","434","436","438",
+            "600","610","612","614","616","620","622","624","626","627","628",
             "800","810","812","814","816","820","822","824","826","830","832","834","836",
             "840","842","844","846","850","852","854","856","860","862","864","866",
             "870","872","874","876","880","882","884","886","900"
@@ -6991,7 +7050,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.type.stringValue:equipment.typeStorageValue,
             Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.makeId.stringValue:equipment.makeId,
@@ -8173,7 +8232,27 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
      */
     
     func deleteJob(companyId:String,jobId:String) async throws {
-        try await workOrderDocument(workOrderId: jobId, companyId: companyId).delete()
+        let jobRef = workOrderDocument(workOrderId: jobId, companyId: companyId)
+        let jobSnapshot = try await jobRef.getDocument()
+
+        if jobSnapshot.exists {
+            let job = try jobSnapshot.data(as: Job.self)
+            if job.operationStatus == .finished {
+                throw DeleteProtectionError.finishedJob
+            }
+
+            for serviceStopId in job.serviceStopIds {
+                let serviceStopSnapshot = try await serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId).getDocument()
+                guard serviceStopSnapshot.exists else { continue }
+
+                let serviceStop = try serviceStopSnapshot.data(as: ServiceStop.self)
+                if serviceStop.operationStatus == .finished || serviceStop.endTime != nil {
+                    throw DeleteProtectionError.jobHasFinishedServiceStop
+                }
+            }
+        }
+
+        try await jobRef.delete()
     }
     func deletePart(companyId:String,jobId:String,part:WODBItem,category:String) async throws {
         
@@ -8189,11 +8268,29 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         
     }
     func deleteServiceStop(companyId:String,serviceStop:ServiceStop)async throws {
+        if serviceStop.operationStatus == .finished || serviceStop.endTime != nil {
+            throw DeleteProtectionError.finishedServiceStop
+        }
+
         try await serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).delete()
         
     }
     func deleteServiceStopById(companyId:String,serviceStopId:String)async throws {
-        try await serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId).delete()
+        let ref = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+        let serviceStopSnapshot = try await ref.getDocument()
+        let serviceStop: ServiceStop?
+        if serviceStopSnapshot.exists {
+            serviceStop = try serviceStopSnapshot.data(as: ServiceStop.self)
+        } else {
+            serviceStop = nil
+        }
+
+        if let serviceStop,
+           serviceStop.operationStatus == .finished || serviceStop.endTime != nil {
+            throw DeleteProtectionError.finishedServiceStop
+        }
+
+        try await ref.delete()
         
     }
     func deleteEquipment(companyId:String,equipmentId:String) async throws {

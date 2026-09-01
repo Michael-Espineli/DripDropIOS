@@ -239,6 +239,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     private var serviceStopDepartureTimes: [String: Date] = [:]
     private var dismissedServiceStopEndPromptIds: Set<String> = []
     private var notifiedServiceStopEndPromptIds: Set<String> = []
+    private var optimisticServiceStopOverrides: [String: ServiceStop] = [:]
 
     // Summary log tracking
     @Published private(set) var currentSummaryLogId: String? = nil
@@ -407,6 +408,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         self.activeRoute = nil
         self.recurringRoute = nil
         self.serviceStopList.removeAll()
+        self.optimisticServiceStopOverrides.removeAll()
         resetServiceStopArrivalState()
         
         // The issue occures because active Route comes back nil when it should not
@@ -440,11 +442,12 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             date: date,
             techId: user.id
         ) { [weak self] stops in
-            self?.serviceStopList = stops
-            self?.reconcileServiceStopArrivalState()
+            guard let self else { return }
+            self.serviceStopList = self.serviceStopsApplyingOptimisticUpdates(to: stops)
+            self.reconcileServiceStopArrivalState()
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Service Stop Listener: ", stops.count)
-            self?.recompute(companyId: companyId, whoCalled: "SS", user: user, date: date)
+            self.recompute(companyId: companyId, whoCalled: "SS", user: user, date: date)
         }
     }
 
@@ -537,6 +540,135 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             recurring: recurringRoute
         )
         ArOrderIsDifferentThanRrORder = orderDiff.isDifferent
+    }
+
+    @discardableResult
+    func optimisticallyFinishServiceStop(_ stop: ServiceStop, endTime: Date = Date()) -> ServiceStop? {
+        let previousStop = serviceStopList.first { $0.id == stop.id }
+        var updatedStop = previousStop ?? stop
+        updatedStop.operationStatus = .finished
+        updatedStop.endTime = endTime
+
+        if let duration = optimisticServiceStopDurationMinutes(startTime: updatedStop.startTime, endTime: endTime) {
+            updatedStop.duration = duration
+        }
+
+        optimisticServiceStopOverrides[updatedStop.id] = updatedStop
+        applyOptimisticServiceStopUpdate(updatedStop)
+        clearServiceStopEndPrompt(serviceStopId: stop.id)
+        clearServiceStopStartPrompt(serviceStopId: stop.id)
+
+        return previousStop
+    }
+
+    @discardableResult
+    func optimisticallyReopenServiceStop(_ stop: ServiceStop) -> ServiceStop? {
+        let previousStop = serviceStopList.first { $0.id == stop.id }
+        var updatedStop = previousStop ?? stop
+        updatedStop.operationStatus = .notFinished
+        updatedStop.endTime = nil
+
+        optimisticServiceStopOverrides[updatedStop.id] = updatedStop
+        applyOptimisticServiceStopUpdate(updatedStop)
+
+        return previousStop
+    }
+
+    @discardableResult
+    func optimisticallySkipServiceStop(_ stop: ServiceStop) -> ServiceStop? {
+        let previousStop = serviceStopList.first { $0.id == stop.id }
+        var updatedStop = previousStop ?? stop
+        updatedStop.operationStatus = .skipped
+
+        optimisticServiceStopOverrides[updatedStop.id] = updatedStop
+        applyOptimisticServiceStopUpdate(updatedStop)
+        clearServiceStopEndPrompt(serviceStopId: stop.id)
+        clearServiceStopStartPrompt(serviceStopId: stop.id)
+
+        return previousStop
+    }
+
+    func restoreServiceStopAfterOptimisticUpdate(_ stop: ServiceStop) {
+        optimisticServiceStopOverrides.removeValue(forKey: stop.id)
+        applyOptimisticServiceStopUpdate(stop)
+    }
+
+    private func applyOptimisticServiceStopUpdate(_ updatedStop: ServiceStop) {
+        if let index = serviceStopList.firstIndex(where: { $0.id == updatedStop.id }) {
+            serviceStopList[index] = updatedStop
+        } else {
+            serviceStopList.append(updatedStop)
+        }
+
+        refreshRouteTotalsFromLocalStops()
+        refreshRoutePresentationFromCurrentState()
+    }
+
+    private func refreshRouteTotalsFromLocalStops() {
+        let totalCount = serviceStopList.count
+        let finishedCount = serviceStopList.filter { $0.operationStatus == .finished }.count
+
+        totalStops = totalCount
+        finishedStops = finishedCount
+        estimateDuration = serviceStopList.reduce(0) { $0 + $1.duration }
+
+        guard var route = activeRoute else { return }
+
+        route.serviceStopsIds = serviceStopList.map(\.id)
+        route.totalStops = totalCount
+        route.finishedStops = finishedCount
+        route.status = optimisticActiveRouteStatus(
+            route: route,
+            totalCount: totalCount,
+            finishedCount: finishedCount
+        )
+
+        activeRoute = route
+    }
+
+    private func optimisticActiveRouteStatus(
+        route: ActiveRoute,
+        totalCount: Int,
+        finishedCount: Int
+    ) -> ActiveRouteStatus {
+        guard totalCount > 0 else { return route.status }
+
+        if finishedCount == totalCount {
+            return route.endMilage != nil && route.endTime != nil ? .finished : .inProgress
+        }
+
+        if finishedCount == 0 {
+            return route.startTime == nil ? .didNotStart : .inProgress
+        }
+
+        return .inProgress
+    }
+
+    private func optimisticServiceStopDurationMinutes(startTime: Date?, endTime: Date) -> Int? {
+        guard let startTime, endTime > startTime else { return nil }
+        return max(1, minBetween(start: startTime, end: endTime))
+    }
+
+    private func serviceStopsApplyingOptimisticUpdates(to stops: [ServiceStop]) -> [ServiceStop] {
+        guard !optimisticServiceStopOverrides.isEmpty else { return stops }
+
+        var resolvedStops: [ServiceStop] = []
+
+        for stop in stops {
+            guard let optimisticStop = optimisticServiceStopOverrides[stop.id] else {
+                resolvedStops.append(stop)
+                continue
+            }
+
+            if stop.operationStatus == optimisticStop.operationStatus {
+                optimisticServiceStopOverrides.removeValue(forKey: stop.id)
+                resolvedStops.append(stop)
+            } else {
+                resolvedStops.append(optimisticStop)
+            }
+        }
+
+        return resolvedStops
     }
     
     func updateServiceStopStatus(companyId:String, stopId: String, status: ServiceStopOperationStatus) {

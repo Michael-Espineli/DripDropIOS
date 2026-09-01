@@ -19,6 +19,7 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
     var id : String = "com_equ_" + UUID().uuidString
     var name: String
     var type: EquipmentCategory
+    var customTypeName: String
     var typeId: String
     var make : String
     var makeId :String //For Universal Equipment Says Custom If Not Selected
@@ -51,6 +52,7 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         id: String,
         name :String,
         type :EquipmentCategory,
+        customTypeName: String = "",
         typeId : String,
         make : String,
         makeId : String,
@@ -84,6 +86,7 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.name = name
 
         self.type = type
+        self.customTypeName = type == .other ? customTypeName : ""
         self.typeId = typeId
         self.make = make
         self.makeId = makeId
@@ -117,6 +120,7 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             case name = "name"
 
             case type = "type"
+            case customTypeName = "customTypeName"
             case typeId = "typeId"
             case make = "make"
             case makeId = "makeId"
@@ -188,7 +192,14 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
         self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
 
         let typeRaw = try container.decodeIfPresent(String.self, forKey: .type) ?? EquipmentCategory.autoChlorinator.rawValue
-        self.type = EquipmentCategory(rawValue: typeRaw) ?? .autoChlorinator
+        let storedCustomTypeName = try container.decodeIfPresent(String.self, forKey: .customTypeName) ?? ""
+        if let decodedCategory = EquipmentCategory(rawValue: typeRaw) {
+            self.type = decodedCategory
+            self.customTypeName = decodedCategory == .other ? storedCustomTypeName : ""
+        } else {
+            self.type = .other
+            self.customTypeName = typeRaw
+        }
 
         self.typeId = try container.decodeIfPresent(String.self, forKey: .typeId) ?? ""
         self.make = try container.decodeIfPresent(String.self, forKey: .make) ?? ""
@@ -232,9 +243,61 @@ struct Equipment:Identifiable,Codable,Equatable,Hashable{
             ?? true
         self.dateUninstalled = try container.decodeIfPresent(Date.self, forKey: .dateUninstalled)
     }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(typeStorageValue, forKey: .type)
+        if !customTypeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            try container.encode(customTypeName, forKey: .customTypeName)
+        }
+        try container.encode(typeId, forKey: .typeId)
+        try container.encode(make, forKey: .make)
+        try container.encode(makeId, forKey: .makeId)
+        try container.encode(model, forKey: .model)
+        try container.encode(modelId, forKey: .modelId)
+        try container.encode(universalEquipmentId, forKey: .universalEquipmentId)
+        try container.encode(manualPdfLink, forKey: .manualPdfLink)
+        try container.encodeIfPresent(dateInstalled, forKey: .dateInstalled)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
+        try container.encode(status, forKey: .status)
+        try container.encode(needsService, forKey: .needsService)
+        try container.encodeIfPresent(cleanFilterPressure, forKey: .cleanFilterPressure)
+        try container.encodeIfPresent(currentPressure, forKey: .currentPressure)
+        try container.encodeIfPresent(lastServiceDate, forKey: .lastServiceDate)
+        try container.encodeIfPresent(serviceFrequency, forKey: .serviceFrequency)
+        try container.encodeIfPresent(serviceFrequencyEvery, forKey: .serviceFrequencyEvery)
+        try container.encodeIfPresent(nextServiceDate, forKey: .nextServiceDate)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(customerName, forKey: .customerName)
+        try container.encode(customerId, forKey: .customerId)
+        try container.encode(serviceLocationId, forKey: .serviceLocationId)
+        try container.encode(bodyOfWaterId, forKey: .bodyOfWaterId)
+        try container.encodeIfPresent(photoUrls, forKey: .photoUrls)
+        try container.encode(isActive, forKey: .isActive)
+        try container.encodeIfPresent(dateUninstalled, forKey: .dateUninstalled)
+    }
 }
 
 extension Equipment {
+    var typeDisplayName: String {
+        let customName = customTypeName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if type == .other, !customName.isEmpty {
+            return customName
+        }
+        return type.rawValue
+    }
+
+    var typeStorageValue: String {
+        typeDisplayName
+    }
+
+    var isFilterEquipment: Bool {
+        type == .filter || typeDisplayName.localizedCaseInsensitiveContains("filter")
+    }
+
     var dateForGeneratedParts: Date {
         dateInstalled ?? createdAt ?? Date()
     }
@@ -293,7 +356,7 @@ private func catalogEquipmentId(for equipment: Equipment) -> String {
 }
 
 private func universalEquipmentSuggestionFlags(for equipment: Equipment) -> UniversalEquipmentSuggestionSyncFlags {
-    let type = cleanUniversalSuggestionText(equipment.type.rawValue)
+    let type = cleanUniversalSuggestionText(equipment.typeStorageValue)
     let make = cleanUniversalSuggestionText(equipment.make)
     let model = cleanUniversalSuggestionText(equipment.model)
 
@@ -347,13 +410,11 @@ private func queueUniversalEquipmentSuggestion(
 
     let suggestionId = universalEquipmentSuggestionId(for: equipmentId)
     let suggestionRef = db.collection("universalEquipmentSuggestions").document(suggestionId)
-    let existingSuggestion = try? await suggestionRef.getDocument()
-    let existingStatus = cleanUniversalSuggestionText(existingSuggestion?.data()?["status"] as? String ?? "")
     let currentUser = Auth.auth().currentUser
 
     var payload: [String: Any] = [
         "id": suggestionId,
-        "status": !existingStatus.isEmpty && existingStatus != universalEquipmentSuggestionReconciledStatus ? existingStatus : "New",
+        "status": "New",
         "source": source,
         "companyId": companyId,
         "companyName": "",
@@ -366,7 +427,7 @@ private func queueUniversalEquipmentSuggestion(
         "customerName": cleanUniversalSuggestionText(equipment.customerName),
         "serviceLocationId": cleanUniversalSuggestionText(equipment.serviceLocationId),
         "bodyOfWaterId": cleanUniversalSuggestionText(equipment.bodyOfWaterId),
-        "type": cleanUniversalSuggestionText(equipment.type.rawValue),
+        "type": cleanUniversalSuggestionText(equipment.typeStorageValue),
         "typeId": cleanUniversalSuggestionText(equipment.typeId),
         "make": cleanUniversalSuggestionText(equipment.make),
         "makeId": cleanUniversalSuggestionText(equipment.makeId),
@@ -378,10 +439,8 @@ private func queueUniversalEquipmentSuggestion(
         "notes": cleanUniversalSuggestionText(equipment.notes),
     ]
 
-    if existingSuggestion?.exists != true {
-        payload["createdAt"] = FieldValue.serverTimestamp()
-        payload["createdAtMillis"] = Int(Date().timeIntervalSince1970 * 1000)
-    }
+    payload["createdAt"] = FieldValue.serverTimestamp()
+    payload["createdAtMillis"] = Int(Date().timeIntervalSince1970 * 1000)
 
     try await suggestionRef.setData(payload, merge: true)
 }
@@ -395,18 +454,15 @@ private func markUniversalEquipmentSuggestionReconciled(
     guard !equipmentId.isEmpty, !universalEquipmentId.isEmpty else { return }
 
     let suggestionRef = db.collection("universalEquipmentSuggestions").document(universalEquipmentSuggestionId(for: equipmentId))
-    let suggestionSnap = try? await suggestionRef.getDocument()
-    guard suggestionSnap?.exists == true else { return }
-
     let currentUser = Auth.auth().currentUser
-    try await suggestionRef.updateData([
+    try? await suggestionRef.updateData([
         "status": universalEquipmentSuggestionReconciledStatus,
         "reconciledAt": FieldValue.serverTimestamp(),
         "reconciledByUserId": currentUser?.uid ?? "",
         "reconciledByEmail": currentUser?.email ?? "",
         "reconciledEquipmentId": equipmentId,
         "reconciledUniversalEquipmentId": universalEquipmentId,
-        "reconciledType": cleanUniversalSuggestionText(equipment.type.rawValue),
+        "reconciledType": cleanUniversalSuggestionText(equipment.typeStorageValue),
         "reconciledTypeId": cleanUniversalSuggestionText(equipment.typeId),
         "reconciledMake": cleanUniversalSuggestionText(equipment.make),
         "reconciledMakeId": cleanUniversalSuggestionText(equipment.makeId),
@@ -978,7 +1034,7 @@ extension ProductionDataService {
         let nextServiceDateValue: Any = equipment.needsService ? (equipment.maintenanceDueDateForFollowUp.map { $0 as Any } ?? FieldValue.delete()) : FieldValue.delete()
         try await equipmentRef.updateData([
             Equipment.CodingKeys.name.stringValue:equipment.name,
-            Equipment.CodingKeys.type.stringValue:equipment.type.rawValue,
+            Equipment.CodingKeys.type.stringValue:equipment.typeStorageValue,
             Equipment.CodingKeys.typeId.stringValue:equipment.typeId,
             Equipment.CodingKeys.make.stringValue:equipment.make,
             Equipment.CodingKeys.makeId.stringValue:equipment.makeId,

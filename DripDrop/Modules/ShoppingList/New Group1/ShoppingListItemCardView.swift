@@ -17,13 +17,22 @@ final class ShoppingListItemCardViewModel: ObservableObject {
     }
 
     @Published private(set) var dataBaseItem: DataBaseItem? = nil
+    @Published private(set) var productItem: GenericItem? = nil
     @Published private(set) var job: Job? = nil
 
     func onLoad(
         companyId: String,
         shoppingListItem: ShoppingListItem
     ) async throws {
-        if let databaseItemId = databaseItemId(for: shoppingListItem) {
+        dataBaseItem = nil
+        productItem = nil
+
+        if let productItemId = productItemId(for: shoppingListItem) {
+            self.productItem = try? await dataService.getDataBaseItem(
+                companyId: companyId,
+                genericItemId: productItemId
+            )
+        } else if let databaseItemId = databaseItemId(for: shoppingListItem) {
             self.dataBaseItem = try? await dataService.getDataBaseItem(
                 companyId: companyId,
                 dataBaseItemId: databaseItemId
@@ -58,6 +67,26 @@ final class ShoppingListItemCardViewModel: ObservableObject {
         if shoppingListItem.subCategory == .dataBase,
            !shoppingListItem.genericItemId.isEmpty {
             return shoppingListItem.genericItemId
+        }
+
+        return nil
+    }
+
+    private func productItemId(for shoppingListItem: ShoppingListItem) -> String? {
+        if let productId = shoppingListItem.productId,
+           !productId.isEmpty {
+            return productId
+        }
+
+        if shoppingListItem.subCategory == .product,
+           !shoppingListItem.genericItemId.isEmpty {
+            return shoppingListItem.genericItemId
+        }
+
+        if shoppingListItem.itemType == ShoppingListSubCategory.product.rawValue,
+           let itemId = shoppingListItem.itemId,
+           !itemId.isEmpty {
+            return itemId
         }
 
         return nil
@@ -318,6 +347,16 @@ extension ShoppingListItemCardView {
             return shoppingListItem.name
         }
 
+        if let productName = shoppingListItem.productName,
+           !productName.isEmpty {
+            return productName
+        }
+
+        if let dbItemName = shoppingListItem.dbItemName,
+           !dbItemName.isEmpty {
+            return dbItemName
+        }
+
         if let purchasedItem = shoppingListItem.purchasedItem,
            !purchasedItem.isEmpty {
             return purchasedItem
@@ -347,7 +386,15 @@ extension ShoppingListItemCardView {
     }
 
     private var hasDatabaseItemPricingContext: Bool {
+        if viewModel.productItem != nil {
+            return true
+        }
+
         if viewModel.dataBaseItem != nil {
+            return true
+        }
+
+        if productItemId != nil {
             return true
         }
 
@@ -360,6 +407,13 @@ extension ShoppingListItemCardView {
     }
 
     private var customerUnitPriceCents: Int? {
+        if let productItem = viewModel.productItem {
+            let sellPrice = productItem.productSellPriceCents
+            if sellPrice > 0 {
+                return sellPrice
+            }
+        }
+
         if let sellPrice = viewModel.dataBaseItem?.sellPrice,
            sellPrice > 0 {
             return Int(sellPrice.rounded())
@@ -369,14 +423,41 @@ extension ShoppingListItemCardView {
     }
 
     private var customerTotalPriceCents: Int? {
+        let quantity = Double(shoppingListItem.quantity ?? "") ?? 1
+
+        if let productItem = viewModel.productItem {
+            let sellPrice = productItem.productSellPriceCents
+            if sellPrice > 0 {
+                return Int((Double(sellPrice) * quantity).rounded())
+            }
+        }
+
         if let sellPrice = viewModel.dataBaseItem?.sellPrice,
            sellPrice > 0 {
-            let quantity = Double(shoppingListItem.quantity ?? "") ?? 1
-
             return Int((sellPrice * quantity).rounded())
         }
 
         return shoppingListItem.plannedTotalPriceCents
+    }
+
+    private var productItemId: String? {
+        if let productId = shoppingListItem.productId,
+           !productId.isEmpty {
+            return productId
+        }
+
+        if shoppingListItem.subCategory == .product,
+           !shoppingListItem.genericItemId.isEmpty {
+            return shoppingListItem.genericItemId
+        }
+
+        if shoppingListItem.itemType == ShoppingListSubCategory.product.rawValue,
+           let itemId = shoppingListItem.itemId,
+           !itemId.isEmpty {
+            return itemId
+        }
+
+        return nil
     }
 
     private var contextText: String? {
@@ -440,6 +521,9 @@ extension ShoppingListItemCardView {
 
     private var iconName: String {
         switch shoppingListItem.subCategory {
+        case .product:
+            return "shippingbox.fill"
+
         case .chemical:
             return "drop"
 

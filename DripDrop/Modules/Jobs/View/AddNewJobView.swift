@@ -453,6 +453,14 @@ final class AddNewJobViewModel:ObservableObject{
             updatedItem.jobId = jobId
             updatedItem.customerId = customer.id
             updatedItem.customerName = fullCustomerName
+            updatedItem.prepKeys = ShoppingPrepKeyBuilder.keysForJobMaterial(
+                jobId: jobId,
+                customerId: customer.id,
+                serviceLocationId: serviceLocation.id
+            )
+            updatedItem.shoppingListActive = job.activatesShoppingListMaterials
+            updatedItem.needsAction = updatedItem.shoppingListActive && updatedItem.status.needsShoppingAction
+            updatedItem.actionDate = updatedItem.shoppingListActive ? (updatedItem.actionDate ?? Date()) : nil
 
             try await dataService.addNewShoppingListItem(
                 companyId: companyId,
@@ -603,6 +611,14 @@ final class AddNewJobViewModel:ObservableObject{
                 customerName: "",
                 userId: nil,
                 userName: nil,
+                prepKeys: ShoppingPrepKeyBuilder.keysForJobMaterial(
+                    jobId: jobId,
+                    customerId: "",
+                    serviceLocationId: ""
+                ),
+                needsAction: false,
+                shoppingListActive: false,
+                actionDate: nil,
                 dbItemId: templateItem.dbItemId,
                 purchasedItem: nil,
                 invoiced: false,

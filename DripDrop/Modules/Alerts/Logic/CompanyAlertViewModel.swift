@@ -36,14 +36,26 @@ struct DripDropAlertShare: Hashable, Codable {
     var audience:String?
 }
 
+struct DripDropAlertNotificationSource: Hashable {
+    var scope:String
+    var id:String
+}
+
 struct DripDropAlert:Identifiable,Hashable,Codable{
     var id:String = UUID().uuidString
+    var companyId:String? = nil
     var category:MacCategories
     var route:RouteString
     var itemId:String
     var name:String
     var description:String
     var date:Date
+    var read:Bool? = nil
+    var readAt:Date? = nil
+    var archivedAt:Date? = nil
+    var scheduledFor:Date? = nil
+    var deliveryAt:Date? = nil
+    var dueAt:Date? = nil
     var status:String? = nil
     var severity:String? = nil
     var source:String? = nil
@@ -51,20 +63,30 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
     var chatId:String? = nil
     var targetScope:String? = nil
     var assignedToUserId:String? = nil
+    var assignedToName:String? = nil
     var recipientUserId:String? = nil
     var recipientCompanyId:String? = nil
     var routePath:String? = nil
     var relatedEntity:DripDropAlertRelatedEntity? = nil
     var share:DripDropAlertShare? = nil
+    var notificationScope:String? = nil
+    var notificationSources:[DripDropAlertNotificationSource] = []
 
     init(
         id:String = UUID().uuidString,
+        companyId:String? = nil,
         category:MacCategories,
         route:RouteString,
         itemId:String,
         name:String,
         description:String,
         date:Date,
+        read:Bool? = nil,
+        readAt:Date? = nil,
+        archivedAt:Date? = nil,
+        scheduledFor:Date? = nil,
+        deliveryAt:Date? = nil,
+        dueAt:Date? = nil,
         status:String? = nil,
         severity:String? = nil,
         source:String? = nil,
@@ -72,19 +94,29 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         chatId:String? = nil,
         targetScope:String? = nil,
         assignedToUserId:String? = nil,
+        assignedToName:String? = nil,
         recipientUserId:String? = nil,
         recipientCompanyId:String? = nil,
         routePath:String? = nil,
         relatedEntity:DripDropAlertRelatedEntity? = nil,
-        share:DripDropAlertShare? = nil
+        share:DripDropAlertShare? = nil,
+        notificationScope:String? = nil,
+        notificationSources:[DripDropAlertNotificationSource] = []
     ) {
         self.id = id
+        self.companyId = companyId
         self.category = category
         self.route = route
         self.itemId = itemId
         self.name = name
         self.description = description
         self.date = date
+        self.read = read
+        self.readAt = readAt
+        self.archivedAt = archivedAt
+        self.scheduledFor = scheduledFor
+        self.deliveryAt = deliveryAt
+        self.dueAt = dueAt
         self.status = status
         self.severity = severity
         self.source = source
@@ -92,15 +124,19 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         self.chatId = chatId
         self.targetScope = targetScope
         self.assignedToUserId = assignedToUserId
+        self.assignedToName = assignedToName
         self.recipientUserId = recipientUserId
         self.recipientCompanyId = recipientCompanyId
         self.routePath = routePath
         self.relatedEntity = relatedEntity
         self.share = share
+        self.notificationScope = notificationScope
+        self.notificationSources = notificationSources
     }
 
     enum CodingKeys: String, CodingKey {
         case id
+        case companyId
         case category
         case route
         case itemId
@@ -111,6 +147,12 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         case date
         case createdAt
         case updatedAt
+        case read
+        case readAt
+        case archivedAt
+        case scheduledFor
+        case deliveryAt
+        case dueAt
         case status
         case severity
         case source
@@ -118,6 +160,7 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         case chatId
         case targetScope
         case assignedToUserId
+        case assignedToName
         case recipientUserId
         case recipientCompanyId
         case routePath
@@ -138,6 +181,7 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         let routePath = rawRoute?.hasPrefix("/") == true ? rawRoute : nil
 
         self.id = (try? container.decodeIfPresent(String.self, forKey: .id)) ?? UUID().uuidString
+        self.companyId = try? container.decodeIfPresent(String.self, forKey: .companyId)
         self.category = (try? container.decodeIfPresent(MacCategories.self, forKey: .category)) ?? routeAndCategory.category
         self.route = decodedRoute ?? routeAndCategory.route
         self.itemId =
@@ -165,23 +209,34 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
             (try? container.decodeIfPresent(Date.self, forKey: .createdAt)) ??
             (try? container.decodeIfPresent(Date.self, forKey: .updatedAt)) ??
             Date()
-        self.status = try? container.decodeIfPresent(String.self, forKey: .status)
+        self.read = try? container.decodeIfPresent(Bool.self, forKey: .read)
+        self.readAt = try? container.decodeIfPresent(Date.self, forKey: .readAt)
+        self.archivedAt = try? container.decodeIfPresent(Date.self, forKey: .archivedAt)
+        self.scheduledFor = try? container.decodeIfPresent(Date.self, forKey: .scheduledFor)
+        self.deliveryAt = try? container.decodeIfPresent(Date.self, forKey: .deliveryAt)
+        self.dueAt = try? container.decodeIfPresent(Date.self, forKey: .dueAt)
+        let decodedStatus = try? container.decodeIfPresent(String.self, forKey: .status)
+        self.status = decodedStatus ?? (self.read == true ? "read" : nil)
         self.severity = try? container.decodeIfPresent(String.self, forKey: .severity)
         self.source = try? container.decodeIfPresent(String.self, forKey: .source)
         self.sourceId = try? container.decodeIfPresent(String.self, forKey: .sourceId)
         self.chatId = try? container.decodeIfPresent(String.self, forKey: .chatId)
         self.targetScope = try? container.decodeIfPresent(String.self, forKey: .targetScope)
         self.assignedToUserId = try? container.decodeIfPresent(String.self, forKey: .assignedToUserId)
+        self.assignedToName = try? container.decodeIfPresent(String.self, forKey: .assignedToName)
         self.recipientUserId = try? container.decodeIfPresent(String.self, forKey: .recipientUserId)
         self.recipientCompanyId = try? container.decodeIfPresent(String.self, forKey: .recipientCompanyId)
         self.routePath = routePath
         self.relatedEntity = decodedRelatedEntity
         self.share = decodedShare
+        self.notificationScope = nil
+        self.notificationSources = []
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(companyId, forKey: .companyId)
         try container.encode(category, forKey: .category)
         try container.encode(route, forKey: .route)
         try container.encode(itemId, forKey: .itemId)
@@ -190,6 +245,12 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         try container.encode(description, forKey: .description)
         try container.encode(description, forKey: .message)
         try container.encode(date, forKey: .date)
+        try container.encodeIfPresent(read, forKey: .read)
+        try container.encodeIfPresent(readAt, forKey: .readAt)
+        try container.encodeIfPresent(archivedAt, forKey: .archivedAt)
+        try container.encodeIfPresent(scheduledFor, forKey: .scheduledFor)
+        try container.encodeIfPresent(deliveryAt, forKey: .deliveryAt)
+        try container.encodeIfPresent(dueAt, forKey: .dueAt)
         try container.encodeIfPresent(status, forKey: .status)
         try container.encodeIfPresent(severity, forKey: .severity)
         try container.encodeIfPresent(source, forKey: .source)
@@ -197,6 +258,7 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         try container.encodeIfPresent(chatId, forKey: .chatId)
         try container.encodeIfPresent(targetScope, forKey: .targetScope)
         try container.encodeIfPresent(assignedToUserId, forKey: .assignedToUserId)
+        try container.encodeIfPresent(assignedToName, forKey: .assignedToName)
         try container.encodeIfPresent(recipientUserId, forKey: .recipientUserId)
         try container.encodeIfPresent(recipientCompanyId, forKey: .recipientCompanyId)
         try container.encodeIfPresent(routePath, forKey: .routePath)
@@ -243,6 +305,210 @@ struct DripDropAlert:Identifiable,Hashable,Codable{
         case .other:
             return (.alerts, .alerts)
         }
+    }
+}
+
+extension DripDropAlert {
+    var displayTitle:String {
+        firstNonEmpty(name, share?.title, relatedEntity?.label, "Notification")
+    }
+
+    var displayDescription:String {
+        firstNonEmpty(description, share?.subtitle)
+    }
+
+    var displayCategoryTitle:String {
+        let type = firstNonEmpty(relatedEntity?.type, share?.type)
+        if !type.isEmpty {
+            return ConversationLinkType.normalized(type).displayName
+        }
+
+        return category.title()
+    }
+
+    var displayStatusTitle:String {
+        switch normalizedStatus {
+        case "archived":
+            return "Dismissed"
+        case "read":
+            return "Read"
+        case "scheduled":
+            return "Scheduled"
+        default:
+            return isScheduled ? "Scheduled" : "Unread"
+        }
+    }
+
+    var displaySeverityTitle:String {
+        switch normalizedSeverity {
+        case "critical":
+            return "Critical"
+        case "warning":
+            return "Warning"
+        case "success":
+            return "Success"
+        default:
+            return "Info"
+        }
+    }
+
+    var isArchived:Bool {
+        normalizedStatus == "archived"
+    }
+
+    var isUnread:Bool {
+        !isArchived && (
+            normalizedStatus == "unread" ||
+            read == false ||
+            (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && readAt == nil
+        )
+    }
+
+    var isScheduled:Bool {
+        guard let scheduledDate = scheduledDate else { return false }
+        return !isArchived && scheduledDate > Date()
+    }
+
+    var needsAttention:Bool {
+        !isArchived && isUnread && !isScheduled
+    }
+
+    var scheduledDate:Date? {
+        scheduledFor ?? deliveryAt ?? dueAt
+    }
+
+    var notificationSourceList:[DripDropAlertNotificationSource] {
+        if !notificationSources.isEmpty {
+            return notificationSources
+        }
+
+        return [
+            DripDropAlertNotificationSource(
+                scope: notificationScope ?? "company",
+                id: id
+            )
+        ]
+    }
+
+    var mergeKey:String {
+        let cleanSourceId = firstNonEmpty(sourceId)
+        if !cleanSourceId.isEmpty {
+            return "\(firstNonEmpty(source, "source")):\(cleanSourceId)"
+        }
+
+        let sharedRecordId = firstNonEmpty(share?.recordId, share?.id, relatedEntity?.id)
+        let cleanChatId = firstNonEmpty(chatId)
+        if !cleanChatId.isEmpty && !sharedRecordId.isEmpty {
+            return "chat:\(cleanChatId):\(sharedRecordId)"
+        }
+
+        return "\(notificationScope ?? "alert"):\(id)"
+    }
+
+    func taggedForNotificationSource(scope:String) -> DripDropAlert {
+        var copy = self
+        copy.notificationScope = scope
+        copy.notificationSources = [
+            DripDropAlertNotificationSource(scope: scope, id: id)
+        ]
+        return copy
+    }
+
+    func belongsToCompany(_ companyId:String) -> Bool {
+        let cleanCompanyId = companyId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleanCompanyId.isEmpty {
+            return true
+        }
+
+        return [
+            self.companyId,
+            recipientCompanyId,
+            relatedEntity?.companyId,
+            share?.companyId
+        ].contains { value in
+            value?.trimmingCharacters(in: .whitespacesAndNewlines) == cleanCompanyId
+        }
+    }
+
+    func isVisible(toUserId userId:String) -> Bool {
+        let cleanUserId = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cleanUserId.isEmpty {
+            return true
+        }
+
+        let directRecipientIds = [
+            recipientUserId,
+            assignedToUserId
+        ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if directRecipientIds.contains(cleanUserId) {
+            return true
+        }
+
+        if notificationScope == "personal" {
+            return true
+        }
+
+        let cleanTargetScope = firstNonEmpty(targetScope).lowercased()
+        if cleanTargetScope == "specific" {
+            return false
+        }
+
+        return directRecipientIds.isEmpty
+    }
+
+    static func mergeForDisplay(_ alerts:[DripDropAlert]) -> [DripDropAlert] {
+        var merged:[String:DripDropAlert] = [:]
+
+        for alert in alerts {
+            let key = alert.mergeKey
+            guard var existing = merged[key] else {
+                merged[key] = alert
+                continue
+            }
+
+            var sources = existing.notificationSourceList
+            for source in alert.notificationSourceList where !sources.contains(source) {
+                sources.append(source)
+            }
+
+            if existing.isArchived && !alert.isArchived {
+                existing = alert
+            } else if existing.isScheduled && alert.needsAttention {
+                existing = alert
+            } else if !existing.isUnread && alert.isUnread {
+                existing = alert
+            }
+
+            existing.notificationSources = sources
+            merged[key] = existing
+        }
+
+        return Array(merged.values)
+    }
+
+    private var normalizedStatus:String {
+        firstNonEmpty(status, read == true ? "read" : "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    private var normalizedSeverity:String {
+        firstNonEmpty(severity, "info")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    private func firstNonEmpty(_ values:String?...) -> String {
+        for value in values {
+            let cleanValue = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !cleanValue.isEmpty {
+                return cleanValue
+            }
+        }
+
+        return ""
     }
 }
 @MainActor
@@ -295,11 +561,65 @@ final class CompanyAlertViewModel:ObservableObject{
     @Published private(set) var vehical:Vehical? = nil
     
     //Functions
-    func getAlertsByCompany(companyId:String) async throws {
-        self.alertList = try await dataService.getDripDropAlerts(companyId: companyId)
+    func getAlertsByCompany(companyId:String, userId:String? = nil) async throws {
+        let companyAlertRecords = try await dataService.getDripDropAlerts(companyId: companyId)
+        let companyAlerts = companyAlertRecords.map { $0.taggedForNotificationSource(scope: "company") }
+        let cleanUserId = (userId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let personalAlerts:[DripDropAlert]
+
+        if cleanUserId.isEmpty {
+            personalAlerts = []
+        } else {
+            let personalAlertRecords = try await dataService.getPersonalAlerts(userId: cleanUserId)
+            personalAlerts = personalAlertRecords.map { $0.taggedForNotificationSource(scope: "personal") }
+        }
+
+        self.alertList = DripDropAlert.mergeForDisplay(personalAlerts + companyAlerts)
+            .filter { $0.belongsToCompany(companyId) }
+            .filter { $0.isVisible(toUserId: cleanUserId) }
+            .sorted { $0.date > $1.date }
     }
     func createAlert(companyId:String,alert:DripDropAlert) async throws {
         try await dataService.addDripDropAlert(companyId: companyId, dripDropAlert: alert)
+    }
+    func markAlertAsRead(companyId:String, userId:String?, alert:DripDropAlert) async throws {
+        try await updateAlertStatus(companyId: companyId, userId: userId, alert: alert, status: "read")
+    }
+    func dismissAlert(companyId:String, userId:String?, alert:DripDropAlert) async throws {
+        try await updateAlertStatus(companyId: companyId, userId: userId, alert: alert, status: "archived")
+    }
+    func dismissAlerts(companyId:String, userId:String?, alerts:[DripDropAlert]) async throws {
+        for alert in alerts {
+            try await dismissAlert(companyId: companyId, userId: userId, alert: alert)
+        }
+    }
+    private func updateAlertStatus(companyId:String, userId:String?, alert:DripDropAlert, status:String) async throws {
+        let cleanUserId = (userId ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        for source in alert.notificationSourceList {
+            if source.scope == "personal" {
+                guard !cleanUserId.isEmpty else { continue }
+                try await dataService.updatePersonalAlertStatus(userId: cleanUserId, alertId: source.id, status: status)
+            } else {
+                try await dataService.updateDripDropAlertStatus(companyId: companyId, alertId: source.id, status: status)
+            }
+        }
+
+        alertList = alertList.compactMap { currentAlert in
+            guard currentAlert.mergeKey == alert.mergeKey else {
+                return currentAlert
+            }
+
+            if status == "archived" {
+                return nil
+            }
+
+            var updatedAlert = currentAlert
+            updatedAlert.status = status
+            updatedAlert.read = status == "read"
+            updatedAlert.readAt = status == "read" ? Date() : nil
+            updatedAlert.archivedAt = status == "archived" ? Date() : nil
+            return updatedAlert
+        }
     }
     func getAlertDestination(companyId:String,alert:DripDropAlert)async throws{
         self.isLoading = true

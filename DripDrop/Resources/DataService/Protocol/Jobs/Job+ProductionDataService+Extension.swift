@@ -546,7 +546,27 @@ extension ProductionDataService {
 
     //DELETE
     func deleteJob(companyId:String,jobId:String) async throws {
-        try await workOrderDocument(workOrderId: jobId, companyId: companyId).delete()
+        let jobRef = workOrderDocument(workOrderId: jobId, companyId: companyId)
+        let jobSnapshot = try await jobRef.getDocument()
+
+        if jobSnapshot.exists {
+            let job = try jobSnapshot.data(as: Job.self)
+            if job.operationStatus == .finished {
+                throw DeleteProtectionError.finishedJob
+            }
+
+            for serviceStopId in job.serviceStopIds {
+                let serviceStopSnapshot = try await serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId).getDocument()
+                guard serviceStopSnapshot.exists else { continue }
+
+                let serviceStop = try serviceStopSnapshot.data(as: ServiceStop.self)
+                if serviceStop.operationStatus == .finished || serviceStop.endTime != nil {
+                    throw DeleteProtectionError.jobHasFinishedServiceStop
+                }
+            }
+        }
+
+        try await jobRef.delete()
     }
     func deletePart(companyId:String,jobId:String,part:WODBItem,category:String) async throws {
         print("Delete Part")

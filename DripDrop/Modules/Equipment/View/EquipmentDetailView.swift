@@ -361,7 +361,7 @@
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(.primary)
 
-                        Text(activeEquipment.type.rawValue)
+                        Text(activeEquipment.typeDisplayName)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -402,7 +402,7 @@
                 }
 
                 VStack(spacing: 8) {
-                    detailRow(title: "Category", value: activeEquipment.type.rawValue, systemImage: "square.grid.2x2")
+                    detailRow(title: "Category", value: activeEquipment.typeDisplayName, systemImage: "square.grid.2x2")
                     detailRow(title: "Make", value: activeEquipment.make, systemImage: "tag")
                     detailRow(title: "Model", value: activeEquipment.model, systemImage: "cube")
                     detailRow(title: "Date Installed", value: fullDate(date: activeEquipment.dateInstalled), systemImage: "calendar")

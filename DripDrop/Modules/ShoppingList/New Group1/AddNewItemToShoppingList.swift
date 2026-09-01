@@ -25,7 +25,7 @@ struct AddNewItemToShoppingList: View {
 
     @State private var description: String = ""
     @State private var type: ShoppingListCategory = .customer
-    @State private var itemType: ShoppingListSubCategory = .dataBase
+    @State private var itemType: ShoppingListSubCategory = .product
     @State private var quantity: String = "1"
 
     @State private var search: String = ""
@@ -57,6 +57,7 @@ struct AddNewItemToShoppingList: View {
         size: "",
         UOM: .ft
     )
+    @State private var productItem: GenericItem = .emptyProductCatalogItem
 
     @State private var customer: Customer = Customer(
         id: "",
@@ -167,6 +168,11 @@ struct AddNewItemToShoppingList: View {
         .onChange(of: dataBaseItem) { item in
             if item.id != "" {
                 name = item.name
+            }
+        }
+        .onChange(of: productItem) { item in
+            if item.id != "" {
+                name = item.productDisplayName
             }
         }
         .onChange(of: search) { term in
@@ -310,7 +316,7 @@ extension AddNewItemToShoppingList {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 title: "Item",
-                subtitle: "Pick a database item or create a custom item.",
+                subtitle: "Pick a product or create a custom item.",
                 systemImage: "shippingbox"
             )
 
@@ -319,7 +325,8 @@ extension AddNewItemToShoppingList {
                 name: $name,
                 quantity: $quantity,
                 addNewItem: $addNewItem,
-                dataBaseItem: $dataBaseItem
+                dataBaseItem: $dataBaseItem,
+                productItem: $productItem
             )
         }
         .addShoppingCard()
@@ -515,7 +522,7 @@ extension AddNewItemToShoppingList {
                     category: type,
                     subCategory: itemType,
                     purchaserId: user.id,
-                    itemId: selectedDatabaseItemId,
+                    itemId: selectedCatalogItemId,
                     quantiy: quantity,
                     description: description,
                     jobId: selectedJobId,
@@ -526,7 +533,8 @@ extension AddNewItemToShoppingList {
                     serviceLocationId: selectedServiceLocationId,
                     serviceLocationName: selectedServiceLocationName,
                     purchaserName: purchaserName,
-                    name: selectedItemName
+                    name: selectedItemName,
+                    shoppingListActive: selectedShoppingListActive
                 )
 
                 print("Successfully Added Shopping List Item")
@@ -572,9 +580,16 @@ extension AddNewItemToShoppingList {
         }
 
         switch itemType {
+        case .product:
+            if productItem.id == "" {
+                alertMessage = "Please select a product."
+                showAlert = true
+                return false
+            }
+
         case .dataBase:
             if dataBaseItem.id == "" {
-                alertMessage = "Please select a database item."
+                alertMessage = "Please select a vendor item."
                 showAlert = true
                 return false
             }
@@ -620,6 +635,9 @@ extension AddNewItemToShoppingList {
         }
 
         switch itemType {
+        case .product:
+            return productItem.id != ""
+
         case .dataBase:
             return dataBaseItem.id != ""
 
@@ -639,6 +657,10 @@ extension AddNewItemToShoppingList {
     }
 
     private var selectedItemName: String {
+        if itemType == .product, productItem.id != "" {
+            return productItem.productDisplayName
+        }
+
         if itemType == .dataBase, dataBaseItem.id != "" {
             return dataBaseItem.name
         }
@@ -646,12 +668,24 @@ extension AddNewItemToShoppingList {
         return name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var selectedDatabaseItemId: String? {
-        itemType == .dataBase ? dataBaseItem.id : nil
+    private var selectedCatalogItemId: String? {
+        if itemType == .product {
+            return productItem.id
+        }
+
+        if itemType == .dataBase {
+            return dataBaseItem.id
+        }
+
+        return nil
     }
 
     private var selectedJobId: String? {
         type == .job ? job.id : nil
+    }
+
+    private var selectedShoppingListActive: Bool {
+        type == .job ? job.activatesShoppingListMaterials : true
     }
 
     private var selectedCustomerId: String? {
@@ -702,7 +736,9 @@ extension AddNewItemToShoppingList {
             return "Assign this item to a company user."
 
         case .job:
-            return "Attach this item to a job."
+            return job.activatesShoppingListMaterials
+                ? "Attach this item to active job shopping work."
+                : "Attach this item to the job plan until the estimate is accepted."
         }
     }
 

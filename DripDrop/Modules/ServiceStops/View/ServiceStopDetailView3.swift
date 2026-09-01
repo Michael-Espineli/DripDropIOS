@@ -97,7 +97,7 @@ struct ServiceStopDetailView3: View {
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
-                        .disabled(isDeleting)
+                        .disabled(isDeleting || serviceStopDeleteLocked(stop))
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -114,12 +114,17 @@ struct ServiceStopDetailView3: View {
                 Button(isDeleting ? "Deleting..." : "Delete Service Stop", role: .destructive) {
                     deleteServiceStop(stop)
                 }
-                .disabled(isDeleting)
+                .disabled(isDeleting || serviceStopDeleteLocked(stop))
             }
 
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This will delete the service stop and its task/readings history. This cannot be undone.")
+            if let stop = serviceStop,
+               serviceStopDeleteLocked(stop) {
+                Text("Finished service stops cannot be deleted.")
+            } else {
+                Text("This will delete the service stop and its task/readings history. This cannot be undone.")
+            }
         }
         .sheet(isPresented: $showEditSheet) {
             if let stop = serviceStop {
@@ -412,7 +417,8 @@ extension ServiceStopDetailView3 {
             ServiceStopTaskView(
                 dataService: dataService,
                 taskList: $VM.taskList,
-                serviceStopId: stop.id
+                serviceStopId: stop.id,
+                isLoadingTasks: VM.isLoadingTasks
             )
             .frame(minHeight: 220)
         }
@@ -578,6 +584,10 @@ extension ServiceStopDetailView3 {
 // MARK: - Edit
 
 extension ServiceStopDetailView3 {
+    private func serviceStopDeleteLocked(_ stop: ServiceStop) -> Bool {
+        stop.operationStatus == .finished || stop.endTime != nil
+    }
+
     private func prepareEditState(from stop: ServiceStop) {
         editServiceDate = stop.serviceDate
         editTechnicianId = stop.techId
@@ -724,6 +734,13 @@ extension ServiceStopDetailView3 {
     }
 
     private func deleteServiceStop(_ stop: ServiceStop) {
+        if serviceStopDeleteLocked(stop) {
+            alertMessage = "Finished service stops cannot be deleted."
+            showAlert = true
+            showDeleteConfirmation = false
+            return
+        }
+
         guard let company = masterDataManager.currentCompany else {
             alertMessage = "Missing company context."
             showAlert = true
@@ -738,7 +755,7 @@ extension ServiceStopDetailView3 {
                 try await dataService.deleteServiceStop(companyId: company.id, serviceStop: stop)
                 dismiss()
             } catch {
-                alertMessage = "Unable to delete this service stop."
+                alertMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 showAlert = true
                 print("ServiceStopDetailView3 delete error", error)
             }
@@ -984,6 +1001,8 @@ extension ServiceStopDetailView3 {
 
     private func shoppingItemIcon(_ item: ShoppingListItem) -> String {
         switch item.subCategory {
+        case .product:
+            return "shippingbox.fill"
         case .chemical:
             return "drop"
         case .part:

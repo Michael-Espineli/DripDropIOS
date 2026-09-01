@@ -19,7 +19,8 @@ struct ServiceLocationStartUpViewInField: View {
         customerId: String,
         serviceLocationId: String,
         serviceStop: ServiceStop,
-        serviceLocation: ServiceLocation? = nil
+        serviceLocation: ServiceLocation? = nil,
+        onOpenServiceAgreementWorkflow: (() -> Void)? = nil
     ) {
         _vm = StateObject(wrappedValue: JobTemplateViewModel(dataService: dataService))
         _VM = StateObject(wrappedValue: ServiceLocationStartUpViewModel(dataService: dataService))
@@ -27,12 +28,14 @@ struct ServiceLocationStartUpViewInField: View {
         _serviceLocationId = State(wrappedValue: serviceLocationId)
         _serviceStop = State(wrappedValue: serviceStop)
         self.serviceLocation = serviceLocation
+        self.onOpenServiceAgreementWorkflow = onOpenServiceAgreementWorkflow
 
     }
     @State var customerId: String
     @State var serviceLocationId: String
     @State var serviceStop: ServiceStop
     let serviceLocation: ServiceLocation?
+    let onOpenServiceAgreementWorkflow: (() -> Void)?
     
     @State var selectedBOW:BodyOfWater = BodyOfWater(
         id: UUID().uuidString,
@@ -73,29 +76,39 @@ struct ServiceLocationStartUpViewInField: View {
     @State private var isLoadingSurveyDraft: Bool = false
     @State private var didHydrateLocationFields: Bool = false
     @State private var currentStep: SurveyGuideStep = .siteNotes
+    @State private var isSurveyNavigationExpanded: Bool = false
+    @State private var showEquipmentEditor: Bool = false
     @State private var recommendationTitle: String = ""
     @State private var recommendationDetails: String = ""
     @State private var recommendationArea: SurveyRecommendationArea = .equipment
     @State private var recommendationPriority: SurveyRecommendationPriority = .recommended
     @State private var recommendationDrafts: [SurveyRecommendationDraft] = []
+    @State private var serviceAgreementRecommendedPrice: String = ""
+    @State private var serviceAgreementRateType: ServiceAgreementSurveyRateType = .perMonth
+    @State private var serviceAgreementFieldNotes: String = ""
+    @State private var serviceAgreementAutosaveTask: Task<Void, Never>? = nil
+    @State private var lastAutosavedServiceAgreementFingerprint: String = ""
+    @State private var didHydrateServiceAgreementRecommendation: Bool = false
+    @State private var isSavingServiceAgreementRecommendation: Bool = false
     
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
-            ScrollView{
-                LazyVStack(alignment: .leading, spacing: 10, pinnedViews: [.sectionHeaders], content: {
-                    Section(content: {
-                        guidedSurveyContent
-                        
-                    }, header: {
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
                         surveyToolbar
                             .padding(.horizontal, 10)
                             .padding(.top, 8)
-                            .padding(.bottom, 6)
-                            .background(Color.listColor)
-                        
-                    })
-                })
+
+                        guidedSurveyContent
+                    }
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .overlay(alignment: .trailing) {
+                    surveyJumpDock(proxy: scrollProxy)
+                        .zIndex(1)
+                }
             }
             if VM.isLoading {
                 ProgressView()
@@ -114,6 +127,7 @@ struct ServiceLocationStartUpViewInField: View {
         }
         .onAppear {
             hydrateLocationFieldsIfPossible()
+            hydrateServiceAgreementRecommendationIfNeeded()
             loadSurveyDraftIfNeeded()
         }
         .onChange(of: serviceLocation) { _ in
@@ -125,8 +139,20 @@ struct ServiceLocationStartUpViewInField: View {
         .onChange(of: surveyAutosaveFingerprint) { _ in
             scheduleSurveyAutosave()
         }
+        .onChange(of: serviceAgreementRecommendationFingerprint) { _ in
+            scheduleServiceAgreementRecommendationAutosave()
+        }
+        .onChange(of: selectedEquipmentId, perform: { id in
+            if id.isEmpty {
+                showEquipmentEditor = false
+            }
+        })
+        .sheet(isPresented: $showEquipmentEditor) {
+            equipmentEditorSheet
+        }
         .onDisappear {
             surveyAutosaveTask?.cancel()
+            serviceAgreementAutosaveTask?.cancel()
         }
     }
 }
@@ -269,6 +295,24 @@ extension ServiceLocationStartUpViewInField {
         }
     }
 
+    private func hydrateServiceAgreementRecommendationIfNeeded() {
+        guard !didHydrateServiceAgreementRecommendation else { return }
+
+        didHydrateServiceAgreementRecommendation = true
+
+        let recommendedPriceCents =
+            serviceStop.recommendedServiceAgreementPriceCents ??
+            serviceStop.fieldRecommendedServiceAgreementPriceCents ??
+            0
+
+        serviceAgreementRecommendedPrice = recommendedPriceCents > 0
+            ? dollarsString(fromCents: recommendedPriceCents)
+            : ""
+        serviceAgreementRateType = ServiceAgreementSurveyRateType(rawValue: serviceStop.recommendedServiceAgreementRateType ?? "") ?? .perMonth
+        serviceAgreementFieldNotes = serviceStop.recommendedServiceAgreementNotes ?? ""
+        lastAutosavedServiceAgreementFingerprint = serviceAgreementRecommendationFingerprint
+    }
+
     private func defaultEquipment(
         name: String,
         type: EquipmentCategory,
@@ -368,18 +412,26 @@ extension ServiceLocationStartUpViewInField {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
 
             if let lineLimit {
                 TextField(title, text: text, axis: .vertical)
                     .lineLimit(lineLimit)
                     .padding(10)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                    )
                     .foregroundColor(Color.basicFontText)
             } else {
                 TextField(title, text: text)
                     .padding(10)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                    )
                     .foregroundColor(Color.basicFontText)
             }
         }
@@ -387,25 +439,43 @@ extension ServiceLocationStartUpViewInField {
 
     var guidedSurveyContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            guideStepCard(currentStep)
-
-            switch currentStep {
-            case .siteNotes:
+            surveySection(.siteNotes) {
                 locationSurveyCard
-            case .waterProfile:
-                bodyOfWaterStep
-            case .equipmentProfile:
-                equipmentStep
-            case .salesFindings:
-                salesFindingsStep
-            case .review:
-                reviewStep
             }
 
-            guideNavigationBar
+            surveySection(.waterProfile) {
+                bodyOfWaterStep
+            }
+
+            surveySection(.equipmentProfile) {
+                equipmentStep
+            }
+
+            surveySection(.salesFindings) {
+                salesFindingsStep
+            }
+
+            surveySection(.agreementEstimate) {
+                serviceAgreementEstimateStep
+            }
+
+            surveySection(.review) {
+                reviewStep
+            }
         }
         .padding(.horizontal, 10)
         .padding(.bottom, 24)
+    }
+
+    private func surveySection<Content: View>(
+        _ step: SurveyGuideStep,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            guideStepCard(step)
+            content()
+        }
+        .id(step)
     }
 
     private func guideStepCard(_ step: SurveyGuideStep) -> some View {
@@ -413,9 +483,9 @@ extension ServiceLocationStartUpViewInField {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: step.systemImage)
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(Color.poolBlue)
+                    .foregroundStyle(step.tint)
                     .frame(width: 34, height: 34)
-                    .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(step.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(step.title)
@@ -612,6 +682,10 @@ extension ServiceLocationStartUpViewInField {
             }
             .padding(10)
             .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -675,9 +749,198 @@ extension ServiceLocationStartUpViewInField {
         .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
+    var serviceAgreementEstimateStep: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            serviceAgreementPriceCard
+            serviceAgreementWorkflowCard
+        }
+    }
+
+    var serviceAgreementPriceCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "signature")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Service Agreement Price")
+                        .font(.headline.weight(.semibold))
+
+                    Text(serviceAgreementRecommendationStatusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                if isSavingServiceAgreementRecommendation {
+                    ProgressView()
+                        .frame(width: 22, height: 22)
+                } else if serviceAgreementRecommendedPriceCents > 0 {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.poolGreen)
+                        .font(.title3)
+                }
+            }
+
+            HStack(alignment: .top, spacing: 10) {
+                surveyCurrencyField(
+                    title: "Recommended Price",
+                    text: $serviceAgreementRecommendedPrice
+                )
+
+                serviceAgreementRateMenu
+                    .frame(width: UIDevice.isIPhone ? 142 : 170)
+            }
+
+            surveyTextField(
+                title: "Field Notes",
+                text: $serviceAgreementFieldNotes,
+                lineLimit: 3...6
+            )
+        }
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    var serviceAgreementWorkflowCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: canOpenFieldServiceAgreementWorkflow ? "paperplane.fill" : "lock.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(canOpenFieldServiceAgreementWorkflow ? Color.poolGreen : Color.secondary)
+                .frame(width: 30, height: 30)
+                .background(
+                    (canOpenFieldServiceAgreementWorkflow ? Color.poolGreen : Color.secondary).opacity(0.12),
+                    in: Circle()
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(canOpenFieldServiceAgreementWorkflow ? "Field Agreement Ready" : "Recommendation Captured")
+                    .font(.subheadline.weight(.semibold))
+
+                Text(canOpenFieldServiceAgreementWorkflow ? "Create or send the customer agreement from the field workflow." : "The office can turn this recommendation into the customer agreement.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            if canOpenFieldServiceAgreementWorkflow {
+                Button {
+                    openServiceAgreementDraft()
+                } label: {
+                    Image(systemName: "arrow.up.right")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.poolBlue, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Open service agreement workflow")
+            }
+        }
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    func surveyCurrencyField(
+        title: String,
+        text: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.primary.opacity(0.72))
+
+            HStack(spacing: 6) {
+                Text("$")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.secondary)
+
+                TextField("0.00", text: text)
+                    .keyboardType(.decimalPad)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Color.basicFontText)
+            }
+            .padding(10)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+            )
+        }
+    }
+
+    var serviceAgreementRateMenu: some View {
+        Menu {
+            ForEach(ServiceAgreementSurveyRateType.allCases) { rateType in
+                Button {
+                    serviceAgreementRateType = rateType
+                } label: {
+                    Label(rateType.label, systemImage: rateType.systemImage)
+                }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: serviceAgreementRateType.systemImage)
+                    .foregroundStyle(Color.poolBlue)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rate")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Text(serviceAgreementRateType.shortLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 4)
+            }
+            .padding(10)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    var serviceAgreementRecapCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Agreement Recap", systemImage: "signature")
+                .font(.headline.weight(.semibold))
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                summaryTile(title: "Price", value: serviceAgreementPriceDisplay, systemImage: "dollarsign.circle")
+                summaryTile(title: "Rate", value: serviceAgreementRateType.shortLabel, systemImage: serviceAgreementRateType.systemImage)
+            }
+
+            if !serviceAgreementFieldNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(serviceAgreementFieldNotes)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+        }
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
     var reviewStep: some View {
         VStack(alignment: .leading, spacing: 10) {
             surveySummaryCard
+            serviceAgreementRecapCard
             reportPreviewCard
         }
     }
@@ -736,92 +999,101 @@ extension ServiceLocationStartUpViewInField {
         .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
-    var guideNavigationBar: some View {
-        HStack(spacing: 10) {
-            Button {
-                moveToPreviousStep()
-            } label: {
-                Label("Back", systemImage: "chevron.left")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(currentStep.previous == nil)
-            .opacity(currentStep.previous == nil ? 0.5 : 1)
+    var surveyToolbar: some View {
+        HStack(spacing: 8) {
+            autosaveStatusPill
 
-            Button {
-                if currentStep == .review {
-                    submitSurvey()
-                } else {
-                    moveToNextStep()
-                }
-            } label: {
-                Label(currentStep == .review ? "Save Survey" : "Next", systemImage: currentStep == .review ? "checkmark.circle.fill" : "chevron.right")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(currentStep == .review ? Color.poolGreen : Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .foregroundStyle(currentStep == .review ? Color.black : Color.white)
+            if let saveMessage {
+                Text(saveMessage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(saveMessageColor)
+                    .lineLimit(1)
             }
-            .buttonStyle(.plain)
-            .disabled(VM.isLoading)
+
+            Spacer(minLength: 0)
         }
     }
 
-    var surveyToolbar: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(currentStep.title)
-                        .font(.headline.weight(.semibold))
-
-                    Text("\(currentStep.stepLabel) of \(SurveyGuideStep.allCases.count) - \(serviceStop.customerName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
-                Menu {
+    func surveyJumpDock(proxy: ScrollViewProxy) -> some View {
+        ZStack(alignment: .trailing) {
+            if isSurveyNavigationExpanded {
+                VStack(spacing: 10) {
                     ForEach(SurveyGuideStep.allCases) { step in
                         Button {
-                            withAnimation(.easeInOut(duration: 0.18)) {
+                            withAnimation(.easeInOut(duration: 0.22)) {
                                 currentStep = step
+                                proxy.scrollTo(step, anchor: .top)
                             }
                         } label: {
-                            Label(step.title, systemImage: step.systemImage)
+                            surveyDockIcon(
+                                systemImage: step.systemImage,
+                                tint: step.tint,
+                                isSelected: currentStep == step
+                            )
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(step.title)
+                    }
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            isSurveyNavigationExpanded = false
+                        }
+                    } label: {
+                        surveyDockIcon(
+                            systemImage: "chevron.right",
+                            tint: .secondary,
+                            isSelected: false
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Collapse survey navigation")
+                }
+                .padding(7)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+            } else {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        isSurveyNavigationExpanded = true
                     }
                 } label: {
-                    Image(systemName: "list.bullet")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(width: 34, height: 34)
-                        .background(Color.poolBlue.opacity(0.12), in: Circle())
-                        .foregroundStyle(Color.poolBlue)
+                    surveyDockIcon(
+                        systemImage: "chevron.left",
+                        tint: .poolBlue,
+                        isSelected: false
+                    )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Choose survey step")
-            }
-
-            ProgressView(value: Double(currentStep.position), total: Double(SurveyGuideStep.allCases.count))
-                .tint(Color.poolBlue)
-
-            HStack(spacing: 8) {
-                autosaveStatusPill
-
-                if let saveMessage {
-                    Text(saveMessage)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(saveMessageColor)
-                        .lineLimit(1)
-                }
+                .padding(7)
+                .background(.regularMaterial, in: Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+                .accessibilityLabel("Expand survey navigation")
             }
         }
-        .padding(10)
-        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.trailing, 10)
+        .padding(.bottom, UIDevice.isIPhone ? 18 : 14)
+    }
+
+    private func surveyDockIcon(
+        systemImage: String,
+        tint: Color,
+        isSelected: Bool
+    ) -> some View {
+        Image(systemName: systemImage)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(isSelected ? Color.white : tint)
+            .frame(width: 40, height: 40)
+            .background(
+                isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.13)),
+                in: Circle()
+            )
     }
 
     var autosaveStatusPill: some View {
@@ -958,16 +1230,6 @@ extension ServiceLocationStartUpViewInField {
                     .padding(.vertical, 2)
                 }
             }
-
-            if selectedEquipmentId != "",
-               selectedEquipmentCategory == category {
-                EquipmentDetailStartUpView(
-                    dataService: VM.dataService,
-                    equipmentList: $equipmentList,
-                    selectedEquipmentId: $selectedEquipmentId,
-                    photos: $equipmentImages
-                )
-            }
         }
         .padding(10)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -975,16 +1237,10 @@ extension ServiceLocationStartUpViewInField {
 
     func equipmentChip(_ equipment: Equipment, category: EquipmentCategory) -> some View {
         Button {
-            if selectedEquipmentId == equipment.id {
-                selectedEquipmentId = ""
-                selectedEquipmentCategory = nil
-            } else {
-                selectedEquipmentId = equipment.id
-                selectedEquipmentCategory = category
-            }
+            presentEquipmentEditor(equipment, category: category)
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: selectedEquipmentId == equipment.id ? "checkmark.circle.fill" : "circle")
+                Image(systemName: selectedEquipmentId == equipment.id ? "square.and.pencil.circle.fill" : "square.and.pencil")
                 Text(equipment.name)
                     .lineLimit(1)
             }
@@ -998,6 +1254,49 @@ extension ServiceLocationStartUpViewInField {
             .foregroundStyle(selectedEquipmentId == equipment.id ? Color.poolBlue : Color.primary)
         }
         .buttonStyle(.plain)
+    }
+
+    var equipmentEditorSheet: some View {
+        NavigationStack {
+            ScrollView {
+                EquipmentDetailStartUpView(
+                    dataService: VM.dataService,
+                    equipmentList: $equipmentList,
+                    selectedEquipmentId: $selectedEquipmentId,
+                    photos: $equipmentImages
+                )
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
+            }
+            .background(Color.listColor.ignoresSafeArea())
+            .navigationTitle(selectedEquipmentSheetTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        showEquipmentEditor = false
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var selectedEquipmentSheetTitle: String {
+        guard let equipment = equipmentList.first(where: { $0.id == selectedEquipmentId }) else {
+            return "Equipment"
+        }
+
+        let trimmedName = equipment.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedName.isEmpty ? equipment.typeDisplayName : trimmedName
+    }
+
+    func presentEquipmentEditor(_ equipment: Equipment, category: EquipmentCategory) {
+        selectedEquipmentId = equipment.id
+        selectedEquipmentCategory = category
+        showEquipmentEditor = true
     }
 
     func addBodyOfWater() {
@@ -1031,15 +1330,9 @@ extension ServiceLocationStartUpViewInField {
 
     func selectBodyOfWater(_ bodyOfWater: BodyOfWater) {
         selectedBOW = bodyOfWater
-
-        if let selectedEquipmentCategory,
-           let first = equipmentList
-            .filter({ $0.bodyOfWaterId == bodyOfWater.id })
-            .first(where: { $0.type == selectedEquipmentCategory }) {
-            selectedEquipmentId = first.id
-        } else {
-            selectedEquipmentId = ""
-        }
+        selectedEquipmentId = ""
+        selectedEquipmentCategory = nil
+        showEquipmentEditor = false
     }
 
     func addEquipment(for category: EquipmentCategory) {
@@ -1075,6 +1368,7 @@ extension ServiceLocationStartUpViewInField {
         )
         selectedEquipmentId = newId
         selectedEquipmentCategory = category
+        showEquipmentEditor = true
     }
 
     func submitSurvey(
@@ -1214,6 +1508,84 @@ extension ServiceLocationStartUpViewInField {
         }
     }
 
+    private func scheduleServiceAgreementRecommendationAutosave() {
+        let fingerprint = serviceAgreementRecommendationFingerprint
+        guard fingerprint != lastAutosavedServiceAgreementFingerprint else { return }
+        guard !surveySaveCompanyIds.isEmpty else { return }
+
+        serviceAgreementAutosaveTask?.cancel()
+        saveMessage = "Agreement autosave pending"
+
+        serviceAgreementAutosaveTask = Task {
+            do {
+                try await Task.sleep(nanoseconds: 900_000_000)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                saveServiceAgreementRecommendation(fingerprintBeingSaved: fingerprint)
+            }
+        }
+    }
+
+    private func saveServiceAgreementRecommendation(fingerprintBeingSaved: String) {
+        guard !isSavingServiceAgreementRecommendation else {
+            scheduleServiceAgreementRecommendationAutosave()
+            return
+        }
+
+        Task {
+            isSavingServiceAgreementRecommendation = true
+            defer { isSavingServiceAgreementRecommendation = false }
+
+            let companyIds = surveySaveCompanyIds
+            let priceCents = serviceAgreementRecommendedPriceCents
+            let notes = serviceAgreementFieldNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+            let userId = activeFieldUserId
+            let userName = activeFieldUserName
+            var didSave = false
+
+            for companyId in companyIds {
+                do {
+                    try await VM.dataService.updateInitialSurveyServiceAgreementRecommendation(
+                        companyId: companyId,
+                        serviceStopId: serviceStop.id,
+                        recommendedPriceCents: priceCents,
+                        rateType: serviceAgreementRateType.rawValue,
+                        notes: notes,
+                        recommendedByUserId: userId,
+                        recommendedByUserName: userName
+                    )
+                    didSave = true
+                } catch {
+                    print("Could not save service agreement recommendation")
+                    print(error)
+                }
+            }
+
+            if didSave {
+                serviceStop.recommendedServiceAgreementPriceCents = priceCents
+                serviceStop.fieldRecommendedServiceAgreementPriceCents = priceCents
+                serviceStop.recommendedServiceAgreementRateType = serviceAgreementRateType.rawValue
+                serviceStop.recommendedServiceAgreementNotes = notes
+                serviceStop.recommendedServiceAgreementByUserId = userId
+                serviceStop.recommendedServiceAgreementByUserName = userName
+                serviceStop.recommendedServiceAgreementAt = Date()
+                lastAutosavedServiceAgreementFingerprint = fingerprintBeingSaved
+                saveMessage = "Agreement estimate saved"
+
+                if serviceAgreementRecommendationFingerprint != lastAutosavedServiceAgreementFingerprint {
+                    scheduleServiceAgreementRecommendationAutosave()
+                }
+            } else {
+                saveMessage = "Agreement estimate could not save"
+            }
+        }
+    }
+
     private func markSurveyAutosaveBaseline() {
         lastAutosavedSurveyFingerprint = surveyAutosaveFingerprint
     }
@@ -1280,7 +1652,7 @@ extension ServiceLocationStartUpViewInField {
                 let statusText = equipment.status.displayName
                 let notes = equipment.notes.trimmingCharacters(in: .whitespacesAndNewlines)
                 let details = notes.isEmpty
-                    ? "\(equipment.type.rawValue) marked \(statusText.lowercased())."
+                    ? "\(equipment.typeDisplayName) marked \(statusText.lowercased())."
                     : notes
 
                 return SurveyRecommendationDraft(
@@ -1309,9 +1681,9 @@ extension ServiceLocationStartUpViewInField {
 
     private var saveMessageColor: Color {
         switch saveMessage ?? "" {
-        case "Survey saved", "Autosaved":
+        case "Survey saved", "Autosaved", "Agreement estimate saved":
             return Color.poolGreen
-        case "Autosave pending", "Autosaving...", "Saving survey...":
+        case "Autosave pending", "Autosaving...", "Saving survey...", "Agreement autosave pending":
             return Color.secondary
         default:
             return Color.poolRed
@@ -1366,7 +1738,8 @@ extension ServiceLocationStartUpViewInField {
                 return [
                     equipment.id,
                     equipment.name,
-                    equipment.type.rawValue,
+                    equipment.typeStorageValue,
+                    equipment.customTypeName,
                     equipment.typeId,
                     equipment.make,
                     equipment.makeId,
@@ -1438,6 +1811,122 @@ extension ServiceLocationStartUpViewInField {
             .joined(separator: "||")
     }
 
+    private var serviceAgreementRecommendationFingerprint: String {
+        [
+            normalizedCurrencyInput(serviceAgreementRecommendedPrice),
+            serviceAgreementRateType.rawValue,
+            serviceAgreementFieldNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        ]
+            .joined(separator: "||")
+    }
+
+    private var serviceAgreementRecommendedPriceCents: Int {
+        let normalized = normalizedCurrencyInput(serviceAgreementRecommendedPrice)
+        return Int(((Double(normalized) ?? 0) * 100).rounded())
+    }
+
+    private var serviceAgreementRecommendationStatusText: String {
+        if let recommendedByUserName = serviceStop.recommendedServiceAgreementByUserName,
+           !recommendedByUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Recommended by \(recommendedByUserName)"
+        }
+
+        if serviceAgreementRecommendedPriceCents > 0 {
+            return "Recommendation ready for the service agreement."
+        }
+
+        return "Add the field price recommendation for the office or agreement workflow."
+    }
+
+    private var serviceAgreementPriceDisplay: String {
+        guard serviceAgreementRecommendedPriceCents > 0 else {
+            return "$0"
+        }
+
+        return dollarsString(fromCents: serviceAgreementRecommendedPriceCents)
+    }
+
+    private var activeFieldUserId: String {
+        masterDataManager.companyUser?.userId ?? masterDataManager.user?.id ?? ""
+    }
+
+    private var activeFieldUserName: String {
+        let companyUserName = masterDataManager.companyUser?.userName.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !companyUserName.isEmpty {
+            return companyUserName
+        }
+
+        let userName = [
+            masterDataManager.user?.firstName,
+            masterDataManager.user?.lastName
+        ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        return userName.isEmpty ? "Field user" : userName
+    }
+
+    private var canOpenFieldServiceAgreementWorkflow: Bool {
+        hasRolePermission("400") ||
+        hasRolePermission("432") ||
+        hasRolePermission("438") ||
+        hasRolePermission("628")
+    }
+
+    private func hasRolePermission(_ permissionId: String) -> Bool {
+        guard let role = masterDataManager.role else {
+            return false
+        }
+
+        return role.permissionIdList.contains(permissionId)
+    }
+
+    private func normalizedCurrencyInput(_ value: String) -> String {
+        let allowedCharacters = CharacterSet(charactersIn: "0123456789.")
+        let filtered = value
+            .unicodeScalars
+            .filter { allowedCharacters.contains($0) }
+        let components = String(String.UnicodeScalarView(filtered)).split(separator: ".", omittingEmptySubsequences: false)
+
+        guard components.count > 1 else {
+            return String(String.UnicodeScalarView(filtered))
+        }
+
+        return "\(components[0]).\(components.dropFirst().joined())"
+    }
+
+    private func dollarsString(fromCents cents: Int) -> String {
+        let dollars = Double(cents) / 100
+        return dollars.formatted(.number.precision(.fractionLength(2)))
+    }
+
+    private func openServiceAgreementDraft() {
+        if let onOpenServiceAgreementWorkflow {
+            onOpenServiceAgreementWorkflow()
+            return
+        }
+
+        guard let url = serviceAgreementDraftURL else {
+            saveMessage = "Could not open agreement workflow"
+            return
+        }
+
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+
+    private var serviceAgreementDraftURL: URL? {
+        var components = URLComponents(string: "https://dripdrop-poolapp.com/company/sales/agreements/new")
+        components?.queryItems = [
+            URLQueryItem(name: "customerId", value: customerId),
+            URLQueryItem(name: "serviceLocationId", value: serviceLocationId),
+            URLQueryItem(name: "serviceStopId", value: serviceStop.id)
+        ]
+            .filter { !($0.value ?? "").isEmpty }
+
+        return components?.url
+    }
+
     private func dripDropImageFingerprint(_ images: [DripDropImage]) -> String {
         images
             .map { "\($0.id.uuidString):\($0.name)" }
@@ -1487,6 +1976,7 @@ private enum SurveyGuideStep: String, CaseIterable, Identifiable {
     case waterProfile
     case equipmentProfile
     case salesFindings
+    case agreementEstimate
     case review
 
     var id: String {
@@ -1503,8 +1993,10 @@ private enum SurveyGuideStep: String, CaseIterable, Identifiable {
             return "Equipment Profile"
         case .salesFindings:
             return "Sales Findings"
+        case .agreementEstimate:
+            return "Agreement Estimate"
         case .review:
-            return "Review & Save"
+            return "Finish & Recap"
         }
     }
 
@@ -1518,8 +2010,10 @@ private enum SurveyGuideStep: String, CaseIterable, Identifiable {
             return "Equipment"
         case .salesFindings:
             return "Findings"
+        case .agreementEstimate:
+            return "Agreement"
         case .review:
-            return "Review"
+            return "Recap"
         }
     }
 
@@ -1533,8 +2027,27 @@ private enum SurveyGuideStep: String, CaseIterable, Identifiable {
             return "wrench.and.screwdriver.fill"
         case .salesFindings:
             return "exclamationmark.bubble.fill"
+        case .agreementEstimate:
+            return "signature"
         case .review:
             return "checklist.checked"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .siteNotes:
+            return .poolBlue
+        case .waterProfile:
+            return .teal
+        case .equipmentProfile:
+            return .orange
+        case .salesFindings:
+            return .poolRed
+        case .agreementEstimate:
+            return .poolBlue
+        case .review:
+            return .poolGreen
         }
     }
 
@@ -1548,8 +2061,10 @@ private enum SurveyGuideStep: String, CaseIterable, Identifiable {
             return "Build the equipment list for the selected body of water, including make, model, status, service needs, and photos."
         case .salesFindings:
             return "Flag repair needs, upgrades, safety concerns, or sales opportunities for the proposal and initial report."
+        case .agreementEstimate:
+            return "Capture the recurring service price recommendation before the agreement is drafted or sent."
         case .review:
-            return "Confirm the setup package before saving it for service agreement generation."
+            return "Review the survey, agreement estimate, photos, and report notes before finishing the visit."
         }
     }
 
@@ -1563,8 +2078,10 @@ private enum SurveyGuideStep: String, CaseIterable, Identifiable {
             return ["Catalog", "Status", "Service"]
         case .salesFindings:
             return ["Repairs", "Upgrades", "Report"]
+        case .agreementEstimate:
+            return ["Price", "Rate", "Field"]
         case .review:
-            return ["Summary", "Findings", "Save"]
+            return ["Summary", "Agreement", "Notes"]
         }
     }
 
@@ -1588,6 +2105,49 @@ private enum SurveyGuideStep: String, CaseIterable, Identifiable {
         let previousIndex = index - 1
         guard Self.allCases.indices.contains(previousIndex) else { return nil }
         return Self.allCases[previousIndex]
+    }
+}
+
+private enum ServiceAgreementSurveyRateType: String, CaseIterable, Identifiable {
+    case perMonth
+    case perVisit
+    case oneTime
+
+    var id: String {
+        rawValue
+    }
+
+    var label: String {
+        switch self {
+        case .perMonth:
+            return "Monthly Service"
+        case .perVisit:
+            return "Per Visit"
+        case .oneTime:
+            return "One-Time Startup"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .perMonth:
+            return "Monthly"
+        case .perVisit:
+            return "Per Visit"
+        case .oneTime:
+            return "One-Time"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .perMonth:
+            return "calendar"
+        case .perVisit:
+            return "arrow.triangle.2.circlepath"
+        case .oneTime:
+            return "sparkles"
+        }
     }
 }
 

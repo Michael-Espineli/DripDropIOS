@@ -239,17 +239,15 @@ struct DripDropAlertCardSmall: View {
 extension DripDropAlertCardSmall {
     var card: some View {
             VStack(alignment: .leading, spacing: 6){
-                Text("\(dripDropAlert.name)")
+                Text(dripDropAlert.displayTitle)
                     .fontWeight(.bold)
-                Text("\(dripDropAlert.description)")
-                    .fontWeight(.light)
+                if !dripDropAlert.displayDescription.isEmpty {
+                    Text(dripDropAlert.displayDescription)
+                        .fontWeight(.light)
+                }
                 HStack(spacing: 8) {
-                    if let status = dripDropAlert.status, !status.isEmpty {
-                        Text(status.capitalized)
-                    }
-                    if let type = dripDropAlert.relatedEntity?.type ?? dripDropAlert.share?.type, !type.isEmpty {
-                        Text(type)
-                    }
+                    Text(dripDropAlert.displayStatusTitle)
+                    Text(dripDropAlert.displayCategoryTitle)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

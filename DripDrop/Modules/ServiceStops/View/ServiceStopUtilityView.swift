@@ -85,6 +85,19 @@ struct ServiceStopUtilityView: View {
         return continuationGate(for: serviceStop) != nil
     }
 
+    private var selectedBodyOfWaterTitle: String {
+        if VM.isLoadingInitialDetails && VM.selectedBOW == nil {
+            return "Loading Water"
+        }
+
+        guard let selected = VM.selectedBOW,
+              !selected.name.isEmpty else {
+            return "Select Water"
+        }
+
+        return selected.name
+    }
+
     var body: some View {
         ZStack {
             Color.listColor.ignoresSafeArea()
@@ -93,7 +106,9 @@ struct ServiceStopUtilityView: View {
                     bodyOfWaterPicker
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 12) {
-                            if let bodyOfWater = VM.selectedBOW {
+                            if VM.isLoadingInitialDetails && VM.selectedBOW == nil {
+                                waterDataLoadingState
+                            } else if let bodyOfWater = VM.selectedBOW {
                                 if bodyOfWater.id ==  "" {
                                     Text("No Bodies of Water")
                                         .font(.subheadline.weight(.medium))
@@ -130,6 +145,15 @@ struct ServiceStopUtilityView: View {
                                             .opacity(isInputLocked ? 0.55 : 1)
                                     }
                                 }
+                            } else {
+                                ContentUnavailableView(
+                                    "No Bodies of Water",
+                                    systemImage: "drop.triangle",
+                                    description: Text("Add a body of water before recording readings.")
+                                )
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 24)
+                                .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                             }
                         }
                         .padding(.horizontal, 8)
@@ -592,14 +616,20 @@ extension ServiceStopUtilityView {
                         .foregroundStyle(.secondary)
                         .textCase(.uppercase)
 
-                    Text(VM.selectedBOW?.name.isEmpty == false ? VM.selectedBOW?.name ?? "Select Water" : "Select Water")
+                    Text(selectedBodyOfWaterTitle)
                         .font(.headline.weight(.semibold))
                         .lineLimit(1)
                 }
 
                 Spacer()
 
-                if let selected = VM.selectedBOW {
+                if VM.isLoadingInitialDetails && VM.selectedBOW == nil {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Color(.secondarySystemBackground), in: Capsule())
+                } else if let selected = VM.selectedBOW {
                     Text(bodyOfWaterMetaText(selected))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
@@ -611,7 +641,9 @@ extension ServiceStopUtilityView {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    if VM.bodiesOfWater.isEmpty {
+                    if VM.isLoadingInitialDetails && VM.bodiesOfWater.isEmpty {
+                        bodyOfWaterLoadingChips
+                    } else if VM.bodiesOfWater.isEmpty {
                         ContentUnavailableView(
                             "No Bodies of Water",
                             systemImage: "drop.triangle",
@@ -752,16 +784,106 @@ extension ServiceStopUtilityView {
                 }
             }
 
-            StopDataTableView(
-                stopData: VM.currentHistory,
-                readingTemplates: VM.readingTemplates,
-                dosageTemplates: VM.dosageTemplates,
-                bodyOfWaterId: VM.selectedBOW?.id
-            )
+            if VM.isLoadingInitialDetails && VM.currentHistory.isEmpty {
+                waterHistoryLoadingState
+            } else {
+                StopDataTableView(
+                    stopData: VM.currentHistory,
+                    readingTemplates: VM.readingTemplates,
+                    dosageTemplates: VM.dosageTemplates,
+                    bodyOfWaterId: VM.selectedBOW?.id
+                )
+            }
         }
         .padding(14)
         .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+    }
+
+    var bodyOfWaterLoadingChips: some View {
+        ForEach(0..<2, id: \.self) { index in
+            HStack(spacing: 9) {
+                ProgressView()
+                    .controlSize(.mini)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.secondary.opacity(0.18))
+                        .frame(width: index == 0 ? 92 : 118, height: 10)
+
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.secondary.opacity(0.1))
+                        .frame(width: index == 0 ? 76 : 88, height: 8)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .frame(minWidth: 128, alignment: .leading)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+    }
+
+    var waterDataLoadingState: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Loading Water Data")
+                        .font(.subheadline.weight(.semibold))
+
+                    Text("Getting bodies of water, recent history, readings, and dosages.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            VStack(spacing: 10) {
+                waterLoadingRow(width: 210)
+                waterLoadingRow(width: 168)
+                waterLoadingRow(width: 190)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .padding(.top, 8)
+    }
+
+    var waterHistoryLoadingState: some View {
+        VStack(spacing: 10) {
+            waterLoadingRow(width: 184)
+            waterLoadingRow(width: 142)
+            waterLoadingRow(width: 168)
+        }
+        .padding(.vertical, 4)
+    }
+
+    func waterLoadingRow(width: CGFloat) -> some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(Color.secondary.opacity(0.14))
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 7) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color.secondary.opacity(0.18))
+                    .frame(width: width, height: 10)
+
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color.secondary.opacity(0.1))
+                    .frame(width: max(92, width - 46), height: 8)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color.listColor.opacity(0.58), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     var table: some View {
         VStack(spacing:0){

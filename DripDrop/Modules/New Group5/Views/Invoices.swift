@@ -208,7 +208,7 @@ struct SalesAgreementsListView: View {
 
             if UIDevice.isIPhone {
                 SalesActionDock(
-                    showCreate: true,
+                    showCreate: canCreateServiceAgreement,
                     showSearch: showSearch,
                     createTint: mode.tint,
                     onReload: { Task { await reload() } },
@@ -240,10 +240,12 @@ struct SalesAgreementsListView: View {
                         Image(systemName: "arrow.clockwise")
                     }
 
-                    Button {
-                        salesOpenWeb(path: mode.createPath)
-                    } label: {
-                        Image(systemName: "plus")
+                    if canCreateServiceAgreement {
+                        Button {
+                            salesOpenWeb(path: mode.createPath)
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
@@ -310,6 +312,16 @@ extension SalesAgreementsListView {
 
     private var salesAgreementTotalCents: Int {
         displayAgreements.reduce(0) { $0 + salesAgreementAmountCents($1) }
+    }
+
+    private var canCreateServiceAgreement: Bool {
+        guard let role = masterDataManager.role else {
+            return false
+        }
+
+        return role.permissionIdList.contains("400") ||
+        role.permissionIdList.contains("432") ||
+        role.permissionIdList.contains("628")
     }
 
     @MainActor

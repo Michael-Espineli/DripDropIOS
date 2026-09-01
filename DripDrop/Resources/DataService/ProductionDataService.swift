@@ -227,31 +227,51 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         companyId: String,
         limit: Int = 100
     ) async throws -> [ShoppingListItem] {
-        let snapshot = try await db
+        let needsActionItems = try await shoppingListItems(from: db
             .collection("companies")
             .document(companyId)
             .collection("shoppingList")
             .whereField("needsAction", isEqualTo: true)
             .limit(to: limit)
-            .getDocuments()
+        )
 
-        return snapshot.documents.compactMap { document in
-            try? document.data(as: ShoppingListItem.self)
-        }
+        let needToPurchaseItems = try await shoppingListItems(from: db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .whereField("status", isEqualTo: ShoppingListStatus.needToPurchase.rawValue)
+            .limit(to: limit)
+        )
+
+        let purchasedItems = try await shoppingListItems(from: db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .whereField("status", isEqualTo: ShoppingListStatus.purchased.rawValue)
+            .limit(to: limit)
+        )
+
+        return (needsActionItems + needToPurchaseItems + purchasedItems)
+            .dedupedById()
+            .filter { $0.isOutstandingShoppingAction }
+            .prefix(limit)
+            .map { $0 }
     }
 
     func getShoppingListItemStatusCount(
         companyId: String,
         status: ShoppingListStatus
     ) async throws -> Int {
-        return Int(try await db
+        let snapshot = try await db
             .collection("companies")
             .document(companyId)
             .collection("shoppingList")
             .whereField("status", isEqualTo: status.rawValue)
+            .getDocuments()
+
+        return decodeShoppingListItems(from: snapshot)
+            .filter { $0.shoppingListActive }
             .count
-            .getAggregation(source: .server)
-            .count)
     }
 
     func getShoppingListItemsForPrepKeys(
@@ -274,14 +294,107 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
                 .whereField("prepKeys", arrayContainsAny: chunk)
                 .getDocuments()
 
-            let items = snapshot.documents.compactMap { document in
-                try? document.data(as: ShoppingListItem.self)
-            }
-
-            results.append(contentsOf: items)
+            results.append(contentsOf: decodeShoppingListItems(from: snapshot))
         }
 
-        return results.dedupedById()
+        return results
+            .dedupedById()
+            .filter { $0.shoppingListActive }
+    }
+
+    func getShoppingListItemsForUserScope(
+        companyId: String,
+        userId: String,
+        limit: Int = 100
+    ) async throws -> [ShoppingListItem] {
+        let cleanUserId = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !companyId.isEmpty, !cleanUserId.isEmpty else { return [] }
+
+        let collection = db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+
+        let userPrepKey = ShoppingPrepKeyBuilder.user(cleanUserId)
+        let queries: [Query] = [
+            collection.whereField("prepKeys", arrayContains: userPrepKey).limit(to: limit),
+            collection.whereField("purchaserId", isEqualTo: cleanUserId).limit(to: limit),
+            collection.whereField("userId", isEqualTo: cleanUserId).limit(to: limit),
+            collection.whereField("assignedTechIds", arrayContains: cleanUserId).limit(to: limit),
+            collection.whereField("assignedTechId", isEqualTo: cleanUserId).limit(to: limit),
+            collection.whereField("assignedToUserId", isEqualTo: cleanUserId).limit(to: limit)
+        ]
+
+        var results: [ShoppingListItem] = []
+
+        for query in queries {
+            results.append(contentsOf: try await shoppingListItems(from: query))
+        }
+
+        return results
+            .dedupedById()
+            .filter { item in
+                item.isOutstandingShoppingAction &&
+                item.isAssociatedWithShoppingUser(cleanUserId)
+            }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    @discardableResult
+    func activateShoppingListItemsForAcceptedJob(
+        companyId: String,
+        jobId: String
+    ) async throws -> Int {
+        let cleanJobId = jobId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !companyId.isEmpty, !cleanJobId.isEmpty else { return 0 }
+
+        let snapshot = try await db
+            .collection("companies")
+            .document(companyId)
+            .collection("shoppingList")
+            .whereField("jobId", isEqualTo: cleanJobId)
+            .getDocuments()
+
+        let now = Date()
+        var updateCount = 0
+
+        for document in snapshot.documents {
+            let data = document.data()
+            let status = ShoppingListStatus.fromFirestoreValue(
+                shoppingSyncStringValue(data["status"])
+            )
+            let needsAction = status.needsShoppingAction
+            let actionDate = (data["actionDate"] as? Timestamp)?.dateValue()
+                ?? (data["scheduledDate"] as? Timestamp)?.dateValue()
+                ?? now
+
+            var updates: [String: Any] = [
+                "shoppingListActive": true,
+                "needsAction": needsAction,
+                "updatedAt": now
+            ]
+
+            if needsAction {
+                updates["actionDate"] = actionDate
+            }
+
+            try await document.reference.updateData(updates)
+            updateCount += 1
+        }
+
+        return updateCount
+    }
+
+    private func shoppingListItems(from query: Query) async throws -> [ShoppingListItem] {
+        let snapshot = try await query.getDocuments()
+        return decodeShoppingListItems(from: snapshot)
+    }
+
+    private func decodeShoppingListItems(from snapshot: QuerySnapshot) -> [ShoppingListItem] {
+        snapshot.documents.compactMap { document in
+            try? document.data(as: ShoppingListItem.self)
+        }
     }
 
     @discardableResult
@@ -715,6 +828,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         return try snapshot.documents.compactMap { document in
             try document.data(as: WorkOffer.self)
         }
+        .filter(\.isWorkOfferRecord)
     }
     func fetchWorkOffers(
         companyId: String,
@@ -728,6 +842,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         return try snapshot.documents.compactMap { document in
             try document.data(as: WorkOffer.self)
         }
+        .filter(\.isWorkOfferRecord)
     }
 
     func fetchAllWorkOffers(
@@ -740,6 +855,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         return try snapshot.documents.compactMap { document in
             try document.data(as: WorkOffer.self)
         }
+        .filter(\.isWorkOfferRecord)
     }
 
     func fetchWorkOffersForUser(
@@ -754,6 +870,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         return try snapshot.documents.compactMap { document in
             try document.data(as: WorkOffer.self)
         }
+        .filter(\.isWorkOfferRecord)
     }
 
     func fetchOpenBoardWorkOffers(
@@ -772,6 +889,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         let offers = try snapshot.documents.compactMap { document in
             try document.data(as: WorkOffer.self)
         }
+        .filter(\.isWorkOfferRecord)
 
         return offers.filter { offer in
             switch offer.boardVisibility {
@@ -797,7 +915,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         .setData(from: workOffer, merge: true)
 
         // Optional reference under the job for quick future UI loading.
-        let refData: [String: Any] = [
+        var refData: [String: Any] = [
             "id": workOffer.id,
             "jobId": workOffer.jobId,
             "status": workOffer.status.rawValue,
@@ -805,6 +923,19 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             "title": workOffer.title,
             "createdAt": workOffer.createdAt
         ]
+
+        if let proposedStartDate = workOffer.proposedStartDate {
+            refData["proposedStartDate"] = proposedStartDate
+        }
+
+        if let completionDeadline = workOffer.completionDeadlineAt ?? workOffer.proposedEndDate {
+            refData["completionDeadlineAt"] = completionDeadline
+        }
+
+        if let timelineNotes = workOffer.timelineNotes,
+           !timelineNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            refData["timelineNotes"] = timelineNotes
+        }
 
         try await jobWorkOfferRefDoc(
             companyId: workOffer.companyId,
@@ -2666,19 +2797,39 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
          onChange: @escaping ([ServiceStop]) -> Void
     ) {
         serviceStopListener?.remove()
+        let startDate = date.startOfDay()
+        let endDate = date.endOfDay()
+        print("[ProductionDataService][listenServiceStops] query companyId: \(companyId) techId: \(techId) start: \(startDate) end: \(endDate)")
 
         serviceStopListener = serviceStopCollection(companyId: companyId)
             .whereField("techId", isEqualTo: techId)
-            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThanOrEqualTo: date.startOfDay())
-            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: date.endOfDay())
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isGreaterThanOrEqualTo: startDate)
+            .whereField(ServiceStop.CodingKeys.serviceDate.stringValue, isLessThan: endDate)
             .addSnapshotListener { snapshot, error in
+                if let error {
+                    print("[ProductionDataService][listenServiceStops] listener error: \(error)")
+                }
                 guard let docs = snapshot?.documents else {
+                    print("[ProductionDataService][listenServiceStops] no snapshot docs")
                     onChange([])
                     return
                 }
-                let stops = docs.compactMap {
-                    try? $0.data(as: ServiceStop.self)
+                print("[ProductionDataService][listenServiceStops] rawDocs: \(docs.count) ids: \(docs.map { $0.documentID })")
+                var stops: [ServiceStop] = []
+
+                for document in docs {
+                    do {
+                        let stop = try document.data(as: ServiceStop.self)
+                        print("[ProductionDataService][listenServiceStops] decoded stop id: \(stop.id) techId: \(stop.techId) serviceDate: \(stop.serviceDate) operationStatus: \(stop.operationStatus.rawValue) billingStatus: \(stop.billingStatus.rawValue) category: \(stop.resolvedCategory.rawValue)")
+                        stops.append(stop)
+                    } catch {
+                        let data = document.data()
+                        print("[ProductionDataService][listenServiceStops] decode error docId: \(document.documentID) error: \(error)")
+                        print("[ProductionDataService][listenServiceStops] raw fields docId: \(document.documentID) techId: \(String(describing: data[ServiceStop.CodingKeys.techId.stringValue])) serviceDate: \(String(describing: data[ServiceStop.CodingKeys.serviceDate.stringValue])) operationStatus: \(String(describing: data[ServiceStop.CodingKeys.operationStatus.stringValue])) billingStatus: \(String(describing: data[ServiceStop.CodingKeys.billingStatus.stringValue])) category: \(String(describing: data[ServiceStop.CodingKeys.category.stringValue])) typeId: \(String(describing: data[ServiceStop.CodingKeys.typeId.stringValue])) jobId: \(String(describing: data[ServiceStop.CodingKeys.jobId.stringValue]))")
+                    }
                 }
+
+                print("[ProductionDataService][listenServiceStops] decodedStops: \(stops.count)")
                 onChange(stops)
             }
         

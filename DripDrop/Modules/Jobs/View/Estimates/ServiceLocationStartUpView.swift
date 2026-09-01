@@ -298,7 +298,7 @@ extension ServiceLocationStartUpView {
                         Button(action: {
                             selectedBOW = BOW
                             
-                            if let selectedEquipmentCategory, let first = equipmentList.filter({$0.id == BOW.id}).filter({$0.type == selectedEquipmentCategory}).first{
+                            if let selectedEquipmentCategory, let first = equipmentList.filter({$0.bodyOfWaterId == BOW.id}).filter({$0.type == selectedEquipmentCategory}).first{
                                 selectedEquipmentId = first.id
                                 print("Selected Equipment Id true")
                             } else {

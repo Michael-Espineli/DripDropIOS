@@ -35,3 +35,33 @@ enum ShoppingCenterTab: String, CaseIterable, Identifiable {
         }
     }
 }
+
+enum ShoppingCenterTimeScope: String, CaseIterable, Identifiable {
+    case today = "Today"
+    case thisWeek = "This Week"
+    case all = "All"
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .today:
+            return "calendar"
+        case .thisWeek:
+            return "calendar.badge.clock"
+        case .all:
+            return "tray.full"
+        }
+    }
+
+    var prepDescription: String {
+        switch self {
+        case .today:
+            return "today"
+        case .thisWeek:
+            return "this week"
+        case .all:
+            return "all active items"
+        }
+    }
+}

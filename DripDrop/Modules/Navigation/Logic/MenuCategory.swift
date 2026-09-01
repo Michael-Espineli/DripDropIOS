@@ -160,7 +160,7 @@ enum MacCategories: String, Hashable, CaseIterable, Identifiable,Codable{
             return "Reading And Dosages"
             
         case .genericItems:
-            return "Generic Items"
+            return "Product Catalog"
         case .companyRouteOverView:
             return "Company Route OverView"
         case .accountsPayable:
@@ -496,7 +496,7 @@ extension MenuCategory {
         case .purchases:
             return "Purchases"
         case .databaseItems:
-            return "Database Items"
+            return "Vendor Items"
         case .venders:
             return "Venders"
         }

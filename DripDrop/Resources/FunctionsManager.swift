@@ -52,6 +52,31 @@ struct ServiceReportSendResult: Equatable {
     }
 }
 
+struct ServiceAgreementSendResult: Equatable {
+    let status: Int
+    let message: String
+    let agreementUrl: String
+    let to: String
+    let intendedTo: String
+    let additionalEmails: [String]
+    let recipientEmails: [String]
+    let sentCount: Int
+    let testMode: Bool
+
+    var userFacingMessage: String {
+        if !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return message
+        }
+
+        if sentCount > 1 {
+            return "Service agreement sent to \(sentCount) recipients."
+        }
+
+        let recipient = intendedTo.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? to : intendedTo
+        return recipient.isEmpty ? "Service agreement sent." : "Service agreement sent to \(recipient)."
+    }
+}
+
 final class FunctionsManager {
         //Starting The App
     private var auth: Auth { Auth.auth() }
@@ -316,13 +341,28 @@ final class FunctionsManager {
     }
     
         // MARK: updateRecurringServiceStop
-    func updateRecurringServiceStop(companyId:String, recurringServiceStop:RecurringServiceStop) async throws {
+    @discardableResult
+    func updateRecurringServiceStop(
+        companyId: String,
+        recurringServiceStop: RecurringServiceStop,
+        syncRoute: Bool = true,
+        destinationRouteId: String? = nil,
+        futureServiceStopsStartAt: Date? = nil
+    ) async throws -> [String: Any] {
         let recurringServiceStopData = try recurringServiceStop.asDictionary()
+        let localFutureStart = futureServiceStopsStartAt ?? Calendar.current.startOfDay(for: Date())
 
-        let payload: [String: Any]  = [
+        var payload: [String: Any]  = [
             "companyId":companyId,
             "recurringServiceStop":recurringServiceStopData,
+            "syncRoute": syncRoute,
+            "futureServiceStopsStartAt": ms(localFutureStart),
         ]
+        if let destinationRouteId,
+           !destinationRouteId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["destinationRouteId"] = destinationRouteId
+        }
+
         print("  [FunctionsManager][updateRecurringServiceStop]recurringServiceStopData: ")
         print(recurringServiceStopData)
         print("")
@@ -332,6 +372,20 @@ final class FunctionsManager {
             print("      [FunctionsManager][updateRecurringServiceStop] Error: Unable to read JSON from function response.")
             throw FireBaseRead.unableToRead
         }
+
+        let status = json["status"] as? Int
+        let success = json["success"] as? Bool ?? true
+        guard success && (status == nil || status! < 400) else {
+            let message = json["error"] as? String ?? "Recurring service stop could not be updated."
+            print("      [FunctionsManager][updateRecurringServiceStop] Error: \(message)")
+            throw NSError(
+                domain: "UpdateRecurringServiceStop",
+                code: status ?? 500,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+
+        return json
     }
         // MARK: deleteRecurringServiceStop
     func deleteRecurringServiceStop(companyId:String, stopId:String) async throws {
@@ -360,4 +414,46 @@ func sendJobEstimate(companyId:String, jobId:String) async throws {
         throw FireBaseRead.unableToRead
     }
 }
+
+    // MARK: sendServiceAgreement
+    func sendServiceAgreement(
+        companyId: String,
+        agreementId: String,
+        primaryEmail: String,
+        additionalEmails: [String] = [],
+        includeInspectionReport: Bool = false,
+        agreementBaseUrl: String = "https://dripdrop-poolapp.com"
+    ) async throws -> ServiceAgreementSendResult {
+        var payload: [String: Any] = [
+            "companyId": companyId,
+            "agreementId": agreementId,
+            "agreementBaseUrl": agreementBaseUrl,
+            "primaryEmail": primaryEmail,
+            "additionalEmails": additionalEmails,
+            "includeInspectionReport": includeInspectionReport
+        ]
+
+        if let idToken = try await auth.currentUser?.getIDToken() {
+            payload["idToken"] = idToken
+        }
+
+        let callable = functions.httpsCallable("sendServiceAgreementEmail")
+        let result = try await callable.call(payload)
+        guard let json = result.data as? [String: Any] else {
+            print("      [FunctionsManager][sendServiceAgreement] Error: Unable to read JSON from function response.")
+            throw FireBaseRead.unableToRead
+        }
+
+        return ServiceAgreementSendResult(
+            status: json["status"] as? Int ?? 500,
+            message: json["message"] as? String ?? "",
+            agreementUrl: json["agreementUrl"] as? String ?? "",
+            to: json["to"] as? String ?? "",
+            intendedTo: json["intendedTo"] as? String ?? "",
+            additionalEmails: json["additionalEmails"] as? [String] ?? [],
+            recipientEmails: json["recipientEmails"] as? [String] ?? [],
+            sentCount: json["sentCount"] as? Int ?? 0,
+            testMode: json["testMode"] as? Bool ?? false
+        )
+    }
 }

@@ -315,11 +315,28 @@ extension ProductionDataService {
         let start = calendar.date(from: components)!
         let end = calendar.date(byAdding: .day, value: 1, to: start)!
         
-        return try await serviceStopCollection(companyId: companyId)
+        print("[ProductionDataService][getAllServiceStopsByDayAndTech] query companyId: \(companyId) techId: \(techId) start: \(start) end: \(end)")
+        let snapshot = try await serviceStopCollection(companyId: companyId)
             .whereField("serviceDate", isGreaterThanOrEqualTo: start)
             .whereField("serviceDate", isLessThan: end)
             .whereField("techId", isEqualTo: techId)
-            .getDocuments(as:ServiceStop.self)
+            .getDocuments()
+        print("[ProductionDataService][getAllServiceStopsByDayAndTech] rawDocs: \(snapshot.documents.count) ids: \(snapshot.documents.map { $0.documentID })")
+
+        var serviceStops: [ServiceStop] = []
+        for document in snapshot.documents {
+            do {
+                let stop = try document.data(as: ServiceStop.self)
+                print("[ProductionDataService][getAllServiceStopsByDayAndTech] decoded stop id: \(stop.id) techId: \(stop.techId) serviceDate: \(stop.serviceDate) operationStatus: \(stop.operationStatus.rawValue) billingStatus: \(stop.billingStatus.rawValue) category: \(stop.resolvedCategory.rawValue)")
+                serviceStops.append(stop)
+            } catch {
+                let data = document.data()
+                print("[ProductionDataService][getAllServiceStopsByDayAndTech] decode error docId: \(document.documentID) error: \(error)")
+                print("[ProductionDataService][getAllServiceStopsByDayAndTech] raw fields docId: \(document.documentID) techId: \(String(describing: data[ServiceStop.CodingKeys.techId.stringValue])) serviceDate: \(String(describing: data[ServiceStop.CodingKeys.serviceDate.stringValue])) operationStatus: \(String(describing: data[ServiceStop.CodingKeys.operationStatus.stringValue])) billingStatus: \(String(describing: data[ServiceStop.CodingKeys.billingStatus.stringValue])) category: \(String(describing: data[ServiceStop.CodingKeys.category.stringValue])) typeId: \(String(describing: data[ServiceStop.CodingKeys.typeId.stringValue])) jobId: \(String(describing: data[ServiceStop.CodingKeys.jobId.stringValue]))")
+            }
+        }
+        print("[ProductionDataService][getAllServiceStopsByDayAndTech] decodedStops: \(serviceStops.count)")
+        return serviceStops
     }
     func getServiceStopByServiceLocationId(companyId: String, serviceLocationId: String) async throws -> [ServiceStop] {
         let calendar = Calendar.current
@@ -425,6 +442,86 @@ extension ProductionDataService {
             ServiceStop.CodingKeys.serviceNotes.rawValue: serviceNotes
         ])
     }
+
+    func updateInitialSurveyServiceAgreementRecommendation(
+        companyId: String,
+        serviceStopId: String,
+        recommendedPriceCents: Int,
+        rateType: String,
+        notes: String,
+        recommendedByUserId: String,
+        recommendedByUserName: String
+    ) async throws {
+        let serviceStopRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+        let recommendedAt = Date()
+        let recommendation: [String: Any] = [
+            "recommendedPriceCents": recommendedPriceCents,
+            "rateType": rateType,
+            "notes": notes,
+            "recommendedByUserId": recommendedByUserId,
+            "recommendedByUserName": recommendedByUserName,
+            "recommendedAt": recommendedAt
+        ]
+
+        try await serviceStopRef.updateData([
+            "fieldEstimateWorkflow.initialSurveyRecommendation": recommendation,
+            ServiceStop.CodingKeys.recommendedServiceAgreementPriceCents.rawValue: recommendedPriceCents,
+            ServiceStop.CodingKeys.recommendedServiceAgreementRateType.rawValue: rateType,
+            ServiceStop.CodingKeys.recommendedServiceAgreementNotes.rawValue: notes,
+            ServiceStop.CodingKeys.recommendedServiceAgreementByUserId.rawValue: recommendedByUserId,
+            ServiceStop.CodingKeys.recommendedServiceAgreementByUserName.rawValue: recommendedByUserName,
+            ServiceStop.CodingKeys.recommendedServiceAgreementAt.rawValue: recommendedAt,
+            "updatedAt": recommendedAt
+        ])
+    }
+
+    func updateFieldJobEstimatePlan(
+        companyId: String,
+        serviceStopId: String,
+        planId: String,
+        title: String,
+        notes: String,
+        recommendedPriceCents: Int,
+        planTier: Int,
+        taskCount: Int,
+        plannedStopCount: Int,
+        materialCount: Int,
+        recommendedByUserId: String,
+        recommendedByUserName: String
+    ) async throws {
+        let serviceStopRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
+        let updatedAt = Date()
+        let plan: [String: Any] = [
+            "planId": planId,
+            "title": title,
+            "notes": notes,
+            "recommendedPriceCents": recommendedPriceCents,
+            "planTier": planTier,
+            "taskCount": taskCount,
+            "plannedStopCount": plannedStopCount,
+            "materialCount": materialCount,
+            "shoppingItemCount": materialCount,
+            "updatedAt": updatedAt,
+            "updatedByUserId": recommendedByUserId,
+            "updatedByUserName": recommendedByUserName
+        ]
+
+        var updateData: [String: Any] = [
+            "fieldEstimateWorkflow.jobEstimatePlan": plan,
+            "fieldJobPlanTitle": title,
+            "fieldJobPlanNotes": notes,
+            "fieldJobPlanTier": planTier,
+            "updatedAt": updatedAt
+        ]
+
+        if recommendedPriceCents > 0 {
+            updateData["recommendedJobEstimatePriceCents"] = recommendedPriceCents
+            updateData["fieldJobPlanRecommendedPriceCents"] = recommendedPriceCents
+        }
+
+        try await serviceStopRef.updateData(updateData)
+    }
+
     func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws{
         let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
         try await ref.updateData([
@@ -586,6 +683,57 @@ extension ProductionDataService {
             techName: updatedStop.tech
         )
     }
+    func finishServiceStopImmediately(
+        companyId: String,
+        serviceStop: ServiceStop,
+        endTime: Date,
+        duration: Int?,
+        completedByUserId: String,
+        sendServiceReport: Bool
+    ) async throws {
+        let serviceStopRef = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
+        let completionWorkRef = db
+            .collection("companies")
+            .document(companyId)
+            .collection("serviceStopCompletionWork")
+            .document(serviceStop.id)
+
+        let requestId = "comp_ss_completion_" + UUID().uuidString
+        var serviceStopUpdate: [String: Any] = [
+            ServiceStop.CodingKeys.operationStatus.rawValue: ServiceStopOperationStatus.finished.rawValue,
+            ServiceStop.CodingKeys.endTime.rawValue: endTime,
+            "completionWorkStatus": "queued",
+            "completionWorkRequestId": requestId,
+            "completionWorkQueuedAt": FieldValue.serverTimestamp(),
+            "completionWorkQueuedByUserId": completedByUserId,
+            "completionWorkSendServiceReport": sendServiceReport
+        ]
+
+        if let duration {
+            serviceStopUpdate[ServiceStop.CodingKeys.duration.rawValue] = duration
+        }
+
+        let completionWork: [String: Any] = [
+            "id": serviceStop.id,
+            "requestId": requestId,
+            "companyId": companyId,
+            "serviceStopId": serviceStop.id,
+            "status": "queued",
+            "queuedAt": FieldValue.serverTimestamp(),
+            "queuedByUserId": completedByUserId,
+            "sendServiceReport": sendServiceReport,
+            "operationStatus": ServiceStopOperationStatus.finished.rawValue,
+            "serviceDate": serviceStop.serviceDate,
+            "techId": serviceStop.techId,
+            "techName": serviceStop.tech,
+            "attempts": 0
+        ]
+
+        let batch = db.batch()
+        batch.updateData(serviceStopUpdate, forDocument: serviceStopRef)
+        batch.setData(completionWork, forDocument: completionWorkRef, merge: true)
+        try await batch.commit()
+    }
 
     private func updateFutureServiceStopEstimatedDurationsFromHistory(
         companyId: String,
@@ -701,6 +849,10 @@ extension ProductionDataService {
     //Delete
 
     func deleteServiceStop(companyId:String,serviceStop:ServiceStop)async throws {
+        if serviceStop.operationStatus == .finished || serviceStop.endTime != nil {
+            throw DeleteProtectionError.finishedServiceStop
+        }
+
         try await deleteServiceStopRelatedData(companyId: companyId, serviceStopId: serviceStop.id)
         try await serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId).delete()
         _ = try? await syncActiveRouteForServiceStops(
@@ -713,7 +865,19 @@ extension ProductionDataService {
     }
     func deleteServiceStopById(companyId:String,serviceStopId:String)async throws {
         let ref = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
-        let serviceStop = try? await ref.getDocument(as: ServiceStop.self)
+        let serviceStopSnapshot = try await ref.getDocument()
+        let serviceStop: ServiceStop?
+        if serviceStopSnapshot.exists {
+            serviceStop = try serviceStopSnapshot.data(as: ServiceStop.self)
+        } else {
+            serviceStop = nil
+        }
+
+        if let serviceStop,
+           serviceStop.operationStatus == .finished || serviceStop.endTime != nil {
+            throw DeleteProtectionError.finishedServiceStop
+        }
+
         try await deleteServiceStopRelatedData(companyId: companyId, serviceStopId: serviceStopId)
         try await ref.delete()
 

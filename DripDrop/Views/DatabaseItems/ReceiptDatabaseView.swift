@@ -18,9 +18,8 @@ struct ReceiptDatabaseView: View{
     }
     var body: some View{
         ReceiptDatabaseListView(dataService: dataService)
-        .navigationTitle("Database Items")
+        .navigationTitle("Vendor Items")
     }
 }
-
 
 

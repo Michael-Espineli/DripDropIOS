@@ -101,7 +101,7 @@ enum ConversationLinkType: String, Codable, Hashable, CaseIterable {
         case .equipment: return "Equipment"
         case .purchase: return "Purchase"
         case .shoppingListItem: return "Shopping Item"
-        case .databaseItem: return "Database Item"
+        case .databaseItem: return "Vendor Item"
         case .receipt: return "Receipt"
         case .vendor: return "Vendor"
         case .companyUser: return "Company User"

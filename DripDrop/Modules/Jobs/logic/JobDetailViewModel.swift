@@ -884,6 +884,12 @@ final class JobDetailViewModel:ObservableObject{
             if billingStatus != updatingJob.billingStatus {
                 print("Change in Billing Status")
                 try await dataService.updateJobBillingStatus(companyId: companyId, jobId: updatingJob.id, billingStatus: billingStatus)
+                if billingStatus == .accepted {
+                    try await dataService.activateShoppingListItemsForAcceptedJob(
+                        companyId: companyId,
+                        jobId: updatingJob.id
+                    )
+                }
             }
             if updatingJob.rate != rate {
                 print("Change in Rate")
@@ -1599,6 +1605,10 @@ final class JobDetailViewModel:ObservableObject{
             try dataService.updateJobEstiamteAcceptedByType(companyId: companyId, jobId: job.id, type: .company)
             try dataService.updateJobEstimateAcceptedNotes(companyId: companyId, jobId: job.id, notes: estimateAcceptedNotes)
             try dataService.updateJobBillingStatus(companyId: companyId, jobId: job.id, billingStatus: .accepted)
+            try await dataService.activateShoppingListItemsForAcceptedJob(
+                companyId: companyId,
+                jobId: job.id
+            )
             self.billingStatus = .accepted
             let acceptedByName = acceptedByUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unknown" : acceptedByUserName
             let trimmedNotes = estimateAcceptedNotes.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -22,7 +22,8 @@ enum ServiceStopContinuationGate {
     }
 }
 
-enum NextStopTaskScope: String, CaseIterable, Identifiable {
+enum ServiceStopTaskAddScope: String, CaseIterable, Identifiable {
+    case currentStop
     case nextStop
     case allFutureStops
 
@@ -30,15 +31,19 @@ enum NextStopTaskScope: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .currentStop:
+            return "Current Stop"
         case .nextStop:
             return "Next Stop"
         case .allFutureStops:
-            return "All Future"
+            return "All Future Stops"
         }
     }
 
     var subtitle: String {
         switch self {
+        case .currentStop:
+            return "Adds this task to the stop you are working now."
         case .nextStop:
             return "Adds a one-off task to the next generated stop."
         case .allFutureStops:
@@ -109,6 +114,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
 
     @Published var showAddCurrentStopTask: Bool = false
     @Published var showAddNextRecurringStopTask: Bool = false
+    @Published var showAddTaskScopeDialog: Bool = false
     @Published var showAddRepairRequest: Bool = false
 
     @Published var pendingCurrentStopTasks: [JobTaskGroupItem] = []
@@ -118,7 +124,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
     @Published var showAttachJobTasks: Bool = false
     @Published var attachableJobTasks: [JobTask] = []
     @Published var selectedAttachJobTaskIds: Set<String> = []
-    @Published var nextStopTaskScope: NextStopTaskScope = .nextStop
+    @Published var selectedAddTaskScope: ServiceStopTaskAddScope = .currentStop
 
     func finishServiceStopTask(
         companyId: String,
@@ -433,7 +439,9 @@ final class ServiceStopTaskViewModel: ObservableObject {
 
                 let targetStops: [ServiceStop]
 
-                switch nextStopTaskScope {
+                switch selectedAddTaskScope {
+                case .currentStop:
+                    targetStops = []
                 case .nextStop:
                     targetStops = Array(futureStops.prefix(1))
                 case .allFutureStops:
@@ -443,7 +451,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
                 for item in pendingNextRecurringStopTasks {
                     let recurringTask: RecurringServiceStopTask?
 
-                    if nextStopTaskScope == .allFutureStops {
+                    if selectedAddTaskScope == .allFutureStops {
                         let task = makeRecurringServiceStopTask(from: item)
                         try await dataService.uploadRecurringServiceStopTask(
                             companyId: companyId,
@@ -594,11 +602,13 @@ struct ServiceStopTaskView: View {
     init(
         dataService: any ProductionDataServiceProtocol,
         taskList: Binding<[ServiceStopTask]>,
-        serviceStopId: String
+        serviceStopId: String,
+        isLoadingTasks: Bool = false
     ) {
         _VM = StateObject(wrappedValue: ServiceStopTaskViewModel(dataService: dataService))
         self._taskList = taskList
         _serviceStopId = State(wrappedValue: serviceStopId)
+        self.isLoadingTasks = isLoadingTasks
     }
 
     @EnvironmentObject var dataService: ProductionDataService
@@ -611,6 +621,7 @@ struct ServiceStopTaskView: View {
     @State var serviceStopId: String
     @State private var showShoppingItemSheet: Bool = false
     @Binding var taskList: [ServiceStopTask]
+    let isLoadingTasks: Bool
 
     private var serviceStop: ServiceStop? {
         vm.serviceStopList.first { $0.id == serviceStopId }
@@ -684,7 +695,10 @@ struct ServiceStopTaskView: View {
         }) {
             AddRecurringServiceStopTask(
                 dataService: dataService,
-                tasks: $VM.pendingCurrentStopTasks
+                tasks: $VM.pendingCurrentStopTasks,
+                subtitle: ServiceStopTaskAddScope.currentStop.subtitle,
+                showsRateField: false,
+                showsClearButton: false
             )
         }
         .sheet(isPresented: $VM.showAttachJobTasks) {
@@ -707,8 +721,37 @@ struct ServiceStopTaskView: View {
         }) {
             AddRecurringServiceStopTask(
                 dataService: dataService,
-                tasks: $VM.pendingNextRecurringStopTasks
+                tasks: $VM.pendingNextRecurringStopTasks,
+                subtitle: VM.selectedAddTaskScope.subtitle,
+                showsRateField: false,
+                showsClearButton: false
             )
+        }
+        .confirmationDialog("Add Task", isPresented: $VM.showAddTaskScopeDialog, titleVisibility: .visible) {
+            Button(ServiceStopTaskAddScope.currentStop.title) {
+                VM.selectedAddTaskScope = .currentStop
+                VM.showAddCurrentStopTask = true
+            }
+
+            if hasRecurringServiceStop {
+                Button(ServiceStopTaskAddScope.nextStop.title) {
+                    VM.selectedAddTaskScope = .nextStop
+                    VM.showAddNextRecurringStopTask = true
+                }
+
+                Button(ServiceStopTaskAddScope.allFutureStops.title) {
+                    VM.selectedAddTaskScope = .allFutureStops
+                    VM.showAddNextRecurringStopTask = true
+                }
+            }
+
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            if hasRecurringServiceStop {
+                Text("Choose where this task should be added.")
+            } else {
+                Text("This stop does not have future recurring stops available.")
+            }
         }
         .sheet(isPresented: $VM.showAddRepairRequest) {
             AddNewRepairRequest(
@@ -774,30 +817,49 @@ struct ServiceStopTaskView: View {
         }
 
         var taskProgressBadge: some View {
-            Text("\(finishedTaskCount)/\(taskList.count)")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(.thinMaterial, in: Capsule())
+            Group {
+                if isLoadingTasks && taskList.isEmpty {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.mini)
+
+                        Text("Loading")
+                            .font(.caption.weight(.semibold))
+                    }
+                } else {
+                    Text("\(finishedTaskCount)/\(taskList.count)")
+                        .font(.caption.weight(.semibold))
+                }
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(.thinMaterial, in: Capsule())
         }
 
         var progressSection: some View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("Progress", systemImage: "checkmark.circle")
+                    Label(isLoadingTasks && taskList.isEmpty ? "Loading tasks" : "Progress", systemImage: "checkmark.circle")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
 
                     Spacer()
 
-                    Text(progressPercentText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                    if !(isLoadingTasks && taskList.isEmpty) {
+                        Text(progressPercentText)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
-                ProgressView(value: progressValue)
-                    .progressViewStyle(.linear)
+                if isLoadingTasks && taskList.isEmpty {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                } else {
+                    ProgressView(value: progressValue)
+                        .progressViewStyle(.linear)
+                }
             }
         }
 
@@ -813,7 +875,14 @@ struct ServiceStopTaskView: View {
 
         func taskSection(serviceStop: ServiceStop) -> some View {
             Section {
-                if taskList.isEmpty {
+                if isLoadingTasks && taskList.isEmpty {
+                    loadingTaskState
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                } else if taskList.isEmpty {
                     emptyTaskState
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
@@ -858,12 +927,20 @@ struct ServiceStopTaskView: View {
 
                     Spacer()
 
-                    Text("\(taskList.count)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(.thinMaterial, in: Capsule())
+                    if isLoadingTasks && taskList.isEmpty {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(.thinMaterial, in: Capsule())
+                    } else {
+                        Text("\(taskList.count)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(.thinMaterial, in: Capsule())
+                    }
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 8)
@@ -907,89 +984,33 @@ struct ServiceStopTaskView: View {
                     .listRowBackground(Color.clear)
                 }
 
-                Button {
-                    VM.showAddCurrentStopTask.toggle()
-                } label: {
-                    addWorkButtonLabel(
-                        title: "Add Task To Current Stop",
-                        subtitle: "Adds a one-off task to this service stop.",
-                        systemImage: "checkmark.circle"
-                    )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 4)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-
-                Button {
-                    showShoppingItemSheet = true
-                } label: {
-                    addWorkButtonLabel(
-                        title: "Add Install Material",
-                        subtitle: "Create a shopping list item for parts or equipment needed at this stop.",
-                        systemImage: "cart.badge.plus"
-                    )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 4)
-                .listRowInsets(EdgeInsets())
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-
-                if hasRecurringServiceStop {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Next Stop Scope")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-
-                        Picker("Next Stop Scope", selection: $VM.nextStopTaskScope) {
-                            ForEach(NextStopTaskScope.allCases) { scope in
-                                Text(scope.title)
-                                    .tag(scope)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                    taskQuickActionButton(
+                        title: "Add Task",
+                        systemImage: "checklist.badge.plus",
+                        tint: Color.poolGreen
+                    ) {
+                        startAddTaskFlow()
                     }
-                    .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 4)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
 
-                    Button {
-                        VM.showAddNextRecurringStopTask.toggle()
-                    } label: {
-                        addWorkButtonLabel(
-                            title: "Add Task To Next Stop",
-                            subtitle: VM.nextStopTaskScope.subtitle,
-                            systemImage: "repeat"
-                        )
+                    taskQuickActionButton(
+                        title: "Add Shopping Item",
+                        systemImage: "cart.badge.plus",
+                        tint: Color.poolBlue
+                    ) {
+                        showShoppingItemSheet = true
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 4)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                }
 
-                Button {
-                    VM.showAddRepairRequest.toggle()
-                } label: {
-                    addWorkButtonLabel(
+                    taskQuickActionButton(
                         title: "Add Repair Request",
-                        subtitle: "Use this when something needs repair.",
-                        systemImage: "wrench.and.screwdriver"
-                    )
+                        systemImage: "wrench.and.screwdriver",
+                        tint: Color.orange
+                    ) {
+                        VM.showAddRepairRequest.toggle()
+                    }
                 }
-                .buttonStyle(.plain)
                 .padding(.horizontal, 14)
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -1093,6 +1114,86 @@ struct ServiceStopTaskView: View {
             }
         }
 
+        var loadingTaskState: some View {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.small)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Loading tasks...")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("Fetching the latest task list for this service stop.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                VStack(spacing: 10) {
+                    ForEach(0..<3, id: \.self) { index in
+                        taskLoadingRow(index: index)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+
+        func taskLoadingRow(index: Int) -> some View {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(Color.secondary.opacity(0.16))
+                    .frame(width: 24, height: 24)
+
+                VStack(alignment: .leading, spacing: 7) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.secondary.opacity(0.18))
+                        .frame(width: index == 1 ? 150 : 190, height: 10)
+
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.secondary.opacity(0.1))
+                        .frame(width: index == 2 ? 110 : 132, height: 8)
+                }
+
+                Spacer(minLength: 8)
+
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color.secondary.opacity(0.12))
+                    .frame(width: 42, height: 18)
+            }
+            .padding(12)
+            .background(Color.listColor.opacity(0.55), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+
+        func taskQuickActionButton(
+            title: String,
+            systemImage: String,
+            tint: Color,
+            action: @escaping () -> Void
+        ) -> some View {
+            Button(action: action) {
+                HStack(spacing: 7) {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.bold))
+
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .foregroundStyle(tint)
+                .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+
         func addWorkButtonLabel(
             title: String,
             subtitle: String,
@@ -1124,6 +1225,16 @@ struct ServiceStopTaskView: View {
             }
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+
+        func startAddTaskFlow() {
+            VM.selectedAddTaskScope = .currentStop
+
+            if hasRecurringServiceStop {
+                VM.showAddTaskScopeDialog = true
+            } else {
+                VM.showAddCurrentStopTask = true
+            }
         }
 
         var emptyTaskState: some View {

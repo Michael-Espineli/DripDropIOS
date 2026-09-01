@@ -34,6 +34,7 @@ final class AddNewShoppingListItemToJobViewModel: ObservableObject {
         purchaserName: String,
         job: Job
     ) async throws {
+        let shoppingListActive = job.activatesShoppingListMaterials
         let item = buildShoppingListItem(
             draft: draft,
             purchaserId: purchaserId,
@@ -42,7 +43,8 @@ final class AddNewShoppingListItemToJobViewModel: ObservableObject {
             customerId: job.customerId,
             customerName: job.customerName,
             serviceLocationId: job.serviceLocationId,
-            serviceLocationName: nil
+            serviceLocationName: nil,
+            shoppingListActive: shoppingListActive
         )
 
         try await dataService.addNewShoppingListItem(
@@ -59,7 +61,8 @@ final class AddNewShoppingListItemToJobViewModel: ObservableObject {
         customerId: String?,
         customerName: String?,
         serviceLocationId: String? = nil,
-        serviceLocationName: String? = nil
+        serviceLocationName: String? = nil,
+        shoppingListActive: Bool = true
     ) -> ShoppingListItem {
         let cleanJobId = jobId ?? ""
         let cleanCustomerId = customerId ?? ""
@@ -79,7 +82,8 @@ final class AddNewShoppingListItemToJobViewModel: ObservableObject {
             customerName: customerName,
             serviceLocationId: serviceLocationId,
             serviceLocationName: serviceLocationName,
-            prepKeys: prepKeys
+            prepKeys: prepKeys,
+            shoppingListActive: shoppingListActive
         )
     }
 
@@ -109,7 +113,8 @@ extension ShoppingListItemDraft {
         customerName: String?,
         serviceLocationId: String?,
         serviceLocationName: String?,
-        prepKeys: [String]
+        prepKeys: [String],
+        shoppingListActive: Bool = true
     ) -> ShoppingListItem {
         let quantityValue = Double(quantity) ?? 0
 
@@ -124,6 +129,8 @@ extension ShoppingListItemDraft {
         }()
 
         let status: ShoppingListStatus = .needToPurchase
+        let productId = selectedProductId
+        let vendorItemId = selectedDataBaseItemId
 
         return ShoppingListItem(
             id: "comp_shop_" + UUID().uuidString,
@@ -132,7 +139,9 @@ extension ShoppingListItemDraft {
             status: status,
             purchaserId: purchaserId,
             purchaserName: purchaserName,
-            genericItemId: "",
+            genericItemId: productId ?? selectedDataBaseItem.linkedProductId,
+            productId: productId,
+            productName: productId == nil ? nil : selectedProduct.productDisplayName,
             name: displayName,
             description: description,
             datePurchased: nil,
@@ -153,11 +162,15 @@ extension ShoppingListItemDraft {
             scheduledDate: nil,
 
             prepKeys: prepKeys,
-            needsAction: status.needsShoppingAction,
-            actionDate: Date(),
+            needsAction: shoppingListActive && status.needsShoppingAction,
+            shoppingListActive: shoppingListActive,
+            actionDate: shoppingListActive ? Date() : nil,
             assignedTechIds: [],
 
-            dbItemId: selectedDataBaseItemId,
+            dbItemId: subCategory == .dataBase ? vendorItemId : nil,
+            dbItemName: subCategory == .dataBase ? selectedDataBaseItem.name : nil,
+            itemId: productId ?? (subCategory == .dataBase ? vendorItemId : nil),
+            itemType: subCategory.rawValue,
             purchasedItem: nil,
             invoiced: false,
 

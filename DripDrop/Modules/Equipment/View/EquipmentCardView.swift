@@ -48,7 +48,7 @@ struct EquipmentCardView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 6) {
                         equipmentPill(equipment.status.displayName, tint: statusTint, systemImage: "checkmark.seal")
-                        equipmentPill(equipment.type.rawValue, tint: .poolBlue, systemImage: "tag")
+                        equipmentPill(equipment.typeDisplayName, tint: .poolBlue, systemImage: "tag")
                         if equipment.needsService {
                             equipmentPill("Routine service", tint: .orange, systemImage: "calendar.badge.clock")
                         }
@@ -57,7 +57,7 @@ struct EquipmentCardView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 6) {
                             equipmentPill(equipment.status.displayName, tint: statusTint, systemImage: "checkmark.seal")
-                            equipmentPill(equipment.type.rawValue, tint: .poolBlue, systemImage: "tag")
+                            equipmentPill(equipment.typeDisplayName, tint: .poolBlue, systemImage: "tag")
                         }
 
                         if equipment.needsService {
@@ -123,7 +123,7 @@ struct EquipmentCardView: View {
 
     private var equipmentTitle: String {
         let name = equipment.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? equipment.type.rawValue : name
+        return name.isEmpty ? equipment.typeDisplayName : name
     }
 
     private var makeModelText: String {
@@ -136,7 +136,7 @@ struct EquipmentCardView: View {
     }
 
     private var filterPressureText: String? {
-        guard equipment.type == .filter,
+        guard equipment.isFilterEquipment,
               let cleanPressure = equipment.cleanFilterPressure,
               let currentPressure = equipment.currentPressure else {
             return nil
@@ -177,6 +177,8 @@ struct EquipmentCardView: View {
             return "switch.2"
         case .autoChlorinator:
             return "testtube.2"
+        case .other:
+            return "wrench.and.screwdriver"
         }
     }
 

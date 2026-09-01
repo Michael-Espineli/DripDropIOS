@@ -7,6 +7,8 @@
 // For Route
 import SwiftUI
 import UniformTypeIdentifiers
+import WebKit
+import MessageUI
 
 struct ServiceStopDetailView2: View {
     init(dataService:any ProductionDataServiceProtocol,serviceStopId:String) {
@@ -96,15 +98,8 @@ struct ServiceStopDetailView2: View {
         followUpItems.count
     }
 
-    private var oneOffTaskCount: Int {
-        VM.taskList.filter(isOneOffServiceStopTask).count
-    }
-
-    private func isOneOffServiceStopTask(_ task: ServiceStopTask) -> Bool {
-        let recurringTaskId = task.recurringServiceStopTaskId.trimmingCharacters(in: .whitespacesAndNewlines)
-        let jobTaskId = task.jobTaskId.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        return recurringTaskId.isEmpty && jobTaskId.isEmpty && task.status != .finished
+    private var unfinishedTaskCount: Int {
+        VM.taskList.filter { $0.status != .finished }.count
     }
 
     private var newCustomerNotesCount: Int {
@@ -138,10 +133,17 @@ struct ServiceStopDetailView2: View {
                         .padding(.top, 8)
                         .padding(.bottom, 6)
 
+                    if VM.isLoadingInitialDetails {
+                        detailLoadingBanner(for: stop)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 8)
+                    }
+
                     TabView(selection: $selectedTab) {
                         categoryTabs(for: stop)
                      }
-                    
+                } else {
+                    serviceStopLoadingState
                 }
             }
         
@@ -197,7 +199,16 @@ struct ServiceStopDetailView2: View {
                 lastSavedServiceNotes = stop.serviceNotes ?? ""
             }
         }
-        .task {
+        .onChange(of: serviceStop?.id, perform: { _ in
+            if let stop = serviceStop {
+                opStatus = stop.operationStatus
+                selectedTab = defaultTab(for: stop)
+                title = stop.customerName
+                serviceNotes = stop.serviceNotes ?? ""
+                lastSavedServiceNotes = stop.serviceNotes ?? ""
+            }
+        })
+        .task(id: serviceStop?.id) {
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user, let serviceStop {
                 title = serviceStop.customerName
                 serviceNotes = serviceStop.serviceNotes ?? ""
@@ -267,8 +278,11 @@ struct ServiceStopDetailView2: View {
         .alert("Provide skip reason", isPresented: $showSkipReason) {
             TextField("reason", text: $skipReason)
             Button("OK", action: submitSkipReason)
+            Button("Cancel", role: .cancel) {
+                skipReason = ""
+            }
         } message: {
-            Text("Will send to customer and manager")
+            Text("Reason will be saved with the stop.")
                 .font(.footnote)
         }
         .alert(
@@ -352,11 +366,11 @@ struct ServiceStopDetailView2: View {
         }
     }
     func submitSkipReason() {
-        if skipReason == "" {
-            print("Did not Provide a Reason")
-        } else {
-            print("You skipped because \(skipReason)")
-        }
+        guard let serviceStop else { return }
+
+        let reason = skipReason
+        skipReason = ""
+        markSkipped(serviceStop, reason: reason)
     }
 
     private var customerNotesToolbarButton: some View {
@@ -517,6 +531,119 @@ struct ServiceStopDetailView2: View {
 }
 
 private extension ServiceStopDetailView2 {
+    var serviceStopLoadingState: some View {
+        Group {
+            if vm.serviceStopList.isEmpty {
+                VStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .center, spacing: 12) {
+                            ProgressView()
+                                .controlSize(.regular)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Loading Service Stop")
+                                    .font(.headline.weight(.semibold))
+
+                                Text("Getting bodies of water, stop data, and tasks.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer(minLength: 0)
+                        }
+
+                        VStack(spacing: 10) {
+                            detailLoadingRow(width: 210)
+                            detailLoadingRow(width: 168)
+                            detailLoadingRow(width: 190)
+                        }
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color(.separator).opacity(0.25), lineWidth: 1)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 18)
+            } else {
+                ContentUnavailableView(
+                    "Service Stop Unavailable",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text("This stop is no longer in the current route.")
+                )
+            }
+        }
+    }
+
+    func detailLoadingBanner(for stop: ServiceStop) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            ProgressView()
+                .controlSize(.small)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Loading Service Stop Details")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.primary)
+
+                Text(detailLoadingStatusText(for: stop))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color.poolBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.poolBlue.opacity(0.18), lineWidth: 1)
+        }
+    }
+
+    func detailLoadingStatusText(for stop: ServiceStop) -> String {
+        switch stop.resolvedCategory {
+        case .route:
+            return "Getting bodies of water, stop data, and tasks."
+        case .job:
+            return "Getting linked job tasks and stop records."
+        case .jobEstimate:
+            return "Getting plan details and task records."
+        case .serviceAgreementEstimate:
+            return "Getting survey details and field records."
+        case .customerRelationship:
+            return "Getting tasks and follow-up records."
+        }
+    }
+
+    func detailLoadingRow(width: CGFloat) -> some View {
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(Color.secondary.opacity(0.16))
+                .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 7) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color.secondary.opacity(0.18))
+                    .frame(width: width, height: 10)
+
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(Color.secondary.opacity(0.1))
+                    .frame(width: max(96, width - 52), height: 8)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color.listColor.opacity(0.58), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
     func fieldCategoryHeader(for stop: ServiceStop) -> some View {
         HStack(alignment: .center, spacing: 10) {
             Label(stop.resolvedCategory.title, systemImage: stop.resolvedCategory.systemImage)
@@ -546,8 +673,10 @@ private extension ServiceStopDetailView2 {
             return "Water"
         case .serviceAgreementEstimate:
             return "Survey"
-        case .job, .jobEstimate, .customerRelationship:
-            return "Follow Up"
+        case .jobEstimate:
+            return "Create Plan"
+        case .job, .customerRelationship:
+            return "Tasks"
         }
     }
 
@@ -555,30 +684,31 @@ private extension ServiceStopDetailView2 {
     func categoryTabs(for stop: ServiceStop) -> some View {
         switch stop.resolvedCategory {
         case .route:
-            followUpTab(for: stop)
-            taskTab
             waterTab
+            taskTab
+            followUpTab(for: stop)
             equipmentTab(for: stop)
             finishTab
         case .job:
-            followUpTab(for: stop)
             taskTab
+            followUpTab(for: stop)
             jobCommentsTab(for: stop)
             equipmentTab(for: stop)
             finishTab
         case .jobEstimate:
-            followUpTab(for: stop)
+            createPlanTab(for: stop)
             taskTab
-            jobCommentsTab(for: stop)
+            followUpTab(for: stop)
             equipmentTab(for: stop)
             finishTab
         case .serviceAgreementEstimate:
-            followUpTab(for: stop)
             serviceAgreementSurveyTab(for: stop)
+            serviceAgreementWorkflowTab(for: stop)
+            followUpTab(for: stop)
             finishTab
         case .customerRelationship:
-            followUpTab(for: stop)
             taskTab
+            followUpTab(for: stop)
             finishTab
         }
     }
@@ -603,12 +733,17 @@ private extension ServiceStopDetailView2 {
     }
 
     var taskTab: some View {
-        ServiceStopTaskView(dataService: dataService, taskList: $VM.taskList, serviceStopId: serviceStopId)
+        ServiceStopTaskView(
+            dataService: dataService,
+            taskList: $VM.taskList,
+            serviceStopId: serviceStopId,
+            isLoadingTasks: VM.isLoadingTasks
+        )
             .tabItem {
                 Image(systemName: "chart.bar.doc.horizontal")
                 Text("Tasks")
             }
-            .badge(oneOffTaskCount)
+            .badge(unfinishedTaskCount)
             .tag("Tasks")
     }
 
@@ -619,6 +754,15 @@ private extension ServiceStopDetailView2 {
                 Text("Comments")
             }
             .tag("Comments")
+    }
+
+    func createPlanTab(for stop: ServiceStop) -> some View {
+        ServiceStopEstimatePlanView(dataService: dataService, serviceStop: stop)
+            .tabItem {
+                Image(systemName: "list.clipboard")
+                Text("Create Plan")
+            }
+            .tag("Create Plan")
     }
 
     var waterTab: some View {
@@ -652,13 +796,31 @@ private extension ServiceStopDetailView2 {
             customerId: stop.customerId,
             serviceLocationId: stop.serviceLocationId,
             serviceStop: stop,
-            serviceLocation: VM.location
+            serviceLocation: VM.location,
+            onOpenServiceAgreementWorkflow: {
+                selectedTab = "Agreement"
+            }
         )
         .tabItem {
             Image(systemName: "list.clipboard")
             Text("Survey")
         }
         .tag("Survey")
+    }
+
+    func serviceAgreementWorkflowTab(for stop: ServiceStop) -> some View {
+        ServiceStopAgreementWorkflowView(
+            dataService: dataService,
+            serviceStop: stop,
+            onOpenSurvey: {
+                selectedTab = "Survey"
+            }
+        )
+        .tabItem {
+            Image(systemName: "doc.text")
+            Text("Agreement")
+        }
+        .tag("Agreement")
     }
 
     var finishTab: some View {
@@ -1945,6 +2107,8 @@ struct ServiceStopShoppingListItemSheet: View {
             "serviceStop:\(serviceStop.id)",
             serviceStop.techId.isEmpty ? "" : "user:\(serviceStop.techId)"
         ])
+        let productId = draft.selectedProductId
+        let vendorItemId = draft.selectedDataBaseItemId
 
         let item = ShoppingListItem(
             id: itemId,
@@ -1953,7 +2117,9 @@ struct ServiceStopShoppingListItemSheet: View {
             status: .needToPurchase,
             purchaserId: user.id,
             purchaserName: purchaserName.isEmpty ? serviceStop.tech : purchaserName,
-            genericItemId: draft.selectedDataBaseItem.universalEquipmentId ?? "",
+            genericItemId: productId ?? draft.selectedDataBaseItem.linkedProductId,
+            productId: productId,
+            productName: productId == nil ? nil : draft.selectedProduct.productDisplayName,
             name: draft.displayName,
             description: draft.description,
             datePurchased: nil,
@@ -1972,7 +2138,10 @@ struct ServiceStopShoppingListItemSheet: View {
             needsAction: true,
             actionDate: serviceStop.serviceDate,
             assignedTechIds: uniqueNonEmpty([serviceStop.techId, user.id]),
-            dbItemId: draft.selectedDataBaseItemId,
+            dbItemId: draft.subCategory == .dataBase ? vendorItemId : nil,
+            dbItemName: draft.subCategory == .dataBase ? draft.selectedDataBaseItem.name : nil,
+            itemId: productId ?? (draft.subCategory == .dataBase ? vendorItemId : nil),
+            itemType: draft.subCategory.rawValue,
             purchasedItem: nil,
             invoiced: false,
             plannedUnitCostCents: draft.plannedUnitCostCents,
@@ -2006,7 +2175,7 @@ struct ServiceStopShoppingListItemSheet: View {
 
 private enum ServiceStopPartApprovalItemMode: String, CaseIterable, Identifiable {
     case manual = "Manual"
-    case database = "Database"
+    case database = "Product"
 
     var id: String { rawValue }
 }
@@ -2022,8 +2191,8 @@ struct ServiceStopPartApprovalSheet: View {
 
     @State private var customer: Customer?
     @State private var itemMode: ServiceStopPartApprovalItemMode = .manual
-    @State private var selectedDatabaseItem = ServiceStopPartApprovalSheet.emptyDataBaseItem
-    @State private var showDatabasePicker = false
+    @State private var selectedProduct = GenericItem.emptyProductCatalogItem
+    @State private var showProductPicker = false
     @State private var manualName = ""
     @State private var manualUnitCost = ""
     @State private var manualUnitPrice = ""
@@ -2046,14 +2215,14 @@ struct ServiceStopPartApprovalSheet: View {
         case .manual:
             return manualName.trimmingCharacters(in: .whitespacesAndNewlines)
         case .database:
-            return selectedDatabaseItem.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return selectedProduct.productDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }
 
     private var itemDescription: String {
         let trimmedNote = customerNote.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedNote.isEmpty { return trimmedNote }
-        if itemMode == .database { return selectedDatabaseItem.description }
+        if itemMode == .database { return selectedProduct.productDescription }
         return ""
     }
 
@@ -2066,7 +2235,7 @@ struct ServiceStopPartApprovalSheet: View {
         case .manual:
             return cents(fromDollarInput: manualUnitCost)
         case .database:
-            return Int(selectedDatabaseItem.rate.rounded())
+            return Int(selectedProduct.rate.rounded())
         }
     }
 
@@ -2075,7 +2244,7 @@ struct ServiceStopPartApprovalSheet: View {
         case .manual:
             return cents(fromDollarInput: manualUnitPrice)
         case .database:
-            return Int((selectedDatabaseItem.sellPrice ?? 0).rounded())
+            return selectedProduct.productSellPriceCents
         }
     }
 
@@ -2146,11 +2315,11 @@ struct ServiceStopPartApprovalSheet: View {
             .onAppear {
                 prefillIfNeeded()
             }
-            .sheet(isPresented: $showDatabasePicker) {
-                DataBaseItemPicker(
+            .sheet(isPresented: $showProductPicker) {
+                ProductCatalogPicker(
                     dataService: dataService,
-                    DBItem: $selectedDatabaseItem,
-                    category: .equipment
+                    product: $selectedProduct,
+                    onlyPartPurchaseAvailable: true
                 )
             }
         }
@@ -2189,12 +2358,12 @@ struct ServiceStopPartApprovalSheet: View {
                     .textFieldStyle(.roundedBorder)
             case .database:
                 Button {
-                    showDatabasePicker = true
+                    showProductPicker = true
                 } label: {
                     HStack {
-                        Text(selectedDatabaseItem.id.isEmpty ? "Select database item" : selectedDatabaseItem.name)
+                        Text(selectedProduct.id.isEmpty ? "Select product" : selectedProduct.productDisplayName)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selectedDatabaseItem.id.isEmpty ? .secondary : .primary)
+                            .foregroundStyle(selectedProduct.id.isEmpty ? .secondary : .primary)
                             .lineLimit(2)
 
                         Spacer()
@@ -2335,10 +2504,14 @@ struct ServiceStopPartApprovalSheet: View {
             name: itemName,
             description: itemDescription,
             quantity: String(quantityValue),
-            dbItemId: itemMode == .database ? selectedDatabaseItem.id : "",
-            dbItemName: itemMode == .database ? selectedDatabaseItem.name : "",
-            genericItemId: itemMode == .database ? selectedDatabaseItem.universalEquipmentId ?? "" : "",
-            subCategory: itemMode == .database ? "Data Base" : "Part",
+            dbItemId: "",
+            dbItemName: "",
+            genericItemId: itemMode == .database ? selectedProduct.id : "",
+            productId: itemMode == .database ? selectedProduct.id : "",
+            productName: itemMode == .database ? selectedProduct.productDisplayName : "",
+            itemId: itemMode == .database ? selectedProduct.id : "",
+            itemType: itemMode == .database ? "Product" : "Part",
+            subCategory: itemMode == .database ? "Product" : "Part",
             plannedUnitCostCents: unitCostCents,
             plannedUnitPriceCents: unitPriceCents,
             plannedTotalCostCents: totalCostCents,
@@ -2419,30 +2592,13 @@ struct ServiceStopPartApprovalSheet: View {
         return Int((dollars * 100).rounded())
     }
 
-    private static var emptyDataBaseItem: DataBaseItem {
-        DataBaseItem(
-            id: "",
-            name: "",
-            rate: 0,
-            storeName: "",
-            venderId: "",
-            category: .equipment,
-            subCategory: .misc,
-            description: "",
-            dateUpdated: Date(),
-            sku: "",
-            billable: false,
-            color: "",
-            size: "",
-            UOM: .unit
-        )
-    }
 }
 
 private struct ServiceStopJobCommentsView: View {
     let dataService: any ProductionDataServiceProtocol
     let serviceStop: ServiceStop
 
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var masterDataManager: MasterDataManager
 
     @State private var comments: [JobComment] = []
@@ -2499,6 +2655,25 @@ private struct ServiceStopJobCommentsView: View {
         .refreshable {
             await loadComments()
         }
+        .safeAreaInset(edge: .bottom) {
+            dismissCommentsBar
+        }
+    }
+
+    private var dismissCommentsBar: some View {
+        Button {
+            dismiss()
+        } label: {
+            Label("Dismiss Comments", systemImage: "xmark.circle")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
     }
 
     private var header: some View {
@@ -2746,6 +2921,2304 @@ private struct ServiceStopJobCommentsView: View {
     }
 }
 
+private struct ServiceStopAgreementWorkflowView: View {
+    let dataService: any ProductionDataServiceProtocol
+    let serviceStop: ServiceStop
+    let onOpenSurvey: () -> Void
+
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    @State private var agreements: [SalesAgreement] = []
+    @State private var isLoading: Bool = false
+    @State private var isSending: Bool = false
+    @State private var message: String? = nil
+    @State private var showPreview: Bool = false
+    @State private var showSendSheet: Bool = false
+    @State private var showMessageComposer: Bool = false
+    @State private var lastSentAgreementUrl: String = ""
+
+    private var companyId: String {
+        masterDataManager.currentCompany?.id ?? serviceStop.companyId
+    }
+
+    private var linkedAgreement: SalesAgreement? {
+        let linkedAgreementId = [
+            serviceStop.serviceAgreementId,
+            serviceStop.salesAgreementId,
+            serviceStop.agreementId
+        ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
+
+        if let linkedAgreementId,
+           let linked = agreements.first(where: { $0.id == linkedAgreementId }) {
+            return linked
+        }
+
+        return agreements
+            .filter(linksServiceStop)
+            .sorted(by: agreementSort)
+            .first
+    }
+
+    private var canSendAgreement: Bool {
+        hasRolePermission("400") ||
+        hasRolePermission("438") ||
+        hasRolePermission("628")
+    }
+
+    private var hasLinkedInspectionReport: Bool {
+        guard let agreement = linkedAgreement else { return false }
+        return [
+            agreement.inspectionServiceStopId,
+            agreement.serviceAgreementEstimateServiceStopId,
+            agreement.sourceId
+        ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .contains(serviceStop.id) ||
+        agreement.serviceStopIds?.contains(serviceStop.id) == true ||
+        !(agreement.emailDelivery?.inspectionReportUrl ?? agreement.inspectionReportUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var shouldIncludeInspectionReport: Bool {
+        linkedAgreement?.includeInspectionReport == true ||
+        linkedAgreement?.emailDelivery?.includeInspectionReport == true ||
+        hasLinkedInspectionReport
+    }
+
+    private var reviewUrlText: String {
+        let deliveryUrl = linkedAgreement?.emailDelivery?.agreementUrl ?? ""
+        let preferredUrl = lastSentAgreementUrl.isEmpty ? deliveryUrl : lastSentAgreementUrl
+        let trimmedPreferred = preferredUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !trimmedPreferred.isEmpty {
+            return trimmedPreferred
+        }
+
+        guard let linkedAgreement else { return "" }
+        return "https://dripdrop-poolapp.com/customer/service-agreements/\(linkedAgreement.id)"
+    }
+
+    private var textMessageBody: String {
+        let companyName = masterDataManager.currentCompany?.name ?? serviceStop.companyName
+        return "Please review your service agreement from \(companyName): \(reviewUrlText)"
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    header
+
+                    if isLoading && agreements.isEmpty {
+                        ProgressView("Loading agreement")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 28)
+                    } else if let agreement = linkedAgreement {
+                        previewSection(for: agreement)
+                        deliverySection(for: agreement)
+                        agreementDetailsSection(for: agreement)
+                        lineItemsSection(for: agreement)
+                        termsSection(for: agreement)
+                    } else {
+                        emptyAgreementState
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .task(id: serviceStop.id) {
+            await reloadAgreements()
+        }
+        .refreshable {
+            await reloadAgreements()
+        }
+        .sheet(isPresented: $showPreview) {
+            if let agreement = linkedAgreement {
+                NavigationStack {
+                    ServiceAgreementHTMLPreview(html: printableAgreementHtml(for: agreement))
+                        .navigationTitle("Agreement PDF Preview")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Done") {
+                                    showPreview = false
+                                }
+                            }
+                        }
+                }
+            }
+        }
+        .sheet(isPresented: $showSendSheet) {
+            if let agreement = linkedAgreement {
+                ServiceAgreementMobileSendSheet(
+                    agreement: agreement,
+                    sending: isSending,
+                    includeInspectionReport: shouldIncludeInspectionReport,
+                    hasLinkedInspectionReport: hasLinkedInspectionReport,
+                    onCancel: {
+                        showSendSheet = false
+                    },
+                    onSend: { primaryEmail, additionalEmails in
+                        Task {
+                            await sendAgreement(
+                                agreement: agreement,
+                                primaryEmail: primaryEmail,
+                                additionalEmails: additionalEmails
+                            )
+                        }
+                    }
+                )
+                .presentationDetents([.large])
+            }
+        }
+        .sheet(isPresented: $showMessageComposer) {
+            if MFMessageComposeViewController.canSendText() {
+                ServiceAgreementMessageComposer(body: textMessageBody)
+            } else {
+                NavigationStack {
+                    ContentUnavailableView(
+                        "Messages Unavailable",
+                        systemImage: "message",
+                        description: Text("This device cannot send text messages.")
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") {
+                                showMessageComposer = false
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "doc.text.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 42, height: 42)
+                    .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Service Agreement")
+                        .font(.title3.weight(.semibold))
+
+                    Text(linkedAgreement?.title ?? serviceStop.serviceAgreementTitle ?? "Preview and send the agreement from the field.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    Task { await reloadAgreements() }
+                } label: {
+                    if isLoading {
+                        ProgressView()
+                            .frame(width: 34, height: 34)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(width: 34, height: 34)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Refresh service agreement")
+            }
+
+            if let message {
+                Text(message)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(message.lowercased().contains("could not") || message.lowercased().contains("permission") ? Color.poolRed : Color.poolGreen)
+                    .lineLimit(3)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var emptyAgreementState: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("No Agreement Draft Linked", systemImage: "doc.badge.plus")
+                .font(.headline.weight(.semibold))
+
+            Text("Complete the survey recommendation, then connect or create the agreement draft so it can be previewed and sent here.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                onOpenSurvey()
+            } label: {
+                Label("Open Survey", systemImage: "list.clipboard")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func previewSection(for agreement: SalesAgreement) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Preview", systemImage: "doc.richtext")
+                    .font(.headline.weight(.semibold))
+
+                Spacer()
+
+                Text(agreement.status.rawValue.capitalized)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(statusTint(agreement.status))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(statusTint(agreement.status).opacity(0.12), in: Capsule())
+            }
+
+            Button {
+                showPreview = true
+            } label: {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Color.poolBlue)
+                            .frame(width: 44, height: 54)
+                            .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(agreement.title.isEmpty ? "Service Agreement" : agreement.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
+
+                            Text("\(formattedMoney(totalCents(for: agreement))) • \(formattedCadence(for: agreement))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+
+                        Spacer(minLength: 0)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    Text("Tap to open the in-app PDF-style agreement preview before sending.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func deliverySection(for agreement: SalesAgreement) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Send Agreement", systemImage: "paperplane.fill")
+                .font(.headline.weight(.semibold))
+
+            VStack(spacing: 8) {
+                agreementInfoRow("Primary Email", value: agreement.email.isEmpty ? "No email saved" : agreement.email, systemImage: "envelope")
+                agreementInfoRow("Review Link", value: reviewUrlText.isEmpty ? "Generated after send" : reviewUrlText, systemImage: "link")
+                agreementInfoRow("Last Sent", value: formattedDate(agreement.sentAt ?? agreement.emailDelivery?.lastSentAt), systemImage: "clock")
+            }
+
+            if shouldIncludeInspectionReport {
+                Label(hasLinkedInspectionReport ? "Inspection report will be included." : "No linked inspection report was found yet.", systemImage: hasLinkedInspectionReport ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(hasLinkedInspectionReport ? Color.poolGreen : Color.poolYellow)
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    showSendSheet = true
+                } label: {
+                    if isSending {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("Email", systemImage: "envelope.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canSendAgreement || isSending)
+
+                Button {
+                    showMessageComposer = true
+                } label: {
+                    Label("Text", systemImage: "message.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(reviewUrlText.isEmpty)
+            }
+
+            if !canSendAgreement {
+                Label("Your role can preview this agreement but cannot send it.", systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func agreementDetailsSection(for agreement: SalesAgreement) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Agreement Details", systemImage: "info.circle")
+                .font(.headline.weight(.semibold))
+
+            VStack(spacing: 8) {
+                agreementInfoRow("Customer", value: agreement.customerName, systemImage: "person")
+                agreementInfoRow("Location", value: serviceLocationText(for: agreement), systemImage: "mappin.and.ellipse")
+                agreementInfoRow("Payment Terms", value: labelize(agreement.paymentTerms ?? ""), systemImage: "calendar.badge.clock")
+                agreementInfoRow("Invoice Delivery", value: labelize(agreement.invoiceDeliveryMethod?.rawValue ?? ""), systemImage: "tray.and.arrow.down")
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func lineItemsSection(for agreement: SalesAgreement) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Services And Products", systemImage: "list.bullet.rectangle")
+                    .font(.headline.weight(.semibold))
+
+                Spacer()
+
+                Text(formattedMoney(totalCents(for: agreement)))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.poolGreen)
+            }
+
+            if agreement.lineItems?.isEmpty != false {
+                Text("No services or products were included yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(agreement.lineItems ?? []) { item in
+                        agreementLineItemRow(item)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func termsSection(for agreement: SalesAgreement) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Terms", systemImage: "text.page")
+                .font(.headline.weight(.semibold))
+
+            if let termsList = agreement.termsList, !termsList.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(termsList.enumerated()), id: \.offset) { index, term in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("\(index + 1).")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            Text(term)
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            } else if !agreement.terms.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(agreement.terms)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("No terms were added yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func agreementInfoRow(_ title: String, value: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 24, height: 24)
+                .background(Color.poolBlue.opacity(0.1), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "-" : value)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func agreementLineItemRow(_ item: SalesInvoiceLineItem) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "checkmark.circle")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 24, height: 24)
+                .background(Color.poolBlue.opacity(0.1), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.name ?? item.description)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+
+                if !item.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                   item.name != item.description {
+                    Text(item.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Text("Qty \(item.quantity) • \(formattedMoney(item.unitAmountCents))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(formattedMoney(item.totalAmountCents))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.poolGreen)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    @MainActor
+    private func reloadAgreements() async {
+        guard !companyId.isEmpty else {
+            agreements = []
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            agreements = try await dataService.getSalesAgreements(
+                companyId: companyId,
+                customerId: serviceStop.customerId
+            )
+            message = nil
+        } catch {
+            agreements = []
+            message = "Could not load service agreement"
+            print("[ServiceStopAgreementWorkflowView][reloadAgreements] \(error)")
+        }
+    }
+
+    @MainActor
+    private func sendAgreement(
+        agreement: SalesAgreement,
+        primaryEmail: String,
+        additionalEmails: [String]
+    ) async {
+        guard canSendAgreement else {
+            message = "Your role does not have permission to send agreements."
+            return
+        }
+
+        isSending = true
+        defer { isSending = false }
+
+        do {
+            let result = try await FunctionsManager.shared.sendServiceAgreement(
+                companyId: companyId,
+                agreementId: agreement.id,
+                primaryEmail: primaryEmail,
+                additionalEmails: additionalEmails,
+                includeInspectionReport: shouldIncludeInspectionReport
+            )
+            lastSentAgreementUrl = result.agreementUrl
+            message = result.userFacingMessage
+            showSendSheet = false
+            await reloadAgreements()
+        } catch {
+            message = error.localizedDescription.isEmpty ? "Could not send service agreement" : error.localizedDescription
+            print("[ServiceStopAgreementWorkflowView][sendAgreement] \(error)")
+        }
+    }
+
+    private func linksServiceStop(_ agreement: SalesAgreement) -> Bool {
+        let stopId = serviceStop.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        let locationId = serviceStop.serviceLocationId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let directIds = [
+            agreement.sourceId,
+            agreement.serviceAgreementEstimateServiceStopId,
+            agreement.inspectionServiceStopId,
+            agreement.jobId,
+            agreement.workOrderId
+        ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        if !stopId.isEmpty && directIds.contains(stopId) {
+            return true
+        }
+
+        if agreement.serviceStopIds?.contains(stopId) == true {
+            return true
+        }
+
+        return agreement.sourceType == .serviceAgreementSurvey &&
+        !locationId.isEmpty &&
+        agreement.serviceLocationIds.contains(locationId)
+    }
+
+    private func agreementSort(_ lhs: SalesAgreement, _ rhs: SalesAgreement) -> Bool {
+        (lhs.updatedAt ?? lhs.createdAt ?? .distantPast) > (rhs.updatedAt ?? rhs.createdAt ?? .distantPast)
+    }
+
+    private func hasRolePermission(_ permissionId: String) -> Bool {
+        masterDataManager.role?.permissionIdList.contains(permissionId) == true
+    }
+
+    private func statusTint(_ status: SalesAgreementStatus) -> Color {
+        switch status {
+        case .accepted:
+            return Color.poolGreen
+        case .sent, .revised:
+            return Color.poolBlue
+        case .rejected, .expired, .canceled:
+            return Color.poolRed
+        case .draft:
+            return .secondary
+        }
+    }
+
+    private func totalCents(for agreement: SalesAgreement) -> Int {
+        agreement.totalAmountCents ??
+        agreement.subtotalAmountCents ??
+        agreement.rateAmountCents
+    }
+
+    private func serviceLocationText(for agreement: SalesAgreement) -> String {
+        if let snapshot = agreement.serviceLocationSnapshots?.first {
+            let address = [
+                snapshot.streetAddress,
+                snapshot.address02,
+                [snapshot.city, snapshot.state].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", "),
+                snapshot.zip
+            ]
+                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+
+            return [snapshot.nickName, address]
+                .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " - ")
+        }
+
+        return [
+            serviceStop.address.streetAddress,
+            [serviceStop.address.city, serviceStop.address.state].filter { !$0.isEmpty }.joined(separator: ", "),
+            serviceStop.address.zip
+        ]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private func formattedCadence(for agreement: SalesAgreement) -> String {
+        let count = max(agreement.serviceCadenceCount, 1)
+        let cadence = labelize(agreement.serviceCadence)
+
+        if count == 1 {
+            return cadence.isEmpty ? "Service" : cadence
+        }
+
+        return "Every \(count) \(cadence.lowercased())"
+    }
+
+    private func formattedMoney(_ cents: Int) -> String {
+        ServiceStopEstimatePlanMoneyFormatter.money(cents)
+    }
+
+    private func formattedDate(_ date: Date?) -> String {
+        guard let date else { return "-" }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    private func labelize(_ value: String) -> String {
+        let spaced = value
+            .replacingOccurrences(of: "([a-z])([A-Z])", with: "$1 $2", options: .regularExpression)
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return spaced.isEmpty ? "-" : spaced.capitalized
+    }
+
+    private func printableAgreementHtml(for agreement: SalesAgreement) -> String {
+        let termsHtml: String
+        if let termsList = agreement.termsList, !termsList.isEmpty {
+            termsHtml = "<ol>\(termsList.map { "<li>\(escapeHtml($0))</li>" }.joined())</ol>"
+        } else {
+            termsHtml = "<p class=\"preline\">\(escapeHtml(agreement.terms))</p>"
+        }
+
+        let rows = (agreement.lineItems ?? []).isEmpty
+            ? "<tr><td colspan=\"4\" class=\"muted\">No services or products were included.</td></tr>"
+            : (agreement.lineItems ?? []).map { item in
+                """
+                <tr>
+                  <td><strong>\(escapeHtml(item.name ?? item.description))</strong><div class="muted">\(escapeHtml(item.description))</div></td>
+                  <td>\(item.quantity)</td>
+                  <td>\(escapeHtml(formattedMoney(item.unitAmountCents)))</td>
+                  <td><strong>\(escapeHtml(formattedMoney(item.totalAmountCents)))</strong></td>
+                </tr>
+                """
+            }.joined()
+
+        return """
+        <!doctype html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              * { box-sizing: border-box; }
+              body { margin: 0; background: #f8fafc; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 12px; line-height: 1.45; }
+              .page { background: #fff; margin: 12px auto; max-width: 780px; min-height: 100vh; padding: 28px; }
+              header { border-bottom: 2px solid #0f172a; margin-bottom: 20px; padding-bottom: 14px; }
+              h1 { font-size: 22px; letter-spacing: 0; margin: 0 0 8px; text-transform: uppercase; }
+              h2 { border-top: 1px solid #94a3b8; font-size: 12px; letter-spacing: 0; margin: 18px 0 8px; padding-top: 10px; text-transform: uppercase; }
+              p { margin: 0 0 8px; }
+              table { border-collapse: collapse; width: 100%; }
+              th, td { border: 1px solid #cbd5e1; padding: 7px; text-align: left; vertical-align: top; }
+              th { background: #f1f5f9; color: #475569; font-size: 10px; text-transform: uppercase; }
+              ol { margin: 0; padding-left: 18px; }
+              li { margin-bottom: 6px; }
+              .meta { color: #475569; display: flex; flex-wrap: wrap; gap: 10px; font-size: 10px; text-transform: uppercase; }
+              .grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 10px; }
+              .cell { border: 1px solid #cbd5e1; padding: 8px; }
+              .cell span { color: #475569; display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+              .cell strong { display: block; margin-top: 3px; }
+              .muted { color: #475569; font-size: 10px; font-weight: 400; margin-top: 3px; }
+              .preline { white-space: pre-line; }
+            </style>
+          </head>
+          <body>
+            <div class="page">
+              <header>
+                <h1>\(escapeHtml(agreement.title.isEmpty ? "Service Agreement" : agreement.title))</h1>
+                <div class="meta">
+                  <span>Agreement: \(escapeHtml(agreement.id))</span>
+                  <span>Prepared: \(escapeHtml(formattedDate(agreement.sentAt ?? agreement.createdAt)))</span>
+                  <span>Status: \(escapeHtml(agreement.status.rawValue.capitalized))</span>
+                </div>
+              </header>
+              <h2>1. Parties And Service Location</h2>
+              <p>This service agreement is between \(escapeHtml(agreement.companyName.isEmpty ? serviceStop.companyName : agreement.companyName)), the service provider, and \(escapeHtml(agreement.customerName.isEmpty ? serviceStop.customerName : agreement.customerName)), the client.</p>
+              <div class="grid">
+                <div class="cell"><span>Service Provider</span><strong>\(escapeHtml(agreement.companyName.isEmpty ? serviceStop.companyName : agreement.companyName))</strong></div>
+                <div class="cell"><span>Client</span><strong>\(escapeHtml(agreement.customerName.isEmpty ? serviceStop.customerName : agreement.customerName))</strong></div>
+                <div class="cell"><span>Client Email</span><strong>\(escapeHtml(agreement.email.isEmpty ? "Not provided" : agreement.email))</strong></div>
+                <div class="cell"><span>Service Location</span><strong>\(escapeHtml(serviceLocationText(for: agreement)))</strong></div>
+              </div>
+              <h2>2. Term And Billing Summary</h2>
+              <div class="grid">
+                <div class="cell"><span>Start Date</span><strong>\(escapeHtml(formattedDate(agreement.startDate)))</strong></div>
+                <div class="cell"><span>Service Frequency</span><strong>\(escapeHtml(formattedCadence(for: agreement)))</strong></div>
+                <div class="cell"><span>Payment Terms</span><strong>\(escapeHtml(labelize(agreement.paymentTerms ?? "")))</strong></div>
+                <div class="cell"><span>Total</span><strong>\(escapeHtml(formattedMoney(totalCents(for: agreement))))</strong></div>
+              </div>
+              <h2>3. Services And Products</h2>
+              <p class="preline">\(escapeHtml(agreement.description))</p>
+              <table>
+                <thead><tr><th>Service Or Product</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
+                <tbody>\(rows)</tbody>
+              </table>
+              <h2>4. Terms And Conditions</h2>
+              \(termsHtml)
+            </div>
+          </body>
+        </html>
+        """
+    }
+
+    private func escapeHtml(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
+    }
+}
+
+private struct ServiceAgreementMobileSendSheet: View {
+    let agreement: SalesAgreement
+    let sending: Bool
+    let includeInspectionReport: Bool
+    let hasLinkedInspectionReport: Bool
+    let onCancel: () -> Void
+    let onSend: (String, [String]) -> Void
+
+    @State private var primaryEmail: String
+    @State private var additionalEmailText: String = ""
+
+    init(
+        agreement: SalesAgreement,
+        sending: Bool,
+        includeInspectionReport: Bool,
+        hasLinkedInspectionReport: Bool,
+        onCancel: @escaping () -> Void,
+        onSend: @escaping (String, [String]) -> Void
+    ) {
+        self.agreement = agreement
+        self.sending = sending
+        self.includeInspectionReport = includeInspectionReport
+        self.hasLinkedInspectionReport = hasLinkedInspectionReport
+        self.onCancel = onCancel
+        self.onSend = onSend
+        _primaryEmail = State(initialValue: agreement.email)
+    }
+
+    private var primaryEmailValue: String {
+        primaryEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var additionalEmails: [String] {
+        let primaryKey = primaryEmailValue.lowercased()
+        var seen = Set<String>()
+
+        return additionalEmailText
+            .components(separatedBy: CharacterSet(charactersIn: ",; \n\t"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { email in
+                let key = email.lowercased()
+                guard key != primaryKey, !seen.contains(key) else { return false }
+                seen.insert(key)
+                return true
+            }
+    }
+
+    private var invalidAdditionalEmails: [String] {
+        additionalEmails.filter { !isValidEmail($0) }
+    }
+
+    private var primaryEmailInvalid: Bool {
+        !primaryEmailValue.isEmpty && !isValidEmail(primaryEmailValue)
+    }
+
+    private var recipients: [String] {
+        [primaryEmailValue] + additionalEmails
+    }
+
+    private var canSend: Bool {
+        !primaryEmailValue.isEmpty &&
+        !primaryEmailInvalid &&
+        invalidAdditionalEmails.isEmpty &&
+        !sending
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Verify Email Recipients", systemImage: "envelope.fill")
+                            .font(.title3.weight(.semibold))
+
+                        Text(agreement.title.isEmpty ? "Service Agreement" : agreement.title)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Primary Recipient")
+                            .font(.subheadline.weight(.semibold))
+
+                        TextField("customer@example.com", text: $primaryEmail)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding(12)
+                            .background(Color.listColor.opacity(0.7), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .disabled(sending)
+
+                        if primaryEmailInvalid {
+                            Text("Enter a valid primary email.")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.poolRed)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Additional Recipients")
+                            .font(.subheadline.weight(.semibold))
+
+                        TextEditor(text: $additionalEmailText)
+                            .frame(minHeight: 96)
+                            .padding(8)
+                            .scrollContentBackground(.hidden)
+                            .background(Color.listColor.opacity(0.7), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                            }
+                            .disabled(sending)
+
+                        if invalidAdditionalEmails.isEmpty == false {
+                            Text("Check: \(invalidAdditionalEmails.joined(separator: ", "))")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.poolRed)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Will Send To")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Text(recipients.filter { !$0.isEmpty }.isEmpty ? "Add a primary recipient." : recipients.filter { !$0.isEmpty }.joined(separator: ", "))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .background(Color.poolBlue.opacity(0.1), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                    if includeInspectionReport {
+                        Label(hasLinkedInspectionReport ? "Inspection report will be included." : "No linked inspection report was found yet.", systemImage: hasLinkedInspectionReport ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(hasLinkedInspectionReport ? Color.poolGreen : Color.poolYellow)
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("Send Agreement")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                        .disabled(sending)
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        onSend(primaryEmailValue, additionalEmails)
+                    } label: {
+                        if sending {
+                            ProgressView()
+                        } else {
+                            Text("Send")
+                        }
+                    }
+                    .disabled(!canSend)
+                }
+            }
+        }
+    }
+
+    private func isValidEmail(_ email: String) -> Bool {
+        email.range(of: #"^[^\s@]+@[^\s@]+\.[^\s@]+$"#, options: .regularExpression) != nil
+    }
+}
+
+private struct ServiceAgreementHTMLPreview: UIViewRepresentable {
+    let html: String
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = WKWebView()
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        webView.loadHTMLString(html, baseURL: nil)
+    }
+}
+
+private struct ServiceAgreementMessageComposer: UIViewControllerRepresentable {
+    let body: String
+
+    @Environment(\.dismiss) private var dismiss
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onDismiss: dismiss)
+    }
+
+    func makeUIViewController(context: Context) -> MFMessageComposeViewController {
+        let controller = MFMessageComposeViewController()
+        controller.body = body
+        controller.messageComposeDelegate = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: MFMessageComposeViewController, context: Context) {}
+
+    final class Coordinator: NSObject, MFMessageComposeViewControllerDelegate {
+        let onDismiss: DismissAction
+
+        init(onDismiss: DismissAction) {
+            self.onDismiss = onDismiss
+        }
+
+        func messageComposeViewController(
+            _ controller: MFMessageComposeViewController,
+            didFinishWith result: MessageComposeResult
+        ) {
+            onDismiss()
+        }
+    }
+}
+
+private struct ServiceStopEstimatePlanView: View {
+    let dataService: any ProductionDataServiceProtocol
+    let serviceStop: ServiceStop
+
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
+    @State private var jobTasks: [JobTask] = []
+    @State private var plannedStops: [JobPlannedServiceStop] = []
+    @State private var shoppingItems: [ShoppingListItem] = []
+    @State private var planNotes: [JobComment] = []
+    @State private var linkedJob: Job? = nil
+    @State private var recommendedPrice: String = ""
+    @State private var planTitle: String = ""
+    @State private var planDescription: String = ""
+    @State private var selectedPlanTier: Int = 2
+    @State private var didSeedPlanForm: Bool = false
+    @State private var newPlanNote: String = ""
+    @State private var isLoading: Bool = false
+    @State private var isSavingPlan: Bool = false
+    @State private var isSendingEstimate: Bool = false
+    @State private var isAddingPlanNote: Bool = false
+    @State private var showAddTaskSheet: Bool = false
+    @State private var showAddProductSheet: Bool = false
+    @State private var showEstimatePreview: Bool = false
+    @State private var message: String? = nil
+
+    private var jobId: String {
+        serviceStop.jobId.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var companyId: String {
+        masterDataManager.currentCompany?.id ?? serviceStop.companyId
+    }
+
+    private var totalTaskMinutes: Int {
+        jobTasks.reduce(0) { $0 + $1.estimatedTime }
+    }
+
+    private var jobDescriptionText: String {
+        let jobDescription = linkedJob?.description.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !jobDescription.isEmpty {
+            return jobDescription
+        }
+
+        return serviceStop.description.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedPlanDescription: String {
+        planDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var planDisplayTitle: String {
+        let trimmedTitle = planTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedTitle.isEmpty ? "Resolution Plan" : trimmedTitle
+    }
+
+    private var currentUserDisplayName: String {
+        let first = masterDataManager.user?.firstName ?? ""
+        let last = masterDataManager.user?.lastName ?? ""
+        let name = "\(first) \(last)".trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !name.isEmpty {
+            return name
+        }
+
+        return masterDataManager.user?.email ?? "Estimator"
+    }
+
+    private var canBuildFieldEstimatePlan: Bool {
+        hasRolePermission("72") ||
+        hasRolePermission("24") ||
+        hasRolePermission("400")
+    }
+
+    private var canSendFieldEstimate: Bool {
+        hasRolePermission("74") ||
+        hasRolePermission("622") ||
+        hasRolePermission("400")
+    }
+
+    private var recommendedPriceCents: Int {
+        centsFromCurrencyInput(recommendedPrice)
+    }
+
+    private var hasEstimatePlanContent: Bool {
+        recommendedPriceCents > 0 ||
+        !trimmedPlanDescription.isEmpty ||
+        !jobTasks.isEmpty ||
+        !shoppingItems.isEmpty
+    }
+
+    private var estimateTotalText: String {
+        if recommendedPriceCents > 0 {
+            return ServiceStopEstimatePlanMoneyFormatter.money(recommendedPriceCents)
+        }
+
+        if let linkedJob,
+           linkedJob.rate > 0 {
+            return "\(ServiceStopEstimatePlanMoneyFormatter.money(linkedJob.rate)) job price"
+        }
+
+        return "Not set"
+    }
+
+    private var successMessages: Set<String> {
+        [
+            "Plan note added",
+            "Resolution plan saved",
+            "Estimate sent to customer"
+        ]
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            if jobId.isEmpty {
+                ContentUnavailableView(
+                    "No Linked Job",
+                    systemImage: "briefcase",
+                    description: Text("Create Plan needs a linked estimate job.")
+                )
+                .padding()
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        header
+                        jobDescriptionCard
+                        fieldPlanEditor
+                        quickActions
+                        servicesToDo
+                        productsNeeded
+                        planNotesCard
+                        estimateDelivery
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .task(id: jobId) {
+            await reloadPlan()
+        }
+        .refreshable {
+            await reloadPlan()
+        }
+        .sheet(isPresented: $showAddTaskSheet, onDismiss: {
+            Task { await reloadPlan() }
+        }) {
+            AddNewTaskToJob(
+                dataService: dataService,
+                jobId: jobId,
+                taskTypes: JobTaskType.allCases.map(\.rawValue),
+                customerId: serviceStop.customerId,
+                serviceLocationId: serviceStop.serviceLocationId
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showAddProductSheet, onDismiss: {
+            Task { await reloadPlan() }
+        }) {
+            if let linkedJob {
+                AddNewShoppingListItemToJob(
+                    dataService: dataService,
+                    job: linkedJob
+                )
+                .presentationDetents([.medium, .large])
+            } else {
+                ContentUnavailableView(
+                    "Job Still Loading",
+                    systemImage: "briefcase",
+                    description: Text("Refresh the plan before adding products.")
+                )
+                .presentationDetents([.medium])
+            }
+        }
+        .sheet(isPresented: $showEstimatePreview) {
+            NavigationStack {
+                ServiceStopEstimatePlanPreview(
+                    title: planDisplayTitle,
+                    customerName: serviceStop.customerName,
+                    jobName: linkedJob?.type ?? serviceStop.jobName ?? serviceStop.type,
+                    jobDescription: jobDescriptionText,
+                    recommendedPriceCents: recommendedPriceCents,
+                    planTierLabel: planTierLabel(selectedPlanTier),
+                    planDescription: planDescription,
+                    jobTasks: jobTasks,
+                    shoppingItems: shoppingItems,
+                    planNotes: planNotes
+                )
+                .navigationTitle("Estimate Preview")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") {
+                            showEstimatePreview = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "list.clipboard.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 42, height: 42)
+                    .background(Color.poolBlue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Assemble Plan")
+                        .font(.title3.weight(.semibold))
+
+                    Text(serviceStop.jobName?.isEmpty == false ? serviceStop.jobName ?? serviceStop.type : serviceStop.type)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    Task { await reloadPlan() }
+                } label: {
+                    if isLoading {
+                        ProgressView()
+                            .frame(width: 34, height: 34)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(width: 34, height: 34)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Refresh estimate plan")
+            }
+
+            HStack(spacing: 8) {
+                planMetric("\(jobTasks.count)", title: "Services", systemImage: "checklist")
+                planMetric("\(shoppingItems.count)", title: "Products", systemImage: "shippingbox")
+                planMetric("\(totalTaskMinutes)", title: "Min", systemImage: "timer")
+            }
+
+            if let message {
+                Text(message)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(successMessages.contains(message) ? Color.poolGreen : Color.poolRed)
+                    .lineLimit(2)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var jobDescriptionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Job Description", systemImage: "doc.text")
+                .font(.headline.weight(.semibold))
+
+            Text(jobDescriptionText.isEmpty ? "No job description has been added yet." : jobDescriptionText)
+                .font(.subheadline)
+                .foregroundStyle(jobDescriptionText.isEmpty ? .secondary : .primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var fieldPlanEditor: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Label("Resolution Plan", systemImage: "list.bullet.clipboard")
+                    .font(.headline.weight(.semibold))
+
+                Spacer()
+
+                Text(planTierLabel(selectedPlanTier))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.poolBlue.opacity(0.1), in: Capsule())
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Plan Name")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField("Repair existing system", text: $planTitle)
+                    .textInputAutocapitalization(.words)
+                    .padding(12)
+                    .background(Color.listColor.opacity(0.7), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .disabled(!canBuildFieldEstimatePlan || isSavingPlan)
+            }
+
+            Picker("Plan Option", selection: $selectedPlanTier) {
+                ForEach([1, 2, 3], id: \.self) { tier in
+                    Text(planTierLabel(tier)).tag(tier)
+                }
+            }
+            .pickerStyle(.segmented)
+            .disabled(!canBuildFieldEstimatePlan || isSavingPlan)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("What needs to happen")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $planDescription)
+                        .font(.subheadline)
+                        .frame(minHeight: 112)
+                        .padding(8)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.listColor.opacity(0.7), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .disabled(!canBuildFieldEstimatePlan || isSavingPlan)
+
+                    if trimmedPlanDescription.isEmpty {
+                        Text("Write the field plan: diagnose, repair or replace, assemble parts, test the system, and confirm the issue is resolved.")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 16)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Customer Estimate Total")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 6) {
+                    Text("$")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.secondary)
+
+                    TextField("Optional", text: $recommendedPrice)
+                        .keyboardType(.decimalPad)
+                        .font(.subheadline.weight(.semibold))
+                        .disabled(!canBuildFieldEstimatePlan || isSavingPlan)
+                }
+                .padding(12)
+                .background(Color.listColor.opacity(0.7), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    showEstimatePreview = true
+                } label: {
+                    Label("Preview", systemImage: "doc.text.magnifyingglass")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!hasEstimatePlanContent)
+
+                Button {
+                    Task { _ = await saveFieldPlan() }
+                } label: {
+                    if isSavingPlan {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("Save", systemImage: "square.and.arrow.down")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canBuildFieldEstimatePlan || isSavingPlan || !hasEstimatePlanContent)
+            }
+
+            if !canBuildFieldEstimatePlan {
+                Label("Your role can review this field plan but cannot edit services, products, or resolution notes.", systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var quickActions: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Assemble Plan", systemImage: "plus.circle")
+                .font(.headline.weight(.semibold))
+
+            Button {
+                showAddTaskSheet = true
+            } label: {
+                actionRow(
+                    title: "Add Service Step",
+                    subtitle: "Add a repair, install, maintenance, inspection, or other step to the todo list.",
+                    systemImage: "checklist"
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!canBuildFieldEstimatePlan)
+
+            Button {
+                showAddProductSheet = true
+            } label: {
+                actionRow(
+                    title: "Add Product / Part",
+                    subtitle: "Add equipment, parts, materials, or chemicals needed to finish the job.",
+                    systemImage: "shippingbox"
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!canBuildFieldEstimatePlan || linkedJob == nil)
+
+            if !canBuildFieldEstimatePlan {
+                Label("Plan-building permission is required to add services or products from the field.", systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var estimateDelivery: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Label("Send Estimate", systemImage: "paperplane.fill")
+                    .font(.headline.weight(.semibold))
+
+                Spacer()
+
+                if let billingStatus = linkedJob?.billingStatus {
+                    Text(billingStatus.rawValue)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.poolYellow)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Color.poolYellow.opacity(0.14), in: Capsule())
+                }
+            }
+
+            VStack(spacing: 8) {
+                estimateInfoRow("Plan", value: planDisplayTitle, systemImage: "doc.text")
+                estimateInfoRow("Services", value: "\(jobTasks.count) service step(s)", systemImage: "checklist")
+                estimateInfoRow("Products", value: "\(shoppingItems.count) product/part line(s)", systemImage: "shippingbox")
+                estimateInfoRow("Estimate Total", value: estimateTotalText, systemImage: "dollarsign.circle")
+            }
+
+            HStack(spacing: 10) {
+                Button {
+                    showEstimatePreview = true
+                } label: {
+                    Label("Preview", systemImage: "eye.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(!hasEstimatePlanContent)
+
+                Button {
+                    Task { await sendEstimate() }
+                } label: {
+                    if isSendingEstimate {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("Send", systemImage: "paperplane.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.poolYellow)
+                .disabled(!canSendFieldEstimate || isSendingEstimate || !hasEstimatePlanContent)
+            }
+
+            if !canSendFieldEstimate {
+                Label("Your role can build the plan but cannot send job estimates.", systemImage: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var servicesToDo: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Services To Do", systemImage: "checklist")
+                    .font(.headline.weight(.semibold))
+
+                Spacer()
+
+                Text("\(totalTaskMinutes) min")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            if isLoading && jobTasks.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else if jobTasks.isEmpty {
+                ContentUnavailableView(
+                    "No Services Yet",
+                    systemImage: "checklist.unchecked",
+                    description: Text("Add the service steps needed to resolve the job.")
+                )
+                .padding(.vertical, 10)
+            } else {
+                ForEach(jobTasks) { task in
+                    planTaskRow(task)
+                }
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var productsNeeded: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Parts & Products", systemImage: "shippingbox")
+                    .font(.headline.weight(.semibold))
+
+                Spacer()
+
+                Text("\(shoppingItems.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            if isLoading && shoppingItems.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else if shoppingItems.isEmpty {
+                ContentUnavailableView(
+                    "No Parts Added",
+                    systemImage: "shippingbox",
+                    description: Text("Add the parts, equipment, chemicals, or materials needed to complete the plan.")
+                )
+                .padding(.vertical, 10)
+            } else {
+                ForEach(shoppingItems) { item in
+                    planProductRow(item)
+                }
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var planNotesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Plan Notes", systemImage: "text.bubble")
+                .font(.headline.weight(.semibold))
+
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $newPlanNote)
+                    .font(.subheadline)
+                    .frame(minHeight: 96)
+                    .padding(8)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                    }
+
+                if newPlanNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("Measurements, constraints, access notes, customer concerns, or field discoveries...")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 16)
+                        .allowsHitTesting(false)
+                }
+            }
+
+            HStack(spacing: 10) {
+                Spacer()
+
+                Button {
+                    Task { await addPlanNote() }
+                } label: {
+                    if isAddingPlanNote {
+                        ProgressView()
+                            .frame(width: 20, height: 20)
+                    } else {
+                        Label("Add Plan Note", systemImage: "plus.message.fill")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isAddingPlanNote || newPlanNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            if planNotes.isEmpty {
+                Text("No plan notes yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 2)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(planNotes.sorted(by: commentSort).prefix(4)) { comment in
+                        planNoteRow(comment)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func planMetric(_ value: String, title: String, systemImage: String) -> some View {
+        Label {
+            Text("\(value) \(title)")
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.thinMaterial, in: Capsule())
+    }
+
+    private func actionRow(title: String, subtitle: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 36, height: 36)
+                .background(Color.poolBlue.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func planTaskRow(_ task: JobTask) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "checkmark.circle")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(task.status == .finished ? Color.poolGreen : Color.poolBlue)
+                .frame(width: 32, height: 32)
+                .background((task.status == .finished ? Color.poolGreen : Color.poolBlue).opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text("\(task.type.rawValue) - \(task.estimatedTime) min")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
+                HStack(spacing: 6) {
+                    Text(task.status.rawValue)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.thinMaterial, in: Capsule())
+
+                    if !task.dataBaseItemId.isEmpty || task.shoppingListItemId?.isEmpty == false {
+                        Label("Part linked", systemImage: "shippingbox")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Color.poolGreen)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.poolGreen.opacity(0.12), in: Capsule())
+                    }
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func planProductRow(_ item: ShoppingListItem) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "shippingbox")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.poolGreen)
+                .frame(width: 32, height: 32)
+                .background(Color.poolGreen.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(productDisplayName(item))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text("Qty \(productQuantityText(item)) - \(item.subCategory.rawValue)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                if !item.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(item.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Text(item.status.rawValue)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.thinMaterial, in: Capsule())
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func productDisplayName(_ item: ShoppingListItem) -> String {
+        let options = [
+            item.productName,
+            item.dbItemName,
+            item.name
+        ]
+
+        return options
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? "Product / Part"
+    }
+
+    private func productQuantityText(_ item: ShoppingListItem) -> String {
+        let quantity = item.quantity?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return quantity.isEmpty ? "1" : quantity
+    }
+
+    private func plannedStopRow(_ plannedStop: JobPlannedServiceStop) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: plannedStop.serviceStopTypeImage.isEmpty ? "calendar" : plannedStop.serviceStopTypeImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 32, height: 32)
+                .background(Color.poolBlue.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(plannedStop.name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text("\(plannedStop.serviceStopTypeName) - \(plannedStop.estimatedMinutes) min")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if let plannedLaborCostCents = plannedStop.plannedLaborCostCents,
+                   plannedLaborCostCents > 0 {
+                    Text(ServiceStopEstimatePlanMoneyFormatter.money(plannedLaborCostCents))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.poolGreen)
+                }
+
+                if !plannedStop.taskIds.isEmpty {
+                    Label("\(plannedStop.taskIds.count) linked item(s)", systemImage: "checklist")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func planNoteRow(_ comment: JobComment) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(comment.userName ?? comment.authorName ?? "Unknown")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Text(commentDateText(comment.date))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(comment.comment)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func estimateInfoRow(_ title: String, value: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 24, height: 24)
+                .background(Color.poolBlue.opacity(0.1), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "-" : value)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private func hasRolePermission(_ permissionId: String) -> Bool {
+        masterDataManager.role?.permissionIdList.contains(permissionId) == true
+    }
+
+    private func planTierLabel(_ tier: Int) -> String {
+        switch tier {
+        case 1:
+            return "Good"
+        case 3:
+            return "Best"
+        default:
+            return "Better"
+        }
+    }
+
+    private func centsFromCurrencyInput(_ value: String) -> Int {
+        let cleaned = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "$", with: "")
+            .replacingOccurrences(of: ",", with: "")
+
+        guard let dollars = Double(cleaned) else { return 0 }
+        return max(Int((dollars * 100).rounded()), 0)
+    }
+
+    private func currencyInput(from cents: Int) -> String {
+        let dollars = Double(cents) / 100
+        return dollars.formatted(.number.precision(.fractionLength(2)))
+    }
+
+    private func seedPlanFormIfNeeded() {
+        guard !didSeedPlanForm else { return }
+
+        let existingPrice = serviceStop.fieldJobPlanRecommendedPriceCents ??
+        serviceStop.recommendedJobEstimatePriceCents ??
+        linkedJob?.rate ??
+        0
+
+        recommendedPrice = existingPrice > 0 ? currencyInput(from: existingPrice) : ""
+        planTitle = serviceStop.fieldJobPlanTitle ??
+        linkedJob?.type ??
+        serviceStop.jobName ??
+        "Resolution Plan"
+        planDescription = serviceStop.fieldJobPlanNotes ??
+        ""
+        selectedPlanTier = serviceStop.fieldJobPlanTier ?? 2
+        didSeedPlanForm = true
+    }
+
+    @MainActor
+    private func reloadPlan() async {
+        guard !jobId.isEmpty, !companyId.isEmpty else {
+            jobTasks = []
+            plannedStops = []
+            shoppingItems = []
+            planNotes = []
+            linkedJob = nil
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            async let taskRequest = dataService.getJobTasks(companyId: companyId, jobId: jobId)
+            async let plannedStopRequest = dataService.fetchJobPlannedServiceStops(companyId: companyId, jobId: jobId)
+            async let shoppingItemRequest = dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: jobId, category: ShoppingListCategory.job.rawValue)
+            async let commentRequest = dataService.getWorkOrderComments(companyId: companyId, workOrderId: jobId)
+            async let jobRequest = dataService.getWorkOrderById(companyId: companyId, workOrderId: jobId)
+
+            let (loadedTasks, loadedPlannedStops, loadedShoppingItems, loadedComments, loadedJob) = try await (taskRequest, plannedStopRequest, shoppingItemRequest, commentRequest, jobRequest)
+            jobTasks = loadedTasks
+            plannedStops = loadedPlannedStops
+            shoppingItems = loadedShoppingItems
+            planNotes = loadedComments
+            linkedJob = loadedJob
+            seedPlanFormIfNeeded()
+            message = nil
+        } catch {
+            message = "Could not load estimate plan"
+            print("[ServiceStopEstimatePlanView][reloadPlan] \(error)")
+        }
+    }
+
+    @MainActor
+    private func saveFieldPlan() async -> Bool {
+        guard canBuildFieldEstimatePlan else {
+            message = "Your role cannot build field job estimate plans."
+            return false
+        }
+
+        guard hasEstimatePlanContent else {
+            message = "Add a service, product, or resolution note before saving."
+            return false
+        }
+
+        guard let userId = masterDataManager.user?.id, !userId.isEmpty else {
+            message = "Missing signed-in user"
+            return false
+        }
+
+        isSavingPlan = true
+        defer { isSavingPlan = false }
+
+        let title = planTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Resolution Plan"
+            : planTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        do {
+            try await dataService.updateFieldJobEstimatePlan(
+                companyId: companyId,
+                serviceStopId: serviceStop.id,
+                planId: "field-plan-\(serviceStop.id)",
+                title: title,
+                notes: planDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+                recommendedPriceCents: recommendedPriceCents,
+                planTier: selectedPlanTier,
+                taskCount: jobTasks.count,
+                plannedStopCount: plannedStops.count,
+                materialCount: shoppingItems.count,
+                recommendedByUserId: userId,
+                recommendedByUserName: currentUserDisplayName
+            )
+            message = "Resolution plan saved"
+            return true
+        } catch {
+            message = "Could not save field job plan"
+            print("[ServiceStopEstimatePlanView][saveFieldPlan] \(error)")
+            return false
+        }
+    }
+
+    @MainActor
+    private func sendEstimate() async {
+        guard canSendFieldEstimate else {
+            message = "Your role cannot send job estimates."
+            return
+        }
+
+        guard hasEstimatePlanContent else {
+            message = "Create a plan before sending an estimate."
+            return
+        }
+
+        if canBuildFieldEstimatePlan {
+            let didSave = await saveFieldPlan()
+            guard didSave else { return }
+        }
+
+        isSendingEstimate = true
+        defer { isSendingEstimate = false }
+
+        do {
+            try dataService.updateJobBillingStatus(companyId: companyId, jobId: jobId, billingStatus: .estimate)
+            try await FunctionsManager.shared.sendJobEstimate(companyId: companyId, jobId: jobId)
+            message = "Estimate sent to customer"
+            await reloadPlan()
+        } catch {
+            message = "Could not send estimate"
+            print("[ServiceStopEstimatePlanView][sendEstimate] \(error)")
+        }
+    }
+
+    @MainActor
+    private func addPlanNote() async {
+        let trimmedNote = newPlanNote.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedNote.isEmpty else { return }
+        guard !companyId.isEmpty else {
+            message = "Missing company"
+            return
+        }
+        guard let userId = masterDataManager.user?.id, !userId.isEmpty else {
+            message = "Missing signed-in user"
+            return
+        }
+
+        isAddingPlanNote = true
+        defer { isAddingPlanNote = false }
+
+        let comment = JobComment(
+            id: "comp_wo_com_" + UUID().uuidString,
+            jobId: jobId,
+            companyId: companyId,
+            userId: userId,
+            userName: currentUserDisplayName,
+            authorId: userId,
+            authorName: currentUserDisplayName,
+            date: Date(),
+            comment: trimmedNote,
+            resolved: false
+        )
+
+        do {
+            try await dataService.addWorkOrderComment(
+                companyId: companyId,
+                workOrderId: jobId,
+                comment: comment
+            )
+            newPlanNote = ""
+            message = "Plan note added"
+            await reloadPlan()
+        } catch {
+            message = "Could not add plan note"
+            print("[ServiceStopEstimatePlanView][addPlanNote] \(error)")
+        }
+    }
+
+    private func commentSort(_ lhs: JobComment, _ rhs: JobComment) -> Bool {
+        (lhs.date ?? .distantPast) > (rhs.date ?? .distantPast)
+    }
+
+    private func commentDateText(_ date: Date?) -> String {
+        guard let date else { return "Pending" }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+}
+
+private struct ServiceStopEstimatePlanPreview: View {
+    let title: String
+    let customerName: String
+    let jobName: String
+    let jobDescription: String
+    let recommendedPriceCents: Int
+    let planTierLabel: String
+    let planDescription: String
+    let jobTasks: [JobTask]
+    let shoppingItems: [ShoppingListItem]
+    let planNotes: [JobComment]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text([customerName, jobName].filter { !$0.isEmpty }.joined(separator: " - "))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(spacing: 8) {
+                    previewMetric(
+                        "\(jobTasks.count)",
+                        title: "Services",
+                        systemImage: "checklist"
+                    )
+                    previewMetric(
+                        "\(shoppingItems.count)",
+                        title: "Products",
+                        systemImage: "shippingbox"
+                    )
+                    previewMetric(planTierLabel, title: "Plan", systemImage: "star")
+                }
+
+                if !jobDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    previewSection("Issue", systemImage: "exclamationmark.circle") {
+                        Text(jobDescription)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if !planDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    previewSection("Resolution Notes", systemImage: "text.bubble") {
+                        Text(planDescription)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                previewSection("Services To Do", systemImage: "checklist") {
+                    if jobTasks.isEmpty {
+                        Text("No services were added yet.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(jobTasks) { task in
+                                previewRow(
+                                    title: task.name,
+                                    subtitle: "\(task.type.rawValue) - \(task.estimatedTime) min",
+                                    value: task.status.rawValue,
+                                    systemImage: "checkmark.circle"
+                                )
+                            }
+                        }
+                    }
+                }
+
+                previewSection("Parts & Products", systemImage: "shippingbox") {
+                    if shoppingItems.isEmpty {
+                        Text("No parts or products were added yet.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(shoppingItems) { item in
+                                previewRow(
+                                    title: productDisplayName(item),
+                                    subtitle: "Qty \(productQuantityText(item)) - \(item.subCategory.rawValue)",
+                                    value: item.status.rawValue,
+                                    systemImage: "shippingbox"
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if recommendedPriceCents > 0 {
+                    previewSection("Estimate Total", systemImage: "dollarsign.circle") {
+                        Text(ServiceStopEstimatePlanMoneyFormatter.money(recommendedPriceCents))
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(Color.poolGreen)
+                    }
+                }
+
+                previewSection("Plan Notes", systemImage: "note.text") {
+                    if planNotes.isEmpty {
+                        Text("No plan notes yet.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(planNotes.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }.prefix(5)) { note in
+                                Text(note.comment)
+                                    .font(.caption)
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(10)
+                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color.listColor.ignoresSafeArea())
+    }
+
+    private func productDisplayName(_ item: ShoppingListItem) -> String {
+        let options = [
+            item.productName,
+            item.dbItemName,
+            item.name
+        ]
+
+        return options
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? "Product / Part"
+    }
+
+    private func productQuantityText(_ item: ShoppingListItem) -> String {
+        let quantity = item.quantity?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return quantity.isEmpty ? "1" : quantity
+    }
+
+    private func previewMetric(_ value: String, title: String, systemImage: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(value.isEmpty ? "-" : value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func previewSection<Content: View>(
+        _ title: String,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: systemImage)
+                .font(.headline.weight(.semibold))
+            content()
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func previewRow(title: String, subtitle: String, value: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 24, height: 24)
+                .background(Color.poolBlue.opacity(0.1), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            if !value.isEmpty {
+                Text(value)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.poolGreen)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+        }
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private enum ServiceStopEstimatePlanMoneyFormatter {
+    static func money(_ cents: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 2
+
+        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "$0.00"
+    }
+}
+
 private struct ServiceStopCustomerNotesSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var masterDataManager: MasterDataManager
@@ -2829,11 +5302,30 @@ private struct ServiceStopCustomerNotesSheet: View {
                     .accessibilityLabel("Refresh customer notes")
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                dismissNotesBar
+            }
             .task {
                 await onRefresh()
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private var dismissNotesBar: some View {
+        Button {
+            dismiss()
+        } label: {
+            Label("Dismiss Notes", systemImage: "xmark.circle")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
     }
 
     private var header: some View {
@@ -3338,11 +5830,15 @@ extension ServiceStopDetailView2 {
                     if let stop = serviceStop {
                         VStack(alignment: .leading, spacing: 14) {
                             recapHeader(for: stop)
-                            recapBody(for: stop)
-                            serviceNotesRecap(for: stop)
-                            observationRecap
-                            taskRecap
-                            photos
+                            if stop.resolvedCategory == .serviceAgreementEstimate {
+                                serviceAgreementFinishSummary(for: stop)
+                            } else {
+                                recapBody(for: stop)
+                                serviceNotesRecap(for: stop)
+                                observationRecap
+                                taskRecap
+                                photos
+                            }
                         }
                         .padding(.horizontal, 14)
                         .padding(.top, 12)
@@ -3367,6 +5863,54 @@ extension ServiceStopDetailView2 {
         } else if stop.includeReadings || stop.includeDosages {
             waterRecap(for: stop)
         }
+    }
+
+    private func serviceAgreementFinishSummary(for stop: ServiceStop) -> some View {
+        recapSection(title: "Survey Finish", systemImage: "list.clipboard") {
+            VStack(alignment: .leading, spacing: 10) {
+                finishSummaryRow(
+                    title: "Survey",
+                    value: "Body of water, equipment, photos, and recommendations are handled on the Survey tab.",
+                    systemImage: "checklist"
+                )
+
+                finishSummaryRow(
+                    title: "Agreement",
+                    value: "Preview, email, and text the linked service agreement from the Agreement tab.",
+                    systemImage: "doc.text"
+                )
+
+                if let price = stop.fieldRecommendedServiceAgreementPriceCents ?? stop.recommendedServiceAgreementPriceCents,
+                   price > 0 {
+                    finishSummaryRow(
+                        title: "Recommended Price",
+                        value: ServiceStopEstimatePlanMoneyFormatter.money(price),
+                        systemImage: "dollarsign.circle"
+                    )
+                }
+            }
+        }
+    }
+
+    private func finishSummaryRow(title: String, value: String, systemImage: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 26, height: 26)
+                .background(Color.poolBlue.opacity(0.1), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     private func serviceNotesRecap(for stop: ServiceStop) -> some View {
@@ -3484,7 +6028,6 @@ extension ServiceStopDetailView2 {
                 switch opStatus {
                 case .finished:
                     recapActionButton("Skip", systemImage: "forward", tint: Color.poolYellow, foreground: .black) {
-                        opStatus = .skipped
                         showSkipReason = true
                     }
 
@@ -3496,7 +6039,6 @@ extension ServiceStopDetailView2 {
 
                 case .notFinished:
                     recapActionButton("Skip", systemImage: "forward", tint: Color.poolYellow, foreground: .black) {
-                        opStatus = .skipped
                         showSkipReason = true
                     }
 
@@ -4134,42 +6676,161 @@ extension ServiceStopDetailView2 {
     }
 
     private func markFinished(_ stop: ServiceStop) {
+        guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
+            print("Either Invalid Company or active Route")
+            return
+        }
+
+        finishErrorMessage = nil
+        opStatus = .finished
+        let previousStop = vm.optimisticallyFinishServiceStop(stop)
+        navigationManager.goBack()
+
         Task {
-            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
-                opStatus = .finished
-                do {
-                    print("")
-                    print("Finishing Screen")
-                    print("-----------------")
+            do {
+                print("")
+                print("Finishing Screen")
+                print("-----------------")
 
-                    try await saveServiceNotesIfNeeded(companyId: company.id, stop: stop)
+                try await VM.updateServicestopOperationStatus(
+                    companyId: company.id,
+                    currentUserId: user.id,
+                    stop: stop,
+                    operationStatus: .finished
+                )
+            } catch {
+                print("Failed To Updated Finish Stops \(stop.id)")
+                print(error)
+                finishErrorMessage = error.localizedDescription
+                if let previousStop {
+                    vm.restoreServiceStopAfterOptimisticUpdate(previousStop)
+                    opStatus = previousStop.operationStatus
+                } else {
+                    opStatus = stop.operationStatus
+                }
+                vm.alertMessage = error.localizedDescription
+                vm.showAlert = true
+                print("")
+                return
+            }
 
+            do {
+                try await saveServiceNotesIfNeeded(companyId: company.id, stop: stop)
+            } catch {
+                print("Finished service stop \(stop.id), but failed to save service notes")
+                print(error)
+                finishErrorMessage = error.localizedDescription
+                vm.alertMessage = "Stop finished, but service notes did not save: \(error.localizedDescription)"
+                vm.showAlert = true
+            }
+        }
+    }
+
+    private func markNotFinished(_ stop: ServiceStop) {
+        guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
+            print("Either Invalid Company or active Route")
+            return
+        }
+
+        finishErrorMessage = nil
+        opStatus = .notFinished
+        let previousStop = vm.optimisticallyReopenServiceStop(stop)
+
+        Task {
+            do {
+                print("")
+                try await saveServiceNotesIfNeeded(companyId: company.id, stop: stop)
+
+                try await VM.updateServicestopOperationStatus(
+                    companyId: company.id,
+                    currentUserId: user.id,
+                    stop: stop,
+                    operationStatus: .notFinished
+                )
+
+                if stop.otherCompany && stop.contractedCompanyId != "" {
                     try await VM.updateServicestopOperationStatus(
-                        companyId: company.id,
+                        companyId: stop.contractedCompanyId,
                         currentUserId: user.id,
                         stop: stop,
-                        operationStatus: .finished
+                        operationStatus: .notFinished
                     )
-
-                    if let prompt = try await jobCompletionPromptIfEligible(
-                        companyId: company.id,
-                        userId: user.id,
-                        stop: stop
-                    ) {
-                        shouldNavigateBackAfterLinkedJobFlowDismiss = true
-                        linkedJobCompletionFlow = .decision(prompt)
-                        return
-                    }
-
-                    navigationManager.goBack()
-                } catch {
-                    print("Failed To Updated Finish Stops \(stop.id)")
-                    print(error)
-                    finishErrorMessage = error.localizedDescription
-                    print("")
                 }
-            } else {
-                print("Either Invalid Company or active Route")
+
+                print("Un finished")
+                print("Successful")
+                print("")
+            } catch {
+                print("Failed To Updated Finish Stops \(stop.id)")
+                print(error)
+                finishErrorMessage = error.localizedDescription
+                if let previousStop {
+                    vm.restoreServiceStopAfterOptimisticUpdate(previousStop)
+                    opStatus = previousStop.operationStatus
+                } else {
+                    opStatus = stop.operationStatus
+                }
+                print("")
+            }
+        }
+    }
+
+    private func markSkipped(_ stop: ServiceStop, reason: String) {
+        guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
+            print("Either Invalid Company or active Route")
+            return
+        }
+
+        finishErrorMessage = nil
+        opStatus = .skipped
+        let previousStop = vm.optimisticallySkipServiceStop(stop)
+        navigationManager.goBack()
+
+        Task {
+            do {
+                try await VM.updateServicestopOperationStatus(
+                    companyId: company.id,
+                    currentUserId: user.id,
+                    stop: stop,
+                    operationStatus: .skipped
+                )
+
+                if stop.otherCompany && stop.contractedCompanyId != "" {
+                    try await VM.updateServicestopOperationStatus(
+                        companyId: stop.contractedCompanyId,
+                        currentUserId: user.id,
+                        stop: stop,
+                        operationStatus: .skipped
+                    )
+                }
+            } catch {
+                print("Failed To Skip Service Stop \(stop.id)")
+                print(error)
+                finishErrorMessage = error.localizedDescription
+                if let previousStop {
+                    vm.restoreServiceStopAfterOptimisticUpdate(previousStop)
+                    opStatus = previousStop.operationStatus
+                } else {
+                    opStatus = stop.operationStatus
+                }
+                vm.alertMessage = error.localizedDescription
+                vm.showAlert = true
+                print("")
+                return
+            }
+
+            do {
+                try await saveServiceNotesForSkipIfNeeded(
+                    companyId: company.id,
+                    stop: stop,
+                    reason: reason
+                )
+            } catch {
+                print("Skipped service stop \(stop.id), but failed to save skip reason")
+                print(error)
+                finishErrorMessage = error.localizedDescription
+                vm.alertMessage = "Stop skipped, but the skip reason did not save: \(error.localizedDescription)"
+                vm.showAlert = true
             }
         }
     }
@@ -4226,46 +6887,6 @@ extension ServiceStopDetailView2 {
         }
     }
 
-    private func markNotFinished(_ stop: ServiceStop) {
-        Task {
-            if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
-                opStatus = .notFinished
-                do {
-                    print("")
-                    try await saveServiceNotesIfNeeded(companyId: company.id, stop: stop)
-
-                    try await VM.updateServicestopOperationStatus(
-                        companyId: company.id,
-                        currentUserId: user.id,
-                        stop: stop,
-                        operationStatus: .notFinished
-                    )
-
-                    if stop.otherCompany && stop.contractedCompanyId != "" {
-                        try await VM.updateServicestopOperationStatus(
-                            companyId: stop.contractedCompanyId,
-                            currentUserId: user.id,
-                            stop: stop,
-                            operationStatus: .notFinished
-                        )
-                    }
-
-                    print("Un finished")
-                    print("Successful")
-                    print("")
-                } catch {
-                    print("Failed To Updated Finish Stops \(stop.id)")
-                    print(error)
-                    print("")
-                }
-
-                navigationManager.goBack()
-            } else {
-                print("Either Invalid Company or active Route")
-            }
-        }
-    }
-
     private func saveServiceNotes(for stop: ServiceStop) {
         guard let companyId = masterDataManager.currentCompany?.id else {
             serviceNotesSaveMessage = "Unable to save"
@@ -4311,5 +6932,32 @@ extension ServiceStopDetailView2 {
 
         lastSavedServiceNotes = serviceNotesToSave
         serviceNotesSaveMessage = "Saved"
+    }
+
+    private func saveServiceNotesForSkipIfNeeded(
+        companyId: String,
+        stop: ServiceStop,
+        reason: String
+    ) async throws {
+        let notesToSave = serviceNotesAddingSkipReason(reason)
+        try await saveServiceNotesIfNeeded(
+            companyId: companyId,
+            stop: stop,
+            notesToSave: notesToSave
+        )
+        serviceNotes = notesToSave
+    }
+
+    private func serviceNotesAddingSkipReason(_ reason: String) -> String {
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedReason.isEmpty else { return serviceNotes }
+
+        let skipNote = "Skipped: \(trimmedReason)"
+        let trimmedNotes = serviceNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedNotes.isEmpty else { return skipNote }
+        guard !trimmedNotes.contains(skipNote) else { return serviceNotes }
+
+        return "\(serviceNotes)\n\n\(skipNote)"
     }
 }

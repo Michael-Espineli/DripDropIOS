@@ -17,6 +17,29 @@ extension ProductionDataService {
     //----------------------------------------------------
     //                    Update Functions
     //----------------------------------------------------
+    func updateDripDropAlertStatus(companyId:String, alertId:String, status:String) async throws {
+        try await alertDocument(companyId: companyId, alertId: alertId)
+            .updateData(alertStatusUpdatePayload(status: status))
+    }
+
+    func updatePersonalAlertStatus(userId:String, alertId:String, status:String) async throws {
+        try await personalAlertDocument(userId: userId, alertId: alertId)
+            .updateData(alertStatusUpdatePayload(status: status))
+    }
+
+    private func alertStatusUpdatePayload(status:String) -> [String:Any] {
+        let normalizedStatus = status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let now = Date()
+
+        return [
+            "status": normalizedStatus,
+            "read": normalizedStatus == "read",
+            "readAt": normalizedStatus == "read" ? now : NSNull(),
+            "archivedAt": normalizedStatus == "archived" ? now : NSNull(),
+            "updatedAt": now
+        ]
+    }
+
     func updateCompanyName(companyId:String,name:String) async throws{
         try await CompanyDocument(companyId: companyId)
             .updateData([

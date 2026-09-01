@@ -12,11 +12,11 @@ struct GenericItemCardView: View {
     var body: some View {
         VStack{
             HStack{
-                Text("Name: \(genericItem.commonName)")
+                Text("Product: \(genericItem.productDisplayName)")
                 Text("Category: \(genericItem.category)")
             }
             HStack{
-                Text("Rate: \(genericItem.rate, format: .currency(code: "USD").precision(.fractionLength(0)))")
+                Text("Sell Price: \(DataBaseItemMoneyFormatter.moneyFromCents(genericItem.productSellPriceCents))")
             }
         }
     }

@@ -27,7 +27,7 @@ struct GenericItemList: View {
             list
             icons
         }
-        .navigationTitle("Generic Items")
+        .navigationTitle("Product Catalog")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackground()
         .task {
@@ -35,7 +35,7 @@ struct GenericItemList: View {
                 do {
                     try await genericItemVM.getAllGenericItems(companyId: company.id)
                 } catch {
-                    print("Error Getting Generic Items")
+                    print("Error Getting Product Catalog")
                 }
             }
         }
@@ -145,13 +145,13 @@ extension GenericItemList {
     
     private var genericItemFilterSheet: some View {
         DripDropFilterSheet(
-            title: "Generic Item Filters",
+            title: "Product Filters",
             isPresented: $showFilter,
             isResetDisabled: selectedCategory == nil,
             onReset: resetGenericFilters
         ) {
             DripDropFilterSummaryCard(
-                title: "\(displayedGenericItems.count) generic items",
+                title: "\(displayedGenericItems.count) products",
                 subtitle: selectedCategory ?? "All categories",
                 systemImage: "shippingbox.fill",
                 tint: .accentColor
@@ -194,9 +194,10 @@ extension GenericItemList {
         if !term.isEmpty {
             items = items.filter { item in
                 [
-                    item.commonName,
+                    item.productDisplayName,
                     item.specificName,
                     item.category,
+                    item.subCategory ?? "",
                     item.description,
                     item.sku,
                     item.UOM
@@ -208,7 +209,7 @@ extension GenericItemList {
         }
 
         return items.sorted {
-            $0.commonName.localizedCaseInsensitiveCompare($1.commonName) == .orderedAscending
+            $0.productDisplayName.localizedCaseInsensitiveCompare($1.productDisplayName) == .orderedAscending
         }
     }
 

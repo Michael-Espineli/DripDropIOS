@@ -183,6 +183,8 @@ enum SalesAgreementSourceType: String, Codable, CaseIterable, Identifiable {
     case recurringService = "recurringService"
     case oneOffJob = "oneOffJob"
     case workOffer = "workOffer"
+    case serviceAgreementSurvey = "serviceAgreementSurvey"
+    case lead = "lead"
     case manual = "manual"
 }
 
@@ -357,7 +359,11 @@ struct SalesAgreementEmailDelivery: Codable, Hashable {
     var from: String?
     var replyTo: String?
     var messageId: String?
+    var messageIds: [String]?
+    var additionalEmails: [String]?
+    var recipientEmails: [String]?
     var agreementUrl: String?
+    var reviewAccessToken: String?
     var customerActionUrl: String?
     var customerPortalUrl: String?
     var claimAccountUrl: String?
@@ -369,6 +375,9 @@ struct SalesAgreementEmailDelivery: Codable, Hashable {
     var testMode: Bool?
     var realEmailsFeatureFlagId: String?
     var realEmailsEnabled: Bool?
+    var includeInspectionReport: Bool?
+    var hasInspectionReport: Bool?
+    var inspectionReportUrl: String?
     var lastSentAt: Date?
 }
 
@@ -385,6 +394,17 @@ struct SalesAgreement: Identifiable, Codable, Hashable {
     var serviceLocationIds: [String]
     var sourceType: SalesAgreementSourceType
     var sourceId: String
+    var leadId: String?
+    var phoneNumber: String?
+    var serviceAgreementEstimateServiceStopId: String?
+    var inspectionServiceStopId: String?
+    var inspectionReportUrl: String?
+    var includeInspectionReport: Bool?
+    var serviceStopIds: [String]?
+    var recurringServiceStopId: String?
+    var recurringRouteId: String?
+    var jobId: String?
+    var workOrderId: String?
     var title: String
     var description: String
     var terms: String
@@ -875,8 +895,13 @@ struct DataBaseItem:Identifiable,Codable,Hashable{
     var size : String
     var UOM : UnitOfMeasurment
     var tracking : String?
+    var billingRate: Double?
     var sellPrice:Double? //What to charge customer
     var timesPurchased:Int?
+    var productId: String?
+    var productName: String?
+    var genericItemId: String?
+    var genericItemName: String?
     var universalEquipmentId: String?
     var equipmentTypeId: String?
     var equipmentType: String?
@@ -886,6 +911,27 @@ struct DataBaseItem:Identifiable,Codable,Hashable{
     var equipmentModel: String?
     var manualPdfLink: String?
 
+}
+
+extension DataBaseItem {
+    var linkedProductId: String {
+        [
+            productId,
+            genericItemId,
+            universalEquipmentId
+        ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? ""
+    }
+
+    var linkedProductName: String {
+        [
+            productName,
+            genericItemName
+        ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? ""
+    }
 }
 struct CSVDataBaseItem{
     var name:String = ""

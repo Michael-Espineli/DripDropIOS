@@ -93,10 +93,48 @@ enum ServiceLocationLabel {
     case gateCode
 }
 
+private func normalizedServiceStopEnumKey(_ value: String) -> String {
+    value
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+        .replacingOccurrences(of: #"\s+|[/_-]"#, with: "", options: .regularExpression)
+}
+
 enum ServiceStopOperationStatus: String, Identifiable, Hashable, CaseIterable, Codable{
     case finished = "Finished"
     case notFinished = "Not Finished"
     case skipped = "Skipped"
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = (try? container.decode(String.self)) ?? ""
+
+        switch normalizedServiceStopEnumKey(rawValue) {
+        case normalizedServiceStopEnumKey(Self.finished.rawValue):
+            self = .finished
+        case normalizedServiceStopEnumKey(Self.skipped.rawValue),
+             "canceled",
+             "cancelled":
+            self = .skipped
+        case normalizedServiceStopEnumKey(Self.notFinished.rawValue),
+             "scheduled",
+             "inprogress",
+             "waitingforparts",
+             "estimatepending",
+             "unscheduled",
+             "":
+            self = .notFinished
+        default:
+            print("[ServiceStopOperationStatus][decode] Unknown raw value '\(rawValue)'; defaulting to Not Finished")
+            self = .notFinished
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
     var id: String {
         return self.rawValue
     }
@@ -106,6 +144,40 @@ enum ServiceStopBillingStatus: String, Identifiable, Hashable, CaseIterable, Cod
     case invoiced = "Invoiced"
     case paid = "Paid"
     case notInvoiced = "Not Invoiced"
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = (try? container.decode(String.self)) ?? ""
+
+        switch normalizedServiceStopEnumKey(rawValue) {
+        case normalizedServiceStopEnumKey(Self.invoiced.rawValue):
+            self = .invoiced
+        case normalizedServiceStopEnumKey(Self.paid.rawValue):
+            self = .paid
+        case normalizedServiceStopEnumKey(Self.notInvoiced.rawValue),
+             "comped",
+             "canceled",
+             "cancelled",
+             "customerresolved",
+             "draft",
+             "estimate",
+             "accepted",
+             "inprogress",
+             "rejected",
+             "expired",
+             "":
+            self = .notInvoiced
+        default:
+            print("[ServiceStopBillingStatus][decode] Unknown raw value '\(rawValue)'; defaulting to Not Invoiced")
+            self = .notInvoiced
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
     var id: String {
         return self.rawValue
     }
@@ -121,6 +193,60 @@ enum ServiceStopCategory: String, Identifiable, Hashable, CaseIterable, Codable 
     var id: String { rawValue }
 
     var title: String { rawValue }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = (try? container.decode(String.self)) ?? ""
+
+        switch normalizedServiceStopEnumKey(rawValue) {
+        case normalizedServiceStopEnumKey(Self.route.rawValue),
+             "",
+             "routes",
+             "recurringroute",
+             "recurringservicestop",
+             "systemrecurringservicestop",
+             "systemrecurringcommercialpaytype":
+            self = .route
+        case normalizedServiceStopEnumKey(Self.job.rawValue),
+             "jobvisit",
+             "jobservice",
+             "jobservicestop",
+             "servicecall",
+             "systemjobservicestop",
+             "systemjobsaltcellcleaningpaytype":
+            self = .job
+        case normalizedServiceStopEnumKey(Self.jobEstimate.rawValue),
+             "jobestimate",
+             "estimate",
+             "estimateforjob",
+             "bidvisit",
+             "systemjobestimateservicestop":
+            self = .jobEstimate
+        case normalizedServiceStopEnumKey(Self.serviceAgreementEstimate.rawValue),
+             "serviceestimate",
+             "recurringserviceestimate",
+             "startup",
+             "startuppool",
+             "startupprofile",
+             "systemserviceagreementestimateservicestop":
+            self = .serviceAgreementEstimate
+        case normalizedServiceStopEnumKey(Self.customerRelationship.rawValue),
+             "customerrelationship",
+             "customerrelationshipstop",
+             "customervisit",
+             "followup",
+             "systemcustomerrelationshipservicestop":
+            self = .customerRelationship
+        default:
+            print("[ServiceStopCategory][decode] Unknown raw value '\(rawValue)'; defaulting to Route")
+            self = .route
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 
     var systemImage: String {
         switch self {
@@ -205,6 +331,7 @@ enum ShoppingListCategory:String,Codable,CaseIterable {
 }
 
 enum ShoppingListSubCategory:String,Codable,CaseIterable {
+    case product = "Product"
     case dataBase = "Data Base"
     case chemical = "Chemical"
     case part = "Part"

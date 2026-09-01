@@ -114,6 +114,28 @@ struct Job: Identifiable, Codable, Hashable{
     }
 }
 
+extension Job {
+    var activatesShoppingListMaterials: Bool {
+        if dateEstimateAccepted != nil {
+            return true
+        }
+
+        switch billingStatus {
+        case .accepted, .inProgress, .invoiced, .paid, .comped:
+            return true
+        case .draft, .estimate, .expired, .rejected:
+            break
+        }
+
+        switch operationStatus {
+        case .scheduled, .inProgress, .finished, .waitingForParts:
+            return true
+        case .draft, .estimatePending, .unscheduled:
+            return false
+        }
+    }
+}
+
 protocol JobManagerProtocol {
     
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws

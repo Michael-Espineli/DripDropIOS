@@ -36,6 +36,10 @@ struct WorkOffer: Identifiable, Codable, Hashable {
     var postedToBoard: Bool
     var boardVisibility: WorkOfferBoardVisibility
     var boardPostId: String
+    var boardIds: [String]?
+    var boardNames: [String]?
+    var boardName: String?
+    var boardMemberUserIds: [String]?
 
     // Scope
     var jobTaskIds: [String]
@@ -51,6 +55,8 @@ struct WorkOffer: Identifiable, Codable, Hashable {
     // Planned schedule
     var proposedStartDate: Date?
     var proposedEndDate: Date?
+    var completionDeadlineAt: Date?
+    var timelineNotes: String?
     var estimatedMinutes: Int
     var allowsTechnicianSelfScheduling: Bool?
     
@@ -112,6 +118,10 @@ struct WorkOffer: Identifiable, Codable, Hashable {
         postedToBoard: Bool = false,
         boardVisibility: WorkOfferBoardVisibility = .contractorsOnly,
         boardPostId: String = "",
+        boardIds: [String]? = nil,
+        boardNames: [String]? = nil,
+        boardName: String? = nil,
+        boardMemberUserIds: [String]? = nil,
         jobTaskIds: [String],
         serviceStopTaskIds: [String] = [],
         customerId: String,
@@ -121,6 +131,8 @@ struct WorkOffer: Identifiable, Codable, Hashable {
         address: Address? = nil,
         proposedStartDate: Date? = nil,
         proposedEndDate: Date? = nil,
+        completionDeadlineAt: Date? = nil,
+        timelineNotes: String? = nil,
         estimatedMinutes: Int,
         allowsTechnicianSelfScheduling: Bool? = false,
         paySource: WorkOfferPaySource,
@@ -169,6 +181,10 @@ struct WorkOffer: Identifiable, Codable, Hashable {
         self.postedToBoard = postedToBoard
         self.boardVisibility = boardVisibility
         self.boardPostId = boardPostId
+        self.boardIds = boardIds
+        self.boardNames = boardNames
+        self.boardName = boardName
+        self.boardMemberUserIds = boardMemberUserIds
         self.jobTaskIds = jobTaskIds
         self.serviceStopTaskIds = serviceStopTaskIds
         self.customerId = customerId
@@ -178,6 +194,8 @@ struct WorkOffer: Identifiable, Codable, Hashable {
         self.address = address
         self.proposedStartDate = proposedStartDate
         self.proposedEndDate = proposedEndDate
+        self.completionDeadlineAt = completionDeadlineAt
+        self.timelineNotes = timelineNotes
         self.estimatedMinutes = estimatedMinutes
         self.allowsTechnicianSelfScheduling = allowsTechnicianSelfScheduling
         self.paySource = paySource

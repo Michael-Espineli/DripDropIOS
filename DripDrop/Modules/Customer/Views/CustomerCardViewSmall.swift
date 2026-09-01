@@ -78,11 +78,16 @@ struct CustomerCardViewSmall: View{
         return (filledOut:filledOut,percentage:percentage)
     }
     var body: some View{
-        if UIDevice.isIPhone {
-            mobileCustomerCard
-        } else {
-            legacyCustomerCard
-                .modifier(ListButtonModifier())
+        Group {
+            if UIDevice.isIPhone {
+                mobileCustomerCard
+            } else {
+                legacyCustomerCard
+                    .modifier(ListButtonModifier())
+            }
+        }
+        .task(id: customer.id) {
+            await loadUnresolvedCustomerNoteCount()
         }
     }
 
@@ -159,14 +164,11 @@ struct CustomerCardViewSmall: View{
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(Color.primary.opacity(0.07), lineWidth: 1)
         }
-        .task(id: customer.id) {
-            await loadUnresolvedCustomerNoteCount()
-        }
     }
 
     private var unresolvedCustomerNotesBadge: some View {
         Label(
-            "\(unresolvedCustomerNoteCount) unresolved \(unresolvedCustomerNoteCount == 1 ? "note" : "notes")",
+            "\(unresolvedCustomerNoteCount) unresolved \(unresolvedCustomerNoteCount == 1 ? "comment" : "comments")",
             systemImage: "text.bubble.fill"
         )
         .font(.caption2.weight(.semibold))
@@ -174,13 +176,12 @@ struct CustomerCardViewSmall: View{
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color.orange.opacity(0.12), in: Capsule())
-        .accessibilityLabel("\(unresolvedCustomerNoteCount) unresolved customer notes")
+        .accessibilityLabel("\(unresolvedCustomerNoteCount) unresolved customer comments")
     }
 
     @MainActor
     private func loadUnresolvedCustomerNoteCount() async {
-        guard UIDevice.isIPhone,
-              let companyId = masterDataManager.currentCompany?.id else {
+        guard let companyId = masterDataManager.currentCompany?.id else {
             unresolvedCustomerNoteCount = 0
             return
         }
@@ -226,6 +227,9 @@ struct CustomerCardViewSmall: View{
                         }
                         Spacer()
                     }
+                    if unresolvedCustomerNoteCount > 0 {
+                        unresolvedCustomerNotesBadge
+                    }
                 }
             case .preview:
                 VStack{
@@ -252,6 +256,9 @@ struct CustomerCardViewSmall: View{
                     if !checkPercentageFilledOut(customer: customer).filledOut {
                         ProgressView(value: checkPercentageFilledOut(customer: customer).percentage)
                             .tint(Color.red)
+                    }
+                    if unresolvedCustomerNoteCount > 0 {
+                        unresolvedCustomerNotesBadge
                     }
                 }
             case .fullPreview:
@@ -283,6 +290,9 @@ struct CustomerCardViewSmall: View{
                     if !checkPercentageFilledOut(customer: customer).filledOut {
                         ProgressView(value: checkPercentageFilledOut(customer: customer).percentage)
                             .tint(Color.red)
+                    }
+                    if unresolvedCustomerNoteCount > 0 {
+                        unresolvedCustomerNotesBadge
                     }
                 }
             }

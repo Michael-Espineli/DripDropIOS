@@ -100,13 +100,22 @@ struct AddRecurringServiceStopTask: View {
 
     @StateObject var VM: AddRecurringServiceStopTaskViewModel
     @Binding var tasks: [JobTaskGroupItem]
+    let subtitle: String
+    let showsRateField: Bool
+    let showsClearButton: Bool
 
     init(
         dataService: any ProductionDataServiceProtocol,
-        tasks: Binding<[JobTaskGroupItem]>
+        tasks: Binding<[JobTaskGroupItem]>,
+        subtitle: String = "Create a one-off task for this recurring service stop.",
+        showsRateField: Bool = true,
+        showsClearButton: Bool = true
     ) {
         _VM = StateObject(wrappedValue: AddRecurringServiceStopTaskViewModel(dataService: dataService))
         self._tasks = tasks
+        self.subtitle = subtitle
+        self.showsRateField = showsRateField
+        self.showsClearButton = showsClearButton
     }
 
     var body: some View {
@@ -155,7 +164,7 @@ extension AddRecurringServiceStopTask {
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
 
-                    Text("Create a one-off task for this recurring service stop.")
+                    Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -225,22 +234,24 @@ extension AddRecurringServiceStopTask {
             }
 
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Rate", systemImage: "dollarsign.circle")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 6) {
-                        Text("$")
-                            .font(.subheadline.weight(.semibold))
+                if showsRateField {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Rate", systemImage: "dollarsign.circle")
+                            .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
 
-                        TextField("0", text: $VM.itemRate)
-                            .font(.subheadline)
-                            .keyboardType(.decimalPad)
+                        HStack(spacing: 6) {
+                            Text("$")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            TextField("0", text: $VM.itemRate)
+                                .font(.subheadline)
+                                .keyboardType(.decimalPad)
+                        }
+                        .padding(12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
-                    .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
@@ -284,16 +295,18 @@ extension AddRecurringServiceStopTask {
 
     var bottomButtons: some View {
         HStack(spacing: 12) {
-            Button {
-                VM.clear()
-            } label: {
-                Label("Clear", systemImage: "arrow.counterclockwise")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            if showsClearButton {
+                Button {
+                    VM.clear()
+                } label: {
+                    Label("Clear", systemImage: "arrow.counterclockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             Button {
                 addTaskAndDismiss()

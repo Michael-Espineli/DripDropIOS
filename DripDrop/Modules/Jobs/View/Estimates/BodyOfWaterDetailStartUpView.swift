@@ -29,7 +29,7 @@ struct BodyOfWaterDetailStartUpView: View {
     @State var width2:String = ""
     @State var selectedPhotos:[DripDropImage] = []
     @State var shape:String = ""
-    @State var showDimensions:Bool = true
+    @State var showDimensions:Bool = false
     @State private var selectedPoolVolumePhotoStep: PoolVolumePhotoStep?
     @State private var showPoolVolumePhotoSourceDialog = false
     @State private var showPoolVolumePhotoPicker = false
@@ -48,10 +48,8 @@ struct BodyOfWaterDetailStartUpView: View {
                 )
             }
 
-            ForEach($bodiesOfWater) { $BOW in
-                if BOW.id == selectedBodyOfWater.id {
-                    bodyOfWaterDetailCard($BOW)
-                }
+            if let selectedBody = bodiesOfWater.first(where: { $0.id == selectedBodyOfWater.id }) {
+                bodyOfWaterDetailCard(bodyOfWaterBinding(for: selectedBody))
             }
         }
         .onAppear(perform: {
@@ -87,6 +85,7 @@ struct BodyOfWaterDetailStartUpView: View {
             print("")
             print("Change Of Selected Photos")
             print(images)
+            guard !selectedBodyOfWater.id.isEmpty else { return }
             photos[selectedBodyOfWater.id] = images
         })
         .confirmationDialog(
@@ -130,6 +129,24 @@ struct BodyOfWaterDetailStartUpView: View {
 //}
 
 private extension BodyOfWaterDetailStartUpView {
+    func bodyOfWaterBinding(for bodyOfWater: BodyOfWater) -> Binding<BodyOfWater> {
+        Binding(
+            get: {
+                bodiesOfWater.first { $0.id == bodyOfWater.id } ?? bodyOfWater
+            },
+            set: { updatedBodyOfWater in
+                guard let index = bodiesOfWater.firstIndex(where: { $0.id == bodyOfWater.id }) else {
+                    return
+                }
+
+                bodiesOfWater[index] = updatedBodyOfWater
+                if selectedBodyOfWater.id == bodyOfWater.id {
+                    selectedBodyOfWater = updatedBodyOfWater
+                }
+            }
+        )
+    }
+
     func bodyOfWaterDetailCard(_ bodyOfWater: Binding<BodyOfWater>) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             bodyOfWaterHeader(bodyOfWater)
@@ -300,7 +317,7 @@ private extension BodyOfWaterDetailStartUpView {
         return VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
 
             Menu {
                 content()
@@ -319,6 +336,10 @@ private extension BodyOfWaterDetailStartUpView {
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                )
             }
             .buttonStyle(.plain)
         }
@@ -333,7 +354,7 @@ private extension BodyOfWaterDetailStartUpView {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
 
             if let lineLimit {
                 TextField(title, text: text, axis: .vertical)
@@ -341,12 +362,20 @@ private extension BodyOfWaterDetailStartUpView {
                     .keyboardType(keyboardType)
                     .padding(10)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                    )
                     .foregroundColor(Color.basicFontText)
             } else {
                 TextField(title, text: text)
                     .keyboardType(keyboardType)
                     .padding(10)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                    )
                     .foregroundColor(Color.basicFontText)
             }
         }
@@ -361,11 +390,15 @@ private extension BodyOfWaterDetailStartUpView {
     }
 
     func deleteBodyOfWater(_ bodyOfWater: BodyOfWater) {
-        equipmentList.removeAll { $0.bodyOfWaterId == bodyOfWater.id }
-        bodiesOfWater.removeAll { $0.id == bodyOfWater.id }
+        let removedBodyOfWaterId = bodyOfWater.id
+        photos[removedBodyOfWaterId] = nil
+        equipmentList.removeAll { $0.bodyOfWaterId == removedBodyOfWaterId }
+        bodiesOfWater.removeAll { $0.id == removedBodyOfWaterId }
 
-        if selectedBodyOfWater.id == bodyOfWater.id, let nextBodyOfWater = bodiesOfWater.first {
+        if selectedBodyOfWater.id == removedBodyOfWaterId, let nextBodyOfWater = bodiesOfWater.first {
             selectedBodyOfWater = nextBodyOfWater
+        } else if selectedBodyOfWater.id == removedBodyOfWaterId {
+            selectedPhotos = []
         }
     }
 
@@ -725,12 +758,16 @@ private extension BodyOfWaterDetailStartUpView {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary.opacity(0.72))
 
             TextField(title, text: text)
                 .keyboardType(.decimalPad)
                 .padding(10)
                 .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.poolBlue.opacity(0.24), lineWidth: 1)
+                )
                 .foregroundColor(Color.basicFontText)
         }
     }

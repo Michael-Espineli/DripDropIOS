@@ -327,10 +327,15 @@ struct EmployeeDailyDashboard: View {
 
         Task {
             do {
-                let totalPurchasableItems = try await dataService.getShoppingListItemStatusCount(
+                let userShoppingItems = try await dataService.getShoppingListItemsForUserScope(
                     companyId: company.id,
-                    status: .needToPurchase
+                    userId: user.id,
+                    limit: 150
                 )
+                let weekPurchasableItems = userShoppingItems.filter { item in
+                    item.status == .needToPurchase &&
+                    item.isNeeded(in: .thisWeek, referenceDate: VM.selectedDate)
+                }.count
 
                 let prepKeys = ShoppingPrepKeyBuilder.keysForRoute(
                     serviceStops: VM.serviceStopList,
@@ -339,7 +344,7 @@ struct EmployeeDailyDashboard: View {
 
                 guard !prepKeys.isEmpty else {
                     listOfShoppingListItems = 0
-                    totalPurchasableShoppingListItems = totalPurchasableItems
+                    totalPurchasableShoppingListItems = weekPurchasableItems
                     return
                 }
 
@@ -352,7 +357,7 @@ struct EmployeeDailyDashboard: View {
                 listOfShoppingListItems = routePrepItems.filter { item in
                     item.status == .needToPurchase
                 }.count
-                totalPurchasableShoppingListItems = totalPurchasableItems
+                totalPurchasableShoppingListItems = weekPurchasableItems
             } catch {
                 listOfShoppingListItems = 0
                 totalPurchasableShoppingListItems = 0
@@ -515,7 +520,10 @@ extension EmployeeDailyDashboard {
                 ShoppingListView(
                     dataService: dataService,
                     routeServiceStops: VM.serviceStopList,
-                    routeDate: VM.selectedDate
+                    routeDate: VM.selectedDate,
+                    initialTab: listOfShoppingListItems > 0 ? .routePrep : .outstanding,
+                    initialTimeScope: listOfShoppingListItems > 0 ? .today : .thisWeek,
+                    includeAllOutstandingByDefault: false
                 )
             } label: {
                 dashboardToolbarIcon(
