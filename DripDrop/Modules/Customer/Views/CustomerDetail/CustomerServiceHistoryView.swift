@@ -280,7 +280,8 @@ final class CustomerTimelineViewModel: ObservableObject {
 
         return snapshot.documents.compactMap { document in
             do {
-                let note = try document.data(as: CustomerNote.self)
+                var note = try document.data(as: CustomerNote.self)
+                note.storedId = note.storedId ?? document.documentID
                 return CustomerTimelineEvent(
                     id: "customer-note-\(note.id)",
                     kind: .note,

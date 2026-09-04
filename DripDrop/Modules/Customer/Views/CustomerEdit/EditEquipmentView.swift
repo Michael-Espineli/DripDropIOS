@@ -161,7 +161,7 @@ struct EditEquipmentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") {
+                KeyboardDismissButton {
                     focusedInput = false
                 }
             }

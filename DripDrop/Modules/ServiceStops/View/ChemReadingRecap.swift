@@ -56,12 +56,21 @@ struct ChemReadingRecap: View {
         ]
 
         return stopData.readings.first { reading in
-            templateKeys.contains { key in
+            guard itemMatchesBodyOfWater(reading.bodyOfWaterId) else { return false }
+
+            return templateKeys.contains { key in
                 matches(key, reading.templateId) ||
                 matches(key, reading.universalTemplateId) ||
                 matches(key, reading.name)
             }
         }
+    }
+
+    private func itemMatchesBodyOfWater(_ bodyOfWaterId: String) -> Bool {
+        let itemId = normalizedKey(bodyOfWaterId)
+        let selectedId = normalizedKey(BOW.id)
+
+        return itemId.isEmpty || itemId == selectedId
     }
 
     private func matches(_ lhs: String?, _ rhs: String?) -> Bool {

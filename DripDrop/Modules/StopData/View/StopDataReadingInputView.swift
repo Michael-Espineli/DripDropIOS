@@ -21,6 +21,7 @@ struct StopDataReadingInputView: View {
     var customerId:String
     var serviceLocationId:String
     @FocusState var chemicalInput:Bool
+    @State private var isSyncingInput = false
 
 
     var body: some View {
@@ -96,26 +97,13 @@ struct StopDataReadingInputView: View {
         )
         .contentShape(Rectangle())
         .onChange(of: stopData, perform: { datum in
-            if let reading = datum.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                input = reading.amount ?? ""
-            } else {
-                input = ""
-            }
+            syncInput(from: datum)
         })
         .onAppear(perform: {
-            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                input = reading.amount ?? ""
-            } else {
-                input = ""
-            }
+            syncInput(from: stopData)
         })
         .onChange(of: bodyOfWaterId, perform: { id in
-            if let reading = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                input = reading.amount ?? ""
-            } else {
-                input = ""
-            }
-            
+            syncInput(from: stopData)
         })
         .onTapGesture {
             selectedId = template.readingsTemplateId
@@ -124,69 +112,14 @@ struct StopDataReadingInputView: View {
             chemicalInput = false
         })
         .onChange(of: input, perform: { change in
-            if !chemicalInput {
-                if let dosage = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId}) {
-                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                        let totalIndex = selectedIdList.count - 1
-                        if index == totalIndex {
-                            selectedId = ""
-                        } else {
-                            let newIndex = index + 1
-                            selectedId = selectedIdList[newIndex]
-                        }
-                    }
-                    stopData.readings.removeAll(where: {$0.universalTemplateId == template.readingsTemplateId})
-                    stopData.readings.append(Reading(id: UUID().uuidString,
-                                                     templateId: template.id,
-                                                     universalTemplateId: template.readingsTemplateId,
-                                                     dosageType: template.chemType,
-                                                     name: template.name,
-                                                     amount: change,
-                                                     UOM: template.UOM,
-                                                     bodyOfWaterId: bodyOfWaterId))
-                } else {
-                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                        let totalIndex = selectedIdList.count - 1
-                        if index == totalIndex {
-                            selectedId = ""
-                        } else {
-                            let newIndex = index + 1
-                            selectedId = selectedIdList[newIndex]
-                        }
-                    }
-                    stopData.readings.append(Reading(id: UUID().uuidString,
-                                                     templateId: template.id,
-                                                     universalTemplateId: template.readingsTemplateId,
-                                                     dosageType: template.chemType,
-                                                     name: template.name,
-                                                     amount: change,
-                                                     UOM: template.UOM,
-                                                     bodyOfWaterId: bodyOfWaterId))
-                }
-            }
+            guard !isSyncingInput, !chemicalInput else { return }
+
+            advanceSelectedInput()
+            upsertReading(amount: change)
         })
         .onChange(of: chemicalInput, perform: { change in
             if !change {
-                if let dosage = stopData.readings.first(where: {$0.universalTemplateId == template.readingsTemplateId}) {
-                    stopData.readings.removeAll(where: {$0.universalTemplateId == template.readingsTemplateId})
-                    stopData.readings.append(Reading(id: UUID().uuidString,
-                                                     templateId: template.id,
-                                                     universalTemplateId: template.readingsTemplateId,
-                                                     dosageType: template.chemType,
-                                                     name: template.name,
-                                                     amount: input,
-                                                     UOM: template.UOM,
-                                                     bodyOfWaterId: bodyOfWaterId))
-                } else {
-                    stopData.readings.append(Reading(id: UUID().uuidString,
-                                                     templateId: template.id,
-                                                     universalTemplateId: template.readingsTemplateId,
-                                                     dosageType: template.chemType,
-                                                     name: template.name,
-                                                     amount: input,
-                                                     UOM: template.UOM,
-                                                     bodyOfWaterId: bodyOfWaterId))
-                }
+                upsertReading(amount: input)
             }
         })
     }
@@ -206,10 +139,7 @@ private extension StopDataReadingInputView {
     }
 
     var currentReading: Reading? {
-        stopData.readings.first {
-            $0.universalTemplateId == template.readingsTemplateId &&
-            $0.bodyOfWaterId == bodyOfWaterId
-        }
+        reading(in: stopData)
     }
 
     var displayValue: String {
@@ -253,5 +183,87 @@ private extension StopDataReadingInputView {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(isSelected ? Color.poolGreen : Color.secondary.opacity(0.18), lineWidth: 1)
             }
+    }
+
+    func syncInput(from data: StopData) {
+        let storedAmount = reading(in: data)?.amount ?? ""
+        guard input != storedAmount else { return }
+
+        isSyncingInput = true
+        input = storedAmount
+        DispatchQueue.main.async {
+            isSyncingInput = false
+        }
+    }
+
+    func reading(in data: StopData) -> Reading? {
+        data.readings.first(where: readingMatchesCurrentBodyOfWater)
+    }
+
+    func readingMatchesCurrentBodyOfWater(_ reading: Reading) -> Bool {
+        itemMatchesBodyOfWater(reading.bodyOfWaterId) && readingMatchesTemplate(reading)
+    }
+
+    func readingMatchesTemplate(_ reading: Reading) -> Bool {
+        let templateKeys = [
+            template.id,
+            template.readingsTemplateId,
+            template.name
+        ]
+
+        return templateKeys.contains { key in
+            matches(key, reading.templateId) ||
+            matches(key, reading.universalTemplateId) ||
+            matches(key, reading.name)
+        }
+    }
+
+    func upsertReading(amount: String) {
+        let trimmedAmount = amount.trimmingCharacters(in: .whitespacesAndNewlines)
+        stopData.readings.removeAll(where: readingMatchesCurrentBodyOfWater)
+
+        guard !trimmedAmount.isEmpty else { return }
+
+        stopData.readings.append(Reading(
+            id: UUID().uuidString,
+            templateId: template.id,
+            universalTemplateId: template.readingsTemplateId,
+            dosageType: template.chemType,
+            name: template.name,
+            amount: trimmedAmount,
+            UOM: template.UOM,
+            bodyOfWaterId: bodyOfWaterId
+        ))
+    }
+
+    func advanceSelectedInput() {
+        guard let index = selectedIdList.firstIndex(where: { $0 == selectedId }) else { return }
+        let totalIndex = selectedIdList.count - 1
+
+        if index == totalIndex {
+            selectedId = ""
+        } else {
+            selectedId = selectedIdList[index + 1]
+        }
+    }
+
+    func matches(_ lhs: String?, _ rhs: String?) -> Bool {
+        let left = normalizedTemplateKey(lhs)
+        let right = normalizedTemplateKey(rhs)
+
+        return !left.isEmpty && left == right
+    }
+
+    func itemMatchesBodyOfWater(_ itemBodyOfWaterId: String) -> Bool {
+        let itemId = normalizedTemplateKey(itemBodyOfWaterId)
+        let selectedId = normalizedTemplateKey(bodyOfWaterId)
+
+        return itemId.isEmpty || itemId == selectedId
+    }
+
+    func normalizedTemplateKey(_ value: String?) -> String {
+        (value ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 }

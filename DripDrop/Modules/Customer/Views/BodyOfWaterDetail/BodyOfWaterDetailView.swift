@@ -90,23 +90,19 @@ struct BodyOfWaterDetailView: View {
                     Spacer()
                 }
             } else {
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 12) {
-                            info
-                                .padding(12)
-                            photos
-                                .padding(12)
-                            recentReadings
-                                .padding(12)
-                            waterHistory
-                                .padding(12)
-                        Divider()
-                            .opacity(0.15)
-                            .padding(.vertical, 2)
+                VStack(spacing: 12) {
+                    info
+                    photos
+                    recentReadings
+                    waterHistory
 
-                        equipment
-                    }
+                    Divider()
+                        .opacity(0.15)
+                        .padding(.vertical, 2)
+
+                    equipment
                 }
+                .frame(maxWidth: .infinity)
             }
         }
         .task{
@@ -249,26 +245,11 @@ extension BodyOfWaterDetailView {
             PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
 
             if !VM.selectedDripDropPhotos.isEmpty {
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text("Loading Images...")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 10)
-                .background(Capsule().fill(Color.primary.opacity(0.06)))
+                DripDropPhotoUploadIndicator(count: VM.selectedDripDropPhotos.count)
             }
 
             if VM.loadedImages.isEmpty {
-                HStack(spacing: 10) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                        .foregroundStyle(.secondary)
-                    Text("No Images")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 6)
+                DripDropCompactPhotoEmptyState()
             } else {
                 DripDropStoredImageRow(images: VM.loadedImages)
             }
@@ -306,14 +287,16 @@ extension BodyOfWaterDetailView {
             }
 
             if VM.waterHistory.isEmpty {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Image(systemName: "drop")
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text("No fill or empty history yet")
-                        .font(.subheadline)
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
                 }
-                .padding(.vertical, 6)
+                .padding(.vertical, 4)
             } else {
                 ForEach(VM.waterHistory.prefix(5)) { item in
                     HStack(alignment: .top, spacing: 10) {
@@ -477,7 +460,11 @@ extension BodyOfWaterDetailView {
                 .padding(.vertical, 6)
             } else {
                 if let equipment = VM.selectedEquipment {
-                    EquipmentDetailView(dataService: dataService, equipment: equipment)
+                    EquipmentDetailView(
+                        dataService: dataService,
+                        equipment: equipment,
+                        embeddedInCustomerDetail: true
+                    )
 //                        .ddCard()
                 } else {
                     Text("Please select an Equipment")

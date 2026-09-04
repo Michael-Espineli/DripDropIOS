@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
 @MainActor
 final class CustomerStopDataDetailViewModel:ObservableObject{
     let dataService:any ProductionDataServiceProtocol
@@ -90,7 +91,7 @@ final class CustomerStopDataDetailViewModel:ObservableObject{
             do {
                 print("[CustomerStopDataDetailViewModel][onChangeOfServiceLocation] selectedBodyOfWater: \(selectedBodyOfWater.id)")
                 if selectedBodyOfWater.id != "" {
-                    self.currentHistory = try await dataService.getRecentServiceStopsByBodyOfWater(companyId: companyId, bodyOfWaterId: selectedBodyOfWater.id , amount: 20)
+                    self.currentHistory = try await dataService.getRecentServiceStopsByBodyOfWater(companyId: companyId, bodyOfWaterId: selectedBodyOfWater.id , amount: 5)
                 }
             } catch {
                 print(error)
@@ -121,7 +122,7 @@ final class CustomerStopDataDetailViewModel:ObservableObject{
                 currentHistory = try await dataService.getRecentServiceStopsByBodyOfWater(
                     companyId: companyId,
                     bodyOfWaterId: selectedBodyOfWater.id,
-                    amount: 20
+                    amount: 5
                 )
             } else {
                 selectedBodyOfWater = emptyBodyOfWater()
@@ -146,83 +147,6 @@ final class CustomerStopDataDetailViewModel:ObservableObject{
             isActive: true
         )
     }
-    func loadTestData(companyId:String,customerId:String) {
-        Task {
-            do {
-                print("")
-                print("[CustomerStopDataViewModel][loadTestData] Trying to upload test data")
-
-                let increment = 1...10
-                var count = 0
-                let dosageTemplates = try await dataService.getAllDosageTemplates(companyId: companyId)
-                let readingTemplate = try await dataService.getAllReadingTemplates(companyId: companyId)
-                var stopData:[StopData] = []
-                if selectedLocation.id != "" && selectedBodyOfWater.id != "" {
-                    for number in increment {
-                        print("[CustomerStopDataViewModel][loadTestData] Number: \(number)")
-                        var readings:[Reading] = []
-                        var dosages:[Dosage] = []
-                        for readingTemplate in readingTemplates {
-                            readings.append(
-                                Reading(
-                                    id: UUID().uuidString,
-                                    templateId: readingTemplate.id,
-                                    universalTemplateId: readingTemplate.readingsTemplateId,
-                                    dosageType: readingTemplate.chemType,
-                                    name: readingTemplate.name,
-                                    amount: String(Int.random(in: 1...10)),
-                                    UOM: readingTemplate.UOM,
-                                    bodyOfWaterId: selectedBodyOfWater.id
-                                )
-                            )
-                        }
-                        
-                        for dosageTemplate in dosageTemplates {
-                            dosages.append(
-                                Dosage(
-                                    id: UUID().uuidString,
-                                    templateId: dosageTemplate.id,
-                                    universalTemplateId: dosageTemplate.dosageTemplateId,
-                                    name: dosageTemplate.name,
-                                    amount: String(Int.random(in: 1...10)),
-                                    UOM: dosageTemplate.UOM,
-                                    rate: dosageTemplate.rate,
-                                    linkedItem: nil,
-                                    bodyOfWaterId: selectedBodyOfWater.id
-                                )
-                            )
-                        }
-                        
-                        let newDate = Calendar.current.date(byAdding: DateComponents(month: 0, day: -count), to: Date())!
-                        stopData.append(
-                            StopData(
-                                id: UUID().uuidString,
-                                date: newDate,
-                                serviceStopId: "comp_ss_" + UUID().uuidString,
-                                readings: readings,
-                                dosages: dosages,
-                                observation: [
-                                    "Clear"
-                                ],
-                                bodyOfWaterId: selectedBodyOfWater.id,
-                                customerId: customerId,
-                                serviceLocationId: selectedLocation.id,
-                                userId: "",
-                                equipmentMeasurements: []
-                            )
-                        )
-                        count += 7
-                    }
-                }
-                for data in stopData {
-                    try await dataService.uploadStopData(companyId: companyId, stopData: data)
-                    print("[CustomerStopDataViewModel][loadTestData] Uploaded: \(fullDate(date: data.date))")
-                }
-            } catch {
-                print("[CustomerStopDataDetailViewModel][loadTestData] Error: \(error)")
-            }
-        }
-    }
 }
 struct CustomerStopDataDetailView: View {
     init(dataService: any ProductionDataServiceProtocol,customerId:String) {
@@ -237,21 +161,11 @@ struct CustomerStopDataDetailView: View {
         customerListVM.customers.first { $0.id == customerId }
     }
     @State var customerId:String
+    @State private var showAllWaterHistory = false
     var body: some View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             VStack{
-                
-                    #if DEBUG
-                if AppEnvironment.current == .dev {
-                    Button(action: {
-                        VM.loadTestData(companyId: masterDataManager.currentCompany!.id, customerId: customerId)
-                    }, label: {
-                        Text("Load Test Data")
-                            .modifier(DeleteButtonModifier())
-                    })
-                }
-#endif
                 form
             }
         }
@@ -270,6 +184,16 @@ struct CustomerStopDataDetailView: View {
                 VM.onChangeOfBodyOfWater(companyId: currentCompany.id, customerId: customerId)
             }
         })
+        .sheet(isPresented: $showAllWaterHistory) {
+            if let companyId = masterDataManager.currentCompany?.id,
+               !VM.selectedBodyOfWater.id.isEmpty {
+                CustomerWaterHistoryPagedSheet(
+                    dataService: dataService,
+                    companyId: companyId,
+                    bodyOfWater: VM.selectedBodyOfWater
+                )
+            }
+        }
     }
 }
 
@@ -340,6 +264,20 @@ extension CustomerStopDataDetailView {
 
                 Spacer()
 
+                if !VM.currentHistory.isEmpty {
+                    Button {
+                        showAllWaterHistory = true
+                    } label: {
+                        Label("View All", systemImage: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.poolBlue)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 6)
+                            .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 Text("\(VM.currentHistory.count)")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color.poolBlue)
@@ -359,22 +297,16 @@ extension CustomerStopDataDetailView {
                         )
                     }
                 } else {
-                    ContentUnavailableView(
-                        "No Water History",
-                        systemImage: "tablecells",
-                        description: Text("No readings or dosages have been saved for this body of water yet.")
+                    compactEmptyState(
+                        title: "No Water History",
+                        systemImage: "tablecells"
                     )
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
                 }
             } else {
-                ContentUnavailableView(
-                    "Select Water",
-                    systemImage: "drop.triangle",
-                    description: Text("Choose a service location and body of water to view history.")
+                compactEmptyState(
+                    title: "Select Water",
+                    systemImage: "drop.triangle"
                 )
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
             }
         }
         .padding(14)
@@ -383,6 +315,22 @@ extension CustomerStopDataDetailView {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(Color.primary.opacity(0.07), lineWidth: 1)
         )
+    }
+
+    private func compactEmptyState(title: String, systemImage: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
     }
 
     private var selectedLocationTitle: String {
@@ -475,5 +423,241 @@ extension CustomerStopDataDetailView {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+@MainActor
+private final class CustomerWaterHistoryPagedViewModel: ObservableObject {
+    @Published private(set) var history: [StopData] = []
+    @Published private(set) var isLoadingPage = false
+    @Published private(set) var hasMoreHistory = true
+    @Published var alertMessage = ""
+    @Published var showAlert = false
+
+    private let dataService: any ProductionDataServiceProtocol
+    private let companyId: String
+    private let bodyOfWaterId: String
+    private let pageSize = 5
+    private var lastDocument: DocumentSnapshot? = nil
+
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        companyId: String,
+        bodyOfWaterId: String
+    ) {
+        self.dataService = dataService
+        self.companyId = companyId
+        self.bodyOfWaterId = bodyOfWaterId
+    }
+
+    func loadFirstPage() async {
+        guard history.isEmpty else { return }
+        await loadNextPage()
+    }
+
+    func loadNextPage() async {
+        guard !isLoadingPage, hasMoreHistory else { return }
+
+        isLoadingPage = true
+        defer { isLoadingPage = false }
+
+        do {
+            let page = try await dataService.getStopDataByBodyOfWaterPage(
+                companyId: companyId,
+                bodyOfWaterId: bodyOfWaterId,
+                limit: pageSize,
+                lastDocument: lastDocument
+            )
+            let loadedIds = Set(history.map(\.id))
+            history.append(contentsOf: page.stopData.filter { !loadedIds.contains($0.id) })
+            lastDocument = page.lastDocument
+            hasMoreHistory = page.lastDocument != nil && page.stopData.count == pageSize
+        } catch {
+            alertMessage = "Unable to load more water history."
+            showAlert = true
+            print("[CustomerWaterHistoryPagedViewModel][loadNextPage] Error: \(error)")
+        }
+    }
+}
+
+private struct CustomerWaterHistoryPagedSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var VM: CustomerWaterHistoryPagedViewModel
+
+    let bodyOfWater: BodyOfWater
+
+    init(
+        dataService: any ProductionDataServiceProtocol,
+        companyId: String,
+        bodyOfWater: BodyOfWater
+    ) {
+        _VM = StateObject(
+            wrappedValue: CustomerWaterHistoryPagedViewModel(
+                dataService: dataService,
+                companyId: companyId,
+                bodyOfWaterId: bodyOfWater.id
+            )
+        )
+        self.bodyOfWater = bodyOfWater
+    }
+
+    var body: some View {
+        ZStack {
+            Color.listColor.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    header
+
+                    if VM.history.isEmpty && !VM.isLoadingPage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "tablecells")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            Text("No Water History")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+
+                            Spacer(minLength: 0)
+                        }
+                        .padding(12)
+                        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    } else {
+                        LazyVStack(spacing: 8) {
+                            ForEach(VM.history) { item in
+                                CustomerWaterHistoryRow(stopData: item)
+                                    .onAppear {
+                                        if VM.history.last?.id == item.id {
+                                            Task {
+                                                await VM.loadNextPage()
+                                            }
+                                        }
+                                    }
+                            }
+
+                            if VM.isLoadingPage {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                            }
+                        }
+                    }
+                }
+                .padding(14)
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .task {
+            await VM.loadFirstPage()
+        }
+        .alert(VM.alertMessage, isPresented: $VM.showAlert) {
+            Button("OK", role: .cancel) { }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "drop.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.poolBlue)
+                .frame(width: 34, height: 34)
+                .background(Color.poolBlue.opacity(0.13), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Water History")
+                    .font(.headline.weight(.semibold))
+                Text(bodyOfWater.name.isEmpty ? "Selected body of water" : bodyOfWater.name)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct CustomerWaterHistoryRow: View {
+    let stopData: StopData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(fullDateAndDay(date: stopData.date))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text("\(stopData.readings.count)R / \(stopData.dosages.count)D")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color.poolBlue)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color.poolBlue.opacity(0.10), in: Capsule())
+            }
+
+            if !readingSummary.isEmpty {
+                Text(readingSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            if !dosageSummary.isEmpty {
+                Text(dosageSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            if !stopData.observation.isEmpty {
+                Text(stopData.observation.joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(10)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        )
+    }
+
+    private var readingSummary: String {
+        stopData.readings.prefix(4).compactMap { reading in
+            guard let name = reading.name, !name.isEmpty else { return nil }
+            let amount = reading.amount ?? ""
+            let unit = reading.UOM ?? ""
+            return "\(name) \(amount)\(unit.isEmpty ? "" : " \(unit)")"
+        }
+        .joined(separator: " • ")
+    }
+
+    private var dosageSummary: String {
+        stopData.dosages.prefix(4).compactMap { dosage in
+            guard let name = dosage.name, !name.isEmpty else { return nil }
+            let amount = dosage.amount ?? ""
+            let unit = dosage.UOM ?? ""
+            return "\(name) \(amount)\(unit.isEmpty ? "" : " \(unit)")"
+        }
+        .joined(separator: " • ")
     }
 }

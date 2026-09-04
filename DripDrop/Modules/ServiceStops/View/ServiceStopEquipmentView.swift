@@ -380,7 +380,7 @@ struct EquipmentCard: View {
                 if pressureFieldFocused {
                     ToolbarItemGroup(placement: .keyboard) {
                         Spacer()
-                        Button("Done") {
+                        KeyboardDismissButton {
                             pressureFieldFocused = false
                         }
                     }

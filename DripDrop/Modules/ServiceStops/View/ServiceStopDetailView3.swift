@@ -570,10 +570,7 @@ extension ServiceStopDetailView3 {
     private var photosSection: some View {
         sectionCard(title: "Photos", systemImage: "photo.on.rectangle") {
             if VM.loadedImages.isEmpty {
-                emptyState(
-                    title: "No photos uploaded for this stop.",
-                    systemImage: "photo"
-                )
+                DripDropCompactPhotoEmptyState(title: "No photos uploaded for this stop")
             } else {
                 DripDropStoredImageRow(images: VM.loadedImages)
             }

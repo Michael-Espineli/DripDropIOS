@@ -44,6 +44,18 @@ struct DismissButtonTextModifier: ViewModifier {
     }
 }
 
+struct KeyboardDismissButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "keyboard.chevron.compact.down")
+                .font(.body.weight(.semibold))
+        }
+        .accessibilityLabel("Dismiss keyboard")
+    }
+}
+
 // MARK: - Edit
 
 struct EditButtonModifier: ViewModifier {

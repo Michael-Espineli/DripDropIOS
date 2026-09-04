@@ -10,77 +10,86 @@ import SwiftUI
 struct DripDropStoredImageRow: View {
     var images:[DripDropStoredImage]
     @State var selectedImage:DripDropStoredImage?
-    @State var iamgeName:String = ""
+
+    @ViewBuilder
     var body: some View {
-        
-        ScrollView(.horizontal){
-            HStack{
-                ForEach(images){ image in
-                    DripDropStoredImageThumbNail(image: image, selectedImage: $selectedImage)
+        if !images.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(images) { image in
+                        DripDropStoredImageThumbNail(image: image, selectedImage: $selectedImage)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .sheet(item: $selectedImage) { image in
+                NavigationStack {
+                    ZStack {
+                        Color.listColor.ignoresSafeArea()
+
+                        VStack(spacing: 14) {
+                            ZoomableScrollView {
+                                storedImageView(image)
+                            }
+                            .padding(8)
+                            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .padding(.horizontal, 14)
+                            .padding(.top, 12)
+
+                            if !image.description.isEmpty {
+                                Text(image.description)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(12)
+                                    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .padding(.horizontal, 14)
+                            }
+
+                            Spacer()
+                        }
+                    }
+                    .navigationTitle("Photo")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button {
+                                selectedImage = nil
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .accessibilityLabel("Close")
+                        }
+                    }
                 }
             }
         }
-        .sheet(item: $selectedImage, content: { image in
-            VStack {
-                ZoomableScrollView {
-                    if let url = URL(string: image.imageURL){
-                        AsyncImage(url: url){ image in
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(minWidth: 0, maxWidth: .infinity)
-                        } placeholder: {
-                            Image(systemName:"photo.circle")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(minWidth: 0, maxWidth: .infinity)
-                        }
-                    } else {
-                        Image(systemName:"photo.circle")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(minWidth: 0, maxWidth: .infinity)
-                    }
-                }
-                .padding(8)
-                TextField("Image Name", text: $iamgeName) { isEditing in
-                        //                    vm.isEditing = isEditing
-                }
-                    //                .focused($nameField)
-                .textFieldStyle(.roundedBorder)
-                .padding(.horizontal,8)
-                HStack {
-                    Button {
-                        
-                    } label: {
-                        HStack {
-                            Image(systemName: selectedImage == nil ? "square.and.arrow.down.fill" : "square.and.arrow.up.fill")
-                            Text(selectedImage == nil ? "Save" : "Update")
-                        }
-                        .modifier(EditButtonModifier())
-                        
-                    }
-                        //                    .disabled(vm.buttonDisabled)
-                        //                    .opacity(vm.buttonDisabled ? 0.6 : 1)
-                    Button {
-                    } label: {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("Delete")
-                        }
-                        .modifier(DeleteButtonModifier())
-                        
-                    }
-                    
-                }
-                .padding(8)
+    }
+
+    @ViewBuilder
+    private func storedImageView(_ image: DripDropStoredImage) -> some View {
+        if let url = URL(string: image.imageURL) {
+            AsyncImage(url: url) { image in
+                image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(minWidth: 0, maxWidth: .infinity)
+            } placeholder: {
+                placeholderImage
             }
-        })
-        .onChange(of: selectedImage, perform: { image in
-            if let image {
-                iamgeName = image.description
-            }
-        })
+        } else {
+            placeholderImage
+        }
+    }
+
+    private var placeholderImage: some View {
+        Image(systemName: "photo.circle")
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(.secondary)
+            .frame(minWidth: 0, maxWidth: .infinity)
+            .padding(48)
     }
 }
 

@@ -27,6 +27,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
     private var dataService:any ProductionDataServiceProtocol
     private let payrollCoordinator: ServiceStopPayrollCompletionCoordinator
     private let functions = Functions.functions()
+    private var serviceReportPendingPhotoUpload: (companyId: String, serviceStopId: String)?
 
 
     init(dataService:any ProductionDataServiceProtocol){
@@ -69,6 +70,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
     @Published var loadedImages:[DripDropStoredImage] = []
     @Published var selectedDripDropPhotos:[DripDropImage] = []
     @Published private(set) var isUploadingPhotos: Bool = false
+    @Published private(set) var photoUploadErrorMessage: String?
     @Published private(set) var isSavingServiceNotes: Bool = false
     
     @Published var currentWeather: Weather?
@@ -446,10 +448,13 @@ final class ServiceStopDetailViewModel:ObservableObject{
             }
 
             let completionSettings = await loadCompletionSettings(companyId: companyId, stop: stop)
-            try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: stop.id)
+            let shouldDeferServiceReport = completionSettings.sendEmailOnFinish && hasPendingServiceStopPhotoUpload
+            if shouldDeferServiceReport {
+                serviceReportPendingPhotoUpload = (companyId: companyId, serviceStopId: stop.id)
+            }
+            queuePendingPhotoUpload(companyId: companyId, serviceStopId: stop.id)
 
-            let hasUploadedPhoto = !loadedImages.isEmpty || !(stop.photoUrls ?? []).isEmpty
-            if completionSettings.requirePhotoOnFinish && !hasUploadedPhoto {
+            if completionSettings.requirePhotoOnFinish && !hasAttachedOrUploadedServiceStopPhoto(stop) {
                 throw NSError(
                     domain: "ServiceStopCompletion",
                     code: 1,
@@ -465,7 +470,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
                 endTime: finishTime,
                 duration: updatedStop.duration,
                 completedByUserId: currentUserId,
-                sendServiceReport: completionSettings.sendEmailOnFinish
+                sendServiceReport: completionSettings.sendEmailOnFinish && !shouldDeferServiceReport
             )
             print("Queued service stop completion work for \(stop.id)")
             return
@@ -515,10 +520,13 @@ final class ServiceStopDetailViewModel:ObservableObject{
             }
 
             let completionSettings = await loadCompletionSettings(companyId: companyId, stop: stop)
-            try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: stop.id)
+            let shouldDeferServiceReport = completionSettings.sendEmailOnFinish && hasPendingServiceStopPhotoUpload
+            if shouldDeferServiceReport {
+                serviceReportPendingPhotoUpload = (companyId: companyId, serviceStopId: stop.id)
+            }
+            queuePendingPhotoUpload(companyId: companyId, serviceStopId: stop.id)
 
-            let hasUploadedPhoto = !loadedImages.isEmpty || !(stop.photoUrls ?? []).isEmpty
-            if completionSettings.requirePhotoOnFinish && !hasUploadedPhoto {
+            if completionSettings.requirePhotoOnFinish && !hasAttachedOrUploadedServiceStopPhoto(stop) {
                 throw NSError(
                     domain: "ServiceStopCompletion",
                     code: 1,
@@ -534,7 +542,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
                 endTime: finishTime,
                 duration: updatedStop.duration,
                 completedByUserId: currentUserId,
-                sendServiceReport: completionSettings.sendEmailOnFinish
+                sendServiceReport: completionSettings.sendEmailOnFinish && !shouldDeferServiceReport
             )
             print("Queued service stop completion work for \(stop.id)")
             return
@@ -625,10 +633,14 @@ final class ServiceStopDetailViewModel:ObservableObject{
         //let the function check if the service stop should be from another company
         //let the function finish the other service stop on the sender side
         if operationStatus == .finished {
-            try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: stop.id)
+            let shouldSendServiceReport = completionSettings.sendEmailOnFinish && sendServiceReport
+            let shouldDeferServiceReport = shouldSendServiceReport && hasPendingServiceStopPhotoUpload
+            if shouldDeferServiceReport {
+                serviceReportPendingPhotoUpload = (companyId: companyId, serviceStopId: stop.id)
+            }
+            queuePendingPhotoUpload(companyId: companyId, serviceStopId: stop.id)
 
-            let hasUploadedPhoto = !loadedImages.isEmpty || !(stop.photoUrls ?? []).isEmpty
-            if completionSettings.requirePhotoOnFinish && !hasUploadedPhoto {
+            if completionSettings.requirePhotoOnFinish && !hasAttachedOrUploadedServiceStopPhoto(stop) {
                 throw NSError(
                     domain: "ServiceStopCompletion",
                     code: 1,
@@ -644,7 +656,7 @@ final class ServiceStopDetailViewModel:ObservableObject{
                 endTime: finishTime,
                 duration: updatedStop.duration,
                 completedByUserId: currentUserId,
-                sendServiceReport: completionSettings.sendEmailOnFinish && sendServiceReport
+                sendServiceReport: shouldSendServiceReport && !shouldDeferServiceReport
             )
             print("  [ServiceStopDetailViewModel][updateServicestopOperationStatus] Queued service stop completion work")
             return
@@ -740,12 +752,14 @@ final class ServiceStopDetailViewModel:ObservableObject{
     }
     
     func updatePhotoUrl(companyId:String,serviceStopId:String) {
+        queuePendingPhotoUpload(companyId: companyId, serviceStopId: serviceStopId)
+    }
+
+    func queuePendingPhotoUpload(companyId:String,serviceStopId:String) {
+        guard !isUploadingPhotos else { return }
+
         Task {
-            do {
-                try await uploadPendingPhotosIfNeeded(companyId: companyId, serviceStopId: serviceStopId)
-            } catch {
-                print("Photo upload failed:", error)
-            }
+            await uploadPendingPhotosUntilEmpty(companyId: companyId, serviceStopId: serviceStopId)
         }
     }
 
@@ -782,32 +796,130 @@ final class ServiceStopDetailViewModel:ObservableObject{
         }
     }
 
-    private func uploadPendingPhotosIfNeeded(companyId:String,serviceStopId:String) async throws {
-        while isUploadingPhotos {
-            try await Task.sleep(nanoseconds: 200_000_000)
+    private func hasAttachedOrUploadedServiceStopPhoto(_ stop: ServiceStop) -> Bool {
+        !loadedImages.isEmpty ||
+        !(stop.photoUrls ?? []).isEmpty ||
+        !selectedDripDropPhotos.isEmpty ||
+        isUploadingPhotos
+    }
+
+    private var hasPendingServiceStopPhotoUpload: Bool {
+        !selectedDripDropPhotos.isEmpty || isUploadingPhotos
+    }
+
+    private func uploadPendingPhotosUntilEmpty(companyId:String,serviceStopId:String) async {
+        isUploadingPhotos = true
+        photoUploadErrorMessage = nil
+        defer {
+            isUploadingPhotos = false
         }
 
-        let photosToUpload = selectedDripDropPhotos
-        guard !photosToUpload.isEmpty else { return }
+        var retryDelayNanoseconds: UInt64 = 2_000_000_000
 
-        isUploadingPhotos = true
-        defer { isUploadingPhotos = false }
+        while !selectedDripDropPhotos.isEmpty {
+            let photosToUpload = selectedDripDropPhotos
 
-        let uploadedImages = try await dataService.uploadServiceStopImages(
-            companyId: companyId,
-            serviceStopId: serviceStopId,
-            images: photosToUpload
-        )
+            do {
+                let uploadedImages = try await uploadPhotoBatchWithRetry(
+                    companyId: companyId,
+                    serviceStopId: serviceStopId,
+                    images: photosToUpload
+                )
 
-        loadedImages.append(contentsOf: uploadedImages)
+                try await attachUploadedPhotosWithRetry(
+                    companyId: companyId,
+                    serviceStopId: serviceStopId,
+                    uploadedImages: uploadedImages
+                )
 
-        try await dataService.updateServiceStopPhotoURLs(
-            companyId: companyId,
-            serviceStopId: serviceStopId,
-            photoUrls: uploadedImages
-        )
+                loadedImages.append(contentsOf: uploadedImages)
 
-        selectedDripDropPhotos = []
+                let uploadedImageIds = Set(photosToUpload.map(\.id))
+                selectedDripDropPhotos.removeAll { uploadedImageIds.contains($0.id) }
+                photoUploadErrorMessage = nil
+                retryDelayNanoseconds = 2_000_000_000
+            } catch {
+                photoUploadErrorMessage = "Photo upload is retrying in the background."
+                print("Photo upload failed:", error)
+
+                do {
+                    try await Task.sleep(nanoseconds: retryDelayNanoseconds)
+                    retryDelayNanoseconds = min(retryDelayNanoseconds * 2, 30_000_000_000)
+                } catch {
+                    return
+                }
+            }
+        }
+
+        await sendDeferredServiceReportAfterPhotoUploadIfNeeded()
+    }
+
+    private func uploadPhotoBatchWithRetry(
+        companyId: String,
+        serviceStopId: String,
+        images: [DripDropImage]
+    ) async throws -> [DripDropStoredImage] {
+        var lastError: Error?
+
+        for attempt in 1...3 {
+            do {
+                return try await dataService.uploadServiceStopImages(
+                    companyId: companyId,
+                    serviceStopId: serviceStopId,
+                    images: images
+                )
+            } catch {
+                lastError = error
+
+                if attempt < 3 {
+                    try await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000)
+                }
+            }
+        }
+
+        throw lastError ?? URLError(.cannotConnectToHost)
+    }
+
+    private func attachUploadedPhotosWithRetry(
+        companyId: String,
+        serviceStopId: String,
+        uploadedImages: [DripDropStoredImage]
+    ) async throws {
+        var lastError: Error?
+
+        for attempt in 1...3 {
+            do {
+                try await dataService.updateServiceStopPhotoURLs(
+                    companyId: companyId,
+                    serviceStopId: serviceStopId,
+                    photoUrls: uploadedImages
+                )
+                return
+            } catch {
+                lastError = error
+
+                if attempt < 3 {
+                    try await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000)
+                }
+            }
+        }
+
+        throw lastError ?? URLError(.cannotConnectToHost)
+    }
+
+    private func sendDeferredServiceReportAfterPhotoUploadIfNeeded() async {
+        guard let pendingReport = serviceReportPendingPhotoUpload else { return }
+        serviceReportPendingPhotoUpload = nil
+
+        do {
+            _ = try await FunctionsManager.shared.sendServiceReportOnFinish(
+                companyId: pendingReport.companyId,
+                stopId: pendingReport.serviceStopId
+            )
+            print("Sent deferred service report after photo upload for \(pendingReport.serviceStopId)")
+        } catch {
+            print("Photo upload completed, but deferred service report failed:", error)
+        }
     }
 }
 

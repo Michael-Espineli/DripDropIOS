@@ -26,7 +26,11 @@ class PhotoViewModel: ObservableObject {
     }
     
     var buttonDisabled: Bool {
-        imageName.isEmpty || image == nil
+        if selectedImage != nil {
+            return imageName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
+        return image == nil
     }
     
     var deleteButtonIsHidden: Bool {

@@ -777,19 +777,11 @@ extension RepairRequestDetailView {
             PhotoContentView(selectedImages: $VM.newPhotoUrls)
 
             if !VM.newPhotoUrls.isEmpty {
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text("Loading...")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                DripDropPhotoUploadIndicator(count: VM.newPhotoUrls.count)
             }
 
             if VM.photoUrls.isEmpty {
-                emptyState("No uploaded photos yet.", systemImage: "photo.on.rectangle.angled")
+                DripDropCompactPhotoEmptyState()
             } else {
                 DripDropStoredImageRow(images:VM.photoUrls)
             }

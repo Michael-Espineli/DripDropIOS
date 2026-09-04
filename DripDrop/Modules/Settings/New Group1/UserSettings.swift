@@ -81,6 +81,7 @@ struct UserSettings: View {
 
     @State private var showRedeemInviteCode = false
     @State private var showResetPasswordAlert = false
+    @State private var showPasswordResetConfirmation = false
     @State private var resetPasswordAlertTitle = ""
     @State private var resetPasswordAlertMessage = ""
 
@@ -119,6 +120,18 @@ struct UserSettings: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(resetPasswordAlertMessage)
+        }
+        .confirmationDialog(
+            "Send Password Reset Email?",
+            isPresented: $showPasswordResetConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Send Reset Email") {
+                sendPasswordReset()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Send a password reset email to your account email?")
         }
     }
 }
@@ -196,10 +209,12 @@ private extension UserSettings {
 
     var accountSettings: some View {
         settingsCard(title: "Account", systemImage: "person.crop.circle") {
-            Button(action: sendPasswordReset) {
+            Button {
+                showPasswordResetConfirmation = true
+            } label: {
                 settingsRow(
-                    title: "Reset Password",
-                    subtitle: "Send a password reset email.",
+                    title: "Send Password Reset Email",
+                    subtitle: "Confirm before sending a password reset email.",
                     systemImage: "key"
                 ) {
                     Image(systemName: "chevron.right")

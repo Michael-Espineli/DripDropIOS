@@ -22,9 +22,7 @@ struct PhotoContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             pickerButtons
 
-            if vm.myImages.isEmpty {
-                emptyPhotoState
-            } else {
+            if !vm.myImages.isEmpty {
                 imageScroll
             }
         }
@@ -38,8 +36,8 @@ struct PhotoContentView: View {
         .onChange(of: selectedImages) { images in
             vm.myImages = images
         }
-        .onChange(of: vm.myImages.count) { _ in
-            selectedImages = vm.myImages
+        .onChange(of: vm.myImages) { images in
+            selectedImages = images
         }
         .alert("Error", isPresented: $vm.showFileAlert, presenting: vm.appError, actions: { cameraError in
             cameraError.button
@@ -65,6 +63,48 @@ struct PhotoContentView: View {
     }
 }
 
+struct DripDropPhotoUploadIndicator: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .controlSize(.small)
+
+            Text("\(count) photo\(count == 1 ? "" : "s") uploading")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(.thinMaterial, in: Capsule())
+    }
+}
+
+struct DripDropCompactPhotoEmptyState: View {
+    var title: String = "No photos uploaded yet"
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "photo.on.rectangle.angled")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
@@ -77,7 +117,7 @@ struct ContentView_Previews: PreviewProvider {
 extension PhotoContentView {
 
     var pickerButtons: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button {
                 vm.source = .camera
                 vm.showPhotoPicker()
@@ -104,35 +144,25 @@ extension PhotoContentView {
                 )
             }
             .buttonStyle(.plain)
+
+            if !vm.myImages.isEmpty {
+                Text("\(vm.myImages.count) photo\(vm.myImages.count == 1 ? "" : "s") added")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(.thinMaterial, in: Capsule())
+            }
         }
     }
 
     func photoActionLabel(title: String, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
-            .font(.subheadline.weight(.semibold))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    var emptyPhotoState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-
-            Text("No photos added yet.")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-
-            Text("Take a photo or choose one from your library.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var imageScroll: some View {
@@ -156,29 +186,29 @@ extension PhotoContentView {
     }
 
     func imageThumbnail(_ myImage: DripDropImage) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 5) {
             Image(uiImage: myImage.image)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 108, height: 108)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .frame(width: 74, height: 74)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     Image(systemName: "magnifyingglass")
-                        .font(.caption.weight(.semibold))
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(.white)
-                        .padding(6)
+                        .padding(5)
                         .background(.black.opacity(0.35), in: Circle())
-                        .padding(6)
+                        .padding(5)
                 }
 
             Text(myImage.name.isEmpty ? "Photo" : myImage.name)
-                .font(.caption.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-                .frame(width: 108, alignment: .leading)
+                .frame(width: 74, alignment: .leading)
         }
-        .padding(8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(5)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func imageDetailSheet(_ image: DripDropImage) -> some View {
@@ -245,6 +275,16 @@ extension PhotoContentView {
                 Spacer()
 
                 bottomImageActions
+            }
+        }
+        .toolbar {
+            if nameField {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    KeyboardDismissButton {
+                        nameField = false
+                    }
+                }
             }
         }
     }

@@ -923,7 +923,7 @@ struct EquipmentServiceRecordShell: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") {
+                KeyboardDismissButton {
                     focusedInput = false
                 }
             }
@@ -1262,7 +1262,7 @@ struct EquipmentScheduleJobShell: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") {
+                KeyboardDismissButton {
                     focusedInput = false
                 }
             }

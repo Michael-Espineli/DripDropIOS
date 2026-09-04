@@ -1577,7 +1577,9 @@ extension ProductionDataServiceProtocol {
 
         let notes = snapshot.documents.compactMap { document in
             do {
-                return try document.data(as: CustomerNote.self)
+                var note = try document.data(as: CustomerNote.self)
+                note.storedId = note.storedId ?? document.documentID
+                return note
             } catch {
                 print("[ProductionDataServiceProtocol][getCustomerNotes] Decode error: \(error)")
                 return nil
@@ -1589,6 +1591,90 @@ extension ProductionDataServiceProtocol {
             : notes
 
         return visibleNotes.sorted { $0.displayDate > $1.displayDate }
+    }
+
+    func getCustomerNotesPage(
+        companyId: String,
+        customerId: String,
+        visibleFromFieldOnly: Bool = false,
+        limit: Int = 5,
+        lastDocument: DocumentSnapshot? = nil
+    ) async throws -> (notes: [CustomerNote], lastDocument: DocumentSnapshot?) {
+        guard !companyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !customerId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return ([], nil)
+        }
+
+        var query: Query = Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("customers")
+            .document(customerId)
+            .collection("notes")
+            .order(by: "date", descending: true)
+            .limit(to: limit)
+
+        if let lastDocument {
+            query = query.start(afterDocument: lastDocument)
+        }
+
+        let snapshot = try await query.getDocuments()
+        let notes = snapshot.documents.compactMap { document in
+            do {
+                var note = try document.data(as: CustomerNote.self)
+                note.storedId = note.storedId ?? document.documentID
+                return note
+            } catch {
+                print("[ProductionDataServiceProtocol][getCustomerNotesPage] Decode error: \(error)")
+                return nil
+            }
+        }
+
+        let visibleNotes = visibleFromFieldOnly
+            ? notes.filter(\.isVisibleFromFieldStop)
+            : notes
+
+        return (
+            visibleNotes.sorted { $0.displayDate > $1.displayDate },
+            snapshot.documents.last
+        )
+    }
+
+    func getStopDataByBodyOfWaterPage(
+        companyId: String,
+        bodyOfWaterId: String,
+        limit: Int = 5,
+        lastDocument: DocumentSnapshot? = nil
+    ) async throws -> (stopData: [StopData], lastDocument: DocumentSnapshot?) {
+        guard !companyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !bodyOfWaterId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return ([], nil)
+        }
+
+        var query: Query = Firestore.firestore()
+            .collection("companies")
+            .document(companyId)
+            .collection("stopData")
+            .whereField("bodyOfWaterId", isEqualTo: bodyOfWaterId)
+            .whereField("date", isLessThan: Date().startOfDay())
+            .order(by: "date", descending: true)
+            .limit(to: limit)
+
+        if let lastDocument {
+            query = query.start(afterDocument: lastDocument)
+        }
+
+        let snapshot = try await query.getDocuments()
+        let stopData = snapshot.documents.compactMap { document in
+            do {
+                return try document.data(as: StopData.self)
+            } catch {
+                print("[ProductionDataServiceProtocol][getStopDataByBodyOfWaterPage] Decode error: \(error)")
+                return nil
+            }
+        }
+
+        return (stopData, snapshot.documents.last)
     }
 
     func uploadCustomerNote(

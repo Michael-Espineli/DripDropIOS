@@ -29,6 +29,7 @@ struct ServiceStopDetailView2: View {
     @State var showSkipReason:Bool = false
     @State var skipReason:String = ""
     @State private var finishErrorMessage:String? = nil
+    @State private var statusActionInProgress: ServiceStopOperationStatus? = nil
     @State var expandScreenSelector:Bool = false
     @State var selectedScreen:serviceStopScreen = .waterDetails
     @State var stopData:StopData = StopData(
@@ -78,6 +79,10 @@ struct ServiceStopDetailView2: View {
     
     private var serviceStop: ServiceStop? {
         vm.serviceStopList.first { $0.id == serviceStopId }
+    }
+
+    private var isFinishingOrSkippingStop: Bool {
+        statusActionInProgress == .finished || statusActionInProgress == .skipped
     }
 
     private var currentContinuationGate: ServiceStopContinuationGate? {
@@ -146,15 +151,23 @@ struct ServiceStopDetailView2: View {
                     serviceStopLoadingState
                 }
             }
+
+            if isFinishingOrSkippingStop {
+                finishOrSkipLoadingOverlay
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
         
         }
         .navigationTitle(title)
+        .navigationBarBackButtonHidden(isFinishingOrSkippingStop)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 serviceStopInfoToolbarButton
                 customerNotesToolbarButton
             }
         }
+        .interactiveDismissDisabled(isFinishingOrSkippingStop)
         .environmentObject(VM)
         .sheet(isPresented: $showServiceStopInfo) {
             NavigationStack {
@@ -278,9 +291,11 @@ struct ServiceStopDetailView2: View {
         .alert("Provide skip reason", isPresented: $showSkipReason) {
             TextField("reason", text: $skipReason)
             Button("OK", action: submitSkipReason)
+                .disabled(isFinishingOrSkippingStop)
             Button("Cancel", role: .cancel) {
                 skipReason = ""
             }
+            .disabled(isFinishingOrSkippingStop)
         } message: {
             Text("Reason will be saved with the stop.")
                 .font(.footnote)
@@ -366,6 +381,7 @@ struct ServiceStopDetailView2: View {
         }
     }
     func submitSkipReason() {
+        guard !isFinishingOrSkippingStop else { return }
         guard let serviceStop else { return }
 
         let reason = skipReason
@@ -396,6 +412,7 @@ struct ServiceStopDetailView2: View {
             }
         }
         .accessibilityLabel("\(unresolvedFieldCustomerNotesCount) unresolved customer notes")
+        .disabled(isFinishingOrSkippingStop)
     }
 
     private var serviceStopInfoToolbarButton: some View {
@@ -407,6 +424,7 @@ struct ServiceStopDetailView2: View {
                 .frame(width: 30, height: 30)
         }
         .accessibilityLabel("Service stop info")
+        .disabled(isFinishingOrSkippingStop)
     }
 
     @MainActor
@@ -6075,7 +6093,10 @@ extension ServiceStopDetailView2 {
         foreground: Color,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        Button {
+            guard !isFinishingOrSkippingStop else { return }
+            action()
+        } label: {
             Label(title, systemImage: systemImage)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(foreground)
@@ -6084,6 +6105,8 @@ extension ServiceStopDetailView2 {
                 .background(tint, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(isFinishingOrSkippingStop)
+        .opacity(isFinishingOrSkippingStop ? 0.65 : 1)
     }
 
     private var finishGateOverlay: some View {
@@ -6095,6 +6118,30 @@ extension ServiceStopDetailView2 {
                 }
             }
         }
+    }
+
+    private var finishOrSkipLoadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.18)
+                .ignoresSafeArea()
+
+            VStack(spacing: 14) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(Color.poolBlue)
+
+                Text("Wait patiently \(currentUserFirstName)")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+        }
+        .allowsHitTesting(true)
+        .accessibilityElement(children: .combine)
     }
 
     private func continuationGate(for serviceStop: ServiceStop) -> ServiceStopContinuationGate? {
@@ -6327,7 +6374,9 @@ extension ServiceStopDetailView2 {
         ]
 
         return data.readings.first { reading in
-            templateKeys.contains { key in
+            guard itemMatchesBodyOfWater(reading.bodyOfWaterId, dataBodyOfWaterId: data.bodyOfWaterId) else { return false }
+
+            return templateKeys.contains { key in
                 matches(key, reading.templateId) ||
                 matches(key, reading.universalTemplateId) ||
                 matches(key, reading.name)
@@ -6343,12 +6392,21 @@ extension ServiceStopDetailView2 {
         ]
 
         return data.dosages.first { dosage in
-            templateKeys.contains { key in
+            guard itemMatchesBodyOfWater(dosage.bodyOfWaterId, dataBodyOfWaterId: data.bodyOfWaterId) else { return false }
+
+            return templateKeys.contains { key in
                 matches(key, dosage.templateId) ||
                 matches(key, dosage.universalTemplateId) ||
                 matches(key, dosage.name)
             }
         }
+    }
+
+    private func itemMatchesBodyOfWater(_ itemBodyOfWaterId: String, dataBodyOfWaterId: String) -> Bool {
+        let itemId = normalizedTemplateKey(itemBodyOfWaterId)
+        let dataId = normalizedTemplateKey(dataBodyOfWaterId)
+
+        return itemId.isEmpty || itemId == dataId
     }
 
     private func matches(_ lhs: String?, _ rhs: String?) -> Bool {
@@ -6401,21 +6459,22 @@ extension ServiceStopDetailView2 {
 
     var photos: some View {
         recapSection(title: "Photos", systemImage: "camera.fill") {
-            if VM.isUploadingPhotos {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("Uploading photos")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+            if VM.isUploadingPhotos || !VM.selectedDripDropPhotos.isEmpty {
+                DripDropPhotoUploadIndicator(count: max(VM.selectedDripDropPhotos.count, 1))
+            }
+
+            if let uploadError = VM.photoUploadErrorMessage {
+                Label(uploadError, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.poolRed)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.poolRed.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
 
             if VM.loadedImages.isEmpty && VM.selectedDripDropPhotos.isEmpty {
-                emptyState(
-                    title: "No Photos",
-                    message: "Add a photo if this stop needs one for completion.",
-                    systemImage: "photo"
-                )
+                DripDropCompactPhotoEmptyState(title: "No photos added for this stop")
             } else {
                 DripDropStoredImageRow(images: VM.loadedImages)
             }
@@ -6566,6 +6625,13 @@ extension ServiceStopDetailView2 {
         return name.isEmpty ? masterDataManager.user?.email ?? "Technician" : name
     }
 
+    private var currentUserFirstName: String {
+        let firstName = masterDataManager.user?.firstName ?? ""
+        let trimmedFirstName = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return trimmedFirstName.isEmpty ? "there" : trimmedFirstName
+    }
+
     private func linkedJobId(for stop: ServiceStop) -> String {
         stop.jobId.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -6676,17 +6742,27 @@ extension ServiceStopDetailView2 {
     }
 
     private func markFinished(_ stop: ServiceStop) {
+        guard !isFinishingOrSkippingStop else { return }
         guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
             print("Either Invalid Company or active Route")
             return
         }
 
         finishErrorMessage = nil
+        statusActionInProgress = .finished
         opStatus = .finished
         let previousStop = vm.optimisticallyFinishServiceStop(stop)
-        navigationManager.goBack()
 
         Task {
+            var shouldNavigateBack = false
+            defer {
+                statusActionInProgress = nil
+
+                if shouldNavigateBack {
+                    navigationManager.goBack()
+                }
+            }
+
             do {
                 print("")
                 print("Finishing Screen")
@@ -6723,10 +6799,13 @@ extension ServiceStopDetailView2 {
                 vm.alertMessage = "Stop finished, but service notes did not save: \(error.localizedDescription)"
                 vm.showAlert = true
             }
+
+            shouldNavigateBack = true
         }
     }
 
     private func markNotFinished(_ stop: ServiceStop) {
+        guard !isFinishingOrSkippingStop else { return }
         guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
             print("Either Invalid Company or active Route")
             return
@@ -6776,17 +6855,27 @@ extension ServiceStopDetailView2 {
     }
 
     private func markSkipped(_ stop: ServiceStop, reason: String) {
+        guard !isFinishingOrSkippingStop else { return }
         guard let company = masterDataManager.currentCompany, let user = masterDataManager.user else {
             print("Either Invalid Company or active Route")
             return
         }
 
         finishErrorMessage = nil
+        statusActionInProgress = .skipped
         opStatus = .skipped
         let previousStop = vm.optimisticallySkipServiceStop(stop)
-        navigationManager.goBack()
 
         Task {
+            var shouldNavigateBack = false
+            defer {
+                statusActionInProgress = nil
+
+                if shouldNavigateBack {
+                    navigationManager.goBack()
+                }
+            }
+
             do {
                 try await VM.updateServicestopOperationStatus(
                     companyId: company.id,
@@ -6832,6 +6921,8 @@ extension ServiceStopDetailView2 {
                 vm.alertMessage = "Stop skipped, but the skip reason did not save: \(error.localizedDescription)"
                 vm.showAlert = true
             }
+
+            shouldNavigateBack = true
         }
     }
 

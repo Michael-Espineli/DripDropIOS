@@ -123,11 +123,17 @@
         @StateObject var VM: EquipmentDetailViewModel
 
         @State var equipment: Equipment
+        let embeddedInCustomerDetail: Bool
 
-        init(dataService: any ProductionDataServiceProtocol, equipment: Equipment) {
+        init(
+            dataService: any ProductionDataServiceProtocol,
+            equipment: Equipment,
+            embeddedInCustomerDetail: Bool = false
+        ) {
             _equipmentVM = StateObject(wrappedValue: EquipmentViewModel(dataService: dataService))
             _VM = StateObject(wrappedValue: EquipmentDetailViewModel(dataService: dataService))
             _equipment = State(wrappedValue: equipment)
+            self.embeddedInCustomerDetail = embeddedInCustomerDetail
         }
 
         @State var showEditSheet: Bool = false
@@ -152,51 +158,15 @@
         }
 
         var body: some View {
-            ZStack {
-                Color.listColor.ignoresSafeArea()
-
-                if isLoading {
-                    loadingOverlay
+            Group {
+                if embeddedInCustomerDetail {
+                    equipmentRoot
                 } else {
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 14) {
-                            if UIDevice.isIPhone {
-                                VStack(spacing: 14) {
-                                    info
-                                    outstandingRepairRequestsSection
-                                    scheduledWorkSection
-                                    serviceHistoryOverviewSection
-                                    maintenanceHistorySection
-                                    repairHistorySection
-                                    photos
-                                    partsSection
-                                }
-                            } else {
-                                HStack(alignment: .top, spacing: 14) {
-                                    VStack(spacing: 14) {
-                                        info
-                                        photos
-                                    }
-
-                                    VStack(spacing: 14) {
-                                        partsSection
-                                        outstandingRepairRequestsSection
-                                        scheduledWorkSection
-                                        serviceHistoryOverviewSection
-                                        maintenanceHistorySection
-                                        repairHistorySection
-                                    }
-                                }
-                            }
+                    equipmentRoot
+                        .safeAreaInset(edge: .bottom) {
+                            equipmentBottomActionBar
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.top, 12)
-                        .padding(.bottom, 154)
-                    }
                 }
-            }
-            .safeAreaInset(edge: .bottom) {
-                equipmentBottomActionBar
             }
             .sheet(isPresented: $showEditSheet) {
                 EditEquipmentView(
@@ -293,6 +263,66 @@
             }
         }
 
+        @ViewBuilder
+        var equipmentRoot: some View {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                if isLoading {
+                    loadingOverlay
+                } else if embeddedInCustomerDetail {
+                    equipmentContent
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        equipmentContent
+                        .padding(.horizontal, 14)
+                        .padding(.top, 12)
+                        .padding(.bottom, 154)
+                    }
+                }
+            }
+        }
+
+        @ViewBuilder
+        var equipmentContent: some View {
+            if UIDevice.isIPhone {
+                VStack(spacing: equipmentSectionSpacing) {
+                    if embeddedInCustomerDetail {
+                        compactInfo
+                    } else {
+                        info
+                    }
+                    outstandingRepairRequestsSection
+                    scheduledWorkSection
+                    serviceHistoryOverviewSection
+                    maintenanceHistorySection
+                    repairHistorySection
+                    photos
+                    partsSection
+                }
+            } else {
+                HStack(alignment: .top, spacing: equipmentSectionSpacing) {
+                    VStack(spacing: equipmentSectionSpacing) {
+                        if embeddedInCustomerDetail {
+                            compactInfo
+                        } else {
+                            info
+                        }
+                        photos
+                    }
+
+                    VStack(spacing: equipmentSectionSpacing) {
+                        partsSection
+                        outstandingRepairRequestsSection
+                        scheduledWorkSection
+                        serviceHistoryOverviewSection
+                        maintenanceHistorySection
+                        repairHistorySection
+                    }
+                }
+            }
+        }
+
         func loadEquipmentData() async {
             do {
                 print("Loading equipment data")
@@ -352,6 +382,123 @@
     // MARK: - Main Sections
 
     extension EquipmentDetailView {
+        private var equipmentSectionSpacing: CGFloat {
+            embeddedInCustomerDetail ? 10 : 14
+        }
+
+        private var equipmentSectionPadding: CGFloat {
+            embeddedInCustomerDetail ? 12 : 16
+        }
+
+        private var equipmentSectionCornerRadius: CGFloat {
+            embeddedInCustomerDetail ? 8 : 22
+        }
+
+        private var equipmentRowCornerRadius: CGFloat {
+            embeddedInCustomerDetail ? 8 : 16
+        }
+
+        var compactInfo: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(activeEquipment.name.isEmpty ? "Equipment" : activeEquipment.name)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Text(activeEquipment.typeDisplayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if let role = masterDataManager.role, role.permissionIdList.contains("64") {
+                        Button {
+                            showEditSheet = true
+                        } label: {
+                            Label("Edit", systemImage: "square.and.pencil")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.poolBlue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    statusBadge
+
+                    if activeEquipment.needsService {
+                        Label("Needs Maintenance", systemImage: "wrench.and.screwdriver")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.orange)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Color.orange.opacity(0.12), in: Capsule())
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                if equipmentNeedsAttention {
+                    equipmentAttentionBanner
+                }
+
+                Divider().opacity(0.15)
+
+                VStack(spacing: 8) {
+                    compactDetailRow(title: "Category", value: activeEquipment.typeDisplayName)
+                    compactDetailRow(title: "Make", value: activeEquipment.make)
+                    compactDetailRow(title: "Model", value: activeEquipment.model)
+                    compactDetailRow(title: "Date Installed", value: fullDate(date: activeEquipment.dateInstalled))
+
+                    if activeEquipment.needsService,
+                       let lastServiceDate = activeEquipment.lastServiceDate,
+                       let serviceFrequency = activeEquipment.serviceFrequency,
+                       let serviceFrequencyEvery = activeEquipment.serviceFrequencyEvery {
+                        compactDetailRow(title: "Last Service Date", value: fullDate(date: lastServiceDate))
+                        compactDetailRow(title: "Service Frequency", value: "\(serviceFrequency) \(serviceFrequencyEvery.rawValue)")
+
+                        if let nextServiceDate = activeEquipment.maintenanceDueDateForFollowUp {
+                            compactDetailRow(title: "Next Service Date", value: fullDate(date: nextServiceDate))
+                        }
+                    }
+
+                    if activeEquipment.type == .filter {
+                        if let cleanPressure = activeEquipment.cleanFilterPressure {
+                            compactDetailRow(title: "Clean Pressure", value: "\(String(format: "%.0f", Double(cleanPressure))) PSI")
+                        }
+
+                        if let currentPressure = activeEquipment.currentPressure {
+                            compactDetailRow(title: "Current Pressure", value: "\(String(format: "%.0f", Double(currentPressure))) PSI")
+                        }
+                    }
+                }
+
+                Divider().opacity(0.15)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Notes")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(activeEquipment.notes.isEmpty ? "No notes provided." : activeEquipment.notes)
+                        .font(.subheadline)
+                        .foregroundStyle(activeEquipment.notes.isEmpty ? .secondary : .primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(equipmentSectionPadding)
+            .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
+        }
 
         var info: some View {
             VStack(alignment: .leading, spacing: 14) {
@@ -416,9 +563,13 @@
 
                 notesBlock
             }
-            .padding(16)
+            .padding(equipmentSectionPadding)
             
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
         }
 
         var partsSection: some View {
@@ -454,8 +605,12 @@
                     }
                 }
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(equipmentSectionPadding)
+            .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
         }
 
         var maintenanceHistorySection: some View {
@@ -491,8 +646,12 @@
                     }
                 }
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(equipmentSectionPadding)
+            .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
         }
 
         var serviceHistoryOverviewSection: some View {
@@ -548,11 +707,15 @@
                         }
                     }
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
                 }
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(equipmentSectionPadding)
+            .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
         }
 
         var repairHistorySection: some View {
@@ -588,8 +751,12 @@
                     }
                 }
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(equipmentSectionPadding)
+            .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
         }
 
         var photos: some View {
@@ -610,29 +777,21 @@
                 PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
 
                 if !VM.selectedDripDropPhotos.isEmpty {
-                    HStack(spacing: 8) {
-                        ProgressView()
-
-                        Text("Loading Images...")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    DripDropPhotoUploadIndicator(count: VM.selectedDripDropPhotos.count)
                 }
 
                 if VM.loadedImages.isEmpty {
-                    emptyState(
-                        title: "No Images",
-                        message: "Uploaded equipment photos will appear here.",
-                        systemImage: "photo.on.rectangle.angled"
-                    )
+                    DripDropCompactPhotoEmptyState()
                 } else {
                     DripDropStoredImageRow(images: VM.loadedImages)
                 }
             }
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(equipmentSectionPadding)
+            .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+            )
         }
     }
 
@@ -680,8 +839,8 @@
                 }
             }
             .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, embeddedInCustomerDetail ? 0 : 10)
+            .padding(.vertical, embeddedInCustomerDetail ? 0 : 7)
         }
 
         private var equipmentNeedsAttention: Bool {
@@ -766,7 +925,7 @@
                 Spacer(minLength: 0)
             }
             .padding(12)
-            .background(equipmentAttentionTint.opacity(0.14), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(equipmentAttentionTint.opacity(0.14), in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
         }
 
         @ViewBuilder
@@ -822,7 +981,7 @@
                             )
                     }
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
                 }
             }
         }
@@ -931,7 +1090,7 @@
                     .foregroundStyle(activeEquipment.notes.isEmpty ? .secondary : .primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
             }
         }
     }
@@ -1040,7 +1199,23 @@
                 Spacer(minLength: 0)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
+        }
+
+        func compactDetailRow(title: String, value: String) -> some View {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 12)
+
+                Text(value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "-" : value)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(2)
+            }
         }
 
         func installedDateSummary(for dateInstalled: Date?) -> String {
@@ -1079,7 +1254,7 @@
                         .foregroundStyle(.tertiary)
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -1144,7 +1319,7 @@
                     }
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -1162,7 +1337,7 @@
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
         }
 
         func historyTimelineRow(item: EquipmentServiceHistory, isLast: Bool) -> some View {
@@ -1228,24 +1403,40 @@
             .buttonStyle(.plain)
         }
 
+        @ViewBuilder
         func emptyState(title: String, message: String, systemImage: String) -> some View {
-            VStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
+            if embeddedInCustomerDetail {
+                HStack(spacing: 8) {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                Text(message)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 4)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: systemImage)
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
 
         var loadingOverlay: some View {
@@ -1420,8 +1611,12 @@ extension EquipmentDetailView {
                 }
             }
         }
-        .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(equipmentSectionPadding)
+        .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        )
     }
 
     var outstandingRepairRequestsSection: some View {
@@ -1461,8 +1656,12 @@ extension EquipmentDetailView {
                 }
             }
         }
-        .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(equipmentSectionPadding)
+        .background(.background, in: RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: equipmentSectionCornerRadius, style: .continuous)
+                .stroke(Color.primary.opacity(0.07), lineWidth: 1)
+        )
     }
 
     func outstandingRepairRequestRow(_ request: RepairRequest) -> some View {
@@ -1491,14 +1690,15 @@ extension EquipmentDetailView {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: equipmentRowCornerRadius, style: .continuous))
     }
     
     func equipmentScheduledWorkRow(_ work: EquipmentScheduledWork) -> some View {
         EquipmentScheduledWorkRowView(
             dataService: dataService,
             work: work,
-            statusColor: statusColor(for:)
+            statusColor: statusColor(for:),
+            isCompact: embeddedInCustomerDetail
         )
     }
     func statusColor(for status: EquipmentScheduledWorkStatus) -> Color {
@@ -1524,6 +1724,7 @@ struct EquipmentScheduledWorkRowView: View {
     let dataService: any ProductionDataServiceProtocol
     let work: EquipmentScheduledWork
     let statusColor: (EquipmentScheduledWorkStatus) -> Color
+    let isCompact: Bool
 
     @State private var job: Job? = nil
     @State private var isLoadingJob: Bool = false
@@ -1555,12 +1756,12 @@ struct EquipmentScheduledWorkRowView: View {
     }
 
     func rowContent(showChevron: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: isCompact ? 6 : 8) {
+            HStack(spacing: isCompact ? 10 : 12) {
                 Image(systemName: work.type == .repair ? "cross.case" : "wrench.and.screwdriver")
-                    .font(.body)
+                    .font(isCompact ? .caption.weight(.semibold) : .body)
                     .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 30)
+                    .frame(width: isCompact ? 24 : 30, height: isCompact ? 24 : 30)
                     .background(.thinMaterial, in: Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -1626,8 +1827,8 @@ struct EquipmentScheduledWorkRowView: View {
                 }
             }
         }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(isCompact ? 10 : 12)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: isCompact ? 8 : 16, style: .continuous))
     }
 
     func loadJobIfNeeded() async {

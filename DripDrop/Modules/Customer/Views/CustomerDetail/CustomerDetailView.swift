@@ -127,9 +127,6 @@ struct CustomerDetailView: View {
             }
             .clipped()
 
-            if customer != nil {
-                quickAccessRail
-            }
         }
         .navigationTitle(customer.map { customerDisplayName($0) } ?? "Customer")
         .font(.system(.body , design: .rounded))
@@ -359,56 +356,6 @@ extension CustomerDetailView {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.08), lineWidth: 1)
             )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var quickAccessRail: some View {
-        HStack {
-            Spacer()
-
-            VStack(spacing: 8) {
-                ForEach(customerDetailViewEnum.allCases) { screen in
-                    quickAccessButton(screen)
-                }
-            }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 9)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            )
-            .padding(.trailing, 8)
-        }
-        .frame(maxHeight: .infinity)
-    }
-
-    private func quickAccessButton(_ screen: customerDetailViewEnum) -> some View {
-        Button {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                viewType = screen
-            }
-        } label: {
-            Image(systemName: screen.systemImage)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(viewType == screen ? Color.white : screen.color)
-                .frame(width: 32, height: 32)
-                .background(
-                    viewType == screen ? AnyShapeStyle(screen.color) : AnyShapeStyle(screen.color.opacity(0.12)),
-                    in: Circle()
-                )
-                .overlay(alignment: .topTrailing) {
-                    if screen == .notes && unresolvedCustomerNotesCount > 0 {
-                        Text(unresolvedCustomerNotesCount > 9 ? "9+" : "\(unresolvedCustomerNotesCount)")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(Color.poolRed, in: Capsule())
-                            .offset(x: 5, y: -5)
-                    }
-                }
         }
         .buttonStyle(.plain)
     }

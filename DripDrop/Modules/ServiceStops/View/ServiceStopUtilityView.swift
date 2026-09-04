@@ -1004,27 +1004,30 @@ extension ServiceStopUtilityView {
     }
 
     private var selectedReadingCount: Int {
-        stopData.readings.filter { $0.bodyOfWaterId == selectedBodyOfWaterId }.count
+        stopData.readings.filter { itemMatchesSelectedBodyOfWater($0.bodyOfWaterId) }.count
     }
 
     private var selectedDosageCount: Int {
-        stopData.dosages.filter { $0.bodyOfWaterId == selectedBodyOfWaterId }.count
+        stopData.dosages.filter { itemMatchesSelectedBodyOfWater($0.bodyOfWaterId) }.count
     }
 
     private func resetReadings() {
-        stopData.readings = []
-        stopData.dosages = []
-        selectedObservations = []
+        stopData.readings.removeAll { itemMatchesSelectedBodyOfWater($0.bodyOfWaterId) }
         selectedInputId = ""
-        showObservations = true
         showReadings = true
-        showDosages = true
     }
 
     private func resetDosages() {
-        stopData.dosages = []
+        stopData.dosages.removeAll { itemMatchesSelectedBodyOfWater($0.bodyOfWaterId) }
         selectedInputId = ""
         showDosages = true
+    }
+
+    private func itemMatchesSelectedBodyOfWater(_ itemBodyOfWaterId: String) -> Bool {
+        let itemId = itemBodyOfWaterId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let selectedId = selectedBodyOfWaterId.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return itemId.isEmpty || itemId == selectedId
     }
 
     private func waterSection<Content: View>(
@@ -1170,7 +1173,7 @@ extension ServiceStopUtilityView {
                         template: template,
                         bodyOfWaterId: selectedBodyOfWaterId,
                         selectedId: $selectedInputId,
-                        selectedIdList: selectedInputIdList,
+                        selectedIdList: VM.selectedInputIdList,
                         stopData: $stopData,
                         serviceStopId: serviceStop.id,
                         serviceDate: serviceStop.serviceDate,

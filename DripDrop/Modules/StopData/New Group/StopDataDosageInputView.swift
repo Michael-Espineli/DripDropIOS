@@ -22,6 +22,7 @@ struct StopDataDosageInputView: View {
     let gallons:Int
     @State var prediction:String = ""
     @FocusState var chemicalInput:Bool
+    @State private var isSyncingInput = false
 
     var body: some View {
         /*
@@ -242,112 +243,38 @@ struct StopDataDosageInputView: View {
         )
         .contentShape(Rectangle())
         .onAppear(perform: {
-            if stopDataList.contains(where: {$0.bodyOfWaterId == bodyOfWaterId}){
-                stopData = stopDataList.first(where: {$0.bodyOfWaterId == bodyOfWaterId })!
-                if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == bodyOfWaterId}) {
-                    input = reading.amount ?? ""
-                } else {
-                    input = ""
-
-                }
-               
-            }
-            prediction = getChemicalDosages(gallons:gallons,dosageTempalte: template, readings: stopData.readings, observations: observations)
+            loadStopDataFromListIfAvailable(for: bodyOfWaterId)
+            syncInput(from: stopData)
+            updatePrediction(readings: stopData.readings, observations: observations)
         })
 
         .onTapGesture {
             selectedId = template.dosageTemplateId
         }
         .onChange(of: bodyOfWaterId, perform: { id in
-            if stopDataList.contains(where: {$0.bodyOfWaterId == id}){
-                stopData = stopDataList.first(where: {$0.bodyOfWaterId == id })!
-                if let reading = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId && $0.bodyOfWaterId == id}) {
-                    input = reading.amount ?? ""
-                } else {
-                    input = ""
-
-                }
-               
-            }
+            loadStopDataFromListIfAvailable(for: id)
+            syncInput(from: stopData)
+            updatePrediction(readings: stopData.readings, observations: observations)
+        })
+        .onChange(of: stopData, perform: { data in
+            syncInput(from: data)
+            updatePrediction(readings: data.readings, observations: observations)
         })
         .onChange(of: stopData.readings, perform: { change in
-            prediction = getChemicalDosages(gallons:gallons,dosageTempalte: template, readings: change, observations: observations)
+            updatePrediction(readings: change, observations: observations)
         })
         .onChange(of: observations, perform: { change in
-            prediction = getChemicalDosages(gallons:gallons,dosageTempalte: template, readings: stopData.readings, observations: change)
+            updatePrediction(readings: stopData.readings, observations: change)
         })
         .onChange(of: input, perform: { change in
-            if !chemicalInput {
-                if let dosage = stopData.dosages.first(where: {$0.universalTemplateId == template.dosageTemplateId}) {
-                        //On Click of an amount moves it over to next dosage/Reading
-                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                        let totalIndex = selectedIdList.count - 1
-                        if index == totalIndex {
-                            selectedId = ""
-                        } else {
-                            let newIndex = index + 1
-                            selectedId = selectedIdList[newIndex]
-                        }
-                    }
-                    //Updates stopData for display Firestore is update in ServiceStopDetailVeiw
-                    stopData.dosages.removeAll(where: {$0.universalTemplateId == template.dosageTemplateId})
-                    stopData.dosages.append(Dosage(id: UUID().uuidString,
-                                                   templateId: template.id,
-                                                   universalTemplateId: template.dosageTemplateId,
-                                                   name: template.name,
-                                                   amount: change,
-                                                   UOM: template.UOM,
-                                                   rate: template.rate,
-                                                   linkedItem: template.linkedItemId,
-                                                   bodyOfWaterId: bodyOfWaterId))
-                } else {
-                    //On Click of an amount moves it over to next dosage/Reading
-                    if let index = selectedIdList.firstIndex(where: {$0 == selectedId}) {
-                        let totalIndex = selectedIdList.count - 1
-                        if index == totalIndex {
-                            selectedId = ""
-                        } else {
-                            let newIndex = index + 1
-                            selectedId = selectedIdList[newIndex]
-                        }
-                    }
-                        //Updates stopData for display Firestore is update in ServiceStopDetailVeiw
-                    stopData.dosages.append(Dosage(id: UUID().uuidString,
-                                                   templateId: template.id,
-                                                   universalTemplateId: template.dosageTemplateId,
-                                                   name: template.name,
-                                                   amount: change,
-                                                   UOM: template.UOM,
-                                                   rate: template.rate,
-                                                   linkedItem: template.linkedItemId,
-                                                   bodyOfWaterId: bodyOfWaterId))
-                }
-            }
+            guard !isSyncingInput, !chemicalInput else { return }
+
+            advanceSelectedInput()
+            upsertDosage(amount: change)
         })
         .onChange(of: chemicalInput, perform: { change in
             if !change {
-                if let dosage = stopData.dosages.first(where: {$0.templateId == template.dosageTemplateId}) {
-                    stopData.dosages.removeAll(where: {$0.templateId == template.dosageTemplateId})
-                    stopData.dosages.append(Dosage(id: UUID().uuidString,
-                                                   templateId: template.id,
-                                                   universalTemplateId: template.dosageTemplateId,
-                                                   name: template.name,
-                                                   amount: input,
-                                                   UOM: template.UOM,
-                                                   rate: template.rate,
-                                                   linkedItem: template.linkedItemId,
-                                                   bodyOfWaterId: bodyOfWaterId))
-                } else {
-                    stopData.dosages.append(Dosage(id: UUID().uuidString,
-                                                   templateId: template.id,
-                                                   universalTemplateId: template.dosageTemplateId,
-                                                   name: template.name,
-                                                   amount: input,
-                                                   UOM: template.UOM,
-                                                   rate: template.rate,
-                                                   linkedItem: template.linkedItemId,
-                                                   bodyOfWaterId: bodyOfWaterId))
-                }
+                upsertDosage(amount: input)
             }
         })
     }
@@ -367,10 +294,7 @@ private extension StopDataDosageInputView {
     }
 
     var currentDosage: Dosage? {
-        stopData.dosages.first {
-            $0.universalTemplateId == template.dosageTemplateId &&
-            $0.bodyOfWaterId == bodyOfWaterId
-        }
+        dosage(in: stopData)
     }
 
     var displayValue: String {
@@ -418,6 +342,103 @@ private extension StopDataDosageInputView {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(isSelected ? Color.poolGreen : Color.secondary.opacity(0.18), lineWidth: 1)
             }
+    }
+
+    func loadStopDataFromListIfAvailable(for bodyOfWaterId: String) {
+        guard let matchingStopData = stopDataList.first(where: { $0.bodyOfWaterId == bodyOfWaterId }) else { return }
+        stopData = matchingStopData
+    }
+
+    func syncInput(from data: StopData) {
+        let storedAmount = dosage(in: data)?.amount ?? ""
+        guard input != storedAmount else { return }
+
+        isSyncingInput = true
+        input = storedAmount
+        DispatchQueue.main.async {
+            isSyncingInput = false
+        }
+    }
+
+    func updatePrediction(readings: [Reading], observations: [String]) {
+        prediction = getChemicalDosages(
+            gallons:gallons,
+            dosageTempalte: template,
+            readings: readings.filter { itemMatchesBodyOfWater($0.bodyOfWaterId) },
+            observations: observations
+        )
+    }
+
+    func dosage(in data: StopData) -> Dosage? {
+        data.dosages.first(where: dosageMatchesCurrentBodyOfWater)
+    }
+
+    func dosageMatchesCurrentBodyOfWater(_ dosage: Dosage) -> Bool {
+        itemMatchesBodyOfWater(dosage.bodyOfWaterId) && dosageMatchesTemplate(dosage)
+    }
+
+    func dosageMatchesTemplate(_ dosage: Dosage) -> Bool {
+        let templateKeys = [
+            template.id,
+            template.dosageTemplateId,
+            template.name ?? ""
+        ]
+
+        return templateKeys.contains { key in
+            matches(key, dosage.templateId) ||
+            matches(key, dosage.universalTemplateId) ||
+            matches(key, dosage.name)
+        }
+    }
+
+    func upsertDosage(amount: String) {
+        let trimmedAmount = amount.trimmingCharacters(in: .whitespacesAndNewlines)
+        stopData.dosages.removeAll(where: dosageMatchesCurrentBodyOfWater)
+
+        guard !trimmedAmount.isEmpty else { return }
+
+        stopData.dosages.append(Dosage(
+            id: UUID().uuidString,
+            templateId: template.id,
+            universalTemplateId: template.dosageTemplateId,
+            name: template.name,
+            amount: trimmedAmount,
+            UOM: template.UOM,
+            rate: template.rate,
+            linkedItem: template.linkedItemId,
+            bodyOfWaterId: bodyOfWaterId
+        ))
+    }
+
+    func advanceSelectedInput() {
+        guard let index = selectedIdList.firstIndex(where: { $0 == selectedId }) else { return }
+        let totalIndex = selectedIdList.count - 1
+
+        if index == totalIndex {
+            selectedId = ""
+        } else {
+            selectedId = selectedIdList[index + 1]
+        }
+    }
+
+    func matches(_ lhs: String?, _ rhs: String?) -> Bool {
+        let left = normalizedTemplateKey(lhs)
+        let right = normalizedTemplateKey(rhs)
+
+        return !left.isEmpty && left == right
+    }
+
+    func itemMatchesBodyOfWater(_ itemBodyOfWaterId: String) -> Bool {
+        let itemId = normalizedTemplateKey(itemBodyOfWaterId)
+        let selectedId = normalizedTemplateKey(bodyOfWaterId)
+
+        return itemId.isEmpty || itemId == selectedId
+    }
+
+    func normalizedTemplateKey(_ value: String?) -> String {
+        (value ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 
     func formattedDosageAmount(_ amount: String) -> String {

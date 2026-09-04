@@ -106,20 +106,17 @@ struct ServiceLocationDetailView: View {
                   ProgressView()
                       .scaleEffect(1.1)
               } else {
-                  ScrollView(showsIndicators: false) {
-                      VStack(spacing: 12) {
-                          info
-                              .padding(12)
-                          photos
-                              .padding(12)
+                  VStack(spacing: 12) {
+                      info
+                      photos
 
-                          Divider()
-                              .opacity(0.15)
-                              .padding(.vertical, 2)
+                      Divider()
+                          .opacity(0.15)
+                          .padding(.vertical, 2)
 
-                          bodiesOfWater
-                      }
+                      bodiesOfWater
                   }
+                  .frame(maxWidth: .infinity)
               }
           }
         .task{
@@ -242,16 +239,12 @@ extension ServiceLocationDetailView {
                         edit
                     }
 
-                    contactInfo
+                    contactInfo(for: location.mainContact)
 
                     Divider().opacity(0.15)
 
                     Text("Address").ddSectionTitle()
-                    Text("\(location.address.streetAddress)")
-                        .font(.subheadline)
-                    Text("\(location.address.city) \(location.address.state) \(location.address.zip)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    addressLink(for: location.address)
 
                     Divider().opacity(0.15)
 
@@ -296,9 +289,21 @@ extension ServiceLocationDetailView {
         .ddCard()
     }
     
-    var contactInfo: some View {
-        VStack(spacing: 10) {
-            HStack {
+    private func contactInfo(for contact: Contact) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolBlue.opacity(0.12), in: Circle())
+
+                Text("Main Contact")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
                 Button(action: {
                     changeContact.toggle()
                 }, label: {
@@ -316,28 +321,121 @@ extension ServiceLocationDetailView {
                             .presentationDetents([.medium, .large])
                     }
                 })
-
-                Spacer()
-
-                Text("Main Contact")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Spacer()
             }
 
-            Divider().opacity(0.15)
+            contactInfoRow(
+                title: "Name",
+                value: contact.name,
+                systemImage: "person.fill",
+                tint: .poolBlue
+            )
 
-            ContactInfo(contact: location.mainContact)
+            contactInfoRow(
+                title: "Email",
+                value: contact.email,
+                systemImage: "envelope.fill",
+                tint: .orange
+            )
 
-            Divider().opacity(0.15)
+            contactInfoRow(
+                title: "Phone",
+                value: contact.phoneNumber,
+                systemImage: "phone.fill",
+                tint: .poolGreen
+            )
+
+            contactInfoRow(
+                title: "Notes",
+                value: contact.notes ?? "",
+                systemImage: "note.text",
+                tint: .secondary,
+                lineLimit: 3
+            )
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func contactInfoRow(
+        title: String,
+        value: String,
+        systemImage: String,
+        tint: Color,
+        lineLimit: Int = 1
+    ) -> some View {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 28)
+                .background(tint.opacity(0.10), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(trimmedValue.isEmpty ? "Missing" : trimmedValue)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(trimmedValue.isEmpty ? Color.orange : Color.primary)
+                    .lineLimit(lineLimit)
+                    .minimumScaleFactor(0.82)
+            }
+
+            Spacer(minLength: 0)
         }
         .padding(10)
         .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.primary.opacity(0.055), lineWidth: 1)
-        )
+    }
+
+    private func addressLink(for address: Address) -> some View {
+        let canOpenAddress = mapsURL(for: address) != nil
+
+        return Button {
+            openAddressInMaps(address)
+        } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "mappin.and.ellipse")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolGreen)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolGreen.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(addressStreetLine(address))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+
+                    Text(addressCityLine(address))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    if canOpenAddress {
+                        Text("Open in Maps")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Color.poolBlue)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: canOpenAddress ? "arrow.up.right" : "location.slash")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .padding(10)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!canOpenAddress)
+        .opacity(canOpenAddress ? 1 : 0.72)
+        .accessibilityLabel(canOpenAddress ? "Open service location address in Maps" : "No service location address available")
     }
 
     var photos: some View {
@@ -350,26 +448,11 @@ extension ServiceLocationDetailView {
             PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
 
             if !VM.selectedDripDropPhotos.isEmpty {
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text("Loading Images...")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 10)
-                .background(Capsule().fill(Color.primary.opacity(0.06)))
+                DripDropPhotoUploadIndicator(count: VM.selectedDripDropPhotos.count)
             }
 
             if VM.loadedImages.isEmpty {
-                HStack(spacing: 10) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                        .foregroundStyle(.secondary)
-                    Text("No Images")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 8)
+                DripDropCompactPhotoEmptyState()
             } else {
                 DripDropStoredImageRow(images: VM.loadedImages)
             }
@@ -387,6 +470,17 @@ extension ServiceLocationDetailView {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     if VM.bodiesOfWater.count == 0 {
+                        Button(action: {
+                            showAddSheet = true
+                        }, label: {
+                            Label("Add Body", systemImage: "plus.circle.fill")
+                                .font(.caption.weight(.semibold))
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 10)
+                                .background(Color.poolGreen.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        })
+                        .buttonStyle(.plain)
+
                         Button(action: {
                             scheduleLocationSetUp.toggle()
                         }, label: {
@@ -425,12 +519,7 @@ extension ServiceLocationDetailView {
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(.primary)
                                 .padding(10)
-                                .background(Circle().fill(Color.primary.opacity(0.08)))
-                        })
-                        .sheet(isPresented: $showAddSheet, content: {
-                            if let location = masterDataManager.selectedServiceLocation {
-                                AddBodyOfWaterView(dataService: dataService, serviceLocation: location)
-                            }
+                            .background(Circle().fill(Color.primary.opacity(0.08)))
                         })
 
                         ForEach(VM.bodiesOfWater) { BOW in
@@ -481,6 +570,14 @@ extension ServiceLocationDetailView {
                 .padding(.vertical, 6)
             }
         }
+        .sheet(isPresented: $showAddSheet, onDismiss: {
+            refreshBodiesOfWaterAfterSheet()
+        }, content: {
+            if let location = masterDataManager.selectedServiceLocation {
+                AddBodyOfWaterView(dataService: dataService, serviceLocation: location)
+                    .presentationDetents([.medium, .large])
+            }
+        })
 //        .ddCard()
     }
 
@@ -508,6 +605,111 @@ extension ServiceLocationDetailView {
             }
         }
     }
+
+    private func refreshBodiesOfWaterAfterSheet() {
+        Task {
+            do {
+                guard let currentCompany = masterDataManager.currentCompany,
+                      let location = masterDataManager.selectedServiceLocation else {
+                    return
+                }
+
+                let selectedBodyId = VM.selectedBOW?.id
+                try await VM.getAllBodiesOfWaterByServiceLocation(companyId: currentCompany.id, serviceLocation: location)
+
+                if let selectedBodyId,
+                   let selectedBody = VM.bodiesOfWater.first(where: { $0.id == selectedBodyId }) {
+                    VM.selectedBOW = selectedBody
+                    masterDataManager.selectedBodyOfWater = selectedBody
+                } else if let firstBody = VM.bodiesOfWater.first {
+                    VM.selectedBOW = firstBody
+                    masterDataManager.selectedBodyOfWater = firstBody
+                } else {
+                    VM.selectedBOW = nil
+                    masterDataManager.selectedBodyOfWater = nil
+                }
+            } catch {
+                print("Error refreshing bodies of water after add sheet")
+            }
+        }
+    }
+
+    private func openAddressInMaps(_ address: Address) {
+        guard let url = mapsURL(for: address) else {
+            return
+        }
+
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+
+    private func mapsURL(for address: Address) -> URL? {
+        var components = URLComponents(string: "http://maps.apple.com/")
+
+        if let addressLine = addressSearchLine(address) {
+            components?.queryItems = [
+                URLQueryItem(name: "q", value: addressLine)
+            ]
+        } else if hasUsableCoordinates(address) {
+            components?.queryItems = [
+                URLQueryItem(name: "ll", value: "\(address.latitude),\(address.longitude)"),
+                URLQueryItem(name: "q", value: "Service Location")
+            ]
+        } else {
+            return nil
+        }
+
+        return components?.url
+    }
+
+    private func addressSearchLine(_ address: Address) -> String? {
+        let addressLine = [
+            address.streetAddress,
+            address.city,
+            address.state,
+            address.zip
+        ]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        return addressLine.isEmpty ? nil : addressLine
+    }
+
+    private func addressStreetLine(_ address: Address) -> String {
+        let street = address.streetAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !street.isEmpty {
+            return street
+        }
+
+        return hasUsableCoordinates(address) ? "Saved map pin" : "No street address"
+    }
+
+    private func addressCityLine(_ address: Address) -> String {
+        let cityStateZip = [
+            address.city,
+            address.state,
+            address.zip
+        ]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
+        if !cityStateZip.isEmpty {
+            return cityStateZip
+        }
+
+        return hasUsableCoordinates(address) ? "\(address.latitude), \(address.longitude)" : "No city, state, or zip"
+    }
+
+    private func hasUsableCoordinates(_ address: Address) -> Bool {
+        address.latitude.isFinite &&
+        address.longitude.isFinite &&
+        abs(address.latitude) <= 90 &&
+        abs(address.longitude) <= 180 &&
+        !(address.latitude == 0 && address.longitude == 0)
+    }
+
     private struct FlowTags: View {
         let tags: [String]
 

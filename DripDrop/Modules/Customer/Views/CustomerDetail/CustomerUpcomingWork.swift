@@ -11,6 +11,8 @@
     //
 
     import SwiftUI
+    import FirebaseFirestore
+    import FirebaseFirestoreSwift
 
     enum CustomerUpcomingWorkMode {
         case operations
@@ -54,7 +56,11 @@
         @State var selectedJob: Job? = nil
         @State private var customerNoteText: String = ""
         @State private var selectedNoteBodyOfWaterId: String = ""
+        @State private var selectedNoteAudience: CustomerNoteAudience = .office
+        @State private var selectedNoteFilter: CustomerNoteAudienceFilter = .all
         @State private var isSavingCustomerNote: Bool = false
+        @State private var showAllCustomerNotes: Bool = false
+        @FocusState private var isCustomerNoteTextFocused: Bool
 
         var body: some View {
             ZStack {
@@ -123,6 +129,18 @@
             }
             .alert(alertMessage, isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+
+                    Button {
+                        isCustomerNoteTextFocused = false
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                    }
+                    .accessibilityLabel("Dismiss keyboard")
+                }
             }
         }
 
@@ -217,6 +235,14 @@
             VM.customerBodiesOfWater.first { $0.id == selectedNoteBodyOfWaterId }
         }
 
+        private var unresolvedCustomerNotesCount: Int {
+            VM.customerNotes.filter { !($0.resolved ?? false) }.count
+        }
+
+        private var filteredCustomerNotes: [CustomerNote] {
+            VM.customerNotes.filter { selectedNoteFilter.matches($0) }
+        }
+
         private var outstandingWorkItems: [CustomerOutstandingWorkDisplayItem] {
             var jobsById: [String: Job] = [:]
             VM.jobs.forEach { jobsById[$0.id] = $0 }
@@ -303,11 +329,14 @@
                     customer: customer,
                     bodyOfWater: selectedNoteBodyOfWater,
                     note: trimmedNote,
+                    audience: selectedNoteAudience,
                     authorId: userId,
                     authorName: currentUserDisplayName
                 )
 
                 customerNoteText = ""
+                selectedNoteAudience = .office
+                isCustomerNoteTextFocused = false
             } catch {
                 alertMessage = "Unable to save customer note."
                 showAlert = true
@@ -343,13 +372,12 @@
 
         var outstandingWork: some View {
             SectionCard(title: "Outstanding Work") {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     if outstandingWorkItems.isEmpty {
-                        Text("No outstanding work found.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 6)
+                        CompactEmptyState(
+                            title: "No outstanding work found.",
+                            systemImage: "checkmark.circle"
+                        )
                     } else {
                         ForEach(outstandingWorkItems) { item in
                             if let job = item.job {
@@ -392,7 +420,10 @@
         }
 
         var customerNotes: some View {
-            SectionCard(title: "Customer Notes") {
+            SectionCard(
+                title: "Customer Notes",
+                badgeCount: unresolvedCustomerNotesCount
+            ) {
                 VStack(alignment: .leading, spacing: 12) {
                     if !VM.customerBodiesOfWater.isEmpty {
                         Picker("Pool", selection: $selectedNoteBodyOfWaterId) {
@@ -404,9 +435,18 @@
                         .pickerStyle(.menu)
                     }
 
+                    Picker("Audience", selection: $selectedNoteAudience) {
+                        ForEach(CustomerNoteAudience.allCases) { audience in
+                            Label(audience.title, systemImage: audience.systemImage)
+                                .tag(audience)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
                     TextEditor(text: $customerNoteText)
                         .frame(minHeight: 84)
                         .padding(8)
+                        .focused($isCustomerNoteTextFocused)
                         .background(Color.primary.opacity(0.035))
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay(
@@ -431,20 +471,62 @@
                     Divider()
 
                     if VM.customerNotes.isEmpty {
-                        Text("No customer notes yet.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 6)
+                        CompactEmptyState(
+                            title: "No customer notes yet.",
+                            systemImage: "text.bubble"
+                        )
                     } else {
-                        ForEach(Array(VM.customerNotes.prefix(8))) { note in
-                            CustomerNoteRow(note: note) {
-                                Task {
-                                    await toggleCustomerNoteResolved(note)
+                        Picker("Filter", selection: $selectedNoteFilter) {
+                            ForEach(CustomerNoteAudienceFilter.allCases) { filter in
+                                Label(filter.title, systemImage: filter.systemImage)
+                                    .tag(filter)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        if filteredCustomerNotes.isEmpty {
+                            CompactEmptyState(
+                                title: "No notes for this filter.",
+                                systemImage: selectedNoteFilter.systemImage
+                            )
+                        } else {
+                            ForEach(Array(filteredCustomerNotes.prefix(3))) { note in
+                                CustomerNoteRow(note: note) {
+                                    Task {
+                                        await toggleCustomerNoteResolved(note)
+                                    }
                                 }
                             }
                         }
+
+                        Button {
+                            showAllCustomerNotes = true
+                        } label: {
+                            HStack {
+                                Text("View All Notes")
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .foregroundStyle(Color.poolBlue)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
                     }
+                }
+            }
+            .sheet(isPresented: $showAllCustomerNotes) {
+                if let companyId = masterDataManager.currentCompany?.id {
+                    CustomerNotesPagedSheet(
+                        dataService: dataService,
+                        companyId: companyId,
+                        customerId: customerId,
+                        unresolvedCount: unresolvedCustomerNotesCount,
+                        initialFilter: selectedNoteFilter,
+                        currentUserId: masterDataManager.user?.id ?? "",
+                        currentUserName: currentUserDisplayName
+                    )
                 }
             }
         }
@@ -459,13 +541,12 @@
                     self.addRSS.toggle()
                 }
             ) {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     if VM.recurringServiceStops.isEmpty {
-                        Text("No recurring service stops found.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 6)
+                        CompactEmptyState(
+                            title: "No recurring service stops found.",
+                            systemImage: "repeat"
+                        )
                     } else {
                         ForEach(VM.recurringServiceStops) { RSS in
                             NavigationLink(
@@ -474,7 +555,7 @@
                                     recurringServiceStop: RSS
                                 )
                             ) {
-                                RecurringServiceStopSmallCardView(recurringServiceStop: RSS)
+                                CustomerRecurringServiceStopRow(recurringServiceStop: RSS)
                                     .id(rssCardRefreshId(RSS))
                             }
                             .buttonStyle(.plain)
@@ -498,18 +579,17 @@
                     self.addRepairRequest.toggle()
                 }
             ) {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     if VM.repairRequest.isEmpty {
-                        Text("No repair requests found.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 6)
+                        CompactEmptyState(
+                            title: "No repair requests found.",
+                            systemImage: "wrench.and.screwdriver"
+                        )
                     } else {
                         ForEach(VM.repairRequest) { repair in
                             if UIDevice.isIPhone {
                                 NavigationLink(value: Route.repairRequest(repairRequest: repair, dataService: dataService)) {
-                                    RepairRequestCardView(repairRequest: repair)
+                                    CustomerRepairRequestRow(repairRequest: repair)
                                 }
                                 .buttonStyle(.plain)
                             } else {
@@ -517,7 +597,7 @@
                                     masterDataManager.selectedCategory = .jobs
                                     masterDataManager.selectedRepairRequest = repair
                                 }) {
-                                    RepairRequestCardView(repairRequest: repair)
+                                    CustomerRepairRequestRow(repairRequest: repair)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -545,13 +625,12 @@
                     self.addJob.toggle()
                 }
             ) {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     if VM.jobs.isEmpty {
-                        Text("No jobs found.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 6)
+                        CompactEmptyState(
+                            title: "No jobs found.",
+                            systemImage: "briefcase"
+                        )
                     } else {
                         ForEach(VM.jobs) { job in
                             if UIDevice.isIPhone {
@@ -588,17 +667,16 @@
                     self.addServiceStop.toggle()
                 }
             ) {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     if VM.serviceStops.isEmpty {
-                        Text("No service stops found.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 6)
+                        CompactEmptyState(
+                            title: "No service stops found.",
+                            systemImage: "checklist"
+                        )
                     } else {
                         ForEach(Array(VM.serviceStops.prefix(4))) { ss in
                             NavigationLink(value: Route.serviceStop(serviceStop: ss, dataService: dataService)) {
-                                ServiceStopCardViewLarge(serviceStop: ss)
+                                CustomerServiceStopRow(serviceStop: ss)
                             }
                             .buttonStyle(.plain)
                         }
@@ -639,30 +717,74 @@
 
     // MARK: - Reusable UI
 
+    private enum CustomerNoteAudienceFilter: String, CaseIterable, Identifiable {
+        case all
+        case office
+        case field
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .all:
+                return "All"
+            case .office:
+                return "Office"
+            case .field:
+                return "Field"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .all:
+                return "text.bubble"
+            case .office:
+                return CustomerNoteAudience.office.systemImage
+            case .field:
+                return CustomerNoteAudience.field.systemImage
+            }
+        }
+
+        func matches(_ note: CustomerNote) -> Bool {
+            switch self {
+            case .all:
+                return true
+            case .office:
+                return note.displayAudience == .office || note.displayAudience == .all
+            case .field:
+                return note.displayAudience == .field || note.displayAudience == .all
+            }
+        }
+    }
+
     private struct SectionCard<Content: View>: View {
         let title: String
+        var badgeCount: Int? = nil
         var leadingButton: AnyView? = nil
         var trailingButton: AnyView? = nil
         let content: Content
 
         init(
             title: String,
+            badgeCount: Int? = nil,
             leadingButton: AnyView? = nil,
             trailingButton: AnyView? = nil,
             @ViewBuilder content: () -> Content
         ) {
             self.title = title
+            self.badgeCount = badgeCount
             self.leadingButton = leadingButton
             self.trailingButton = trailingButton
             self.content = content()
         }
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 header
                 content
             }
-            .padding(16)
+            .padding(12)
             .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -681,6 +803,15 @@
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
 
+                if let badgeCount, badgeCount > 0 {
+                    Text(badgeCount > 99 ? "99+" : "\(badgeCount)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Color.poolRed, in: Capsule())
+                }
+
                 Spacer()
 
                 if let trailingButton {
@@ -695,14 +826,220 @@
         AnyView(
             Button(action: action) {
                 Image(systemName: systemName)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.accentColor)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
                     .background(Color.accentColor.opacity(0.12))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
         )
+    }
+
+    private struct CompactEmptyState: View {
+        let title: String
+        let systemImage: String
+
+        var body: some View {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+        }
+    }
+
+    private struct CustomerRecurringServiceStopRow: View {
+        let recurringServiceStop: RecurringServiceStop
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "repeat")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 26, height: 26)
+                    .background(Color.poolBlue.opacity(0.10), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(recurringServiceStop.tech.isEmpty ? "No Technician" : recurringServiceStop.tech)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Text("#\(recurringServiceStop.internalId)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Spacer(minLength: 0)
+                    }
+
+                    Text("\(shortDate(date: recurringServiceStop.startDate)) to \(endDateText)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    Text("\(recurringServiceStop.frequency.rawValue) • \(recurringServiceStop.day.rawValue)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    if !recurringServiceStop.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(recurringServiceStop.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 5)
+            }
+            .padding(10)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.055), lineWidth: 1)
+            )
+        }
+
+        var endDateText: String {
+            if recurringServiceStop.noEndDate {
+                return "No end date"
+            }
+
+            if let endDate = recurringServiceStop.endDate {
+                return shortDate(date: endDate)
+            }
+
+            return "No end date"
+        }
+    }
+
+    private struct CustomerServiceStopRow: View {
+        let serviceStop: ServiceStop
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: serviceStop.typeImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 26, height: 26)
+                    .background(Color.poolBlue.opacity(0.10), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(serviceStop.type.isEmpty ? "Service Stop" : serviceStop.type)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    Text(fullDateAndDay(date: serviceStop.serviceDate))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    if !serviceStop.tech.isEmpty {
+                        Text("Tech: \(serviceStop.tech)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 5)
+            }
+            .padding(10)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.055), lineWidth: 1)
+            )
+        }
+    }
+
+    private struct CustomerRepairRequestRow: View {
+        let repairRequest: RepairRequest
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 10) {
+                Rectangle()
+                    .fill(statusColor)
+                    .frame(width: 4)
+                    .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+
+                Image(systemName: "wrench.and.screwdriver")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(statusColor)
+                    .frame(width: 26, height: 26)
+                    .background(statusColor.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(repairRequest.description.isEmpty ? "Repair Request" : repairRequest.description)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 0)
+
+                        Text(repairRequest.status.displayName)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(statusColor)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(statusColor.opacity(0.12), in: Capsule())
+                    }
+
+                    HStack(spacing: 6) {
+                        if !repairRequest.requesterName.isEmpty {
+                            Text(repairRequest.requesterName)
+                        }
+
+                        if !repairRequest.requesterName.isEmpty {
+                            Text("•")
+                        }
+
+                        Text(fullDate(date: repairRequest.date))
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+            }
+            .padding(10)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.primary.opacity(0.055), lineWidth: 1)
+            )
+        }
+
+        private var statusColor: Color {
+            switch repairRequest.status {
+            case .resolved:
+                return Color.poolGreen
+            case .unresolved, .cancelled, .legacyPending, .legacyPendingCapitalized:
+                return Color.poolRed
+            case .convertedToJob:
+                return Color.gray
+            case .inprogress:
+                return Color.yellow
+            }
+        }
     }
 
     private enum CustomerOutstandingWorkKind {
@@ -812,17 +1149,17 @@
         let item: CustomerOutstandingWorkDisplayItem
 
         var body: some View {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
                 ZStack {
                     Circle()
                         .fill(item.accentColor.opacity(0.12))
-                        .frame(width: 38, height: 38)
+                        .frame(width: 28, height: 28)
                     Image(systemName: item.systemImage)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(item.accentColor)
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .top, spacing: 8) {
                         Text(item.title)
                             .font(.subheadline.weight(.semibold))
@@ -861,7 +1198,7 @@
                     }
                 }
             }
-            .padding(12)
+            .padding(10)
             .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -933,5 +1270,265 @@
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(Color.primary.opacity(0.055), lineWidth: 1)
             )
+        }
+    }
+
+    @MainActor
+    private final class CustomerNotesPagedViewModel: ObservableObject {
+        @Published private(set) var notes: [CustomerNote] = []
+        @Published private(set) var loadedNotesCount = 0
+        @Published private(set) var isLoadingPage = false
+        @Published private(set) var hasMoreNotes = true
+        @Published var alertMessage = ""
+        @Published var showAlert = false
+
+        private let dataService: any ProductionDataServiceProtocol
+        private let companyId: String
+        private let customerId: String
+        private let pageSize = 5
+        private var lastDocument: DocumentSnapshot? = nil
+        private var loadedNotes: [CustomerNote] = []
+        private var activeFilter: CustomerNoteAudienceFilter = .all
+
+        init(
+            dataService: any ProductionDataServiceProtocol,
+            companyId: String,
+            customerId: String
+        ) {
+            self.dataService = dataService
+            self.companyId = companyId
+            self.customerId = customerId
+        }
+
+        func loadFirstPage(matching filter: CustomerNoteAudienceFilter) async {
+            applyFilter(filter)
+
+            if loadedNotes.isEmpty {
+                await loadNextVisiblePage(matching: filter)
+            }
+        }
+
+        func loadNextVisiblePage(matching filter: CustomerNoteAudienceFilter) async {
+            let targetCount = notes.count + pageSize
+
+            repeat {
+                await loadNextPage(matching: filter)
+            } while hasMoreNotes && !isLoadingPage && notes.count < targetCount
+        }
+
+        func applyFilter(_ filter: CustomerNoteAudienceFilter) {
+            activeFilter = filter
+            notes = loadedNotes.filter { filter.matches($0) }
+            loadedNotesCount = loadedNotes.count
+        }
+
+        private func loadNextPage(matching filter: CustomerNoteAudienceFilter) async {
+            guard !isLoadingPage, hasMoreNotes else { return }
+
+            isLoadingPage = true
+            defer { isLoadingPage = false }
+
+            do {
+                let page = try await dataService.getCustomerNotesPage(
+                    companyId: companyId,
+                    customerId: customerId,
+                    limit: pageSize,
+                    lastDocument: lastDocument
+                )
+
+                let loadedIds = Set(loadedNotes.map(\.id))
+                loadedNotes.append(contentsOf: page.notes.filter { !loadedIds.contains($0.id) })
+                lastDocument = page.lastDocument
+                hasMoreNotes = page.lastDocument != nil && page.notes.count == pageSize
+                applyFilter(filter)
+            } catch {
+                alertMessage = "Unable to load more customer notes."
+                showAlert = true
+                hasMoreNotes = false
+                print("[CustomerNotesPagedViewModel][loadNextPage] Error: \(error)")
+            }
+        }
+
+        func toggleResolved(note: CustomerNote, authorId: String, authorName: String) async {
+            guard !authorId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                alertMessage = "Sign in before updating a note."
+                showAlert = true
+                return
+            }
+
+            let newResolvedValue = !(note.resolved ?? false)
+
+            do {
+                try await dataService.updateCustomerNoteResolved(
+                    companyId: companyId,
+                    customerId: customerId,
+                    noteId: note.id,
+                    resolved: newResolvedValue,
+                    authorId: authorId,
+                    authorName: authorName
+                )
+
+                if let index = loadedNotes.firstIndex(where: { $0.id == note.id }) {
+                    loadedNotes[index].resolved = newResolvedValue
+                    loadedNotes[index].updatedAt = Date()
+                    loadedNotes[index].updatedAtMillis = Date().timeIntervalSince1970 * 1000
+                    applyFilter(activeFilter)
+                }
+            } catch {
+                alertMessage = "Unable to update customer note."
+                showAlert = true
+                print("[CustomerNotesPagedViewModel][toggleResolved] Error: \(error)")
+            }
+        }
+    }
+
+    private struct CustomerNotesPagedSheet: View {
+        @Environment(\.dismiss) private var dismiss
+        @StateObject private var VM: CustomerNotesPagedViewModel
+        @State private var selectedFilter: CustomerNoteAudienceFilter
+
+        let unresolvedCount: Int
+        let currentUserId: String
+        let currentUserName: String
+
+        init(
+            dataService: any ProductionDataServiceProtocol,
+            companyId: String,
+            customerId: String,
+            unresolvedCount: Int,
+            initialFilter: CustomerNoteAudienceFilter,
+            currentUserId: String,
+            currentUserName: String
+        ) {
+            _VM = StateObject(
+                wrappedValue: CustomerNotesPagedViewModel(
+                    dataService: dataService,
+                    companyId: companyId,
+                    customerId: customerId
+                )
+            )
+            _selectedFilter = State(initialValue: initialFilter)
+            self.unresolvedCount = unresolvedCount
+            self.currentUserId = currentUserId
+            self.currentUserName = currentUserName
+        }
+
+        var body: some View {
+            ZStack {
+                Color.listColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        header
+
+                        if VM.notes.isEmpty && !VM.isLoadingPage {
+                            VStack(alignment: .leading, spacing: 10) {
+                                CompactEmptyState(
+                                    title: selectedFilter == .all ? "No customer notes yet." : "No notes for this filter.",
+                                    systemImage: selectedFilter.systemImage
+                                )
+                            }
+                            .padding(12)
+                            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        } else {
+                            LazyVStack(spacing: 8) {
+                                ForEach(VM.notes) { note in
+                                    CustomerNoteRow(note: note) {
+                                        Task {
+                                            await VM.toggleResolved(
+                                                note: note,
+                                                authorId: currentUserId,
+                                                authorName: currentUserName
+                                            )
+                                        }
+                                    }
+                                    .onAppear {
+                                        if VM.notes.last?.id == note.id {
+                                            Task {
+                                                await VM.loadNextVisiblePage(matching: selectedFilter)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if VM.isLoadingPage {
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                }
+                            }
+                        }
+                    }
+                    .padding(14)
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .task {
+                await VM.loadFirstPage(matching: selectedFilter)
+            }
+            .onChange(of: selectedFilter) { _, newFilter in
+                VM.applyFilter(newFilter)
+                Task {
+                    await VM.loadNextVisiblePage(matching: newFilter)
+                }
+            }
+            .alert(VM.alertMessage, isPresented: $VM.showAlert) {
+                Button("OK", role: .cancel) { }
+            }
+        }
+
+        private var header: some View {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "text.bubble.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.poolBlue)
+                        .frame(width: 34, height: 34)
+                        .background(Color.poolBlue.opacity(0.13), in: Circle())
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 8) {
+                            Text("Customer Notes")
+                                .font(.headline.weight(.semibold))
+
+                            if unresolvedCount > 0 {
+                                Text(unresolvedCount > 99 ? "99+" : "\(unresolvedCount)")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(Color.poolRed, in: Capsule())
+                            }
+                        }
+
+                        Text(VM.notes.count == 1 ? "1 note" : "\(VM.notes.count) notes")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 30, height: 30)
+                            .background(.thinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Picker("Filter", selection: $selectedFilter) {
+                    ForEach(CustomerNoteAudienceFilter.allCases) { filter in
+                        Label(filter.title, systemImage: filter.systemImage)
+                            .tag(filter)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding(12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }

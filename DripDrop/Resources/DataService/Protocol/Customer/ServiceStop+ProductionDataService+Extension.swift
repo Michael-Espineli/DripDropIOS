@@ -12,6 +12,7 @@ import CoreLocation
 import FirebaseStorage
 import FirebaseFirestore
 import SwiftUI
+import UIKit
 import CoreLocation
 import MapKit
 import Darwin
@@ -352,9 +353,7 @@ extension ProductionDataService {
     
     //UPDATE
     func uploadServiceStopImage(companyId: String,serviceStopId:String, image: DripDropImage) async throws ->(path:String, name:String){
-        guard let data = image.image.jpegData(compressionQuality: 1) else {
-            throw URLError(.badURL)
-        }
+        let data = try serviceStopUploadJPEGData(for: image.image)
         let path = "\(UUID().uuidString).jpeg"
         print("path >> \(path)")
         
@@ -409,17 +408,51 @@ extension ProductionDataService {
     }
     func updateServiceStopPhotoURLs(companyId: String, serviceStopId: String, photoUrls: [DripDropStoredImage]) async throws {
         let serviceStopRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)
-        for image in photoUrls {
-            try await serviceStopRef.updateData([
-                ServiceStop.CodingKeys.photoUrls.rawValue: FieldValue.arrayUnion([
-                    [
+        let encodedImages = photoUrls.map { image -> [String: Any] in
+            [
                     "id":image.id,
                     "description":image.description,
                     "imageURL":image.imageURL
-                    ]
-                ])
-            ])
+            ]
         }
+
+        guard !encodedImages.isEmpty else { return }
+
+        try await serviceStopRef.updateData([
+            ServiceStop.CodingKeys.photoUrls.rawValue: FieldValue.arrayUnion(encodedImages.map { $0 as Any })
+        ])
+    }
+
+    private func serviceStopUploadJPEGData(for image: UIImage) throws -> Data {
+        let maxDimension: CGFloat = 1600
+        let size = image.size
+
+        guard size.width > 0, size.height > 0 else {
+            throw URLError(.cannotDecodeContentData)
+        }
+
+        let largestDimension = max(size.width, size.height)
+        let uploadImage: UIImage
+
+        if largestDimension > maxDimension {
+            let scale = maxDimension / largestDimension
+            let targetSize = CGSize(width: size.width * scale, height: size.height * scale)
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1
+            format.opaque = true
+
+            uploadImage = UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
+                image.draw(in: CGRect(origin: .zero, size: targetSize))
+            }
+        } else {
+            uploadImage = image
+        }
+
+        guard let data = uploadImage.jpegData(compressionQuality: 0.72) else {
+            throw URLError(.cannotDecodeContentData)
+        }
+
+        return data
     }
     func updateServiceStopAddress(companyId: String, serviceStopId: String, address: Address) async throws  {
         let serviceStopRef = serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId)

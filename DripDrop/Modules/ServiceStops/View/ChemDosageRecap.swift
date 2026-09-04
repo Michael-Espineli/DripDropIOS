@@ -50,12 +50,21 @@ struct ChemDosageRecap: View {
         ]
 
         return stopData.dosages.first { dosage in
-            templateKeys.contains { key in
+            guard itemMatchesBodyOfWater(dosage.bodyOfWaterId) else { return false }
+
+            return templateKeys.contains { key in
                 matches(key, dosage.templateId) ||
                 matches(key, dosage.universalTemplateId) ||
                 matches(key, dosage.name)
             }
         }
+    }
+
+    private func itemMatchesBodyOfWater(_ bodyOfWaterId: String) -> Bool {
+        let itemId = normalizedKey(bodyOfWaterId)
+        let selectedId = normalizedKey(BOW.id)
+
+        return itemId.isEmpty || itemId == selectedId
     }
 
     private func matches(_ lhs: String?, _ rhs: String?) -> Bool {

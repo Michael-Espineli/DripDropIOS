@@ -649,7 +649,9 @@ final class CustomerProfileViewModel: ObservableObject {
 
                 let notes: [CustomerNote] = snapshot?.documents.compactMap { document in
                     do {
-                        return try document.data(as: CustomerNote.self)
+                        var note = try document.data(as: CustomerNote.self)
+                        note.storedId = note.storedId ?? document.documentID
+                        return note
                     } catch {
                         print("[CustomerProfileViewModel][listenToCustomerNotes] Decode Error: \(error)")
                         return nil
@@ -810,6 +812,7 @@ final class CustomerProfileViewModel: ObservableObject {
         customer: Customer,
         bodyOfWater: BodyOfWater?,
         note: String,
+        audience: CustomerNoteAudience = .office,
         authorId: String,
         authorName: String
     ) async throws {
@@ -843,6 +846,8 @@ final class CustomerProfileViewModel: ObservableObject {
                 "authorName": authorName,
                 "note": trimmedNote,
                 "comment": trimmedNote,
+                "audience": audience.rawValue,
+                "visibility": audience.rawValue,
                 "resolved": false,
                 "date": FieldValue.serverTimestamp(),
                 "dateMillis": nowMillis,
