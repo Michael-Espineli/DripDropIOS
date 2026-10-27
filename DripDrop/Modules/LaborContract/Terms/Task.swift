@@ -57,7 +57,18 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
     var installedEquipmentId: String? = nil
     var replacementEquipmentId: String? = nil
 
+    var billingLaborPriceCents: Int? = nil
+    var taxable: Bool? = nil
+
+    var payrollMode: String? = nil
+    var manualPayOverrideCents: Int? = nil
+    var manualPayOverrideNotes: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
+
     enum CodingKeys: String, CodingKey {
+        case payrollMode, manualPayOverrideCents, manualPayOverrideNotes, payrollStackBehavior, payQuantity
+        case billingLaborPriceCents, taxable
         case id
         case name
         case type
@@ -106,8 +117,20 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
         shoppingListItemId: String? = nil,
         purchasedItemId: String? = nil,
         installedEquipmentId: String? = nil,
-        replacementEquipmentId: String? = nil
+        replacementEquipmentId: String? = nil,
+        billingLaborPriceCents: Int? = nil,
+        taxable: Bool? = nil,
+        payrollMode: String? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
+        payrollStackBehavior: String? = nil,
+        payQuantity: Double? = nil
     ) {
+        self.payrollMode = payrollMode
+        self.manualPayOverrideCents = manualPayOverrideCents
+        self.manualPayOverrideNotes = manualPayOverrideNotes
+        self.payrollStackBehavior = payrollStackBehavior
+        self.payQuantity = payQuantity
         self.id = id
         self.name = name
         self.type = type
@@ -130,12 +153,26 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
         self.shoppingListItemId = shoppingListItemId
         self.purchasedItemId = purchasedItemId
         self.installedEquipmentId = installedEquipmentId
+        self.billingLaborPriceCents = billingLaborPriceCents
+        self.taxable = taxable
         self.replacementEquipmentId = replacementEquipmentId
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        payrollMode = try container.decodeIfPresent(String.self, forKey: .payrollMode)
+        manualPayOverrideCents = try container.decodeIfPresent(Int.self, forKey: .manualPayOverrideCents)
+        manualPayOverrideNotes = try container.decodeIfPresent(String.self, forKey: .manualPayOverrideNotes)
+        payrollStackBehavior = try container.decodeIfPresent(String.self, forKey: .payrollStackBehavior)
+        payQuantity = try container.decodeIfPresent(Double.self, forKey: .payQuantity)
 
+
+        if let raw = JobTask.decodeString(container, forKey: .billingLaborPriceCents), !raw.isEmpty {
+            billingLaborPriceCents = JobTask.decodeInt(container, forKey: .billingLaborPriceCents)
+        } else {
+            billingLaborPriceCents = nil
+        }
+        taxable = try container.decodeIfPresent(Bool.self, forKey: .taxable)
         id = JobTask.decodeString(container, forKey: .id) ?? "comp_job_task_" + UUID().uuidString
         name = JobTask.decodeString(container, forKey: .name) ?? ""
         type = (try? container.decode(JobTaskType.self, forKey: .type)) ?? .basic
@@ -259,7 +296,14 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
     var payTypeId: String?
     var payTypeName: String?
 
+    var payrollMode: String? = nil
+    var manualPayOverrideCents: Int? = nil
+    var manualPayOverrideNotes: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
+
     enum CodingKeys: String, CodingKey {
+        case payrollMode, manualPayOverrideCents, manualPayOverrideNotes, payrollStackBehavior, payQuantity
         case id
         case name
         case type
@@ -308,8 +352,18 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
         bodyOfWaterId: String,
         shoppingListItemId: String,
         payTypeId: String? = nil,
-        payTypeName: String? = nil
+        payTypeName: String? = nil,
+        payrollMode: String? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
+        payrollStackBehavior: String? = nil,
+        payQuantity: Double? = nil
     ) {
+        self.payrollMode = payrollMode
+        self.manualPayOverrideCents = manualPayOverrideCents
+        self.manualPayOverrideNotes = manualPayOverrideNotes
+        self.payrollStackBehavior = payrollStackBehavior
+        self.payQuantity = payQuantity
         self.id = id
         self.name = name
         self.type = type
@@ -337,6 +391,12 @@ struct ServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        payrollMode = try container.decodeIfPresent(String.self, forKey: .payrollMode)
+        manualPayOverrideCents = try container.decodeIfPresent(Int.self, forKey: .manualPayOverrideCents)
+        manualPayOverrideNotes = try container.decodeIfPresent(String.self, forKey: .manualPayOverrideNotes)
+        payrollStackBehavior = try container.decodeIfPresent(String.self, forKey: .payrollStackBehavior)
+        payQuantity = try container.decodeIfPresent(Double.self, forKey: .payQuantity)
+
 
         id = try container.decodeIfPresent(String.self, forKey: .id) ?? "comp_ss_task_" + UUID().uuidString
         name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""

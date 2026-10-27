@@ -647,7 +647,12 @@ final class ScheduleServiceStopViewModel: ObservableObject {
             bodyOfWaterId: task.bodyOfWaterId,
             shoppingListItemId: task.dataBaseItemId,
             payTypeId: task.payTypeId,
-            payTypeName: task.payTypeName
+            payTypeName: task.payTypeName,
+            payrollMode: task.payrollMode,
+            manualPayOverrideCents: task.manualPayOverrideCents,
+            manualPayOverrideNotes: task.manualPayOverrideNotes,
+            payrollStackBehavior: task.payrollStackBehavior,
+            payQuantity: task.payQuantity
         )
     }
 

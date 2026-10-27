@@ -79,6 +79,8 @@ struct RouteManagmentView2: View {
 	                    VM.resetAssignmentState(clearSelections: true)
 	                }, content: {
 	                    PlannedRouteAssignmentSheet()
+	                        .presentationDetents([.large])
+	                        .presentationDragIndicator(.visible)
 	                })
 	            Text("")
 	                .confirmationDialog("Select Type", isPresented: self.$VM.editRecurringServiceStop, actions: {
@@ -114,11 +116,21 @@ struct RouteManagmentView2: View {
                 }, content: {
                     ZStack{
                         Color.listColor.ignoresSafeArea()
-                        Text("Edit Recurring Route")
+                        if let recurringServiceStop = VM.selectedRecurringServiceStop {
+                            RecurringServiceStopDetailView(
+                                dataService: dataService,
+                                RSS: recurringServiceStop
+                            )
+                        }
                     }
                 })
         }
         .navigationTitle("Routes")
+        .searchable(
+            text: $VM.searchText,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search customer or address"
+        )
         
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
@@ -242,8 +254,17 @@ extension RouteManagmentView2 {
 
     var dayThenTech: some View {
         VStack {
-            ForEach(DaysOfWeek.allCases, id: \.self) { day in
-                RouteDayView(day: day)
+            if VM.visibleDays.isEmpty {
+                ContentUnavailableView(
+                    "No Matching Stops",
+                    systemImage: "magnifyingglass",
+                    description: Text("Try another customer name or address.")
+                )
+                .padding(.top, 48)
+            } else {
+                ForEach(VM.visibleDays, id: \.self) { day in
+                    RouteDayView(day: day)
+                }
             }
         }
     }

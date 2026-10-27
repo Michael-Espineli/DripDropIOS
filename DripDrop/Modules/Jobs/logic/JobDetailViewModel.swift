@@ -29,6 +29,7 @@ final class JobDetailViewModel:ObservableObject{
     @Published var isPresentWorkOffer: Bool = false
     @Published private(set) var workOffers: [WorkOffer] = []
     
+    private var loadedJobId = ""
     @Published var plannedServiceStops: [JobPlannedServiceStop] = []
     @Published var isAddPlannedServiceStop: Bool = false
     @Published var plannedServiceStopToDelete: JobPlannedServiceStop?
@@ -66,6 +67,9 @@ final class JobDetailViewModel:ObservableObject{
     ]
     @Published private(set) var jobTaskList:[JobTask] = []
     @Published private(set) var comments: [JobComment] = []
+    @Published private(set) var historyEvents: [JobHistoryEvent] = []
+    @Published private(set) var historyLoading: Bool = true
+    @Published private(set) var historyError: String? = nil
     @Published var commentFilter: JobCommentFilter = .all
     @Published var newComment: String = ""
     @Published private(set) var commentsLoading: Bool = false
@@ -150,6 +154,8 @@ final class JobDetailViewModel:ObservableObject{
 
     
     func onLoad(companyId:String,serviceLocationId:String,job:Job) async throws {
+        loadedJobId = job.id
+        await loadHistory(companyId: companyId, jobId: job.id)
         print("")
         self.invoiceRef = job.invoiceRef ?? ""
         self.invoiceNotes = job.invoiceNotes ?? ""
@@ -293,7 +299,7 @@ final class JobDetailViewModel:ObservableObject{
         )
         
         self.actualPayLineItems = try await fetchActualPayLineItemsForLoadedStops(
-            companyId: companyId
+            companyId: companyId, jobId: job.id
         )
         
         try await getPurchaseCost(
@@ -305,6 +311,20 @@ final class JobDetailViewModel:ObservableObject{
         await loadComments(companyId: companyId, jobId: job.id)
     }
     
+    func loadHistory(companyId: String, jobId: String) async {
+        guard !companyId.isEmpty, !jobId.isEmpty else {
+            historyEvents = []
+            historyLoading = false
+            historyError = "Select a company to view job history."
+            return
+        }
+        historyLoading = true
+        historyError = nil
+        defer { historyLoading = false }
+        do { historyEvents = try await dataService.fetchJobHistory(companyId: companyId, jobId: jobId) }
+        catch { historyError = "Could not load job history. Please try again." }
+    }
+
     func loadComments(companyId: String, jobId: String) async {
         commentsLoading = true
         defer { commentsLoading = false }
@@ -453,7 +473,7 @@ final class JobDetailViewModel:ObservableObject{
         )
 
         self.actualPayLineItems = try await fetchActualPayLineItemsForLoadedStops(
-            companyId: companyId
+            companyId: companyId, jobId: job.id
         )
 
     }
@@ -941,62 +961,13 @@ final class JobDetailViewModel:ObservableObject{
         completedByUserName: String = "",
         addCompletionComment: Bool = true
     ) async throws {
-        //Update Data Model
-        try await dataService.updateJobOperationStatus(companyId: companyId, jobId: job.id, operationStatus: .finished)
+        _ = try await FunctionsManager.shared.technicianWorkflow("finalizeTechnicianJob", payload: ["companyId":companyId,"jobId":job.id,"requestId":UUID().uuidString,"finishJob":true,"taskIds":[],"productIds":[],"serviceIds":[]])
         self.operationStatus = .finished
-        let completedByName = completedByUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unknown" : completedByUserName
-        
-        //See if is other company
-        if job.otherCompany {
-            if job.receiverId == companyId {
-                if let senderId = job.senderId, let contractId = job.receivedLaborContractId {
-                    //Update Labor Contract
-                    try await dataService.updateLaborContractStatus(contractId: contractId, status: .finished)
-                    //Get Labor Contract
-                    let contract = try await dataService.getLaborContract(laborContractId: contractId)
-                    //Update Job Info
-                    for task in jobTaskList {
-                        try dataService.updateJobTaskStatus(companyId: senderId, jobId: contract.senderJobId.id, taskId: task.id, status: .finished)
-                        try await updateTaskHelperFunction(companyId: senderId, task: task, jobId: contract.senderJobId.id)
-                    }
-                }
-            }
-        } else {
-            for task in jobTaskList {
-                //Update Task
-                try dataService.updateJobTaskStatus(companyId: companyId, jobId: job.id, taskId: task.id, status: .finished)
-                try await updateTaskHelperFunction(companyId: companyId, task: task, jobId: job.id)
-            }
-        }
-
-        if addCompletionComment {
-            try await addJobKeyMomentComment(
-                companyId: companyId,
-                jobId: job.id,
-                userId: completedByUserId,
-                userName: completedByName,
-                comment: "Job finished by \(completedByName)."
-            )
-        }
+    }
+    func markJobAsFinished(companyId: String, job: Job, jobTasks: [JobTask], completedByUserId: String = "", completedByUserName: String = "", addCompletionComment: Bool = true) async throws {
+        try await markJobAsFinished(companyId: companyId, job: job, completedByUserId: completedByUserId, completedByUserName: completedByUserName, addCompletionComment: addCompletionComment)
     }
 
-    func markJobAsFinished(
-        companyId: String,
-        job: Job,
-        jobTasks: [JobTask],
-        completedByUserId: String = "",
-        completedByUserName: String = "",
-        addCompletionComment: Bool = true
-    ) async throws {
-        self.jobTaskList = jobTasks
-        try await markJobAsFinished(
-            companyId: companyId,
-            job: job,
-            completedByUserId: completedByUserId,
-            completedByUserName: completedByUserName,
-            addCompletionComment: addCompletionComment
-        )
-    }
     func updateTaskHelperFunction(
         companyId: String,
         task: JobTask,
@@ -1797,65 +1768,18 @@ extension JobDetailViewModel {
         }
     }
 
-    func fetchActualPayLineItemsForLoadedStops(
-        companyId: String
-    ) async throws -> [TechnicianPayLineItem] {
-        let stopIds = Set(serviceStops.map { $0.id })
-
-        guard !stopIds.isEmpty else {
-            return []
-        }
-
-        let dates = serviceStops.map { $0.serviceDate }
-
-        guard let minDate = dates.min(),
-              let maxDate = dates.max() else {
-            return []
-        }
-
-        let startDate = Calendar.current.date(
-            byAdding: .day,
-            value: -1,
-            to: minDate
-        ) ?? minDate
-
-        let endDate = Calendar.current.date(
-            byAdding: .day,
-            value: 1,
-            to: maxDate
-        ) ?? maxDate
-
-        let items = try await dataService.fetchTechnicianPayLineItems(
-            companyId: companyId,
-            startDate: startDate,
-            endDate: endDate
-        )
-
-        return items
-            .filter { item in
-                guard let serviceStopId = item.serviceStopId else {
-                    return false
-                }
-
-                return stopIds.contains(serviceStopId)
-            }
-            .sorted {
-                if $0.completedDate == $1.completedDate {
-                    return ($0.workTypeName ?? "") < ($1.workTypeName ?? "")
-                }
-
-                return $0.completedDate > $1.completedDate
-            }
+    func fetchActualPayLineItemsForLoadedStops(companyId: String, jobId: String = "") async throws -> [TechnicianPayLineItem] {
+        try await dataService.fetchJobPayLineItems(companyId: companyId, jobId: jobId.isEmpty ? loadedJobId : jobId).filter { $0.calculationStatus != .voided }
     }
 
     var actualPayrollTotalCents: Int {
-        actualPayLineItems.reduce(0) { $0 + $1.totalAmountCents }
+        actualPayLineItems.filter { $0.calculationStatus != .voided }.reduce(0) { $0 + $1.totalAmountCents }
     }
 
     var scheduledServiceStopLaborEstimateCents: Int {
         let stopIdsWithPayroll = Set(actualPayLineItems.compactMap { $0.serviceStopId })
 
-        return serviceStops.reduce(0) { total, stop in
+        return serviceStops.filter { $0.operationStatus != .finished }.reduce(0) { total, stop in
             if stopIdsWithPayroll.contains(stop.id) {
                 return total
             }
@@ -1911,7 +1835,8 @@ extension JobDetailViewModel {
     }
     
     var plannedTaskLaborCents: Int {
-        plannedLaborTotalCents
+        let covered = Set(plannedServiceStops.filter { ($0.plannedLaborCostCents ?? 0) > 0 }.flatMap(\.taskIds))
+        return jobTaskList.filter { !covered.contains($0.id) }.reduce(0) { $0 + $1.contractedRate }
     }
     
     var plannedServiceStopLaborCents: Int {
@@ -1994,11 +1919,18 @@ extension JobDetailViewModel {
 extension JobDetailViewModel {
 
     func dashboardSummary(for job: Job) -> JobDashboardSummary {
-        JobDashboardSummary(
+        let openTasks = jobTaskList.filter { $0.status != .finished }
+        let openProducts = shoppingItemList.filter { $0.status != .installed && $0.shoppingListActive }
+        let activeOffers = workOffers.filter { ![WorkOfferStatus.rejected, .cancelled, .expired, .completed].contains($0.status) }
+        let offered = Set(activeOffers.flatMap(\.jobTaskIds))
+        let accepted = Set(activeOffers.flatMap { ($0.claims ?? []).filter { ["Accepted", "Scheduled", "In Progress"].contains($0.status) }.flatMap(\.taskIds) })
+        let blocked = Set(openProducts.filter { ![ShoppingListStatus.purchased, .delivered].contains($0.status) }.compactMap(\.linkedTaskId))
+        let ready = openTasks.filter { !blocked.contains($0.id) }
+        return JobDashboardSummary(
             jobRateCents: job.rate,
             plannedTaskLaborCents: plannedTaskLaborCents,
             plannedServiceStopLaborCents: plannedServiceStopLaborCents,
-            actualPayrollCents: actualLaborTotalCents,
+            actualPayrollCents: actualPayrollTotalCents,
             plannedMaterialCostCents: plannedMaterialCostCents,
             plannedMaterialPriceCents: plannedMaterialPriceCents,
             actualMaterialCostCents: actualPurchasedMaterialCostCents,
@@ -2008,7 +1940,15 @@ extension JobDetailViewModel {
             openOfferCount: workOffers.filter { $0.status.isOpen }.count,
             acceptedOfferCount: workOffers.filter { $0.status == .accepted }.count,
             acceptedOffersReadyToScheduleCount: workOffers.acceptedReadyToScheduleCount,
-            payrollNeedsReviewCount: actualPayrollNeedsReviewCount
+            payrollNeedsReviewCount: actualPayrollNeedsReviewCount,
+            remainingTaskCount: jobTaskList.filter { $0.status != .finished }.count,
+            remainingProductUnits: openProducts.reduce(0) { $0 + max(0,(Double($1.quantity ?? "1") ?? 1) - ($1.installedQuantity ?? 0)) },
+            remainingServiceCount: (job.laborLineItems ?? []).filter { line in line.completionStatus != "Finished" && (line.linkedTaskIds.isEmpty || line.linkedTaskIds.contains { taskId in !jobTaskList.contains { $0.id == taskId && $0.status == .finished } } || openProducts.contains { line.linkedTaskIds.contains($0.linkedTaskId ?? "") }) }.count,
+            unassignedTaskCount: ready.filter { $0.workerId.isEmpty && !offered.contains($0.id) && $0.serviceStopId.id.isEmpty }.count,
+            unscheduledTaskCount: ready.filter { $0.serviceStopId.id.isEmpty && (!$0.workerId.isEmpty || accepted.contains($0.id)) }.count,
+            offeredTaskCount: ready.filter { $0.serviceStopId.id.isEmpty && $0.workerId.isEmpty && offered.contains($0.id) && !accepted.contains($0.id) }.count,
+            scheduledTaskCount: ready.filter { !$0.serviceStopId.id.isEmpty }.count,
+            blockedTaskCount: openTasks.filter { blocked.contains($0.id) }.count
         )
     }
 
@@ -2066,7 +2006,7 @@ extension JobDetailViewModel {
             shoppingItems: shoppingItemList,
             purchasedItems: purchasedItems,
             plannedLaborCents: plannedTotalLaborCents,
-            actualPayrollCents: actualLaborTotalCents,
+            actualPayrollCents: actualPayrollTotalCents,
             plannedMaterialCostCents: plannedMaterialCostCents,
             actualMaterialCostCents: actualPurchasedMaterialCostCents
         )

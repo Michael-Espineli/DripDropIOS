@@ -90,6 +90,19 @@ struct Job: Identifiable, Codable, Hashable{
     let invoiceType: JobInvoiceType? //Manual , Auto
     let invoiceNotes: String?
 
+    var laborLineItems: [JobLaborLineItem]? = nil
+    var estimateLaborLineItems: [JobLaborLineItem]? = nil
+    var activePlanId: String? = nil
+    var activeSolutionId: String? = nil
+    var sourceTemplateId: String? = nil
+    var sourceTemplateName: String? = nil
+    var referenceLabel: String? = nil
+    var createdByUserId: String? = nil
+    var createdByUserName: String? = nil
+    var createdByCompanyUserId: String? = nil
+    var createdAt: Date? = nil
+    var createdAtMillis: Int? = nil
+
     var cost: Int {
         laborCost // + installationPartsCost + auxiliaryPartsCost
     }

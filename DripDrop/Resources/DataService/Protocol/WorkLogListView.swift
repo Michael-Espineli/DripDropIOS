@@ -29,14 +29,6 @@ final class WorkLogListViewModel:ObservableObject{
 
     func onLoad(companyId:String, user:DBUser) async throws {
         self.nextShifts = try await dataService.getNextShiftByUserId(companyId: companyId, userId: user.id, count: 1)
-        self.nextShifts.append(WorkShift(
-            date: Calendar.current.date(byAdding: DateComponents(month: 0, day: 1), to: Date())!,
-            techId: UUID().uuidString,
-            techName: "John Doe",
-            isCurrent: false,
-            estimatedTime: 100,
-            estimatedMiles: 15
-        ))
         self.currentDate = Date()
         self.startOfWeek = Date().startOfWeek()
         self.endOfWeek = Date().endOfWeek()
@@ -118,6 +110,7 @@ struct WorkLogListView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView{
+                WorkLogIn(dataService: dataService)
                 summary
                 Rectangle()
                     .frame(height: 1)

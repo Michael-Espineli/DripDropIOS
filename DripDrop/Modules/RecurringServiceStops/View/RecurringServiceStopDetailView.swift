@@ -25,6 +25,8 @@
         @Published var isEdit: Bool = false
 
         @Published var editTech: String = ""
+        @Published var editTechId: String = ""
+        @Published private(set) var companyUsers: [CompanyUser] = []
         @Published var editFrequency: LaborContractFrequency = .weekly
         @Published var editDay: DaysOfWeek = .monday
         @Published var editNoEndDate: Bool = true
@@ -38,10 +40,17 @@
         func onLoad(companyId: String, recurringServiceStop: RecurringServiceStop) {
             Task {
                 do {
-                    self.RSSTasks = try await dataService.getRecurringServiceStopTasks(
+                    async let tasks = dataService.getRecurringServiceStopTasks(
                         companyId: companyId,
                         recurringServiceStopId: recurringServiceStop.id
                     )
+                    async let users = dataService.getAllCompanyUsersByStatus(
+                        companyId: companyId,
+                        status: "Active"
+                    )
+
+                    self.RSSTasks = try await tasks
+                    self.companyUsers = try await users
                 } catch {
                     print(error)
                 }
@@ -50,6 +59,7 @@
 
         func beginEditing(_ rss: RecurringServiceStop) {
             editTech = rss.tech
+            editTechId = rss.techId
             editFrequency = rss.frequency
             editDay = rss.day
             editNoEndDate = rss.noEndDate
@@ -69,7 +79,11 @@
         }
 
         func updatedRSS(from rss: RecurringServiceStop) -> RecurringServiceStop {
-            RecurringServiceStop(
+            let selectedTechnician = companyUsers.first {
+                technicianId(for: $0) == editTechId
+            }
+
+            return RecurringServiceStop(
                 id: rss.id,
                 internalId: rss.internalId,
                 type: rss.type,
@@ -78,8 +92,8 @@
                 customerName: rss.customerName,
                 customerId: rss.customerId,
                 address: rss.address,
-                tech: editTech.trimmingCharacters(in: .whitespacesAndNewlines),
-                techId: rss.techId,
+                tech: selectedTechnician?.userName ?? editTech.trimmingCharacters(in: .whitespacesAndNewlines),
+                techId: editTechId,
                 dateCreated: rss.dateCreated,
                 startDate: rss.startDate,
                 endDate: editNoEndDate ? nil : editEndDate,
@@ -95,6 +109,10 @@
                 contractedCompanyId: rss.contractedCompanyId,
                 mainCompanyId: rss.mainCompanyId
             )
+        }
+
+        func technicianId(for user: CompanyUser) -> String {
+            user.userId.isEmpty ? user.id : user.userId
         }
 
         func saveRSS(
@@ -371,7 +389,7 @@
 
         var canSaveRSS: Bool {
             !VM.isLoading &&
-            !VM.editTech.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            !VM.editTechId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
 
         var savedFeedbackCard: some View {
@@ -471,12 +489,25 @@
 
         var editDetails: some View {
             VStack(alignment: .leading, spacing: 14) {
-                editTextField(
-                    title: "Technician",
-                    systemImage: "person.crop.circle",
-                    text: $VM.editTech,
-                    placeholder: "Technician name"
-                )
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Technician", systemImage: "person.crop.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Picker("Technician", selection: $VM.editTechId) {
+                        if !VM.companyUsers.contains(where: { VM.technicianId(for: $0) == RSS.techId }) {
+                            Text(RSS.tech).tag(RSS.techId)
+                        }
+
+                        ForEach(VM.companyUsers) { user in
+                            Text(user.userName).tag(VM.technicianId(for: user))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                 editPicker(
                     title: "Frequency",

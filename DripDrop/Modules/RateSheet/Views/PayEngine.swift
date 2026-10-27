@@ -209,7 +209,7 @@ struct PayEngine {
 
     private func payableLineItems(_ lineItems: [TechnicianPayLineItem]) -> [TechnicianPayLineItem] {
         lineItems.filter { lineItem in
-            let shouldKeep = lineItem.totalAmountCents > 0
+            let shouldKeep = lineItem.totalAmountCents > 0 || lineItem.calculationStatus == .needsReview
 
             if !shouldKeep {
                 payrollDebug(

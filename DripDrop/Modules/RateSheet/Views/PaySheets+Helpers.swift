@@ -238,6 +238,8 @@ var helpText: String {
 extension HourlyPaySource {
 var title: String {
     switch self {
+    case .workLogs:
+        return "Work Logs / Time Clock"
     case .activeRouteDuration:
         return "Active route duration"
     case .activeRouteLogs:
@@ -253,6 +255,8 @@ var title: String {
 
 var helpText: String {
     switch self {
+    case .workLogs:
+        return "Generate hourly pay from closed shift work logs, using company break and lunch rules."
     case .activeRouteDuration:
         return "Generate hourly pay from the total ActiveRoute start and end time."
     case .activeRouteLogs:

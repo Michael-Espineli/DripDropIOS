@@ -1009,6 +1009,7 @@ enum PayBasis: String, Codable, Hashable, CaseIterable {
  */
 
 enum HourlyPaySource: String, Codable, Hashable, CaseIterable {
+    case workLogs
     case activeRouteDuration
     case activeRouteLogs
     case serviceStopDuration

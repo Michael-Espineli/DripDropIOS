@@ -127,10 +127,31 @@ struct WorkOfferPayEstimateService {
             }
         }
 
-        return lines
+        return lines.filter { line in
+            if line.source == .serviceStop {
+                return !lines.contains { other in other.sourceTaskId != nil && other.workTypeId == line.workTypeId && tasks.first(where: { $0.id == other.sourceTaskId })?.payrollStackBehavior != "stackable" && ![WorkCategory.route, .maintenance, .serviceCall, .commercial, .startup, .estimate].contains(context.workTypes.first(where: { $0.id == line.workTypeId })?.category ?? .custom) }
+            }
+            if let taskId = line.sourceTaskId, let task = tasks.first(where: { $0.id == taskId }), task.payrollStackBehavior != "stackable", let type = context.workTypes.first(where: { $0.id == line.workTypeId }), [WorkCategory.route, .maintenance, .serviceCall, .commercial, .startup, .estimate].contains(type.category) {
+                return !lines.contains { $0.source == .serviceStop && $0.workTypeId == line.workTypeId }
+            }
+            return true
+        }
     }
 
-    private func estimateTaskLine(
+    private func estimateTaskLine(companyId: String, worker: CompanyUser, task: JobTask, taskPaySource: TaskPaySource, date: Date) -> WorkOfferPayEstimateLine? {
+        if ["included", "unpaid"].contains(task.payrollMode ?? "") { return nil }
+        if task.payrollMode == "custom", let amount = task.manualPayOverrideCents {
+            return WorkOfferPayEstimateLine(id: "offer_custom_" + task.id, sourceTaskId: task.id, source: .manualAdjustment, workTypeId: task.payTypeId, workTypeName: task.payTypeName, title: task.name, rateAmountCents: amount, rateType: .manual, quantity: 1, quantityUnit: .each, totalAmountCents: amount, calculationStatus: amount >= 0 ? .calculated : .needsReview, notes: task.manualPayOverrideNotes)
+        }
+        guard var line = estimateTaskLineRaw(companyId: companyId, worker: worker, task: task, taskPaySource: taskPaySource, date: date) else { return nil }
+        if [.flatPerTask, .flatPerStop].contains(line.rateType), let quantity = task.payQuantity {
+            line.quantity = quantity
+            line.totalAmountCents = Int((Double(line.rateAmountCents) * quantity).rounded())
+            if quantity <= 0 { line.calculationStatus = .needsReview }
+        }
+        return line
+    }
+    private func estimateTaskLineRaw(
         companyId: String,
         worker: CompanyUser,
         task: JobTask,

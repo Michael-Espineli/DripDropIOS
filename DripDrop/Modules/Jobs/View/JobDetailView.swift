@@ -37,6 +37,8 @@ struct JobDetailView: View {
     
     @State private var showBillingActionsSheet: Bool = false
     @State private var showCommentsSheet: Bool = false
+    @State private var showJobCloseout = false
+    @State private var historySection: String = "Activity"
 
         //Body Of Water
 
@@ -285,6 +287,14 @@ struct JobDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
+        }
+        .sheet(isPresented: $showJobCloseout) {
+            if let companyId = masterDataManager.currentCompany?.id {
+                JobCloseoutSheet(companyId: companyId, job: job, dataService: dataService, onComplete: {
+                    showJobCloseout = false
+                    Task { do { let updated = try await dataService.getWorkOrderById(companyId:companyId,workOrderId:job.id); job = updated; try await VM.onLoad(companyId:companyId,serviceLocationId:updated.serviceLocationId,job:updated) } catch { print("[JobCloseout] Refresh failed") } }
+                })
+            }
         }
         .sheet(isPresented: $showCommentsSheet) {
             NavigationStack {
@@ -765,12 +775,7 @@ extension JobDetailView {
                                     job: job
                                 )
                             } else {
-                                try await VM.markJobAsFinished(
-                                    companyId: company.id,
-                                    job: job,
-                                    completedByUserId: masterDataManager.user?.id ?? "",
-                                    completedByUserName: currentUserDisplayName
-                                )
+                                showJobCloseout = true
                             }
                         }
                     } catch {
@@ -988,25 +993,62 @@ extension JobDetailView {
     var historyView: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    sectionHeader("History", systemImage: "clock.arrow.circlepath")
-                    Spacer()
-                    Text("\(VM.comments.count) comment\(VM.comments.count == 1 ? "" : "s")")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(.thinMaterial, in: Capsule())
-                }
-
-                Text("Job comments and activity notes for \(job.internalId).")
+                sectionHeader("History", systemImage: "clock.arrow.circlepath")
+                Text("Who created this job and what changed afterward.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Picker("History section", selection: $historySection) {
+                    Text("Activity").tag("Activity")
+                    Text("Comments (\(VM.comments.count))").tag("Comments")
+                }
+                .pickerStyle(.segmented)
             }
             .padding(14)
             .background(Color.listColor)
 
-            commentsView
+            if historySection == "Comments" {
+                commentsView
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 12) {
+                        if VM.historyLoading {
+                            ProgressView("Loading job history…")
+                        } else if let error = VM.historyError {
+                            Text(error).font(.subheadline).foregroundStyle(.secondary)
+                            Button("Retry") {
+                                Task { await VM.loadHistory(companyId: masterDataManager.currentCompany?.id ?? "", jobId: job.id) }
+                            }
+                        } else if VM.historyEvents.isEmpty {
+                            Text("No history has been recorded for this job.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        } else {
+                            ForEach(VM.historyEvents) { event in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(event.eventType ?? "Job Updated")
+                                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                    Text(event.title ?? event.eventType ?? "Job updated")
+                                        .font(.headline)
+                                    Text(event.actorDisplayName).font(.subheadline)
+                                    if let date = event.timestamp {
+                                        Text(date.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    } else {
+                                        Text("Time not recorded").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    if let description = event.description, !description.isEmpty {
+                                        Text(description).font(.subheadline).foregroundStyle(.secondary)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                    }
+                    .padding(14)
+                }
+                .refreshable { await VM.loadHistory(companyId: masterDataManager.currentCompany?.id ?? "", jobId: job.id) }
+            }
         }
     }
 

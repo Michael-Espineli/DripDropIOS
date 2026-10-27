@@ -210,7 +210,7 @@ enum JobWorkflowHealthBuilder {
             )
         }
 
-        let unfinishedStops = serviceStops.filter { $0.operationStatus != .finished }
+        let unfinishedStops = serviceStops.filter { $0.operationStatus != .finished && $0.operationStatus != .skipped }
 
         if !unfinishedStops.isEmpty {
             issues.append(

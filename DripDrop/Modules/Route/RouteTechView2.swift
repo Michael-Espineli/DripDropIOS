@@ -15,12 +15,20 @@ struct RouteTechView2: View {
     let tech: CompanyUser
     let day: DaysOfWeek
 
+    var technicianId: String {
+        tech.userId.isEmpty ? tech.id : tech.userId
+    }
+
     var route: RecurringRoute? {
-        VM.route(for: tech.userId, day: day)
+        VM.route(for: technicianId, day: day)
     }
 
     var stops: [RecurringServiceStop] {
-        VM.stops(for: tech.userId, day: day)
+        VM.stops(for: technicianId, day: day)
+    }
+
+    var visibleOrders: [recurringRouteOrder] {
+        route.map(VM.visibleOrders(for:)) ?? []
     }
 
     var body: some View {
@@ -41,7 +49,9 @@ struct RouteTechView2: View {
                             .font(.headline)
                             .fontWeight(.semibold)
                         
-                        Text("Stops In Route: \(String(route.order.count))")
+                        Text(VM.isSearching
+                             ? "Matching Stops: \(visibleOrders.count)"
+                             : "Stops In Route: \(route.order.count)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -66,7 +76,7 @@ struct RouteTechView2: View {
                         .fill(Color(.systemBackground).opacity(0.75))
                 )
                 if VM.isExpanded(route) {
-                    ForEach(route.order.sorted(by: { $0.order < $1.order })) { order in
+                    ForEach(visibleOrders) { order in
                         RecurringRouteStopView2(
                             order: order,
                             day: day,

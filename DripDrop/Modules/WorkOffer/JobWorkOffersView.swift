@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
 
 struct JobWorkOffersView: View {
     let companyId: String
@@ -26,7 +27,7 @@ struct JobWorkOffersView: View {
             switch offer.status {
             case .rejected, .cancelled, .expired:
                 return false
-            case .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress, .completed:
+            case .pendingApproval, .acceptancePendingApproval, .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress, .completed:
                 return true
             }
         }
@@ -434,6 +435,10 @@ struct CreateJobWorkOfferView: View {
     @State private var boardVisibility: WorkOfferBoardVisibility = .contractorsOnly
     @State private var paySource: WorkOfferPaySource = .technicianRate
     @State private var offeredAmountCents: Int = 0
+    @State private var serverPayLines: [WorkOfferPayEstimateLine] = []
+    @State private var isQuotingPay = false
+    @State private var payQuoteMessage = ""
+    @State private var diagnosticMinutes = 60
 
     @State private var title: String = ""
     @State private var notes: String = ""
@@ -456,7 +461,19 @@ struct CreateJobWorkOfferView: View {
     }
 
     private var estimatedMinutes: Int {
-        selectedTasks.reduce(0) { $0 + $1.estimatedTime }
+        serviceStopTypeUseCase == .jobEstimate ? diagnosticMinutes : selectedTasks.reduce(0) { $0 + $1.estimatedTime }
+    }
+    private var payQuoteKey: String {
+        [selectedWorker.userId, paySource.rawValue, String(offeredAmountCents), availableSelectedTaskIds.sorted().joined(separator: ","), selectedCompanyServiceStopType?.id ?? "", serviceStopTypeUseCase.rawValue, String(estimatedMinutes)].joined(separator: "|")
+    }
+    @MainActor private func refreshPayQuote() async {
+        isQuotingPay = true; defer { isQuotingPay = false }
+        do {
+            let result = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianWork", payload: ["companyId":companyId,"action":"quote","technicianId":selectedWorker.userId,"offer":["jobId":job.id,"jobTaskIds":Array(availableSelectedTaskIds),"workPurpose":serviceStopTypeUseCase == .jobEstimate ? "diagnostic" : "execution","serviceStopTypeId":selectedCompanyServiceStopType?.id ?? serviceStopTypeUseCase.fallbackTypeId,"estimatedMinutes":estimatedMinutes,"paySource":paySource.rawValue,"offeredAmountCents":offeredAmountCents]])
+            let data = try JSONSerialization.data(withJSONObject: result["lines"] as? [[String:Any]] ?? [])
+            serverPayLines = try JSONDecoder().decode([WorkOfferPayEstimateLine].self, from: data)
+            payQuoteMessage = result["personal"] as? Bool == false ? "The recipient reviews their personal rate before accepting." : ""
+        } catch { serverPayLines = []; payQuoteMessage = error.localizedDescription }
     }
 
     private var estimatedLaborCents: Int {
@@ -472,7 +489,7 @@ struct CreateJobWorkOfferView: View {
     }
 
     private var canSave: Bool {
-        guard !availableSelectedTaskIds.isEmpty else { return false }
+        guard serviceStopTypeUseCase == .jobEstimate || !availableSelectedTaskIds.isEmpty else { return false }
         guard unavailableSelectedTaskCount == 0 else { return false }
         guard !includeDate || completionDeadlineAt >= proposedStartDate else { return false }
 
@@ -498,6 +515,7 @@ struct CreateJobWorkOfferView: View {
                 scheduleSection
                 saveSection
             }
+            .task(id: payQuoteKey) { await refreshPayQuote() }
             .navigationTitle("Create Work Offer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -711,7 +729,7 @@ struct CreateJobWorkOfferView: View {
                     switch offer.status {
                     case .rejected, .cancelled, .expired:
                         return false
-                    case .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress, .completed:
+                    case .pendingApproval, .acceptancePendingApproval, .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress, .completed:
                         return true
                     }
                 }
@@ -794,12 +812,18 @@ struct CreateJobWorkOfferView: View {
         } header: {
             Text("Work Scope")
         } footer: {
+            if !payQuoteMessage.isEmpty { Text(payQuoteMessage).font(.caption) }
             Text("Tasks that already belong to an active offer are locked so they are not accidentally offered twice.")
         }
     }
     
     private var serviceStopTypeSection: some View {
         Section {
+            if serviceStopTypeUseCase == .jobEstimate { Stepper("Estimated visit: \(diagnosticMinutes) minutes", value: $diagnosticMinutes, in: 15...480, step: 15) }
+            Picker("Work Purpose", selection: $serviceStopTypeUseCase) {
+                Text("Perform planned work").tag(ServiceStopTypeUseCase.jobVisit)
+                Text("Diagnostic / estimate visit").tag(ServiceStopTypeUseCase.jobEstimate)
+            }.onChange(of: serviceStopTypeUseCase) { _, purpose in selectedCompanyServiceStopType = nil; if purpose == .jobEstimate { selectedTaskIds = [] } }
             CompanyServiceStopTypePickerView(
                 companyId: companyId,
                 dataService: dataService,
@@ -811,7 +835,7 @@ struct CreateJobWorkOfferView: View {
         } header: {
             Text("Pay Type")
         } footer: {
-            Text("You can still change this later when scheduling, but choosing it now makes the offer and pay estimate more accurate.")
+            Text("The accepted offer preserves this purpose and pay type when it is scheduled.")
         }
     }
     
@@ -873,7 +897,7 @@ struct CreateJobWorkOfferView: View {
         } header: {
             Text("Pay")
         } footer: {
-            Text("This is a work-offer snapshot. The payroll engine still calculates final pay from completed work unless you later choose to support offered-amount overrides.")
+            Text("The accepted rate or fixed offer is preserved. Fixed pay and incentives are earned when the agreed work is complete. Hourly totals use recorded time.")
         }
     }
 
@@ -942,7 +966,7 @@ struct CreateJobWorkOfferView: View {
     }
     
     private var createOfferValidationMessage: String {
-        if availableSelectedTaskIds.isEmpty {
+        if serviceStopTypeUseCase != .jobEstimate && availableSelectedTaskIds.isEmpty {
             return "Select at least one available task."
         }
 
@@ -1047,7 +1071,7 @@ struct CreateJobWorkOfferView: View {
             let payLines = estimatedPayLines
             let payTotal = payLines.reduce(0) { $0 + $1.totalAmountCents }
             
-            let offer = WorkOffer(
+            var offer = WorkOffer(
                 companyId: companyId,
                 jobId: job.id,
                 jobInternalId: job.internalId,
@@ -1091,6 +1115,7 @@ struct CreateJobWorkOfferView: View {
                 estimatedPayNotes: "Estimate only. Final payroll is generated from completed service stop work."
             )
 
+            offer.workPurpose = serviceStopTypeUseCase == .jobEstimate ? "diagnostic" : "execution"
             try await dataService.saveWorkOffer(offer)
             onTasksChanged()
             dismiss()
@@ -1099,7 +1124,8 @@ struct CreateJobWorkOfferView: View {
             showAlert = true
         }
     }
-    private var estimatedPayLines: [WorkOfferPayEstimateLine] {
+    private var estimatedPayLines: [WorkOfferPayEstimateLine] { serverPayLines }
+    private var legacyEstimatedPayLines: [WorkOfferPayEstimateLine] {
         switch paySource {
         case .unpaid:
             return [
@@ -1193,7 +1219,7 @@ struct CreateJobWorkOfferView: View {
             switch offer.status {
             case .rejected, .cancelled, .expired:
                 return false
-            case .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress, .completed:
+            case .pendingApproval, .acceptancePendingApproval, .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress, .completed:
                 return true
             }
         }
@@ -1344,5 +1370,212 @@ private extension View {
         self
             .padding(16)
             .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+struct JobCloseoutSheet: View {
+    let companyId: String
+    let job: Job
+    let dataService: any ProductionDataServiceProtocol
+    var onComplete: () -> Void = {}
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @State private var tasks: [JobTask] = []
+    @State private var products: [ShoppingListItem] = []
+    @State private var selectedTasks = Set<String>()
+    @State private var selectedProducts = Set<String>()
+    @State private var selectedServices = Set<String>()
+    @State private var finishJob = true
+    @State private var cancelRemainingVisits = false
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var error = ""
+    @State private var requestId = UUID().uuidString
+    private var services: [JobLaborLineItem] { job.laborLineItems ?? [] }
+    private var remainingTasks: [JobTask] { tasks.filter { $0.status != .finished } }
+    private var remainingProducts: [ShoppingListItem] { products.filter { $0.status != .installed } }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(job.internalId + " · " + job.type).font(.headline)
+                    Text("Review what was completed. Select individual entries or quick-finish all remaining work.")
+                    Toggle("Finish the entire job", isOn: $finishJob)
+                    if finishJob { Toggle("Cancel unused visits and unaccepted offers", isOn: $cancelRemainingVisits) }
+                    Button("Quick Finish All Remaining Work") {
+                        selectedTasks = Set(remainingTasks.map(\.id)); selectedProducts = Set(remainingProducts.map(\.id)); selectedServices = Set(services.map(\.id))
+                    }
+                }
+                Section("Service items") {
+                    ForEach(services) { service in
+                        Toggle(service.name ?? "Service", isOn: Binding(get: { selectedServices.contains(service.id) }, set: { value in
+                            if value { selectedServices.insert(service.id); selectedTasks.formUnion(service.linkedTaskIds) }
+                            else { selectedServices.remove(service.id) }
+                        }))
+                    }
+                }
+                Section("Remaining tasks") {
+                    ForEach(remainingTasks) { task in
+                        Toggle(isOn: Binding(get: { selectedTasks.contains(task.id) }, set: { value in if value { selectedTasks.insert(task.id) } else { selectedTasks.remove(task.id) } })) {
+                            VStack(alignment: .leading) { Text(task.name); if !task.workerName.isEmpty { Text(task.workerName).font(.caption).foregroundStyle(.secondary) } }
+                        }
+                    }
+                }
+                Section("Products to mark installed") {
+                    ForEach(remainingProducts) { item in
+                        Toggle(item.name + " · " + (item.quantity ?? "1"), isOn: Binding(get: { selectedProducts.contains(item.id) }, set: { value in
+                            if value { selectedProducts.insert(item.id); if let taskId = item.linkedTaskId { selectedTasks.insert(taskId) } }
+                            else { selectedProducts.remove(item.id) }
+                        }))
+                    }
+                }
+                if !error.isEmpty { Section { Text(error).foregroundStyle(.red) } }
+                Section {
+                    Button(isSaving ? "Completing…" : finishJob ? "Finish Selected Work and Job" : "Finish Selected Work") { Task { await complete() } }
+                        .disabled(isLoading || isSaving)
+                }
+            }
+            .disabled(isSaving)
+            .overlay { if isLoading { ProgressView("Loading remaining work…") } }
+            .navigationTitle("Job Closeout")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(isSaving) } }
+            .task { await load() }
+        }
+    }
+    @MainActor private func load() async {
+        do {
+            tasks = try await dataService.getJobTasks(companyId: companyId, jobId: job.id)
+            products = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: job.id, category: ShoppingListCategory.job.rawValue)
+        } catch { self.error = error.localizedDescription }
+        isLoading = false
+    }
+    @MainActor private func complete() async {
+        isSaving = true; error = ""; defer { isSaving = false }
+        do {
+            if finishJob && (remainingTasks.contains { !selectedTasks.contains($0.id) } || remainingProducts.contains { !selectedProducts.contains($0.id) }) {
+                error = "Select all remaining work to finish the job, or turn off Finish the entire job."; return
+            }
+            let helper = JobDetailViewModel(dataService: dataService)
+            for task in remainingTasks where selectedTasks.contains(task.id) {
+                try await helper.updateTaskHelperFunction(companyId: companyId, task: task, jobId: job.id)
+            }
+            _ = try await FunctionsManager.shared.technicianWorkflow("finalizeTechnicianJob", payload: [
+                "companyId":companyId,"jobId":job.id,"requestId":requestId,"finishJob":finishJob,
+                "cancelRemainingVisits":cancelRemainingVisits,"taskIds":Array(selectedTasks),
+                "productIds":Array(selectedProducts),"serviceIds":Array(selectedServices)
+            ])
+            onComplete(); dismiss()
+        } catch { self.error = error.localizedDescription }
+    }
+}
+
+private struct CoverageRoute: Identifiable {
+    var id: String
+    var date: Date
+    var name: String
+    var techId: String
+    var stopIds: [String]
+}
+struct RouteCoverageOfferSheet: View {
+    let companyId: String
+    let dataService: any ProductionDataServiceProtocol
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @State private var startDate = Date()
+    @State private var endDate = Date()
+    @State private var ownerId = ""
+    @State private var reason = "Vacation"
+    @State private var routes: [CoverageRoute] = []
+    @State private var stops: [ServiceStop] = []
+    @State private var users: [CompanyUser] = []
+    @State private var selected = Set<String>()
+    @State private var allowSplit = false
+    @State private var fixedPay = ""
+    @State private var incentivePay = ""
+    @State private var directWorkerId = ""
+    @State private var canPost = false
+    @State private var canPostForOthers = false
+    @State private var canSplit = false
+    @State private var canSetPay = false
+    @State private var canIncentivize = false
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var message = ""
+    @State private var batchId = UUID().uuidString
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Coverage") {
+                    DatePicker("From", selection: $startDate, displayedComponents: .date)
+                    DatePicker("Through", selection: $endDate, in: startDate..., displayedComponents: .date)
+                    if canPostForOthers { Picker("Route owner", selection: $ownerId) { ForEach(users) { user in Text(user.userName).tag(user.userId) } } }
+                    Picker("Reason", selection: $reason) { Text("Vacation").tag("Vacation"); Text("Sick day").tag("Sick day"); Text("Scheduling conflict").tag("Scheduling conflict") }
+                    Button("Load Routes") { Task { await loadRoutes() } }.disabled(isLoading || isSaving)
+                    Toggle("Allow technicians to split the offered stops", isOn: $allowSplit).disabled(!canSplit)
+                    Text("Select all stops for full-route coverage, or select a subset. Keep Together requires one technician to take all selected stops in each daily offer.").font(.caption)
+                }
+                ForEach(routes) { route in
+                    Section(route.name + " · " + route.date.formatted(date: .abbreviated, time: .omitted)) {
+                        Button("Select Entire Route") { selected.formUnion(route.stopIds) }
+                        ForEach(stops.filter { route.stopIds.contains($0.id) }) { stop in
+                            Toggle(stop.customerName + " · " + stop.type, isOn: Binding(get: { selected.contains(stop.id) }, set: { value in if value { selected.insert(stop.id) } else { selected.remove(stop.id) } }))
+                        }
+                    }
+                }
+                Section("Offer") {
+                    Picker("Send to", selection: $directWorkerId) { Text("Company Work Board").tag(""); ForEach(users) { user in Text(user.userName).tag(user.userId) } }
+                    if canSetPay { TextField("Fixed pay per offered daily route (optional)", text: $fixedPay).keyboardType(.decimalPad) }
+                    if canIncentivize { TextField("Additional incentive per daily route (optional)", text: $incentivePay).keyboardType(.decimalPad) }
+                    Text("Temporary coverage preserves the original recurring route owner.").font(.caption)
+                    if !message.isEmpty { Text(message).foregroundStyle(.secondary) }
+                    Button(isSaving ? "Posting Coverage…" : "Post Coverage") { Task { await post() } }.disabled(!canPost || isSaving || isLoading || selected.isEmpty)
+                }
+            }.navigationTitle("Offer Route Coverage")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(isSaving) } }
+            .task { await load() }
+        }
+    }
+    @MainActor private func load() async {
+        do {
+            let capabilities = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianWork", payload: ["companyId":companyId,"action":"capabilities"])
+            canPost = capabilities["canPost"] as? Bool ?? false; canPostForOthers = capabilities["canPostForOthers"] as? Bool ?? false
+            canSplit = capabilities["canSplit"] as? Bool ?? false; canSetPay = capabilities["canSetPay"] as? Bool ?? false; canIncentivize = capabilities["canIncentivize"] as? Bool ?? false
+            ownerId = masterDataManager.user?.id ?? ""
+            users = try await dataService.getAllCompanyUsersByStatus(companyId:companyId,status:"Active")
+            await loadRoutes()
+        } catch { message = error.localizedDescription; isLoading = false }
+    }
+    @MainActor private func loadRoutes() async {
+        isLoading = true; defer { isLoading = false }; message = ""
+        do {
+            let start = Calendar.current.startOfDay(for: startDate), end = Calendar.current.date(byAdding:.day,value:1,to:Calendar.current.startOfDay(for:endDate))!
+            guard end.timeIntervalSince(start) <= 32 * 86400 else { message = "Offer up to 31 days at a time."; return }
+            let snapshot = try await Firestore.firestore().collection("companies").document(companyId).collection("activeRoutes").whereField("techId",isEqualTo:ownerId).whereField("date",isGreaterThanOrEqualTo:start).whereField("date",isLessThan:end).getDocuments()
+            routes = snapshot.documents.compactMap { doc in
+                let data = doc.data(); guard let date = (data["date"] as? Timestamp)?.dateValue() else { return nil }
+                return CoverageRoute(id:doc.documentID,date:date,name:data["name"] as? String ?? data["techName"] as? String ?? "Route",techId:ownerId,stopIds:data["serviceStopsIds"] as? [String] ?? data["serviceStopIds"] as? [String] ?? [])
+            }
+            var loaded: [ServiceStop] = []
+            for route in routes { for stopId in route.stopIds { let stop = try await dataService.getServiceStopById(serviceStopId:stopId,companyId:companyId); if stop.operationStatus != .finished { loaded.append(stop) } } }
+            stops = loaded; selected = Set(loaded.map(\.id))
+            if routes.isEmpty { message = "No dated routes for this technician in the selected range." }
+        } catch { message = error.localizedDescription }
+    }
+    @MainActor private func post() async {
+        isSaving = true; defer { isSaving = false }; message = ""
+        do {
+            let worker = users.first { $0.userId == directWorkerId }
+            for route in routes {
+                let ids = route.stopIds.filter { selected.contains($0) }; if ids.isEmpty { continue }
+                let offerId = "comp_work_offer_" + batchId + "_" + route.id
+                let deadline = Calendar.current.date(byAdding:.day,value:1,to:Calendar.current.startOfDay(for:route.date))!
+                var offer = WorkOffer(id:offerId,companyId:companyId,jobId:"",jobInternalId:"",jobName:"",offerType:directWorkerId.isEmpty ? .internalBoard : .directUser,title:route.name + " coverage",description:reason + " coverage: complete the selected route stops and their required service tasks.",offeredToUserId:directWorkerId,offeredToUserName:worker?.userName ?? "",postedToBoard:directWorkerId.isEmpty,boardVisibility:.employeesAndContractors,jobTaskIds:[],customerId:"",customerName:"",serviceLocationId:"",proposedStartDate:Calendar.current.startOfDay(for:route.date),completionDeadlineAt:deadline,estimatedMinutes:stops.filter { ids.contains($0.id) }.reduce(0) { $0 + $1.estimatedDuration },paySource:(Double(fixedPay) ?? 0)>0 ? .offeredAmount : .technicianRate,offeredAmountCents:Int(((Double(fixedPay) ?? 0)*100).rounded()),estimatedLaborCents:0,createdByUserId:masterDataManager.user?.id ?? "",createdByUserName:"")
+                offer.routeId = route.id; offer.routeSource = "activeRoutes"; offer.routeName = route.name; offer.routeDate = route.date; offer.routeTechId = route.techId
+                offer.routeServiceStopIds = ids; offer.routeOfferMode = ids.count == route.stopIds.count ? "whole" : "partial"; offer.routeSplitAllowed = allowSplit; offer.workOfferCategory = ids.count == route.stopIds.count ? "fullRoute" : "partialRoute"; offer.coverageReason = reason
+                let bonus = Int(((Double(incentivePay) ?? 0)*100).rounded()); if bonus>0 { offer.incentive = WorkOfferIncentive(type:"flat",amountCents:bonus,percentage:0,notes:"Coverage incentive") }
+                try await dataService.saveWorkOffer(offer)
+            }
+            dismiss()
+        } catch { message = error.localizedDescription }
     }
 }

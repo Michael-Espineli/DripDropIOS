@@ -41,6 +41,11 @@ struct JobDashboardView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
                 headerCard
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Remaining Work").font(.headline)
+                    Text("\(summary.remainingTaskCount) tasks · \(summary.remainingServiceCount) services · \(summary.remainingProductUnits.formatted()) product units")
+                    Text("\(summary.unassignedTaskCount) unassigned · \(summary.offeredTaskCount) offered · \(summary.unscheduledTaskCount) assigned, unscheduled · \(summary.scheduledTaskCount) scheduled · \(summary.blockedTaskCount) waiting for parts").font(.caption).foregroundStyle(.secondary)
+                }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(.background, in: RoundedRectangle(cornerRadius: 14))
                 healthCard
                 financialSnapshotCard
                 workPipelineCard

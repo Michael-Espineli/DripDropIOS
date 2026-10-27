@@ -100,6 +100,114 @@ struct WorkOffer: Identifiable, Codable, Hashable {
     var estimatedPayTotalCents: Int?
     var estimatedPayNotes: String?
 
+    var schemaVersion: Int? = nil
+    var revision: Int? = nil
+    var workPurpose: String? = nil
+    var scopeSnapshot: WorkOfferScope? = nil
+    var claims: [WorkOfferClaim]? = nil
+    var acceptedTerms: WorkOfferTerms? = nil
+    var incentive: WorkOfferIncentive? = nil
+    var routeId: String? = nil
+    var routeSource: String? = nil
+    var routeName: String? = nil
+    var routeDate: Date? = nil
+    var routeTechId: String? = nil
+    var routeServiceStopIds: [String]? = nil
+    var remainingStopIds: [String]? = nil
+    var routeSplitAllowed: Bool? = nil
+    var routeOfferMode: String? = nil
+    var workOfferCategory: String? = nil
+    var originalTechnicianId: String? = nil
+    var coverageReason: String? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case id, companyId, jobId, jobInternalId, jobName, serviceStopId, serviceStopInternalId, offerType, status, title, description, offeredToUserId, offeredToUserName, offeredToWorkerType, postedToBoard, boardVisibility, boardPostId, boardIds, boardNames, boardName, boardMemberUserIds, jobTaskIds, serviceStopTaskIds, customerId, customerName, serviceLocationId, serviceLocationName, address, proposedStartDate, proposedEndDate, completionDeadlineAt, timelineNotes, estimatedMinutes, allowsTechnicianSelfScheduling, paySource, offeredAmountCents, estimatedLaborCents, createdAt, createdByUserId, createdByUserName, sentAt, postedAt, viewedAt, acceptedAt, rejectedAt, cancelledAt, completedAt, acceptedByUserId, acceptedByUserName, rejectionReason, adminNotes, workerNotes, sourceLaborContractId, externalCompanyId, externalCompanyName, serviceStopTypeId, serviceStopTypeName, serviceStopTypeImage, serviceStopTypeUseCaseRawValue, estimatedPayLines, estimatedPayTotalCents, estimatedPayNotes, schemaVersion, revision, workPurpose, scopeSnapshot, claims, acceptedTerms, incentive, routeId, routeSource, routeName, routeDate, routeTechId, routeServiceStopIds, remainingStopIds, routeSplitAllowed, routeOfferMode, workOfferCategory, originalTechnicianId, coverageReason
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decodeIfPresent(String.self, forKey: .id)) ?? ""
+        companyId = (try? c.decodeIfPresent(String.self, forKey: .companyId)) ?? ""
+        jobId = (try? c.decodeIfPresent(String.self, forKey: .jobId)) ?? ""
+        jobInternalId = (try? c.decodeIfPresent(String.self, forKey: .jobInternalId)) ?? ""
+        jobName = (try? c.decodeIfPresent(String.self, forKey: .jobName)) ?? ""
+        serviceStopId = (try? c.decodeIfPresent(String.self, forKey: .serviceStopId)) ?? ""
+        serviceStopInternalId = (try? c.decodeIfPresent(String.self, forKey: .serviceStopInternalId)) ?? ""
+        offerType = (try? c.decodeIfPresent(WorkOfferType.self, forKey: .offerType)) ?? .directUser
+        status = (try? c.decodeIfPresent(WorkOfferStatus.self, forKey: .status)) ?? .draft
+        title = (try? c.decodeIfPresent(String.self, forKey: .title)) ?? ""
+        description = (try? c.decodeIfPresent(String.self, forKey: .description)) ?? ""
+        offeredToUserId = (try? c.decodeIfPresent(String.self, forKey: .offeredToUserId)) ?? ""
+        offeredToUserName = (try? c.decodeIfPresent(String.self, forKey: .offeredToUserName)) ?? ""
+        offeredToWorkerType = (try? c.decodeIfPresent(WorkerTypeEnum.self, forKey: .offeredToWorkerType)) ?? .notAssigned
+        postedToBoard = (try? c.decodeIfPresent(Bool.self, forKey: .postedToBoard)) ?? false
+        boardVisibility = (try? c.decodeIfPresent(WorkOfferBoardVisibility.self, forKey: .boardVisibility)) ?? .contractorsOnly
+        boardPostId = (try? c.decodeIfPresent(String.self, forKey: .boardPostId)) ?? ""
+        boardIds = try c.decodeIfPresent([String].self, forKey: .boardIds)
+        boardNames = try c.decodeIfPresent([String].self, forKey: .boardNames)
+        boardName = try c.decodeIfPresent(String.self, forKey: .boardName)
+        boardMemberUserIds = try c.decodeIfPresent([String].self, forKey: .boardMemberUserIds)
+        jobTaskIds = (try? c.decodeIfPresent([String].self, forKey: .jobTaskIds)) ?? []
+        serviceStopTaskIds = (try? c.decodeIfPresent([String].self, forKey: .serviceStopTaskIds)) ?? []
+        customerId = (try? c.decodeIfPresent(String.self, forKey: .customerId)) ?? ""
+        customerName = (try? c.decodeIfPresent(String.self, forKey: .customerName)) ?? ""
+        serviceLocationId = (try? c.decodeIfPresent(String.self, forKey: .serviceLocationId)) ?? ""
+        serviceLocationName = (try? c.decodeIfPresent(String.self, forKey: .serviceLocationName)) ?? ""
+        address = try c.decodeIfPresent(Address.self, forKey: .address)
+        proposedStartDate = try c.decodeIfPresent(Date.self, forKey: .proposedStartDate)
+        proposedEndDate = try c.decodeIfPresent(Date.self, forKey: .proposedEndDate)
+        completionDeadlineAt = try c.decodeIfPresent(Date.self, forKey: .completionDeadlineAt)
+        timelineNotes = try c.decodeIfPresent(String.self, forKey: .timelineNotes)
+        estimatedMinutes = (try? c.decodeIfPresent(Int.self, forKey: .estimatedMinutes)) ?? 0
+        allowsTechnicianSelfScheduling = try c.decodeIfPresent(Bool.self, forKey: .allowsTechnicianSelfScheduling)
+        paySource = (try? c.decodeIfPresent(WorkOfferPaySource.self, forKey: .paySource)) ?? .technicianRate
+        offeredAmountCents = (try? c.decodeIfPresent(Int.self, forKey: .offeredAmountCents)) ?? 0
+        estimatedLaborCents = (try? c.decodeIfPresent(Int.self, forKey: .estimatedLaborCents)) ?? 0
+        createdAt = (try? c.decodeIfPresent(Date.self, forKey: .createdAt)) ?? Date(timeIntervalSince1970: 0)
+        createdByUserId = (try? c.decodeIfPresent(String.self, forKey: .createdByUserId)) ?? ""
+        createdByUserName = (try? c.decodeIfPresent(String.self, forKey: .createdByUserName)) ?? ""
+        sentAt = try c.decodeIfPresent(Date.self, forKey: .sentAt)
+        postedAt = try c.decodeIfPresent(Date.self, forKey: .postedAt)
+        viewedAt = try c.decodeIfPresent(Date.self, forKey: .viewedAt)
+        acceptedAt = try c.decodeIfPresent(Date.self, forKey: .acceptedAt)
+        rejectedAt = try c.decodeIfPresent(Date.self, forKey: .rejectedAt)
+        cancelledAt = try c.decodeIfPresent(Date.self, forKey: .cancelledAt)
+        completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
+        acceptedByUserId = (try? c.decodeIfPresent(String.self, forKey: .acceptedByUserId)) ?? ""
+        acceptedByUserName = (try? c.decodeIfPresent(String.self, forKey: .acceptedByUserName)) ?? ""
+        rejectionReason = (try? c.decodeIfPresent(String.self, forKey: .rejectionReason)) ?? ""
+        adminNotes = (try? c.decodeIfPresent(String.self, forKey: .adminNotes)) ?? ""
+        workerNotes = (try? c.decodeIfPresent(String.self, forKey: .workerNotes)) ?? ""
+        sourceLaborContractId = (try? c.decodeIfPresent(String.self, forKey: .sourceLaborContractId)) ?? ""
+        externalCompanyId = (try? c.decodeIfPresent(String.self, forKey: .externalCompanyId)) ?? ""
+        externalCompanyName = (try? c.decodeIfPresent(String.self, forKey: .externalCompanyName)) ?? ""
+        serviceStopTypeId = try c.decodeIfPresent(String.self, forKey: .serviceStopTypeId)
+        serviceStopTypeName = try c.decodeIfPresent(String.self, forKey: .serviceStopTypeName)
+        serviceStopTypeImage = try c.decodeIfPresent(String.self, forKey: .serviceStopTypeImage)
+        serviceStopTypeUseCaseRawValue = try c.decodeIfPresent(String.self, forKey: .serviceStopTypeUseCaseRawValue)
+        estimatedPayLines = try c.decodeIfPresent([WorkOfferPayEstimateLine].self, forKey: .estimatedPayLines)
+        estimatedPayTotalCents = try c.decodeIfPresent(Int.self, forKey: .estimatedPayTotalCents)
+        estimatedPayNotes = try c.decodeIfPresent(String.self, forKey: .estimatedPayNotes)
+        schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion)
+        revision = try c.decodeIfPresent(Int.self, forKey: .revision)
+        workPurpose = try c.decodeIfPresent(String.self, forKey: .workPurpose)
+        scopeSnapshot = try c.decodeIfPresent(WorkOfferScope.self, forKey: .scopeSnapshot)
+        claims = try c.decodeIfPresent([WorkOfferClaim].self, forKey: .claims)
+        acceptedTerms = try c.decodeIfPresent(WorkOfferTerms.self, forKey: .acceptedTerms)
+        incentive = try c.decodeIfPresent(WorkOfferIncentive.self, forKey: .incentive)
+        routeId = try c.decodeIfPresent(String.self, forKey: .routeId)
+        routeSource = try c.decodeIfPresent(String.self, forKey: .routeSource)
+        routeName = try c.decodeIfPresent(String.self, forKey: .routeName)
+        routeDate = try c.decodeIfPresent(Date.self, forKey: .routeDate)
+        routeTechId = try c.decodeIfPresent(String.self, forKey: .routeTechId)
+        routeServiceStopIds = try c.decodeIfPresent([String].self, forKey: .routeServiceStopIds)
+        remainingStopIds = try c.decodeIfPresent([String].self, forKey: .remainingStopIds)
+        routeSplitAllowed = try c.decodeIfPresent(Bool.self, forKey: .routeSplitAllowed)
+        routeOfferMode = try c.decodeIfPresent(String.self, forKey: .routeOfferMode)
+        workOfferCategory = try c.decodeIfPresent(String.self, forKey: .workOfferCategory)
+        originalTechnicianId = try c.decodeIfPresent(String.self, forKey: .originalTechnicianId)
+        coverageReason = try c.decodeIfPresent(String.self, forKey: .coverageReason)
+    }
+
     init(
         id: String = WorkOfferIdFactory.workOfferId(),
         companyId: String,
@@ -266,8 +374,56 @@ struct WorkOfferPayEstimateLine: Identifiable, Codable, Hashable {
     var totalAmountCents: Int
     var calculationStatus: PayCalculationStatus
     var notes: String?
+    enum CodingKeys: String, CodingKey { case id, sourceTaskId, source, workTypeId, workTypeName, payTypeId, payTypeName, title, rateAmountCents, rateType, quantity, quantityUnit, totalAmountCents, calculationStatus, notes }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func raw(_ key: CodingKeys) -> String { ((try? c.decode(String.self, forKey: key)) ?? "").filter { $0.isLetter || $0.isNumber }.lowercased() }
+        id = (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString
+        sourceTaskId = try c.decodeIfPresent(String.self, forKey: .sourceTaskId)
+        source = PayLineItemSource.allCases.first { $0.rawValue.lowercased() == raw(.source) } ?? .manualAdjustment
+        workTypeId = try c.decodeIfPresent(String.self, forKey: .workTypeId) ?? c.decodeIfPresent(String.self, forKey: .payTypeId)
+        workTypeName = try c.decodeIfPresent(String.self, forKey: .workTypeName) ?? c.decodeIfPresent(String.self, forKey: .payTypeName)
+        title = (try? c.decode(String.self, forKey: .title)) ?? "Work Pay"
+        rateAmountCents = (try? c.decode(Int.self, forKey: .rateAmountCents)) ?? 0
+        rateType = RateType.allCases.first { $0.rawValue.lowercased() == raw(.rateType) } ?? .manual
+        quantity = (try? c.decode(Double.self, forKey: .quantity)) ?? 1
+        quantityUnit = PayQuantityUnit.allCases.first { $0.rawValue.lowercased() == raw(.quantityUnit) } ?? .each
+        totalAmountCents = (try? c.decode(Int.self, forKey: .totalAmountCents)) ?? 0
+        calculationStatus = PayCalculationStatus.allCases.first { $0.rawValue.lowercased() == raw(.calculationStatus) } ?? .needsReview
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id); try c.encodeIfPresent(sourceTaskId, forKey: .sourceTaskId); try c.encode(source, forKey: .source)
+        try c.encodeIfPresent(workTypeId, forKey: .workTypeId); try c.encodeIfPresent(workTypeName, forKey: .workTypeName); try c.encode(title, forKey: .title)
+        try c.encode(rateAmountCents, forKey: .rateAmountCents); try c.encode(rateType, forKey: .rateType); try c.encode(quantity, forKey: .quantity)
+        try c.encode(quantityUnit, forKey: .quantityUnit); try c.encode(totalAmountCents, forKey: .totalAmountCents)
+        try c.encode(calculationStatus, forKey: .calculationStatus); try c.encodeIfPresent(notes, forKey: .notes)
+    }
+    init(id: String, sourceTaskId: String?, source: PayLineItemSource, workTypeId: String?, workTypeName: String?, title: String, rateAmountCents: Int, rateType: RateType, quantity: Double, quantityUnit: PayQuantityUnit, totalAmountCents: Int, calculationStatus: PayCalculationStatus, notes: String?) {
+        self.id = id
+        self.sourceTaskId = sourceTaskId
+        self.source = source
+        self.workTypeId = workTypeId
+        self.workTypeName = workTypeName
+        self.title = title
+        self.rateAmountCents = rateAmountCents
+        self.rateType = rateType
+        self.quantity = quantity
+        self.quantityUnit = quantityUnit
+        self.totalAmountCents = totalAmountCents
+        self.calculationStatus = calculationStatus
+        self.notes = notes
+    }
 }
 enum WorkOfferStatus: String, Codable, CaseIterable, Identifiable {
+    init(from decoder: Decoder) throws {
+        let value = (try? decoder.singleValueContainer().decode(String.self)) ?? "Draft"
+        self = Self(rawValue: value) ?? .draft
+    }
+
+    case pendingApproval = "Pending Approval"
+    case acceptancePendingApproval = "Acceptance Pending Approval"
     case draft = "Draft"
     case sent = "Sent"
     case posted = "Posted"
@@ -286,7 +442,7 @@ enum WorkOfferStatus: String, Codable, CaseIterable, Identifiable {
 
     var isOpen: Bool {
         switch self {
-        case .draft, .sent, .posted, .viewed:
+        case .pendingApproval, .acceptancePendingApproval, .draft, .sent, .posted, .viewed:
             return true
         case .accepted, .rejected, .cancelled, .expired, .scheduled, .inProgress, .completed:
             return false
@@ -297,7 +453,7 @@ enum WorkOfferStatus: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .rejected, .cancelled, .expired, .completed:
             return true
-        case .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress:
+        case .pendingApproval, .acceptancePendingApproval, .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress:
             return false
         }
     }
@@ -334,3 +490,47 @@ enum WorkOfferIdFactory {
         "comp_work_board_" + UUID().uuidString
     }
 }
+
+struct WorkOfferScope: Codable, Hashable {
+    var tasks: [WorkOfferScopeItem] = []
+    var services: [WorkOfferScopeItem] = []
+    var products: [WorkOfferScopeItem] = []
+    var stops: [WorkOfferScopeItem] = []
+    enum CodingKeys: String, CodingKey { case tasks, services, products, stops }
+    init(from decoder: Decoder) throws {
+        let c=try decoder.container(keyedBy:CodingKeys.self)
+        tasks=(try? c.decode([WorkOfferScopeItem].self,forKey:.tasks)) ?? []
+        services=(try? c.decode([WorkOfferScopeItem].self,forKey:.services)) ?? []
+        products=(try? c.decode([WorkOfferScopeItem].self,forKey:.products)) ?? []
+        stops=(try? c.decode([WorkOfferScopeItem].self,forKey:.stops)) ?? []
+    }
+}
+struct WorkOfferScopeItem: Codable, Hashable, Identifiable {
+    var id: String
+    var name: String
+    var description: String?
+    var status: String?
+    var quantity: Double?
+    var equipmentName: String?
+    var estimatedTime: Int?
+    enum CodingKeys: String, CodingKey { case id, name, itemName, dbItemName, type, description, status, quantity, equipmentName, estimatedTime, customerName }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(String.self, forKey: .id)) ?? ""
+        name = (try? c.decode(String.self, forKey: .name)) ?? (try? c.decode(String.self, forKey: .itemName)) ?? (try? c.decode(String.self, forKey: .dbItemName)) ?? (try? c.decode(String.self, forKey: .customerName)) ?? (try? c.decode(String.self, forKey: .type)) ?? "Work item"
+        description = try? c.decode(String.self, forKey: .description)
+        status = try? c.decode(String.self, forKey: .status)
+        quantity = (try? c.decode(Double.self, forKey: .quantity)) ?? (try? c.decode(String.self, forKey: .quantity)).flatMap(Double.init)
+        equipmentName = try? c.decode(String.self, forKey: .equipmentName)
+        estimatedTime = (try? c.decode(Int.self, forKey: .estimatedTime)) ?? (try? c.decode(String.self, forKey: .estimatedTime)).flatMap(Int.init)
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id); try c.encode(name, forKey: .name); try c.encodeIfPresent(description, forKey: .description)
+        try c.encodeIfPresent(status, forKey: .status); try c.encodeIfPresent(quantity, forKey: .quantity)
+        try c.encodeIfPresent(equipmentName, forKey: .equipmentName); try c.encodeIfPresent(estimatedTime, forKey: .estimatedTime)
+    }
+}
+struct WorkOfferIncentive: Codable, Hashable { var type: String; var amountCents: Int?; var percentage: Double?; var notes: String? }
+struct WorkOfferTerms: Codable, Hashable { var workerId: String; var workerName: String?; var paySource: String; var fixedAmountCents: Int?; var baseCents: Int?; var totalCents: Int?; var revision: Int? }
+struct WorkOfferClaim: Codable, Hashable, Identifiable { var id: String; var workerId: String; var workerName: String; var stopIds: [String]; var taskIds: [String]; var status: String; var serviceStopId: String?; var agreement: WorkOfferTerms }

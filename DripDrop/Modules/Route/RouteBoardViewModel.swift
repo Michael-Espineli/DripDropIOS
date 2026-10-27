@@ -91,6 +91,7 @@ final class RouteBoardViewModel: ObservableObject {
     @Published var assignmentTechId: String = ""
     @Published var assignmentDestinationRouteId: String = ""
     @Published var expandedRouteId: String? = nil
+    @Published var searchText: String = ""
     
     //For New Route
     @Published private(set) var currentRouteRecurringStops: [RecurringServiceStop] = []
@@ -208,6 +209,32 @@ final class RouteBoardViewModel: ObservableObject {
         }
     }
 
+    var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    var visibleDays: [DaysOfWeek] {
+        guard isSearching else { return DaysOfWeek.allCases }
+
+        return DaysOfWeek.allCases.filter { day in
+            recurringRoutes.contains { route in
+                route.day == day && !visibleOrders(for: route).isEmpty
+            }
+        }
+    }
+
+    func visibleTechnicians(for day: DaysOfWeek) -> [CompanyUser] {
+        companyUsers.filter { technician in
+            let technicianIds = [technician.userId, technician.id].filter { !$0.isEmpty }
+
+            return recurringRoutes.contains { route in
+                route.day == day &&
+                technicianIds.contains(route.techId) &&
+                (!isSearching || !visibleOrders(for: route).isEmpty)
+            }
+        }
+    }
+
     func stops(for techId: String, day: DaysOfWeek) -> [RecurringServiceStop] {
         recurringStops.filter {
             $0.techId == techId && $0.day == day
@@ -221,6 +248,19 @@ final class RouteBoardViewModel: ObservableObject {
         route.order
             .sorted { $0.order < $1.order }
             .compactMap { stop(for: $0.recurringServiceStopId) }
+    }
+
+    func visibleOrders(for route: RecurringRoute) -> [recurringRouteOrder] {
+        let orderedItems = route.order.sorted { $0.order < $1.order }
+        guard isSearching else { return orderedItems }
+
+        return orderedItems.filter { order in
+            guard let stop = stop(for: order.recurringServiceStopId) else {
+                return normalizedSearchValue(order.customerName).contains(normalizedSearchText)
+            }
+
+            return recurringStopMatchesSearch(stop)
+        }
     }
     func toggleExpandedRoute(_ route: RecurringRoute) {
         expandedRouteId = expandedRouteId == route.id ? nil : route.id
@@ -345,20 +385,14 @@ final class RouteBoardViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            for stop in stopsToAssign {
-                let updatedStop = reassignedRecurringServiceStop(
-                    stop,
-                    day: targetDay,
-                    techId: targetTechId,
-                    techName: targetTechName
-                )
-                try await FunctionsManager.shared.updateRecurringServiceStop(
-                    companyId: companyId,
-                    recurringServiceStop: updatedStop,
-                    syncRoute: true,
-                    destinationRouteId: destinationRoute?.id
-                )
-            }
+            try await FunctionsManager.shared.updateRecurringServiceStopsRouteAssignment(
+                companyId: companyId,
+                recurringServiceStops: stopsToAssign,
+                targetDay: targetDay,
+                targetTechId: targetTechId,
+                targetTechName: targetTechName,
+                destinationRouteId: destinationRoute?.id
+            )
 
             alertMessage = assignmentMode == .merge ? "Route merged successfully." : "Recurring service stops assigned successfully."
             showAlert = true
@@ -874,6 +908,27 @@ final class RouteBoardViewModel: ObservableObject {
     private func technicianName(for route: RecurringRoute) -> String {
         technicianName(forTechId: route.techId, fallback: route.tech)
     }
+    private var normalizedSearchText: String {
+        normalizedSearchValue(searchText)
+    }
+    private func normalizedSearchValue(_ value: String) -> String {
+        value
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    private func recurringStopMatchesSearch(_ stop: RecurringServiceStop) -> Bool {
+        let searchableValue = [
+            stop.customerName,
+            stop.address.streetAddress,
+            stop.address.city,
+            stop.address.state,
+            stop.address.zip
+        ]
+        .map(normalizedSearchValue)
+        .joined(separator: " ")
+
+        return searchableValue.contains(normalizedSearchText)
+    }
     private func technicianName(forTechId techId: String, fallback: String = "") -> String {
         companyUsers.first { $0.userId == techId || $0.id == techId }?.userName
             ?? (fallback.isEmpty ? techId : fallback)
@@ -886,38 +941,5 @@ final class RouteBoardViewModel: ObservableObject {
             guard let selectedRoute else { return [] }
             return orderedStops(for: selectedRoute)
         }
-    }
-    private func reassignedRecurringServiceStop(
-        _ stop: RecurringServiceStop,
-        day: DaysOfWeek,
-        techId: String,
-        techName: String
-    ) -> RecurringServiceStop {
-        RecurringServiceStop(
-            id: stop.id,
-            internalId: stop.internalId,
-            type: stop.type,
-            typeId: stop.typeId,
-            typeImage: stop.typeImage,
-            customerName: stop.customerName,
-            customerId: stop.customerId,
-            address: stop.address,
-            tech: techName,
-            techId: techId,
-            dateCreated: stop.dateCreated,
-            startDate: stop.startDate,
-            endDate: stop.endDate,
-            noEndDate: stop.noEndDate,
-            frequency: stop.frequency,
-            day: day,
-            description: stop.description,
-            lastCreated: stop.lastCreated,
-            serviceLocationId: stop.serviceLocationId,
-            estimatedTime: stop.estimatedTime,
-            otherCompany: stop.otherCompany,
-            laborContractId: stop.laborContractId,
-            contractedCompanyId: stop.contractedCompanyId,
-            mainCompanyId: stop.mainCompanyId
-        )
     }
 }

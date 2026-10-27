@@ -9,6 +9,7 @@ import Foundation
 import Firebase
 import FirebaseFirestore
 import FirebaseFirestoreSwift
+import FirebaseAuth
 import SwiftUI
 import CoreLocation
 import MapKit
@@ -30,9 +31,66 @@ extension ProductionDataService {
     
     //CREATE
     func uploadWorkOrder(companyId:String,workOrder : Job) async throws {
-        try workOrderDocument(workOrderId: workOrder.id, companyId: companyId).setData(from:workOrder, merge: false)
+        let actor = try await jobCreationActor()
+        let ref = workOrderDocument(workOrderId: workOrder.id, companyId: companyId)
+        let encoded = try Firestore.Encoder().encode(workOrder)
+        let now = Date()
+        let initialEvent = actor.creationEvent(companyId: companyId, jobId: workOrder.id, internalId: workOrder.internalId, at: now)
+        let history = try Firestore.Encoder().encode(initialEvent)
+        _ = try await db.runTransaction { transaction, errorPointer -> Any? in
+            do {
+                let existing = try transaction.getDocument(ref)
+                var record = encoded
+                if existing.exists {
+                    // Updating a job cannot relabel its original creator or creation time.
+                    let original = existing.data() ?? [:]
+                    for key in ["createdByUserId", "createdByUserName", "createdByCompanyUserId", "createdAt", "createdAtMillis", "dateCreated"] {
+                        if let value = original[key] { record[key] = value }
+                        else { record.removeValue(forKey: key) }
+                    }
+                } else {
+                    record["createdByUserId"] = actor.userId
+                    record["createdByUserName"] = actor.userName
+                    record["createdByCompanyUserId"] = actor.companyUserId
+                    record["createdAt"] = FieldValue.serverTimestamp()
+                    record["createdAtMillis"] = initialEvent.createdAtMillis
+                    record["lastHistoryEventId"] = "created"
+                    record["lastHistoryEventTitle"] = "Job created"
+                    record["lastHistoryEventType"] = "Created"
+                    var event = history
+                    event["createdAt"] = FieldValue.serverTimestamp()
+                    transaction.setData(event, forDocument: ref.collection("history").document("created"))
+                }
+                transaction.setData(record, forDocument: ref)
+                return true
+            } catch {
+                errorPointer?.pointee = error as NSError
+                return nil
+            }
+        }
     }
-    
+
+    private func jobCreationActor() async throws -> JobCreationActor {
+        guard let user = Auth.auth().currentUser else {
+            throw NSError(domain: "JobCreation", code: 4, userInfo: [NSLocalizedDescriptionKey: "Sign in before creating a job so its creator can be recorded."])
+        }
+        let profile = try? await getCurrentUser(userId: user.uid)
+        let fullName = [profile?.firstName, profile?.lastName].compactMap { $0 }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = [fullName, user.displayName ?? "", profile?.email ?? user.email ?? "", user.uid].first {
+            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.lowercased() != "unknown"
+        } ?? user.uid
+        return JobCreationActor(userId: user.uid, userName: name)
+    }
+
+    func fetchJobHistory(companyId: String, jobId: String) async throws -> [JobHistoryEvent] {
+        let snapshot = try await workOrderDocument(workOrderId: jobId, companyId: companyId).collection("history").getDocuments()
+        return try snapshot.documents.map { document in
+            var data = document.data()
+            data["id"] = document.documentID
+            return try Firestore.Decoder().decode(JobHistoryEvent.self, from: data)
+        }.sorted { ($0.timestamp ?? .distantPast) > ($1.timestamp ?? .distantPast) }
+    }
+
     func addWorkOrderComment(
         companyId: String,
         workOrderId: String,
@@ -583,5 +641,268 @@ extension ProductionDataService {
         ]
         try await workOrderDocument(workOrderId: jobId, companyId: companyId).updateData(data)
         
+    }
+}
+
+extension ProductionDataService {
+    func fetchJobLaborLineItems(companyId: String, jobId: String) async throws -> [JobLaborLineItem] {
+        let job = workOrderDocument(workOrderId: jobId, companyId: companyId)
+        let record = try await job.getDocument(as: Job.self)
+        if let lines = record.laborLineItems ?? record.estimateLaborLineItems { return lines }
+        let snapshot = try await job.collection("laborLineItems").getDocuments()
+        return try snapshot.documents.map { try $0.data(as: JobLaborLineItem.self) }
+    }
+
+    func fetchJobTemplateLaborLineItems(companyId: String, templateId: String) async throws -> [JobLaborLineItem] {
+        let ref = db.collection("companies/\(companyId)/jobTemplates").document(templateId)
+        let snapshot = try await ref.collection("laborLineItems").getDocuments()
+        if !snapshot.isEmpty { return try snapshot.documents.map { try $0.data(as: JobLaborLineItem.self) } }
+        let root = try await ref.getDocument().data() ?? [:]
+        if let embedded = root["laborLineItems"] as? [[String: Any]], !embedded.isEmpty {
+            return try embedded.map { try Firestore.Decoder().decode(JobLaborLineItem.self, from: $0) }
+        }
+        if (root["laborLineItemCount"] as? Int ?? root["laborLineCount"] as? Int ?? 0) > 0 {
+            throw NSError(domain: "JobTemplate", code: 3, userInfo: [NSLocalizedDescriptionKey: "The template's service billing lines could not be loaded. Reload the template before creating a job."])
+        }
+        return []
+    }
+
+    func saveJobTemplateBundle(template: JobTemplate, tasks: [JobTemplateTask], stops: [JobTemplatePlannedServiceStop], items: [JobTemplateShoppingItem], laborLines: [JobLaborLineItem]) async throws {
+        guard 1 + tasks.count + stops.count + items.count + laborLines.count <= 500 else {
+            throw NSError(domain: "JobTemplate", code: 2, userInfo: [NSLocalizedDescriptionKey: "This template contains too many records to save together."])
+        }
+        let ref = db.collection("companies/\(template.companyId)/jobTemplates").document(template.id)
+        let batch = db.batch()
+        var root = try Firestore.Encoder().encode(template)
+        root["laborLineItemCount"] = laborLines.count
+        root["laborLineItems"] = try laborLines.map { try Firestore.Encoder().encode($0) }
+        batch.setData(root, forDocument: ref)
+        for task in tasks { try batch.setData(from: task, forDocument: ref.collection("tasks").document(task.id)) }
+        for stop in stops { try batch.setData(from: stop, forDocument: ref.collection("plannedServiceStops").document(stop.id)) }
+        for item in items { try batch.setData(from: item, forDocument: ref.collection("shoppingItems").document(item.id)) }
+        for line in laborLines { try batch.setData(from: line, forDocument: ref.collection("laborLineItems").document(line.id)) }
+        try await batch.commit()
+    }
+
+    func commitNewJob(companyId: String, job: Job, scope: NewJobScope) async throws -> Job {
+        let actor = try await jobCreationActor()
+        let createdAt = Date()
+        let company = db.collection("companies").document(companyId)
+        let ref = company.collection("workOrders").document(job.id)
+        let counter = company.collection("settings").document("workOrders")
+        let stopCounter = company.collection("settings").document("recurringServiceStops")
+        let planId = "comp_job_plan_" + job.id
+        var preparedJob = job
+        preparedJob.createdByUserId = actor.userId
+        preparedJob.createdByUserName = actor.userName
+        preparedJob.createdByCompanyUserId = actor.companyUserId
+        preparedJob.createdAt = createdAt
+        preparedJob.createdAtMillis = Int(createdAt.timeIntervalSince1970 * 1000)
+        var tasks = scope.tasks
+        var materials = scope.shoppingItems
+        for index in tasks.indices { tasks[index].serviceLocationId = job.serviceLocationId }
+        for index in materials.indices {
+            materials[index].jobId = job.id
+            materials[index].customerId = job.customerId
+            materials[index].customerName = job.customerName
+            materials[index].serviceLocationId = job.serviceLocationId
+        }
+        var lines = scope.completeLaborLines.map { original -> JobLaborLineItem in
+            var line = original
+            line.companyId = companyId
+            line.jobId = job.id
+            line.templateId = nil
+            line.sourcePlanId = planId
+            line.sourceSolutionId = planId
+            return line
+        }
+        preparedJob.activePlanId = planId
+        preparedJob.activeSolutionId = planId
+        let materialPrice = materials.reduce(0) { $0 + ($1.plannedTotalPriceCents ?? Int((Double($1.quantity ?? "1") ?? 1) * Double($1.plannedUnitPriceCents ?? 0))) }
+        let materialCost = materials.reduce(0) { $0 + ($1.plannedTotalCostCents ?? Int((Double($1.quantity ?? "1") ?? 1) * Double($1.plannedUnitCostCents ?? 0))) }
+        if scope.laborLineItems.isEmpty && job.rate != 0 {
+            var legacy = JobLaborLineItem(id: "comp_job_labor_line_" + job.id)
+            legacy.name = job.sourceTemplateName ?? "Labor"
+            legacy.companyId = companyId
+            legacy.jobId = job.id
+            legacy.quantity = 1
+            legacy.totalPriceCents = max(0, job.rate - materialPrice)
+            legacy.unitPriceCents = legacy.totalPriceCents
+            legacy.internalCostCents = job.laborCost
+            legacy.taxable = false
+            legacy.taskIds = tasks.map(\.id)
+            legacy.plannedServiceStopIds = scope.plannedStops.map(\.id)
+            legacy.sourcePlanId = planId
+            legacy.sourceSolutionId = planId
+            lines = [legacy]
+        }
+        preparedJob.laborLineItems = lines
+        preparedJob.estimateLaborLineItems = lines
+        if !lines.isEmpty || materialPrice != 0 {
+            preparedJob.rate = lines.reduce(0) { $0 + $1.priceCents } + materialPrice
+            preparedJob.laborCost = lines.reduce(0) { $0 + ($1.internalCostCents ?? 0) }
+        }
+        preparedJob.serviceStopIds = scope.scheduledStops.map(\.id)
+        let encoder = Firestore.Encoder()
+        let taskRows = try tasks.map { try encoder.encode($0) }
+        let stopRows = try scope.plannedStops.map { try encoder.encode($0) }
+        let materialRows = try materials.map { try encoder.encode($0) }
+        let lineRows = try lines.map { try encoder.encode($0) }
+        let scheduledRows = try scope.scheduledStops.map { try encoder.encode($0) }
+        let scheduledTasks = try scope.scheduledTasks.mapValues { try $0.map { try encoder.encode($0) } }
+        let writeCount = 4 + tasks.count + stopRows.count + materials.count + lines.count + scheduledRows.count + scheduledTasks.values.reduce(0) { $0 + $1.count } + (scheduledRows.isEmpty ? 0 : 1)
+        guard writeCount <= 500 else {
+            throw NSError(domain: "JobCreation", code: 2, userInfo: [NSLocalizedDescriptionKey: "This job contains too many records to save together. Reduce its scope before creating it."])
+        }
+        let rootData = try encoder.encode(preparedJob)
+        var invoiceLines = lineRows.map { row -> [String: Any] in
+            var result = row
+            let price = row["totalPriceCents"] as? Int ?? 0
+            result["totalAmountCents"] = price
+            result["unitAmountCents"] = row["unitPriceCents"] ?? price
+            result["amount"] = price
+            result["type"] = "Service"
+            result["taxable"] = row["taxable"] ?? false
+            return result
+        }
+        invoiceLines += materials.map { item in
+            let price = item.plannedTotalPriceCents ?? Int((Double(item.quantity ?? "1") ?? 1) * Double(item.plannedUnitPriceCents ?? 0))
+            return ["id": item.id, "name": item.name, "description": item.description, "quantity": Double(item.quantity ?? "1") ?? 1,
+                    "unitAmountCents": item.plannedUnitPriceCents ?? price, "totalAmountCents": price, "amount": price,
+                    "type": "Material", "taxable": item.taxable ?? false, "genericItemId": item.genericItemId]
+        }
+        if invoiceLines.isEmpty && preparedJob.rate != 0 {
+            invoiceLines = [["id": "job_labor_" + job.id, "name": "Labor", "type": "Labor", "quantity": 1, "unitAmountCents": preparedJob.rate, "totalAmountCents": preparedJob.rate, "taxable": false]]
+        }
+        let planLines = invoiceLines
+        let totalCost = preparedJob.laborCost + materialCost
+        let result = try await db.runTransaction { transaction, errorPointer -> Any? in
+            do {
+                let existing = try transaction.getDocument(ref)
+                if existing.exists { return try existing.data(as: Job.self) }
+                let snapshot = try transaction.getDocument(counter)
+                let next = (snapshot.data()?["increment"] as? Int ?? 0) + 1
+                var nextStop = 0
+                if !scheduledRows.isEmpty {
+                    nextStop = (try transaction.getDocument(stopCounter).data()?["increment"] as? Int ?? 0)
+                }
+                var saved = preparedJob
+                saved.internalId = "J\(next)"
+                var root = rootData
+                root["internalId"] = saved.internalId
+                root["companyId"] = companyId
+                root["createdAt"] = FieldValue.serverTimestamp()
+                root["lastHistoryEventId"] = "created"
+                root["lastHistoryEventTitle"] = "Job created"
+                root["lastHistoryEventType"] = "Created"
+                root["solutionSelectionStatus"] = "Draft"
+                root["activePlanTier"] = 2
+                root["activeSolutionTier"] = 2
+                let stopNumbers = Dictionary(uniqueKeysWithValues: scope.scheduledStops.enumerated().map { ($0.element.id, "SS\(nextStop + $0.offset)") })
+                if let first = scope.scheduledStops.first {
+                    root["scheduledServiceStopId"] = first.id
+                    root["scheduledServiceStopInternalId"] = stopNumbers[first.id]
+                }
+                transaction.setData(["increment": next], forDocument: counter, merge: true)
+                if !scheduledRows.isEmpty { transaction.setData(["increment": nextStop + scheduledRows.count], forDocument: stopCounter, merge: true) }
+                transaction.setData(root, forDocument: ref)
+                var plan: [String: Any] = [
+                    "id": planId, "planId": planId, "solutionId": planId, "companyId": companyId, "jobId": job.id,
+                    "jobInternalId": saved.internalId, "customerId": job.customerId, "customerName": job.customerName,
+                    "serviceLocationId": job.serviceLocationId, "name": job.sourceTemplateName ?? "Starter Plan",
+                    "description": job.description, "planTier": 2, "solutionTier": 2, "status": "Draft", "isActivePlan": true, "isAccepted": false,
+                    "tasks": taskRows, "plannedServiceStops": stopRows, "shoppingItems": materialRows,
+                    "laborLineItems": lineRows, "estimateLaborLineItems": lineRows, "lineItems": planLines, "contractLineItemsSnapshot": planLines,
+                    "subtotalAmountCents": saved.rate, "totalAmountCents": saved.rate, "rate": saved.rate,
+                    "laborCost": saved.laborCost, "laborCostCents": saved.laborCost, "internalCostCents": totalCost,
+                    "createdAt": Timestamp(date: job.dateCreated), "updatedAt": Timestamp(date: job.dateCreated),
+                    "sourceTemplateId": job.sourceTemplateId ?? "", "sourceTemplateName": job.sourceTemplateName ?? ""
+                ]
+                var savedTasks = taskRows
+                for index in savedTasks.indices {
+                    let linkedIds = materials.filter { $0.linkedTaskId == tasks[index].id }.map(\.id)
+                    savedTasks[index]["shoppingListItemId"] = linkedIds.first ?? ""
+                    savedTasks[index]["shoppingListItemIds"] = linkedIds
+                }
+                for index in savedTasks.indices {
+                    for stop in scope.scheduledStops {
+                        let source = (scope.scheduledTasks[stop.id] ?? []).first { $0.jobTaskId == tasks[index].id || ($0.jobTaskId.isEmpty && $0.id == tasks[index].id) }
+                        if source != nil {
+                            savedTasks[index]["status"] = "Scheduled"
+                            savedTasks[index]["workerId"] = stop.techId
+                            savedTasks[index]["workerName"] = stop.tech
+                            savedTasks[index]["workerType"] = "Employee"
+                            savedTasks[index]["serviceStopId"] = ["id": stop.id, "internalId": stopNumbers[stop.id] ?? ""]
+                        }
+                    }
+                    savedTasks[index]["sourcePlanId"] = planId
+                    savedTasks[index]["sourceSolutionId"] = planId
+                    transaction.setData(savedTasks[index], forDocument: ref.collection("tasks").document(tasks[index].id))
+                }
+                var savedStops = stopRows
+                for index in savedStops.indices {
+                    savedStops[index]["companyId"] = companyId
+                    savedStops[index]["jobId"] = job.id
+                    savedStops[index]["sourcePlanId"] = planId
+                    transaction.setData(savedStops[index], forDocument: ref.collection("plannedServiceStops").document(scope.plannedStops[index].id))
+                }
+                for index in materialRows.indices {
+                    var item = materialRows[index]
+                    item["sourcePlanId"] = planId
+                    item["sourceSolutionId"] = planId
+                    item["planWorkspaceOnly"] = !job.activatesShoppingListMaterials
+                    transaction.setData(item, forDocument: company.collection("shoppingList").document(materials[index].id))
+                }
+                for index in lineRows.indices { transaction.setData(lineRows[index], forDocument: ref.collection("laborLineItems").document(lines[index].id)) }
+                for index in scheduledRows.indices {
+                    let stop = scope.scheduledStops[index]
+                    var row = scheduledRows[index]
+                    row["internalId"] = stopNumbers[stop.id]
+                    row["jobId"] = job.id
+                    row["jobName"] = saved.internalId
+                    let stopRef = company.collection("serviceStops").document(stop.id)
+                    transaction.setData(row, forDocument: stopRef)
+                    for original in scheduledTasks[stop.id] ?? [] {
+                        var task = original
+                        task["jobId"] = ["id": job.id, "internalId": saved.internalId]
+                        task["serviceStopId"] = ["id": stop.id, "internalId": stopNumbers[stop.id] ?? ""]
+                        let linkedId = task["jobTaskId"] as? String ?? ""
+                        if linkedId.isEmpty, let id = task["id"] as? String, tasks.contains(where: { $0.id == id }) { task["jobTaskId"] = id }
+                        task["workOrderTaskId"] = task["jobTaskId"]
+                        transaction.setData(task, forDocument: stopRef.collection("tasks").document(task["id"] as? String ?? UUID().uuidString))
+                    }
+                }
+                let planTitle = job.sourceTemplateName ?? "Starter Plan"
+                plan["title"] = planTitle
+                plan["planName"] = planTitle
+                plan["sourceType"] = job.sourceTemplateId == nil ? "initialJobPlan" : "template"
+                plan["planTierLabel"] = "Standard Fix"
+                plan["solutionTierLabel"] = "Standard Fix"
+                plan["recommendationRank"] = 2
+                plan["recommendationRankLabel"] = "Standard Fix"
+                plan["rateAmountCents"] = saved.rate
+                plan["plannedLaborCostCents"] = saved.laborCost
+                plan["plannedLaborPriceCents"] = lines.reduce(0) { $0 + $1.priceCents }
+                plan["materialCostCents"] = materialCost
+                plan["materialPriceCents"] = materialPrice
+                plan["projectedProfitCents"] = saved.rate - totalCost
+                plan["createdAtMillis"] = Int(job.dateCreated.timeIntervalSince1970 * 1000)
+                plan["updatedAtMillis"] = Int(job.dateCreated.timeIntervalSince1970 * 1000)
+                plan["costSummary"] = ["plannedLaborCostCents": saved.laborCost, "plannedLaborPriceCents": lines.reduce(0) { $0 + $1.priceCents }, "plannedMaterialCostCents": materialCost, "plannedMaterialPriceCents": materialPrice, "internalCostCents": totalCost]
+                plan["scopeOfWork"] = ["title": planTitle, "customerDescription": job.description, "issueDescription": job.description, "taskSummaries": savedTasks, "plannedStopSummaries": savedStops, "laborLineSummaries": lineRows, "materialSummaries": materialRows]
+                plan["tasks"] = savedTasks
+                plan["plannedServiceStops"] = savedStops
+                transaction.setData(plan, forDocument: ref.collection("plans").document(planId))
+                var history = try Firestore.Encoder().encode(actor.creationEvent(companyId: companyId, jobId: job.id, internalId: saved.internalId, at: createdAt))
+                history["createdAt"] = FieldValue.serverTimestamp()
+                transaction.setData(history, forDocument: ref.collection("history").document("created"))
+                return saved
+            } catch {
+                errorPointer?.pointee = error as NSError
+                return nil
+            }
+        }
+        guard let saved = result as? Job else { throw NSError(domain: "JobCreation", code: 3) }
+        return saved
     }
 }

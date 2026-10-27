@@ -395,6 +395,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     ) {
         print("  [MobileDailyRouteDisplayViewModel][start][companyId]")
         print("  [MobileDailyRouteDisplayViewModel][start] techId: \(user.id) Date: \(date) Day Of Week: \(weekDay(date: date))")
+        cachedCompanyId = companyId
+        cachedUser = user
+
         dataService.addCompanyUserListener(companyId: companyId, status: "Active",
         ) { [weak self] route in
             self?.companyUsers = route
@@ -435,7 +438,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             self.recurringRoute = route
             print("")
             print("[MobileDailyRouteDisplayViewModel][start] Recurring Route Listener: ", route?.id ?? "nil")
-            self.refreshRoutePresentationFromCurrentState()
+            self.recompute(companyId: companyId, whoCalled: "RR", user: user, date: date)
         }
         dataService.listenServiceStops(
             companyId: companyId,
@@ -463,6 +466,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         // Builds the New Active Route
         // Coomputed Route is Active Route
 
+        let previousActiveRoute = activeRoute
         let computedRoute = RouteBuilder.build(
             date: date,
             techId: user.id,
@@ -485,7 +489,12 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
             
             self.activeRoute = computedRoute
             
-            if whoCalled == "SS" {
+            let shouldPersistPlannedRouteSync = whoCalled == "RR" &&
+                previousActiveRoute?.status == .didNotStart &&
+                previousActiveRoute?.startTime == nil &&
+                previousActiveRoute?.startMilage == nil
+
+            if whoCalled == "SS" || shouldPersistPlannedRouteSync {
                 dataService.applyRouteChanges(companyId:companyId,diff:diff,calledFrom: whoCalled)
             }
             
@@ -549,7 +558,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         updatedStop.operationStatus = .finished
         updatedStop.endTime = endTime
 
-        if let duration = optimisticServiceStopDurationMinutes(startTime: updatedStop.startTime, endTime: endTime) {
+        if let duration = serviceStopDurationMinutes(startTime: updatedStop.startTime, endTime: endTime) {
             updatedStop.duration = duration
         }
 
@@ -644,9 +653,9 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         return .inProgress
     }
 
-    private func optimisticServiceStopDurationMinutes(startTime: Date?, endTime: Date) -> Int? {
+    private func serviceStopDurationMinutes(startTime: Date?, endTime: Date) -> Int? {
         guard let startTime, endTime > startTime else { return nil }
-        return max(1, minBetween(start: startTime, end: endTime))
+        return max(1, Int(ceil(endTime.timeIntervalSince(startTime) / 60)))
     }
 
     private func serviceStopsApplyingOptimisticUpdates(to stops: [ServiceStop]) -> [ServiceStop] {
@@ -709,27 +718,73 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
 
         Task {
             do {
-                try await dataService.updateServicestopOperationStatus(
-                    companyId: companyId,
+                let stop = try await dataService.getServiceStopById(
                     serviceStopId: serviceStopId,
-                    operationStatus: .finished
-                )
-                try await dataService.updateServiceStopEndTime(
-                    companyId: companyId,
-                    serviceStopId: serviceStopId,
-                    endTime: endTime
+                    companyId: companyId
                 )
 
-                if let index = serviceStopList.firstIndex(where: { $0.id == serviceStopId }) {
-                    serviceStopList[index].operationStatus = .finished
-                    serviceStopList[index].endTime = endTime
+                guard stop.operationStatus != .finished else {
+                    optimisticServiceStopOverrides.removeValue(forKey: stop.id)
+                    applyOptimisticServiceStopUpdate(stop)
+                    clearServiceStopEndPrompt(serviceStopId: serviceStopId)
+                    clearServiceStopStartPrompt(serviceStopId: serviceStopId)
+                    return
                 }
+
+                let completionSettings = await loadCompletionSettings(companyId: companyId, stop: stop)
+
+                if completionSettings.requirePhotoOnFinish && (stop.photoUrls ?? []).isEmpty {
+                    throw NSError(
+                        domain: "ServiceStopCompletion",
+                        code: 1,
+                        userInfo: [
+                            NSLocalizedDescriptionKey: "A photo is required before this service stop can be finished."
+                        ]
+                    )
+                }
+
+                let duration = serviceStopDurationMinutes(startTime: stop.startTime, endTime: endTime)
+                let completedByUserId = cachedUser?.id ?? currentCompanyUser?.userId ?? stop.techId
+
+                try await dataService.finishServiceStopImmediately(
+                    companyId: companyId,
+                    serviceStop: stop,
+                    endTime: endTime,
+                    duration: duration,
+                    completedByUserId: completedByUserId,
+                    sendServiceReport: completionSettings.sendEmailOnFinish
+                )
+
+                var updatedStop = stop
+                updatedStop.operationStatus = .finished
+                updatedStop.endTime = endTime
+                if let duration {
+                    updatedStop.duration = duration
+                }
+
+                optimisticServiceStopOverrides[updatedStop.id] = updatedStop
+                applyOptimisticServiceStopUpdate(updatedStop)
 
                 clearServiceStopEndPrompt(serviceStopId: serviceStopId)
                 clearServiceStopStartPrompt(serviceStopId: serviceStopId)
             } catch {
                 print("[MobileDailyRouteDisplayViewModel][finishServiceStop] Error \(error)")
+                alertMessage = error.localizedDescription
+                showAlert = true
             }
+        }
+    }
+
+    private func loadCompletionSettings(
+        companyId: String,
+        stop: ServiceStop
+    ) async -> ServiceStopCategoryCompletionSettings {
+        do {
+            let emailConfiguration = try await dataService.getEmailConfigurationSettings(companyId: companyId)
+            return emailConfiguration.completionSettings(for: stop.resolvedCategory)
+        } catch {
+            print("[MobileDailyRouteDisplayViewModel][loadCompletionSettings] Unable to load completion settings. Using defaults.", error)
+            return ServiceStopCategoryCompletionSettings.defaultSettings(for: stop.resolvedCategory)
         }
     }
     func startActiveRoute(
@@ -2068,10 +2123,13 @@ struct RouteBuilder {
 
             
             //Build order of Active Route Based on Recurring Route
+            let routeHasStarted = existingActiveRoute.map {
+                $0.status != .didNotStart || $0.startTime != nil || $0.startMilage != nil
+            } ?? false
             route.order = RouteOrderBuilder.build(
                 serviceStops: serviceStops,
                 recurringRoute: recurringRoute,
-                existingOrder: existingActiveRoute?.order
+                existingOrder: routeHasStarted ? existingActiveRoute?.order : nil
             )
             //Check if order is different than
             print("  [RouteBuilder][build] RouteOrder(updated): \(route.order?.count ?? 0)")

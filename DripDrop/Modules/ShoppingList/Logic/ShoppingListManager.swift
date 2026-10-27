@@ -31,6 +31,7 @@ struct ShoppingListItem: Identifiable, Codable, Hashable {
     var description: String
     var datePurchased: Date?
     var quantity: String?
+    var installedQuantity: Double? = nil
 
     // Job
     var jobId: String?
@@ -76,6 +77,8 @@ struct ShoppingListItem: Identifiable, Codable, Hashable {
     var installedEquipmentId: String?
     var installedAt: Date?
 
+    var taxable: Bool? = nil
+
     // Planned material pricing snapshot
     var plannedUnitCostCents: Int?
     var plannedUnitPriceCents: Int?
@@ -97,7 +100,7 @@ extension ShoppingListItem {
         case name
         case description
         case datePurchased
-        case quantity
+        case quantity, installedQuantity
         case jobId
         case customerId
         case customerName
@@ -130,6 +133,7 @@ extension ShoppingListItem {
         case linkedTaskStatus
         case installedEquipmentId
         case installedAt
+        case taxable
         case plannedUnitCostCents
         case plannedUnitPriceCents
         case plannedTotalCostCents
@@ -144,6 +148,7 @@ extension ShoppingListItem {
         self.category = (try? container.decodeIfPresent(ShoppingListCategory.self, forKey: .category)) ?? .personal
         self.subCategory = (try? container.decodeIfPresent(ShoppingListSubCategory.self, forKey: .subCategory)) ?? .custom
         self.status = decodedStatus
+        self.installedQuantity = (try? container.decodeIfPresent(Double.self, forKey: .installedQuantity)) ?? Self.decodeString(container, forKey: .installedQuantity).flatMap(Double.init)
 
         self.purchaserId = Self.decodeString(container, forKey: .purchaserId) ?? ""
         self.purchaserName = Self.decodeString(container, forKey: .purchaserName) ?? ""
@@ -194,6 +199,7 @@ extension ShoppingListItem {
         self.installedEquipmentId = Self.decodeString(container, forKey: .installedEquipmentId)
         self.installedAt = Self.decodeDate(container, forKey: .installedAt)
 
+        self.taxable = try container.decodeIfPresent(Bool.self, forKey: .taxable)
         self.plannedUnitCostCents = Self.decodeInt(container, forKey: .plannedUnitCostCents)
         self.plannedUnitPriceCents = Self.decodeInt(container, forKey: .plannedUnitPriceCents)
         self.plannedTotalCostCents = Self.decodeInt(container, forKey: .plannedTotalCostCents)
@@ -203,6 +209,7 @@ extension ShoppingListItem {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
+        try container.encodeIfPresent(taxable, forKey: .taxable)
         try container.encode(id, forKey: .id)
         try container.encode(category, forKey: .category)
         try container.encode(subCategory, forKey: .subCategory)
@@ -216,6 +223,7 @@ extension ShoppingListItem {
         try container.encode(description, forKey: .description)
         try container.encodeIfPresent(datePurchased, forKey: .datePurchased)
         try container.encodeIfPresent(quantity, forKey: .quantity)
+        try container.encodeIfPresent(installedQuantity, forKey: .installedQuantity)
         try container.encodeIfPresent(jobId, forKey: .jobId)
         try container.encodeIfPresent(customerId, forKey: .customerId)
         try container.encodeIfPresent(customerName, forKey: .customerName)

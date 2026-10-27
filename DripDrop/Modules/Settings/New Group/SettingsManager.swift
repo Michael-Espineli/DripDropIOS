@@ -168,6 +168,15 @@ struct JobTemplatePlannedServiceStop: Identifiable, Codable, Hashable {
     var plannedLaborCostCents: Int?
     var plannedLaborNotes: String?
 
+    var payTypeId: String? = nil
+    var payTypeName: String? = nil
+    var payrollMode: String? = nil
+    var manualPayOverrideCents: Int? = nil
+    var manualPayOverrideNotes: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
+    var billingLaborPriceCents: Int? = nil
+
     init(
         id: String = "comp_job_template_plan_stop_" + UUID().uuidString,
         companyId: String,
@@ -182,8 +191,24 @@ struct JobTemplatePlannedServiceStop: Identifiable, Codable, Hashable {
         sortOrder: Int,
         taskTemplateIds: [String] = [],
         plannedLaborCostCents: Int? = nil,
-        plannedLaborNotes: String? = nil
+        plannedLaborNotes: String? = nil,
+        payTypeId: String? = nil,
+        payTypeName: String? = nil,
+        payrollMode: String? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
+        payrollStackBehavior: String? = nil,
+        payQuantity: Double? = nil,
+        billingLaborPriceCents: Int? = nil
     ) {
+        self.payTypeId = payTypeId
+        self.payTypeName = payTypeName
+        self.payrollMode = payrollMode
+        self.manualPayOverrideCents = manualPayOverrideCents
+        self.manualPayOverrideNotes = manualPayOverrideNotes
+        self.payrollStackBehavior = payrollStackBehavior
+        self.payQuantity = payQuantity
+        self.billingLaborPriceCents = billingLaborPriceCents
         self.id = id
         self.companyId = companyId
         self.templateId = templateId
@@ -220,6 +245,16 @@ struct JobTemplateTask: Identifiable, Codable, Hashable {
     var dataBaseItemId: String?
 
     var sortOrder: Int
+    var billingLaborPriceCents: Int? = nil
+    var taxable: Bool? = nil
+
+    var payTypeId: String? = nil
+    var payTypeName: String? = nil
+    var payrollMode: String? = nil
+    var manualPayOverrideCents: Int? = nil
+    var manualPayOverrideNotes: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
 
     init(
         id: String = "comp_job_template_task_" + UUID().uuidString,
@@ -235,8 +270,24 @@ struct JobTemplateTask: Identifiable, Codable, Hashable {
         serviceLocationId: String? = nil,
         bodyOfWaterId: String? = nil,
         dataBaseItemId: String? = nil,
-        sortOrder: Int
+        sortOrder: Int,
+        billingLaborPriceCents: Int? = nil,
+        taxable: Bool? = nil,
+        payTypeId: String? = nil,
+        payTypeName: String? = nil,
+        payrollMode: String? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
+        payrollStackBehavior: String? = nil,
+        payQuantity: Double? = nil
     ) {
+        self.payTypeId = payTypeId
+        self.payTypeName = payTypeName
+        self.payrollMode = payrollMode
+        self.manualPayOverrideCents = manualPayOverrideCents
+        self.manualPayOverrideNotes = manualPayOverrideNotes
+        self.payrollStackBehavior = payrollStackBehavior
+        self.payQuantity = payQuantity
         self.id = id
         self.companyId = companyId
         self.templateId = templateId
@@ -250,6 +301,8 @@ struct JobTemplateTask: Identifiable, Codable, Hashable {
         self.serviceLocationId = serviceLocationId
         self.bodyOfWaterId = bodyOfWaterId
         self.dataBaseItemId = dataBaseItemId
+        self.billingLaborPriceCents = billingLaborPriceCents
+        self.taxable = taxable
         self.sortOrder = sortOrder
     }
 }
@@ -275,6 +328,8 @@ struct JobTemplateShoppingItem: Identifiable, Codable, Hashable {
 
     var billable: Bool
     var sortOrder: Int
+    var linkedTaskId: String? = nil
+    var taxable: Bool? = nil
 
     init(
         id: String = "comp_job_template_shop_item_" + UUID().uuidString,
@@ -291,7 +346,9 @@ struct JobTemplateShoppingItem: Identifiable, Codable, Hashable {
         plannedTotalCostCents: Int? = nil,
         plannedTotalPriceCents: Int? = nil,
         billable: Bool,
-        sortOrder: Int
+        sortOrder: Int,
+        linkedTaskId: String? = nil,
+        taxable: Bool? = nil
     ) {
         self.id = id
         self.companyId = companyId
@@ -307,6 +364,8 @@ struct JobTemplateShoppingItem: Identifiable, Codable, Hashable {
         self.plannedTotalCostCents = plannedTotalCostCents
         self.plannedTotalPriceCents = plannedTotalPriceCents
         self.billable = billable
+        self.linkedTaskId = linkedTaskId
+        self.taxable = taxable
         self.sortOrder = sortOrder
     }
 }
@@ -398,27 +457,23 @@ final class SettingsManager {
     }
     
     //WorkOrders
-    func getWorkOrderCount(companyId:String) async throws-> Int{
-
-        var workOrderCount = 0
-        let doc = try await SettingsCollection(companyId: companyId).document("workOrders").getDocument(as: Increment.self)
-        workOrderCount = doc.increment
-        let updatedWorkOrderCount = workOrderCount + 1
-         SettingsCollection(companyId: companyId).document("workOrders")
-           .updateData([
-               "increment": updatedWorkOrderCount
-       ]) { err in
-           if let err = err {
-               print("Error updating document: \(err)")
-           } else {
-               print("Document successfully updated")
-           }
-       }
-        print("Work Order Count " + String(updatedWorkOrderCount))
-        return updatedWorkOrderCount
-
+    func getWorkOrderCount(companyId:String) async throws -> Int {
+        let ref = SettingsCollection(companyId: companyId).document("workOrders")
+        let result = try await Firestore.firestore().runTransaction { transaction, errorPointer -> Any? in
+            do {
+                let snapshot = try transaction.getDocument(ref)
+                let next = (snapshot.data()?["increment"] as? Int ?? 0) + 1
+                transaction.setData(["increment": next], forDocument: ref, merge: true)
+                return next
+            } catch {
+                errorPointer?.pointee = error as NSError
+                return nil
+            }
+        }
+        guard let next = result as? Int else { throw NSError(domain: "JobNumber", code: 1) }
+        return next
     }
-    //Repair Request
+
     func getRepairRequestCount(companyId:String) async throws-> Int{
 
         var workOrderCount = 0

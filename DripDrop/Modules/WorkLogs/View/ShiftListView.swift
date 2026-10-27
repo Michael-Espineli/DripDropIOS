@@ -16,8 +16,8 @@ final class ShiftListViewModel:ObservableObject{
     @Published private(set) var previousShifts : [WorkShift] = []
     @Published private(set) var nextShifts : [WorkShift] = []
     func onLoad(companyId:String, userId:String) async throws {
-        self.previousShifts = try await dataService.getNextShiftByUserId(companyId: companyId, userId: userId, count: 1)
-        self.nextShifts = try await dataService.getPreviousShiftByUserId(companyId: companyId, userId: userId, count: 3)
+        self.previousShifts = try await dataService.getPreviousShiftByUserId(companyId: companyId, userId: userId, count: 1)
+        self.nextShifts = try await dataService.getNextShiftByUserId(companyId: companyId, userId: userId, count: 3)
         
     }
 }

@@ -390,6 +390,11 @@ extension ProductionDataService {
             return existingRoute.status
         }
 
+        if let existingRoute,
+           existingRoute.startTime != nil || existingRoute.startMilage != nil {
+            return .inProgress
+        }
+
         return finishedStops > 0 ? .inProgress : .didNotStart
     }
 
@@ -824,10 +829,23 @@ extension ProductionDataService {
         let serviceStopIds = serviceStops.map { $0.id }
         let finishedStops = serviceStops.filter { $0.operationStatus == .finished }.count
         let existingOrder = existingRoute?.order ?? []
+        let recurringRoute: RecurringRoute?
+        if let routeDay = DaysOfWeek(rawValue: weekDay(date: date)) {
+            recurringRoute = try? await getSingleRouteFromTechIdAndDay(
+                companyId: companyId,
+                techId: techId,
+                day: routeDay
+            )
+        } else {
+            recurringRoute = nil
+        }
+        let routeHasStarted = existingRoute.map {
+            $0.status != .didNotStart || $0.startTime != nil || $0.startMilage != nil
+        } ?? false
         let order = RouteOrderBuilder.build(
             serviceStops: serviceStops,
-            recurringRoute: nil,
-            existingOrder: existingOrder
+            recurringRoute: recurringRoute,
+            existingOrder: routeHasStarted ? existingOrder : nil
         )
 
         var route = existingRoute ?? ActiveRoute(

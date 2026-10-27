@@ -27,6 +27,8 @@ struct WorkLog:Identifiable, Codable,Hashable{
     
     var id:String = UUID().uuidString
     var shiftId:String
+    var workOfferId: String? = nil
+    var jobId: String? = nil
 
     var startTime:Date
     var startLatitude:Double
@@ -84,6 +86,7 @@ struct WorkLog:Identifiable, Codable,Hashable{
     enum CodingKeys:String, CodingKey {
         case id = "id"
         case shiftId = "shiftId"
+        case workOfferId, jobId
 
         case startTime = "startTime"
         case startLatitude = "startLatitude"

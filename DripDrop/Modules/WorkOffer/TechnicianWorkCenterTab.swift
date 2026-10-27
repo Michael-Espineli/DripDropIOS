@@ -88,11 +88,13 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
                 $0.status == .accepted ||
                 $0.status == .scheduled ||
                 $0.status == .inProgress ||
-                $0.status == .completed
+                $0.status == .completed ||
+                ($0.claims ?? []).contains { $0.workerId == companyUser.userId && ["Accepted", "Scheduled", "In Progress", "Completed", "Acceptance Pending Approval"].contains($0.status) }
             }
             .filter {
                 $0.acceptedByUserId == companyUser.userId ||
-                $0.offeredToUserId == companyUser.userId
+                $0.offeredToUserId == companyUser.userId ||
+                ($0.claims ?? []).contains { $0.workerId == companyUser.userId }
             }
             .uniqueById()
             .sorted { $0.createdAt > $1.createdAt }
@@ -179,27 +181,24 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
         
     }
 
-    func acceptOffer(companyId:String, _ offer: WorkOffer) async {
-        guard !isSaving else { return }
+    func acceptOffer(companyId:String, _ offer: WorkOffer, stopIds: [String] = []) async -> Bool {
+        guard !isSaving else { return false }
 
         isSaving = true
         defer { isSaving = false }
 
         do {
-            try await dataService.acceptWorkOffer(
-                companyId: companyId,
-                workOfferId: offer.id,
-                acceptedByUserId: companyUser.userId,
-                acceptedByUserName: companyUser.userName
-            )
+            _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: offer.id, action: "accept", extra: ["claimId":UUID().uuidString, "revision":offer.revision ?? 1, "stopIds":stopIds])
 
             alertMessage = "Work accepted."
             showAlert = true
 
             await load(companyId:companyId,forceRefresh: true)
+            return true
         } catch {
             alertMessage = "Could not accept work. \(error.localizedDescription)"
             showAlert = true
+            return false
         }
     }
 
@@ -238,6 +237,7 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
 }
 
 struct TechnicianWorkCenterView: View {
+    @State private var showRouteCoverage = false
     @EnvironmentObject var masterDataManager: MasterDataManager
     @StateObject private var viewModel: TechnicianWorkCenterViewModel
     @State private var showSwipeReview: Bool = false
@@ -290,6 +290,10 @@ struct TechnicianWorkCenterView: View {
         } message: {
             Text(viewModel.alertMessage)
         }
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Offer Route Coverage") { showRouteCoverage = true } } }
+        .sheet(isPresented: $showRouteCoverage) {
+            if let company = masterDataManager.currentCompany { RouteCoverageOfferSheet(companyId: company.id, dataService: viewModel.dataService) }
+        }
         .fullScreenCover(isPresented: $showSwipeReview) {
             if let currentCompany = masterDataManager.currentCompany {
                 NavigationStack {
@@ -297,10 +301,8 @@ struct TechnicianWorkCenterView: View {
                         offers: viewModel.discoveryOffers,
                         companyUser: viewModel.companyUser,
                         isSaving: viewModel.isSaving,
-                        acceptAction: { offer in
-                            Task {
-                                await viewModel.acceptOffer(companyId: currentCompany.id, offer)
-                            }
+                        acceptAction: { offer, stopIds in
+                            await viewModel.acceptOffer(companyId: currentCompany.id, offer, stopIds: stopIds)
                         },
                         rejectAction: { offer, reason in
                             Task {
@@ -658,10 +660,8 @@ struct TechnicianWorkCenterView: View {
                 companyUser: viewModel.companyUser,
                 canReject: canReject,
                 canAccept: canAccept,
-                acceptAction: {
-                    Task {
-                        await viewModel.acceptOffer(companyId: currentCompany.id, offer)
-                    }
+                acceptAction: { stopIds in
+                    await viewModel.acceptOffer(companyId: currentCompany.id, offer, stopIds: stopIds)
                 },
                 rejectAction: { reason in
                     Task {
@@ -792,7 +792,7 @@ private struct TechnicianOfferSwipeReviewView: View {
     let offers: [WorkOffer]
     let companyUser: CompanyUser
     let isSaving: Bool
-    let acceptAction: (WorkOffer) -> Void
+    let acceptAction: (WorkOffer, [String]) async -> Bool
     let rejectAction: (WorkOffer, String) -> Void
     let skipAction: (WorkOffer) -> Void
 
@@ -834,10 +834,11 @@ private struct TechnicianOfferSwipeReviewView: View {
 }
 
 private struct TechnicianOfferSwipeDeck: View {
+    @State private var reviewingOffer: WorkOffer?
     let offers: [WorkOffer]
     let companyUser: CompanyUser
     let isSaving: Bool
-    let acceptAction: (WorkOffer) -> Void
+    let acceptAction: (WorkOffer, [String]) async -> Bool
     let rejectAction: (WorkOffer, String) -> Void
     let skipAction: (WorkOffer) -> Void
 
@@ -855,7 +856,8 @@ private struct TechnicianOfferSwipeDeck: View {
         return offers[activeIndex]
     }
 
-    var body: some View {
+    var body: some View { Group {
+
         VStack(spacing: 14) {
             deckBody
 
@@ -904,6 +906,14 @@ private struct TechnicianOfferSwipeDeck: View {
             }
         } message: {
             Text("Add an optional reason for rejecting this offer.")
+        }
+
+        }.sheet(item: $reviewingOffer) { offer in
+            TechnicianWorkOfferDetailView(offer: offer, companyUser: companyUser, canReject: false, canAccept: true, acceptAction: { stops in
+                let accepted = await acceptAction(offer, stops)
+                if accepted { advance() }
+                return accepted
+            }, rejectAction: { _ in })
         }
     }
 
@@ -986,8 +996,7 @@ private struct TechnicianOfferSwipeDeck: View {
     }
 
     private func acceptAndAdvance(_ offer: WorkOffer) {
-        acceptAction(offer)
-        advance()
+        reviewingOffer = offer
     }
 
     private func advance() {
@@ -1079,7 +1088,7 @@ private struct TechnicianOfferSwipeCard: View {
         ], spacing: 10) {
             TechnicianOfferFactPill(
                 title: "Pay",
-                value: TechnicianWorkMoneyFormatter.money(offer.technicianDisplayPayCents),
+                value: offer.paySource == .technicianRate && offer.estimatedPayTotalCents == nil ? "Your Rate" : TechnicianWorkMoneyFormatter.money(offer.technicianDisplayPayCents),
                 systemImage: "dollarsign.circle"
             )
             TechnicianOfferFactPill(
@@ -1257,9 +1266,20 @@ struct TechnicianWorkOfferDetailView: View {
     let canReject: Bool
     let canAccept: Bool
 
-    let acceptAction: () -> Void
+    let acceptAction: ([String]) async -> Bool
     let rejectAction: (String) -> Void
 
+    @Environment(\.dismiss) private var dismiss
+    @State private var quoteScope: WorkOfferScope?
+    @State private var quotedBase: Int?
+    @State private var quotedBonus = 0
+    @State private var quotedLines: [WorkOfferPayEstimateLine] = []
+    @State private var hourlySource = ""
+    @State private var quotedTotal: Int?
+    @State private var quoteNeedsReview = false
+    @State private var quoteError = ""
+    @State private var isAccepting = false
+    @State private var selectedStopIds = Set<String>()
     @State private var showRejectDialog: Bool = false
     @State private var rejectionReason: String = ""
 
@@ -1273,6 +1293,7 @@ struct TechnicianWorkOfferDetailView: View {
             notesSection
             actionSection
         }
+        .task { await loadQuote() }
         .navigationTitle("Work Offer")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Reject Work", isPresented: $showRejectDialog) {
@@ -1288,6 +1309,8 @@ struct TechnicianWorkOfferDetailView: View {
         }
     }
 
+    private var personalClaimStatus: String { offer.claims?.first(where: { $0.workerId == companyUser.userId })?.status ?? offer.status.title }
+
     private var statusSection: some View {
         Section("Status") {
             HStack {
@@ -1295,7 +1318,7 @@ struct TechnicianWorkOfferDetailView: View {
 
                 Spacer()
 
-                Text(offer.status.title)
+                Text(personalClaimStatus)
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
@@ -1325,21 +1348,93 @@ struct TechnicianWorkOfferDetailView: View {
 
     private var scopeSection: some View {
         Section("Scope") {
-            TechnicianWorkDetailRow(title: "Tasks", value: "\(offer.jobTaskIds.count)")
+            Text(offer.workPurpose == "diagnostic" ? "Diagnostic / estimate visit" : "Perform planned work").font(.headline)
             TechnicianWorkDetailRow(title: "Estimated Time", value: "\(offer.estimatedMinutes) min")
+            if let scope = quoteScope ?? offer.scopeSnapshot {
+                scopeRows("Services", items: scope.services)
+                scopeRows("Tasks", items: scope.tasks)
+                scopeRows("Products", items: scope.products)
+                ForEach(scope.stops) { stop in
+                    if offer.routeSplitAllowed == true && canAccept {
+                        Toggle(stop.name, isOn: Binding(get: { selectedStopIds.contains(stop.id) }, set: { value in
+                            if value { selectedStopIds.insert(stop.id) } else { selectedStopIds.remove(stop.id) }
+                            Task { await loadQuote(keepSelection: true) }
+                        }))
+                    } else { Text(stop.name) }
+                }
+            } else { Text("Loading detailed scope…").foregroundStyle(.secondary) }
         }
+    }
+    @ViewBuilder private func scopeRows(_ title: String, items: [WorkOfferScopeItem]) -> some View {
+        if !items.isEmpty { Text(title).font(.subheadline.bold()) }
+        ForEach(items) { item in
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name)
+                if let description = item.description, !description.isEmpty { Text(description).font(.caption) }
+                if let quantity = item.quantity { Text("Quantity: \(quantity.formatted())").font(.caption) }
+                if let equipment = item.equipmentName, !equipment.isEmpty { Text(equipment).font(.caption) }
+                if let status = item.status { Text(status).font(.caption).foregroundStyle(.secondary) }
+            }
+        }
+    }
+    @MainActor private func loadQuote(keepSelection: Bool = false) async {
+        guard canAccept else {
+            let terms = offer.claims?.first { $0.workerId == companyUser.userId }?.agreement ?? offer.acceptedTerms
+            quotedBase = terms?.baseCents; quotedTotal = terms?.totalCents
+            if let result = try? await FunctionsManager.shared.manageWork(companyId:offer.companyId,offerId:offer.id,action:"details"), let scope = result["scope"] as? [String:Any], let data = try? JSONSerialization.data(withJSONObject:scope) {
+                quoteScope = try? JSONDecoder().decode(WorkOfferScope.self,from:data)
+                if let pay = result["pay"] as? [String:Any] {
+                    quotedBase = (pay["baseCents"] as? NSNumber)?.intValue; quotedTotal = (pay["totalCents"] as? NSNumber)?.intValue
+                    quotedBonus = (pay["incentiveCents"] as? NSNumber)?.intValue ?? 0; hourlySource = pay["hourlyPaySource"] as? String ?? ""
+                    if let lines = pay["lines"] as? [[String:Any]],let encoded=try? JSONSerialization.data(withJSONObject:lines){quotedLines=(try? JSONDecoder().decode([WorkOfferPayEstimateLine].self,from:encoded)) ?? []}
+                }
+                if result["scopeChanged"] as? Bool == true { quoteError = "The job plan has changed. Confirm any additional work with management." }
+            }
+            return
+        }
+        do {
+            let extra: [String: Any] = keepSelection ? ["stopIds":Array(selectedStopIds)] : [:]
+            let result = try await FunctionsManager.shared.manageWork(companyId: offer.companyId, offerId: offer.id, action: "preview", extra: extra)
+            quotedBase = (result["baseCents"] as? NSNumber)?.intValue
+            quotedBonus = (result["incentiveCents"] as? NSNumber)?.intValue ?? 0
+            quotedTotal = (result["totalCents"] as? NSNumber)?.intValue
+            quoteNeedsReview = result["needsReview"] as? Bool ?? false
+            hourlySource = result["hourlyPaySource"] as? String ?? ""
+            if let lines=result["lines"] as? [[String:Any]] { quotedLines=try JSONDecoder().decode([WorkOfferPayEstimateLine].self,from:JSONSerialization.data(withJSONObject:lines)) }
+            if let scope = result["scope"] as? [String: Any] { quoteScope = try JSONDecoder().decode(WorkOfferScope.self, from: JSONSerialization.data(withJSONObject: scope)) }
+            if !keepSelection { selectedStopIds = Set(offer.remainingStopIds ?? quoteScope?.stops.map(\.id) ?? []) }
+            quoteError = ""
+        } catch { quoteError = error.localizedDescription }
+    }
+
+    private func payLineDescription(_ line: WorkOfferPayEstimateLine) -> String {
+        let rate = line.rateType == .percentage ? (Double(line.rateAmountCents) / 100).formatted() + "%" : TechnicianWorkMoneyFormatter.money(line.rateAmountCents)
+        let suffix = line.rateType == .hourly ? "/hr" : ""
+        let quantity = line.quantity.formatted() + " " + line.quantityUnit.rawValue
+        let total = TechnicianWorkMoneyFormatter.money(line.totalAmountCents)
+        return "\(rate)\(suffix) · \(quantity) · \(total)"
     }
 
     private var paySection: some View {
         Section("Pay Snapshot") {
             TechnicianWorkDetailRow(title: "Pay Source", value: offer.paySource.title)
-            TechnicianWorkDetailRow(title: "Estimated Labor", value: TechnicianWorkMoneyFormatter.money(offer.estimatedLaborCents))
 
             if offer.offeredAmountCents > 0 {
                 TechnicianWorkDetailRow(title: "Offered Amount", value: TechnicianWorkMoneyFormatter.money(offer.offeredAmountCents))
             }
 
-            Text("Final payroll is calculated from completed service stop work.")
+            if let quotedTotal { TechnicianWorkDetailRow(title: "Your Pay", value: TechnicianWorkMoneyFormatter.money(quotedTotal)) }
+            if let quotedBase { TechnicianWorkDetailRow(title: "Base", value: TechnicianWorkMoneyFormatter.money(quotedBase)) }
+            if quotedBonus > 0 { TechnicianWorkDetailRow(title: "Incentive", value: TechnicianWorkMoneyFormatter.money(quotedBonus)) }
+            if !hourlySource.isEmpty { TechnicianWorkDetailRow(title: "Hourly Time Source", value: hourlySource) }
+            ForEach(quotedLines) { line in
+                VStack(alignment: .leading,spacing:4) {
+                    Text(line.title).font(.subheadline)
+                    Text(payLineDescription(line)).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if !quoteError.isEmpty { Text(quoteError).foregroundStyle(.red) }
+            Text("Accepted rates are preserved. Fixed pay and incentives are earned once the agreed scope is complete. Hourly totals depend on recorded time.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -1417,10 +1512,15 @@ struct TechnicianWorkOfferDetailView: View {
         Section {
             if canAccept {
                 Button {
-                    acceptAction()
+                    Task {
+                        isAccepting = true
+                        let accepted = await acceptAction(Array(selectedStopIds))
+                        isAccepting = false
+                        if accepted { dismiss() } else { quoteError = "Could not accept this work. Refresh the offer and review any changes." }
+                    }
                 } label: {
-                    Label("Accept Work", systemImage: "checkmark.circle")
-                }
+                    if isAccepting { ProgressView("Accepting…") } else { Label("Accept Work", systemImage: "checkmark.circle") }
+                }.disabled(isAccepting || quoteNeedsReview || quotedTotal == nil || !quoteError.isEmpty || (!(quoteScope?.stops.isEmpty ?? true) && selectedStopIds.isEmpty))
             }
 
             if canReject {
@@ -1448,6 +1548,8 @@ enum TechnicianWorkOfferRowStyle {
 }
 
 struct TechnicianWorkOfferRow: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    private var ownClaim: WorkOfferClaim? { offer.claims?.first { $0.workerId == masterDataManager.user?.id } }
     var offer: WorkOffer
     var rowStyle: TechnicianWorkOfferRowStyle
 
@@ -1471,7 +1573,7 @@ struct TechnicianWorkOfferRow: View {
 
                 Spacer()
 
-                Text(offer.status.title)
+                Text(ownClaim?.status ?? offer.status.title)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
@@ -1483,7 +1585,9 @@ struct TechnicianWorkOfferRow: View {
                 Label("\(offer.jobTaskIds.count) task(s)", systemImage: "checklist")
                 Label("\(offer.estimatedMinutes) min", systemImage: "clock")
 
-                if offer.offeredAmountCents > 0 {
+                if let total = ownClaim?.agreement.totalCents {
+                    Label(TechnicianWorkMoneyFormatter.money(total), systemImage: "dollarsign.circle")
+                } else if offer.offeredAmountCents > 0 {
                     Label(TechnicianWorkMoneyFormatter.money(offer.offeredAmountCents), systemImage: "dollarsign.circle")
                 }
             }

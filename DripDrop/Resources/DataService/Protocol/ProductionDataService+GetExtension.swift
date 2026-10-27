@@ -1343,19 +1343,8 @@ extension ProductionDataService {
         print("Invoice Count: " + String(updatedWorkOrderCount))
         return updatedWorkOrderCount
     }
-    func getWorkOrderCount(companyId:String) async throws-> Int{
-        
-        var workOrderCount = 0
-        let doc = try await SettingsCollection(companyId: companyId).document("workOrders").getDocument(as: Increment.self)
-        workOrderCount = doc.increment
-        let updatedWorkOrderCount = workOrderCount + 1
-        try await SettingsCollection(companyId: companyId).document("workOrders")
-            .updateData([
-                "increment": updatedWorkOrderCount
-            ])
-        print("Work Order Count " + String(updatedWorkOrderCount))
-        return updatedWorkOrderCount
-        
+    func getWorkOrderCount(companyId:String) async throws -> Int {
+        try await getNextCompanyIncrement(companyId: companyId, category: "workOrders")
     }
     func getRepairRequestCount(companyId:String) async throws-> Int{
         

@@ -66,92 +66,14 @@ final class ServiceStopPayrollCompletionCoordinator {
             )
         }
 
-        // Work was reopened, skipped, or otherwise no longer finished.
-        let voidReason: PayLineItemVoidReason = {
-            if newStop.operationStatus == .skipped {
-                return .serviceStopSkipped
-            } else {
-                return .serviceStopReopened
-            }
-        }()
-
-        let result = try await voidUnapprovedPayLineItemsForServiceStop(
-            serviceStop: newStop,
-            changedByUserId: changedByUserId,
-            voidReason: voidReason
-        )
-
-        return result
-    }
-
-    private func voidUnapprovedPayLineItemsForServiceStop(
-        serviceStop: ServiceStop,
-        changedByUserId: String,
-        voidReason: PayLineItemVoidReason
-    ) async throws -> ServiceStopPayrollStatusChangeResult {
-
-        let existingLineItems = try await dataService.fetchTechnicianPayLineItems(
-            companyId: serviceStop.companyId,
-            serviceStopId: serviceStop.id
-        )
-
-        var voidedItems: [TechnicianPayLineItem] = []
-        var lockedItems: [TechnicianPayLineItem] = []
-
-        for lineItem in existingLineItems {
-            switch lineItem.calculationStatus {
-            case .pending, .calculated, .needsReview, .adjusted:
-                var updated = lineItem
-                updated.calculationStatus = .voided
-                updated.voidedAt = Date()
-                updated.voidedByUserId = changedByUserId
-                updated.voidReason = voidReason
-                updated.adminReviewNotes = appendAdminNote(
-                    existingNote: updated.adminReviewNotes,
-                    newNote: "Automatically voided because service stop changed from Finished to \(serviceStop.operationStatus.rawValue)."
-                )
-
-                try await dataService.updateTechnicianPayLineItem(updated)
-                voidedItems.append(updated)
-
-            case .approved, .paid:
-                // Do not silently change approved or paid payroll.
-                // These should be reviewed by an admin.
-                lockedItems.append(lineItem)
-
-            case .voided:
-                break
-            }
-        }
-
+        // Reopening can leave completed tasks payable. Let the server reconcile
+        // individual work components and preserve approved/paid/statement lines.
+        try await dataService.refreshServiceStopPayroll(companyId: newStop.companyId, serviceStopId: newStop.id)
+        let lines = try await dataService.fetchTechnicianPayLineItems(companyId: newStop.companyId, serviceStopId: newStop.id)
         return ServiceStopPayrollStatusChangeResult(
             generatedLineItems: [],
-            voidedLineItems: voidedItems,
-            lockedLineItems: lockedItems
+            voidedLineItems: lines.filter { $0.calculationStatus == .voided },
+            lockedLineItems: lines.filter { $0.calculationStatus == .approved || $0.calculationStatus == .paid || $0.calculationStatus == .adjusted || $0.payStatementId != nil || $0.exportBatchId != nil }
         )
-    }
-
-    private func appendAdminNote(
-        existingNote: String?,
-        newNote: String
-    ) -> String {
-        let timestamp = PayrollCoordinatorDateFormatter.shortDateTime(Date())
-        let formattedNewNote = "[\(timestamp)] \(newNote)"
-
-        guard let existingNote,
-              !existingNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return formattedNewNote
-        }
-
-        return existingNote + "\n" + formattedNewNote
-    }
-}
-
-enum PayrollCoordinatorDateFormatter {
-    static func shortDateTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
     }
 }

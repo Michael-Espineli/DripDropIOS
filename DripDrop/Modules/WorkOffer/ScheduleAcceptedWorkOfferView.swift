@@ -111,14 +111,8 @@ struct ScheduleAcceptedWorkOfferView: View {
 
     private var serviceStopTypeSection: some View {
         Section {
-            CompanyServiceStopTypePickerView(
-                companyId: companyId,
-                dataService: dataService,
-                selectedType: $selectedCompanyServiceStopType,
-                useCase: serviceStopTypeUseCase,
-                title: "Pay Type",
-                subtitle: "Payroll uses this to determine the base pay type for this scheduled stop."
-            )
+            Text(offer.serviceStopTypeName ?? (offer.workPurpose == "diagnostic" ? "Job Estimate" : "Job Visit"))
+            Text("The accepted offer's pay type and rate are preserved.").font(.caption).foregroundStyle(.secondary)
         } header: {
             Text("Pay Type")
         }

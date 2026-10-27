@@ -56,7 +56,7 @@ struct RouteDayView: View {
                 )
                 .padding(.vertical, 4)
                 
-                ForEach(VM.companyUsers){ tech in
+                ForEach(VM.visibleTechnicians(for: day)){ tech in
                     RouteTechView2(tech: tech, day: day)
                 }
                 .padding(.leading, 16)
@@ -64,4 +64,3 @@ struct RouteDayView: View {
         }
     }
 }
-

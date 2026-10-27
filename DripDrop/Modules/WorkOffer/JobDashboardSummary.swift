@@ -30,6 +30,14 @@ struct JobDashboardSummary: Hashable {
     var acceptedOffersReadyToScheduleCount: Int
 
     var payrollNeedsReviewCount: Int
+    var remainingTaskCount: Int = 0
+    var remainingProductUnits: Double = 0
+    var remainingServiceCount: Int = 0
+    var unassignedTaskCount: Int = 0
+    var unscheduledTaskCount: Int = 0
+    var offeredTaskCount: Int = 0
+    var scheduledTaskCount: Int = 0
+    var blockedTaskCount: Int = 0
     
     var plannedLaborCents: Int {
         plannedTaskLaborCents + plannedServiceStopLaborCents
@@ -44,11 +52,7 @@ struct JobDashboardSummary: Hashable {
     }
 
     var plannedRevenueCents: Int {
-        if jobRateCents > 0 {
-            return jobRateCents
-        }
-
-        return plannedLaborCents + plannedMaterialPriceCents
+        jobRateCents
     }
 
     var plannedProfitCents: Int {

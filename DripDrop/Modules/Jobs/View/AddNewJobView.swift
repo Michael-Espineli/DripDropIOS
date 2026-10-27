@@ -26,6 +26,7 @@ final class AddNewJobViewModel:ObservableObject{
     @Published var isTechnicianCreateFlow: Bool = false
     @Published var canScheduleServiceStopsForOthers: Bool = true
     @Published var plannedServiceStops: [JobPlannedServiceStop] = []
+    @Published var laborLineItems: [JobLaborLineItem] = []
 
     @Published var isLoadingTemplate: Bool = false
     @Published var templateApplied: Bool = false
@@ -58,7 +59,7 @@ final class AddNewJobViewModel:ObservableObject{
     @Published var issuePriority: JobIssuePriorityLevel? = nil
     
 
-    @Published var jobId:String = ""
+    @Published var jobId:String = "comp_wo_" + UUID().uuidString
     @Published var jobInternalId:String = ""
 
     @Published var isEdit: Bool = false
@@ -265,9 +266,7 @@ final class AddNewJobViewModel:ObservableObject{
         defaultAdminId: String? = nil,
         currentUserId: String? = nil
     ) async throws {
-        let workOrderCount = try await dataService.getWorkOrderCount(companyId: companyId)
-        self.jobId = "comp_wo_" + UUID().uuidString
-        self.jobInternalId = "J" + String(workOrderCount)
+        self.jobInternalId = "Assigned when saved"
         self.techList = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
         let normalizedDefaultAdminId = defaultAdminId?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -438,54 +437,24 @@ final class AddNewJobViewModel:ObservableObject{
         if let issuePriority {
             job.setIssuePriority(issuePriority)
         }
-        try await dataService.uploadWorkOrder(companyId: companyId, workOrder: job)
-        //Planned Service Stops
-        for plannedStop in plannedServiceStops {
-            try await dataService.saveJobPlannedServiceStop(plannedStop)
+        job.sourceTemplateId = startingTemplate?.id
+        job.sourceTemplateName = startingTemplate?.name
+        let materials = shoppingItemList.map { original -> ShoppingListItem in
+            var item = original
+            item.jobId = jobId
+            item.customerId = customer.id
+            item.customerName = fullCustomerName
+            item.serviceLocationId = serviceLocation.id
+            item.prepKeys = ShoppingPrepKeyBuilder.keysForJobMaterial(jobId: jobId, customerId: customer.id, serviceLocationId: serviceLocation.id)
+            item.shoppingListActive = job.activatesShoppingListMaterials
+            item.needsAction = item.shoppingListActive && item.status.needsShoppingAction
+            item.actionDate = item.shoppingListActive ? (item.actionDate ?? Date()) : nil
+            return item
         }
-        //Add Tasks
-        for task in jobTaskList {
-            try await dataService.uploadJobTask(companyId:companyId,jobId:jobId,task:task)
-        }
-        //Add ShoppingList Items
-        for item in shoppingItemList {
-            var updatedItem = item
-            updatedItem.jobId = jobId
-            updatedItem.customerId = customer.id
-            updatedItem.customerName = fullCustomerName
-            updatedItem.prepKeys = ShoppingPrepKeyBuilder.keysForJobMaterial(
-                jobId: jobId,
-                customerId: customer.id,
-                serviceLocationId: serviceLocation.id
-            )
-            updatedItem.shoppingListActive = job.activatesShoppingListMaterials
-            updatedItem.needsAction = updatedItem.shoppingListActive && updatedItem.status.needsShoppingAction
-            updatedItem.actionDate = updatedItem.shoppingListActive ? (updatedItem.actionDate ?? Date()) : nil
+        let scheduledTasks = Dictionary(uniqueKeysWithValues: serviceStopTasks.map { ($0.key.id, $0.value) })
+        let saved = try await dataService.commitNewJob(companyId: companyId, job: job, scope: NewJobScope(tasks: jobTaskList, plannedStops: plannedServiceStops, shoppingItems: materials, laborLineItems: laborLineItems, scheduledStops: serviceStops, scheduledTasks: scheduledTasks))
+        self.jobInternalId = saved.internalId
 
-            try await dataService.addNewShoppingListItem(
-                companyId: companyId,
-                shoppingListItem: updatedItem
-            )
-        }
-        //Add Service Stops
-        for stop in serviceStops {
-            try await dataService.uploadServiceStop(companyId: companyId, serviceStop: stop)
-            let tasks: [ServiceStopTask] = serviceStopTasks[stop] ?? []
-            for task in tasks {
-                try await dataService.uploadServiceStopTask(companyId: companyId, serviceStopId: stop.id, task: task)
-                
-                //Update Receiver Job Task
-                try dataService.updateJobTaskWorkerId(companyId: companyId, jobId: job.id, taskId: task.id, workerId: stop.techId)
-                try dataService.updateJobTaskWorkerName(companyId: companyId, jobId: job.id, taskId: task.id, workerName: stop.tech)
-                try dataService.updateJobTaskWorkerType(companyId: companyId, jobId: job.id, taskId: task.id, workerType: .employee)
-                try dataService.updateJobTaskServiceStopId(companyId: companyId, jobId: job.id, taskId: task.id, serviceStopId: IdInfo(id: stop.id, internalId: stop.internalId))
-                try dataService.updateJobTaskStatus(companyId: companyId, jobId: job.id, taskId: task.id, status: .scheduled)
-            }
-        }
-        //Add Labor Contracts
-        
-        
-        
         self.alertMessage = "Successfully Uploaded"
         self.showAlert = true
     }
@@ -561,10 +530,12 @@ final class AddNewJobViewModel:ObservableObject{
                 workerName: "",
                 laborContractId: "",
                 serviceStopId: IdInfo(id: "", internalId: ""),
-                equipmentId: templateTask.equipmentId ?? "",
+                equipmentId: "",
                 serviceLocationId: "",
-                bodyOfWaterId: templateTask.bodyOfWaterId ?? "",
-                dataBaseItemId: templateTask.dataBaseItemId ?? ""
+                bodyOfWaterId: "",
+                dataBaseItemId: templateTask.dataBaseItemId ?? "",
+                billingLaborPriceCents: templateTask.billingLaborPriceCents,
+                taxable: templateTask.taxable
             )
         }
 
@@ -629,6 +600,13 @@ final class AddNewJobViewModel:ObservableObject{
             )
         }
 
+        let stopIdMap = Dictionary(uniqueKeysWithValues: zip(templatePlannedStops.map(\.id), plannedServiceStops.map(\.id)))
+        let templateLines = try await dataService.fetchJobTemplateLaborLineItems(companyId: companyId, templateId: startingTemplate.id)
+        laborLineItems = templateLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: jobId) }
+        for index in shoppingItemList.indices {
+            shoppingItemList[index].linkedTaskId = templateShoppingItems[index].linkedTaskId.flatMap { taskIdMap[$0] }
+            shoppingItemList[index].taxable = templateShoppingItems[index].taxable
+        }
         templateApplied = true
     }
 }

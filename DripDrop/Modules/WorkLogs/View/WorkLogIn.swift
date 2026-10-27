@@ -6,251 +6,58 @@
     //
 
 import SwiftUI
-import SwiftUI
 import MapKit
 
 @MainActor
-final class WorkLogInViewModel:ObservableObject{
-    private var dataService:any ProductionDataServiceProtocol
-    init(dataService:any ProductionDataServiceProtocol){
-        self.dataService = dataService
+final class WorkLogInViewModel: ObservableObject {
+    private let dataService: any ProductionDataServiceProtocol
+    init(dataService: any ProductionDataServiceProtocol) { self.dataService = dataService }
+    @Published var isLoading = true
+    @Published var workLogSheet: [WorkLog] = []
+    @Published var currentLog: WorkLog?
+    @Published var currentShiftId: String?
+    @Published var duration = 0
+    @Published var totalShiftDuration = 0
+    @Published var showDetails = false
+    @Published var errorMessage = ""
+    @Published var availableOffers: [WorkOffer] = []
+    @Published var selectedOfferId = ""
+    func onLoad(company: Company, user: DBUser) { Task { await load(company: company, user: user) } }
+    private func load(company: Company, user: DBUser) async {
+        do {
+            let state = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianClock", payload: ["companyId":company.id,"action":"status"])
+            if let shiftId = state["shiftId"] as? String, !shiftId.isEmpty {
+                currentShiftId = shiftId
+                workLogSheet = try await dataService.getWorkLogByShift(companyId: company.id, shiftId: shiftId, userId: user.id)
+                currentLog = workLogSheet.first { $0.current }
+            } else { currentShiftId = nil; currentLog = nil; workLogSheet = [] }
+            availableOffers = try await dataService.fetchAcceptedWorkOffersForUser(companyId:company.id,userId:user.id).filter { offer in offer.id == currentLog?.workOfferId || (offer.claims ?? []).contains { $0.workerId == user.id && ["Accepted", "Scheduled", "In Progress"].contains($0.status) } }
+            selectedOfferId = currentLog?.workOfferId ?? selectedOfferId
+            tick()
+        } catch { errorMessage = error.localizedDescription }
+        isLoading = false
     }
-    @Published var activeCompanyWorkLogs : [WorkLog] = []    
-    @Published var activeCompanyShift : [WorkShift] = []
-
-    @Published var isLoading : Bool = true
-    //Current Shift
-    @Published var workLogSheet : [WorkLog] = []
-    @Published var currentLog : WorkLog? = nil
-    @Published var currentShiftId : String? = nil
-    @Published var duration : Int = 0
-    @Published var totalShiftDuration : Int = 0
-    
-    @Published var showDetails : Bool = false
-    
-    //Previous Shift
-    //Mock Data
-    @Published var previousShift : WorkShift = WorkShift(
-        date: Date(),
-        techId: UUID().uuidString,
-        techName: "John Doe",
-        isCurrent: false,
-        estimatedTime: 100,
-        estimatedMiles: 15
-    )
-    //Next Shift
-    //Mock Data
-    @Published var nextShift : WorkShift = WorkShift(
-        date: Date(),
-        techId: UUID().uuidString,
-        techName: "John Doe",
-        isCurrent: false,
-        estimatedTime: 1000,
-        estimatedMiles: 30
-    )
-    func onLoad(company:Company,user:DBUser){
-        Task{
-            do {
-                self.isLoading = true
-                //Get Active Shift
-                var currentShifts = try await dataService.getCurrentShift(companyId:company.id, userId:user.id)
-                //Get active Work Log
-//                var logs = try await dataService.getActiveWorkLogsByUser(companyId: company.id, userId: user.id)
-                
-                currentShifts = currentShifts.sorted(by: {$0.date > $1.date})
-                if let firstLog = currentShifts.first {
-                    print("Found Shift")
-                    print(firstLog)
-                    self.activeCompanyShift.append(firstLog)
-                } else {
-                    print("No Shift Found")
-                }
-                
-                
-                if let firstShift = self.activeCompanyShift.first {
-                    self.currentShiftId = firstShift.id
-                    print(firstShift.id)
-                    var workLogSheets = try await dataService.getWorkLogByShift(companyId: company.id, shiftId: firstShift.id, userId: user.id)
-                    workLogSheets = workLogSheets.sorted(by: {$0.startTime > $1.startTime})
-                    print("Go work Logs \(workLogSheets.count)")
-                    self.workLogSheet = workLogSheets
-                    if let firstLog = workLogSheets.first(where: {$0.current == true}) {
-                        
-                        self.currentLog = firstLog
-                        self.duration = timeBetweenAsSeconds(start: firstLog.startTime, end: Date())
-                        self.totalShiftDuration = duration
-                        
-                        for sheet in workLogSheet {
-                            if let end = sheet.endTime {
-                                if sheet.type != .onBreak {
-                                    self.totalShiftDuration = totalShiftDuration + timeBetweenAsSeconds(start: sheet.startTime, end: end)
-                                }
-                            }
-                        }
-                    } else {
-                        print("No First Log")
-                    }
-                } else {
-                    print("No First Shift")
-                }
-                
-                //Get Previous Shift
-                
-                self.isLoading = false
-                
-            } catch {
-                print(error)
-            }
+    func tick() {
+        duration = currentLog.map { max(0, Int(Date().timeIntervalSince($0.startTime))) } ?? 0
+        totalShiftDuration = workLogSheet.filter { $0.type == .working }.reduce(0) { total, log in
+            total + max(0, Int((log.endTime ?? Date()).timeIntervalSince(log.startTime)))
         }
     }
-    
-    func updateCurrentShift(company:Company,user:DBUser,newType:WorkLogType?) {
-        Task{
+    private func transition(_ action: String, company: Company, user: DBUser) {
+        guard !isLoading else { return }
+        isLoading = true; errorMessage = ""
+        Task {
             do {
-                
-                self.currentLog?.endTime = Date()
-                self.currentLog?.endLatitude = 0
-                self.currentLog?.endLongitude = 0
-                self.currentLog?.current = false
-                
-                
-                if let log = self.currentLog {
-                        //Update workLog
-                    try await dataService.updateWorkLogEndTime(companyId: company.id, workLogId: log.id, endTime: Date())
-                    try await dataService.updateWorkLogEndLatAndLong(companyId: company.id, workLogId: log.id, lat: 0, long: 0)
-                    try await dataService.updateWorkLogActive(companyId: company.id, workLogId: log.id, current: log.current)
-                    self.workLogSheet.append(log)
-                    if let newType {
-
-                    }
-                }
-                if let newType , let currentShiftId {
-                    
-                    let name = user.firstName + " " + user.lastName
-                    self.duration = 0
-                    
-                    let workLog = WorkLog(
-                        id: UUID().uuidString,
-                        shiftId: currentShiftId,
-                        startTime: Date(),
-                        startLatitude: 0,
-                        startLongitude: 0,
-                        type: newType,
-                        companyId: company.id,
-                        companyName: company.name,
-                        userId: user.id,
-                        userName: name,
-                        current: true
-                    )
-                        //Create New work log
-                    
-                    try await dataService.uploadWorkLog(companyId: company.id, workLog: workLog)
-                    self.currentLog = workLog
-                } else {
-                    print("Just Log Out")
-                    self.currentLog = nil
-                }
-            } catch {
-                print(error)
-            }
+                _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianClock", payload: ["companyId": company.id, "action": action, "requestId": UUID().uuidString, "offerId": selectedOfferId])
+                await load(company: company, user: user)
+            } catch { errorMessage = error.localizedDescription; isLoading = false }
         }
     }
-    func clockOut(company:Company,user:DBUser,newType:WorkLogType?) {
-        Task{
-            do {
-                
-                self.currentLog?.endTime = Date()
-                self.currentLog?.endLatitude = 0
-                self.currentLog?.endLongitude = 0
-                self.currentLog?.current = false
-                
-                
-                if let log = self.currentLog {
-                        //Update workLog
-                    try await dataService.updateWorkLogEndTime(companyId: company.id, workLogId: log.id, endTime: Date())
-                    try await dataService.updateWorkLogEndLatAndLong(companyId: company.id, workLogId: log.id, lat: 0, long: 0)
-                    try await dataService.updateWorkLogActive(companyId: company.id, workLogId: log.id, current: log.current)
-                    self.workLogSheet.append(log)
-                    if let newType, let currentShiftId {
-                        try await dataService.updateWorkShiftActive(companyId: company.id, workShiftId: currentShiftId, current: log.current)
-                    }
-                }
-                if let newType , let currentShiftId {
-                    
-                    let name = user.firstName + " " + user.lastName
-                    self.duration = 0
-                    
-                    let workLog = WorkLog(
-                        id: UUID().uuidString,
-                        shiftId: currentShiftId,
-                        startTime: Date(),
-                        startLatitude: 0,
-                        startLongitude: 0,
-                        type: newType,
-                        companyId: company.id,
-                        companyName: company.name,
-                        userId: user.id,
-                        userName: name,
-                        current: true
-                    )
-                        //Create New work log
-                    
-                    try await dataService.uploadWorkLog(companyId: company.id, workLog: workLog)
-                    self.currentLog = workLog
-                } else {
-                    print("Just Log Out")
-                    self.currentLog = nil
-                }
-            } catch {
-                print(error)
-            }
-        }
+    func clockIn(company: Company, user: DBUser) { transition("clockIn", company: company, user: user) }
+    func clockOut(company: Company, user: DBUser, newType: WorkLogType?) { transition("clockOut", company: company, user: user) }
+    func updateCurrentShift(company: Company, user: DBUser, newType: WorkLogType?) {
+        transition(newType == .working ? "working" : newType == .onBreak ? "break" : "lunch", company: company, user: user)
     }
-
-    func clockIn(company:Company,user:DBUser) {
-        Task{
-            do {
-                let name = user.firstName + " " + user.lastName
-                self.duration = 0
-                
-                let shiftId = "comp_ws_" + UUID().uuidString
-                self.currentShiftId = shiftId
-                let shift = WorkShift(
-                    id: shiftId,
-                    date: Date(),
-                    techId: user.id,
-                    techName: name,
-                    isCurrent: true,
-                    estimatedTime: 0,
-                    estimatedMiles: 0
-                )
-                let workLog = WorkLog(
-                    id: UUID().uuidString,
-                    shiftId: shiftId,
-                    startTime: Date(),
-                    startLatitude: 0,
-                    startLongitude: 0,
-                    type: .working,
-                    companyId: company.id,
-                    companyName: company.name,
-                    userId: user.id,
-                    userName: name,
-                    current: true
-                )
-                print("Clock In")
-                print("shift")
-                print(shift)
-                print("workLog")
-                print(workLog)
-                try await dataService.uploadWorkShift(companyId: company.id, workShift: shift)
-                try await dataService.uploadWorkLog(companyId: company.id, workLog: workLog)
-                self.currentLog = workLog
-            } catch {
-                print(error)
-            }
-        }
-    }
-    
 }
 struct WorkLogIn: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
@@ -288,8 +95,7 @@ struct WorkLogIn: View {
         }
         .onReceive(timer) { time in
             if !VM.isLoading {
-                VM.duration += 1
-                VM.totalShiftDuration += 1
+                VM.tick()
             }
         }
     }
@@ -302,6 +108,16 @@ struct WorkLogIn: View {
 extension WorkLogIn {
     var form: some View {
         VStack{
+            if !VM.errorMessage.isEmpty { Text(VM.errorMessage).foregroundStyle(.red) }
+            Picker("Work allocation", selection: $VM.selectedOfferId) {
+                Text("General shift / route work").tag("")
+                ForEach(VM.availableOffers) { offer in Text(offer.title).tag(offer.id) }
+            }
+            if VM.currentLog != nil {
+                Button("Switch Work Allocation") {
+                    if let company = masterDataManager.currentCompany, let user = masterDataManager.user { VM.updateCurrentShift(company:company,user:user,newType:.working) }
+                }.font(.caption)
+            }
             if let currentLog = VM.currentLog {
                 HStack{
                     Text(currentLog.companyName)

@@ -283,10 +283,15 @@ private struct MobileReimaginedMainDashboard: View {
             jobVM.removeListenerForJob()
             stopTodoSnapshotListener()
         }
-        .alert("Request payout", isPresented: $showPayoutRequestAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(payoutRequestAlertMessage)
+        .sheet(isPresented: $showPayoutRequestAlert) {
+            NavigationStack {
+                ScrollView {
+                    if let companyId = masterDataManager.currentCompany?.id {
+                        TechnicianPayRequestSection(companyId: companyId, workTypes: [], initialRequestType: "payout").padding()
+                    }
+                }.navigationTitle("Pay Requests")
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { showPayoutRequestAlert = false } } }
+            }
         }
     }
 
@@ -1080,13 +1085,6 @@ private struct MobileReimaginedMainDashboard: View {
         openTodoSnapshotItems.filter { $0.needsAttention }
     }
 
-    private var payoutRequestAlertMessage: String {
-        if payrollSnapshot.owedCents > 0 {
-            return "Current estimated amount owed is \(MobileDashboardMoneyFormatter.money(payrollSnapshot.owedCents)). Payout request submission still needs the backend workflow connected."
-        }
-
-        return "No unpaid completed work is showing in this payout snapshot right now."
-    }
 
     private var availableWorkAreas: [MobileHomeScreenCategories] {
         guard let role = masterDataManager.role else {

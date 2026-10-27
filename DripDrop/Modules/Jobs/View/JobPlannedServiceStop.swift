@@ -34,6 +34,15 @@ struct JobPlannedServiceStop: Identifiable, Codable, Hashable {
     var createdAt: Date
     var createdByUserId: String
 
+    var payTypeId: String? = nil
+    var payTypeName: String? = nil
+    var payrollMode: String? = nil
+    var manualPayOverrideCents: Int? = nil
+    var manualPayOverrideNotes: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
+    var billingLaborPriceCents: Int? = nil
+
     init(
         id: String = "comp_job_plan_stop_" + UUID().uuidString,
         companyId: String,
@@ -50,8 +59,24 @@ struct JobPlannedServiceStop: Identifiable, Codable, Hashable {
         plannedLaborCostCents: Int? = nil,
         plannedLaborNotes: String? = nil,
         createdAt: Date = Date(),
-        createdByUserId: String
+        createdByUserId: String,
+        payTypeId: String? = nil,
+        payTypeName: String? = nil,
+        payrollMode: String? = nil,
+        manualPayOverrideCents: Int? = nil,
+        manualPayOverrideNotes: String? = nil,
+        payrollStackBehavior: String? = nil,
+        payQuantity: Double? = nil,
+        billingLaborPriceCents: Int? = nil
     ) {
+        self.payTypeId = payTypeId
+        self.payTypeName = payTypeName
+        self.payrollMode = payrollMode
+        self.manualPayOverrideCents = manualPayOverrideCents
+        self.manualPayOverrideNotes = manualPayOverrideNotes
+        self.payrollStackBehavior = payrollStackBehavior
+        self.payQuantity = payQuantity
+        self.billingLaborPriceCents = billingLaborPriceCents
         self.id = id
         self.companyId = companyId
         self.jobId = jobId

@@ -18,6 +18,7 @@ struct DuplicateJobSheet: View {
     let shoppingItems: [ShoppingListItem]
     let dataService: any ProductionDataServiceProtocol
 
+    @State private var creationId = "comp_wo_" + UUID().uuidString
     @State private var newInternalId: String
     @State private var selectedAdmin: CompanyUser
 
@@ -117,7 +118,6 @@ struct DuplicateJobSheet: View {
     }
 
     private var canSave: Bool {
-        !newInternalId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !selectedAdmin.userId.isEmpty &&
         !selectedCustomer.id.isEmpty &&
         !selectedServiceLocation.id.isEmpty
@@ -196,11 +196,11 @@ struct DuplicateJobSheet: View {
                 .font(.headline.weight(.semibold))
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("New Job ID")
+                Text("Job reference (optional)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("New internal ID", text: $newInternalId)
+                TextField("Optional reference", text: $newInternalId)
                     .textInputAutocapitalization(.characters)
                     .modifier(PlainTextFieldModifier())
             }
@@ -356,6 +356,7 @@ struct DuplicateJobSheet: View {
                 jobTasks: jobTasks,
                 shoppingItems: shoppingItems,
                 newInternalId: newInternalId.trimmingCharacters(in: .whitespacesAndNewlines),
+                creationId: creationId,
                 customerId: selectedCustomer.id,
                 customerName: selectedCustomerName,
                 serviceLocationId: selectedServiceLocation.id,

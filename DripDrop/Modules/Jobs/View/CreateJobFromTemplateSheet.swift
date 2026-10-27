@@ -20,6 +20,7 @@ struct CreateJobFromTemplateSheet: View {
     let template: JobTemplate
     let dataService: any ProductionDataServiceProtocol
 
+    @State private var creationId = "comp_wo_" + UUID().uuidString
     @State private var newInternalId: String = ""
 
     @State private var selectedAdmin: CompanyUser = CompanyUser(
@@ -103,7 +104,6 @@ struct CreateJobFromTemplateSheet: View {
     }
 
     private var canSave: Bool {
-        !newInternalId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !selectedAdmin.userId.isEmpty &&
         !selectedCustomer.id.isEmpty &&
         !selectedServiceLocation.id.isEmpty
@@ -185,15 +185,15 @@ struct CreateJobFromTemplateSheet: View {
             )
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("New Job ID")
+                Text("Job reference (optional)")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("Example: J-1048", text: $newInternalId)
+                TextField("Optional reference", text: $newInternalId)
                     .textInputAutocapitalization(.characters)
                     .modifier(PlainTextFieldModifier())
 
-                Text("This becomes the internal job ID shown on the job detail page.")
+                Text("The job number is assigned when saved. This reference is saved with the job.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -371,6 +371,7 @@ struct CreateJobFromTemplateSheet: View {
                 companyId: template.companyId,
                 templateId: template.id,
                 newInternalId: newInternalId.trimmingCharacters(in: .whitespacesAndNewlines),
+                creationId: creationId,
                 customerId: selectedCustomer.id,
                 customerName: selectedCustomerName,
                 serviceLocationId: selectedServiceLocation.id,

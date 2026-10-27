@@ -86,6 +86,24 @@ final class FunctionsManager {
     static let shared = FunctionsManager()
     private init(){}
     
+    func technicianWorkflow(_ name: String, payload: [String: Any]) async throws -> [String: Any] {
+        let result = try await functions.httpsCallable(name).call(payload)
+        guard let data = result.data as? [String: Any] else { throw FireBaseRead.unableToRead }
+        return data
+    }
+
+    func manageWork(companyId: String, offerId: String, action: String, extra: [String: Any] = [:]) async throws -> [String: Any] {
+        var payload = extra
+        payload["companyId"] = companyId; payload["offerId"] = offerId; payload["action"] = action
+        return try await technicianWorkflow("manageTechnicianWork", payload: payload)
+    }
+
+    func refreshServiceStopPayroll(companyId: String, serviceStopId: String) async throws {
+        _ = try await functions.httpsCallable("refreshServiceStopPayroll").call([
+            "companyId": companyId, "serviceStopId": serviceStopId
+        ])
+    }
+
         // MARK: acceptTechInvite
     func acceptTechInvite(inviteId: String, userId: String) async throws {
         guard let currentUser = auth.currentUser else {
@@ -387,7 +405,58 @@ final class FunctionsManager {
 
         return json
     }
-        // MARK: deleteRecurringServiceStop
+
+    // MARK: updateRecurringServiceStopsRouteAssignment
+    @discardableResult
+    func updateRecurringServiceStopsRouteAssignment(
+        companyId: String,
+        recurringServiceStops: [RecurringServiceStop],
+        targetDay: DaysOfWeek,
+        targetTechId: String,
+        targetTechName: String,
+        destinationRouteId: String? = nil,
+        futureServiceStopsStartAt: Date? = nil
+    ) async throws -> [String: Any] {
+        let localFutureStart = futureServiceStopsStartAt ?? Calendar.current.startOfDay(for: Date())
+        var payload: [String: Any] = [
+            "companyId": companyId,
+            "recurringServiceStopIds": recurringServiceStops.map(\.id),
+            "targetDay": targetDay.rawValue,
+            "targetTech": [
+                "userId": targetTechId,
+                "userName": targetTechName
+            ],
+            "futureServiceStopsStartAt": ms(localFutureStart)
+        ]
+
+        if let destinationRouteId,
+           !destinationRouteId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            payload["destinationRouteId"] = destinationRouteId
+        }
+
+        let callable = functions.httpsCallable("updateRecurringServiceStopsRouteAssignment")
+        let result = try await callable.call(payload)
+        guard let json = result.data as? [String: Any] else {
+            print("      [FunctionsManager][updateRecurringServiceStopsRouteAssignment] Error: Unable to read JSON from function response.")
+            throw FireBaseRead.unableToRead
+        }
+
+        let status = json["status"] as? Int
+        let success = json["success"] as? Bool ?? true
+        guard success && (status == nil || status! < 400) else {
+            let message = json["error"] as? String ?? "Recurring service stops could not be assigned."
+            print("      [FunctionsManager][updateRecurringServiceStopsRouteAssignment] Error: \(message)")
+            throw NSError(
+                domain: "UpdateRecurringServiceStopsRouteAssignment",
+                code: status ?? 500,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+
+        return json
+    }
+
+    // MARK: deleteRecurringServiceStop
     func deleteRecurringServiceStop(companyId:String, stopId:String) async throws {
         let payload: [String: Any]  = [
             "companyId":companyId,

@@ -52,9 +52,9 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
         activeRoutes.count
     }
 
-    var inProgressRoutes: Int {
+    var startedRoutes: Int {
         activeRoutes.filter {
-            $0.status == .inProgress || $0.status == .traveling || $0.status == .onBreak
+            $0.status != .didNotStart && $0.status != .finished
         }.count
     }
 
@@ -77,21 +77,31 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
+            try await loadCompanyUsers(companyId: companyId)
+        } catch {
+            print("[CompanyActiveRouteOverviewViewModel][load] Company User Error")
+            print(error)
+            self.companyUsers = []
+        }
+
+        await syncScheduledRoutes(companyId: companyId)
+
+        do {
             let routes = try await dataService.getActiveRoutesForDate(
                 companyId: companyId,
                 date: selectedDate
             )
 
             self.activeRoutes = routes
+            if let selectedRouteId = selectedRoute?.id {
+                self.selectedRoute = routes.first { $0.id == selectedRouteId }
+            }
             self.serviceStopsByRouteId = [:]
             self.logsByRouteId = [:]
             self.locationsByRouteId = [:]
 
-            async let usersTask: Void = loadCompanyUsers(companyId: companyId)
-            async let routeDetailsTask: Void = loadRouteDetails(companyId: companyId, routes: routes)
-
             do {
-                _ = try await (usersTask, routeDetailsTask)
+                try await loadRouteDetails(companyId: companyId, routes: routes)
             } catch {
                 print("[CompanyActiveRouteOverviewViewModel][load] Detail Error")
                 print(error)
@@ -110,6 +120,25 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
         // This intentionally avoids listener behavior for the manager overview.
         let users = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
         self.companyUsers = users.filter { $0.status == .active }
+    }
+
+    private func syncScheduledRoutes(companyId: String) async {
+        for user in companyUsers {
+            let technicianId = user.userId.isEmpty ? user.id : user.userId
+            guard !technicianId.isEmpty else { continue }
+
+            do {
+                _ = try await dataService.syncActiveRouteForServiceStops(
+                    companyId: companyId,
+                    date: selectedDate,
+                    techId: technicianId,
+                    techName: user.userName
+                )
+            } catch {
+                print("[CompanyActiveRouteOverviewViewModel][syncScheduledRoutes] Technician \(technicianId) Error")
+                print(error)
+            }
+        }
     }
 
     private func loadRouteDetails(
@@ -256,6 +285,7 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
             clearMoveState()
 
             await load(companyId: companyId)
+            selectedRoute = activeRoutes.first { $0.id == route.id }
 
             alertMessage = triedToMoveFinished
                 ? "Some stops were not moved because they are already finished."
@@ -483,9 +513,9 @@ extension CompanyActiveRouteOverviewView {
             )
 
             summaryTile(
-                title: "In Progress",
-                value: "\(VM.inProgressRoutes)",
-                systemImage: "figure.walk",
+                title: "Started",
+                value: "\(VM.startedRoutes)",
+                systemImage: "play.circle",
                 tint: .orange
             )
 

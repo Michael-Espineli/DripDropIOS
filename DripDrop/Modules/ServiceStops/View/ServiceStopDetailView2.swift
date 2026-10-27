@@ -346,9 +346,10 @@ struct ServiceStopDetailView2: View {
                 case .decision(let prompt):
                     LinkedJobCompletionDecisionSheet(
                         prompt: prompt,
+                        dataService: dataService,
                         isFinishing: isCompletingLinkedJob,
                         onFinishJob: {
-                            completeLinkedJob(prompt)
+                            linkedJobCompletionFlow = nil
                         },
                         onScheduleAnotherStop: {
                             linkedJobCompletionFlow = .schedule(prompt)
@@ -922,6 +923,8 @@ private struct FieldJobCompletionPrompt: Identifiable {
 
 private struct LinkedJobCompletionDecisionSheet: View {
     let prompt: FieldJobCompletionPrompt
+    let dataService: any ProductionDataServiceProtocol
+    @State private var showCloseout = false
     let isFinishing: Bool
     let onFinishJob: () -> Void
     let onScheduleAnotherStop: () -> Void
@@ -939,6 +942,9 @@ private struct LinkedJobCompletionDecisionSheet: View {
                 .padding(.bottom, 12)
             }
             .background(Color.listColor.ignoresSafeArea())
+            .sheet(isPresented: $showCloseout) {
+                JobCloseoutSheet(companyId: prompt.companyId, job: prompt.job, dataService: dataService, onComplete: onFinishJob)
+            }
             .navigationTitle("Linked Job")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -965,7 +971,7 @@ private struct LinkedJobCompletionDecisionSheet: View {
 
             Text(prompt.canFinishJob
                 ? "All \(prompt.taskCount) linked job task(s) are finished from \(prompt.serviceStopLabel). Choose what happens next."
-                : "\(prompt.unfinishedTaskCount) linked job task(s) still need work. Schedule another stop to carry them forward."
+                : "\(prompt.unfinishedTaskCount) linked job task(s) remain. Review and quick-finish completed work, or schedule another stop."
             )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -1015,13 +1021,13 @@ private struct LinkedJobCompletionDecisionSheet: View {
             .buttonStyle(.plain)
             .disabled(isFinishing)
 
-            if prompt.canFinishJob {
+            Group {
                 Button {
-                    onFinishJob()
+                    showCloseout = true
                 } label: {
                     actionLabel(
                         title: isFinishing ? "Finishing Job..." : "Finish Job",
-                        subtitle: "Close the linked job and keep the service stop finished.",
+                        subtitle: "Review remaining tasks, services, products, and visits before closing the job.",
                         systemImage: "checkmark.seal"
                     )
                 }
@@ -6717,7 +6723,7 @@ extension ServiceStopDetailView2 {
             return task.status == .finished ? nil : task.id
         })
         let prefilledJobTaskIds = unfinishedStopJobTaskIds.intersection(unfinishedJobTaskIds)
-        guard unfinishedJobTaskIds.isEmpty || !prefilledJobTaskIds.isEmpty else { return nil }
+
 
         let jobLabel = [job.internalId, job.type]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

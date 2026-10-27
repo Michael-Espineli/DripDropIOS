@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
+import FirebaseFirestoreSwift
 
 enum TechnicianPayrollInfoFilter: String, CaseIterable, Identifiable {
     case outstanding = "Outstanding"
@@ -20,6 +22,7 @@ enum TechnicianPayrollInfoFilter: String, CaseIterable, Identifiable {
 final class TechnicianPayrollInfoViewModel: ObservableObject {
 
     @Published var lineItems: [TechnicianPayLineItem] = []
+    @Published var yearPaidItems: [TechnicianPayLineItem] = []
     @Published var statements: [TechnicianPayStatement] = []
     @Published var rates: [TechnicianRate] = []
     @Published var workTypes: [CompanyWorkType] = []
@@ -59,7 +62,7 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
 
     var filteredLineItems: [TechnicianPayLineItem] {
         let userItems = lineItems.filter {
-            $0.technicianId == technicianId
+            $0.technicianId == technicianId && $0.completedDate >= startDate && $0.completedDate <= endDate
         }
 
         let filtered: [TechnicianPayLineItem]
@@ -114,7 +117,7 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
         return rates
             .filter {
                 $0.technicianId == technicianId &&
-                $0.status == .active &&
+                [RateStatus.active, .scheduled, .expired].contains($0.status) &&
                 $0.effectiveStartDate <= now &&
                 ($0.effectiveEndDate == nil || $0.effectiveEndDate! >= now)
             }
@@ -132,7 +135,7 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
     var outstandingTotalCents: Int {
         lineItems
             .filter {
-                $0.technicianId == technicianId &&
+                $0.technicianId == technicianId && $0.completedDate >= startDate && $0.completedDate <= endDate &&
                 (
                     $0.calculationStatus == .pending ||
                     $0.calculationStatus == .calculated ||
@@ -146,7 +149,7 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
     var approvedTotalCents: Int {
         lineItems
             .filter {
-                $0.technicianId == technicianId &&
+                $0.technicianId == technicianId && $0.completedDate >= startDate && $0.completedDate <= endDate &&
                 $0.calculationStatus == .approved
             }
             .reduce(0) { $0 + $1.totalAmountCents }
@@ -155,7 +158,7 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
     var paidTotalCents: Int {
         lineItems
             .filter {
-                $0.technicianId == technicianId &&
+                $0.technicianId == technicianId && $0.completedDate >= startDate && $0.completedDate <= endDate &&
                 $0.calculationStatus == .paid
             }
             .reduce(0) { $0 + $1.totalAmountCents }
@@ -166,11 +169,11 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
             from: Calendar.current.dateComponents([.year], from: Date())
         ) ?? Date()
 
-        return lineItems
+        return yearPaidItems
             .filter {
                 $0.technicianId == technicianId &&
                 $0.calculationStatus == .paid &&
-                $0.completedDate >= yearStart
+                ($0.paidAt ?? $0.completedDate) >= yearStart
             }
             .reduce(0) { $0 + $1.totalAmountCents }
     }
@@ -212,6 +215,8 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
                 companyId: companyId
             )
 
+            async let yearPaidTask = dataService.fetchTechnicianPaidLineItems(companyId: companyId, technicianId: technicianId, startDate: ytdStart, endDate: Date())
+            yearPaidItems = try await yearPaidTask
             lineItems = try await lineItemsTask
             statements = try await statementsTask
             rates = try await ratesTask
@@ -273,6 +278,8 @@ struct TechnicianPayrollInfoView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
+                    NavigationLink("Time Clock and Work Logs") { WorkLogIn(dataService: viewModel.dataService) }
+                    TechnicianPayRequestSection(companyId: viewModel.companyId, workTypes: viewModel.workTypes)
                     payrollInfoHeaderCard
                     payrollDateRangeCard
                     payrollSummaryCard
@@ -1107,5 +1114,91 @@ enum TechnicianPayrollDateFormatter {
             ),
             dataService: MockDataService()
         )
+    }
+}
+
+private struct TechnicianPayRequest: Decodable, Identifiable {
+    var id: String
+    var type: String
+    var status: String
+    var amountCents: Int
+    var counterAmountCents: Int?
+    var payTypeName: String?
+    var reason: String
+    var decisionReason: String?
+    var effectiveStartDate: Date?
+}
+struct TechnicianPayRequestSection: View {
+    let companyId: String
+    let workTypes: [CompanyWorkType]
+    var initialRequestType = "rateChange"
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @State private var requests: [TechnicianPayRequest] = []
+    @State private var type = "rateChange"
+    @State private var payTypeId = ""
+    @State private var basis = "serviceStopTask"
+    @State private var amount = ""
+    @State private var reason = ""
+    @State private var payLineItemId = ""
+    @State private var effectiveDate = Date()
+    @State private var isSaving = false
+    @State private var message = ""
+    @State private var showForm = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack { Text("Pay Requests").font(.headline); Spacer(); Button("Refresh") { Task { await load() } }.font(.caption).disabled(isSaving) }
+            Button(showForm ? "Hide Request Form" : "Request a Pay Change, Correction, or Payout") { showForm.toggle() }
+            if showForm {
+                Picker("Request", selection: $type) { Text("Future Rate").tag("rateChange"); Text("Pay Correction").tag("payCorrection"); Text("Payout").tag("payout") }.pickerStyle(.menu)
+                if type == "rateChange" {
+                    Picker("Pay Item", selection: $payTypeId) { Text("General Hourly").tag(""); ForEach(workTypes) { item in Text(item.name).tag(item.id) } }
+                    Picker("Pay Basis", selection: $basis) { Text("Per Task").tag("serviceStopTask"); Text("Per Visit").tag("serviceStop"); Text("Hourly").tag("technicianHourly") }
+                    DatePicker("Effective Date", selection: $effectiveDate, in: Date()..., displayedComponents: .date)
+                }
+                if type == "payCorrection" { TextField("Earned-pay item ID", text: $payLineItemId).textFieldStyle(.roundedBorder) }
+                TextField(type == "payCorrection" ? "Correct total amount" : "Requested amount", text: $amount).keyboardType(.decimalPad).textFieldStyle(.roundedBorder)
+                TextField("Reason", text: $reason, axis: .vertical).textFieldStyle(.roundedBorder)
+                Button(isSaving ? "Submitting…" : "Submit Request") { Task { await submit() } }.disabled(isSaving || reason.trimmingCharacters(in: .whitespaces).isEmpty || Double(amount) == nil)
+            }
+            if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
+            ForEach(requests) { request in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text((request.payTypeName?.isEmpty == false ? request.payTypeName! : request.type) + " · " + request.status).font(.subheadline.bold())
+                    Text(Double(request.status == "Counteroffered" ? request.counterAmountCents ?? request.amountCents : request.amountCents) / 100, format: .currency(code: "USD"))
+                    Text(request.reason).font(.caption)
+                    if let decision = request.decisionReason, !decision.isEmpty { Text(decision).font(.caption) }
+                    if let date = request.effectiveStartDate { Text("Effective " + date.formatted(date: .abbreviated, time: .omitted)).font(.caption) }
+                    if request.status == "Counteroffered" {
+                        HStack { Button("Accept Proposal") { Task { await decide(request, action: "acceptCounter") } }; Button("Decline") { Task { await decide(request, action: "declineCounter") } } }.disabled(isSaving)
+                    }
+                }.padding(10).frame(maxWidth: .infinity, alignment: .leading).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
+            }
+        }.padding(14).background(.background, in: RoundedRectangle(cornerRadius: 14))
+        .task { type = initialRequestType; if initialRequestType == "payout" { showForm = true }; await load() }
+        .onChange(of: payTypeId) { _, value in
+            if value.isEmpty { basis = "technicianHourly" }
+            else if let item = workTypes.first(where: { $0.id == value }) { basis = item.defaultRateType == .hourly ? "technicianHourly" : (item.category == .route || item.category == .estimate ? "serviceStop" : "serviceStopTask") }
+        }
+    }
+    @MainActor private func load() async {
+        guard let uid = masterDataManager.user?.id else { return }
+        do {
+            let snapshot = try await Firestore.firestore().collection("companies").document(companyId).collection("payChangeRequests").whereField("technicianId", isEqualTo: uid).getDocuments()
+            requests = snapshot.documents.compactMap { try? $0.data(as: TechnicianPayRequest.self) }
+        } catch { message = error.localizedDescription }
+    }
+    @MainActor private func submit() async {
+        isSaving = true; defer { isSaving = false }
+        do {
+            let selectedBasis = payTypeId.isEmpty ? "technicianHourly" : basis
+            let rateType = selectedBasis == "technicianHourly" ? "hourly" : workTypes.first(where: { $0.id == payTypeId })?.defaultRateType.rawValue ?? (basis == "serviceStop" ? "flatPerStop" : "flatPerTask")
+            _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianPayRequest", payload: ["companyId":companyId,"action":"create","clientRequestId":UUID().uuidString,"type":type,"payTypeId":payTypeId,"payBasis":selectedBasis,"rateType":rateType,"amountCents":Int(((Double(amount) ?? 0) * 100).rounded()),"effectiveStartMillis":effectiveDate.timeIntervalSince1970 * 1000,"reason":reason,"payLineItemId":payLineItemId])
+            message = "Request submitted."; reason = ""; amount = ""; showForm = false; await load()
+        } catch { message = error.localizedDescription }
+    }
+    @MainActor private func decide(_ request: TechnicianPayRequest, action: String) async {
+        isSaving = true; defer { isSaving = false }
+        do { _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianPayRequest", payload: ["companyId":companyId,"requestId":request.id,"action":action]); await load() }
+        catch { message = error.localizedDescription }
     }
 }

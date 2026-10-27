@@ -7,6 +7,7 @@
 
 import Foundation
 import Firebase
+import FirebaseAuth
 import FirebaseFirestore
 import FirebaseFirestoreSwift
 import SwiftUI
@@ -175,8 +176,10 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
                 let currentIncrement: Int
 
                 if snapshot.exists {
-                    let increment = try snapshot.data(as: Increment.self)
-                    currentIncrement = increment.increment
+                    guard let increment = snapshot.data()?["increment"] as? Int else {
+                        throw NSError(domain: "CompanyCounter", code: 1, userInfo: [NSLocalizedDescriptionKey: "The company counter is invalid."])
+                    }
+                    currentIncrement = increment
                 } else {
                     currentIncrement = 0
                 }
@@ -188,7 +191,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
                     increment: nextIncrement
                 )
 
-                try transaction.setData(from: updated, forDocument: ref, merge: false)
+                try transaction.setData(from: updated, forDocument: ref, merge: true)
 
                 return nextIncrement
             } catch {
@@ -817,222 +820,50 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             try document.data(as: ServiceStop.self)
         }
     }
-    func fetchAcceptedWorkOffersForUser(
-        companyId: String,
-        userId: String
-    ) async throws -> [WorkOffer] {
-        let snapshot = try await workOffersCollection(companyId: companyId)
-            .whereField("acceptedByUserId", isEqualTo: userId)
-            .getDocuments()
-
-        return try snapshot.documents.compactMap { document in
-            try document.data(as: WorkOffer.self)
-        }
-        .filter(\.isWorkOfferRecord)
+    private func visibleWorkOffers(companyId: String, jobId: String = "") async throws -> [WorkOffer] {
+        let result = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianWork", payload: ["companyId":companyId,"action":"list","jobId":jobId])
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .millisecondsSince1970
+        return (result["offers"] as? [[String: Any]] ?? []).compactMap { row in
+            guard let data = try? JSONSerialization.data(withJSONObject: row), let offer = try? decoder.decode(WorkOffer.self, from: data) else { print("[WorkOffers] Unreadable legacy record: " + (row["id"] as? String ?? "unknown")); return nil }
+            return offer
+        }.filter(\.isWorkOfferRecord)
     }
-    func fetchWorkOffers(
-        companyId: String,
-        jobId: String
-    ) async throws -> [WorkOffer] {
-        let snapshot = try await workOffersCollection(companyId: companyId)
-            .whereField("jobId", isEqualTo: jobId)
-            .order(by: "createdAt", descending: true)
-            .getDocuments()
-
-        return try snapshot.documents.compactMap { document in
-            try document.data(as: WorkOffer.self)
-        }
-        .filter(\.isWorkOfferRecord)
+    func fetchAcceptedWorkOffersForUser(companyId: String, userId: String) async throws -> [WorkOffer] {
+        try await visibleWorkOffers(companyId: companyId).filter { $0.acceptedByUserId == userId || ($0.claims ?? []).contains { $0.workerId == userId } }
     }
-
-    func fetchAllWorkOffers(
-        companyId: String
-    ) async throws -> [WorkOffer] {
-        let snapshot = try await workOffersCollection(companyId: companyId)
-            .order(by: "createdAt", descending: true)
-            .getDocuments()
-
-        return try snapshot.documents.compactMap { document in
-            try document.data(as: WorkOffer.self)
-        }
-        .filter(\.isWorkOfferRecord)
+    func fetchWorkOffers(companyId: String, jobId: String) async throws -> [WorkOffer] { try await visibleWorkOffers(companyId: companyId, jobId: jobId) }
+    func fetchAllWorkOffers(companyId: String) async throws -> [WorkOffer] { try await visibleWorkOffers(companyId: companyId) }
+    func fetchWorkOffersForUser(companyId: String, userId: String) async throws -> [WorkOffer] {
+        try await visibleWorkOffers(companyId: companyId).filter { $0.offeredToUserId == userId }
     }
-
-    func fetchWorkOffersForUser(
-        companyId: String,
-        userId: String
-    ) async throws -> [WorkOffer] {
-        let snapshot = try await workOffersCollection(companyId: companyId)
-            .whereField("offeredToUserId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
-            .getDocuments()
-
-        return try snapshot.documents.compactMap { document in
-            try document.data(as: WorkOffer.self)
-        }
-        .filter(\.isWorkOfferRecord)
-    }
-
-    func fetchOpenBoardWorkOffers(
-        companyId: String,
-        workerType: WorkerTypeEnum
-    ) async throws -> [WorkOffer] {
-        let snapshot = try await workOffersCollection(companyId: companyId)
-            .whereField("postedToBoard", isEqualTo: true)
-            .whereField("status", in: [
-                WorkOfferStatus.posted.rawValue,
-                WorkOfferStatus.viewed.rawValue
-            ])
-            .order(by: "createdAt", descending: true)
-            .getDocuments()
-
-        let offers = try snapshot.documents.compactMap { document in
-            try document.data(as: WorkOffer.self)
-        }
-        .filter(\.isWorkOfferRecord)
-
-        return offers.filter { offer in
-            switch offer.boardVisibility {
-            case .employeesOnly:
-                return workerType == .employee
-            case .contractorsOnly:
-                return workerType == .contractor
-            case .employeesAndContractors:
-                return workerType == .employee || workerType == .contractor
-            case .adminsOnly:
-                return false
-            }
+    func fetchOpenBoardWorkOffers(companyId: String, workerType: WorkerTypeEnum) async throws -> [WorkOffer] {
+        try await visibleWorkOffers(companyId: companyId).filter { offer in
+            guard offer.postedToBoard, [.posted, .viewed].contains(offer.status) else { return false }
+            return offer.boardVisibility == .employeesAndContractors || (offer.boardVisibility == .employeesOnly && workerType == .employee) || (offer.boardVisibility == .contractorsOnly && workerType == .contractor)
         }
     }
 
-    func saveWorkOffer(
-        _ workOffer: WorkOffer
-    ) async throws {
-        try workOfferDoc(
-            companyId: workOffer.companyId,
-            workOfferId: workOffer.id
-        )
-        .setData(from: workOffer, merge: true)
-
-        // Optional reference under the job for quick future UI loading.
-        var refData: [String: Any] = [
-            "id": workOffer.id,
-            "jobId": workOffer.jobId,
-            "status": workOffer.status.rawValue,
-            "offerType": workOffer.offerType.rawValue,
-            "title": workOffer.title,
-            "createdAt": workOffer.createdAt
-        ]
-
-        if let proposedStartDate = workOffer.proposedStartDate {
-            refData["proposedStartDate"] = proposedStartDate
-        }
-
-        if let completionDeadline = workOffer.completionDeadlineAt ?? workOffer.proposedEndDate {
-            refData["completionDeadlineAt"] = completionDeadline
-        }
-
-        if let timelineNotes = workOffer.timelineNotes,
-           !timelineNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            refData["timelineNotes"] = timelineNotes
-        }
-
-        try await jobWorkOfferRefDoc(
-            companyId: workOffer.companyId,
-            jobId: workOffer.jobId,
-            workOfferId: workOffer.id
-        )
-        .setData(refData, merge: true)
+    func saveWorkOffer(_ workOffer: WorkOffer) async throws {
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .millisecondsSince1970
+        let encoded = try encoder.encode(workOffer)
+        let offer = try JSONSerialization.jsonObject(with: encoded) as? [String: Any] ?? [:]
+        _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianWork", payload: ["companyId":workOffer.companyId,"action":"save","offer":offer])
     }
 
-    func updateWorkOfferStatus(
-        companyId: String,
-        workOfferId: String,
-        status: WorkOfferStatus
-    ) async throws {
-        var data: [String: Any] = [
-            "status": status.rawValue
-        ]
-
-        switch status {
-        case .sent:
-            data["sentAt"] = Date()
-        case .posted:
-            data["postedAt"] = Date()
-        case .viewed:
-            data["viewedAt"] = Date()
-        case .accepted:
-            data["acceptedAt"] = Date()
-        case .rejected:
-            data["rejectedAt"] = Date()
-        case .cancelled:
-            data["cancelledAt"] = Date()
-        case .completed:
-            data["completedAt"] = Date()
-        case .draft, .expired, .scheduled, .inProgress:
-            break
-        }
-
-        try await workOfferDoc(
-            companyId: companyId,
-            workOfferId: workOfferId
-        )
-        .updateData(data)
+    func updateWorkOfferStatus(companyId: String, workOfferId: String, status: WorkOfferStatus) async throws {
+        _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: workOfferId, action: "status", extra: ["status":status.rawValue])
     }
 
-    func acceptWorkOffer(
-        companyId: String,
-        workOfferId: String,
-        acceptedByUserId: String,
-        acceptedByUserName: String
-    ) async throws {
-        try await workOfferDoc(
-            companyId: companyId,
-            workOfferId: workOfferId
-        )
-        .updateData([
-            "status": WorkOfferStatus.accepted.rawValue,
-            "acceptedAt": Date(),
-            "acceptedByUserId": acceptedByUserId,
-            "acceptedByUserName": acceptedByUserName
-        ])
+    func acceptWorkOffer(companyId: String, workOfferId: String, acceptedByUserId: String, acceptedByUserName: String) async throws {
+        _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: workOfferId, action: "accept", extra: ["claimId": UUID().uuidString])
     }
 
-    func rejectWorkOffer(
-        companyId: String,
-        workOfferId: String,
-        rejectedByUserId: String,
-        rejectedByUserName: String,
-        reason: String
-    ) async throws {
-        try await workOfferDoc(
-            companyId: companyId,
-            workOfferId: workOfferId
-        )
-        .updateData([
-            "status": WorkOfferStatus.rejected.rawValue,
-            "rejectedAt": Date(),
-            "acceptedByUserId": rejectedByUserId,
-            "acceptedByUserName": rejectedByUserName,
-            "rejectionReason": reason
-        ])
+    func rejectWorkOffer(companyId: String, workOfferId: String, rejectedByUserId: String, rejectedByUserName: String, reason: String) async throws {
+        _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: workOfferId, action: "reject", extra: ["reason":reason])
     }
 
-    func cancelWorkOffer(
-        companyId: String,
-        workOfferId: String,
-        reason: String
-    ) async throws {
-        try await workOfferDoc(
-            companyId: companyId,
-            workOfferId: workOfferId
-        )
-        .updateData([
-            "status": WorkOfferStatus.cancelled.rawValue,
-            "cancelledAt": Date(),
-            "adminNotes": reason,
-            "rejectionReason": reason
-        ])
+    func cancelWorkOffer(companyId: String, workOfferId: String, reason: String) async throws {
+        _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: workOfferId, action: "cancel", extra: ["reason":reason])
     }
     func updateWorkOfferScheduledServiceStop(
         companyId: String,
@@ -1040,15 +871,7 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         serviceStopId: String,
         serviceStopInternalId: String
     ) async throws {
-        try await workOfferDoc(
-            companyId: companyId,
-            workOfferId: workOfferId
-        )
-        .updateData([
-            "serviceStopId": serviceStopId,
-            "serviceStopInternalId": serviceStopInternalId,
-            "status": WorkOfferStatus.scheduled.rawValue
-        ])
+        _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: workOfferId, action: "verifyScheduledStop", extra: ["serviceStopId":serviceStopId])
     }
     func appendServiceStopIdToJob(
         companyId: String,
@@ -1242,7 +1065,8 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func fetchTechnicianRates(
         companyId: String
     ) async throws -> [TechnicianRate] {
-        let snapshot = try await technicianRatesCollection(companyId: companyId)
+        let visible = try await payrollVisibleQuery(technicianRatesCollection(companyId: companyId), companyId: companyId)
+        let snapshot = try await visible
             .getDocuments()
 
         return try snapshot.documents
@@ -1254,7 +1078,8 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         companyId: String,
         technicianId: String
     ) async throws -> [TechnicianRate] {
-        let snapshot = try await technicianRatesCollection(companyId: companyId)
+        let visible = try await payrollVisibleQuery(technicianRatesCollection(companyId: companyId), companyId: companyId)
+        let snapshot = try await visible
             .whereField("technicianId", isEqualTo: technicianId)
             .getDocuments()
 
@@ -1263,55 +1088,57 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             .sorted { $0.effectiveStartDate > $1.effectiveStartDate }
     }
 
-    func saveTechnicianRate(
-        _ rate: TechnicianRate
-    ) async throws {
-        try await technicianRateDoc(
-            companyId: rate.companyId,
-            technicianRateId: rate.id
-        )
-        .setData(from: rate, merge: true)
+    func saveTechnicianRate(_ rate: TechnicianRate) async throws {
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .millisecondsSince1970
+        let encoded = try JSONSerialization.jsonObject(with: encoder.encode(rate)) as? [String: Any] ?? [:]
+        _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianRates", payload: ["companyId":rate.companyId,"requestId":UUID().uuidString,"rates":[encoded]])
     }
 
-    func saveTechnicianRateIncrease(
-        expiredOldRate: TechnicianRate,
-        newRate: TechnicianRate
-    ) async throws {
-        let batch = db.batch()
-        let encoder = Firestore.Encoder()
-
-        let oldData = try encoder.encode(expiredOldRate)
-        let newData = try encoder.encode(newRate)
-
-        batch.setData(
-            oldData,
-            forDocument: technicianRateDoc(
-                companyId: expiredOldRate.companyId,
-                technicianRateId: expiredOldRate.id
-            ),
-            merge: true
-        )
-
-        batch.setData(
-            newData,
-            forDocument: technicianRateDoc(
-                companyId: newRate.companyId,
-                technicianRateId: newRate.id
-            ),
-            merge: true
-        )
-
-        try await batch.commit()
+    func saveTechnicianRateIncrease(expiredOldRate: TechnicianRate, newRate: TechnicianRate) async throws {
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .millisecondsSince1970
+        var encoded = try JSONSerialization.jsonObject(with: encoder.encode(newRate)) as? [String: Any] ?? [:]
+        encoded["existingId"] = expiredOldRate.id
+        _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianRates", payload: ["companyId":newRate.companyId,"requestId":UUID().uuidString,"rates":[encoded]])
     }
 
+    private func payrollVisibleQuery(_ collection: CollectionReference, companyId: String) async throws -> Query {
+        guard let uid = Auth.auth().currentUser?.uid else { throw FireBaseRead.unableToRead }
+        let company = try await companyDoc(companyId: companyId).getDocument()
+        let access = try await db.collection("users").document(uid).collection("userAccess").document(companyId).getDocument()
+        let data = access.data() ?? [:]
+        var permissions: [String] = []
+        if let roleId = data["roleId"] as? String, !roleId.isEmpty {
+            let role = try await companyDoc(companyId: companyId).collection("roles").document(roleId).getDocument()
+            permissions = role.data()?["permissionIdList"] as? [String] ?? []
+        }
+        let manager = company.data()?["ownerId"] as? String == uid || ["Owner", "Admin", "Manager"].contains(data["roleName"] as? String ?? "") || permissions.contains("420") || permissions.contains("424")
+        return manager ? collection : collection.whereField("technicianId", isEqualTo: uid)
+    }
+    func fetchTechnicianPaidLineItems(companyId: String, technicianId: String, startDate: Date, endDate: Date) async throws -> [TechnicianPayLineItem] {
+        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+            .whereField("technicianId", isEqualTo: technicianId)
+            .whereField("paidAt", isGreaterThanOrEqualTo: startDate)
+            .whereField("paidAt", isLessThanOrEqualTo: endDate).getDocuments()
+        return try snapshot.documents.map { try $0.data(as: TechnicianPayLineItem.self) }
+    }
+    func fetchJobPayLineItems(companyId: String, jobId: String) async throws -> [TechnicianPayLineItem] {
+        let visible = try await payrollVisibleQuery(technicianPayLineItemsCollection(companyId: companyId), companyId: companyId)
+        let snapshot = try await visible.whereField("jobId", isEqualTo: jobId).getDocuments()
+        return snapshot.documents.compactMap { try? $0.data(as: TechnicianPayLineItem.self) }
+    }
     // MARK: - Technician Pay Line Items
+
+    func refreshServiceStopPayroll(companyId: String, serviceStopId: String) async throws {
+        try await FunctionsManager.shared.refreshServiceStopPayroll(companyId: companyId, serviceStopId: serviceStopId)
+    }
 
     func fetchTechnicianPayLineItems(
         companyId: String,
         startDate: Date,
         endDate: Date
     ) async throws -> [TechnicianPayLineItem] {
-        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+        let visible = try await payrollVisibleQuery(technicianPayLineItemsCollection(companyId: companyId), companyId: companyId)
+        let snapshot = try await visible
             .whereField("completedDate", isGreaterThanOrEqualTo: startDate)
             .whereField("completedDate", isLessThanOrEqualTo: endDate)
             .getDocuments()
@@ -1330,7 +1157,8 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         companyId: String,
         serviceStopId: String
     ) async throws -> [TechnicianPayLineItem] {
-        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+        let visible = try await payrollVisibleQuery(technicianPayLineItemsCollection(companyId: companyId), companyId: companyId)
+        let snapshot = try await visible
             .whereField("serviceStopId", isEqualTo: serviceStopId)
             .getDocuments()
 
@@ -1388,7 +1216,8 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         startDate: Date,
         endDate: Date
     ) async throws -> [TechnicianPayStatement] {
-        let snapshot = try await technicianPayStatementsCollection(companyId: companyId)
+        let visible = try await payrollVisibleQuery(technicianPayStatementsCollection(companyId: companyId), companyId: companyId)
+        let snapshot = try await visible
             .whereField("startDate", isLessThanOrEqualTo: endDate)
             .whereField("endDate", isGreaterThanOrEqualTo: startDate)
             .getDocuments()
@@ -1401,7 +1230,8 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         companyId: String,
         payStatementId: String
     ) async throws -> [TechnicianPayLineItem] {
-        let snapshot = try await technicianPayLineItemsCollection(companyId: companyId)
+        let visible = try await payrollVisibleQuery(technicianPayLineItemsCollection(companyId: companyId), companyId: companyId)
+        let snapshot = try await visible
             .whereField("payStatementId", isEqualTo: payStatementId)
             .getDocuments()
 

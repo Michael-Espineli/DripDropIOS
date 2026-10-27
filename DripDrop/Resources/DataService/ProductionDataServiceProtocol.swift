@@ -104,6 +104,13 @@ protocol ProductionDataServiceProtocol: Equatable {
         companyId: String,
         jobId: String
     ) async throws -> Int
+    func fetchJobLaborLineItems(companyId: String, jobId: String) async throws -> [JobLaborLineItem]
+    func fetchJobTemplateLaborLineItems(companyId: String, templateId: String) async throws -> [JobLaborLineItem]
+    func commitNewJob(companyId: String, job: Job, scope: NewJobScope) async throws -> Job
+    func saveJobTemplateBundle(template: JobTemplate, tasks: [JobTemplateTask], stops: [JobTemplatePlannedServiceStop], items: [JobTemplateShoppingItem], laborLines: [JobLaborLineItem]) async throws
+
+    func fetchJobHistory(companyId: String, jobId: String) async throws -> [JobHistoryEvent]
+
     // MARK: - Job Templates
 
     func fetchJobTemplates(
@@ -355,6 +362,9 @@ protocol ProductionDataServiceProtocol: Equatable {
     ) async throws
 
     // MARK: - Pay Line Items
+    func refreshServiceStopPayroll(companyId: String, serviceStopId: String) async throws
+    func fetchTechnicianPaidLineItems(companyId: String, technicianId: String, startDate: Date, endDate: Date) async throws -> [TechnicianPayLineItem]
+    func fetchJobPayLineItems(companyId: String, jobId: String) async throws -> [TechnicianPayLineItem]
     func fetchTechnicianPayLineItems(
         companyId: String,
         startDate: Date,
@@ -2102,5 +2112,14 @@ extension ProductionDataServiceProtocol {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .filter { seen.insert($0).inserted }
+    }
+}
+
+extension ProductionDataServiceProtocol {
+    func fetchTechnicianPaidLineItems(companyId: String, technicianId: String, startDate: Date, endDate: Date) async throws -> [TechnicianPayLineItem] {
+        try await fetchTechnicianPayLineItems(companyId: companyId, startDate: Date(timeIntervalSince1970: 0), endDate: endDate).filter { $0.technicianId == technicianId && $0.calculationStatus == .paid && ($0.paidAt ?? $0.completedDate) >= startDate }
+    }
+    func fetchJobPayLineItems(companyId: String, jobId: String) async throws -> [TechnicianPayLineItem] {
+        try await fetchTechnicianPayLineItems(companyId: companyId, startDate: Date(timeIntervalSince1970: 0), endDate: Date.distantFuture).filter { $0.jobId == jobId }
     }
 }

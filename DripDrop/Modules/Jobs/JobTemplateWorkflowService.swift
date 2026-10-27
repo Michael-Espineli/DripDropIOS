@@ -60,11 +60,20 @@ final class JobTemplateWorkflowService {
                 contractedRate: task.contractedRate,
                 estimatedTime: task.estimatedTime,
                 customerApproval: task.customerApproval,
-                equipmentId: task.equipmentId.isEmpty ? nil : task.equipmentId,
+                equipmentId: nil,
                 serviceLocationId: nil,
                 bodyOfWaterId: nil,
                 dataBaseItemId: task.dataBaseItemId.isEmpty ? nil : task.dataBaseItemId,
-                sortOrder: index
+                sortOrder: index,
+                billingLaborPriceCents: task.billingLaborPriceCents,
+                taxable: task.taxable,
+                payTypeId: task.payTypeId,
+                payTypeName: task.payTypeName,
+                payrollMode: task.payrollMode,
+                manualPayOverrideCents: task.manualPayOverrideCents,
+                manualPayOverrideNotes: task.manualPayOverrideNotes,
+                payrollStackBehavior: task.payrollStackBehavior,
+                payQuantity: task.payQuantity
             )
         }
 
@@ -82,7 +91,15 @@ final class JobTemplateWorkflowService {
                 sortOrder: plannedStop.sortOrder,
                 taskTemplateIds: plannedStop.taskIds.compactMap { taskIdMap[$0] },
                 plannedLaborCostCents: plannedStop.plannedLaborCostCents,
-                plannedLaborNotes: plannedStop.plannedLaborNotes
+                plannedLaborNotes: plannedStop.plannedLaborNotes,
+                payTypeId: plannedStop.payTypeId,
+                payTypeName: plannedStop.payTypeName,
+                payrollMode: plannedStop.payrollMode,
+                manualPayOverrideCents: plannedStop.manualPayOverrideCents,
+                manualPayOverrideNotes: plannedStop.manualPayOverrideNotes,
+                payrollStackBehavior: plannedStop.payrollStackBehavior,
+                payQuantity: plannedStop.payQuantity,
+                billingLaborPriceCents: plannedStop.billingLaborPriceCents
             )
         }
 
@@ -101,18 +118,21 @@ final class JobTemplateWorkflowService {
                 plannedTotalCostCents: item.plannedTotalCostCents,
                 plannedTotalPriceCents: item.plannedTotalPriceCents,
                 billable: item.plannedUnitPriceCents != nil || item.plannedTotalPriceCents != nil,
-                sortOrder: index
+                sortOrder: index,
+                linkedTaskId: item.linkedTaskId.flatMap { taskIdMap[$0] },
+                taxable: item.taxable
             )
         }
-        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Start Saving")
-        try await dataService.saveJobTemplate(template)
-        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Template saved")
-        try await dataService.saveJobTemplateTasks(templateTasks)
-        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Template Tasks")
-        try await dataService.saveJobTemplatePlannedServiceStops(templatePlannedStops)
-        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Template Planned Stops")
-        try await dataService.saveJobTemplateShoppingItems(templateShoppingItems)
-        print("      [JobTemplateWorkFlowService][saveJobAsTemplate] Shopping items")
+        let stopIdMap = Dictionary(uniqueKeysWithValues: zip(plannedServiceStops.map(\.id), templatePlannedStops.map(\.id)))
+        let sourceLines = try await dataService.fetchJobLaborLineItems(companyId: companyId, jobId: sourceJob.id)
+        if !sourceLines.isEmpty {
+            let priced = NewJobScope(tasks: jobTasks, plannedStops: plannedServiceStops, laborLineItems: sourceLines).completeLaborLines
+            let materialPrice = shoppingItems.reduce(0) { $0 + ($1.plannedTotalPriceCents ?? Int((Double($1.quantity ?? "1") ?? 1) * Double($1.plannedUnitPriceCents ?? 0))) }
+            template.defaultRateCents = priced.reduce(0) { $0 + $1.priceCents } + materialPrice
+            template.defaultLaborCostCents = priced.reduce(0) { $0 + ($1.internalCostCents ?? 0) }
+        }
+        let templateLines = sourceLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, templateId: template.id) }
+        try await dataService.saveJobTemplateBundle(template: template, tasks: templateTasks, stops: templatePlannedStops, items: templateShoppingItems, laborLines: templateLines)
 
         return template
     }
@@ -126,17 +146,18 @@ final class JobTemplateWorkflowService {
         jobTasks: [JobTask],
         shoppingItems: [ShoppingListItem],
         newInternalId: String,
+        creationId: String = "comp_wo_" + UUID().uuidString,
         customerId: String,
         customerName: String,
         serviceLocationId: String,
         admin: CompanyUser,
         createdByUserId: String
     ) async throws -> Job {
-        let newJobId = "comp_job_" + UUID().uuidString
+        let newJobId = creationId
 
         var newJob = Job(
             id: newJobId,
-            internalId: newInternalId,
+            internalId: "",
             type: sourceJob.type,
             dateCreated: Date(),
             description: sourceJob.description,
@@ -197,7 +218,15 @@ final class JobTemplateWorkflowService {
                 taskIds: plannedStop.taskIds.compactMap { taskIdMap[$0] },
                 plannedLaborCostCents: plannedStop.plannedLaborCostCents,
                 plannedLaborNotes: plannedStop.plannedLaborNotes,
-                createdByUserId: createdByUserId
+                createdByUserId: createdByUserId,
+                payTypeId: plannedStop.payTypeId,
+                payTypeName: plannedStop.payTypeName,
+                payrollMode: plannedStop.payrollMode,
+                manualPayOverrideCents: plannedStop.manualPayOverrideCents,
+                manualPayOverrideNotes: plannedStop.manualPayOverrideNotes,
+                payrollStackBehavior: plannedStop.payrollStackBehavior,
+                payQuantity: plannedStop.payQuantity,
+                billingLaborPriceCents: plannedStop.billingLaborPriceCents
             )
         }
 
@@ -211,21 +240,17 @@ final class JobTemplateWorkflowService {
             purchaserName: admin.userName
         )
 
-        try await dataService.uploadWorkOrder(companyId: companyId, workOrder: newJob)
-        try await dataService.saveJobTasks(
-            companyId: companyId,
-            jobId: newJobId,
-            tasks: copiedTasks
-        )
-
-        try await dataService.saveJobPlannedServiceStops(copiedPlannedStops)
-
-        try await dataService.saveShoppingListItems(
-            companyId: companyId,
-            items: copiedShoppingItems
-        )
-
-        return newJob
+        let sourceLines = try await dataService.fetchJobLaborLineItems(companyId: companyId, jobId: sourceJob.id)
+        let stopIdMap = Dictionary(uniqueKeysWithValues: zip(plannedServiceStops.map(\.id), copiedPlannedStops.map(\.id)))
+        let copiedLines = sourceLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: newJobId) }
+        let linkedMaterials = zip(shoppingItems, copiedShoppingItems).map { source, copy -> ShoppingListItem in
+            var item = copy
+            item.linkedTaskId = source.linkedTaskId.flatMap { taskIdMap[$0] }
+            item.taxable = source.taxable
+            return item
+        }
+        newJob.referenceLabel = newInternalId.isEmpty ? nil : newInternalId
+        return try await dataService.commitNewJob(companyId: companyId, job: newJob, scope: NewJobScope(tasks: copiedTasks, plannedStops: copiedPlannedStops, shoppingItems: linkedMaterials, laborLineItems: copiedLines))
     }
 
     // MARK: - Create Job From Template
@@ -234,6 +259,7 @@ final class JobTemplateWorkflowService {
         companyId: String,
         templateId: String,
         newInternalId: String,
+        creationId: String = "comp_wo_" + UUID().uuidString,
         customerId: String,
         customerName: String,
         serviceLocationId: String,
@@ -263,12 +289,13 @@ final class JobTemplateWorkflowService {
         let templateTasks = try await templateTasksTask
         let templatePlannedStops = try await templatePlannedStopsTask
         let templateShoppingItems = try await templateShoppingItemsTask
+        let templateLines = try await dataService.fetchJobTemplateLaborLineItems(companyId: companyId, templateId: templateId)
 
-        let newJobId = "comp_job_" + UUID().uuidString
+        let newJobId = creationId
 
         var newJob = Job(
             id: newJobId,
-            internalId: newInternalId,
+            internalId: "",
             type: template.jobType.isEmpty ? template.name : template.jobType,
             dateCreated: Date(),
             description: template.description,
@@ -307,6 +334,8 @@ final class JobTemplateWorkflowService {
                 type: templateTask.type,
                 contractedRate: templateTask.contractedRate,
                 estimatedTime: templateTask.estimatedTime,
+                payTypeId: templateTask.payTypeId,
+                payTypeName: templateTask.payTypeName,
                 status: .draft,
                 customerApproval: templateTask.customerApproval,
                 actualTime: 0,
@@ -315,10 +344,17 @@ final class JobTemplateWorkflowService {
                 workerName: "",
                 laborContractId: "",
                 serviceStopId: IdInfo(id: "", internalId: ""),
-                equipmentId: templateTask.equipmentId ?? "",
+                equipmentId: "",
                 serviceLocationId: serviceLocationId,
-                bodyOfWaterId: templateTask.bodyOfWaterId ?? "",
-                dataBaseItemId: templateTask.dataBaseItemId ?? ""
+                bodyOfWaterId: "",
+                dataBaseItemId: templateTask.dataBaseItemId ?? "",
+                billingLaborPriceCents: templateTask.billingLaborPriceCents,
+                taxable: templateTask.taxable,
+                payrollMode: templateTask.payrollMode,
+                manualPayOverrideCents: templateTask.manualPayOverrideCents,
+                manualPayOverrideNotes: templateTask.manualPayOverrideNotes,
+                payrollStackBehavior: templateTask.payrollStackBehavior,
+                payQuantity: templateTask.payQuantity
             )
         }
 
@@ -341,7 +377,15 @@ final class JobTemplateWorkflowService {
                 taskIds: templateStop.taskTemplateIds.compactMap { taskIdMap[$0] },
                 plannedLaborCostCents: templateStop.plannedLaborCostCents,
                 plannedLaborNotes: templateStop.plannedLaborNotes,
-                createdByUserId: createdByUserId
+                createdByUserId: createdByUserId,
+                payTypeId: templateStop.payTypeId,
+                payTypeName: templateStop.payTypeName,
+                payrollMode: templateStop.payrollMode,
+                manualPayOverrideCents: templateStop.manualPayOverrideCents,
+                manualPayOverrideNotes: templateStop.manualPayOverrideNotes,
+                payrollStackBehavior: templateStop.payrollStackBehavior,
+                payQuantity: templateStop.payQuantity,
+                billingLaborPriceCents: templateStop.billingLaborPriceCents
             )
         }
 
@@ -382,22 +426,18 @@ final class JobTemplateWorkflowService {
             )
         }
 
-        try await dataService.uploadWorkOrder(companyId: companyId, workOrder: newJob)
-        
-        try await dataService.saveJobTasks(
-            companyId: companyId,
-            jobId: newJobId,
-            tasks: copiedTasks
-        )
-
-        try await dataService.saveJobPlannedServiceStops(copiedPlannedStops)
-
-        try await dataService.saveShoppingListItems(
-            companyId: companyId,
-            items: copiedShoppingItems
-        )
-
-        return newJob
+        let stopIdMap = Dictionary(uniqueKeysWithValues: zip(templatePlannedStops.map(\.id), copiedPlannedStops.map(\.id)))
+        let copiedLines = templateLines.map { $0.remapped(companyId: companyId, taskIds: taskIdMap, stopIds: stopIdMap, jobId: newJobId) }
+        let linkedMaterials = zip(templateShoppingItems, copiedShoppingItems).map { source, copy -> ShoppingListItem in
+            var item = copy
+            item.linkedTaskId = source.linkedTaskId.flatMap { taskIdMap[$0] }
+            item.taxable = source.taxable
+            return item
+        }
+        newJob.sourceTemplateId = template.id
+        newJob.sourceTemplateName = template.name
+        newJob.referenceLabel = newInternalId.isEmpty ? nil : newInternalId
+        return try await dataService.commitNewJob(companyId: companyId, job: newJob, scope: NewJobScope(tasks: copiedTasks, plannedStops: copiedPlannedStops, shoppingItems: linkedMaterials, laborLineItems: copiedLines))
     }
 
     // MARK: - Private Helpers
@@ -416,6 +456,8 @@ final class JobTemplateWorkflowService {
                 type: task.type,
                 contractedRate: task.contractedRate,
                 estimatedTime: task.estimatedTime,
+                payTypeId: task.payTypeId,
+                payTypeName: task.payTypeName,
                 status: .draft,
                 customerApproval: task.customerApproval,
                 actualTime: 0,
@@ -424,10 +466,17 @@ final class JobTemplateWorkflowService {
                 workerName: "",
                 laborContractId: "",
                 serviceStopId: IdInfo(id: "", internalId: ""),
-                equipmentId: task.equipmentId,
+                equipmentId: "",
                 serviceLocationId: serviceLocationId,
-                bodyOfWaterId: task.bodyOfWaterId,
-                dataBaseItemId: task.dataBaseItemId
+                bodyOfWaterId: "",
+                dataBaseItemId: task.dataBaseItemId,
+                billingLaborPriceCents: task.billingLaborPriceCents,
+                taxable: task.taxable,
+                payrollMode: task.payrollMode,
+                manualPayOverrideCents: task.manualPayOverrideCents,
+                manualPayOverrideNotes: task.manualPayOverrideNotes,
+                payrollStackBehavior: task.payrollStackBehavior,
+                payQuantity: task.payQuantity
             )
         }
     }
@@ -477,5 +526,185 @@ final class JobTemplateWorkflowService {
                 plannedTotalPriceCents: item.plannedTotalPriceCents
             )
         }
+    }
+}
+
+// Shared web/iOS billing snapshot. Optional fields keep older templates readable.
+struct JobLaborLineItem: Identifiable, Codable, Hashable {
+    var completionStatus: String? = nil
+    var id: String
+    var laborLineId: String? = nil
+    var companyId: String? = nil
+    var jobId: String? = nil
+    var templateId: String? = nil
+    var name: String? = nil
+    var description: String? = nil
+    var quantity: Double? = nil
+    var unitPriceCents: Int? = nil
+    var totalPriceCents: Int? = nil
+    var internalCostCents: Int? = nil
+    var internalCostMode: String? = nil
+    var taxable: Bool? = nil
+    var taskIds: [String]? = nil
+    var taskTemplateIds: [String]? = nil
+    var laborLineTaskIds: [String]? = nil
+    var plannedServiceStopIds: [String]? = nil
+    var plannedServiceStopTemplateIds: [String]? = nil
+    var laborLinePlannedServiceStopIds: [String]? = nil
+    var salesItemType: String? = nil
+    var billingBehavior: String? = nil
+    var sourceType: String? = nil
+    var sourceId: String? = nil
+    var catalogItemId: String? = nil
+    var salesCatalogItemId: String? = nil
+    var catalogItemName: String? = nil
+    var stripeConnectedAccountId: String? = nil
+    var stripeProductId: String? = nil
+    var stripePriceId: String? = nil
+    var sourceTemplateId: String? = nil
+    var sourceTemplateLaborLineId: String? = nil
+    var sourcePlanId: String? = nil
+    var sourceSolutionId: String? = nil
+    var generatedFromTaskId: String? = nil
+    var generatedFromPlannedStopId: String? = nil
+    var sortOrder: Int? = nil
+
+    var linkedTaskIds: [String] {
+        if let taskIds, !taskIds.isEmpty { return taskIds }
+        if let laborLineTaskIds, !laborLineTaskIds.isEmpty { return laborLineTaskIds }
+        return taskTemplateIds ?? []
+    }
+    var linkedStopIds: [String] {
+        if let plannedServiceStopIds, !plannedServiceStopIds.isEmpty { return plannedServiceStopIds }
+        if let laborLinePlannedServiceStopIds, !laborLinePlannedServiceStopIds.isEmpty { return laborLinePlannedServiceStopIds }
+        return plannedServiceStopTemplateIds ?? []
+    }
+
+    var priceCents: Int { totalPriceCents ?? Int((Double(unitPriceCents ?? 0) * (quantity ?? 1)).rounded()) }
+
+    func remapped(companyId: String, taskIds: [String: String], stopIds: [String: String], jobId: String? = nil, templateId: String? = nil) -> JobLaborLineItem {
+        var copy = self
+        copy.id = "comp_job_labor_line_" + UUID().uuidString
+        copy.laborLineId = copy.id
+        copy.companyId = companyId
+        copy.jobId = jobId
+        copy.templateId = templateId
+        copy.taskIds = self.linkedTaskIds.compactMap { taskIds[$0] }
+        copy.laborLineTaskIds = copy.taskIds
+        copy.taskTemplateIds = templateId == nil ? nil : copy.taskIds
+        copy.plannedServiceStopIds = self.linkedStopIds.compactMap { stopIds[$0] }
+        copy.laborLinePlannedServiceStopIds = copy.plannedServiceStopIds
+        copy.plannedServiceStopTemplateIds = templateId == nil ? nil : copy.plannedServiceStopIds
+        copy.generatedFromTaskId = generatedFromTaskId.flatMap { taskIds[$0] }
+        copy.generatedFromPlannedStopId = generatedFromPlannedStopId.flatMap { stopIds[$0] }
+        copy.sourceTemplateId = jobId == nil ? nil : self.templateId
+        copy.sourceTemplateLaborLineId = jobId == nil ? nil : self.id
+        copy.sourcePlanId = nil
+        copy.sourceSolutionId = nil
+        copy.completionStatus = nil
+        return copy
+    }
+}
+
+struct NewJobScope {
+    var tasks: [JobTask] = []
+    var plannedStops: [JobPlannedServiceStop] = []
+    var shoppingItems: [ShoppingListItem] = []
+    var laborLineItems: [JobLaborLineItem] = []
+    var scheduledStops: [ServiceStop] = []
+    var scheduledTasks: [String: [ServiceStopTask]] = [:]
+
+    var completeLaborLines: [JobLaborLineItem] {
+        let explicit = laborLineItems.filter { $0.generatedFromTaskId == nil && $0.generatedFromPlannedStopId == nil }
+        let coveredStops = Set(explicit.flatMap { $0.linkedStopIds })
+        var coveredTasks = Set(explicit.flatMap { $0.linkedTaskIds })
+        for stop in plannedStops where coveredStops.contains(stop.id) { coveredTasks.formUnion(stop.taskIds) }
+        var lines = explicit
+        for task in tasks where !coveredTasks.contains(task.id) {
+            var line = JobLaborLineItem(id: "scope_task_" + task.id)
+            line.name = task.name
+            line.quantity = 1
+            line.totalPriceCents = task.billingLaborPriceCents ?? task.contractedRate
+            line.unitPriceCents = line.totalPriceCents
+            line.internalCostCents = task.contractedRate
+            line.taskIds = [task.id]
+            line.generatedFromTaskId = task.id
+            line.taxable = task.taxable ?? false
+            if line.priceCents != 0 || task.contractedRate != 0 { lines.append(line) }
+        }
+        for stop in plannedStops where !coveredStops.contains(stop.id) {
+            var line = JobLaborLineItem(id: "scope_visit_" + stop.id)
+            line.name = stop.name
+            line.quantity = 1
+            line.totalPriceCents = stop.billingLaborPriceCents ?? stop.plannedLaborCostCents ?? 0
+            line.unitPriceCents = line.totalPriceCents
+            line.internalCostCents = stop.plannedLaborCostCents ?? 0
+            line.plannedServiceStopIds = [stop.id]
+            line.generatedFromPlannedStopId = stop.id
+            line.taxable = false
+            if line.priceCents != 0 { lines.append(line) }
+        }
+        return lines
+    }
+}
+
+extension ProductionDataServiceProtocol {
+    func fetchJobHistory(companyId: String, jobId: String) async throws -> [JobHistoryEvent] { [] }
+    func fetchJobLaborLineItems(companyId: String, jobId: String) async throws -> [JobLaborLineItem] { [] }
+    func fetchJobTemplateLaborLineItems(companyId: String, templateId: String) async throws -> [JobLaborLineItem] { [] }
+    func commitNewJob(companyId: String, job: Job, scope: NewJobScope) async throws -> Job {
+        throw NSError(domain: "JobCreation", code: 1, userInfo: [NSLocalizedDescriptionKey: "Atomic job creation is unavailable for this data service."])
+    }
+    func saveJobTemplateBundle(template: JobTemplate, tasks: [JobTemplateTask], stops: [JobTemplatePlannedServiceStop], items: [JobTemplateShoppingItem], laborLines: [JobLaborLineItem]) async throws {
+        throw NSError(domain: "JobTemplate", code: 1, userInfo: [NSLocalizedDescriptionKey: "Atomic template saving is unavailable for this data service."])
+    }
+}
+
+// The same audit fields are written by web and iOS creation flows.
+struct JobHistoryEvent: Codable, Identifiable, Hashable {
+    var id: String
+    var companyId: String? = nil
+    var jobId: String? = nil
+    var jobInternalId: String? = nil
+    var eventType: String? = nil
+    var title: String? = nil
+    var description: String? = nil
+    var actorUserId: String? = nil
+    var actorUserName: String? = nil
+    var actorCompanyUserId: String? = nil
+    var createdAt: Date? = nil
+    var createdAtMillis: Int? = nil
+    var date: Date? = nil
+    var tech: String? = nil
+
+    var actorDisplayName: String {
+        if let name = actorUserName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty, name.lowercased() != "unknown" { return name }
+        if let actorUserId, !actorUserId.isEmpty { return actorUserId }
+        return tech ?? "Creator not recorded"
+    }
+    var timestamp: Date? {
+        createdAt ?? createdAtMillis.map { Date(timeIntervalSince1970: Double($0) / 1000) } ?? date
+    }
+}
+
+struct JobCreationActor {
+    var userId: String
+    var userName: String
+    var companyUserId: String = ""
+
+    func creationEvent(companyId: String, jobId: String, internalId: String, at date: Date) -> JobHistoryEvent {
+        var event = JobHistoryEvent(id: "created")
+        event.companyId = companyId
+        event.jobId = jobId
+        event.jobInternalId = internalId
+        event.eventType = "Created"
+        event.title = "Job created"
+        event.description = "Job initially created from iOS."
+        event.actorUserId = userId
+        event.actorUserName = userName.isEmpty ? userId : userName
+        event.actorCompanyUserId = companyUserId
+        event.createdAt = date
+        event.createdAtMillis = Int(date.timeIntervalSince1970 * 1000)
+        return event
     }
 }
