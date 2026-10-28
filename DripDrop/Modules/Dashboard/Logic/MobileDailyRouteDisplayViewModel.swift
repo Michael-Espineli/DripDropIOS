@@ -1215,70 +1215,38 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         self.selectedTech = defaultMoveTech
         self.newDay = .monday
     }
-    func moveServiceStops(companyId: String?){
-        guard let companyId else {return}
-        guard let activeRoute else {return}
-        if moveDate == selectedDate {return}
-        
-        if selectedTech.id == "" {return}
-        var triedToMoveFinished:Bool = false
-        Task{
+    func moveServiceStops(companyId: String?) {
+        guard let companyId, !selectedServiceStops.isEmpty, !selectedTech.userId.isEmpty else { return }
+        let stops = selectedServiceStops, date = moveDate, tech = selectedTech
+        Task {
             do {
-                var order:[ServiceStopOrder] = activeRoute.order ?? []
-                for stop in selectedServiceStops {
-                    if stop.operationStatus == .notFinished {
-                        order.removeAll(where: {$0.serviceStopId == stop.id})
-                        try await dataService.updateServiceStopServiceDate(companyId: companyId, serviceStop: stop, serviceDate: moveDate, companyUser: selectedTech)
-                    } else {
-                        triedToMoveFinished = true
-                    }
-                }
-                //Remove Selected Stops from Order
-                
-                try await dataService.updateActiveRouteOrderList(
-                    companyId: companyId,
-                    activeRouteId: activeRoute.id,
-                    serviceStopOrderList: order
-                )
-                //Finishing Function Actions
-                self.selectedServiceStops = []
-                self.moveDate = Date()
-                self.selectedTech = defaultMoveTech
-                self.enableMove = false
-                if triedToMoveFinished {
-                    self.alertMessage = "Some service stops were not moved because they are already finished."
-                } else {
-                    self.alertMessage = "Successfully moved all stops"
-                }
-                self.showAlert = true
+                try await dataService.moveServiceStops(companyId:companyId,serviceStops:stops,serviceDate:date,companyUser:tech)
+                cancelMove()
+                enableMove = false
+                alertMessage = "Successfully moved all selected stops."
+                showAlert = true
             } catch {
-                print("  [MobileDailyRouteDisplayViewModel][moveServiceStops] Error: \(error)")
+                alertMessage = error.localizedDescription
+                showAlert = true
             }
         }
     }
-    
-    func moveServiceStopsPermanently(companyId: String?){
-        guard let companyId else {return}
-        let movableStops = selectedServiceStops.filter { $0.operationStatus == .notFinished }
-        guard !movableStops.isEmpty else {
-            alertMessage = "Select at least one unfinished stop to move."
-            showAlert = true
-            return
-        }
 
-        FunctionsManager.shared.updateServiceStopPermanently(
-            companyId: companyId,
-            serviceStopList: movableStops,
-            newTech: selectedTech,
-            newDay: newDay
-        )
-        self.selectedServiceStops = []
-        self.moveDate = Date()
-        self.selectedTech = defaultMoveTech
-        self.newDay = .monday
-        self.enableMove = false
-        self.alertMessage = "Permanent move submitted."
-        self.showAlert = true
+    func moveServiceStopsPermanently(companyId: String?) {
+        guard let companyId, !selectedServiceStops.isEmpty, !selectedTech.userId.isEmpty else { return }
+        let stops = selectedServiceStops, tech = selectedTech, day = newDay
+        Task {
+            do {
+                try await FunctionsManager.shared.updateServiceStopPermanently(companyId:companyId,serviceStopList:stops,newTech:tech,newDay:day)
+                cancelMove()
+                enableMove = false
+                alertMessage = "Permanent move saved."
+                showAlert = true
+            } catch {
+                alertMessage = error.localizedDescription
+                showAlert = true
+            }
+        }
     }
     func updateOrderList(companyId:String,activeRouteId:String,newOrderList:[ServiceStopOrder]) async throws {
         print("**  [MobileDailyRouteDisplayViewModel][Updating Order List]")

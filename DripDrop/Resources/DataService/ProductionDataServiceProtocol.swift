@@ -1296,6 +1296,7 @@ protocol ProductionDataServiceProtocol: Equatable {
         //Service Stops
 
     func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws
+    func moveServiceStops(companyId:String,serviceStops:[ServiceStop],serviceDate:Date,companyUser:CompanyUser) async throws
     func updateScheduledJobServiceStop(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser,description:String,estimatedDuration:Int,manualPayOverrideCents:Int?,manualPayOverrideNotes:String?,serviceStopTypeFields:ServiceStopTypeFields) async throws
     func updateServiceStop(companyId:String,user:DBUser,originalServiceStop:ServiceStop,newServiceStop:ServiceStop) async throws // Developer Break Out into Induvidual and Delete
     func updateServiceStopAddress(companyId:String,serviceStopId:String,address:Address) async throws
@@ -1564,6 +1565,13 @@ protocol ProductionDataServiceProtocol: Equatable {
 }
 
 extension ProductionDataServiceProtocol {
+    // Mock/test providers retain their existing implementation. The production
+    // provider overrides this requirement with one atomic server command.
+    func moveServiceStops(companyId:String,serviceStops:[ServiceStop],serviceDate:Date,companyUser:CompanyUser) async throws {
+        for stop in serviceStops {
+            try await updateServiceStopServiceDate(companyId:companyId,serviceStop:stop,serviceDate:serviceDate,companyUser:companyUser)
+        }
+    }
     func getCustomerNotes(
         companyId: String,
         customerId: String,

@@ -555,27 +555,12 @@ extension ProductionDataService {
         try await serviceStopRef.updateData(updateData)
     }
 
-    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws{
-        let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
-        try await ref.updateData([
-            ServiceStop.CodingKeys.serviceDate.rawValue: serviceDate,
-            ServiceStop.CodingKeys.techId.rawValue: companyUser.userId,
-            ServiceStop.CodingKeys.tech.rawValue: companyUser.userName,
-        ])
+    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws {
+        try await moveServiceStops(companyId:companyId,serviceStops:[serviceStop],serviceDate:serviceDate,companyUser:companyUser)
+    }
 
-        _ = try? await syncActiveRouteForServiceStops(
-            companyId: companyId,
-            date: serviceStop.serviceDate,
-            techId: serviceStop.techId,
-            techName: serviceStop.tech
-        )
-
-        _ = try? await syncActiveRouteForServiceStops(
-            companyId: companyId,
-            date: serviceDate,
-            techId: companyUser.userId,
-            techName: companyUser.userName
-        )
+    func moveServiceStops(companyId:String,serviceStops:[ServiceStop],serviceDate:Date,companyUser:CompanyUser) async throws {
+        try await FunctionsManager.shared.moveServiceStops(companyId:companyId,stops:serviceStops,serviceDate:serviceDate,techId:companyUser.userId)
     }
 
     func updateScheduledJobServiceStop(

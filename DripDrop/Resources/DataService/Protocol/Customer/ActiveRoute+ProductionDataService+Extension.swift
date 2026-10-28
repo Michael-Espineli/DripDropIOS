@@ -583,7 +583,11 @@ extension ProductionDataService {
             ]
             orderArray.append(data)
         }
-        try await ref.updateData(["order":orderArray])
+        try await ref.updateData([
+            "order":orderArray,
+            "serviceStopsIds":serviceStopOrderList.sorted { $0.order < $1.order }.map { $0.serviceStopId },
+            "dailyOrderOverride":true
+        ])
         
     }
     func updateActiveRouteName(companyId:String,activeRouteId:String,name:String){
@@ -839,13 +843,10 @@ extension ProductionDataService {
         } else {
             recurringRoute = nil
         }
-        let routeHasStarted = existingRoute.map {
-            $0.status != .didNotStart || $0.startTime != nil || $0.startMilage != nil
-        } ?? false
         let order = RouteOrderBuilder.build(
             serviceStops: serviceStops,
             recurringRoute: recurringRoute,
-            existingOrder: routeHasStarted ? existingOrder : nil
+            existingOrder: existingRoute == nil ? nil : existingOrder
         )
 
         var route = existingRoute ?? ActiveRoute(

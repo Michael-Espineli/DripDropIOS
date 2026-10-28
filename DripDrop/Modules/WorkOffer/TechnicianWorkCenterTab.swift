@@ -237,7 +237,6 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
 }
 
 struct TechnicianWorkCenterView: View {
-    @State private var showRouteCoverage = false
     @EnvironmentObject var masterDataManager: MasterDataManager
     @StateObject private var viewModel: TechnicianWorkCenterViewModel
     @State private var showSwipeReview: Bool = false
@@ -256,8 +255,9 @@ struct TechnicianWorkCenterView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 headerPanel
+                workTabs
                 selectedContent
                 Color.clear.frame(height: 90)
             }
@@ -289,10 +289,6 @@ struct TechnicianWorkCenterView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.alertMessage)
-        }
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Offer Route Coverage") { showRouteCoverage = true } } }
-        .sheet(isPresented: $showRouteCoverage) {
-            if let company = masterDataManager.currentCompany { RouteCoverageOfferSheet(companyId: company.id, dataService: viewModel.dataService) }
         }
         .fullScreenCover(isPresented: $showSwipeReview) {
             if let currentCompany = masterDataManager.currentCompany {
@@ -331,14 +327,19 @@ struct TechnicianWorkCenterView: View {
     private var headerPanel: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "tray.full")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.poolBlue.opacity(0.12), in: Circle())
+
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Work Offered")
                         .font(.title2.weight(.bold))
 
-                    Text("\(viewModel.companyUser.userName) · Pool jobs ready to pick up")
-                        .font(.subheadline.weight(.semibold))
+                    Text("Find work that fits your route.")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -359,70 +360,53 @@ struct TechnicianWorkCenterView: View {
                 .disabled(viewModel.isLoading)
             }
 
-            HStack(spacing: 10) {
-                ForEach(TechnicianWorkCenterTab.allCases) { tab in
-                    workSummaryTabButton(for: tab)
-                }
-            }
-
             HStack(spacing: 8) {
                 Label("\(viewModel.directOfferCount) direct", systemImage: "paperplane")
                 Label("\(viewModel.boardOfferCount) board", systemImage: "list.bullet.clipboard")
+                Label("\(viewModel.acceptedOfferCount) current", systemImage: "briefcase")
                 Spacer(minLength: 0)
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private var workTabs: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(TechnicianWorkCenterTab.allCases) { tab in
+                    workSummaryTabButton(for: tab)
+                }
+            }
+        }
     }
 
     private func workSummaryTabButton(for tab: TechnicianWorkCenterTab) -> some View {
         let isSelected = viewModel.selectedTab == tab
-        let tint = tabTint(for: tab)
 
         return Button {
             withAnimation(.easeInOut(duration: 0.18)) {
                 viewModel.selectedTab = tab
             }
         } label: {
-            VStack(spacing: 6) {
-                Image(systemName: tabIcon(for: tab))
-                    .font(.caption.weight(.bold))
-                    .foregroundColor(isSelected ? .white : tint)
-                    .frame(width: 28, height: 28)
-                    .background(
-                        isSelected ? Color.white.opacity(0.16) : tint.opacity(0.12),
-                        in: Circle()
-                    )
-
-                Text("\(tabCount(for: tab))")
-                    .font(.headline.weight(.bold))
-                    .foregroundColor(isSelected ? .white : .primary)
-                    .monospacedDigit()
-
-                Text(tab.rawValue)
-                    .font(.caption2.weight(.bold))
-                    .foregroundColor(isSelected ? .white.opacity(0.88) : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+            HStack(spacing: 6) {
+                Label(tab.rawValue, systemImage: tabIcon(for: tab))
+                Text("\(tabCount(for: tab))").monospacedDigit()
             }
-            .frame(maxWidth: .infinity, minHeight: 86)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
             .background(
-                isSelected ? tint : tint.opacity(0.08),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isSelected ? Color.clear : tint.opacity(0.18), lineWidth: 1)
+                isSelected ? Color.poolBlue : Color.primary.opacity(0.045),
+                in: Capsule()
             )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(tab.rawValue), \(tabCount(for: tab))")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -442,7 +426,7 @@ struct TechnicianWorkCenterView: View {
     private var discoverSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             TechnicianWorkPanel(
-                title: "Pending Jobs",
+                title: "Pending Offers",
                 systemImage: "bolt.fill"
             ) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -451,16 +435,16 @@ struct TechnicianWorkCenterView: View {
                     } label: {
                         HStack(spacing: 14) {
                             Image(systemName: "rectangle.stack.fill")
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 50, height: 50)
-                                .background(Color.poolBlue, in: Circle())
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Color.poolBlue)
+                                .frame(width: 38, height: 38)
+                                .background(Color.poolBlue.opacity(0.12), in: Circle())
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Review Pending Jobs")
+                                Text("Review Pending Offers")
                                     .font(.headline.weight(.semibold))
 
-                                Text("Swipe right to accept, left to pass, and scroll each card for the deadline and timeline.")
+                                Text("Review the scope, timing, and pay before accepting.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -469,10 +453,11 @@ struct TechnicianWorkCenterView: View {
                             Spacer()
 
                             Text("\(viewModel.discoveryOffers.count)")
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 42, height: 42)
-                                .background(Color.poolGreen, in: Circle())
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.poolBlue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.poolBlue.opacity(0.12), in: Capsule())
                         }
                         .padding(14)
                         .background(Color.poolBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -483,17 +468,22 @@ struct TechnicianWorkCenterView: View {
 
                     if viewModel.discoveryOffers.isEmpty {
                         ContentUnavailableView(
-                            "No Pending Jobs",
+                            "No Pending Offers",
                             systemImage: "tray",
-                            description: Text("Direct offers and eligible board jobs will show up here.")
+                            description: Text("Direct offers and eligible board work will show up here.")
                         )
                     } else {
                         VStack(spacing: 10) {
                             ForEach(viewModel.discoveryOffers.prefix(4)) { offer in
-                                TechnicianWorkOfferRow(
-                                    offer: offer,
-                                    rowStyle: offer.offerType == .internalBoard ? .boardPost : .directOffer
-                                )
+                                NavigationLink {
+                                    offerDetailDestination(offer, canReject: offer.offerType == .directUser, canAccept: true)
+                                } label: {
+                                    TechnicianWorkOfferRow(
+                                        offer: offer,
+                                        rowStyle: offer.offerType == .internalBoard ? .boardPost : .directOffer
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -504,12 +494,12 @@ struct TechnicianWorkCenterView: View {
 
     private var availableWorkSection: some View {
         TechnicianWorkPanel(
-            title: "Job Board",
+            title: "Work Board",
             systemImage: "list.bullet.clipboard"
         ) {
             if viewModel.openBoardOffers.isEmpty {
                 ContentUnavailableView(
-                    "No Board Jobs",
+                    "No Board Work",
                     systemImage: "tray",
                     description: Text("Available board work will appear here for eligible technicians to pick up.")
                 )
@@ -622,7 +612,7 @@ struct TechnicianWorkCenterView: View {
         ) {
             if viewModel.rejectedOffers.isEmpty {
                 ContentUnavailableView(
-                    "No Rejected Jobs",
+                    "No Rejected Offers",
                     systemImage: "xmark.circle",
                     description: Text("Rejected offers from the last 30 days will appear here.")
                 )
@@ -708,18 +698,6 @@ struct TechnicianWorkCenterView: View {
         }
     }
 
-    private func tabTint(for tab: TechnicianWorkCenterTab) -> Color {
-        switch tab {
-        case .discover:
-            return .poolBlue
-        case .available:
-            return .poolGreen
-        case .current:
-            return .orange
-        case .rejected:
-            return .red
-        }
-    }
 }
 
 private struct TechnicianWorkPanel<Content: View>: View {
@@ -739,8 +717,15 @@ private struct TechnicianWorkPanel<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: systemImage)
-                .font(.headline.weight(.semibold))
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 32, height: 32)
+                    .background(Color.poolBlue.opacity(0.12), in: Circle())
+                Text(title)
+                    .font(.headline.weight(.semibold))
+            }
 
             content()
         }
@@ -750,7 +735,7 @@ private struct TechnicianWorkPanel<Content: View>: View {
 
 private extension Color {
     static var workOfferCardSurface: Color {
-        Color(.secondarySystemGroupedBackground)
+        Color(.systemBackground)
     }
 
     static var workOfferCardBase: Color {
@@ -766,11 +751,7 @@ private extension View {
     func technicianPanel() -> some View {
         self
             .padding(16)
-            .background(Color.workOfferCardSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            )
+            .background(Color.workOfferCardSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     @ViewBuilder
@@ -800,7 +781,7 @@ private struct TechnicianOfferSwipeReviewView: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Pending Jobs")
+                    Text("Pending Offers")
                         .font(.title2.weight(.bold))
 
                     Text("Swipe right to accept, left to pass. Scroll up inside a card for service details, deadline, and timeline.")
@@ -821,7 +802,7 @@ private struct TechnicianOfferSwipeReviewView: View {
             .padding(16)
         }
         .background(Color.listColor.ignoresSafeArea())
-        .navigationTitle("Review Jobs")
+        .navigationTitle("Review Offers")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -1553,6 +1534,11 @@ struct TechnicianWorkOfferRow: View {
     var offer: WorkOffer
     var rowStyle: TechnicianWorkOfferRowStyle
 
+    private var displayedStopIds: [String] {
+        if let claim = ownClaim, !claim.stopIds.isEmpty { return claim.stopIds }
+        return offer.remainingStopIds ?? offer.routeServiceStopIds ?? []
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 12) {
@@ -1582,7 +1568,11 @@ struct TechnicianWorkOfferRow: View {
             }
 
             HStack(spacing: 10) {
-                Label("\(offer.jobTaskIds.count) task(s)", systemImage: "checklist")
+                if !displayedStopIds.isEmpty {
+                    Label("\(displayedStopIds.count) stop\(displayedStopIds.count == 1 ? "" : "s")", systemImage: "mappin.and.ellipse")
+                } else {
+                    Label("\(offer.jobTaskIds.count) task(s)", systemImage: "checklist")
+                }
                 Label("\(offer.estimatedMinutes) min", systemImage: "clock")
 
                 if let total = ownClaim?.agreement.totalCents {
@@ -1618,6 +1608,9 @@ struct TechnicianWorkOfferRow: View {
     }
 
     private var subtitle: String {
+        if let routeName = offer.routeName {
+            return routeName.isEmpty ? "Route coverage" : "Route coverage · \(routeName)"
+        }
         switch offer.offerType {
         case .directUser:
             return "Direct offer • \(offer.customerName)"

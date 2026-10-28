@@ -74,6 +74,7 @@ struct EmployeeDailyDashboard: View {
     @State private var showCreateJobOptions: Bool = false
     @State private var showCreateBlankJob: Bool = false
     @State private var showCreateFromTemplate: Bool = false
+    @State private var coverageRoute: ActiveRoute? = nil
 
     @AppStorage("employeeDailyDashboardRouteViewMode")
     private var routeViewModeRawValue: String = EmployeeDailyDashboardRouteViewMode.list.rawValue
@@ -191,6 +192,15 @@ struct EmployeeDailyDashboard: View {
         .sheet(isPresented: $showExpandedRouteMap) {
             expandedRouteMapSheet
                 .presentationDetents([.large])
+        }
+        .sheet(item: $coverageRoute) { route in
+            if let company = masterDataManager.currentCompany {
+                RouteCoverageOfferSheet(
+                    companyId: company.id,
+                    route: route,
+                    dataService: dataService
+                )
+            }
         }
         .sheet(isPresented: $VM.showEndMilage, onDismiss: {
             routePendingEnd = nil
@@ -1023,6 +1033,35 @@ extension EmployeeDailyDashboard {
                 }
 
                 routeActionButtons
+
+                if VM.serviceStopList.contains(where: { $0.operationStatus == .notFinished }) {
+                    Button {
+                        coverageRoute = activeRoute
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "person.2.badge.plus")
+                                .foregroundStyle(Color.poolBlue)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Offer Route Coverage")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Text("Choose all remaining stops or just a few.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(12)
+                        .background(Color.poolBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(VM.enableMove || enableReorder)
+                }
             }
         }
         .employeeDashCard(padding: 12)

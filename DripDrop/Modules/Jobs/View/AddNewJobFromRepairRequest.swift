@@ -251,9 +251,11 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
     @Published var jobDetailTypes: [String] = ["Simple", "Complex"]
 
     @Published var isSubmitting: Bool = false
+    @Published var issuePriority: JobIssuePriorityLevel = .defaultLevel
 
     func onLoad(companyId: String, repairRequest: RepairRequest) async throws {
         self.repairRequest = repairRequest
+        self.issuePriority = repairRequest.normalizedIssuePriority
 
         let workOrderCount = try await dataService.getWorkOrderCount(companyId: companyId)
 
@@ -436,6 +438,7 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
             invoiceNotes: nil
         )
         job.sourceRepairRequestId = repairRequest?.id
+        job.setIssuePriority(issuePriority)
 
         try await dataService.uploadWorkOrder(
             companyId: companyId,
@@ -955,6 +958,12 @@ extension AddNewJobFromRepairRequest {
     var info: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Info", systemImage: "briefcase")
+
+            Picker("Priority", selection: $VM.issuePriority) {
+                ForEach(JobIssuePriorityLevel.allCases) { priority in
+                    Text(priority.displayName).tag(priority)
+                }
+            }
 
             pickerButtonRow(
                 title: "Admin",

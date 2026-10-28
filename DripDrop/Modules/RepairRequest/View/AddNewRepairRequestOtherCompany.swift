@@ -134,6 +134,12 @@ extension AddNewRepairRequestOtherCompany{
                 .submitLabel(.return)
                 .modifier(PlainTextFieldModifier())
                 .focused($descriptionField)
+
+                Picker("Priority", selection: $VM.issuePriority) {
+                    ForEach(JobIssuePriorityLevel.allCases) { priority in
+                        Text(priority.displayName).tag(priority)
+                    }
+                }
             }
         }
     }

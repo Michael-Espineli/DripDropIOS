@@ -21,29 +21,10 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
 
     @Published private(set) var activeRoutes: [ActiveRoute] = []
-    @Published private(set) var serviceStopsByRouteId: [String: [ServiceStop]] = [:]
-    @Published private(set) var logsByRouteId: [String: [ActiveRouteLog]] = [:]
-    @Published private(set) var locationsByRouteId: [String: [ActiveRouteLocation]] = [:]
-
     @Published private(set) var companyUsers: [CompanyUser] = []
-
-    @Published var selectedRoute: ActiveRoute?
-    @Published var selectedStops: [ServiceStop] = []
-
-    @Published var moveDate: Date = Date()
-    @Published var selectedTech: CompanyUser = CompanyUser(
-        id: "",
-        userId: "",
-        userName: "",
-        roleId: "",
-        roleName: "",
-        dateCreated: Date(),
-        status: .active,
-        workerType: .notAssigned
-    )
+    private var loadGeneration = UUID()
 
     @Published var isLoading: Bool = false
-    @Published var isMoving: Bool = false
 
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
@@ -73,64 +54,42 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
     }
 
     func load(companyId: String) async {
+        let token = UUID()
+        loadGeneration = token
+        let date = selectedDate
         isLoading = true
-        defer { isLoading = false }
-
+        activeRoutes = []
+        defer { if loadGeneration == token { isLoading = false } }
         do {
-            try await loadCompanyUsers(companyId: companyId)
-        } catch {
-            print("[CompanyActiveRouteOverviewViewModel][load] Company User Error")
-            print(error)
-            self.companyUsers = []
-        }
-
-        await syncScheduledRoutes(companyId: companyId)
-
-        do {
-            let routes = try await dataService.getActiveRoutesForDate(
-                companyId: companyId,
-                date: selectedDate
-            )
-
-            self.activeRoutes = routes
-            if let selectedRouteId = selectedRoute?.id {
-                self.selectedRoute = routes.first { $0.id == selectedRouteId }
-            }
-            self.serviceStopsByRouteId = [:]
-            self.logsByRouteId = [:]
-            self.locationsByRouteId = [:]
-
             do {
-                try await loadRouteDetails(companyId: companyId, routes: routes)
+                let users = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
+                guard loadGeneration == token, !Task.isCancelled else { return }
+                companyUsers = users.filter { $0.status == .active }
             } catch {
-                print("[CompanyActiveRouteOverviewViewModel][load] Detail Error")
-                print(error)
+                guard loadGeneration == token, !Task.isCancelled else { return }
+                companyUsers = []
             }
+            await syncScheduledRoutes(companyId: companyId, date: date, generation: token)
+            let routes = try await dataService.getActiveRoutesForDate(companyId: companyId, date: date)
+            guard loadGeneration == token, !Task.isCancelled else { return }
+            activeRoutes = routes
         } catch {
-            print("[CompanyActiveRouteOverviewViewModel][load] Error")
-            print(error)
-
-            alertMessage = "Could not load active routes."
+            guard loadGeneration == token, !Task.isCancelled else { return }
+            alertMessage = error.localizedDescription
             showAlert = true
         }
     }
 
-    private func loadCompanyUsers(companyId: String) async throws {
-        // If you already have a better async getter, use that here.
-        // This intentionally avoids listener behavior for the manager overview.
-        let users = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
-        self.companyUsers = users.filter { $0.status == .active }
-    }
-
-    private func syncScheduledRoutes(companyId: String) async {
+    private func syncScheduledRoutes(companyId: String, date: Date, generation: UUID) async {
         for user in companyUsers {
+            guard loadGeneration == generation, !Task.isCancelled else { return }
             let technicianId = user.userId.isEmpty ? user.id : user.userId
             guard !technicianId.isEmpty else { continue }
 
             do {
                 _ = try await dataService.syncActiveRouteForServiceStops(
                     companyId: companyId,
-                    date: selectedDate,
+                    date: date,
                     techId: technicianId,
                     techName: user.userName
                 )
@@ -141,199 +100,6 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
         }
     }
 
-    private func loadRouteDetails(
-        companyId: String,
-        routes: [ActiveRoute]
-    ) async throws {
-        var stopsDict: [String: [ServiceStop]] = [:]
-        var logsDict: [String: [ActiveRouteLog]] = [:]
-        var locationsDict: [String: [ActiveRouteLocation]] = [:]
-
-        for route in routes {
-            do {
-                async let stops = dataService.getServiceStopsByIds(
-                    companyId: companyId,
-                    serviceStopIds: route.serviceStopsIds
-                )
-
-                async let logs = dataService.getActiveRouteLogs(
-                    companyId: companyId,
-                    activeRouteId: route.id
-                )
-
-                async let locations = dataService.getActiveRouteLocations(
-                    companyId: companyId,
-                    activeRouteId: route.id
-                )
-
-                let loadedStops = try await stops
-                let loadedLogs = try await logs
-                let loadedLocations = try await locations
-
-                stopsDict[route.id] = applyOrder(
-                    stops: loadedStops,
-                    order: route.order
-                )
-
-                logsDict[route.id] = loadedLogs
-                locationsDict[route.id] = loadedLocations
-            } catch {
-                print("[CompanyActiveRouteOverviewViewModel][loadRouteDetails] Route \(route.id) Error")
-                print(error)
-
-                stopsDict[route.id] = []
-                logsDict[route.id] = []
-                locationsDict[route.id] = []
-            }
-        }
-
-        self.serviceStopsByRouteId = stopsDict
-        self.logsByRouteId = logsDict
-        self.locationsByRouteId = locationsDict
-    }
-
-    func stops(for route: ActiveRoute) -> [ServiceStop] {
-        serviceStopsByRouteId[route.id] ?? []
-    }
-
-    func logs(for route: ActiveRoute) -> [ActiveRouteLog] {
-        logsByRouteId[route.id] ?? []
-    }
-
-    func locations(for route: ActiveRoute) -> [ActiveRouteLocation] {
-        (locationsByRouteId[route.id] ?? []).filter { location in
-            isValidCoordinate(
-                CLLocationCoordinate2D(
-                    latitude: location.latitude,
-                    longitude: location.longitude
-                )
-            )
-        }
-    }
-
-    func latestLocation(for route: ActiveRoute) -> ActiveRouteLocation? {
-        locations(for: route).sorted { $0.time > $1.time }.first
-    }
-
-    func toggleSelectedStop(_ stop: ServiceStop) {
-        if selectedStops.contains(where: { $0.id == stop.id }) {
-            selectedStops.removeAll { $0.id == stop.id }
-        } else {
-            selectedStops.append(stop)
-        }
-    }
-
-    func clearMoveState() {
-        selectedStops = []
-        moveDate = selectedDate
-        selectedTech = CompanyUser(
-            id: "",
-            userId: "",
-            userName: "",
-            roleId: "",
-            roleName: "",
-            dateCreated: Date(),
-            status: .active,
-            workerType: .notAssigned
-        )
-    }
-
-    func moveSelectedStops(
-        companyId: String,
-        route: ActiveRoute
-    ) async {
-        guard !selectedStops.isEmpty else {
-            alertMessage = "Select at least one stop."
-            showAlert = true
-            return
-        }
-
-        guard !selectedTech.userId.isEmpty else {
-            alertMessage = "Select a technician."
-            showAlert = true
-            return
-        }
-
-        isMoving = true
-        defer { isMoving = false }
-
-        do {
-            var updatedOrder = route.order ?? []
-            var triedToMoveFinished = false
-
-            for stop in selectedStops {
-                if stop.operationStatus == .notFinished {
-                    updatedOrder.removeAll { $0.serviceStopId == stop.id }
-
-                    try await dataService.updateServiceStopServiceDate(
-                        companyId: companyId,
-                        serviceStop: stop,
-                        serviceDate: moveDate,
-                        companyUser: selectedTech
-                    )
-                } else {
-                    triedToMoveFinished = true
-                }
-            }
-
-            try await dataService.updateActiveRouteOrderList(
-                companyId: companyId,
-                activeRouteId: route.id,
-                serviceStopOrderList: updatedOrder
-            )
-
-            clearMoveState()
-
-            await load(companyId: companyId)
-            selectedRoute = activeRoutes.first { $0.id == route.id }
-
-            alertMessage = triedToMoveFinished
-                ? "Some stops were not moved because they are already finished."
-                : "Stops moved successfully."
-
-            showAlert = true
-        } catch {
-            print("[CompanyActiveRouteOverviewViewModel][moveSelectedStops] Error")
-            print(error)
-
-            alertMessage = "Could not move selected stops."
-            showAlert = true
-        }
-    }
-
-    private func applyOrder(
-        stops: [ServiceStop],
-        order: [ServiceStopOrder]?
-    ) -> [ServiceStop] {
-        guard let order else {
-            return stops.sorted { $0.serviceDate < $1.serviceDate }
-        }
-
-        var lookup: [String: Int] = [:]
-        for stopOrder in order {
-            if let existingOrder = lookup[stopOrder.serviceStopId] {
-                lookup[stopOrder.serviceStopId] = min(existingOrder, stopOrder.order)
-            } else {
-                lookup[stopOrder.serviceStopId] = stopOrder.order
-            }
-        }
-
-        return stops.sorted { lhs, rhs in
-            let lhsOrder = lookup[lhs.id]
-            let rhsOrder = lookup[rhs.id]
-
-            switch (lhsOrder, rhsOrder) {
-            case let (l?, r?):
-                return l < r
-            case (_?, nil):
-                return true
-            case (nil, _?):
-                return false
-            case (nil, nil):
-                return lhs.serviceDate < rhs.serviceDate
-            }
-        }
-    }
 }
 //MARK: CompanyActiveRouteOverviewView
 struct CompanyActiveRouteOverviewView: View {
@@ -350,7 +116,7 @@ struct CompanyActiveRouteOverviewView: View {
         )
     }
 
-    @State private var showRouteDetail: Bool = false
+    @State private var routeDetailTarget: CompanyRouteDetailTarget?
 
     var body: some View {
         ZStack {
@@ -361,7 +127,7 @@ struct CompanyActiveRouteOverviewView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
-                        summaryGrid
+                        if !VM.activeRoutes.isEmpty && !VM.isLoading { summaryGrid }
 
                         if VM.activeRoutes.isEmpty && !VM.isLoading {
                             emptyState
@@ -383,55 +149,16 @@ struct CompanyActiveRouteOverviewView: View {
         }
         .navigationTitle("Active Routes")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
+        .task(id: "\(masterDataManager.currentCompany?.id ?? "")-\(Calendar.current.startOfDay(for: VM.selectedDate))") {
             await load()
         }
-        .onChange(of: VM.selectedDate) { _ in
-            Task {
-                await load()
+        .refreshable { await load() }
+        .sheet(item: $routeDetailTarget, onDismiss: { Task { await load() } }) { target in
+            CompanyRouteDetailPresentation(target: target, dataService: dataService) { stop in
+                routeDetailTarget = nil
+                navigationManager.push(to: .dailyDisplayStop(dataService: dataService, serviceStop: stop))
             }
-        }
-        .refreshable {
-            await load()
-        }
-        .sheet(isPresented: $showRouteDetail) {
-            if let route = VM.selectedRoute {
-                CompanyActiveRouteDetailSheet(
-                    route: route,
-                    stops: VM.stops(for: route),
-                    logs: VM.logs(for: route),
-                    locations: VM.locations(for: route),
-                    companyUsers: VM.companyUsers,
-                    selectedStops: $VM.selectedStops,
-                    moveDate: $VM.moveDate,
-                    selectedTech: $VM.selectedTech,
-                    isMoving: VM.isMoving,
-                    onToggleStop: { stop in
-                        VM.toggleSelectedStop(stop)
-                    },
-                    onMoveStops: {
-                        Task {
-                            guard let companyId = masterDataManager.currentCompany?.id else { return }
-
-                            await VM.moveSelectedStops(
-                                companyId: companyId,
-                                route: route
-                            )
-                        }
-                    },
-                    onOpenStop: { stop in
-                        showRouteDetail = false
-
-                        navigationManager.push(
-                            to: Route.dailyDisplayStop(
-                                dataService: dataService,
-                                serviceStop: stop
-                            )
-                        )
-                    }
-                )
-                .presentationDetents([.large])
-            }
+            .presentationDetents([.large])
         }
         .alert("Active Routes", isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
@@ -450,132 +177,52 @@ extension CompanyActiveRouteOverviewView {
         //MARK: dateHeader
     private var dateHeader: some View {
         HStack(spacing: 10) {
-            Button {
-                VM.selectedDate = Calendar.current.date(
-                    byAdding: .day,
-                    value: -1,
-                    to: VM.selectedDate
-                ) ?? VM.selectedDate
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 38, height: 38)
-                    .background(.thinMaterial, in: Circle())
+            Button { changeDate(-1) } label: {
+                Image(systemName: "chevron.left").frame(width: 38, height: 44)
             }
-            .buttonStyle(.plain)
-
-            VStack(spacing: 3) {
-                Text(weekDay(date: VM.selectedDate))
-                    .font(.headline.weight(.semibold))
-
-                Text(fullDate(date: VM.selectedDate))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            .accessibilityLabel("Previous day")
+            DatePicker("Route date", selection: $VM.selectedDate, displayedComponents: .date)
+                .labelsHidden().frame(maxWidth: .infinity)
+            Button { changeDate(1) } label: {
+                Image(systemName: "chevron.right").frame(width: 38, height: 44)
             }
-            .frame(maxWidth: .infinity)
-
-            Button {
-                VM.selectedDate = Calendar.current.date(
-                    byAdding: .day,
-                    value: 1,
-                    to: VM.selectedDate
-                ) ?? VM.selectedDate
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 38, height: 38)
-                    .background(.thinMaterial, in: Circle())
+            .accessibilityLabel("Next day")
+            if !Calendar.current.isDateInToday(VM.selectedDate) {
+                Button("Today") { VM.selectedDate = Date() }.font(.caption.weight(.semibold))
             }
-            .buttonStyle(.plain)
-
-            DatePicker("", selection: $VM.selectedDate, displayedComponents: .date)
-                .labelsHidden()
         }
+        .buttonStyle(.plain)
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.vertical, 4)
         .background(.regularMaterial)
+    }
+
+    private func changeDate(_ days: Int) {
+        VM.selectedDate = Calendar.current.date(byAdding: .day, value: days, to: VM.selectedDate) ?? VM.selectedDate
     }
 
         //MARK: summaryGrid
     private var summaryGrid: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ],
-            spacing: 10
-        ) {
-            summaryTile(
-                title: "Routes",
-                value: "\(VM.totalRoutes)",
-                systemImage: "map",
-                tint: .blue
-            )
-
-            summaryTile(
-                title: "Started",
-                value: "\(VM.startedRoutes)",
-                systemImage: "play.circle",
-                tint: .orange
-            )
-
-            summaryTile(
-                title: "Not Started",
-                value: "\(VM.notStartedRoutes)",
-                systemImage: "clock",
-                tint: .secondary
-            )
-
-            summaryTile(
-                title: "Finished",
-                value: "\(VM.finishedRoutes)",
-                systemImage: "checkmark.circle",
-                tint: .green
-            )
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { routeSummaryMetrics }
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) { routeSummaryMetrics }
         }
     }
-    
-        //MARK: summaryTile
-    private func summaryTile(
-        title: String,
-        value: String,
-        systemImage: String,
-        tint: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: systemImage)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 34, height: 34)
-                    .background(tint.opacity(0.12), in: Circle())
 
-                Spacer()
-            }
-
-            Text(value)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.primary)
-
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    @ViewBuilder private var routeSummaryMetrics: some View {
+        MobileDashboardSnapshotMetric(title: "Routes", value: "\(VM.totalRoutes)", tint: .poolBlue)
+        MobileDashboardSnapshotMetric(title: "Working", value: "\(VM.startedRoutes)", tint: .orange)
+        MobileDashboardSnapshotMetric(title: "Waiting", value: "\(VM.notStartedRoutes)", tint: .secondary)
+        MobileDashboardSnapshotMetric(title: "Finished", value: "\(VM.finishedRoutes)", tint: .poolGreen)
     }
-    
+
         //MARK: routeList
     private var routeList: some View {
         VStack(spacing: 12) {
             ForEach(VM.activeRoutes) { route in
                 Button {
-                    VM.selectedRoute = route
-                    VM.clearMoveState()
-                    VM.moveDate = VM.selectedDate
-                    showRouteDetail = true
+                    guard let companyId = masterDataManager.currentCompany?.id else { return }
+                    routeDetailTarget = CompanyRouteDetailTarget(companyId: companyId, route: route)
                 } label: {
                     activeRouteCard(route)
                 }
@@ -598,82 +245,41 @@ extension CompanyActiveRouteOverviewView {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
     private func activeRouteCard(_ route: ActiveRoute) -> some View {
-        let stops = VM.stops(for: route)
-        let latestLocation = VM.latestLocation(for: route)
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                routeProgressRing(route)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(route.name.isEmpty ? route.techName : route.name)
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    Text(route.techName)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    routeStatusBadge(route.status)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "map")
+                    .font(.body.weight(.semibold)).foregroundStyle(Color.poolBlue)
+                    .frame(width: 34, height: 34)
+                    .background(Color.poolBlue.opacity(0.13), in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(route.techName).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    if !route.name.isEmpty && route.name != route.techName {
+                        Text(route.name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
                 }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                Spacer(minLength: 0)
+                routeStatusBadge(route.status)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
             }
-
-            HStack(spacing: 8) {
-                metricPill(
-                    title: "Stops",
-                    value: "\(route.finishedStops)/\(route.totalStops)",
-                    systemImage: "checklist"
-                )
-
-                metricPill(
-                    title: "Logs",
-                    value: "\(VM.logs(for: route).count)",
-                    systemImage: "clock.badge"
-                )
-
-                metricPill(
-                    title: "Locations",
-                    value: "\(VM.locations(for: route).count)",
-                    systemImage: "location"
-                )
+            HStack(spacing: 10) {
+                ProgressView(value: Double(min(route.finishedStops, route.totalStops)), total: Double(max(route.totalStops, 1)))
+                    .tint(.poolGreen)
+                Text("\(route.finishedStops)/\(route.totalStops) stops")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary).monospacedDigit()
             }
-
-            if let startTime = route.startTime {
-                Label(timeRangeText(start: startTime, end: route.endTime), systemImage: "clock")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let startMilage = route.startMilage {
-                Label(mileageRangeText(start: startMilage, end: route.endMilage), systemImage: "gauge.with.dots.needle.bottom.50percent")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let latestLocation {
-                Label("Last location: \(fullDateAndTime(date: latestLocation.time))", systemImage: "location.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            if stops.count != route.serviceStopsIds.count {
-                Label("Route stop count mismatch. Route has \(route.serviceStopsIds.count) IDs, loaded \(stops.count) stops.", systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+            if let start = route.startTime {
+                Label(timeRangeText(start: start, end: route.endTime), systemImage: "clock")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .activeRouteCard()
+        .mobileMainCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Open stops, logs, locations, and manager actions")
     }
 
     private var emptyState: some View {
@@ -698,24 +304,31 @@ extension CompanyActiveRouteOverviewView {
 //MARK: CompanyActiveRouteDetailSheet
 
 struct CompanyActiveRouteDetailSheet: View {
-
+    let companyId: String
+    let dataService: any ProductionDataServiceProtocol
     let route: ActiveRoute
     let stops: [ServiceStop]
     let logs: [ActiveRouteLog]
     let locations: [ActiveRouteLocation]
     let companyUsers: [CompanyUser]
+    let errors: [String: String]
 
     @Binding var selectedStops: [ServiceStop]
     @Binding var moveDate: Date
-    @Binding var selectedTech: CompanyUser
+    @Binding var selectedTechnicianId: String
 
     let isMoving: Bool
+    let isLoading: Bool
 
     let onToggleStop: (ServiceStop) -> Void
     let onMoveStops: () -> Void
     let onOpenStop: (ServiceStop) -> Void
+    let onReload: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @State private var showCoverageOffer = false
+    @State private var showMoveConfirmation = false
 
     @State private var selectedTab: ActiveRouteDetailTab = .stops
     @State private var mapCameraPosition: MapCameraPosition = .automatic
@@ -738,6 +351,7 @@ struct CompanyActiveRouteDetailSheet: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 14) {
                             summaryCard
+                            if isLoading { ProgressView("Refreshing route…") }
 
                             switch selectedTab {
                             case .stops:
@@ -764,11 +378,26 @@ struct CompanyActiveRouteDetailSheet: View {
             .sheet(isPresented: $showExpandedMap) {
                 expandedRouteMapSheet
             }
+            .sheet(isPresented: $showCoverageOffer, onDismiss: onReload) {
+                RouteCoverageOfferSheet(
+                    companyId: companyId, route: route, dataService: dataService,
+                    initialSelectedStopIds: Set(selectedStops.map(\.id)), initialReason: "Sick day"
+                )
+            }
+            .confirmationDialog("Move \(selectedStops.count) selected stops?", isPresented: $showMoveConfirmation, titleVisibility: .visible) {
+                Button("Move selected stops") { onMoveStops() }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Move these dated visits to \(companyUsers.first { $0.userId == selectedTechnicianId }?.userName ?? "the selected technician") on \(moveDate.formatted(date: .abbreviated, time: .omitted)). Recurring assignments stay the same.")
+            }
+            .interactiveDismissDisabled(isMoving)
             .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { onReload() } label: { Image(systemName: "arrow.clockwise") }
+                        .disabled(isMoving || isLoading).accessibilityLabel("Refresh route")
+                }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        dismiss()
-                    }
+                    Button("Close") { dismiss() }.disabled(isMoving)
                 }
             }
         }
@@ -812,7 +441,7 @@ extension CompanyActiveRouteDetailSheet {
                             .padding(.vertical, 8)
                             .background(
                                 selectedTab == tab ? Color.accentColor : Color.primary.opacity(0.07),
-                                in: Capsule()
+                                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                             )
                     }
                     .buttonStyle(.plain)
@@ -822,54 +451,47 @@ extension CompanyActiveRouteDetailSheet {
             .padding(.vertical, 10)
         }
         .background(.regularMaterial)
+        .disabled(isMoving)
     }
 
     private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                routeProgressRing(route)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(route.name.isEmpty ? "Active Route" : route.name)
-                        .font(.headline.weight(.semibold))
-
-                    Text(route.techName)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    routeStatusBadge(route.status)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(route.name.isEmpty ? "Daily route" : route.name).font(.subheadline.weight(.semibold))
+                    Text(route.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-
                 Spacer()
+                routeStatusBadge(route.status)
             }
-
             HStack(spacing: 8) {
-                metricPill(title: "Stops", value: "\(route.finishedStops)/\(route.totalStops)", systemImage: "checklist")
-                metricPill(title: "Logs", value: "\(logs.count)", systemImage: "clock")
-                metricPill(title: "GPS", value: "\(locations.count)", systemImage: "location")
-            }
-
-            if let start = route.startTime {
-                Label(timeRangeText(start: start, end: route.endTime), systemImage: "clock")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let startMileage = route.startMilage {
-                Label(mileageRangeText(start: startMileage, end: route.endMilage), systemImage: "gauge.with.dots.needle.bottom.50percent")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                MobileDashboardSnapshotMetric(title: "Stops", value: "\(route.finishedStops)/\(route.totalStops)", tint: .poolGreen)
+                MobileDashboardSnapshotMetric(title: "Logs", value: errors["logs"] == nil && !isLoading ? "\(logs.count)" : "—", tint: .poolBlue)
+                MobileDashboardSnapshotMetric(title: "Locations", value: errors["locations"] == nil && !isLoading ? "\(locations.count)" : "—", tint: .poolBlue)
             }
         }
-        .activeRouteCard()
+        .mobileMainCard(material: true)
+    }
+
+    @ViewBuilder private func sourceError(_ key: String) -> some View {
+        if let message = errors[key] {
+            VStack(alignment: .leading, spacing: 6) {
+                Label(message, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.secondary)
+                Button("Reload route", action: onReload).font(.caption.weight(.semibold)).disabled(isLoading || isMoving)
+            }
+        }
     }
 
     private var stopsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader("Service Stops", "\(stops.count) stops in route order.", "list.bullet.rectangle")
+            sourceError("stops")
 
             if stops.isEmpty {
-                emptyRow("No stops loaded", "This route has no loaded service stops.", "checklist")
+                if !isLoading && errors["stops"] == nil {
+                    emptyRow("No stops", "This route has no service stops.", "checklist")
+                }
             } else {
                 VStack(spacing: 10) {
                     ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
@@ -884,9 +506,12 @@ extension CompanyActiveRouteDetailSheet {
     private var logsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader("Route Logs", "\(logs.count) work log records.", "clock.badge")
+            sourceError("logs")
 
             if logs.isEmpty {
-                emptyRow("No logs", "Logs will appear here when the route starts, pauses, resumes, or ends.", "clock")
+                if !isLoading && errors["logs"] == nil {
+                    emptyRow("No logs", "Logs will appear here when the route starts, pauses, resumes, or ends.", "clock")
+                }
             } else {
                 VStack(spacing: 10) {
                     ForEach(logs) { log in
@@ -900,6 +525,7 @@ extension CompanyActiveRouteDetailSheet {
 
     private var locationsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            sourceError("locations")
             sectionHeader(
                 "Route Map",
                 routeMapSubtitle,
@@ -1178,7 +804,7 @@ extension CompanyActiveRouteDetailSheet {
             }
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     private var sortedLocations: [ActiveRouteLocation] {
         locations.sorted { $0.time < $1.time }
@@ -1528,64 +1154,111 @@ extension CompanyActiveRouteDetailSheet {
     }
 
     //MARK: Manager Section
+    private var eligibleStops: [ServiceStop] { RouteManagerStopSelection.eligibleStops(in: stops, route: route) }
+    private var isOwner: Bool { masterDataManager.currentCompany?.ownerId == masterDataManager.user?.id && masterDataManager.user != nil }
+    private var canMoveStops: Bool {
+        isOwner || masterDataManager.role?.permissionIdList.contains(where: { ["244", "234"].contains($0) }) == true
+    }
+    private var canOfferCoverage: Bool {
+        isOwner || (masterDataManager.role?.permissionIdList.contains("322") == true &&
+            (route.techId == masterDataManager.user?.id || masterDataManager.role?.permissionIdList.contains("324") == true))
+    }
+    private var canManageStops: Bool { canMoveStops || canOfferCoverage }
+    private var hasValidSelection: Bool {
+        let selectedIds = Set(selectedStops.map(\.id))
+        return !selectedIds.isEmpty && selectedIds.isSubset(of: Set(eligibleStops.map(\.id))) && errors["stops"] == nil
+    }
+
     private var managerSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader("Manager Actions", "Move unfinished stops to another day or technician.", "slider.horizontal.3")
-
-            VStack(spacing: 10) {
-                DatePicker("Move Date", selection: $moveDate, displayedComponents: .date)
-
+            sectionHeader("Manage route work", "Select the stops to move or offer for coverage.", "slider.horizontal.3")
+            sourceError("stops")
+            if !canManageStops {
+                Text("Your role can view this route. Moving stops or posting coverage requires company permission.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
                 HStack {
-                    Text("Technician")
-                        .font(.subheadline.weight(.semibold))
-
+                    Button("Select all remaining") { selectedStops = eligibleStops }
                     Spacer()
+                    Button("Clear") { selectedStops = [] }
+                }
+                .font(.caption.weight(.semibold))
+                .disabled(isLoading || isMoving)
+                ForEach(stops) { stop in managerStopRow(stop) }
+                if stops.isEmpty && !isLoading && errors["stops"] == nil {
+                    Text("There are no stops on this route.").font(.caption).foregroundStyle(.secondary)
+                }
+                Text("\(selectedStops.count) selected · \(eligibleStops.count) available. Completed, skipped, and started stops cannot be moved or offered here.")
+                    .font(.caption).foregroundStyle(.secondary)
 
-                    Picker("Technician", selection: $selectedTech) {
-                        Text("Select").tag(CompanyUser(
-                            id: "",
-                            userId: "",
-                            userName: "",
-                            roleId: "",
-                            roleName: "",
-                            dateCreated: Date(),
-                            status: .active,
-                            workerType: .notAssigned
-                        ))
-
-                        ForEach(companyUsers) { user in
-                            Text(user.userName).tag(user)
+                if canMoveStops {
+                    Divider()
+                    sourceError("users")
+                    DatePicker("Move date", selection: $moveDate, displayedComponents: .date)
+                    Picker("Destination technician", selection: $selectedTechnicianId) {
+                        Text("Select technician").tag("")
+                        ForEach(companyUsers) { user in Text(user.userName).tag(user.userId) }
+                    }
+                    .pickerStyle(.menu)
+                    Button { showMoveConfirmation = true } label: {
+                        HStack(spacing: 8) {
+                            if isMoving { ProgressView() }
+                            Label(isMoving ? "Moving stops…" : "Move selected stops", systemImage: "arrowshape.turn.up.right")
                         }
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!hasValidSelection || selectedTechnicianId.isEmpty || isLoading || isMoving || errors["users"] != nil)
                 }
-                .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                Text("\(selectedStops.count) selected stop\(selectedStops.count == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Button {
-                    onMoveStops()
-                } label: {
-                    if isMoving {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    } else {
-                        Label("Move Selected Stops", systemImage: "arrowshape.turn.up.right")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                if canOfferCoverage {
+                    Divider()
+                    Button { showCoverageOffer = true } label: {
+                        Label("Create work offer", systemImage: "person.2.badge.plus")
+                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .buttonStyle(.bordered)
+                    .disabled(!hasValidSelection || isLoading || isMoving)
+                    Text("Offer these selected stops for sick-day coverage on the company work board or directly to another technician.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .disabled(selectedStops.isEmpty || selectedTech.userId.isEmpty || isMoving)
-                .opacity(selectedStops.isEmpty || selectedTech.userId.isEmpty ? 0.55 : 1)
             }
         }
         .activeRouteCard()
+        .disabled(isLoading || isMoving)
+    }
+
+    private func managerStopRow(_ stop: ServiceStop) -> some View {
+        let available = eligibleStops.contains { $0.id == stop.id }
+        let selected = selectedStops.contains { $0.id == stop.id }
+        return Button { onToggleStop(stop) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: selected ? "checkmark.square.fill" : "square")
+                    .font(.body.weight(.semibold)).foregroundStyle(available ? Color.accentColor : .secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(stop.customerName).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    Text(stop.address.streetAddress).font(.caption).foregroundStyle(.secondary)
+                    Text(available ? stop.type : selectionUnavailableReason(stop))
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(12)
+            .background(selected ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!available || isLoading || isMoving)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityLabel("\(stop.customerName), \(selected ? "selected" : "not selected")\(available ? "" : ", unavailable")")
+    }
+
+    private func selectionUnavailableReason(_ stop: ServiceStop) -> String {
+        if stop.operationStatus != .notFinished { return stop.operationStatus.rawValue }
+        if stop.startTime != nil || stop.endTime != nil { return "Work already started" }
+        if stop.techId != route.techId { return "Assigned to another technician" }
+        if !Calendar.current.isDate(stop.serviceDate, inSameDayAs: route.date) { return "Scheduled for another day" }
+        return "Unavailable for this route"
     }
 
     private func stopRow(_ stop: ServiceStop, index: Int) -> some View {
@@ -1600,6 +1273,7 @@ extension CompanyActiveRouteDetailSheet {
                     .foregroundStyle(isSelected ? Color.accentColor : .secondary)
             }
             .buttonStyle(.plain)
+            .disabled(!canManageStops || !eligibleStops.contains(where: { $0.id == stop.id }) || isMoving || isLoading)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(stop.customerName)
@@ -1624,9 +1298,10 @@ extension CompanyActiveRouteDetailSheet {
                     .foregroundStyle(.tertiary)
             }
             .buttonStyle(.plain)
+            .disabled(isMoving)
         }
         .padding(12)
-        .background(statusBackground(stop.operationStatus), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(statusBackground(stop.operationStatus), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func logRow(_ log: ActiveRouteLog) -> some View {
@@ -1655,7 +1330,7 @@ extension CompanyActiveRouteDetailSheet {
             Spacer()
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func locationRow(_ location: ActiveRouteLocation) -> some View {
@@ -1676,7 +1351,7 @@ extension CompanyActiveRouteDetailSheet {
                 .foregroundStyle(.secondary)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func legendPill(
@@ -1740,7 +1415,7 @@ extension CompanyActiveRouteDetailSheet {
             Spacer()
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func areaOrderNumber(for estimate: ActiveRouteAreaEstimate) -> Int {
@@ -1758,32 +1433,6 @@ private func isValidCoordinate(_ coordinate: CLLocationCoordinate2D) -> Bool {
     abs(coordinate.latitude) <= 90 &&
     abs(coordinate.longitude) <= 180 &&
     !(coordinate.latitude == 0 && coordinate.longitude == 0)
-}
-
-private func routeProgressRing(_ route: ActiveRoute) -> some View {
-    ZStack {
-        Circle()
-            .stroke(Color.primary.opacity(0.12), lineWidth: 7)
-            .frame(width: 66, height: 66)
-
-        Circle()
-            .trim(
-                from: 0,
-                to: Double(route.finishedStops) / Double(max(route.totalStops, 1))
-            )
-            .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 7, lineCap: .round))
-            .rotationEffect(.degrees(-90))
-            .frame(width: 66, height: 66)
-
-        VStack(spacing: 0) {
-            Text("\(route.finishedStops)")
-                .font(.headline.weight(.bold))
-
-            Text("of \(route.totalStops)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
 }
 
 private func routeStatusBadge(_ status: ActiveRouteStatus) -> some View {
@@ -1830,50 +1479,8 @@ private func statusTint(_ status: ServiceStopOperationStatus) -> Color {
     }
 }
 
-private func metricPill(
-    title: String,
-    value: String,
-    systemImage: String
-) -> some View {
-    HStack(spacing: 6) {
-        Image(systemName: systemImage)
-        VStack(alignment: .leading, spacing: 1) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-
-            Text(value)
-                .font(.caption.weight(.bold))
-        }
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(10)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-}
-
-private func sectionHeader(
-    _ title: String,
-    _ subtitle: String,
-    _ systemImage: String
-) -> some View {
-    HStack(alignment: .top, spacing: 12) {
-        Image(systemName: systemImage)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .frame(width: 34, height: 34)
-            .background(.thinMaterial, in: Circle())
-
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.headline.weight(.semibold))
-
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-
-        Spacer()
-    }
+private func sectionHeader(_ title: String, _ subtitle: String, _ systemImage: String) -> some View {
+    MobileDashboardSectionHeading(title: title, subtitle: subtitle, systemImage: systemImage)
 }
 
 private func emptyRow(
@@ -1900,7 +1507,7 @@ private func emptyRow(
         Spacer()
     }
     .padding(12)
-    .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 private func logIcon(_ type: WorkLogType) -> String {
@@ -1932,9 +1539,7 @@ private func timeRangeText(start: Date, end: Date?) -> String {
 
 private extension View {
     func activeRouteCard() -> some View {
-        self
-            .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        self.mobileMainCard()
     }
 }
 

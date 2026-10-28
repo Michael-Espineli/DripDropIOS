@@ -42,6 +42,8 @@
 		0AAF241E4A35F54F142CC0B5 /* PayrollExportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D893F022FC0AA5600791025 /* PayrollExportsView.swift */; };
 		0B0DA21B3B202C557CD05AAE /* TechSignUpPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CDB22C194552003EB3DB /* TechSignUpPicker.swift */; };
 		0B25BADF504BCF4143C3698F /* JobViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE392C194552003EB3DB /* JobViewModel.swift */; };
+		E1EB818F89DE4FCBA52037D9 /* JobListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D6054F6562D448A9E05C8E0 /* JobListViewModel.swift */; };
+		8D4394BFE66F4A75879DABE3 /* JobListFiltering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68DA6528A22D411FBA4E8248 /* JobListFiltering.swift */; };
 		0B3D41991368AF664A0FB40D /* LoadingSpinner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38D0FD2C19457D003EB3DB /* LoadingSpinner.swift */; };
 		0C0EAA3728F2EC6D76CA4962 /* Array+ShoppingHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D893F622FC6875C00791025 /* Array+ShoppingHelpers.swift */; };
 		0C321B529927F1E593CB3C18 /* LocationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE4C2C194552003EB3DB /* LocationViewController.swift */; };
@@ -515,6 +517,8 @@
 		6D38CFD72C194552003EB3DB /* JobTemplateSettingsVIew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE362C194552003EB3DB /* JobTemplateSettingsVIew.swift */; };
 		6D38CFD82C194552003EB3DB /* JobManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE382C194552003EB3DB /* JobManager.swift */; };
 		6D38CFD92C194552003EB3DB /* JobViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE392C194552003EB3DB /* JobViewModel.swift */; };
+		F9F5A92971714A2DB60154D3 /* JobListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D6054F6562D448A9E05C8E0 /* JobListViewModel.swift */; };
+		A840775632BC4A60A1D22939 /* JobListFiltering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68DA6528A22D411FBA4E8248 /* JobListFiltering.swift */; };
 		6D38CFDA2C194552003EB3DB /* ServiceLocationStartUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE3B2C194552003EB3DB /* ServiceLocationStartUpView.swift */; };
 		6D38CFDB2C194552003EB3DB /* AddNewJobFromRepairRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE3D2C194552003EB3DB /* AddNewJobFromRepairRequest.swift */; };
 		6D38CFDC2C194552003EB3DB /* AddNewJobView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE3E2C194552003EB3DB /* AddNewJobView.swift */; };
@@ -1680,6 +1684,16 @@
 		FF88C628F7A6C0139D8ABABB /* AssocatedBusiness+DS+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9C7CD52DEAA63C00418F12 /* AssocatedBusiness+DS+Extension.swift */; };
 		FF9142B721FC3C8B46D3FC9B /* RecurringLaborContractInvoiceCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D8BFD162DECD437006525A2 /* RecurringLaborContractInvoiceCardView.swift */; };
 		FFB2B214B89A4DE88C9D747E /* JobView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D38CE462C194552003EB3DB /* JobView.swift */; };
+		B85FBEDF406A48B487A52685 /* CompanyDashboardSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E045538E47F43F4B94872D6 /* CompanyDashboardSnapshot.swift */; };
+		C89A8A4F9955449AB6D7397D /* CompanyDashboardSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E045538E47F43F4B94872D6 /* CompanyDashboardSnapshot.swift */; };
+		D2EA2B339E554ECDA0C8C675 /* CompanyDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59081E89B174ADBBA4AF147 /* CompanyDashboardViewModel.swift */; };
+		1953283342244AC48F115AAE /* CompanyDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59081E89B174ADBBA4AF147 /* CompanyDashboardViewModel.swift */; };
+		EADB23B1AA73488E99C4F96B /* CompanyManagerDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223D42F2808F4037B9B32924 /* CompanyManagerDashboard.swift */; };
+		DD35BDF3EE9646C5B40876C6 /* CompanyManagerDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223D42F2808F4037B9B32924 /* CompanyManagerDashboard.swift */; };
+		EB9F0E0DD7B04EA6B356F2D6 /* DashboardComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB259113BAFF4B7B9A736300 /* DashboardComponents.swift */; };
+		21EAFC85B713487CA893B736 /* DashboardComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB259113BAFF4B7B9A736300 /* DashboardComponents.swift */; };
+		657E77F10393454D8B55AB24 /* CompanyRouteDetailPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F34E90FA0EF478093CC4043 /* CompanyRouteDetailPresentation.swift */; };
+		9928E5A360364B0EA9B6B58F /* CompanyRouteDetailPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F34E90FA0EF478093CC4043 /* CompanyRouteDetailPresentation.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1833,6 +1847,8 @@
 		6D38CE362C194552003EB3DB /* JobTemplateSettingsVIew.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobTemplateSettingsVIew.swift; sourceTree = "<group>"; };
 		6D38CE382C194552003EB3DB /* JobManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobManager.swift; sourceTree = "<group>"; };
 		6D38CE392C194552003EB3DB /* JobViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobViewModel.swift; sourceTree = "<group>"; };
+		7D6054F6562D448A9E05C8E0 /* JobListViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobListViewModel.swift; sourceTree = "<group>"; };
+		68DA6528A22D411FBA4E8248 /* JobListFiltering.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = JobListFiltering.swift; sourceTree = "<group>"; };
 		6D38CE3B2C194552003EB3DB /* ServiceLocationStartUpView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ServiceLocationStartUpView.swift; sourceTree = "<group>"; };
 		6D38CE3D2C194552003EB3DB /* AddNewJobFromRepairRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AddNewJobFromRepairRequest.swift; sourceTree = "<group>"; };
 		6D38CE3E2C194552003EB3DB /* AddNewJobView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AddNewJobView.swift; sourceTree = "<group>"; };
@@ -2521,6 +2537,11 @@
 		6DFBD8842F39A00800D560EC /* MasterRoleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MasterRoleManager.swift; sourceTree = "<group>"; };
 		6DFBD8882F3B01DE00D560EC /* ServiceStopDetailView3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceStopDetailView3.swift; sourceTree = "<group>"; };
 		6DFBD88A2F3B041E00D560EC /* CustomerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerDetailView.swift; sourceTree = "<group>"; };
+		2E045538E47F43F4B94872D6 /* CompanyDashboardSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyDashboardSnapshot.swift; sourceTree = "<group>"; };
+		F59081E89B174ADBBA4AF147 /* CompanyDashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyDashboardViewModel.swift; sourceTree = "<group>"; };
+		223D42F2808F4037B9B32924 /* CompanyManagerDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyManagerDashboard.swift; sourceTree = "<group>"; };
+		BB259113BAFF4B7B9A736300 /* DashboardComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardComponents.swift; sourceTree = "<group>"; };
+		4F34E90FA0EF478093CC4043 /* CompanyRouteDetailPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanyRouteDetailPresentation.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -2980,6 +3001,8 @@
 		6D38CDFD2C194552003EB3DB /* Logic */ = {
 			isa = PBXGroup;
 			children = (
+				F59081E89B174ADBBA4AF147 /* CompanyDashboardViewModel.swift */,
+				2E045538E47F43F4B94872D6 /* CompanyDashboardSnapshot.swift */,
 				6D38CDFB2C194552003EB3DB /* AllViewModel.swift */,
 				6D38CDFC2C194552003EB3DB /* MobileDailyRouteDisplayViewModel.swift */,
 				6DFBD8762F33FD8900D560EC /* DurationTimerView.swift */,
@@ -2990,6 +3013,8 @@
 		6D38CE092C194552003EB3DB /* View */ = {
 			isa = PBXGroup;
 			children = (
+				BB259113BAFF4B7B9A736300 /* DashboardComponents.swift */,
+				223D42F2808F4037B9B32924 /* CompanyManagerDashboard.swift */,
 				6D38CDFE2C194552003EB3DB /* All.swift */,
 				6D38CDFF2C194552003EB3DB /* ContractorDailyDashboard.swift */,
 				6D38CE002C194552003EB3DB /* DailyRouteCardView.swift */,
@@ -3159,6 +3184,8 @@
 				6D893F422FC2CAD100791025 /* JobTemplateSettingsViewModel.swift */,
 				6D38CE382C194552003EB3DB /* JobManager.swift */,
 				6D38CE392C194552003EB3DB /* JobViewModel.swift */,
+				7D6054F6562D448A9E05C8E0 /* JobListViewModel.swift */,
+				68DA6528A22D411FBA4E8248 /* JobListFiltering.swift */,
 				6DBF26592C1D3E7000109F5E /* JobTemplateViewModel.swift */,
 				6D89EDC72C31BC3200178F32 /* ServiceLocationStartUpViewModel.swift */,
 				6DABF7E52CF193F6009D99F4 /* JobDetailViewModel.swift */,
@@ -5139,6 +5166,7 @@
 				6DEFCECC2DD9C1360009A7DA /* AllCompanyRouteTechStopView.swift */,
 				6DEFCECE2DD9C3430009A7DA /* TechnicianRouteSameCompanyCard.swift */,
 				6D01C23C2FCB37F70071F1C9 /* CompanyActiveRouteOverviewView.swift */,
+				4F34E90FA0EF478093CC4043 /* CompanyRouteDetailPresentation.swift */,
 			);
 			path = NewViews;
 			sourceTree = "<group>";
@@ -5613,6 +5641,11 @@
 				E8CAB54993B9B88B263C703D /* StopDataDosageInputView.swift in Sources */,
 				033224B0B78FEF572B768292 /* AddDosageAmount.swift in Sources */,
 				FDA5BC31C45969310A50E026 /* MobileHome.swift in Sources */,
+				657E77F10393454D8B55AB24 /* CompanyRouteDetailPresentation.swift in Sources */,
+				EB9F0E0DD7B04EA6B356F2D6 /* DashboardComponents.swift in Sources */,
+				EADB23B1AA73488E99C4F96B /* CompanyManagerDashboard.swift in Sources */,
+				D2EA2B339E554ECDA0C8C675 /* CompanyDashboardViewModel.swift in Sources */,
+				B85FBEDF406A48B487A52685 /* CompanyDashboardSnapshot.swift in Sources */,
 				AC693C6C9D2DDAF4D9D9CCDF /* ReceiptFileViewModel.swift in Sources */,
 				8B3FBB4A6C03682D7B3F20AF /* AddNewTaskToJob.swift in Sources */,
 				B143819F22B88EC79A357BA1 /* InviteCardView.swift in Sources */,
@@ -5715,6 +5748,8 @@
 				41FFA4750DAFB60513763D97 /* AddJobTemplateTaskSheet.swift in Sources */,
 				41C663AEC66B5060D1FD1A4A /* SaveJobAsTemplateSheet.swift in Sources */,
 				0B25BADF504BCF4143C3698F /* JobViewModel.swift in Sources */,
+				E1EB818F89DE4FCBA52037D9 /* JobListViewModel.swift in Sources */,
+				8D4394BFE66F4A75879DABE3 /* JobListFiltering.swift in Sources */,
 				E145EF84CD2EBFEF3D1F916E /* TransactionListView.swift in Sources */,
 				B70F1C61EA075BC10964AEB0 /* JobActualWorkView.swift in Sources */,
 				E17F90D60260023603E21F71 /* ServiceLocation+ProductionDataService+Extension.swift in Sources */,
@@ -6438,6 +6473,11 @@
 				6D38D0772C194553003EB3DB /* StopDataDosageInputView.swift in Sources */,
 				6D38D1B22C19457D003EB3DB /* AddDosageAmount.swift in Sources */,
 				6D38CFF92C194552003EB3DB /* MobileHome.swift in Sources */,
+				9928E5A360364B0EA9B6B58F /* CompanyRouteDetailPresentation.swift in Sources */,
+				21EAFC85B713487CA893B736 /* DashboardComponents.swift in Sources */,
+				DD35BDF3EE9646C5B40876C6 /* CompanyManagerDashboard.swift in Sources */,
+				1953283342244AC48F115AAE /* CompanyDashboardViewModel.swift in Sources */,
+				C89A8A4F9955449AB6D7397D /* CompanyDashboardSnapshot.swift in Sources */,
 				6D38CFCE2C194552003EB3DB /* ReceiptFileViewModel.swift in Sources */,
 				6DABF7EB2CF2DAB3009D99F4 /* AddNewTaskToJob.swift in Sources */,
 				6D38CFD22C194552003EB3DB /* InviteCardView.swift in Sources */,
@@ -6540,6 +6580,8 @@
 				6D893F4B2FC3453400791025 /* AddJobTemplateTaskSheet.swift in Sources */,
 				6D893F3D2FC2BCC700791025 /* SaveJobAsTemplateSheet.swift in Sources */,
 				6D38CFD92C194552003EB3DB /* JobViewModel.swift in Sources */,
+				F9F5A92971714A2DB60154D3 /* JobListViewModel.swift in Sources */,
+				A840775632BC4A60A1D22939 /* JobListFiltering.swift in Sources */,
 				6D7E37702C82736A00DB9B5D /* TransactionListView.swift in Sources */,
 				6D893F172FC17CAA00791025 /* JobActualWorkView.swift in Sources */,
 				6DC8CCF12D0500AF00EDAB55 /* ServiceLocation+ProductionDataService+Extension.swift in Sources */,

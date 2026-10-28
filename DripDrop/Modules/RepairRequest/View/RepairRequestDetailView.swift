@@ -511,6 +511,12 @@ extension RepairRequestDetailView {
                 systemImage: "calendar"
             )
 
+            detailRow(
+                title: "Priority",
+                value: VM.repairRequest.normalizedIssuePriority.displayName,
+                systemImage: "flag"
+            )
+
             detailRow(title: "Customer", value: repairRequest.customerName, systemImage: "person")
             detailRow(title: "Requested By", value: repairRequest.requesterName, systemImage: "person.crop.circle")
 
@@ -728,7 +734,7 @@ extension RepairRequestDetailView {
                 },
                 content: {
                     AddNewJobFromRepairRequest(
-                        repairRequest:repairRequest,
+                        repairRequest:VM.repairRequest,
                         dataService: dataService,
                         returnJobId: $VM.jobId
                     )

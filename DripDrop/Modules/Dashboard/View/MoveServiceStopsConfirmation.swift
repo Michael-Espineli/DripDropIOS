@@ -25,8 +25,17 @@ struct MoveServiceStopsConfirmation: View {
     @State var tech:CompanyUser = CompanyUser(id: "", userId: "", userName: "", roleId: "", roleName: "", dateCreated: Date(), status: .active,workerType: .contractor)
     @State var date:Date = Date()
     @State var moveType: MoveServiceStopType = .oneTime
+    @State private var isSubmitting = false
+    @State private var showMoveError = false
+    @State private var moveError = ""
     var body: some View {
        info
+            .disabled(isSubmitting)
+            .alert("Move could not be saved", isPresented: $showMoveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(moveError)
+            }
             .task{
                 if let company = masterDataManager.currentCompany {
                     do {
@@ -78,13 +87,24 @@ extension MoveServiceStopsConfirmation {
     }
     var button: some View {
         Button(action: {
+            guard !isSubmitting else { return }
+            isSubmitting = true
             Task{
+                defer { isSubmitting = false }
                 if let company  = masterDataManager.currentCompany {
                     do {
-                        try await serviceStopVM.updateServiceStopListServiceDate(companyId: company.id, serviceStopList: selectedServiceStopList, date: date,companyUser:tech)
+                        if moveType == .permanant {
+                            guard let day = DaysOfWeek(rawValue: weekDay(date: date)) else {
+                                throw NSError(domain: "RouteMove", code: -1, userInfo: [NSLocalizedDescriptionKey: "Select a valid weekday."])
+                            }
+                            try await FunctionsManager.shared.updateServiceStopPermanently(companyId:company.id,serviceStopList:selectedServiceStopList,newTech:tech,newDay:day)
+                        } else {
+                            try await serviceStopVM.updateServiceStopListServiceDate(companyId: company.id, serviceStopList: selectedServiceStopList, date: date,companyUser:tech)
+                        }
                         dismiss()
                     } catch {
-                        print("failed to Update")
+                        moveError = error.localizedDescription
+                        showMoveError = true
                     }
                 }
             }

@@ -28,6 +28,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
     
     var tech : String
     var techId : String
+    var assignmentRevision: Int? = nil
     
     var recurringServiceStopId : String //Seen
     var description : String //Seen
@@ -210,6 +211,7 @@ struct ServiceStop:Identifiable, Codable,Equatable, Hashable{
             case estimatedDuration = "estimatedDuration"
             case tech = "tech"
             case techId = "techId"
+            case assignmentRevision
             case recurringServiceStopId = "recurringServiceStopId"
             case description = "description"
             case serviceLocationId = "serviceLocationId"
@@ -396,7 +398,7 @@ protocol ServiceStopManagerProtocol {
     func changeDBServiceStopsToServiceStops(DBServiceStops:[ServiceStop]) async throws ->[ServiceStop]
     func deleteServiceStop(companyId:String,serviceStopId:String)async throws
     func getAllServiceStopsByCustoer(companyId: String,customerId:String,startDate:Date,endDate:Date) async throws -> [ServiceStop]
-    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) throws
+    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws
 
 
 }
@@ -455,7 +457,7 @@ final class MockServiceStopManager:ServiceStopManagerProtocol {
     func getAllServiceStopsBetweenDate(companyId: String, startDate: Date, endDate: Date) async throws -> [ServiceStop] {
         return mockServiceStops
     }
-    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) throws{
+    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws{
     }
     func getServiceStopsByRecurringsServiceStop(companyId: String, recurringsServicestop: RecurringServiceStop) async throws -> [ServiceStop] {
         return mockServiceStops
@@ -868,22 +870,10 @@ final class ServiceStopManager:ServiceStopManagerProtocol {
         }
         
     }
-    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) throws{
-        let ref = serviceStopDocument(serviceStopId: serviceStop.id, companyId: companyId)
-        ref.updateData([
-            ServiceStop.CodingKeys.serviceDate.rawValue: serviceDate,
-            ServiceStop.CodingKeys.techId.rawValue: companyUser.userId,
-            ServiceStop.CodingKeys.tech.rawValue: companyUser.userName,
-
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Updated Service Date Successfully")
-            }
-        }
-        
+    func updateServiceStopServiceDate(companyId:String,serviceStop:ServiceStop,serviceDate:Date,companyUser:CompanyUser) async throws {
+        try await FunctionsManager.shared.moveServiceStops(companyId:companyId,stops:[serviceStop],serviceDate:serviceDate,techId:companyUser.userId)
     }
+
     func getServiceStopById(serviceStopId:String,companyId:String) async throws -> ServiceStop{
         try await serviceStopDocument(serviceStopId: serviceStopId, companyId: companyId).getDocument(as: ServiceStop.self)
         

@@ -30,6 +30,21 @@ struct RepairRequest:Identifiable, Codable,Equatable{
     var locationId:String?
     var bodyOfWaterId:String?
     var equipmentId:String?
+    var issuePriorityLevel: Int? = nil
+    var issuePriorityLabel: String? = nil
+    var priorityLevel: Int? = nil
+    var priorityLabel: String? = nil
+
+    var normalizedIssuePriority: JobIssuePriorityLevel {
+        JobIssuePriorityLevel.normalized(issuePriorityLevel ?? priorityLevel)
+    }
+
+    mutating func setIssuePriority(_ priority: JobIssuePriorityLevel) {
+        issuePriorityLevel = priority.rawValue
+        issuePriorityLabel = priority.label
+        priorityLevel = priority.rawValue
+        priorityLabel = priority.label
+    }
 }
 
 extension ProductionDataService {

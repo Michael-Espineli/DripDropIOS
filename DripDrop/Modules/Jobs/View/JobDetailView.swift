@@ -38,7 +38,6 @@ struct JobDetailView: View {
     @State private var showBillingActionsSheet: Bool = false
     @State private var showCommentsSheet: Bool = false
     @State private var showJobCloseout = false
-    @State private var historySection: String = "Activity"
 
         //Body Of Water
 
@@ -285,6 +284,11 @@ struct JobDetailView: View {
 
         .navigationTitle("Job Id: \(job.internalId)")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                commentsToolbarButton
+            }
+        }
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
@@ -527,8 +531,6 @@ extension JobDetailView {
                             systemImage: billingStatusIcon(job.billingStatus),
                             tint: jobDetailBillingTint(job.billingStatus)
                         )
-
-                        commentsInfoBarButton
                     }
                 }
             }
@@ -608,45 +610,47 @@ extension JobDetailView {
             .background(tint.opacity(0.10), in: Capsule())
     }
 
-    private var commentsInfoBarButton: some View {
+    private var commentsToolbarButton: some View {
         Button {
             showCommentsSheet = true
         } label: {
-            Label(jobCommentSummaryTitle, systemImage: "text.bubble.fill")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(jobDetailCommentsTint)
-                .lineLimit(1)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background(jobDetailCommentsTint.opacity(0.10), in: Capsule())
+            Label("Comments", systemImage: "text.bubble.fill")
+                .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+                .overlay(alignment: .topTrailing) {
+                    if openJobCommentCount > 0 {
+                        Text(openJobCommentCount > 99 ? "99+" : "\(openJobCommentCount)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .frame(minWidth: 18, minHeight: 18)
+                            .background(Color.orange, in: Capsule())
+                            .accessibilityHidden(true)
+                    }
+                }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(jobCommentAccessibilityLabel))
+        .tint(jobDetailCommentsTint)
+        .accessibilityLabel("Job comments")
+        .accessibilityValue(Text(jobCommentAccessibilityLabel))
+        .accessibilityHint("Opens comments for this job")
     }
 
-    private var jobCommentSummaryTitle: String {
-        let openCount = VM.comments.filter { !$0.resolved }.count
-
-        if openCount > 0 {
-            return "\(openCount) Open"
-        }
-
-        return "Comments"
+    private var openJobCommentCount: Int {
+        VM.comments.filter { !$0.resolved }.count
     }
 
     private var jobCommentAccessibilityLabel: String {
-        let openCount = VM.comments.filter { !$0.resolved }.count
         let totalCount = VM.comments.count
 
         if VM.commentsLoading && totalCount == 0 {
             return "Job comments loading"
         }
 
-        return "\(totalCount) job comments, \(openCount) open"
+        return "\(totalCount) job comments, \(openJobCommentCount) open"
     }
 
     private var jobDetailCommentsTint: Color {
-        VM.comments.contains { !$0.resolved } ? .orange : .poolBlue
+        openJobCommentCount > 0 ? .orange : .poolBlue
     }
 
     private func jobDetailTabIcon(_ option: String) -> String {
@@ -673,20 +677,20 @@ extension JobDetailView {
             return .poolBlue
         case .unscheduled:
             return .orange
-        case .draft, .estimatePending, .waitingForParts:
+        case .draft, .estimatePending, .waitingForParts, .canceled, .unspecified:
             return .poolRed
         }
     }
 
     private func jobDetailBillingTint(_ status: JobBillingStatus) -> Color {
         switch status {
-        case .paid, .accepted, .comped:
+        case .paid, .accepted, .comped, .customerResolved:
             return .poolGreen
         case .estimate, .invoiced:
             return .poolBlue
         case .inProgress:
             return .orange
-        case .draft, .expired, .rejected:
+        case .draft, .expired, .rejected, .canceled, .unspecified:
             return .poolRed
         }
     }
@@ -997,58 +1001,49 @@ extension JobDetailView {
                 Text("Who created this job and what changed afterward.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Picker("History section", selection: $historySection) {
-                    Text("Activity").tag("Activity")
-                    Text("Comments (\(VM.comments.count))").tag("Comments")
-                }
-                .pickerStyle(.segmented)
             }
             .padding(14)
             .background(Color.listColor)
 
-            if historySection == "Comments" {
-                commentsView
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        if VM.historyLoading {
-                            ProgressView("Loading job history…")
-                        } else if let error = VM.historyError {
-                            Text(error).font(.subheadline).foregroundStyle(.secondary)
-                            Button("Retry") {
-                                Task { await VM.loadHistory(companyId: masterDataManager.currentCompany?.id ?? "", jobId: job.id) }
-                            }
-                        } else if VM.historyEvents.isEmpty {
-                            Text("No history has been recorded for this job.")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                        } else {
-                            ForEach(VM.historyEvents) { event in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(event.eventType ?? "Job Updated")
-                                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                                    Text(event.title ?? event.eventType ?? "Job updated")
-                                        .font(.headline)
-                                    Text(event.actorDisplayName).font(.subheadline)
-                                    if let date = event.timestamp {
-                                        Text(date.formatted(date: .abbreviated, time: .shortened))
-                                            .font(.caption).foregroundStyle(.secondary)
-                                    } else {
-                                        Text("Time not recorded").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                    if let description = event.description, !description.isEmpty {
-                                        Text(description).font(.subheadline).foregroundStyle(.secondary)
-                                    }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    if VM.historyLoading {
+                        ProgressView("Loading job history…")
+                    } else if let error = VM.historyError {
+                        Text(error).font(.subheadline).foregroundStyle(.secondary)
+                        Button("Retry") {
+                            Task { await VM.loadHistory(companyId: masterDataManager.currentCompany?.id ?? "", jobId: job.id) }
+                        }
+                    } else if VM.historyEvents.isEmpty {
+                        Text("No history has been recorded for this job.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    } else {
+                        ForEach(VM.historyEvents) { event in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(event.eventType ?? "Job Updated")
+                                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                Text(event.title ?? event.eventType ?? "Job updated")
+                                    .font(.headline)
+                                Text(event.actorDisplayName).font(.subheadline)
+                                if let date = event.timestamp {
+                                    Text(date.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                } else {
+                                    Text("Time not recorded").font(.caption).foregroundStyle(.secondary)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                                if let description = event.description, !description.isEmpty {
+                                    Text(description).font(.subheadline).foregroundStyle(.secondary)
+                                }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(14)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                         }
                     }
-                    .padding(14)
                 }
-                .refreshable { await VM.loadHistory(companyId: masterDataManager.currentCompany?.id ?? "", jobId: job.id) }
+                .padding(14)
             }
+            .refreshable { await VM.loadHistory(companyId: masterDataManager.currentCompany?.id ?? "", jobId: job.id) }
         }
     }
 
@@ -3132,6 +3127,10 @@ extension JobDetailView {
             return "checkmark.seal"
         case .waitingForParts:
             return "shippingbox"
+        case .canceled:
+            return "xmark.circle"
+        case .unspecified:
+            return "questionmark.circle"
         }
     }
 
@@ -3155,6 +3154,12 @@ extension JobDetailView {
             return "xmark.circle"
         case .rejected:
             return "xmark.octagon"
+        case .customerResolved:
+            return "checkmark.circle"
+        case .canceled:
+            return "xmark.circle"
+        case .unspecified:
+            return "questionmark.circle"
         }
     }
     private func applyBillingSuggestionForOperation(_ status: JobOperationStatus) {
@@ -3187,6 +3192,10 @@ extension JobDetailView {
                 billingStatus = .accepted
             }
 
+        case .canceled:
+            billingStatus = .canceled
+        case .unspecified:
+            break
         case .finished:
             if billingStatus == .draft || billingStatus == .estimate || billingStatus == .accepted {
                 billingStatus = .inProgress
@@ -3224,8 +3233,12 @@ extension JobDetailView {
         case .paid:
             operationStatus = .finished
 
-        case .comped:
+        case .comped, .customerResolved:
             operationStatus = .finished
+        case .canceled:
+            operationStatus = .canceled
+        case .unspecified:
+            break
 
         case .expired:
             if operationStatus != .finished {
@@ -3363,6 +3376,10 @@ private struct JobOperationStatusSelectorSheet: View {
             return "checkmark.seal"
         case .waitingForParts:
             return "shippingbox"
+        case .canceled:
+            return "xmark.circle"
+        case .unspecified:
+            return "questionmark.circle"
         }
     }
 
@@ -3382,6 +3399,10 @@ private struct JobOperationStatusSelectorSheet: View {
             return "The work is complete and ready for billing review."
         case .waitingForParts:
             return "Work is paused until materials or parts are available."
+        case .canceled:
+            return "This job has been canceled."
+        case .unspecified:
+            return "No operation status has been recorded."
         }
     }
 }
@@ -3448,6 +3469,12 @@ private struct JobBillingStatusSelectorSheet: View {
             return "xmark.circle"
         case .rejected:
             return "xmark.octagon"
+        case .customerResolved:
+            return "checkmark.circle"
+        case .canceled:
+            return "xmark.circle"
+        case .unspecified:
+            return "questionmark.circle"
         }
     }
 
@@ -3471,6 +3498,12 @@ private struct JobBillingStatusSelectorSheet: View {
             return "The estimate or billing window has expired."
         case .rejected:
             return "The customer rejected this work, but it can stay visible for follow-up."
+        case .customerResolved:
+            return "The customer resolved this job; no invoice is expected."
+        case .canceled:
+            return "Billing for this job has been canceled."
+        case .unspecified:
+            return "No billing status has been recorded."
         }
     }
 }

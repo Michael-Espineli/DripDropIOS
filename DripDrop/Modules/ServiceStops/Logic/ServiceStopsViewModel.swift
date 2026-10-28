@@ -765,9 +765,7 @@ final class ServiceStopsViewModel:ObservableObject{
         if companyUser.id == "" {
             throw FireBaseRead.unableToRead
         }
-        for stop in serviceStopList {
-            try await dataService.updateServiceStopServiceDate(companyId: companyId, serviceStop: stop, serviceDate: date,companyUser: companyUser)
-        }
+        try await dataService.moveServiceStops(companyId:companyId,serviceStops:serviceStopList,serviceDate:date,companyUser:companyUser)
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     //                            DELTE

@@ -111,6 +111,7 @@ final class AddRepairRequestViewModel:ObservableObject{
     @Published var selectedDripDropPhotos:[DripDropImage] = []
     @Published var savedDripDropPhotos:[DripDropStoredImage] = []
     @Published var description:String = ""
+    @Published var issuePriority: JobIssuePriorityLevel = .defaultLevel
     @Published var customerNoteText: String = ""
     @Published var customerNoteAudience: CustomerNoteAudience = .field
     @Published var showCustomerSelector:Bool = false
@@ -245,7 +246,11 @@ final class AddRepairRequestViewModel:ObservableObject{
                 photoUrls: photoUrls,
                 locationId: pushServiceLocationId,
                 bodyOfWaterId: pushBodyOfWaterId,
-                equipmentId: pushEquipmentId
+                equipmentId: pushEquipmentId,
+                issuePriorityLevel: issuePriority.rawValue,
+                issuePriorityLabel: issuePriority.label,
+                priorityLevel: issuePriority.rawValue,
+                priorityLabel: issuePriority.label
             )
         )
         if pushEquipmentId != "", let selectedEquipmentStatus {

@@ -190,13 +190,26 @@ enum JobTaskStatus:String, CaseIterable, Codable {
 }
 
 enum JobOperationStatus:String, CaseIterable, Codable {
+    case unspecified = ""
     case draft = "Draft"
     case estimatePending = "Estimate Pending"
     case unscheduled = "Unscheduled"
     case scheduled = "Scheduled"
+    case waitingForParts = "Waiting for Parts"
     case inProgress = "In Progress"
     case finished = "Finished"
-    case waitingForParts = "Waiting for Parts"
+    case canceled = "Canceled"
+
+    static var allCases: [Self] { [.draft, .estimatePending, .unscheduled, .scheduled, .waitingForParts, .inProgress, .finished, .canceled] }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let status = ([Self.unspecified] + Self.allCases).first(where: { $0.rawValue.lowercased() == value.lowercased() }) else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown job operation status: \(value)")
+        }
+        self = status
+    }
 }
 enum JobEstiamteAcceptanceType:String, CaseIterable, Codable {
     case client = "Client"
@@ -207,6 +220,7 @@ enum JobInvoiceType:String, CaseIterable, Codable {
     case auto = "Automatic" // Through Drip DRop
 }
 enum JobBillingStatus:String, CaseIterable,Codable {
+    case unspecified = ""
     case draft = "Draft"
     case estimate = "Estimate"
     case accepted = "Accepted"
@@ -214,8 +228,21 @@ enum JobBillingStatus:String, CaseIterable,Codable {
     case invoiced = "Invoiced"
     case paid = "Paid"
     case comped = "Comped"
+    case customerResolved = "Customer Resolved"
+    case canceled = "Canceled"
     case expired = "Expired"
     case rejected = "Rejected"
+
+    static var allCases: [Self] { [.draft, .estimate, .accepted, .inProgress, .invoiced, .paid, .comped, .customerResolved, .canceled, .expired, .rejected] }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let value = try container.decode(String.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let status = ([Self.unspecified] + Self.allCases).first(where: { $0.rawValue.lowercased() == value.lowercased() }) else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown job billing status: \(value)")
+        }
+        self = status
+    }
 }
 
 enum RepairRequestStatus:String,Codable, CaseIterable{

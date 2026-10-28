@@ -58,6 +58,10 @@ struct RepairRequestCardView: View {
                     .foregroundStyle(.secondary)
                     
                     // Description
+                    Text(repairRequest.normalizedIssuePriority.displayName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(repairRequest.normalizedIssuePriority == .critical ? .red : .secondary)
+
                     Text(repairRequest.description)
                         .font(.footnote)
                         .foregroundStyle(.secondary)

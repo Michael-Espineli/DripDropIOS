@@ -389,11 +389,11 @@ struct JobBillingView: View {
             return 4
         case .paid:
             return 5
-        case .comped:
+        case .comped, .customerResolved:
             return 5
         case .expired:
             return 6
-        case .rejected:
+        case .rejected, .canceled, .unspecified:
             return 6
         }
     }

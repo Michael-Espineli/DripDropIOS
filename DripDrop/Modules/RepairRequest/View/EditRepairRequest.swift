@@ -21,6 +21,7 @@ final class EditRepairRequestViewModel: ObservableObject {
     @Published var date: Date
     @Published var status: RepairRequestStatus
     @Published var description: String
+    @Published var issuePriority: JobIssuePriorityLevel
     @Published var locationId: String?
     @Published var bodyOfWaterId: String?
     @Published var equipmentId: String?
@@ -118,6 +119,7 @@ final class EditRepairRequestViewModel: ObservableObject {
         self.date = repairRequest.date
         self.status = repairRequest.status.selectableValue
         self.description = repairRequest.description
+        self.issuePriority = repairRequest.normalizedIssuePriority
         self.locationId = repairRequest.locationId
         self.bodyOfWaterId = repairRequest.bodyOfWaterId
         self.equipmentId = repairRequest.equipmentId
@@ -263,6 +265,7 @@ final class EditRepairRequestViewModel: ObservableObject {
             updated.date = date
             updated.status = status
             updated.description = description
+            updated.setIssuePriority(issuePriority)
             updated.locationId = cleanId(locationId)
             updated.bodyOfWaterId = cleanId(bodyOfWaterId)
             updated.equipmentId = cleanId(equipmentId)
@@ -426,6 +429,12 @@ struct EditRepairRequest: View {
     private var formCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader("Request Details", systemImage: "person.text.rectangle")
+
+            Picker("Priority", selection: $viewModel.issuePriority) {
+                ForEach(JobIssuePriorityLevel.allCases) { priority in
+                    Text(priority.displayName).tag(priority)
+                }
+            }
 
             pickerRow(
                 title: "Status",

@@ -136,16 +136,87 @@ extension Job {
         switch billingStatus {
         case .accepted, .inProgress, .invoiced, .paid, .comped:
             return true
-        case .draft, .estimate, .expired, .rejected:
+        case .draft, .estimate, .expired, .rejected, .customerResolved, .canceled, .unspecified:
             break
         }
 
         switch operationStatus {
         case .scheduled, .inProgress, .finished, .waitingForParts:
             return true
-        case .draft, .estimatePending, .unscheduled:
+        case .draft, .estimatePending, .unscheduled, .canceled, .unspecified:
             return false
         }
+    }
+}
+
+// Web-created jobs can omit legacy required fields or store money/priority as strings.
+// Decode them with the same empty/zero defaults as the web Job model.
+extension Job {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        internalId = try container.decodeIfPresent(String.self, forKey: .internalId) ?? ""
+        type = try container.decodeIfPresent(String.self, forKey: .type) ?? ""
+        dateCreated = container.jobDate(.dateCreated) ?? Date(timeIntervalSince1970: 0)
+        description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        operationStatus = try container.decodeIfPresent(JobOperationStatus.self, forKey: .operationStatus) ?? .unspecified
+        billingStatus = try container.decodeIfPresent(JobBillingStatus.self, forKey: .billingStatus) ?? .unspecified
+        issuePriorityLevel = container.jobInteger(.issuePriorityLevel)
+        issuePriorityLabel = try? container.decodeIfPresent(String.self, forKey: .issuePriorityLabel)
+        priorityLevel = container.jobInteger(.priorityLevel)
+        priorityLabel = try? container.decodeIfPresent(String.self, forKey: .priorityLabel)
+        solutionTier = container.jobInteger(.solutionTier)
+        solutionTierLabel = try? container.decodeIfPresent(String.self, forKey: .solutionTierLabel)
+        sourceRepairRequestId = try? container.decodeIfPresent(String.self, forKey: .sourceRepairRequestId)
+        customerId = try container.decodeIfPresent(String.self, forKey: .customerId) ?? ""
+        customerName = try container.decodeIfPresent(String.self, forKey: .customerName) ?? ""
+        serviceLocationId = try container.decodeIfPresent(String.self, forKey: .serviceLocationId) ?? ""
+        serviceStopIds = try container.decodeIfPresent([String].self, forKey: .serviceStopIds) ?? []
+        laborContractIds = try container.decodeIfPresent([String].self, forKey: .laborContractIds) ?? []
+        adminId = try container.decodeIfPresent(String.self, forKey: .adminId) ?? ""
+        adminName = try container.decodeIfPresent(String.self, forKey: .adminName) ?? ""
+        purchasedItemsIds = try? container.decodeIfPresent([String].self, forKey: .purchasedItemsIds)
+        tasks = try? container.decodeIfPresent([ServiceStopTaskTemplate].self, forKey: .tasks)
+        rate = container.jobInteger(.rate) ?? 0
+        laborCost = container.jobInteger(.laborCost) ?? 0
+        otherCompany = try container.decodeIfPresent(Bool.self, forKey: .otherCompany) ?? false
+        receivedLaborContractId = try? container.decodeIfPresent(String.self, forKey: .receivedLaborContractId)
+        receiverId = try? container.decodeIfPresent(String.self, forKey: .receiverId)
+        senderId = try? container.decodeIfPresent(String.self, forKey: .senderId)
+        dateEstimateAccepted = container.jobDate(.dateEstimateAccepted)
+        estimateAcceptedById = try? container.decodeIfPresent(String.self, forKey: .estimateAcceptedById)
+        estimateAcceptType = try? container.decodeIfPresent(JobEstiamteAcceptanceType.self, forKey: .estimateAcceptType)
+        estimateAcceptedNotes = try? container.decodeIfPresent(String.self, forKey: .estimateAcceptedNotes)
+        invoiceDate = container.jobDate(.invoiceDate)
+        invoiceRef = (try? container.decode(String.self, forKey: .invoiceRef)) ?? (try? container.decode([String: String].self, forKey: .invoiceRef))?["internalId"]
+        invoiceType = try? container.decodeIfPresent(JobInvoiceType.self, forKey: .invoiceType)
+        invoiceNotes = try? container.decodeIfPresent(String.self, forKey: .invoiceNotes)
+        laborLineItems = try? container.decodeIfPresent([JobLaborLineItem].self, forKey: .laborLineItems)
+        estimateLaborLineItems = try? container.decodeIfPresent([JobLaborLineItem].self, forKey: .estimateLaborLineItems)
+        activePlanId = try? container.decodeIfPresent(String.self, forKey: .activePlanId)
+        activeSolutionId = try? container.decodeIfPresent(String.self, forKey: .activeSolutionId)
+        sourceTemplateId = try? container.decodeIfPresent(String.self, forKey: .sourceTemplateId)
+        sourceTemplateName = try? container.decodeIfPresent(String.self, forKey: .sourceTemplateName)
+        referenceLabel = try? container.decodeIfPresent(String.self, forKey: .referenceLabel)
+        createdByUserId = try? container.decodeIfPresent(String.self, forKey: .createdByUserId)
+        createdByUserName = try? container.decodeIfPresent(String.self, forKey: .createdByUserName)
+        createdByCompanyUserId = try? container.decodeIfPresent(String.self, forKey: .createdByCompanyUserId)
+        createdAt = container.jobDate(.createdAt)
+        createdAtMillis = container.jobInteger(.createdAtMillis)
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func jobInteger(_ key: Key) -> Int? {
+        if let value = try? decode(Int.self, forKey: key) { return value }
+        if let value = try? decode(String.self, forKey: key) { return Int(value) }
+        return nil
+    }
+
+    func jobDate(_ key: Key) -> Date? {
+        if let value = try? decode(Date.self, forKey: key) { return value }
+        if let value = try? decode(String.self, forKey: key) { return ISO8601DateFormatter().date(from: value) }
+        return nil
     }
 }
 

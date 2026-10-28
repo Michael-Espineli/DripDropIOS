@@ -379,6 +379,12 @@ extension AddNewRepairRequest {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader("Description", systemImage: "text.alignleft")
 
+            Picker("Priority", selection: $VM.issuePriority) {
+                ForEach(JobIssuePriorityLevel.allCases) { priority in
+                    Text(priority.displayName).tag(priority)
+                }
+            }
+
             TextField(
                 "Describe what needs to be repaired",
                 text: $VM.description,

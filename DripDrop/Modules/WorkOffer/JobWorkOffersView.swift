@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseFirestore
+import FirebaseFirestoreSwift
 
 struct JobWorkOffersView: View {
     let companyId: String
@@ -1469,23 +1470,57 @@ struct JobCloseoutSheet: View {
     }
 }
 
-private struct CoverageRoute: Identifiable {
-    var id: String
-    var date: Date
-    var name: String
-    var techId: String
-    var stopIds: [String]
+// Keep selection tied to the dated route, including when stops change before posting.
+enum RouteCoverageSelection {
+    static func eligibleStops(in stops: [ServiceStop], route: ActiveRoute) -> [ServiceStop] {
+        let byId = Dictionary(stops.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var seen = Set<String>()
+        return route.serviceStopsIds.compactMap { id in
+            guard seen.insert(id).inserted,
+                  let stop = byId[id],
+                  stop.operationStatus == .notFinished,
+                  stop.startTime == nil, stop.endTime == nil,
+                  stop.techId == route.techId,
+                  Calendar.current.isDate(stop.serviceDate, inSameDayAs: route.date) else { return nil }
+            return stop
+        }
+    }
+
+    static func selectedStopIds(in stops: [ServiceStop], route: ActiveRoute, selected: Set<String>) -> [String] {
+        eligibleStops(in: stops, route: route).map(\.id).filter { selected.contains($0) }
+    }
+
+    static func isWholeRoute(_ ids: [String], route: ActiveRoute) -> Bool {
+        !ids.isEmpty && Set(ids) == Set(route.serviceStopsIds)
+    }
+
+    static func coverageSelection(available: Set<String>, requested: Set<String>?) -> Set<String> {
+        (requested ?? available).intersection(available)
+    }
+
+    static func cents(from text: String) -> Int? {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.isEmpty { return 0 }
+        guard value.range(of: #"^\d+(?:[.,]\d{1,2})?$"#, options: .regularExpression) != nil,
+              let amount = Double(value.replacingOccurrences(of: ",", with: ".")),
+              amount.isFinite, amount < Double(Int.max) / 100 else { return nil }
+        return Int((amount * 100).rounded())
+    }
 }
+
 struct RouteCoverageOfferSheet: View {
     let companyId: String
+    let route: ActiveRoute
     let dataService: any ProductionDataServiceProtocol
+    let initialSelectedStopIds: Set<String>?
+
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var masterDataManager: MasterDataManager
-    @State private var startDate = Date()
-    @State private var endDate = Date()
-    @State private var ownerId = ""
-    @State private var reason = "Vacation"
-    @State private var routes: [CoverageRoute] = []
+    @State private var reason = "Scheduling conflict"
+    @State private var throughDate: Date
+    @State private var loadedThroughDate: Date
+    @State private var routes: [ActiveRoute] = []
+    @State private var postedRouteIds = Set<String>()
     @State private var stops: [ServiceStop] = []
     @State private var users: [CompanyUser] = []
     @State private var selected = Set<String>()
@@ -1501,81 +1536,387 @@ struct RouteCoverageOfferSheet: View {
     @State private var isLoading = true
     @State private var isSaving = false
     @State private var message = ""
-    @State private var batchId = UUID().uuidString
+    @State private var offerId = WorkOfferIdFactory.workOfferId()
+    @State private var hasLoadedSelection = false
+
+    init(companyId: String, route: ActiveRoute, dataService: any ProductionDataServiceProtocol, initialSelectedStopIds: Set<String>? = nil, initialReason: String = "Scheduling conflict") {
+        self.companyId = companyId
+        self.route = route
+        self.dataService = dataService
+        self.initialSelectedStopIds = initialSelectedStopIds
+        _reason = State(initialValue: initialReason)
+        _throughDate = State(initialValue: route.date)
+        _loadedThroughDate = State(initialValue: route.date)
+    }
+
+    private var routeName: String { route.name.isEmpty ? "Daily Route" : route.name }
+    private var unpostedRoutes: [ActiveRoute] { routes.filter { !postedRouteIds.contains($0.id) } }
+    private var eligibleStops: [ServiceStop] {
+        unpostedRoutes.flatMap { RouteCoverageSelection.eligibleStops(in: stops, route: $0) }
+    }
+    private var selectedIds: [String] {
+        unpostedRoutes.flatMap { RouteCoverageSelection.selectedStopIds(in: stops, route: $0, selected: selected) }
+    }
+    private var hasUnloadedDates: Bool { !Calendar.current.isDate(throughDate, inSameDayAs: loadedThroughDate) }
+    private var estimatedMinutes: Int {
+        eligibleStops.filter { selected.contains($0.id) }.reduce(0) { $0 + $1.estimatedDuration }
+    }
+    private var canOfferRoute: Bool {
+        canPost && (route.techId == masterDataManager.user?.id || canPostForOthers)
+    }
+    private var validPay: Bool {
+        (!canSetPay || RouteCoverageSelection.cents(from: fixedPay) != nil) &&
+        (!canIncentivize || RouteCoverageSelection.cents(from: incentivePay) != nil)
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Coverage") {
-                    DatePicker("From", selection: $startDate, displayedComponents: .date)
-                    DatePicker("Through", selection: $endDate, in: startDate..., displayedComponents: .date)
-                    if canPostForOthers { Picker("Route owner", selection: $ownerId) { ForEach(users) { user in Text(user.userName).tag(user.userId) } } }
-                    Picker("Reason", selection: $reason) { Text("Vacation").tag("Vacation"); Text("Sick day").tag("Sick day"); Text("Scheduling conflict").tag("Scheduling conflict") }
-                    Button("Load Routes") { Task { await loadRoutes() } }.disabled(isLoading || isSaving)
-                    Toggle("Allow technicians to split the offered stops", isOn: $allowSplit).disabled(!canSplit)
-                    Text("Select all stops for full-route coverage, or select a subset. Keep Together requires one technician to take all selected stops in each daily offer.").font(.caption)
-                }
-                ForEach(routes) { route in
-                    Section(route.name + " · " + route.date.formatted(date: .abbreviated, time: .omitted)) {
-                        Button("Select Entire Route") { selected.formUnion(route.stopIds) }
-                        ForEach(stops.filter { route.stopIds.contains($0.id) }) { stop in
-                            Toggle(stop.customerName + " · " + stop.type, isOn: Binding(get: { selected.contains(stop.id) }, set: { value in if value { selected.insert(stop.id) } else { selected.remove(stop.id) } }))
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    routeSummary
+                    if isLoading {
+                        ProgressView("Loading route stops…")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    } else if canOfferRoute {
+                        stopSelection
+                        offerOptions
+                    } else {
+                        Text("Your company has not enabled coverage offers for this route.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .jobWorkOfferCard()
+                    }
+                    if !message.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label(message, systemImage: "exclamationmark.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                            Button("Reload Route") { Task { await load() } }
                         }
+                        .jobWorkOfferCard()
                     }
                 }
-                Section("Offer") {
-                    Picker("Send to", selection: $directWorkerId) { Text("Company Work Board").tag(""); ForEach(users) { user in Text(user.userName).tag(user.userId) } }
-                    if canSetPay { TextField("Fixed pay per offered daily route (optional)", text: $fixedPay).keyboardType(.decimalPad) }
-                    if canIncentivize { TextField("Additional incentive per daily route (optional)", text: $incentivePay).keyboardType(.decimalPad) }
-                    Text("Temporary coverage preserves the original recurring route owner.").font(.caption)
-                    if !message.isEmpty { Text(message).foregroundStyle(.secondary) }
-                    Button(isSaving ? "Posting Coverage…" : "Post Coverage") { Task { await post() } }.disabled(!canPost || isSaving || isLoading || selected.isEmpty)
+                .padding(14)
+                .disabled(isSaving || isLoading)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color.listColor.ignoresSafeArea())
+            .navigationTitle("Offer Route Coverage")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.disabled(isSaving)
                 }
-            }.navigationTitle("Offer Route Coverage")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(isSaving) } }
+            }
+            .safeAreaInset(edge: .bottom) { postButton }
+            .interactiveDismissDisabled(isSaving)
             .task { await load() }
         }
     }
-    @MainActor private func load() async {
-        do {
-            let capabilities = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianWork", payload: ["companyId":companyId,"action":"capabilities"])
-            canPost = capabilities["canPost"] as? Bool ?? false; canPostForOthers = capabilities["canPostForOthers"] as? Bool ?? false
-            canSplit = capabilities["canSplit"] as? Bool ?? false; canSetPay = capabilities["canSetPay"] as? Bool ?? false; canIncentivize = capabilities["canIncentivize"] as? Bool ?? false
-            ownerId = masterDataManager.user?.id ?? ""
-            users = try await dataService.getAllCompanyUsersByStatus(companyId:companyId,status:"Active")
-            await loadRoutes()
-        } catch { message = error.localizedDescription; isLoading = false }
-    }
-    @MainActor private func loadRoutes() async {
-        isLoading = true; defer { isLoading = false }; message = ""
-        do {
-            let start = Calendar.current.startOfDay(for: startDate), end = Calendar.current.date(byAdding:.day,value:1,to:Calendar.current.startOfDay(for:endDate))!
-            guard end.timeIntervalSince(start) <= 32 * 86400 else { message = "Offer up to 31 days at a time."; return }
-            let snapshot = try await Firestore.firestore().collection("companies").document(companyId).collection("activeRoutes").whereField("techId",isEqualTo:ownerId).whereField("date",isGreaterThanOrEqualTo:start).whereField("date",isLessThan:end).getDocuments()
-            routes = snapshot.documents.compactMap { doc in
-                let data = doc.data(); guard let date = (data["date"] as? Timestamp)?.dateValue() else { return nil }
-                return CoverageRoute(id:doc.documentID,date:date,name:data["name"] as? String ?? data["techName"] as? String ?? "Route",techId:ownerId,stopIds:data["serviceStopsIds"] as? [String] ?? data["serviceStopIds"] as? [String] ?? [])
+
+    private var routeSummary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: "person.2.badge.plus")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.poolBlue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.poolBlue.opacity(0.12), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(routeName).font(.headline)
+                    Text(route.date.formatted(date: .complete, time: .omitted))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if !route.techName.isEmpty {
+                        Text(route.techName).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
-            var loaded: [ServiceStop] = []
-            for route in routes { for stopId in route.stopIds { let stop = try await dataService.getServiceStopById(serviceStopId:stopId,companyId:companyId); if stop.operationStatus != .finished { loaded.append(stop) } } }
-            stops = loaded; selected = Set(loaded.map(\.id))
-            if routes.isEmpty { message = "No dated routes for this technician in the selected range." }
-        } catch { message = error.localizedDescription }
+            Text("Choose the stops you need covered. Your recurring route assignment stays the same.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            if canOfferRoute {
+                Divider()
+                DatePicker(
+                    "Coverage through", selection: $throughDate,
+                    in: route.date...(Calendar.current.date(byAdding: .day, value: 30, to: route.date) ?? route.date),
+                    displayedComponents: .date
+                )
+                .font(.subheadline)
+                .disabled(!postedRouteIds.isEmpty)
+                if hasUnloadedDates {
+                    Button("Load Coverage Dates") { Task { await load() } }
+                        .font(.subheadline.weight(.semibold))
+                }
+                Text("Extend the dates for time away. Existing dated routes are shown, with a separate offer for each day.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
-    @MainActor private func post() async {
-        isSaving = true; defer { isSaving = false }; message = ""
+
+    private var stopSelection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Label("Stops to Cover", systemImage: "checklist").font(.headline)
+                Spacer()
+                Text("\(selectedIds.count) of \(eligibleStops.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            if eligibleStops.isEmpty {
+                Text("There are no remaining stops to offer on this route.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 12) {
+                    Button("Select All Remaining") { selected = Set(eligibleStops.map(\.id)) }
+                    Spacer()
+                    Button("Clear") { selected.removeAll() }
+                }
+                .font(.caption.weight(.semibold))
+                .tint(.poolBlue)
+
+                ForEach(unpostedRoutes) { datedRoute in
+                    let remaining = RouteCoverageSelection.eligibleStops(in: stops, route: datedRoute)
+                    if !remaining.isEmpty {
+                        if routes.count > 1 {
+                            Text(datedRoute.date.formatted(date: .complete, time: .omitted))
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        ForEach(remaining) { stop in stopSelectionRow(stop) }
+                    }
+                }
+            }
+            Text("Completed and skipped stops are excluded. Deselect any stops you will keep.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .jobWorkOfferCard()
+        .disabled(hasUnloadedDates)
+    }
+
+    private func stopSelectionRow(_ stop: ServiceStop) -> some View {
+        Button {
+            if selected.contains(stop.id) { selected.remove(stop.id) }
+            else { selected.insert(stop.id) }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: selected.contains(stop.id) ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(selected.contains(stop.id) ? Color.poolBlue : Color.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(stop.customerName).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    Text(stop.type).font(.caption).foregroundStyle(.secondary)
+                    if !stop.address.streetAddress.isEmpty {
+                        Text(stop.address.streetAddress).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+                Text("\(stop.estimatedDuration) min").font(.caption).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(12)
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected.contains(stop.id) ? .isSelected : [])
+    }
+
+    private var offerOptions: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Coverage Details", systemImage: "paperplane").font(.headline)
+            Picker("Reason", selection: $reason) {
+                Text("Scheduling conflict").tag("Scheduling conflict")
+                Text("Sick day").tag("Sick day")
+                Text("Vacation").tag("Vacation")
+            }
+            Picker("Send to", selection: $directWorkerId) {
+                Text("Company Work Board").tag("")
+                ForEach(users.filter { $0.userId != route.techId }) { user in
+                    Text(user.userName).tag(user.userId)
+                }
+            }
+            if canSplit {
+                Toggle("Allow multiple technicians", isOn: $allowSplit)
+                Text("When enabled, technicians can pick up individual stops. Otherwise one technician takes all selected stops.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("One technician takes all selected stops.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if canSetPay || canIncentivize {
+                Divider()
+                if canSetPay {
+                    TextField("Fixed pay per daily offer (optional)", text: $fixedPay)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(.roundedBorder)
+                }
+                if canIncentivize {
+                    TextField("Incentive per daily offer (optional)", text: $incentivePay)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(.roundedBorder)
+                }
+                Text("Each day creates a separate offer. Leave pay blank to use the accepting technician’s rate.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !validPay {
+                    Text("Enter an amount of zero or more with up to two decimal places.")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .tint(.poolBlue)
+        .jobWorkOfferCard()
+    }
+
+    private var postButton: some View {
+        VStack(spacing: 10) {
+            if !selectedIds.isEmpty {
+                Text("\(selectedIds.count) stop\(selectedIds.count == 1 ? "" : "s") selected · \(estimatedMinutes) min")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            Button { Task { await post() } } label: {
+                HStack(spacing: 8) {
+                    if isSaving { ProgressView().tint(.white) }
+                    Text(isSaving ? "Posting Coverage…" : "Post Coverage Offer")
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.poolBlue)
+            .disabled(!canOfferRoute || isSaving || isLoading || hasUnloadedDates || selectedIds.isEmpty || !validPay)
+        }
+        .padding(14)
+        .background(.regularMaterial)
+    }
+
+    @MainActor private func fetchStops() async throws -> [ServiceStop] {
+        var loaded: [ServiceStop] = []
+        var seen = Set<String>()
+        for datedRoute in unpostedRoutes {
+            for stopId in datedRoute.serviceStopsIds where seen.insert(stopId).inserted {
+                loaded.append(try await dataService.getServiceStopById(serviceStopId: stopId, companyId: companyId))
+            }
+        }
+        return loaded
+    }
+
+    @MainActor private func load() async {
+        guard !isSaving else { return }
+        isLoading = true
+        message = ""
+        defer { isLoading = false }
         do {
+            let capabilities = try await FunctionsManager.shared.technicianWorkflow(
+                "manageTechnicianWork", payload: ["companyId": companyId, "action": "capabilities"]
+            )
+            canPost = capabilities["canPost"] as? Bool ?? false
+            canPostForOthers = capabilities["canPostForOthers"] as? Bool ?? false
+            canSplit = capabilities["canSplit"] as? Bool ?? false
+            canSetPay = capabilities["canSetPay"] as? Bool ?? false
+            canIncentivize = capabilities["canIncentivize"] as? Bool ?? false
+            guard canOfferRoute else { return }
+            users = try await dataService.getAllCompanyUsersByStatus(companyId: companyId, status: "Active")
+            if Calendar.current.isDate(throughDate, inSameDayAs: route.date) {
+                routes = [route]
+            } else {
+                let start = Calendar.current.startOfDay(for: route.date)
+                let end = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: throughDate)) ?? throughDate
+                let snapshot = try await Firestore.firestore().collection("companies").document(companyId)
+                    .collection("activeRoutes").whereField("techId", isEqualTo: route.techId)
+                    .whereField("date", isGreaterThanOrEqualTo: start).whereField("date", isLessThan: end).getDocuments()
+                routes = try snapshot.documents.map { document in
+                    var datedRoute = try document.data(as: ActiveRoute.self)
+                    datedRoute.id = document.documentID
+                    if datedRoute.serviceStopsIds.isEmpty {
+                        datedRoute.serviceStopsIds = document.data()["serviceStopIds"] as? [String] ?? []
+                    }
+                    return datedRoute
+                }
+                if !routes.contains(where: { $0.id == route.id }) { routes.append(route) }
+                routes.sort { $0.date < $1.date }
+            }
+            stops = try await fetchStops()
+            let available = Set(eligibleStops.map(\.id))
+            selected = RouteCoverageSelection.coverageSelection(available: available, requested: hasLoadedSelection ? selected : initialSelectedStopIds)
+            hasLoadedSelection = true
+            loadedThroughDate = throughDate
+        } catch {
+            stops = []
+            message = error.localizedDescription
+        }
+    }
+
+    @MainActor private func post() async {
+        guard canOfferRoute, !isLoading, !isSaving, !hasUnloadedDates, validPay, !selectedIds.isEmpty else { return }
+        isSaving = true
+        message = ""
+        defer { isSaving = false }
+        do {
+            let previousIds = selectedIds
+            stops = try await fetchStops()
+            guard selectedIds == previousIds else {
+                selected = Set(selectedIds)
+                message = "Some stops have changed or are no longer available. Review the selection before posting."
+                return
+            }
+            let fixedCents = canSetPay ? (RouteCoverageSelection.cents(from: fixedPay) ?? 0) : 0
+            let bonusCents = canIncentivize ? (RouteCoverageSelection.cents(from: incentivePay) ?? 0) : 0
             let worker = users.first { $0.userId == directWorkerId }
-            for route in routes {
-                let ids = route.stopIds.filter { selected.contains($0) }; if ids.isEmpty { continue }
-                let offerId = "comp_work_offer_" + batchId + "_" + route.id
-                let deadline = Calendar.current.date(byAdding:.day,value:1,to:Calendar.current.startOfDay(for:route.date))!
-                var offer = WorkOffer(id:offerId,companyId:companyId,jobId:"",jobInternalId:"",jobName:"",offerType:directWorkerId.isEmpty ? .internalBoard : .directUser,title:route.name + " coverage",description:reason + " coverage: complete the selected route stops and their required service tasks.",offeredToUserId:directWorkerId,offeredToUserName:worker?.userName ?? "",postedToBoard:directWorkerId.isEmpty,boardVisibility:.employeesAndContractors,jobTaskIds:[],customerId:"",customerName:"",serviceLocationId:"",proposedStartDate:Calendar.current.startOfDay(for:route.date),completionDeadlineAt:deadline,estimatedMinutes:stops.filter { ids.contains($0.id) }.reduce(0) { $0 + $1.estimatedDuration },paySource:(Double(fixedPay) ?? 0)>0 ? .offeredAmount : .technicianRate,offeredAmountCents:Int(((Double(fixedPay) ?? 0)*100).rounded()),estimatedLaborCents:0,createdByUserId:masterDataManager.user?.id ?? "",createdByUserName:"")
-                offer.routeId = route.id; offer.routeSource = "activeRoutes"; offer.routeName = route.name; offer.routeDate = route.date; offer.routeTechId = route.techId
-                offer.routeServiceStopIds = ids; offer.routeOfferMode = ids.count == route.stopIds.count ? "whole" : "partial"; offer.routeSplitAllowed = allowSplit; offer.workOfferCategory = ids.count == route.stopIds.count ? "fullRoute" : "partialRoute"; offer.coverageReason = reason
-                let bonus = Int(((Double(incentivePay) ?? 0)*100).rounded()); if bonus>0 { offer.incentive = WorkOfferIncentive(type:"flat",amountCents:bonus,percentage:0,notes:"Coverage incentive") }
+            for datedRoute in unpostedRoutes {
+                let ids = RouteCoverageSelection.selectedStopIds(in: stops, route: datedRoute, selected: selected)
+                guard !ids.isEmpty else { continue }
+                let name = datedRoute.name.isEmpty ? "Daily Route" : datedRoute.name
+                let start = Calendar.current.startOfDay(for: datedRoute.date)
+                let deadline = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start
+                let minutes = stops.filter { ids.contains($0.id) }.reduce(0) { $0 + $1.estimatedDuration }
+                var offer = WorkOffer(
+                    id: offerId + "_" + datedRoute.id, companyId: companyId, jobId: "", jobInternalId: "", jobName: "",
+                    offerType: directWorkerId.isEmpty ? .internalBoard : .directUser,
+                    title: name + " coverage",
+                    description: reason + " coverage: complete the selected route stops and their required service tasks.",
+                    offeredToUserId: directWorkerId, offeredToUserName: worker?.userName ?? "",
+                    postedToBoard: directWorkerId.isEmpty, boardVisibility: .employeesAndContractors,
+                    jobTaskIds: [], customerId: "", customerName: "", serviceLocationId: "",
+                    proposedStartDate: start, completionDeadlineAt: deadline, estimatedMinutes: minutes,
+                    paySource: fixedCents > 0 ? .offeredAmount : .technicianRate,
+                    offeredAmountCents: fixedCents, estimatedLaborCents: 0,
+                    createdByUserId: masterDataManager.user?.id ?? "", createdByUserName: ""
+                )
+                offer.routeId = datedRoute.id
+                offer.routeSource = "activeRoutes"
+                offer.routeName = name
+                offer.routeDate = datedRoute.date
+                offer.routeTechId = datedRoute.techId
+                offer.originalTechnicianId = datedRoute.techId
+                offer.routeServiceStopIds = ids
+                let wholeRoute = RouteCoverageSelection.isWholeRoute(ids, route: datedRoute)
+                offer.routeOfferMode = wholeRoute ? "whole" : "partial"
+                offer.routeSplitAllowed = canSplit && allowSplit
+                offer.workOfferCategory = wholeRoute ? "fullRoute" : "partialRoute"
+                offer.coverageReason = reason
+                if bonusCents > 0 {
+                    offer.incentive = WorkOfferIncentive(type: "flat", amountCents: bonusCents, percentage: 0, notes: "Coverage incentive")
+                }
                 try await dataService.saveWorkOffer(offer)
+                postedRouteIds.insert(datedRoute.id)
+                selected.subtract(ids)
             }
             dismiss()
-        } catch { message = error.localizedDescription }
+        } catch {
+            let posted = postedRouteIds.count
+            message = (posted > 0 ? "\(posted) daily offer(s) already posted. Retry to post the remaining selection. " : "") + error.localizedDescription
+        }
     }
 }

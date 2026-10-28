@@ -77,11 +77,41 @@ struct ServiceAgreementSendResult: Equatable {
     }
 }
 
+enum RouteMovePayload {
+    static func make(companyId: String, stops: [ServiceStop], serviceDate: Date, techId: String) -> [String: Any] {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        let selected: [[String: Any]] = stops.sorted { $0.id < $1.id }.map { stop in
+            var value: [String: Any] = ["id": stop.id, "techId": stop.techId,
+                "serviceDateMillis": (stop.serviceDate.timeIntervalSince1970 * 1000).rounded(.towardZero)]
+            if let revision = stop.assignmentRevision { value["assignmentRevision"] = revision }
+            return value
+        }
+        return ["companyId": companyId, "action": "oneTime", "techId": techId,
+            "serviceDateKey": formatter.string(from: serviceDate), "timeZone": TimeZone.current.identifier, "stops": selected]
+    }
+}
+
+private actor RouteMoveRequests {
+    private var pending: [String: String] = [:]
+    func requestId(for key: String) -> String {
+        if let existing = pending[key] { return existing }
+        let id = UUID().uuidString
+        pending[key] = id
+        return id
+    }
+    func finished(_ key: String) { pending.removeValue(forKey: key) }
+}
+
 final class FunctionsManager {
         //Starting The App
     private var auth: Auth { Auth.auth() }
     private let functions = Functions.functions()
     private let db = Firestore.firestore()
+    private let routeMoveRequests = RouteMoveRequests()
     
     static let shared = FunctionsManager()
     private init(){}
@@ -162,7 +192,18 @@ final class FunctionsManager {
     }
 
     // MARK: updateServiceStopPermanently
-    func updateServiceStopPermanently(companyId:String,serviceStopList:[ServiceStop],newTech:CompanyUser,newDay:DaysOfWeek){
+    func moveServiceStops(companyId: String, stops: [ServiceStop], serviceDate: Date, techId: String) async throws {
+        var payload = RouteMovePayload.make(companyId: companyId, stops: stops, serviceDate: serviceDate, techId: techId)
+        let key = (auth.currentUser?.uid ?? "") + (try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]).base64EncodedString())
+        payload["requestId"] = await routeMoveRequests.requestId(for: key)
+        let data = try await technicianWorkflow("manageRouteWork", payload: payload)
+        guard data["status"] as? Int == 200 else {
+            throw NSError(domain: "RouteMove", code: -1, userInfo: [NSLocalizedDescriptionKey: data["error"] as? String ?? "The move was not confirmed."])
+        }
+        await routeMoveRequests.finished(key)
+    }
+
+    func updateServiceStopPermanently(companyId:String,serviceStopList:[ServiceStop],newTech:CompanyUser,newDay:DaysOfWeek) async throws {
         let serviceStopsPayload = serviceStopList.map { stop in
             [
                 "id": stop.id,
@@ -184,18 +225,9 @@ final class FunctionsManager {
             "newDay": newDay.rawValue,
         ]
         
-        let callable = functions.httpsCallable("updateServiceStopDayPermanently")
-        Task{
-            do {
-                let result = try await callable.call(payload)
-                guard let data = result.data as? [String: Any],
-                      let companyId = data["companyId"] as? String,
-                      !companyId.isEmpty else {
-                    throw NSError(domain: "CreateCompany", code: -1, userInfo: [NSLocalizedDescriptionKey: "Company ID not returned from function."])
-                }
-            } catch {
-                print("      [FunctionsManager][updateServiceStopPermanently] Error: \(error)")
-            }
+        let data = try await technicianWorkflow("updateServiceStopDayPermanently", payload: payload)
+        guard data["status"] as? Int == 200, data["companyId"] as? String == companyId else {
+            throw NSError(domain: "PermanentRouteMove", code: -1, userInfo: [NSLocalizedDescriptionKey: data["error"] as? String ?? "The permanent move was not confirmed."])
         }
     }
     // MARK: updateRecurringRouteOrderPermanently
