@@ -6,6 +6,14 @@
 //
 import SwiftUI
 
+extension TechnicianPayLineItem {
+    var canClearZeroDollarTask: Bool {
+        source == .serviceStopTask && totalAmountCents == 0 && paidAt == nil &&
+        payStatementId == nil && exportBatchId == nil &&
+        [.pending, .calculated, .needsReview, .approved].contains(calculationStatus)
+    }
+}
+
 enum PayrollQueueFilter: String, CaseIterable, Identifiable {
     case outstanding = "Outstanding"
     case needsReview = "Needs Review"
@@ -124,6 +132,10 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
         .sorted { $0.technicianName < $1.technicianName }
     }
 
+    var clearableZeroTasks: [TechnicianPayLineItem] {
+        filteredLineItems.filter(\.canClearZeroDollarTask)
+    }
+
     var outstandingTotalCents: Int {
         lineItems
             .filter {
@@ -173,6 +185,15 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
     }
 
     func approve(_ lineItem: TechnicianPayLineItem) async {
+        if lineItem.canClearZeroDollarTask && lineItem.calculationStatus != .needsReview {
+            await clearZeroTasks([lineItem])
+            return
+        }
+        guard [.pending, .calculated].contains(lineItem.calculationStatus), lineItem.payStatementId == nil, lineItem.exportBatchId == nil else {
+            alertMessage = "Review missing payroll setup, or use Clear $0 for a task with no additional pay."
+            showAlert = true
+            return
+        }
         var updated = lineItem
         updated.calculationStatus = .approved
         updated.approvedAt = Date()
@@ -182,6 +203,11 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
     }
 
     func markPaid(_ lineItem: TechnicianPayLineItem) async {
+        guard lineItem.calculationStatus != .needsReview && !lineItem.canClearZeroDollarTask else {
+            alertMessage = "Resolve missing payroll setup, or clear this $0 task instead of marking it paid."
+            showAlert = true
+            return
+        }
         var updated = lineItem
 
         if updated.approvedAt == nil {
@@ -197,6 +223,10 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
     }
 
     func void(_ lineItem: TechnicianPayLineItem) async {
+        if lineItem.canClearZeroDollarTask {
+            await clearZeroTasks([lineItem])
+            return
+        }
         var updated = lineItem
         updated.calculationStatus = .voided
 
@@ -212,9 +242,8 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
 
     func approveAllVisible() async {
         let visibleItems = filteredLineItems.filter {
-            $0.calculationStatus != .paid &&
-            $0.calculationStatus != .voided &&
-            $0.calculationStatus != .approved
+            [.pending, .calculated].contains($0.calculationStatus) &&
+            $0.payStatementId == nil && $0.exportBatchId == nil
         }
 
         guard !visibleItems.isEmpty else {
@@ -227,7 +256,9 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
         defer { isSaving = false }
 
         do {
-            for item in visibleItems {
+            let zeroTasks = visibleItems.filter(\.canClearZeroDollarTask)
+            if !zeroTasks.isEmpty { try await clearZeroTaskLines(zeroTasks) }
+            for item in visibleItems where !item.canClearZeroDollarTask {
                 var updated = item
                 updated.calculationStatus = .approved
                 updated.approvedAt = Date()
@@ -239,6 +270,34 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
         } catch {
             alertMessage = "Could not approve all visible items. \(error.localizedDescription)"
             showAlert = true
+        }
+    }
+
+    func clearZeroTasks(_ items: [TechnicianPayLineItem]) async {
+        guard !items.isEmpty else { return }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            try await clearZeroTaskLines(items)
+        } catch {
+            alertMessage = "Could not clear these tasks. Reload and review their current amounts. \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
+    private func clearZeroTaskLines(_ items: [TechnicianPayLineItem]) async throws {
+        // Bound each atomic server request; only update local state after success.
+        for start in stride(from: 0, to: items.count, by: 200) {
+            let page = Array(items[start..<min(start + 200, items.count)])
+            try await dataService.clearZeroDollarPayrollTasks(companyId: companyId, lineItemIds: page.map(\.id))
+            for item in page {
+                var updated = item
+                updated.calculationStatus = .voided
+                updated.voidedAt = Date()
+                updated.voidedByUserId = currentUserId
+                updated.voidReason = .adminVoided
+                upsertLocal(updated)
+            }
         }
     }
 
@@ -267,6 +326,8 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
 struct CompanyPayrollReviewQueueView: View {
 
     @StateObject private var viewModel: CompanyPayrollReviewQueueViewModel
+    @State private var zeroTasksToClear: [TechnicianPayLineItem] = []
+    @State private var showClearZeroTasks = false
 
     init(
         companyId: String,
@@ -318,6 +379,15 @@ struct CompanyPayrollReviewQueueView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.alertMessage)
+        }
+        .confirmationDialog("Clear $0 tasks as no additional task pay?", isPresented: $showClearZeroTasks, titleVisibility: .visible) {
+            Button("Clear \(zeroTasksToClear.count) $0 task(s)") {
+                let reviewed = zeroTasksToClear
+                Task { await viewModel.clearZeroTasks(reviewed) }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Review missing pay setup before clearing. These lines will leave the queue; tasks and payroll audit history remain stored.")
         }
     }
 
@@ -379,6 +449,16 @@ struct CompanyPayrollReviewQueueView: View {
                 }
             }
             .pickerStyle(.segmented)
+            if !viewModel.clearableZeroTasks.isEmpty {
+                Button("Clear \(viewModel.clearableZeroTasks.count) visible $0 task(s)") {
+                    zeroTasksToClear = viewModel.clearableZeroTasks
+                    showClearZeroTasks = true
+                }
+                .disabled(viewModel.isSaving)
+                Text("Tasks included in service pay need no extra payment. Review missing setup before clearing.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -399,8 +479,11 @@ struct CompanyPayrollReviewQueueView: View {
                         PayrollLineItemReviewRow(
                             lineItem: lineItem,
                             approveAction: {
-                                Task {
-                                    await viewModel.approve(lineItem)
+                                if lineItem.canClearZeroDollarTask {
+                                    zeroTasksToClear = [lineItem]
+                                    showClearZeroTasks = true
+                                } else {
+                                    Task { await viewModel.approve(lineItem) }
                                 }
                             },
                             markPaidAction: {
@@ -414,6 +497,7 @@ struct CompanyPayrollReviewQueueView: View {
                                 }
                             }
                         )
+                        .disabled(viewModel.isSaving)
                     }
                 } header: {
                     VStack(alignment: .leading, spacing: 4) {
@@ -472,16 +556,15 @@ struct PayrollLineItemReviewRow: View {
         .padding(.vertical, 6)
         .swipeActions(edge: .trailing) {
             if lineItem.calculationStatus != .paid &&
-                lineItem.calculationStatus != .voided {
+                lineItem.calculationStatus != .voided &&
+                lineItem.calculationStatus != .needsReview && !lineItem.canClearZeroDollarTask {
                 Button("Paid") {
                     markPaidAction()
                 }
             }
 
-            if lineItem.calculationStatus != .approved &&
-                lineItem.calculationStatus != .paid &&
-                lineItem.calculationStatus != .voided {
-                Button("Approve") {
+            if lineItem.canClearZeroDollarTask || [.pending, .calculated].contains(lineItem.calculationStatus) {
+                Button(lineItem.canClearZeroDollarTask ? "Clear $0" : "Approve") {
                     approveAction()
                 }
             }

@@ -1132,6 +1132,10 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         try await FunctionsManager.shared.refreshServiceStopPayroll(companyId: companyId, serviceStopId: serviceStopId)
     }
 
+    func clearZeroDollarPayrollTasks(companyId: String, lineItemIds: [String]) async throws {
+        try await FunctionsManager.shared.clearZeroDollarPayrollTasks(companyId: companyId, lineItemIds: lineItemIds)
+    }
+
     func fetchTechnicianPayLineItems(
         companyId: String,
         startDate: Date,

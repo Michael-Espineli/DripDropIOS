@@ -15,6 +15,9 @@ enum WorkerTypeEnum: String, Codable, Hashable { case employee = "Employee", con
 for name in ['RateType', 'PayQuantityUnit', 'PayLineItemSource', 'PayCalculationStatus']:
     stubs += block('enum ' + name + ':')
 source = (root / 'DripDrop/Modules/WorkOffer.swift').read_text()
+review = (root / 'DripDrop/Modules/WorkOffer/TechnicianWorkCenterTab.swift').read_text()
+start = review.index('enum WorkOfferReviewSwipeAction {')
+source += review[start:review.index('\n}', start) + 2] + '\n'
 checks = r'''
 let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .millisecondsSince1970
 func decode(_ json: String) throws -> WorkOffer { try decoder.decode(WorkOffer.self, from: Data(json.utf8)) }
@@ -61,7 +64,44 @@ var recentHistory = oldHistory
 recentHistory.completedAt = Date(timeIntervalSince1970: 50)
 assert(recentHistory.workOfferHistoryDate > oldHistory.workOfferHistoryDate)
 assert(legacy.workOfferHistoryDate == legacy.createdAt)
-print("Swift workflow decoding, all 13 offer statuses, split-claim history, and history ordering passed")
+// Upward browsing opens details; downward and ambiguous diagonal gestures are harmless.
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: 0, vertical: -100) == .review)
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: -25, vertical: -100) == .review)
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: 150, vertical: 10) == .review)
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: -150, vertical: 10) == .pass)
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: 0, vertical: 150) == .none)
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: -100, vertical: -100) == .none)
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: 15, vertical: -30) == .none)
+assert(WorkOfferReviewSwipeAction.resolve(horizontal: -120, vertical: 150) == .none)
+// Attribution prefers the actual send/post date over creation.
+var attribution = legacy
+attribution.createdAt = Date(timeIntervalSince1970: 1)
+attribution.postedAt = Date(timeIntervalSince1970: 2)
+attribution.sentAt = Date(timeIntervalSince1970: 3)
+assert(attribution.sentDate == Date(timeIntervalSince1970: 3))
+attribution.sentAt = nil
+assert(attribution.sentDate == Date(timeIntervalSince1970: 2))
+attribution.postedAt = nil
+assert(attribution.sentDate == attribution.createdAt)
+// Accepted scheduling windows include their boundaries and support old end dates.
+var window = legacy
+window.proposedStartDate = Date(timeIntervalSince1970: 10)
+window.completionDeadlineAt = Date(timeIntervalSince1970: 20)
+assert(window.containsServiceDate(Date(timeIntervalSince1970: 10)))
+assert(window.containsServiceDate(Date(timeIntervalSince1970: 20)))
+assert(!window.containsServiceDate(Date(timeIntervalSince1970: 9)))
+assert(!window.containsServiceDate(Date(timeIntervalSince1970: 21)))
+window.completionDeadlineAt = nil
+window.proposedEndDate = Date(timeIntervalSince1970: 15)
+assert(!window.containsServiceDate(Date(timeIntervalSince1970: 16)))
+assert(legacy.containsServiceDate(Date()))
+let returned = try decode(#"{"id":"return","status":"Posted","claims":[{"id":"mine","workerId":"tech","workerName":"Alex","stopIds":["one"],"taskIds":[],"status":"Rejected","withdrawnAt":60000,"withdrawalReason":"Conflict","agreement":{"workerId":"tech","paySource":"Offered Amount","totalCents":5000}}]}"#)
+assert(returned.isPreviousWork(for: "tech") && !returned.isCurrentWork(for: "tech"))
+assert(returned.claims?.first?.withdrawalReason == "Conflict")
+assert(returned.workOfferHistoryDate == Date(timeIntervalSince1970: 60))
+let returnedRoundTrip = try decoder.decode(WorkOffer.self, from: encoder.encode(returned))
+assert(returnedRoundTrip.claims?.first?.withdrawnAt == returned.claims?.first?.withdrawnAt)
+print("Swift workflow decoding, offer history, swipes, attribution, scheduling windows, and returned-work checks passed")
 '''
 with tempfile.TemporaryDirectory(prefix='dripdrop-technician-work-') as directory:
     fixture = Path(directory) / 'main.swift'

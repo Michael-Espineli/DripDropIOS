@@ -445,7 +445,7 @@ struct CreateJobWorkOfferView: View {
     @State private var notes: String = ""
     @State private var proposedStartDate: Date = Date()
     @State private var includeDate: Bool = true
-    @State private var completionDeadlineAt: Date = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Date()) ?? Date()
+    @State private var completionDeadlineAt: Date = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()) ?? Date()
     @State private var timelineNotes: String = ""
 
     @State private var isLoading: Bool = false
@@ -510,10 +510,10 @@ struct CreateJobWorkOfferView: View {
                 offerTypeSection
                 notesSection
                 workerSection
+                scheduleSection
                 taskScopeSection
                 serviceStopTypeSection
                 paySection
-                scheduleSection
                 saveSection
             }
             .task(id: payQuoteKey) { await refreshPayQuote() }
@@ -915,7 +915,7 @@ struct CreateJobWorkOfferView: View {
             }
 
             DatePicker(
-                "Complete By",
+                "Completion deadline",
                 selection: $completionDeadlineAt,
                 displayedComponents: [.date, .hourAndMinute]
             )
@@ -925,9 +925,9 @@ struct CreateJobWorkOfferView: View {
 
             Toggle("Allow technician self-scheduling", isOn: $allowsTechnicianSelfScheduling)
         } header: {
-            Text("Job Timeline")
+            Text("Deadline & Scheduling")
         } footer: {
-            Text("Technicians see the completion deadline before accepting. If self-scheduling is allowed, the accepted technician can create the scheduled service stop from their work center.")
+            Text("Technicians see the completion deadline before accepting. If self-scheduling is allowed, the accepted technician can schedule immediately after accepting or later from Current.")
         }
     }
 

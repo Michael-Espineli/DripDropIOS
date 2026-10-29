@@ -134,6 +134,12 @@ final class FunctionsManager {
         ])
     }
 
+    func clearZeroDollarPayrollTasks(companyId: String, lineItemIds: [String]) async throws {
+        _ = try await functions.httpsCallable("clearZeroDollarPayrollTasks").call([
+            "companyId": companyId, "lineItemIds": lineItemIds
+        ])
+    }
+
         // MARK: acceptTechInvite
     func acceptTechInvite(inviteId: String, userId: String) async throws {
         guard let currentUser = auth.currentUser else {

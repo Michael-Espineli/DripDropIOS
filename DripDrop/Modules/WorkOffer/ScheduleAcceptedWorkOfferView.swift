@@ -50,7 +50,7 @@ struct ScheduleAcceptedWorkOfferView: View {
         self.dataService = dataService
         self.onScheduled = onScheduled
 
-        _serviceDate = State(initialValue: offer.proposedStartDate ?? Date())
+        _serviceDate = State(initialValue: max(offer.proposedStartDate ?? Date(), Date()))
     }
 
     private var selectedTasks: [JobTask] {
@@ -106,6 +106,12 @@ struct ScheduleAcceptedWorkOfferView: View {
                 selection: $serviceDate,
                 displayedComponents: [.date, .hourAndMinute]
             )
+            if let deadline = offer.completionDeadlineAt ?? offer.proposedEndDate {
+                WorkOfferDetailRow(title: "Completion deadline", value: WorkOfferDetailDateFormatter.shortDateTime(deadline))
+            }
+            if !offer.containsServiceDate(serviceDate) {
+                Text("Choose a time within the accepted offer window.").font(.caption).foregroundStyle(.red)
+            }
         }
     }
 
@@ -151,7 +157,7 @@ struct ScheduleAcceptedWorkOfferView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .disabled(isSaving || isLoading || job == nil || selectedTasks.isEmpty)
+            .disabled(isSaving || isLoading || job == nil || (selectedTasks.isEmpty && offer.workPurpose != "diagnostic") || !offer.containsServiceDate(serviceDate))
         } footer: {
             Text("This creates a service stop, copies the selected job tasks into the service stop, assigns them to the accepted worker, and marks the offer scheduled.")
         }

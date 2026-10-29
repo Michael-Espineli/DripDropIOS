@@ -460,6 +460,13 @@ enum WorkOfferStatus: String, Codable, CaseIterable, Identifiable {
 }
 
 extension WorkOffer {
+    var sentDate: Date { sentAt ?? postedAt ?? createdAt }
+
+    func containsServiceDate(_ date: Date) -> Bool {
+        (proposedStartDate.map { date >= $0 } ?? true) &&
+        ((completionDeadlineAt ?? proposedEndDate).map { date <= $0 } ?? true)
+    }
+
     func technicianStatus(for userId: String) -> WorkOfferStatus {
         // A split route can remain posted after this technician finishes their claim.
         if status.isFinal { return status }
@@ -487,7 +494,8 @@ extension WorkOffer {
     }
 
     var workOfferHistoryDate: Date {
-        [completedAt, cancelledAt, rejectedAt, acceptedAt, viewedAt, sentAt, postedAt]
+        ([completedAt, cancelledAt, rejectedAt, acceptedAt, viewedAt, sentAt, postedAt] +
+         (claims ?? []).map(\.withdrawnAt))
             .compactMap { $0 }.max() ?? createdAt
     }
 }
@@ -566,4 +574,4 @@ struct WorkOfferScopeItem: Codable, Hashable, Identifiable {
 }
 struct WorkOfferIncentive: Codable, Hashable { var type: String; var amountCents: Int?; var percentage: Double?; var notes: String? }
 struct WorkOfferTerms: Codable, Hashable { var workerId: String; var workerName: String?; var paySource: String; var fixedAmountCents: Int?; var baseCents: Int?; var totalCents: Int?; var revision: Int? }
-struct WorkOfferClaim: Codable, Hashable, Identifiable { var id: String; var workerId: String; var workerName: String; var stopIds: [String]; var taskIds: [String]; var status: String; var serviceStopId: String?; var agreement: WorkOfferTerms }
+struct WorkOfferClaim: Codable, Hashable, Identifiable { var id: String; var workerId: String; var workerName: String; var stopIds: [String]; var taskIds: [String]; var status: String; var serviceStopId: String?; var agreement: WorkOfferTerms; var withdrawnAt: Date?; var withdrawalReason: String? }

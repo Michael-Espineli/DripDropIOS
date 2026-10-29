@@ -12,6 +12,7 @@
 //
 
 import SwiftUI
+import MapKit
 
 enum TechnicianWorkCenterTab: String, CaseIterable, Identifiable {
     case discover = "Pending"
@@ -20,6 +21,18 @@ enum TechnicianWorkCenterTab: String, CaseIterable, Identifiable {
     case previous = "Previous"
 
     var id: String { rawValue }
+}
+
+enum WorkOfferReviewSwipeAction {
+    case review, pass, none
+
+    static func resolve(horizontal: CGFloat, vertical: CGFloat) -> Self {
+        if vertical < -60 && abs(vertical) > abs(horizontal) * 1.2 { return .review }
+        guard abs(horizontal) > abs(vertical) * 1.2 else { return .none }
+        if horizontal > 110 { return .review }
+        if horizontal < -110 { return .pass }
+        return .none
+    }
 }
 
 @MainActor
@@ -157,20 +170,20 @@ final class TechnicianWorkCenterViewModel: ObservableObject {
         
     }
 
-    func acceptOffer(companyId:String, _ offer: WorkOffer, stopIds: [String] = []) async -> Bool {
-        guard !isSaving else { return false }
+    func acceptOffer(companyId:String, _ offer: WorkOffer, stopIds: [String] = []) async -> WorkOfferStatus? {
+        guard !isSaving else { return nil }
 
         isSaving = true
         defer { isSaving = false }
 
         do {
-            _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: offer.id, action: "accept", extra: ["claimId":UUID().uuidString, "revision":offer.revision ?? 1, "stopIds":stopIds])
+            let result = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: offer.id, action: "accept", extra: ["claimId":UUID().uuidString, "revision":offer.revision ?? 1, "stopIds":stopIds])
 
             await load(companyId:companyId,forceRefresh: true)
-            return true
+            return WorkOfferStatus(rawValue: result["status"] as? String ?? "") ?? .accepted
         } catch {
             alertMessage = "Could not accept work. \(error.localizedDescription)"
-            return false
+            return nil
         }
     }
 
@@ -274,6 +287,7 @@ struct TechnicianWorkCenterView: View {
                     TechnicianOfferSwipeReviewView(
                         offers: reviewOffers,
                         companyUser: viewModel.companyUser,
+                        dataService: viewModel.dataService,
                         isSaving: viewModel.isSaving,
                         acceptAction: { offer, stopIds in
                             await viewModel.acceptOffer(companyId: currentCompany.id, offer, stopIds: stopIds)
@@ -287,6 +301,9 @@ struct TechnicianWorkCenterView: View {
                         },
                         skipAction: { offer in
                             viewModel.skipBoardOffer(offer)
+                        },
+                        onChanged: {
+                            Task { await viewModel.load(companyId: currentCompany.id, forceRefresh: true) }
                         }
                     )
                 }
@@ -532,20 +549,7 @@ struct TechnicianWorkCenterView: View {
                         if let currentCompany = masterDataManager.currentCompany {
                             ForEach(viewModel.acceptedOffersReadyForSelfScheduling) { offer in
                                 NavigationLink {
-                                    TechnicianSelfScheduleWorkOfferView(
-                                        companyId: currentCompany.id,
-                                        companyUser: viewModel.companyUser,
-                                        offer: offer,
-                                        dataService: viewModel.dataService,
-                                        onScheduled: {
-                                            Task {
-                                                await viewModel.load(
-                                                    companyId: currentCompany.id,
-                                                    forceRefresh: true
-                                                )
-                                            }
-                                        }
-                                    )
+                                    offerDetailDestination(offer, canReject: false, canAccept: false)
                                 } label: {
                                     TechnicianWorkOfferRow(
                                         offer: offer,
@@ -633,17 +637,17 @@ struct TechnicianWorkCenterView: View {
             TechnicianWorkOfferDetailView(
                 offer: offer,
                 companyUser: viewModel.companyUser,
+                dataService: viewModel.dataService,
                 canReject: canReject,
                 canAccept: canAccept,
                 acceptAction: { stopIds in
                     await viewModel.acceptOffer(companyId: currentCompany.id, offer, stopIds: stopIds)
                 },
                 rejectAction: { reason in
-                    await viewModel.rejectOffer(
-                            companyId: currentCompany.id,
-                            offer,
-                            reason: reason
-                    )
+                    await viewModel.rejectOffer(companyId: currentCompany.id, offer, reason: reason)
+                },
+                onChanged: {
+                    Task { await viewModel.load(companyId: currentCompany.id, forceRefresh: true) }
                 }
             )
         } else {
@@ -780,6 +784,110 @@ struct WorkOfferLocationHeader: View {
     }
 }
 
+struct WorkOfferAreaMap: View {
+    let offer: WorkOffer
+    let dataService: any ProductionDataServiceProtocol
+    var height: CGFloat = 220
+
+    @State private var coordinate: CLLocationCoordinate2D?
+    @State private var isLoading = true
+    @State private var showMap = false
+
+    var body: some View {
+        TechnicianWorkPanel(title: "Work area", systemImage: "map") {
+            if let coordinate {
+                Button { showMap = true } label: {
+                    areaMap(coordinate, interactive: false)
+                        .allowsHitTesting(false)
+                        .frame(height: height)
+                        .overlay(alignment: .bottomTrailing) {
+                            Label("Explore map", systemImage: "arrow.up.left.and.arrow.down.right")
+                                .font(.caption.weight(.semibold))
+                                .padding(8)
+                                .background(.regularMaterial, in: Capsule())
+                                .padding(10)
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Explore the work area map")
+                .accessibilityHint("Opens a larger map where you can pan and zoom.")
+            } else if isLoading {
+                ProgressView("Finding the work area…")
+                    .frame(maxWidth: .infinity, minHeight: height)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Work area unavailable", systemImage: "map")
+                        .font(.subheadline.weight(.semibold))
+                    Text("We couldn't locate this address. The location details above are still available.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button("Try again") { Task { await loadArea() } }
+                }
+                .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
+            }
+        }
+        .task(id: offer.id) { await loadArea() }
+        .sheet(isPresented: $showMap) {
+            NavigationStack {
+                if let coordinate {
+                    areaMap(coordinate, interactive: true)
+                        .mapControls { MapCompass(); MapScaleView() }
+                        .navigationTitle("Work area")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { showMap = false }
+                            }
+                        }
+                }
+            }
+            .presentationDetents([.large])
+        }
+    }
+
+    private func areaMap(_ coordinate: CLLocationCoordinate2D, interactive: Bool) -> some View {
+        Map(initialPosition: .region(MKCoordinateRegion(
+            center: coordinate, latitudinalMeters: 5_000, longitudinalMeters: 5_000
+        )), interactionModes: interactive ? .all : []) {
+            MapCircle(center: coordinate, radius: 250)
+                .foregroundStyle(Color.poolBlue.opacity(0.18))
+                .stroke(Color.poolBlue, lineWidth: 2)
+        }
+        .mapStyle(.standard(pointsOfInterest: .excludingAll))
+    }
+
+    private func savedCoordinate(in address: Address?) -> CLLocationCoordinate2D? {
+        guard let address else { return nil }
+        let coordinate = address.coordinates
+        guard CLLocationCoordinate2DIsValid(coordinate),
+              !(coordinate.latitude == 0 && coordinate.longitude == 0) else { return nil }
+        return coordinate
+    }
+
+    @MainActor private func loadArea() async {
+        isLoading = true
+        coordinate = nil
+        defer { isLoading = false }
+
+        var address = offer.address
+        if let saved = savedCoordinate(in: address) { coordinate = saved; return }
+
+        if !offer.serviceLocationId.isEmpty,
+           let location = try? await dataService.getServiceLocationById(companyId: offer.companyId, locationId: offer.serviceLocationId) {
+            guard !Task.isCancelled else { return }
+            if let saved = savedCoordinate(in: location.address) { coordinate = saved; return }
+            address = location.address
+        }
+
+        guard let address, !address.streetAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let query = [address.streetAddress, address.city, address.state, address.zip]
+            .filter { !$0.isEmpty }.joined(separator: ", ")
+        guard let found = try? await getCoordinate(from: query), !Task.isCancelled,
+              CLLocationCoordinate2DIsValid(found) else { return }
+        coordinate = found
+    }
+}
+
 private extension Color {
     static var workOfferCardSurface: Color {
         Color(.systemBackground)
@@ -797,6 +905,7 @@ private extension Color {
 extension View {
     func technicianPanel() -> some View {
         self
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
             .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
@@ -823,35 +932,38 @@ private struct TechnicianOfferSwipeReviewView: View {
 
     let offers: [WorkOffer]
     let companyUser: CompanyUser
+    let dataService: any ProductionDataServiceProtocol
     let isSaving: Bool
-    let acceptAction: (WorkOffer, [String]) async -> Bool
+    let acceptAction: (WorkOffer, [String]) async -> WorkOfferStatus?
     let rejectAction: (WorkOffer, String) async -> Bool
     let skipAction: (WorkOffer) -> Void
+    let onChanged: () -> Void
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Pending Offers")
-                        .font(.title2.weight(.bold))
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Pending Offers")
+                    .font(.title2.weight(.bold))
 
-                    Text("Swipe right to review and accept. Swipe left to pass. Your next opportunity is one card away.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 2)
-
-                TechnicianOfferSwipeDeck(
-                    offers: offers,
-                    companyUser: companyUser,
-                    isSaving: isSaving,
-                    acceptAction: acceptAction,
-                    rejectAction: rejectAction,
-                    skipAction: skipAction
-                )
+                Text("Swipe right to review, left to pass. Scroll for more details.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+
+            TechnicianOfferSwipeDeck(
+                offers: offers,
+                companyUser: companyUser,
+                dataService: dataService,
+                isSaving: isSaving,
+                acceptAction: acceptAction,
+                rejectAction: rejectAction,
+                skipAction: skipAction,
+                onChanged: onChanged
+            )
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.listColor.ignoresSafeArea())
         .navigationTitle("Review Offers")
         .navigationBarTitleDisplayMode(.inline)
@@ -869,10 +981,12 @@ private struct TechnicianOfferSwipeDeck: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let offers: [WorkOffer]
     let companyUser: CompanyUser
+    let dataService: any ProductionDataServiceProtocol
     let isSaving: Bool
-    let acceptAction: (WorkOffer, [String]) async -> Bool
+    let acceptAction: (WorkOffer, [String]) async -> WorkOfferStatus?
     let rejectAction: (WorkOffer, String) async -> Bool
     let skipAction: (WorkOffer) -> Void
+    let onChanged: () -> Void
 
     @State private var reviewedOfferIds: Set<String> = []
     @State private var reviewingOffer: WorkOffer?
@@ -898,34 +1012,11 @@ private struct TechnicianOfferSwipeDeck: View {
             .foregroundStyle(.secondary)
 
             deckBody
-
-            if let activeOffer {
-                HStack(spacing: 14) {
-                    Button(role: activeOffer.offerType == .directUser ? .destructive : nil) {
-                        handleLeftAction(activeOffer)
-                    } label: {
-                        VStack(spacing: 7) {
-                            Image(systemName: "xmark").font(.title3.weight(.bold))
-                                .frame(width: 54, height: 54)
-                                .background(.background, in: Circle())
-                                .overlay(Circle().stroke(Color.primary.opacity(0.08)))
-                            Text(activeOffer.offerType == .directUser ? "Reject" : "Skip for now").font(.caption)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                    Button { openDetails(activeOffer) } label: {
-                        Label("Review & accept", systemImage: "checkmark")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 22)
-                            .frame(minHeight: 54)
-                            .foregroundStyle(.white)
-                            .background(Color.poolGreen, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .disabled(isBusy)
-            }
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let activeOffer { actionBar(for: activeOffer) }
         }
         .alert("Reject Work", isPresented: rejectDialogBinding) {
             TextField("Reason (optional)", text: $rejectionReason)
@@ -953,11 +1044,12 @@ private struct TechnicianOfferSwipeDeck: View {
             NavigationStack {
                 TechnicianWorkOfferDetailView(
                     offer: offer, companyUser: companyUser,
+                    dataService: dataService,
                     canReject: offer.offerType == .directUser, canAccept: true,
                     acceptAction: { stops in
                         acceptingCard = true
                         let accepted = await acceptAction(offer, stops)
-                        if accepted { advance(offer) }
+                        if accepted != nil { advance(offer) }
                         return accepted
                     },
                     rejectAction: { reason in
@@ -965,7 +1057,8 @@ private struct TechnicianOfferSwipeDeck: View {
                         let rejected = await rejectAction(offer, reason)
                         if rejected { advance(offer) }
                         return rejected
-                    }
+                    },
+                    onChanged: onChanged
                 )
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -984,13 +1077,14 @@ private struct TechnicianOfferSwipeDeck: View {
                 systemImage: reviewedOfferIds.isEmpty ? "tray" : "checkmark.seal.fill",
                 description: Text("New offers will appear here. Accepted work is in Current, and your offer history is in Previous.")
             )
-            .frame(maxWidth: .infinity, minHeight: 360)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .technicianPanel()
         } else {
             ZStack {
                 ForEach(Array(remainingOffers.prefix(3).enumerated()), id: \.element.id) { index, offer in
                     TechnicianOfferSwipeCard(
-                        offer: offer, companyUser: companyUser,
+                        offer: offer,
+                        dataService: dataService,
                         acceptAction: { openDetails(offer) }
                     )
                     .overlay(alignment: dragOffset.width >= 0 ? .topLeading : .topTrailing) {
@@ -1021,9 +1115,40 @@ private struct TechnicianOfferSwipeDeck: View {
                 }
             }
             .animation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.82), value: remainingOffers.map(\.id))
-            .frame(height: 520)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.bottom, 24)
         }
+    }
+
+    private func actionBar(for offer: WorkOffer) -> some View {
+        HStack(spacing: 14) {
+            Button(role: offer.offerType == .directUser ? .destructive : nil) {
+                handleLeftAction(offer)
+            } label: {
+                VStack(spacing: 7) {
+                    Image(systemName: "xmark").font(.title3.weight(.bold))
+                        .frame(width: 54, height: 54)
+                        .background(.background, in: Circle())
+                        .overlay(Circle().stroke(Color.primary.opacity(0.08)))
+                    Text(offer.offerType == .directUser ? "Reject" : "Skip for now").font(.caption)
+                }
+            }
+            .buttonStyle(.plain)
+            Spacer()
+            Button { openDetails(offer) } label: {
+                Label("Review & accept", systemImage: "checkmark")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 22)
+                    .frame(minHeight: 54)
+                    .foregroundStyle(.white)
+                    .background(Color.poolGreen, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .disabled(isBusy)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
     }
 
     private var rejectDialogBinding: Binding<Bool> {
@@ -1038,9 +1163,11 @@ private struct TechnicianOfferSwipeDeck: View {
             }
             .onEnded { value in
                 guard !isBusy, abs(value.translation.width) > abs(value.translation.height) * 1.2 else { resetDrag(); return }
-                if value.translation.width > 110 { openDetails(offer) }
-                else if value.translation.width < -110 { handleLeftAction(offer) }
-                else { resetDrag() }
+                switch WorkOfferReviewSwipeAction.resolve(horizontal: value.translation.width, vertical: value.translation.height) {
+                case .review: openDetails(offer)
+                case .pass: handleLeftAction(offer)
+                case .none: resetDrag()
+                }
             }
     }
 
@@ -1073,145 +1200,89 @@ private struct TechnicianOfferSwipeDeck: View {
 
 private struct TechnicianOfferSwipeCard: View {
     let offer: WorkOffer
-    let companyUser: CompanyUser
+    let dataService: any ProductionDataServiceProtocol
     let acceptAction: () -> Void
+    @State private var personalPayCents: Int?
+    @State private var needsPayReview = false
+    @State private var payError = false
+
+    private var paySummary: String {
+        if payError { return "Unavailable" }
+        if needsPayReview { return "Needs review" }
+        return personalPayCents.map(TechnicianWorkMoneyFormatter.money) ?? "Calculating…"
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
-                topMatter
-                quickFacts
-                detailBlock
-                notesBlock
-                Button { acceptAction() } label: {
-                    Label("View full offer", systemImage: "arrow.up.right")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44)
+            VStack(alignment: .leading, spacing: 12) {
+                WorkOfferLocationHeader(offer: offer)
+                WorkOfferAttribution(offer: offer)
+                WorkOfferAreaMap(offer: offer, dataService: dataService, height: 150)
+                HStack(spacing: 10) {
+                    TechnicianOfferFactPill(title: "Your estimated pay", value: paySummary, systemImage: "dollarsign.circle")
+                    TechnicianOfferFactPill(title: "Estimated time", value: "\(offer.estimatedMinutes) min", systemImage: "clock")
                 }
-                .buttonStyle(.bordered)
+                if payError {
+                    Button("Retry pay estimate") { Task { await loadPersonalPay() } }
+                        .font(.caption)
+                }
+                Label(offer.technicianTimelineSummary, systemImage: "flag.checkered")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(2)
+                fullOfferButton
             }
-            .padding(18)
         }
-        .frame(maxWidth: .infinity)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
-            LinearGradient(
-                colors: [
-                    cardTint.opacity(0.18),
-                    Color.workOfferCardSurface,
-                    Color.workOfferCardBase
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
+            LinearGradient(colors: [cardTint.opacity(0.18), Color.workOfferCardSurface], startPoint: .topLeading, endPoint: .bottomTrailing),
             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(cardTint.opacity(0.22), lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(cardTint.opacity(0.22), lineWidth: 1))
         .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 12)
+        .accessibilityHint("Swipe left or right to review offers, or choose View full offer for all details.")
+        .task(id: "\(offer.id):\(offer.revision ?? 1)") { await loadPersonalPay() }
     }
 
-    private var topMatter: some View {
-        WorkOfferLocationHeader(offer: offer)
-    }
-
-    private var quickFacts: some View {
-        LazyVGrid(columns: [
-            GridItem(.flexible(), spacing: 10),
-            GridItem(.flexible(), spacing: 10)
-        ], spacing: 10) {
-            TechnicianOfferFactPill(
-                title: "Pay",
-                value: offer.paySource == .technicianRate && offer.estimatedPayTotalCents == nil ? "Your Rate" : TechnicianWorkMoneyFormatter.money(offer.technicianDisplayPayCents),
-                systemImage: "dollarsign.circle"
-            )
-            TechnicianOfferFactPill(
-                title: "ETA",
-                value: "\(offer.estimatedMinutes) min",
-                systemImage: "clock"
-            )
-            TechnicianOfferFactPill(
-                title: "Tasks",
-                value: "\(offer.jobTaskIds.count)",
-                systemImage: "checklist"
-            )
-            TechnicianOfferFactPill(
-                title: "Due By",
-                value: deadlineLine,
-                systemImage: "flag.checkered"
-            )
+    @MainActor private func loadPersonalPay() async {
+        personalPayCents = nil
+        needsPayReview = false
+        payError = false
+        do {
+            let quote = try await FunctionsManager.shared.manageWork(companyId: offer.companyId, offerId: offer.id, action: "preview")
+            guard !Task.isCancelled else { return }
+            personalPayCents = (quote["totalCents"] as? NSNumber)?.intValue
+            needsPayReview = quote["needsReview"] as? Bool ?? false
+            payError = personalPayCents == nil
+        } catch {
+            guard !Task.isCancelled else { return }
+            payError = true
         }
     }
 
-    private var detailBlock: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            TechnicianSwipeDetailRow(title: "Job", value: jobLine)
-            TechnicianSwipeDetailRow(title: "Worker", value: companyUser.userName)
-            TechnicianSwipeDetailRow(title: "Pay Source", value: offer.paySource.title)
-            TechnicianSwipeDetailRow(title: "Timeline", value: timelineLine)
-
-            if offer.allowsTechnicianSelfScheduling == true {
-                TechnicianSwipeDetailRow(title: "Scheduling", value: "Technician self-schedule")
-            } else {
-                TechnicianSwipeDetailRow(title: "Scheduling", value: "Admin schedules")
-            }
+    private var fullOfferButton: some View {
+        Button { acceptAction() } label: {
+            Label("View full offer", systemImage: "chevron.up")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .padding(14)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .buttonStyle(.bordered)
     }
 
-    @ViewBuilder
-    private var notesBlock: some View {
-        let noteText = [
-            offer.description,
-            offer.adminNotes
-        ]
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .joined(separator: "\n\n")
+    private var cardTint: Color { offer.offerType == .internalBoard ? .poolGreen : .poolBlue }
+}
 
-        if !noteText.isEmpty {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("Notes")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+struct WorkOfferAttribution: View {
+    let offer: WorkOffer
 
-                Text(noteText)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-            }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("From \(offer.createdByUserName.isEmpty ? "Company office" : offer.createdByUserName)", systemImage: "person.crop.circle")
+                .font(.subheadline.weight(.semibold))
+            Label(TechnicianWorkDateFormatter.shortDateTime(offer.sentDate), systemImage: "paperplane")
+                .font(.caption).foregroundStyle(.secondary)
         }
-    }
-
-    private var cardTint: Color {
-        offer.offerType == .internalBoard ? .poolGreen : .poolBlue
-    }
-
-    private var locationLine: String {
-        if !offer.serviceLocationName.isEmpty {
-            return offer.serviceLocationName
-        }
-
-        if let address = offer.address,
-           !address.streetAddress.isEmpty {
-            return address.streetAddress
-        }
-
-        return offer.offerType == .internalBoard ? offer.boardVisibility.title : offer.offeredToUserName
-    }
-
-    private var jobLine: String {
-        [offer.jobInternalId, offer.jobName]
-            .filter { !$0.isEmpty }
-            .joined(separator: " - ")
-    }
-
-    private var deadlineLine: String {
-        offer.technicianDeadlineSummary
-    }
-
-    private var timelineLine: String {
-        offer.technicianTimelineSummary
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -1270,12 +1341,14 @@ struct TechnicianWorkOfferDetailView: View {
 
     let offer: WorkOffer
     let companyUser: CompanyUser
+    let dataService: any ProductionDataServiceProtocol
 
     let canReject: Bool
     let canAccept: Bool
 
-    let acceptAction: ([String]) async -> Bool
+    let acceptAction: ([String]) async -> WorkOfferStatus?
     let rejectAction: (String) async -> Bool
+    var onChanged: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
     @State private var quoteScope: WorkOfferScope?
@@ -1294,17 +1367,37 @@ struct TechnicianWorkOfferDetailView: View {
     @State private var selectedStopIds = Set<String>()
     @State private var showRejectDialog: Bool = false
     @State private var rejectionReason: String = ""
+    @State private var acceptedStatus: WorkOfferStatus?
+    @State private var showScheduleSheet = false
+    @State private var showReturnDialog = false
+    @State private var returnReason = ""
+    @State private var showReturnError = false
+
+    private var currentStatus: WorkOfferStatus { acceptedStatus ?? offer.technicianStatus(for: companyUser.userId) }
+    private var canSchedule: Bool {
+        currentStatus == .accepted && offer.serviceStopId.isEmpty &&
+        offer.routeId == nil && offer.allowsTechnicianSelfScheduling == true
+    }
+    private var canReturn: Bool { [.accepted, .scheduled].contains(currentStatus) }
+    private var schedulingOffer: WorkOffer {
+        var value = offer
+        value.status = currentStatus
+        value.acceptedByUserId = companyUser.userId
+        value.acceptedByUserName = companyUser.userName
+        return value
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
+                statusSection
                 WorkOfferLocationHeader(offer: offer, status: personalClaimStatus)
+                WorkOfferAreaMap(offer: offer, dataService: dataService)
                 quickFacts
                 scopeSection
                 paySection
                 scheduleSection
                 jobSection
-                statusSection
                 notesSection
             }
             .padding(.horizontal, 14)
@@ -1312,12 +1405,37 @@ struct TechnicianWorkOfferDetailView: View {
         }
         .background(Color.listColor.ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if canAccept || canReject { actionSection }
+            if canAccept || canReject || canSchedule || canReturn { actionSection }
         }
         .task { await loadQuote() }
         .navigationTitle("Work Offer")
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled(isAccepting || isRejecting)
+        .sheet(isPresented: $showScheduleSheet) {
+            NavigationStack {
+                TechnicianSelfScheduleWorkOfferView(
+                    companyId: offer.companyId, companyUser: companyUser,
+                    offer: schedulingOffer, dataService: dataService,
+                    onScheduled: { onChanged(); dismiss() }
+                )
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Schedule later") { showScheduleSheet = false }
+                    }
+                }
+            }
+        }
+        .alert("Return accepted work?", isPresented: $showReturnDialog) {
+            TextField("Reason (required)", text: $returnReason)
+            Button("Return work", role: .destructive) { Task { await returnWork() } }
+                .disabled(returnReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Button("Keep work", role: .cancel) { }
+        } message: {
+            Text("Unstarted work will return to the office for reassignment. Your acceptance and reason are saved. Started work requires management review.")
+        }
+        .alert("Could not return work", isPresented: $showReturnError) {
+            Button("OK", role: .cancel) { }
+        } message: { Text(quoteError) }
         .alert("Reject Work", isPresented: $showRejectDialog) {
             TextField("Reason (optional)", text: $rejectionReason)
             Button("Reject", role: .destructive) {
@@ -1342,7 +1460,7 @@ struct TechnicianWorkOfferDetailView: View {
         }
     }
 
-    private var personalClaimStatus: String { offer.technicianStatus(for: companyUser.userId).title }
+    private var personalClaimStatus: String { currentStatus.title }
 
     private var statusSection: some View {
         TechnicianWorkPanel(title: "Offer", systemImage: "person.crop.circle") {
@@ -1358,12 +1476,31 @@ struct TechnicianWorkOfferDetailView: View {
                     .background(.thinMaterial, in: Capsule())
             }
 
-            TechnicianWorkDetailRow(title: "Worker", value: companyUser.userName)
-            TechnicianWorkDetailRow(title: "Worker Type", value: companyUser.workerType.rawValue)
-            TechnicianWorkDetailRow(title: "Offered", value: TechnicianWorkDateFormatter.shortDateTime(offer.createdAt))
+            WorkOfferAttribution(offer: offer)
             if offer.isPreviousWork(for: companyUser.userId) {
                 TechnicianWorkDetailRow(title: "Last activity", value: TechnicianWorkDateFormatter.shortDateTime(offer.workOfferHistoryDate))
             }
+            ForEach((offer.claims ?? []).filter { $0.workerId == companyUser.userId && $0.withdrawnAt != nil }) { claim in
+                TechnicianWorkDetailRow(title: "Return reason", value: claim.withdrawalReason ?? "")
+            }
+        }
+    }
+
+    @MainActor private func returnWork() async {
+        guard !isAccepting, !isRejecting else { return }
+        isRejecting = true
+        defer { isRejecting = false }
+        do {
+            var extra: [String: Any] = ["reason": returnReason]
+            if let claim = offer.claims?.last(where: { $0.workerId == companyUser.userId && ["Accepted", "Scheduled"].contains($0.status) }) {
+                extra["claimId"] = claim.id
+            }
+            _ = try await FunctionsManager.shared.manageWork(companyId: offer.companyId, offerId: offer.id, action: "withdraw", extra: extra)
+            onChanged()
+            dismiss()
+        } catch {
+            quoteError = "Could not return work. \(error.localizedDescription)"
+            showReturnError = true
         }
     }
 
@@ -1536,11 +1673,10 @@ struct TechnicianWorkOfferDetailView: View {
                     title: "Service Stop",
                     value: offer.serviceStopInternalId.isEmpty ? offer.serviceStopId : offer.serviceStopInternalId
                 )
-            } else if offer.status == .accepted {
+            } else if currentStatus == .accepted {
                 if offer.allowsTechnicianSelfScheduling == true {
-                    Text("Accepted. You can schedule this work from the Current tab.")
+                    Button("Schedule work now") { showScheduleSheet = true }
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.orange)
                 } else {
                     Text("Accepted. Waiting for admin to schedule the service stop.")
                         .font(.caption.weight(.semibold))
@@ -1583,7 +1719,14 @@ struct TechnicianWorkOfferDetailView: View {
     private var actionSection: some View {
         VStack(spacing: 8) {
             HStack(spacing: 12) {
-                if canReject {
+                if canReturn {
+                    Button(role: .destructive) { showReturnDialog = true } label: {
+                        Label(isRejecting ? "Returning…" : "Return work", systemImage: "arrow.uturn.backward")
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isAccepting || isRejecting)
+                } else if canReject && acceptedStatus == nil {
                     Button(role: .destructive) { showRejectDialog = true } label: {
                         Label(isRejecting ? "Rejecting…" : "Reject", systemImage: "xmark")
                             .frame(minHeight: 44)
@@ -1591,14 +1734,25 @@ struct TechnicianWorkOfferDetailView: View {
                     .buttonStyle(.bordered)
                     .disabled(isAccepting || isRejecting)
                 }
-                if canAccept {
+                if canSchedule {
+                    Button { showScheduleSheet = true } label: {
+                        Label("Schedule work now", systemImage: "calendar.badge.plus")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.poolBlue)
+                    .disabled(isAccepting || isRejecting)
+                } else if canAccept && acceptedStatus == nil {
                     Button {
                         Task {
                             isAccepting = true
                             let accepted = await acceptAction(Array(selectedStopIds))
                             isAccepting = false
-                            if accepted { dismiss() }
-                            else { quoteError = "Could not accept this work. Refresh the offer and review any changes." }
+                            if let accepted {
+                                acceptedStatus = accepted
+                                if canSchedule { showScheduleSheet = true }
+                                else { dismiss() }
+                            } else { quoteError = "Could not accept this work. Refresh the offer and review any changes." }
                         }
                     } label: {
                         HStack {
@@ -1612,7 +1766,7 @@ struct TechnicianWorkOfferDetailView: View {
                     .disabled(isAccepting || isRejecting || isLoadingQuote || quoteNeedsReview || quotedTotal == nil || !quoteError.isEmpty || (!(quoteScope?.stops.isEmpty ?? true) && selectedStopIds.isEmpty))
                 }
             }
-            Text("Review the scope and pay before accepting.")
+            Text(canReturn ? "Return unstarted work to the office if you can no longer complete it." : "Review the scope and pay before accepting.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 14)

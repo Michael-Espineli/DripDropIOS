@@ -363,6 +363,7 @@ protocol ProductionDataServiceProtocol: Equatable {
 
     // MARK: - Pay Line Items
     func refreshServiceStopPayroll(companyId: String, serviceStopId: String) async throws
+    func clearZeroDollarPayrollTasks(companyId: String, lineItemIds: [String]) async throws
     func fetchTechnicianPaidLineItems(companyId: String, technicianId: String, startDate: Date, endDate: Date) async throws -> [TechnicianPayLineItem]
     func fetchJobPayLineItems(companyId: String, jobId: String) async throws -> [TechnicianPayLineItem]
     func fetchTechnicianPayLineItems(

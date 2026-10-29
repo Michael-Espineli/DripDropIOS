@@ -945,6 +945,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
         // MARK: - Technician Pay Line Items
 
     func refreshServiceStopPayroll(companyId: String, serviceStopId: String) async throws {}
+    func clearZeroDollarPayrollTasks(companyId: String, lineItemIds: [String]) async throws {}
 
     func fetchTechnicianPayLineItems(
         companyId: String,

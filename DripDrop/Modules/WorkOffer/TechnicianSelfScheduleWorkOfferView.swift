@@ -44,7 +44,7 @@ struct TechnicianSelfScheduleWorkOfferView: View {
         self.dataService = dataService
         self.onScheduled = onScheduled
 
-        _serviceDate = State(initialValue: offer.proposedStartDate ?? Date())
+        _serviceDate = State(initialValue: max(offer.proposedStartDate ?? Date(), Date()))
     }
 
     private var selectedTasks: [JobTask] {
@@ -61,6 +61,7 @@ struct TechnicianSelfScheduleWorkOfferView: View {
         }
         .navigationTitle("Schedule Work")
         .navigationBarTitleDisplayMode(.inline)
+        .interactiveDismissDisabled(isSaving)
         .task {
             await load()
         }
@@ -87,6 +88,16 @@ struct TechnicianSelfScheduleWorkOfferView: View {
                 selection: $serviceDate,
                 displayedComponents: [.date, .hourAndMinute]
             )
+            .disabled(isSaving)
+            if let start = offer.proposedStartDate {
+                TechnicianWorkDetailRow(title: "Available from", value: TechnicianWorkDateFormatter.shortDateTime(start))
+            }
+            if let deadline = offer.completionDeadlineAt ?? offer.proposedEndDate {
+                TechnicianWorkDetailRow(title: "Completion deadline", value: TechnicianWorkDateFormatter.shortDateTime(deadline))
+            }
+            if !offer.containsServiceDate(serviceDate) {
+                Text("Choose a time within the accepted offer window.").font(.caption).foregroundStyle(.red)
+            }
         }
     }
 
@@ -102,11 +113,8 @@ struct TechnicianSelfScheduleWorkOfferView: View {
     private var taskSection: some View {
         Section("Tasks") {
             if selectedTasks.isEmpty {
-                ContentUnavailableView(
-                    "No Tasks",
-                    systemImage: "checklist",
-                    description: Text("This offer has no matching job tasks.")
-                )
+                Text(offer.workPurpose == "diagnostic" ? "Diagnostic / estimate visit. Execution tasks are added after the assessment." : "This offer has no matching job tasks.")
+                    .font(.subheadline).foregroundStyle(.secondary)
             } else {
                 ForEach(selectedTasks) { task in
                     VStack(alignment: .leading, spacing: 4) {
@@ -137,7 +145,7 @@ struct TechnicianSelfScheduleWorkOfferView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            .disabled(isSaving || isLoading || job == nil || selectedTasks.isEmpty)
+            .disabled(isSaving || isLoading || job == nil || (selectedTasks.isEmpty && offer.workPurpose != "diagnostic") || !offer.containsServiceDate(serviceDate))
         } footer: {
             Text("This will create a service stop assigned to you and move the offer to Scheduled.")
         }
@@ -160,9 +168,9 @@ struct TechnicianSelfScheduleWorkOfferView: View {
                 jobId: offer.jobId
             )
 
-            let loadedLocation = try await dataService.getServiceLocationById(
+            let loadedLocation = loadedJob.serviceLocationId.isEmpty ? nil : try await dataService.getServiceLocationById(
                 companyId: companyId,
-                locationId: offer.serviceLocationId
+                locationId: loadedJob.serviceLocationId
             )
 
             self.job = loadedJob
@@ -175,6 +183,7 @@ struct TechnicianSelfScheduleWorkOfferView: View {
     }
 
     private func schedule() async {
+        guard !isSaving, offer.containsServiceDate(serviceDate) else { return }
         guard offer.allowsTechnicianSelfScheduling == true else {
             alertMessage = "This offer does not allow technician self-scheduling."
             showAlert = true

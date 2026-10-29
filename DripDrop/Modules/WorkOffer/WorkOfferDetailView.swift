@@ -25,6 +25,10 @@ struct WorkOfferDetailView: View {
 
     @State private var showCancelConfirmation: Bool = false
     @State private var cancelReason: String = ""
+    @State private var returningClaim: WorkOfferClaim?
+    @State private var showReturnConfirmation = false
+    @State private var canManageReturns = false
+    @State private var returnReason = ""
     
     @State private var showScheduleSheet: Bool = false
     
@@ -50,8 +54,7 @@ struct WorkOfferDetailView: View {
         offer.status == .draft ||
         offer.status == .sent ||
         offer.status == .posted ||
-        offer.status == .viewed ||
-        offer.status == .accepted
+        offer.status == .viewed
     }
 
     private var canMarkScheduled: Bool {
@@ -66,8 +69,9 @@ struct WorkOfferDetailView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
-                WorkOfferLocationHeader(offer: offer)
                 statusSection
+                WorkOfferLocationHeader(offer: offer)
+                WorkOfferAreaMap(offer: offer, dataService: dataService)
                 receiverSection
                 scopeSection
                 paySection
@@ -81,6 +85,11 @@ struct WorkOfferDetailView: View {
         .background(Color.listColor.ignoresSafeArea())
         .navigationTitle("Work Offer")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if let capabilities = try? await FunctionsManager.shared.technicianWorkflow("manageTechnicianWork", payload: ["companyId": companyId, "action": "capabilities"]) {
+                canManageReturns = capabilities["canPostForOthers"] as? Bool ?? false
+            }
+        }
         .sheet(isPresented: $showScheduleSheet) {
             ScheduleAcceptedWorkOfferView(
                 companyId: companyId,
@@ -114,10 +123,22 @@ struct WorkOfferDetailView: View {
         } message: {
             Text("Add a note explaining why this work offer was cancelled.")
         }
+        .alert("Return accepted work?", isPresented: $showReturnConfirmation) {
+            TextField("Reason (required)", text: $returnReason)
+            Button("Return work", role: .destructive) {
+                guard let claim = returningClaim else { return }
+                Task { await returnWork(claim) }
+            }
+            .disabled(returnReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Button("Keep work", role: .cancel) { returningClaim = nil }
+        } message: {
+            Text("Unstarted work will become unassigned for the office to arrange replacement. The accepted offer and return reason stay in history.")
+        }
     }
 
     private var statusSection: some View {
-        TechnicianWorkPanel(title: "Status", systemImage: "info.circle") {
+        TechnicianWorkPanel(title: "Offer", systemImage: "info.circle") {
+            WorkOfferAttribution(offer: offer)
             HStack {
                 Label(offer.offerType.title, systemImage: offer.offerType.systemImage)
                 Spacer()
@@ -138,6 +159,10 @@ struct WorkOfferDetailView: View {
 
             WorkOfferDetailRow(title: "Created", value: WorkOfferDetailDateFormatter.shortDateTime(offer.createdAt))
             WorkOfferDetailRow(title: "Created By", value: offer.createdByUserName)
+            ForEach((offer.claims ?? []).filter { $0.withdrawnAt != nil }) { claim in
+                WorkOfferDetailRow(title: "Returned by", value: claim.workerName)
+                WorkOfferDetailRow(title: "Return reason", value: claim.withdrawalReason ?? "")
+            }
         }
     }
 
@@ -149,11 +174,6 @@ struct WorkOfferDetailView: View {
                 WorkOfferDetailRow(
                     title: "Offered To",
                     value: offer.offeredToUserName.isEmpty ? "Missing Worker" : offer.offeredToUserName
-                )
-
-                WorkOfferDetailRow(
-                    title: "Worker Type",
-                    value: offer.offeredToWorkerType.rawValue.isEmpty ? "-" : offer.offeredToWorkerType.rawValue
                 )
 
             case .internalBoard:
@@ -317,6 +337,16 @@ struct WorkOfferDetailView: View {
                 }
                 .disabled(isSaving)
             }
+            ForEach((offer.claims ?? []).filter { ["Accepted", "Scheduled"].contains($0.status) && (canManageReturns || $0.workerId == currentUserId) }) { claim in
+                Button(role: .destructive) {
+                    returnReason = ""
+                    returningClaim = claim
+                    showReturnConfirmation = true
+                } label: {
+                    Label("Return \(claim.workerName)'s work", systemImage: "arrow.uturn.backward")
+                }
+                .disabled(isSaving)
+            }
             Text("Scheduling and payroll happen through service stops and completed work.")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -388,6 +418,19 @@ struct WorkOfferDetailView: View {
             dismiss()
         } catch {
             alertMessage = "Could not cancel offer. \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
+    private func returnWork(_ claim: WorkOfferClaim) async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await FunctionsManager.shared.manageWork(companyId: companyId, offerId: offer.id, action: "withdraw", extra: ["claimId": claim.id, "reason": returnReason])
+            onChanged()
+            dismiss()
+        } catch {
+            alertMessage = "Could not return work. \(error.localizedDescription)"
             showAlert = true
         }
     }
