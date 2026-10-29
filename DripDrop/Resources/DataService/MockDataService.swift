@@ -1501,6 +1501,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func uploadServiceStopTask(companyId:String,serviceStopId:String,task:ServiceStopTask) async throws {
     }
+    func updateJobTaskDetails(companyId: String, jobId: String, task: JobTask) async throws {}
     func updateJobTaskName(companyId:String,jobId:String,taskId:String,name:String) throws {
     }
     func updateJobTaskType(companyId:String,jobId:String,taskId:String,type:String) throws {

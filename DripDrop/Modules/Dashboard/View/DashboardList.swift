@@ -129,11 +129,11 @@ extension DashboardList{
     
     var repairRequests: some View {
 
-            NavigationLink(value: Route.repairRequestList(dataService: dataService), label: {
+            NavigationLink(destination: RepairRequestListView(dataService: dataService, submittedByUserId: masterDataManager.user?.id), label: {
 
             ZStack{
                 VStack{
-                    Text("Repair Requests")
+                    Text("My Repair Requests")
                 }
                 VStack{
                     HStack{

@@ -1177,6 +1177,33 @@ extension CompanyActiveRouteDetailSheet {
                 Text("Your role can view this route. Moving stops or posting coverage requires company permission.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
+                if canMoveStops {
+                    sourceError("users")
+                    DatePicker("Move date", selection: $moveDate, displayedComponents: .date)
+                        .font(.subheadline)
+                    Picker("Destination technician", selection: $selectedTechnicianId) {
+                        Text("Select technician").tag("")
+                        ForEach(companyUsers) { user in Text(user.userName).tag(user.userId) }
+                    }
+                    .pickerStyle(.menu)
+                    .font(.subheadline)
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { managerActionButtons }
+                    VStack(alignment: .leading, spacing: 8) { managerActionButtons }
+                }
+                .controlSize(.small)
+                .font(.caption.weight(.semibold))
+
+                if canOfferCoverage {
+                    Text("Offer the selected stops for sick-day coverage on the company work board or directly to another technician.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
+                Divider()
+                Text("\(selectedStops.count) selected · \(eligibleStops.count) available")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 HStack {
                     Button("Select all remaining") { selectedStops = eligibleStops }
                     Spacer()
@@ -1188,43 +1215,32 @@ extension CompanyActiveRouteDetailSheet {
                 if stops.isEmpty && !isLoading && errors["stops"] == nil {
                     Text("There are no stops on this route.").font(.caption).foregroundStyle(.secondary)
                 }
-                Text("\(selectedStops.count) selected · \(eligibleStops.count) available. Completed, skipped, and started stops cannot be moved or offered here.")
-                    .font(.caption).foregroundStyle(.secondary)
-
-                if canMoveStops {
-                    Divider()
-                    sourceError("users")
-                    DatePicker("Move date", selection: $moveDate, displayedComponents: .date)
-                    Picker("Destination technician", selection: $selectedTechnicianId) {
-                        Text("Select technician").tag("")
-                        ForEach(companyUsers) { user in Text(user.userName).tag(user.userId) }
-                    }
-                    .pickerStyle(.menu)
-                    Button { showMoveConfirmation = true } label: {
-                        HStack(spacing: 8) {
-                            if isMoving { ProgressView() }
-                            Label(isMoving ? "Moving stops…" : "Move selected stops", systemImage: "arrowshape.turn.up.right")
-                        }
-                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!hasValidSelection || selectedTechnicianId.isEmpty || isLoading || isMoving || errors["users"] != nil)
-                }
-                if canOfferCoverage {
-                    Divider()
-                    Button { showCoverageOffer = true } label: {
-                        Label("Create work offer", systemImage: "person.2.badge.plus")
-                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(!hasValidSelection || isLoading || isMoving)
-                    Text("Offer these selected stops for sick-day coverage on the company work board or directly to another technician.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+                Text("Completed, skipped, and started stops cannot be moved or offered here.")
+                    .font(.caption2).foregroundStyle(.secondary)
             }
         }
         .activeRouteCard()
         .disabled(isLoading || isMoving)
+    }
+
+    @ViewBuilder private var managerActionButtons: some View {
+        if canMoveStops {
+            Button { showMoveConfirmation = true } label: {
+                HStack(spacing: 6) {
+                    if isMoving { ProgressView().controlSize(.mini) }
+                    Label(isMoving ? "Moving stops…" : "Move selected stops", systemImage: "arrowshape.turn.up.right")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!hasValidSelection || selectedTechnicianId.isEmpty || isLoading || isMoving || errors["users"] != nil)
+        }
+        if canOfferCoverage {
+            Button { showCoverageOffer = true } label: {
+                Label("Create work offer", systemImage: "person.2.badge.plus")
+            }
+            .buttonStyle(.bordered)
+            .disabled(!hasValidSelection || isLoading || isMoving)
+        }
     }
 
     private func managerStopRow(_ stop: ServiceStop) -> some View {

@@ -21,6 +21,7 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
     @Published var itemType: JobTaskType = .basic
     @Published var itemDescription: String = ""
     @Published var itemRate: String = "0"
+    @Published var taskPayDraft = TaskPayDraft()
     @Published var itemEstimatedTime: String = "0"
 
     @Published var showError: Bool = false
@@ -49,6 +50,7 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
     }
 
     func buildTaskItem() -> JobTaskGroupItem? {
+        if let message = taskPayDraft.validationMessage { errorMessage = message; showError = true; return nil }
         let trimmedName = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDescription = itemDescription.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -78,7 +80,12 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
             type: itemType,
             description: trimmedDescription,
             contractedRate: contractedRate,
-            estimatedTime: estimatedTime
+            estimatedTime: estimatedTime,
+            payTypeId: taskPayDraft.payTypeId.isEmpty ? nil : taskPayDraft.payTypeId,
+            payTypeName: taskPayDraft.payTypeName.isEmpty ? nil : taskPayDraft.payTypeName,
+            payrollMode: taskPayDraft.mode, manualPayOverrideCents: taskPayDraft.customAmountCents,
+            manualPayOverrideNotes: taskPayDraft.notes, payrollStackBehavior: taskPayDraft.stackBehavior,
+            payQuantity: taskPayDraft.quantity
         )
     }
 
@@ -87,6 +94,7 @@ final class AddRecurringServiceStopTaskViewModel: ObservableObject {
         itemType = .basic
         itemDescription = ""
         itemRate = "0"
+        taskPayDraft = TaskPayDraft()
         itemEstimatedTime = "0"
         showError = false
         errorMessage = ""
@@ -233,10 +241,14 @@ extension AddRecurringServiceStopTask {
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
 
+            if showsRateField {
+                TaskPayFields(draft: $VM.taskPayDraft, dataService: VM.dataService, companyId: masterDataManager.currentCompany?.id ?? "")
+            }
+
             HStack(spacing: 12) {
                 if showsRateField {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("Rate", systemImage: "dollarsign.circle")
+                        Label("Task cost budget", systemImage: "dollarsign.circle")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
 

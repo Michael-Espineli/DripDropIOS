@@ -107,6 +107,7 @@ struct CompanyManagerDashboard: View {
     @StateObject private var model = CompanyDashboardViewModel()
     @State private var selectedDate = Date()
     @State private var routeDetailTarget: CompanyRouteDetailTarget?
+    @State private var showDashboardFilters = false
     @AppStorage private var selectedTag: String
 
     init(companyId: String, userId: String, access: CompanyDashboardAccess, dataService: any ProductionDataServiceProtocol) {
@@ -133,7 +134,6 @@ struct CompanyManagerDashboard: View {
             VStack(spacing: 14) {
                 overviewHeader
                 quickActionsGrid
-                dashboardFilters
                 if let error = model.errors["customers"] {
                     unavailable("Areas and customer data", message: error)
                 }
@@ -163,6 +163,11 @@ struct CompanyManagerDashboard: View {
         .task(id: loadIdentity) { reload() }
         .refreshable { reload() }
         .onDisappear { model.stop() }
+        .sheet(isPresented: $showDashboardFilters) {
+            dashboardFiltersPopup
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(item: $routeDetailTarget) { target in
             CompanyRouteDetailPresentation(target: target, dataService: dataService) { stop in
                 routeDetailTarget = nil
@@ -177,8 +182,26 @@ struct CompanyManagerDashboard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Company overview")
-                        .font(.title3.weight(.semibold))
+                    HStack(spacing: 8) {
+                        Text("Company overview")
+                            .font(.title3.weight(.semibold))
+                        Button { showDashboardFilters = true } label: {
+                            Image(systemName: "line.3.horizontal.decrease")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                                .frame(width: 32, height: 32)
+                                .background(.thinMaterial, in: Circle())
+                                .overlay(alignment: .topTrailing) {
+                                    if !effectiveTag.isEmpty || !Calendar.current.isDateInToday(selectedDate) {
+                                        Circle().fill(Color.poolBlue).frame(width: 6, height: 6)
+                                    }
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Dashboard filters")
+                        .accessibilityValue("\(effectiveTag.isEmpty ? "All permitted areas" : effectiveTag), \(selectedDate.formatted(date: .abbreviated, time: .omitted))")
+                        .accessibilityIdentifier("managerDashboardFilterButton")
+                    }
                     Text(masterDataManager.currentCompany?.name ?? "Drip Drop")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
@@ -213,41 +236,38 @@ struct CompanyManagerDashboard: View {
         .mobileMainCard(material: true)
     }
 
-    private var dashboardFilters: some View {
-        card {
-            sectionTitle("Dashboard filters", subtitle: "Choose the company area and work date", image: "line.3.horizontal.decrease")
-            Menu {
-                Picker("Customer area", selection: Binding(get: { effectiveTag }, set: { selectedTag = $0 })) {
-                    if access.canViewAllAreas {
-                        Text(access.fullRegionAccess ? "Whole company" : "All permitted areas").tag("")
+    private var dashboardFiltersPopup: some View {
+        NavigationStack {
+            Form {
+                Section("Customer area") {
+                    Picker("Area", selection: Binding(get: { effectiveTag }, set: { selectedTag = $0 })) {
+                        if access.canViewAllAreas {
+                            Text(access.fullRegionAccess ? "Whole company" : "All permitted areas").tag("")
+                        }
+                        ForEach(availableTags, id: \.self) { tag in Text(tag).tag(tag) }
                     }
-                    ForEach(availableTags, id: \.self) { tag in Text(tag).tag(tag) }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("managerDashboardAreaPicker")
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "tag").foregroundStyle(.secondary)
-                    Text(effectiveTag.isEmpty ? (access.fullRegionAccess ? "Whole company" : "All permitted areas") : effectiveTag)
-                        .lineLimit(2)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.up.chevron.down").font(.caption).foregroundStyle(.tertiary)
+                Section("Work date") {
+                    DatePicker("Date", selection: $selectedDate, displayedComponents: .date)
+                    HStack {
+                        Button { moveDate(-1) } label: { Label("Previous", systemImage: "chevron.left") }
+                        Spacer()
+                        Button("Today") { selectedDate = Date() }
+                            .disabled(Calendar.current.isDateInToday(selectedDate))
+                        Spacer()
+                        Button { moveDate(1) } label: { Label("Next", systemImage: "chevron.right") }
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.caption.weight(.semibold))
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
-            .accessibilityLabel("Customer area, \(effectiveTag.isEmpty ? "all available areas" : effectiveTag)")
-            .accessibilityIdentifier("managerDashboardAreaPicker")
-
-            HStack {
-                Button { moveDate(-1) } label: { Image(systemName: "chevron.left").frame(width: 36, height: 44) }
-                    .accessibilityLabel("Previous day")
-                DatePicker("Work date", selection: $selectedDate, displayedComponents: .date)
-                    .labelsHidden().frame(maxWidth: .infinity)
-                Button { moveDate(1) } label: { Image(systemName: "chevron.right").frame(width: 36, height: 44) }
-                    .accessibilityLabel("Next day")
-                if !Calendar.current.isDateInToday(selectedDate) {
-                    Button("Today") { selectedDate = Date() }.font(.caption.weight(.semibold))
+            .navigationTitle("Dashboard filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showDashboardFilters = false }
                 }
             }
         }
@@ -261,18 +281,27 @@ struct CompanyManagerDashboard: View {
             } else if !model.isReady("stops") {
                 ProgressView("Loading service stops…")
             } else {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(snapshot.finished)").font(.headline.weight(.bold)).monospacedDigit()
-                    Text("of \(snapshot.dailyStops.count) stops complete").font(.subheadline).foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("\(snapshot.finished)").font(.headline.weight(.bold)).monospacedDigit()
+                        Text("of \(snapshot.dailyStops.count) stops complete").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Text("\(snapshot.remaining) remaining")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary).monospacedDigit()
                 }
                 ProgressView(value: Double(snapshot.finished), total: Double(max(snapshot.dailyStops.count, 1)))
                     .tint(.poolGreen)
                     .accessibilityLabel("\(snapshot.finished) of \(snapshot.dailyStops.count) stops complete")
-                LazyVGrid(columns: columns, spacing: 10) {
-                    metric("Remaining", value: "\(snapshot.remaining)", tint: .poolBlue)
-                    metric("Unassigned", value: "\(snapshot.unassigned)", tint: snapshot.unassigned > 0 ? .orange : .secondary)
-                    metric("Technicians", value: "\(snapshot.workload.count)", tint: .poolBlue)
-                    metric("Skipped", value: "\(snapshot.skipped)", tint: .secondary)
+                if snapshot.unassigned > 0 || snapshot.skipped > 0 {
+                    HStack(spacing: 8) {
+                        if snapshot.unassigned > 0 {
+                            metric("Unassigned", value: "\(snapshot.unassigned)", tint: .orange)
+                        }
+                        if snapshot.skipped > 0 {
+                            metric("Skipped", value: "\(snapshot.skipped)", tint: .secondary)
+                        }
+                    }
                 }
                 if snapshot.dailyStops.isEmpty {
                     Text("No service stops scheduled for this day and area.").font(.caption).foregroundStyle(.secondary)
@@ -322,7 +351,13 @@ struct CompanyManagerDashboard: View {
 
     private var teamWorkload: some View {
         card {
-            sectionTitle("Team workload", subtitle: "Selected day · most remaining work first", image: "person.2", route: stopsRoute)
+            sectionTitle(
+                "Team workload",
+                subtitle: model.isReady("stops")
+                    ? "\(snapshot.workload.count) technician\(snapshot.workload.count == 1 ? "" : "s") · most remaining work first"
+                    : "Selected day · most remaining work first",
+                image: "person.2", route: stopsRoute
+            )
             if model.isReady("stops") {
                 if snapshot.workload.isEmpty {
                     Text("No assigned technician work in this area.").font(.caption).foregroundStyle(.secondary)
@@ -395,7 +430,11 @@ struct CompanyManagerDashboard: View {
     private var repairQueue: some View {
         card {
             sectionTitle("Repair follow-ups", subtitle: "Open requests from the whole team", image: "wrench.and.screwdriver", route: .repairRequestList(dataService: dataService))
-            queue(snapshot.requests.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }, source: "requests", empty: "No open repair requests in this area.")
+            queue(snapshot.requests.sorted {
+                let left = $0.requestDate ?? .distantPast
+                let right = $1.requestDate ?? .distantPast
+                return left == right ? $0.id < $1.id : left > right
+            }, source: "requests", empty: "No open repair requests in this area.")
         }
     }
 

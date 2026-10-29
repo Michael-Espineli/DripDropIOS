@@ -130,9 +130,9 @@ struct MobileDashboard_Previews: PreviewProvider {
 extension MobileDashboard{
 
     var repairRequests: some View {
-        NavigationLink(value: Route.repairRequestList(dataService: dataService)) {
+        NavigationLink(destination: RepairRequestListView(dataService: dataService, submittedByUserId: masterDataManager.user?.id)) {
             dashboardActionTile(
-                title: "Repair Requests",
+                title: "My Repair Requests",
                 systemImage: "wrench.and.screwdriver",
                 badgeCount: repairRequestVM.count
             )

@@ -1308,10 +1308,6 @@ extension ScheduleServiceStopView {
         return masterDataManager.currentCompany?.id ?? ""
     }
 
-    private var selectedTaskLaborCents: Int {
-        VM.selectedJobTaskList.reduce(0) { $0 + $1.contractedRate }
-    }
-
     private var manualPayOverrideCentsForSave: Int? {
         VM.manualPayOverrideEnabled ? VM.manualPayOverrideCents : nil
     }
@@ -1339,7 +1335,7 @@ extension ScheduleServiceStopView {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
 
-                        Text("Use one fixed payroll amount for this scheduled stop.")
+                        Text("Set the service stop pay amount. Additional Task pay is calculated separately.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1355,7 +1351,7 @@ extension ScheduleServiceStopView {
                             .padding(12)
                             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                        Text("Final payroll will use this amount instead of automatic stop or task rates.")
+                        Text("This amount replaces automatic service stop pay. Additional Task pay is added separately.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1367,11 +1363,14 @@ extension ScheduleServiceStopView {
 
             if !VM.manualPayOverrideEnabled {
                 detailDisplayRow(
-                    title: "Selected Task Labor",
-                    value: payrollMoney(selectedTaskLaborCents),
+                    title: "Service stop pay",
+                    value: "Assigned technician’s rate",
                     systemImage: "checklist"
                 )
             }
+            Text("Choose Additional Task pay on extra tasks. Task amounts do not need to add up to service stop pay.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(16)
         .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))

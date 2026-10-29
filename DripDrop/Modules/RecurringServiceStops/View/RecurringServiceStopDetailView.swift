@@ -174,7 +174,11 @@
                             status: .unassigned,
                             isTaskGroup: false,
                             taskGroupId: "",
-                            taskGroupTaskId: ""
+                            taskGroupTaskId: "",
+                            payTypeId: task.payTypeId, payTypeName: task.payTypeName,
+                            payrollMode: task.payrollMode, manualPayOverrideCents: task.manualPayOverrideCents,
+                            manualPayOverrideNotes: task.manualPayOverrideNotes, payrollStackBehavior: task.payrollStackBehavior,
+                            payQuantity: task.payQuantity
                         )
 
                         RSSTasks.append(recurringTask)

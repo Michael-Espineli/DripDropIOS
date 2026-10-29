@@ -45,6 +45,7 @@ class Query {
     init(_ path: String) { self.path = path }
     func whereField(_ name: String, isGreaterThanOrEqualTo value: Any) -> Query { self }
     func whereField(_ name: String, isLessThan value: Any) -> Query { self }
+    func whereField(_ name: String, isEqualTo value: Any) -> Query { self }
     func whereField(_ name: String, in values: [String]) -> Query { self }
     func addSnapshotListener(_ callback: @escaping (QuerySnapshot?, Error?) -> Void) -> ListenerRegistration {
         let listener = FakeQuerySubscription(callback)
@@ -74,6 +75,8 @@ final class Firestore {
     func collection(_ path: String) -> CollectionReference { CollectionReference(path) }
 }
 '''
+enums = (root / 'DripDrop/Resources/ListOfEnum.swift').read_text()
+status = enums[enums.index('enum RepairRequestStatus:'):enums.index('enum RateSheetStatus:')]
 checks = r'''
 @MainActor func runChecks() async {
     var count = 0
@@ -121,6 +124,26 @@ checks = r'''
     await settle()
     let snapshot = model.snapshot(access: access, tag: "North", date: date)
     check(model.isReady("jobs") && snapshot.jobs.count == 1 && snapshot.finished == 1, "Live snapshots normalize timestamps and join canonical tags")
+    let companyRequests = db.queries["companies/one/repairRequests"]!.last!
+    let homeownerRequests = db.queries["homeownerRepairRequests"]!.last!
+    companyRequests.callback(QuerySnapshot(documents: [
+        QueryDocumentSnapshot("shared", ["customerId": "north", "status": "Unresolved"]),
+        QueryDocumentSnapshot("legacy", ["customerId": "north", "status": " Pending "]),
+        QueryDocumentSnapshot("converted", ["customerId": "north", "status": "In Progress"])
+    ]), nil)
+    await settle()
+    check(!model.isReady("requests"), "Wait for both request sources before showing a total")
+    homeownerRequests.callback(QuerySnapshot(documents: [QueryDocumentSnapshot("shared", ["customerId": "north", "status": "Unresolved"])]), nil)
+    await settle()
+    let requests = model.snapshot(access: access, tag: "North", date: date).requests
+    check(model.isReady("requests") && requests.count == 3, "Both sources share the unresolved/legacy-pending queue and exclude converted progress")
+    check(Set(requests.map(\.id)).count == 3, "Matching document IDs in different sources stay distinct")
+    homeownerRequests.callback(nil, NSError(domain: "test", code: 2))
+    await settle()
+    check(!model.isReady("requests") && model.errors["requests"] != nil, "A request source failure must not present a partial count as complete")
+    homeownerRequests.callback(QuerySnapshot(documents: []), nil)
+    await settle()
+    check(model.isReady("requests") && model.errors["requests"] == nil, "A recovered source clears the combined request error")
     customers.callback(nil, NSError(domain: "test", code: 1))
     await settle()
     check(!model.isReady("jobs") && model.snapshot(access: access, tag: "North", date: date).jobs.isEmpty, "Dependency failure clears visible counts")
@@ -149,5 +172,5 @@ await runChecks()
 '''
 with tempfile.TemporaryDirectory(prefix='dripdrop-dashboard-listeners-') as directory:
     fixture = Path(directory) / 'main.swift'
-    fixture.write_text(models + fake_firestore + view_models + checks)
+    fixture.write_text(status + models + fake_firestore + view_models + checks)
     subprocess.run(['swift', '-module-cache-path', '/private/tmp/dripdrop-dashboard-modules', str(fixture)], check=True)

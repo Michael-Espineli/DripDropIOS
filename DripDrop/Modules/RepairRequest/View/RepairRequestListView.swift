@@ -16,9 +16,11 @@ struct RepairRequestListView: View {
     @StateObject var repairRequestVM : RepairRequestViewModel
     @StateObject var techVM = TechViewModel()
     @StateObject var companyUserVM = CompanyUserViewModel()
+    let submittedByUserId: String?
 
-    init(dataService:any ProductionDataServiceProtocol){
+    init(dataService:any ProductionDataServiceProtocol, submittedByUserId: String? = nil){
         _repairRequestVM = StateObject(wrappedValue: RepairRequestViewModel(dataService: dataService))
+        self.submittedByUserId = submittedByUserId
         
     }
     @State var searchTerm:String = ""
@@ -31,6 +33,18 @@ struct RepairRequestListView: View {
 
     @State var startDate:Date = Date()
     @State var endDate:Date = Date()
+    @State var useDateFilter = false
+
+    private var filteredRequests: [RepairRequest] {
+        let term = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return repairRequestVM.listOfContrats.filter { request in
+            let matchesStatus = selectedStatus.isEmpty || selectedStatus.contains(request.status.selectableValue)
+            let matchesTech = techIds.isEmpty || techIds.contains(request.requesterId)
+            let matchesDate = !useDateFilter || request.date == .distantPast || (request.date >= startDate.startOfDay() && request.date <= endDate.endOfDay())
+            let matchesSearch = term.isEmpty || [request.customerName, request.requesterName, request.description, request.status.displayName, request.id].joined(separator: " ").lowercased().contains(term)
+            return matchesStatus && matchesTech && matchesDate && matchesSearch
+        }.sorted { $0.date == $1.date ? $0.queueId < $1.queueId : $0.date > $1.date }
+    }
 
     var body: some View {
         ZStack{
@@ -38,18 +52,15 @@ struct RepairRequestListView: View {
             list
             icons
         }
-        .navigationTitle("Repair Requests")
-        .task {
+        .navigationTitle(submittedByUserId == nil ? "Repair Requests" : "My Repair Requests")
+        .task(id: masterDataManager.currentCompany?.id) {
             if let company = masterDataManager.currentCompany {
+                repairRequestVM.startQueue(companyId: company.id, submittedByUserId: submittedByUserId)
                 do {
                     techIds = []
 
                     try await companyUserVM.getAllCompanyUsersByStatus(companyId: company.id, status: "Active")
-                    for companyUser in companyUserVM.companyUsers {
-                        techIds.append(companyUser.userId)
-                    }
-                    startDate = Calendar.current.date(byAdding: .day, value: -60, to: Date())!
-                    repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
+                    startDate = defaultRepairRequestStartDate
                     
                 } catch {
                     print("[RepairRequestListView][task] Error: \(error)")
@@ -68,17 +79,26 @@ struct RepairRequestListView: View {
 extension RepairRequestListView{
     var list: some View{
         VStack{
-            if repairRequestVM.listOfContrats.count == 0 {
+            Text("\(filteredRequests.count) requests").font(.caption).foregroundStyle(.secondary)
+            if repairRequestVM.queueLoading {
+                ProgressView("Loading repair requests…")
+            } else if let error = repairRequestVM.queueError {
+                Text(error).font(.caption).foregroundStyle(.red)
+            } else if filteredRequests.isEmpty {
                 Button(action: {
                     showAddNewRequest.toggle()
                 }, label: {
-                    Text("Add First Request")
+                    Text("Add Repair Request")
                         .modifier(AddButtonModifier())
                 })
             } else {
                 ScrollView{
-                    ForEach(repairRequestVM.listOfContrats){ repair in
-                        if UIDevice.isIPhone {
+                    ForEach(filteredRequests, id: \.queueId){ repair in
+                        if repair.sourcePath == "homeowner", let url = homeownerRequestURL(repair) {
+                            Link(destination: url) {
+                                RepairRequestCardView(repairRequest: repair)
+                            }
+                        } else if UIDevice.isIPhone {
                             NavigationLink(value: Route.repairRequest(repairRequest: repair,dataService:dataService), label: {
                                 RepairRequestCardView(repairRequest: repair)
 
@@ -110,13 +130,7 @@ var icons: some View{
                         .modifier(FilterIconModifer())
                 })
                 .padding(10)
-                .sheet(isPresented: $showFilters, onDismiss: {
-             
-                    if let company = masterDataManager.currentCompany {
-                        repairRequestVM.removeListenerForRepairRequest()
-                        repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
-                    }
-                },content: {
+                .sheet(isPresented: $showFilters, content: {
                     repairRequestFilterSheet
                   
                 })
@@ -127,12 +141,7 @@ var icons: some View{
                         .modifier(PlusIconModifer())
                 })
                 .padding(8)
-                .sheet(isPresented: $showAddNewRequest,onDismiss: {
-                    if let company = masterDataManager.currentCompany {
-                        repairRequestVM.removeListenerForRepairRequest()
-                        repairRequestVM.addListenerForAllRequests(companyId: company.id, status: selectedStatus, requesterIds: techIds, startDate: startDate, endDate: endDate)
-                    }
-                }, content: {
+                .sheet(isPresented: $showAddNewRequest, content: {
                     AddNewRepairRequest(dataService: dataService,isPresented: $showAddNewRequest, customer: nil)
                         .presentationDetents([.large,.medium])
                 })
@@ -167,6 +176,13 @@ var icons: some View{
 }
 
 private extension RepairRequestListView {
+    func homeownerRequestURL(_ request: RepairRequest) -> URL? {
+        var url = URLComponents(string: "https://dripdrop-poolapp.com/company/repair-requests/detail/")
+        url?.path += request.id
+        url?.queryItems = [URLQueryItem(name: "sourcePath", value: "homeowner")]
+        return url?.url
+    }
+
     var repairRequestFilterSheet: some View {
         DripDropFilterSheet(
             title: "Repair Request Filters",
@@ -175,8 +191,8 @@ private extension RepairRequestListView {
             onReset: resetRepairRequestFilters
         ) {
             DripDropFilterSummaryCard(
-                title: "\(repairRequestVM.listOfContrats.count) requests showing",
-                subtitle: "\(selectedStatus.count) status\(selectedStatus.count == 1 ? "" : "es") and \(techIds.count) tech\(techIds.count == 1 ? "" : "s") selected.",
+                title: "\(filteredRequests.count) requests showing",
+                subtitle: "\(repairStatusMenuTitle) • \(repairTechMenuTitle)",
                 systemImage: "wrench.and.screwdriver.fill",
                 tint: .orange
             )
@@ -186,6 +202,7 @@ private extension RepairRequestListView {
                 systemImage: "calendar",
                 tint: .poolBlue
             ) {
+                Toggle("Filter by date", isOn: $useDateFilter)
                 DripDropFilterRow(
                     title: "Start",
                     subtitle: shortDate(date: startDate),
@@ -194,6 +211,7 @@ private extension RepairRequestListView {
                 ) {
                     DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
                         .labelsHidden()
+                        .disabled(!useDateFilter)
                 }
 
                 DripDropFilterRow(
@@ -204,6 +222,7 @@ private extension RepairRequestListView {
                 ) {
                     DatePicker("End Date", selection: $endDate, displayedComponents: .date)
                         .labelsHidden()
+                        .disabled(!useDateFilter)
                 }
             }
 
@@ -236,7 +255,7 @@ private extension RepairRequestListView {
                         Button(role: .destructive) {
                             selectedStatus = []
                         } label: {
-                            Label("Clear statuses", systemImage: selectedStatus.isEmpty ? "checkmark" : "xmark")
+                            Label("Clear status filters", systemImage: selectedStatus.isEmpty ? "checkmark" : "xmark")
                         }
                     } label: {
                         DripDropFilterMenuLabel(title: repairStatusMenuTitle, tint: .orange)
@@ -251,7 +270,7 @@ private extension RepairRequestListView {
                 ) {
                     Menu {
                         Button {
-                            techIds = companyUserVM.companyUsers.map(\.userId)
+                            techIds = []
                         } label: {
                             Label("All techs", systemImage: allRepairTechsSelected ? "checkmark" : "circle")
                         }
@@ -267,7 +286,7 @@ private extension RepairRequestListView {
                         Button(role: .destructive) {
                             techIds = []
                         } label: {
-                            Label("Clear techs", systemImage: techIds.isEmpty ? "checkmark" : "xmark")
+                            Label("Clear tech filters", systemImage: techIds.isEmpty ? "checkmark" : "xmark")
                         }
                     } label: {
                         DripDropFilterMenuLabel(title: repairTechMenuTitle, tint: .poolGreen)
@@ -289,8 +308,7 @@ private extension RepairRequestListView {
     var repairRequestActiveFilterCount: Int {
         var count = 0
 
-        if !Calendar.current.isDate(startDate, inSameDayAs: defaultRepairRequestStartDate) { count += 1 }
-        if !Calendar.current.isDate(endDate, inSameDayAs: Date()) { count += 1 }
+        if useDateFilter { count += 1 }
         if !usesDefaultRepairStatuses { count += 1 }
         if !allRepairTechsSelected { count += 1 }
 
@@ -308,24 +326,17 @@ private extension RepairRequestListView {
     }
 
     var allRepairTechsSelected: Bool {
-        let allTechIds = companyUserVM.companyUsers.map(\.userId)
-
-        guard !allTechIds.isEmpty else {
-            return techIds.isEmpty
-        }
-
-        return techIds.count == allTechIds.count && allTechIds.allSatisfy { techIds.contains($0) }
+        techIds.isEmpty
     }
 
     var repairStatusMenuTitle: String {
-        if selectedStatus.isEmpty { return "None selected" }
+        if selectedStatus.isEmpty { return "All statuses" }
         if allRepairStatusesSelected { return "All statuses" }
         if selectedStatus.count == 1 { return selectedStatus.first?.displayName ?? "1 status" }
         return "\(selectedStatus.count) selected"
     }
 
     var repairTechMenuTitle: String {
-        if techIds.isEmpty { return "None selected" }
         if allRepairTechsSelected { return "All techs" }
         if techIds.count == 1 {
             guard let firstTechId = techIds.first else { return "1 tech" }
@@ -356,6 +367,7 @@ private extension RepairRequestListView {
         startDate = defaultRepairRequestStartDate
         endDate = Date()
         selectedStatus = defaultRepairRequestStatuses
-        techIds = companyUserVM.companyUsers.map(\.userId)
+        techIds = []
+        useDateFilter = false
     }
 }

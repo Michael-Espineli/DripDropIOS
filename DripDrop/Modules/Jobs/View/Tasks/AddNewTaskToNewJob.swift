@@ -104,7 +104,8 @@ extension AddNewTaskToNewJob {
                         .font(.headline.weight(.semibold))
 
                     draftTaskField(title: "Name", placeholder: "Name", text: $VM.name)
-                    draftTaskField(title: "Contracted Rate", placeholder: "Contracted Rate", text: $VM.contractedRateString)
+                    draftTaskField(title: "Task cost budget", placeholder: "Task cost budget", text: $VM.contractedRateString)
+                    TaskPayFields(draft: $VM.taskPayDraft, dataService: VM.dataService, companyId: masterDataManager.currentCompany?.id ?? "")
                     draftTaskField(title: "Estimated Time", placeholder: "Estimated Time", text: $VM.estimatedTimeString)
 
                     Divider().opacity(0.15)

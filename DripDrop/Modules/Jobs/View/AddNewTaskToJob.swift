@@ -7,6 +7,70 @@
 
 import SwiftUI
 
+struct TaskPayFields: View {
+    @Binding var draft: TaskPayDraft
+    let dataService: any ProductionDataServiceProtocol
+    let companyId: String
+    @State private var payTypes: [CompanyWorkType] = []
+    @State private var loadError = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Picker("Task pay", selection: Binding(get: { draft.isAdditional }, set: { draft.selectAdditional($0) })) {
+                Text("No additional task pay").tag(false)
+                Text("Additional Task pay").tag(true)
+            }
+            if draft.isAdditional {
+                Picker("Pay calculation", selection: Binding(get: { draft.mode }, set: { draft.selectCalculation($0) })) {
+                    Text("Assigned technician's rate").tag("automatic")
+                    Text("Custom amount").tag("custom")
+                }
+                if draft.mode == "automatic" {
+                    Picker("Payroll pay item", selection: $draft.payTypeId) {
+                        Text("Select a pay item").tag("")
+                        if !draft.payTypeId.isEmpty && !payTypes.contains(where: { $0.id == draft.payTypeId && $0.isActive }) {
+                            Text(draft.payTypeName.isEmpty ? "Existing pay item" : draft.payTypeName).tag(draft.payTypeId)
+                        }
+                        ForEach(payTypes.filter(\.isActive)) { item in Text(item.name).tag(item.id) }
+                    }
+                    .onChange(of: draft.payTypeId) { id in
+                        draft.isEdited = true
+                        draft.payTypeName = payTypes.first(where: { $0.id == id })?.name ?? draft.payTypeName
+                        draft.stackBehavior = "stackable"
+                    }
+                    if loadError { Text("Pay items could not be loaded. Try again or choose a custom amount.").font(.caption).foregroundStyle(.orange) }
+                } else {
+                    HStack {
+                        Text("Custom pay amount")
+                        MoneyTextField(cents: Binding(get: { draft.customAmountCents ?? 0 }, set: {
+                            draft.isEdited = true
+                            draft.customAmountCents = $0
+                            draft.stackBehavior = "stackable"
+                        }))
+                    }
+                }
+                if draft.stackBehavior != "stackable" {
+                    Button("Use Additional Task pay alongside stop pay") { draft.stackBehavior = "stackable"; draft.isEdited = true }
+                    Text("This saved task retains its existing payment rule until changed.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Text(draft.isAdditional
+                 ? "Additional Task pay is separate from service stop pay. Task amounts do not need to add up to it."
+                 : "No additional task pay is created. Service stop pay is calculated separately.")
+                .font(.caption).foregroundStyle(.secondary)
+            if draft.mode == "unpaid" { Text("This saved task is explicitly marked unpaid.").font(.caption).foregroundStyle(.secondary) }
+        }
+        .task(id: companyId) {
+            guard !companyId.isEmpty else { return }
+            do {
+                let items = try await dataService.fetchCompanyWorkTypes(companyId: companyId)
+                guard !Task.isCancelled else { return }
+                payTypes = items; loadError = false
+            } catch { if !Task.isCancelled { loadError = true } }
+        }
+    }
+}
+
 struct AddNewTaskToJob: View {
     @EnvironmentObject var masterDataManager : MasterDataManager
     @EnvironmentObject var dataService : ProductionDataService
@@ -127,8 +191,8 @@ extension AddNewTaskToJob {
                 }
 
                 HStack(alignment: .center, spacing: 10) {
-                    DDLabel(text: "Contracted Rate")
-                    TextField("Contracted Rate", text: $VM.contractedRateString)
+                    DDLabel(text: "Task cost budget")
+                    TextField("Task cost budget", text: $VM.contractedRateString)
                         .modifier(TextFieldModifier())
                 }
 
@@ -140,6 +204,8 @@ extension AddNewTaskToJob {
             }
 
             Divider().opacity(0.15)
+
+            TaskPayFields(draft: $VM.taskPayDraft, dataService: VM.dataService, companyId: masterDataManager.currentCompany?.id ?? "")
 
             Text("Task Type")
                 .font(.subheadline.weight(.semibold))

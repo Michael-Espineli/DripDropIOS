@@ -8,15 +8,18 @@
 import SwiftUI
 
 struct DripDropAlertCardSmall: View {
-    init(dataService:any ProductionDataServiceProtocol,alert:DripDropAlert) {
+    init(dataService:any ProductionDataServiceProtocol, alert:DripDropAlert, isEmbedded:Bool = false) {
         _VM = StateObject(wrappedValue: CompanyAlertViewModel(dataService: dataService))
-        _dripDropAlert = State(wrappedValue: alert)
+        self.dripDropAlert = alert
+        self.isEmbedded = isEmbedded
     }
     
     @EnvironmentObject var masterDataManager: MasterDataManager
     @StateObject var VM : CompanyAlertViewModel
 
-    @State var dripDropAlert:DripDropAlert
+    let dripDropAlert:DripDropAlert
+    let isEmbedded:Bool
+    private static let previewWordLimit = 24
     
     var body: some View {
         Group{
@@ -217,6 +220,7 @@ struct DripDropAlertCardSmall: View {
                 .opacity(VM.isLoading ? 0.6 : 1)
             }
         }
+        .buttonStyle(.plain)
         .task{
             let companyId = dripDropAlert.relatedEntity?.companyId
                 ?? dripDropAlert.share?.companyId
@@ -237,23 +241,46 @@ struct DripDropAlertCardSmall: View {
 //    DripDropAlertCardSmall(dataService: MockDataService())
 //}
 extension DripDropAlertCardSmall {
+    @ViewBuilder
     var card: some View {
-            VStack(alignment: .leading, spacing: 6){
-                Text(dripDropAlert.displayTitle)
-                    .fontWeight(.bold)
-                if !dripDropAlert.displayDescription.isEmpty {
-                    Text(dripDropAlert.displayDescription)
-                        .fontWeight(.light)
-                }
-                HStack(spacing: 8) {
-                    Text(dripDropAlert.displayStatusTitle)
-                    Text(dripDropAlert.displayCategoryTitle)
-                }
-                .font(.caption)
+        if isEmbedded {
+            preview
+        } else {
+            preview.modifier(ListButtonModifier())
+        }
+    }
+
+    private var preview: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(dripDropAlert.displayTitle)
+                .font(.headline)
+                .lineLimit(2, reservesSpace: true)
+                .truncationMode(.tail)
+
+            Text(previewDescription.isEmpty ? " " : previewDescription)
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .lineLimit(2, reservesSpace: true)
+                .truncationMode(.tail)
+                .accessibilityLabel(dripDropAlert.displayDescription)
+                .accessibilityHidden(dripDropAlert.displayDescription.isEmpty)
+
+            HStack(spacing: 8) {
+                Text(dripDropAlert.displayStatusTitle)
+                Text(dripDropAlert.displayCategoryTitle)
             }
-            .frame(maxWidth: .infinity)
-            .modifier(ListButtonModifier())
-        
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+        .foregroundStyle(.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var previewDescription:String {
+        let words = dripDropAlert.displayDescription.split(whereSeparator: \.isWhitespace)
+        let preview = words.prefix(Self.previewWordLimit).joined(separator: " ")
+        return words.count > Self.previewWordLimit ? preview + "…" : preview
     }
 }

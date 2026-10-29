@@ -459,6 +459,39 @@ enum WorkOfferStatus: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+extension WorkOffer {
+    func technicianStatus(for userId: String) -> WorkOfferStatus {
+        // A split route can remain posted after this technician finishes their claim.
+        if status.isFinal { return status }
+        let ownClaims = (claims ?? []).filter { $0.workerId == userId }
+        let claim = ownClaims.first { claim in
+            guard let status = WorkOfferStatus(rawValue: claim.status) else { return false }
+            return !status.isFinal
+        } ?? ownClaims.last
+        return claim.flatMap { WorkOfferStatus(rawValue: $0.status) } ?? status
+    }
+
+    func involvesTechnician(_ userId: String) -> Bool {
+        !userId.isEmpty && (offeredToUserId == userId || acceptedByUserId == userId ||
+            (claims ?? []).contains { $0.workerId == userId })
+    }
+
+    func isCurrentWork(for userId: String) -> Bool {
+        guard involvesTechnician(userId) else { return false }
+        return [.acceptancePendingApproval, .accepted, .scheduled, .inProgress]
+            .contains(technicianStatus(for: userId))
+    }
+
+    func isPreviousWork(for userId: String) -> Bool {
+        involvesTechnician(userId) && technicianStatus(for: userId).isFinal
+    }
+
+    var workOfferHistoryDate: Date {
+        [completedAt, cancelledAt, rejectedAt, acceptedAt, viewedAt, sentAt, postedAt]
+            .compactMap { $0 }.max() ?? createdAt
+    }
+}
+
 enum WorkOfferPaySource: String, Codable, CaseIterable, Identifiable {
     case technicianRate = "Technician Rate"
     case offeredAmount = "Offered Amount"

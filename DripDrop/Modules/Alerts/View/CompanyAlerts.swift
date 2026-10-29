@@ -54,7 +54,8 @@ struct CompanyAlerts: View {
             }
             .padding(12)
         }
-        .navigationTitle("Notification Center")
+        .navigationTitle("Notifications (\(unreadCount) unread)")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -93,27 +94,9 @@ struct CompanyAlerts: View {
 extension CompanyAlerts {
     var list: some View {
         VStack(alignment: .leading, spacing: 14){
-            summary
             filterPicker
             notifications
         }
-    }
-
-    var summary: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("\(activeCount) active")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.primary)
-
-            HStack(spacing: 8) {
-                summaryPill(title: "Unread", value: unreadCount, tint: .poolBlue)
-                summaryPill(title: "Scheduled", value: scheduledCount, tint: .orange)
-                summaryPill(title: "Total", value: visibleAlertCount, tint: .secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var filterPicker: some View {
@@ -126,7 +109,7 @@ extension CompanyAlerts {
     }
 
     var notifications: some View {
-        VStack(alignment: .leading, spacing: 10){
+        LazyVStack(alignment: .leading, spacing: 12){
             if filteredAlerts.isEmpty {
                 Text("No notifications")
                     .frame(maxWidth: .infinity)
@@ -156,38 +139,15 @@ extension CompanyAlerts {
             .sorted { $0.date > $1.date }
     }
 
-    var activeCount:Int {
-        VM.alertList.filter { $0.needsAttention }.count
-    }
-
     var unreadCount:Int {
         VM.alertList.filter { $0.isUnread }.count
     }
 
-    var scheduledCount:Int {
-        VM.alertList.filter { $0.isScheduled }.count
-    }
-
-    var visibleAlertCount:Int {
-        VM.alertList.filter { !$0.isArchived }.count
-    }
-
-    func summaryPill(title:String, value:Int, tint:Color) -> some View {
-        VStack(spacing: 2) {
-            Text("\(value)")
-                .font(.headline.weight(.bold))
-            Text(title)
-                .font(.caption2.weight(.semibold))
-        }
-        .foregroundStyle(tint)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
     func notificationRow(_ alert:DripDropAlert) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            DripDropAlertCardSmall(dataService: dataService, alert: alert)
+        VStack(alignment: .leading, spacing: 12) {
+            DripDropAlertCardSmall(dataService: dataService, alert: alert, isEmbedded: true)
+
+            Divider()
 
             HStack(spacing: 8) {
                 if alert.isUnread {
@@ -201,6 +161,7 @@ extension CompanyAlerts {
                 }
             }
         }
+        .modifier(ListButtonModifier())
     }
 
     func alertActionButton(
@@ -217,7 +178,8 @@ extension CompanyAlerts {
         } label: {
             Label(title, systemImage: systemImage)
                 .font(.caption.weight(.semibold))
-                .frame(maxWidth: .infinity)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, minHeight: 32)
         }
         .buttonStyle(.bordered)
         .tint(tint)

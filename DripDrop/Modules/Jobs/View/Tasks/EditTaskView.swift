@@ -9,6 +9,7 @@ final class EditTaskViewModel: ObservableObject {
     init(dataService: any ProductionDataServiceProtocol, task: JobTask, jobId: String) {
         self.dataService = dataService
         self.originalTask = task
+        self.taskPayDraft = TaskPayDraft(task: task)
         self.jobId = jobId
         // Prefill editable fields from the original task
         self.name = task.name
@@ -74,6 +75,7 @@ final class EditTaskViewModel: ObservableObject {
     // Editable fields
     @Published var name: String = ""
     @Published var contractedRateString: String = "0"
+    @Published var taskPayDraft = TaskPayDraft()
     @Published var estimatedTimeString: String = "0"
     @Published var quantityString: String = "0"
 
@@ -160,6 +162,7 @@ final class EditTaskViewModel: ObservableObject {
     func checkNumber(numberStr: String) -> Bool { numberStr.isNumber }
 
     func updateExistingTask(companyId: String) async throws {
+        if let message = taskPayDraft.validationMessage { throw NSError(domain: "TaskPay", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
         if name.isEmpty { throw AddNewTaskToJobError.noName }
         if contractedRateString.isEmpty { throw AddNewTaskToJobError.noContractedRate }
         if estimatedTimeString.isEmpty { throw AddNewTaskToJobError.noEstimatedTime }
@@ -180,14 +183,14 @@ final class EditTaskViewModel: ObservableObject {
             if selectedEquipment.id.isEmpty || dataBaseItem.id.isEmpty { throw AddNewTaskToJobError.noShoppingListItem }
         }
 
-        // Apply updates via service functions already used elsewhere in project
-        try dataService.updateJobTaskName(companyId: companyId, jobId: jobId, taskId: originalTask.id, name: name)
-        try dataService.updateJobTaskType(companyId: companyId, jobId: jobId, taskId: originalTask.id, type: selectedTaskType.rawValue)
-//        try dataService.updateJobTaskContractedRate(companyId: companyId, jobId: jobId, taskId: originalTask.id, contractedRate: contractedRate)
-//        try dataService.updateJobTaskEstimatedTime(companyId: companyId, jobId: jobId, taskId: originalTask.id, estimatedTime: estimatedTime)
-//        try dataService.updateJobTaskEquipmentId(companyId: companyId, jobId: jobId, taskId: originalTask.id, equipmentId: selectedEquipment.id)
-//        try dataService.updateJobTaskBodyOfWaterId(companyId: companyId, jobId: jobId, taskId: originalTask.id, bodyOfWaterId: selectedBodyOfWater.id)
-//        try dataService.updateJobTaskDBItemId(companyId: companyId, jobId: jobId, taskId: originalTask.id, dataBaseItemId: dataBaseItem.id)
+        var updated = originalTask
+        updated.name = name
+        updated.type = selectedTaskType
+        updated.contractedRate = contractedRate
+        updated.estimatedTime = estimatedTime
+        taskPayDraft.apply(to: &updated)
+        try await dataService.updateJobTaskDetails(companyId: companyId, jobId: jobId, task: updated)
+
     }
 }
 
@@ -244,11 +247,12 @@ extension EditTaskView {
                     .modifier(TextFieldModifier())
             }
             HStack {
-                Text("Contracted Rate").bold(true)
-                TextField("Contracted Rate", text: $VM.contractedRateString)
+                Text("Task cost budget").bold(true)
+                TextField("Task cost budget", text: $VM.contractedRateString)
                     .keyboardType(.decimalPad)
                     .modifier(TextFieldModifier())
             }
+            TaskPayFields(draft: $VM.taskPayDraft, dataService: VM.dataService, companyId: masterDataManager.currentCompany?.id ?? "")
             HStack {
                 Text("Estimated Time").bold(true)
                 TextField("Estimated Time", text: $VM.estimatedTimeString)

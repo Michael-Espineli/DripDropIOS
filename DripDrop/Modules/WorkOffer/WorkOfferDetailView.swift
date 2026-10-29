@@ -64,15 +64,21 @@ struct WorkOfferDetailView: View {
     }
 
     var body: some View {
-        List {
-            statusSection
-            receiverSection
-            scopeSection
-            paySection
-            scheduleSection
-            notesSection
-            actionsSection
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                WorkOfferLocationHeader(offer: offer)
+                statusSection
+                receiverSection
+                scopeSection
+                paySection
+                scheduleSection
+                notesSection
+                actionsSection
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
         }
+        .background(Color.listColor.ignoresSafeArea())
         .navigationTitle("Work Offer")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showScheduleSheet) {
@@ -111,7 +117,7 @@ struct WorkOfferDetailView: View {
     }
 
     private var statusSection: some View {
-        Section("Status") {
+        TechnicianWorkPanel(title: "Status", systemImage: "info.circle") {
             HStack {
                 Label(offer.offerType.title, systemImage: offer.offerType.systemImage)
                 Spacer()
@@ -137,7 +143,7 @@ struct WorkOfferDetailView: View {
 
     @ViewBuilder
     private var receiverSection: some View {
-        Section("Receiver") {
+        TechnicianWorkPanel(title: "Receiver", systemImage: "person.crop.circle") {
             switch offer.offerType {
             case .directUser:
                 WorkOfferDetailRow(
@@ -172,7 +178,7 @@ struct WorkOfferDetailView: View {
     }
 
     private var scopeSection: some View {
-        Section {
+        TechnicianWorkPanel(title: "The work", systemImage: "checklist") {
             if selectedTasks.isEmpty {
                 ContentUnavailableView(
                     "No Matching Tasks",
@@ -184,15 +190,13 @@ struct WorkOfferDetailView: View {
                     WorkOfferTaskRow(task: task)
                 }
             }
-        } header: {
-            Text("Scope")
-        } footer: {
             Text("These are the job tasks included in this work offer.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
     private var paySection: some View {
-        Section("Pay Snapshot") {
+        TechnicianWorkPanel(title: "Pay Snapshot", systemImage: "dollarsign.circle") {
             WorkOfferDetailRow(title: "Pay Source", value: offer.paySource.title)
             WorkOfferDetailRow(title: "Estimated Labor", value: WorkOfferDetailMoneyFormatter.money(offer.estimatedLaborCents))
             WorkOfferDetailRow(title: "Selected Task Labor", value: WorkOfferDetailMoneyFormatter.money(selectedTaskTotalCents))
@@ -205,7 +209,7 @@ struct WorkOfferDetailView: View {
     }
 
     private var scheduleSection: some View {
-        Section("Timeline") {
+        TechnicianWorkPanel(title: "Timeline", systemImage: "calendar") {
             if let proposedStartDate = offer.proposedStartDate {
                 WorkOfferDetailRow(
                     title: "Available From",
@@ -252,7 +256,7 @@ struct WorkOfferDetailView: View {
             !offer.adminNotes.isEmpty ||
             !offer.workerNotes.isEmpty ||
             !offer.rejectionReason.isEmpty {
-            Section("Notes") {
+            TechnicianWorkPanel(title: "Notes", systemImage: "text.alignleft") {
                 if !offer.description.isEmpty {
                     WorkOfferNoteBlock(title: "Description", value: offer.description)
                 }
@@ -273,7 +277,7 @@ struct WorkOfferDetailView: View {
     }
 
     private var actionsSection: some View {
-        Section {
+        TechnicianWorkPanel(title: "Actions", systemImage: "bolt") {
             if canMarkAccepted {
                 Button {
                     Task {
@@ -313,11 +317,10 @@ struct WorkOfferDetailView: View {
                 }
                 .disabled(isSaving)
             }
-        } header: {
-            Text("Actions")
-        } footer: {
-            Text("This only changes the work offer status. Scheduling and payroll still happen through service stops and completed work.")
+            Text("Scheduling and payroll happen through service stops and completed work.")
+                .font(.caption).foregroundStyle(.secondary)
         }
+        .buttonStyle(.bordered)
     }
 
     private func markAccepted() async {

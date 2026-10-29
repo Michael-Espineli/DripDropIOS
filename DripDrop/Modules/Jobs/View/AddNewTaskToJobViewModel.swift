@@ -28,6 +28,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
     
     @Published var name: String = ""
     @Published var contractedRateString: String = "0"
+    @Published var taskPayDraft = TaskPayDraft()
     @Published var estimatedTimeString: String = "0"
     @Published var quantityString: String = "0"
 
@@ -104,6 +105,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         return numberStr.isNumber
     }
     func addNewTaskToJob(companyId:String,jobId:String,serviceLocationId:String) async throws {
+        if let message = taskPayDraft.validationMessage { throw NSError(domain: "TaskPay", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
         if name == "" {
             throw AddNewTaskToJobError.noName
         }
@@ -186,6 +188,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
             bodyOfWaterId: selectedBodyOfWater.id,
             dataBaseItemId: dataBaseItem.id
         )
+        taskPayDraft.apply(to: &task)
         if selectedTaskType == .install || selectedTaskType == .replace {
             let shoppingListItemId = "comp_sli_" + UUID().uuidString
             let shoppingListActive = job?.activatesShoppingListMaterials ?? true
@@ -241,8 +244,10 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         dataBaseItemId = ""
         estimatedTimeString = "0"
         contractedRateString = "0"
+        taskPayDraft = TaskPayDraft()
     }
     func addNewTaskToJobTaskList(companyId:String,jobId:String,serviceLocationId:String) async throws ->(JobTask, ShoppingListItem?){
+        if let message = taskPayDraft.validationMessage { throw NSError(domain: "TaskPay", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
         if name == "" {
             throw AddNewTaskToJobError.noName
         }
@@ -325,6 +330,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
             bodyOfWaterId: selectedBodyOfWater.id,
             dataBaseItemId: dataBaseItem.id
         )
+        taskPayDraft.apply(to: &task)
         var shoppingListItem:ShoppingListItem? = nil
         if selectedTaskType == .install || selectedTaskType == .replace {
             let shoppingListItemId = "comp_sli_" + UUID().uuidString
@@ -374,6 +380,7 @@ final class AddNewTaskToJobViewModel:ObservableObject{
         dataBaseItemId = ""
         estimatedTimeString = "0"
         contractedRateString = "0"
+        taskPayDraft = TaskPayDraft()
         return (task,shoppingListItem)
     }
 

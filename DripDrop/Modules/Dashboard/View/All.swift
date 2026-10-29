@@ -507,7 +507,7 @@ extension All {
                     HStack{
                         if let count = VM.repairRequestCount {
                             if count != 0 {
-                                NavigationLink(value: Route.repairRequestList(dataService: dataService), label: {
+                                NavigationLink(destination: RepairRequestListView(dataService: dataService, submittedByUserId: masterDataManager.user?.id), label: {
                                     Rectangle()
                                         .fill(Color.poolBlue)
                                         .frame(width: 75, height: 75)

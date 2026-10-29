@@ -37,7 +37,31 @@ let roundTrip = try decoder.decode(WorkOffer.self, from: encoder.encode(split))
 assert(roundTrip.claims?.first?.workerId == "tech" && roundTrip.scopeSnapshot?.products.first?.quantity == 2)
 let partialScope = try decode(#"{"id":"partial","scopeSnapshot":{"tasks":[{"id":"task","name":"Inspect"}]}}"#)
 assert(partialScope.scopeSnapshot?.tasks.count == 1 && partialScope.scopeSnapshot?.products.isEmpty == true)
-print("10 Swift technician-workflow decoding and compatibility scenarios passed")
+// History follows this technician's claim, including work on still-open split routes.
+for status in WorkOfferStatus.allCases {
+    let offer = try decode("{\"id\":\"status\",\"offeredToUserId\":\"tech\",\"status\":\"\(status.rawValue)\"}")
+    assert(offer.isPreviousWork(for: "tech") == status.isFinal, "History mismatch for \(status)")
+    let active = [WorkOfferStatus.acceptancePendingApproval, .accepted, .scheduled, .inProgress].contains(status)
+    assert(offer.isCurrentWork(for: "tech") == active, "Current mismatch for \(status)")
+    assert(!offer.isPreviousWork(for: "other") && !offer.isCurrentWork(for: "other"))
+    assert(!offer.isPreviousWork(for: "") && !offer.isCurrentWork(for: ""))
+}
+let finishedSplit = try decode(#"{"id":"split-done","status":"Posted","claims":[{"id":"mine","workerId":"tech","workerName":"Alex","stopIds":["one"],"taskIds":[],"status":"Completed","agreement":{"workerId":"tech","paySource":"Offered Amount"}},{"id":"theirs","workerId":"other","workerName":"Taylor","stopIds":["two"],"taskIds":[],"status":"In Progress","agreement":{"workerId":"other","paySource":"Offered Amount"}}]}"#)
+assert(finishedSplit.isPreviousWork(for: "tech") && !finishedSplit.isCurrentWork(for: "tech"))
+assert(finishedSplit.isCurrentWork(for: "other") && !finishedSplit.isPreviousWork(for: "other"))
+let multipleClaims = try decode(#"{"id":"multiple","status":"Posted","claims":[{"id":"old","workerId":"tech","workerName":"Alex","stopIds":["one"],"taskIds":[],"status":"Completed","agreement":{"workerId":"tech","paySource":"Offered Amount"}},{"id":"new","workerId":"tech","workerName":"Alex","stopIds":["two"],"taskIds":[],"status":"Scheduled","agreement":{"workerId":"tech","paySource":"Offered Amount"}}]}"#)
+assert(multipleClaims.isCurrentWork(for: "tech") && !multipleClaims.isPreviousWork(for: "tech"))
+var cancelledSplit = multipleClaims
+cancelledSplit.status = .cancelled
+assert(cancelledSplit.isPreviousWork(for: "tech") && !cancelledSplit.isCurrentWork(for: "tech"))
+let oldHistory = try decode(#"{"id":"old-history","status":"Rejected","offeredToUserId":"tech","createdAt":1000,"rejectedAt":2000}"#)
+assert(oldHistory.isPreviousWork(for: "tech"))
+assert(oldHistory.workOfferHistoryDate == Date(timeIntervalSince1970: 2))
+var recentHistory = oldHistory
+recentHistory.completedAt = Date(timeIntervalSince1970: 50)
+assert(recentHistory.workOfferHistoryDate > oldHistory.workOfferHistoryDate)
+assert(legacy.workOfferHistoryDate == legacy.createdAt)
+print("Swift workflow decoding, all 13 offer statuses, split-claim history, and history ordering passed")
 '''
 with tempfile.TemporaryDirectory(prefix='dripdrop-technician-work-') as directory:
     fixture = Path(directory) / 'main.swift'

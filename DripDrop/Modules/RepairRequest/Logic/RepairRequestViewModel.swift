@@ -31,6 +31,53 @@ final class RepairRequestViewModel:ObservableObject{
     @Published private(set) var imageUrlString: String? = nil
     //ARRAYS
     @Published private(set) var listOfContrats:[RepairRequest] = []
+    @Published private(set) var queueLoading = false
+    @Published private(set) var queueError: String?
+    private var queueListeners: [ListenerRegistration] = []
+    private var queueGeneration = UUID()
+
+    func startQueue(companyId: String, submittedByUserId: String? = nil) {
+        stopQueue()
+        queueLoading = true
+        let token = queueGeneration
+        var sources: [String: [RepairRequest]] = [:]
+        var failures: [String: String] = [:]
+        let db = Firestore.firestore()
+        let queries: [(String, Query)] = [
+            ("company", db.collection("companies").document(companyId).collection("repairRequests")),
+            ("homeowner", db.collection("homeownerRepairRequests").whereField("companyId", isEqualTo: companyId))
+        ]
+        for (source, query) in queries {
+            queueListeners.append(query.addSnapshotListener { [weak self] snapshot, error in
+                Task { @MainActor [weak self] in
+                    guard let self, self.queueGeneration == token else { return }
+                    failures[source] = error?.localizedDescription
+                    sources[source] = (snapshot?.documents ?? []).filter { document in
+                        guard let submittedByUserId else { return true }
+                        return RepairRequest.submittedByUser(document.data(), userIds: [submittedByUserId])
+                    }.map { document in
+                        var data = document.data()
+                        for field in ["date", "dateCreated", "createdAt"] {
+                            data[field] = (data[field] as? Timestamp)?.dateValue() ?? data[field]
+                        }
+                        return RepairRequest.fromQueueFields(id: document.documentID, data: data, sourcePath: source)
+                    }
+                    self.listOfContrats = (sources["company"] ?? []) + (sources["homeowner"] ?? [])
+                    self.queueLoading = sources.count < 2
+                    self.queueError = failures["company"] ?? failures["homeowner"]
+                }
+            })
+        }
+    }
+
+    private func stopQueue() {
+        queueGeneration = UUID()
+        queueListeners.forEach { $0.remove() }
+        queueListeners = []
+        listOfContrats = []
+        queueLoading = false
+        queueError = nil
+    }
 
     //----------------------------------------------------
     //------------------  CRUD  --------------------------
@@ -192,6 +239,9 @@ final class RepairRequestViewModel:ObservableObject{
         print("Removing Request Listener")
 
         dataService.removeListenerForRequests()
+        stopQueue()
     }
+
+    deinit { queueListeners.forEach { $0.remove() } }
 
 }

@@ -1034,7 +1034,7 @@
                 return Color.poolGreen
             case .unresolved, .cancelled, .legacyPending, .legacyPendingCapitalized:
                 return Color.poolRed
-            case .convertedToJob:
+            case .convertedToJob, .suggestedWork, .unknown:
                 return Color.gray
             case .inprogress:
                 return Color.yellow

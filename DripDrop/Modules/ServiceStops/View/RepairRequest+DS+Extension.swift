@@ -34,6 +34,45 @@ struct RepairRequest:Identifiable, Codable,Equatable{
     var issuePriorityLabel: String? = nil
     var priorityLevel: Int? = nil
     var priorityLabel: String? = nil
+    var sourcePath: String? = nil
+
+    var queueId: String { "\(sourcePath ?? "company"):\(id)" }
+
+    // Web and public submissions can omit fields required by older native records.
+    static func fromQueueFields(id: String, data: [String: Any], sourcePath: String) -> RepairRequest {
+        let photos = (data["photoUrls"] as? [Any] ?? []).compactMap { photo -> DripDropStoredImage? in
+            if let url = photo as? String { return DripDropStoredImage(description: "", imageURL: url) }
+            guard let fields = photo as? [String: Any], let url = fields["imageURL"] as? String else { return nil }
+            return DripDropStoredImage(id: fields["id"] as? String ?? url, description: fields["description"] as? String ?? "", imageURL: url)
+        }
+        return RepairRequest(
+            id: id,
+            customerId: data["customerId"] as? String ?? "",
+            customerName: data["customerName"] as? String ?? data["homeownerName"] as? String ?? "Customer",
+            requesterId: data["requesterId"] as? String ?? data["userId"] as? String ?? "",
+            requesterName: data["requesterName"] as? String ?? "",
+            date: RepairRequestQueue.date(data) ?? .distantPast,
+            status: RepairRequestStatus.normalized(data["status"] as? String),
+            description: data["description"] as? String ?? "",
+            jobIds: data["jobIds"] as? [String] ?? [],
+            photoUrls: photos,
+            locationId: data["locationId"] as? String ?? data["serviceLocationId"] as? String,
+            bodyOfWaterId: data["bodyOfWaterId"] as? String,
+            equipmentId: data["equipmentId"] as? String,
+            issuePriorityLevel: data["issuePriorityLevel"] as? Int,
+            priorityLevel: data["priorityLevel"] as? Int,
+            sourcePath: sourcePath
+        )
+    }
+
+    static func submittedByUser(_ data: [String: Any], userIds: [String]) -> Bool {
+        let ids = Set(userIds.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })
+        let requester = (data["requesterId"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !requester.isEmpty { return ids.contains(requester) }
+        return ["userId", "uid", "homeownerId", "createdBy", "createdById", "createdByUid", "createdByUserId", "requestedBy", "requestedByUid", "requestedByUserId", "submittedBy", "submittedByUserId", "authorId"]
+            .compactMap { data[$0] as? String }
+            .contains { ids.contains($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
 
     var normalizedIssuePriority: JobIssuePriorityLevel {
         JobIssuePriorityLevel.normalized(issuePriorityLevel ?? priorityLevel)
@@ -103,13 +142,14 @@ extension ProductionDataService {
             .whereField("customerId", isEqualTo: customerId).count.getAggregation(source: .server).count as? Int
     }
     func getRepairRequestsByUserCount(companyId: String,userId:String) async throws ->Int?{
-            //MEMORY LEAK
-        let status = RepairRequestStatus.defaultOpenCases.map(\.rawValue)
-        return try await repairRequestCollection(companyId: companyId)
-            .whereField("status", in: status)
-            .whereField("requesterId", isEqualTo: userId)
-            .count.getAggregation(source: .server).count as? Int
-            //        return 0
+        async let companyRequests = repairRequestCollection(companyId: companyId).getDocuments()
+        async let homeownerRequests = db.collection("homeownerRepairRequests").whereField("companyId", isEqualTo: companyId).getDocuments()
+        let snapshots = try await [companyRequests, homeownerRequests]
+        return snapshots.flatMap(\.documents).filter { document in
+            let data = document.data()
+            return RepairRequestStatus.normalized(data["status"] as? String).isOpenWorkQueueItem
+                && RepairRequest.submittedByUser(data, userIds: [userId])
+        }.count
     }
         //Update
     func updateRepairRequest(companyId:String,repairRequest:RepairRequest) async throws {

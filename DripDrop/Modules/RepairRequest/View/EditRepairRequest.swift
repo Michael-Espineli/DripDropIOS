@@ -789,7 +789,7 @@ struct EditRepairRequest: View {
         switch status.selectableValue {
         case .resolved:
             return Color.poolGreen
-        case .convertedToJob:
+        case .convertedToJob, .suggestedWork, .unknown:
             return Color.gray
         case .cancelled, .unresolved:
             return Color.poolRed

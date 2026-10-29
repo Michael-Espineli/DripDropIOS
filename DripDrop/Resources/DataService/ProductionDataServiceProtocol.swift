@@ -1139,6 +1139,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateServiceStopTaskStatus(companyId:String,serviceStopId:String,taskId:String,status:JobTaskStatus) async throws
     func updateServiceStopIsInvoiced(companyId:String,serviceStopId:String,isInvoiced:Bool) async throws
 
+    func updateJobTaskDetails(companyId: String, jobId: String, task: JobTask) async throws
     func updateJobTaskName(companyId:String,jobId:String,taskId:String,name:String) throws
     func updateJobTaskType(companyId:String,jobId:String,taskId:String,type:String) throws
     func updateJobTaskWorkerType(companyId:String,jobId:String,taskId:String,workerType:WorkerTypeEnum) throws

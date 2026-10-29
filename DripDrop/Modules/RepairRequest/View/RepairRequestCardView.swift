@@ -52,7 +52,7 @@ struct RepairRequestCardView: View {
                     HStack(spacing: 10) {
                         Text("Tech: \(repairRequest.requesterName)")
                         Text("•")
-                        Text(fullDate(date: repairRequest.date))
+                        Text(repairRequest.date == .distantPast ? "No date" : fullDate(date: repairRequest.date))
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -87,7 +87,7 @@ struct RepairRequestCardView: View {
             color = Color.poolGreen
         case .unresolved, .cancelled, .legacyPending, .legacyPendingCapitalized:
             color = Color.poolRed
-        case .convertedToJob:
+        case .convertedToJob, .suggestedWork, .unknown:
             color = Color.gray
         case .inprogress:
             color = Color.yellow
@@ -101,7 +101,7 @@ struct RepairRequestCardView: View {
             color = Color.white
         case .unresolved, .legacyPending, .legacyPendingCapitalized:
             color = Color.white
-        case .convertedToJob:
+        case .convertedToJob, .suggestedWork, .unknown:
             color = Color.white
         case .inprogress:
             color = Color.black

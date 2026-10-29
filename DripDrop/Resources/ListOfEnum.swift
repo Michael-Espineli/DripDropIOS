@@ -249,13 +249,15 @@ enum RepairRequestStatus:String,Codable, CaseIterable{
     case resolved = "Resolved"
     case unresolved = "Unresolved"
     case convertedToJob = "Converted To Job"
+    case suggestedWork = "Suggested Work"
+    case unknown = "Unknown"
     case cancelled = "Cancelled"
     case inprogress = "In Progress"
     case legacyPending = "pending"
     case legacyPendingCapitalized = "Pending"
 
     static var allCases: [RepairRequestStatus] {
-        [.unresolved, .convertedToJob, .resolved, .cancelled]
+        [.unresolved, .convertedToJob, .suggestedWork, .resolved, .cancelled]
     }
 
     static var defaultOpenCases: [RepairRequestStatus] {
@@ -266,6 +268,8 @@ enum RepairRequestStatus:String,Codable, CaseIterable{
         switch self {
         case .legacyPending, .legacyPendingCapitalized:
             return .unresolved
+        case .inprogress:
+            return .convertedToJob
         default:
             return self
         }
@@ -277,6 +281,35 @@ enum RepairRequestStatus:String,Codable, CaseIterable{
 
     var isOpenWorkQueueItem: Bool {
         selectableValue == .unresolved
+    }
+
+    static func normalized(_ status: String?) -> RepairRequestStatus {
+        let key = (status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if key.isEmpty || key == "pending" { return .unresolved }
+        if key == "in progress" || key == "in-progress" { return .convertedToJob }
+        return allCases.first { $0.rawValue.lowercased() == key } ?? .unknown
+    }
+
+    init(from decoder: Decoder) throws {
+        self = Self.normalized(try decoder.singleValueContainer().decode(String.self))
+    }
+}
+
+enum RepairRequestQueue {
+    // Firestore timestamps are converted at the listener boundary. Legacy web
+    // records can also contain ISO dates or epoch milliseconds.
+    static func date(_ data: [String: Any]) -> Date? {
+        for field in ["date", "dateCreated", "createdAt"] {
+            if let date = data[field] as? Date { return date }
+            if let millis = data[field] as? NSNumber { return Date(timeIntervalSince1970: millis.doubleValue / 1000) }
+            if let text = data[field] as? String {
+                let formatter = ISO8601DateFormatter()
+                if let date = formatter.date(from: text) { return date }
+                formatter.formatOptions.insert(.withFractionalSeconds)
+                if let date = formatter.date(from: text) { return date }
+            }
+        }
+        return nil
     }
 }
 

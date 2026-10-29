@@ -6,6 +6,8 @@ import tempfile
 
 root = Path(__file__).resolve().parents[1]
 source = (root / 'DripDrop/Modules/Dashboard/Logic/CompanyDashboardSnapshot.swift').read_text()
+enums = (root / 'DripDrop/Resources/ListOfEnum.swift').read_text()
+status = enums[enums.index('enum RepairRequestStatus:'):enums.index('enum RateSheetStatus:')]
 checks = r'''
 var checks = 0
 func check(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -73,5 +75,5 @@ print("\(checks) company dashboard access, area filtering, compatibility, and wo
 '''
 with tempfile.TemporaryDirectory(prefix='dripdrop-company-dashboard-') as directory:
     fixture = Path(directory) / 'main.swift'
-    fixture.write_text(source + checks)
+    fixture.write_text(source + status + checks)
     subprocess.run(['swift', '-module-cache-path', '/private/tmp/dripdrop-dashboard-modules', str(fixture)], check=True)

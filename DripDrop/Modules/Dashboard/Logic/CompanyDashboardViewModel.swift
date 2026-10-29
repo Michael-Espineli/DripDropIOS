@@ -75,7 +75,8 @@ final class CompanyDashboardViewModel: ObservableObject {
             listen(company.collection("workOrders").whereField("operationStatus", in: ["Draft", "Estimate Pending", "Unscheduled", "Scheduled", "In Progress", "Waiting for Parts", "Accepted"]), key: "jobs")
         }
         if access.permits("30") {
-            listen(company.collection("repairRequests").whereField("status", in: ["Unresolved", "unresolved", "Pending", "pending", "In Progress"]), key: "requests")
+            listen(company.collection("repairRequests"), key: "companyRequests")
+            listen(Firestore.firestore().collection("homeownerRepairRequests").whereField("companyId", isEqualTo: companyId), key: "homeownerRequests")
         }
     }
 
@@ -88,13 +89,18 @@ final class CompanyDashboardViewModel: ObservableObject {
         errors = [:]
     }
 
-    func isReady(_ key: String) -> Bool { loaded.contains(key) && errors[key] == nil && loaded.contains("customers") && errors["customers"] == nil }
+    func isReady(_ key: String) -> Bool {
+        let keys = key == "requests" ? ["companyRequests", "homeownerRequests"] : [key]
+        return keys.allSatisfy { loaded.contains($0) && errors[$0] == nil }
+            && loaded.contains("customers") && errors["customers"] == nil
+    }
 
     func snapshot(access: CompanyDashboardAccess, tag: String, date: Date) -> CompanyDashboardSnapshot {
         let customerMap = Dictionary((records["customers"] ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         func scoped(_ key: String) -> [CompanyDashboardRecord] {
             guard isReady(key) else { return [] }
-            return (records[key] ?? []).filter { access.includes($0, customers: customerMap, selectedTag: tag) }
+            let items = key == "requests" ? (records["companyRequests"] ?? []) + (records["homeownerRequests"] ?? []) : (records[key] ?? [])
+            return items.filter { access.includes($0, customers: customerMap, selectedTag: tag) }
         }
         let customers = (records["customers"] ?? []).filter { customer in
             // Customer records own their tags rather than linking to another customer.
@@ -116,10 +122,17 @@ final class CompanyDashboardViewModel: ObservableObject {
                     self.records[key] = (snapshot?.documents ?? []).map { document in
                         var data = document.data()
                         data["serviceDate"] = (data["serviceDate"] as? Timestamp)?.dateValue() ?? data["serviceDate"]
-                        return CompanyDashboardRecord(id: document.documentID, data: data)
+                        for field in ["date", "dateCreated", "createdAt"] {
+                            data[field] = (data[field] as? Timestamp)?.dateValue() ?? data[field]
+                        }
+                        let id = key == "companyRequests" || key == "homeownerRequests" ? "\(key):\(document.documentID)" : document.documentID
+                        return CompanyDashboardRecord(id: id, data: data)
                     }
                 }
                 self.loaded.insert(key)
+                if key == "companyRequests" || key == "homeownerRequests" {
+                    self.errors["requests"] = self.errors["companyRequests"] ?? self.errors["homeownerRequests"]
+                }
             }
         })
     }

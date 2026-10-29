@@ -86,6 +86,7 @@ struct CompanyDashboardRecord: Identifiable {
     let technicianId: String
     let technicianName: String
     let serviceDate: Date?
+    let requestDate: Date?
     let isActiveCustomer: Bool
 
     init(id: String, data: [String: Any]) {
@@ -100,6 +101,7 @@ struct CompanyDashboardRecord: Identifiable {
         technicianId = (data["techId"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         technicianName = Self.strings([data["tech"] as? String ?? "", data["techName"] as? String ?? ""]).first ?? "Technician"
         serviceDate = data["serviceDate"] as? Date
+        requestDate = RepairRequestQueue.date(data)
         isActiveCustomer = (data["active"] as? Bool ?? data["isActive"] as? Bool) != false
     }
 
@@ -111,7 +113,7 @@ struct CompanyDashboardRecord: Identifiable {
             && !["expired", "rejected", "closed"].contains(Self.key(status))
     }
     var needsScheduling: Bool { isOpenJob && ["unscheduled", "accepted"].contains(Self.key(status)) }
-    var isOpenRequest: Bool { ["unresolved", "pending", "in progress"].contains(Self.key(status)) }
+    var isOpenRequest: Bool { RepairRequestStatus.normalized(status).isOpenWorkQueueItem }
 
     static func key(_ value: String) -> String { value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
     static func strings(_ value: Any?) -> [String] {

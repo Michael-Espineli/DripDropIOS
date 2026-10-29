@@ -7,6 +7,64 @@
 
 import Foundation
 
+// Uses the existing web/server payroll fields. Opening an old task preserves its policy.
+struct TaskPayDraft {
+    var isEdited = false
+    var mode = "included"
+    var payTypeId = ""
+    var payTypeName = ""
+    var customAmountCents: Int? = nil
+    var notes: String? = nil
+    var stackBehavior: String? = nil
+    var quantity: Double? = nil
+
+    init() {}
+
+    init(task: JobTask) {
+        mode = task.payrollMode ?? (task.manualPayOverrideCents == nil ? "automatic" : "custom")
+        payTypeId = task.payTypeId ?? ""
+        payTypeName = task.payTypeName ?? ""
+        customAmountCents = task.manualPayOverrideCents
+        notes = task.manualPayOverrideNotes
+        stackBehavior = task.payrollStackBehavior
+        quantity = task.payQuantity
+    }
+
+    var isAdditional: Bool { !["included", "unpaid"].contains(mode) }
+
+    mutating func selectAdditional(_ additional: Bool) {
+        isEdited = true
+        mode = additional ? (mode == "custom" ? "custom" : "automatic") : "included"
+        stackBehavior = additional ? "stackable" : nil
+        if !additional { customAmountCents = nil; notes = nil }
+    }
+
+    mutating func selectCalculation(_ calculation: String) {
+        isEdited = true
+        mode = calculation
+        stackBehavior = "stackable"
+        if calculation == "custom" { customAmountCents = customAmountCents ?? 0 }
+        else { customAmountCents = nil }
+    }
+
+    var validationMessage: String? {
+        guard isEdited else { return nil }
+        if mode == "automatic" && payTypeId.isEmpty { return "Select a payroll pay item for Additional Task pay." }
+        if mode == "custom" && (customAmountCents == nil || customAmountCents! < 0) { return "Enter a non-negative custom task pay amount." }
+        return nil
+    }
+
+    func apply(to task: inout JobTask) {
+        task.payTypeId = payTypeId.isEmpty ? nil : payTypeId
+        task.payTypeName = payTypeName.isEmpty ? nil : payTypeName
+        task.payrollMode = mode
+        task.manualPayOverrideCents = customAmountCents
+        task.manualPayOverrideNotes = notes
+        task.payrollStackBehavior = stackBehavior
+        task.payQuantity = quantity
+    }
+}
+
 protocol TaskItem {
     var name : String { get set } //{ get } //read able
     var type : JobTaskType { get set } //{ get set } //Read and write able
@@ -22,6 +80,13 @@ struct JobTaskGroupItem:Identifiable, Codable, Equatable{
     var description:String
     var contractedRate:Int // Cents
     var estimatedTime:Int // Min
+    var payTypeId: String? = nil
+    var payTypeName: String? = nil
+    var payrollMode: String? = nil
+    var manualPayOverrideCents: Int? = nil
+    var manualPayOverrideNotes: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
     
     static func == (lhs: JobTaskGroupItem, rhs: JobTaskGroupItem) -> Bool {
         return lhs.id == rhs.id
@@ -471,5 +536,12 @@ struct RecurringServiceStopTask: Identifiable, Codable, Hashable, TaskItem {
     var isTaskGroup : Bool
     var taskGroupId : String
     var taskGroupTaskId : String
+    var payTypeId: String? = nil
+    var payTypeName: String? = nil
+    var payrollMode: String? = nil
+    var manualPayOverrideCents: Int? = nil
+    var manualPayOverrideNotes: String? = nil
+    var payrollStackBehavior: String? = nil
+    var payQuantity: Double? = nil
 
 }

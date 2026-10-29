@@ -511,7 +511,11 @@ final class ServiceStopTaskViewModel: ObservableObject {
             status: .unassigned,
             isTaskGroup: false,
             taskGroupId: "",
-            taskGroupTaskId: ""
+            taskGroupTaskId: "",
+            payTypeId: item.payTypeId, payTypeName: item.payTypeName,
+            payrollMode: item.payrollMode, manualPayOverrideCents: item.manualPayOverrideCents,
+            manualPayOverrideNotes: item.manualPayOverrideNotes, payrollStackBehavior: item.payrollStackBehavior,
+            payQuantity: item.payQuantity
         )
     }
 
@@ -554,7 +558,11 @@ final class ServiceStopTaskViewModel: ObservableObject {
             equipmentId: "",
             serviceLocationId: serviceStop.serviceLocationId,
             bodyOfWaterId: "",
-            shoppingListItemId: ""
+            shoppingListItemId: "",
+            payTypeId: item.payTypeId, payTypeName: item.payTypeName,
+            payrollMode: item.payrollMode, manualPayOverrideCents: item.manualPayOverrideCents,
+            manualPayOverrideNotes: item.manualPayOverrideNotes, payrollStackBehavior: item.payrollStackBehavior,
+            payQuantity: item.payQuantity
         )
     }
 
@@ -593,7 +601,11 @@ final class ServiceStopTaskViewModel: ObservableObject {
             equipmentId: jobTask.equipmentId,
             serviceLocationId: serviceStop.serviceLocationId,
             bodyOfWaterId: jobTask.bodyOfWaterId,
-            shoppingListItemId: jobTask.dataBaseItemId
+            shoppingListItemId: jobTask.dataBaseItemId,
+            payTypeId: jobTask.payTypeId, payTypeName: jobTask.payTypeName,
+            payrollMode: jobTask.payrollMode, manualPayOverrideCents: jobTask.manualPayOverrideCents,
+            manualPayOverrideNotes: jobTask.manualPayOverrideNotes,
+            payrollStackBehavior: jobTask.payrollStackBehavior, payQuantity: jobTask.payQuantity
         )
     }
 }
