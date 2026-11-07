@@ -67,8 +67,9 @@ final class CompanyDashboardViewModel: ObservableObject {
         let company = Firestore.firestore().collection("companies").document(companyId)
         listen(company.collection("customers"), key: "customers")
         if access.canViewStops {
-            let start = Calendar.current.startOfDay(for: date)
-            let end = Calendar.current.date(byAdding: .day, value: 7, to: start) ?? start
+            let day = Calendar.current.startOfDay(for: date)
+            let start = Calendar.current.date(byAdding: .day, value: -1, to: day) ?? day
+            let end = Calendar.current.date(byAdding: .day, value: 6, to: day) ?? day
             listen(company.collection("serviceStops").whereField("serviceDate", isGreaterThanOrEqualTo: start).whereField("serviceDate", isLessThan: end), key: "stops")
         }
         if access.permits("20") {

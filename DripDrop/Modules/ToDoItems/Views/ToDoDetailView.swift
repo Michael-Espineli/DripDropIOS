@@ -116,7 +116,7 @@ private extension ToDoDetailView {
                 applyFormValues(from: masterDataManager.selectedToDo)
             }
         } catch {
-            alertMessage = error.localizedDescription
+            alertMessage = error.userFacingMessage
             showAlert = true
         }
     }
@@ -154,7 +154,7 @@ private extension ToDoDetailView {
             alertMessage = "Todo updated."
             showAlert = true
         } catch {
-            alertMessage = error.localizedDescription
+            alertMessage = error.userFacingMessage
             showAlert = true
         }
     }
@@ -166,7 +166,7 @@ private extension ToDoDetailView {
             try await toDoVM.deleteToDoItem(companyId: company.id, toDoId: toDo.id)
             dismiss()
         } catch {
-            alertMessage = error.localizedDescription
+            alertMessage = error.userFacingMessage
             showAlert = true
         }
     }

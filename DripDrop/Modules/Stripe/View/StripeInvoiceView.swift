@@ -47,7 +47,7 @@ struct StripeInvoiceView: View {
                     case .completed:
                         Text("Payment complete")
                     case .failed(let error):
-                        Text("Payment failed: \(error.localizedDescription)")
+                        Text("Payment failed: \(error.userFacingMessage)")
                     case .canceled:
                         Text("Payment canceled.")
                     }

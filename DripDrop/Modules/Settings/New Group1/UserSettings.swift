@@ -44,7 +44,7 @@ final class UserSettingsViewModel: ObservableObject {
         try await dataService.updateUserRecentlySelectedCompany(user: user, recentlySelectedCompanyId: companyId)
     }
 
-    func resetPassword() throws {
+    func resetPassword() async throws {
         let user = try AuthenticationManager.shared.getAuthenticatedUser()
         guard let email = user.email else {
             print("Email is Optional")
@@ -53,7 +53,7 @@ final class UserSettingsViewModel: ObservableObject {
 
         if isValidEmail(email) {
             print("Is Valid Email")
-            try AuthenticationManager.shared.resetPassword(email: email)
+            try await AuthenticationManager.shared.resetPassword(email: email)
         } else {
             print("Is Not Valid Email")
             throw FireBasePublish.unableToPublish
@@ -367,17 +367,17 @@ private extension UserSettings {
     }
 
     func sendPasswordReset() {
-        do {
-            try VM.resetPassword()
-            resetPasswordAlertTitle = "Check Your Email"
-            resetPasswordAlertMessage = "A password reset email has been sent to your account."
-        } catch {
-            print("Error Reseting Password")
-            resetPasswordAlertTitle = "Password Reset Failed"
-            resetPasswordAlertMessage = "We could not send a password reset email for this account."
+        Task { @MainActor in
+            do {
+                try await VM.resetPassword()
+                resetPasswordAlertTitle = "Check Your Email"
+                resetPasswordAlertMessage = "A password reset email has been sent to your account."
+            } catch {
+                resetPasswordAlertTitle = "Password Reset Failed"
+                resetPasswordAlertMessage = "We could not send a password reset email for this account."
+            }
+            showResetPasswordAlert = true
         }
-
-        showResetPasswordAlert = true
     }
 
     func refreshAuthenticationState() {

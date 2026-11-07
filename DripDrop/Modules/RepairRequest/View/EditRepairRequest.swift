@@ -274,7 +274,7 @@ final class EditRepairRequestViewModel: ObservableObject {
                 try await dataService.updateRepairRequest(companyId: companyId, repairRequest: updated)
                 self.repairRequest = updated
             } catch {
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = error.userFacingMessage
             }
         }
     }
@@ -423,7 +423,7 @@ struct EditRepairRequest: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var formCard: some View {
@@ -464,10 +464,10 @@ struct EditRepairRequest: View {
                     .labelsHidden()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             detailRow(title: "Customer", value: viewModel.customerName, systemImage: "person")
             detailRow(title: "Requester", value: viewModel.requesterName, systemImage: "person.crop.circle")
@@ -482,14 +482,14 @@ struct EditRepairRequest: View {
                     .frame(minHeight: 120)
                     .padding(8)
                     .scrollContentBackground(.hidden)
-                    .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
                     }
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             sectionHeader("Site", systemImage: "mappin.and.ellipse")
 
@@ -548,7 +548,7 @@ struct EditRepairRequest: View {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var dangerCard: some View {
@@ -564,12 +564,12 @@ struct EditRepairRequest: View {
                     .foregroundStyle(Color.poolRed)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(Color.poolRed.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.poolRed.opacity(0.1), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             })
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var bottomActionBar: some View {
@@ -585,7 +585,7 @@ struct EditRepairRequest: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -608,7 +608,7 @@ struct EditRepairRequest: View {
                     .padding(.vertical, 12)
                     .background(
                         viewModel.isSaving ? Color.blue.opacity(0.65) : Color.blue,
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
                 }
                 .buttonStyle(.plain)
@@ -638,6 +638,7 @@ struct EditRepairRequest: View {
     }
 
     private func saveAndDismiss() {
+        guard masterDataManager.hasCompanyPermission("34") else { return }
         Task {
             await viewModel.save(companyId: masterDataManager.currentCompany?.id)
             if viewModel.errorMessage == nil {
@@ -647,9 +648,7 @@ struct EditRepairRequest: View {
     }
 
     private func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
 
     private func pickerRow(
@@ -688,7 +687,7 @@ struct EditRepairRequest: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .opacity(isEnabled ? 1 : 0.6)
         }
         .buttonStyle(.plain)
@@ -717,7 +716,7 @@ struct EditRepairRequest: View {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var bodyOfWaterPickerText: String {

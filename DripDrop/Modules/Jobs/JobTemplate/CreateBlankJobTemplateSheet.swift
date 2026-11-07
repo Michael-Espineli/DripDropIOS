@@ -251,7 +251,7 @@ struct CreateBlankJobTemplateSheet: View {
 
             dismiss()
         } catch {
-            alertMessage = "Could not create template. \(error.localizedDescription)"
+            alertMessage = "Could not create template. \(error.userFacingMessage)"
             showAlert = true
         }
     }

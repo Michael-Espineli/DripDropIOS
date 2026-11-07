@@ -17,6 +17,7 @@ final class CustomerBillingViewModel:ObservableObject{
     @Published private(set) var salesBillingSubscriptions:[SalesBillingSubscription] = []
     @Published private(set) var salesInvoices:[SalesInvoice] = []
     @Published private(set) var salesPayments:[SalesPayment] = []
+    @Published var loadError: String? = nil
 
     @Published private(set) var total:Double = 0
     
@@ -25,6 +26,7 @@ final class CustomerBillingViewModel:ObservableObject{
     @Published var isPresentedOldContract:Bool = false
     
     func onLoad(companyId:String,customerId:String) async throws {
+        loadError = nil
         self.listOfContrats = try await dataService.getContractsByCustomer(companyId: companyId, customerId: customerId)
         self.total = listOfContrats.reduce(0) { partialResult, contract in
             partialResult + Double(contract.rate) / 100
@@ -55,15 +57,15 @@ final class CustomerBillingViewModel:ObservableObject{
     
     var openInvoiceTotalCents: Int {
         openInvoices.reduce(0) { partialResult, invoice in
-            partialResult + (invoice.amountDueCents ?? invoice.totalAmountCents)
+            partialResult + invoice.balanceCents
         }
     }
     
     var recentlyPaidTotalCents: Int {
         let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         return salesPayments
-            .filter { $0.status == .posted && ($0.receivedAt ?? $0.createdAt ?? Date.distantPast) >= thirtyDaysAgo }
-            .reduce(0) { $0 + $1.amountCents }
+            .filter { $0.hasPostedMoney && ($0.receivedAt ?? $0.createdAt ?? Date.distantPast) >= thirtyDaysAgo }
+            .reduce(0) { $0 + $1.netCollectedCents }
     }
     
     var activeSubscriptionCount: Int {
@@ -101,6 +103,7 @@ struct CustomerBillingView: View {
     @StateObject var VM : CustomerBillingViewModel
 
     @State var customer:Customer? = nil
+    @State private var selectedBillingInvoice: SalesInvoice?
     
     init(dataService: any ProductionDataServiceProtocol,customer:Customer) {
         _VM = StateObject(wrappedValue: CustomerBillingViewModel(dataService: dataService))
@@ -117,6 +120,25 @@ struct CustomerBillingView: View {
                 }
             }
         }
+        .overlay(alignment: .top) {
+            if let error = VM.loadError {
+                VStack(spacing: 8) {
+                    Text(error).font(.callout).foregroundStyle(.red)
+                    Button("Retry billing") {
+                        Task {
+                            if let company = masterDataManager.currentCompany,
+                               let customer = customer ?? masterDataManager.selectedCustomer {
+                                do { try await VM.onLoad(companyId: company.id, customerId: customer.id) }
+                                catch { VM.loadError = "Billing could not load completely. Please retry before relying on these totals." }
+                            }
+                        }
+                    }
+                }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)).padding()
+            }
+        }
+        .sheet(item: $selectedBillingInvoice) { invoice in
+            NativeSalesInvoiceActions(invoice: invoice, dataService: dataService)
+        }
         .sheet(isPresented: $VM.isPresented,
                onDismiss: {
             Task{
@@ -128,6 +150,7 @@ struct CustomerBillingView: View {
                             print("Successfully Got Contracts")
                         } catch{
                             print("No Contracts")
+                            VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
                             print(error)
                         }
                     } else {
@@ -138,7 +161,8 @@ struct CustomerBillingView: View {
                                 print("Successfully Got Contracts")
                             } catch{
                                 print("No Contracts")
-                                print(error)
+                                VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
+                            print(error)
                             }
                         } else {
                             print("No Selected Customer")
@@ -180,7 +204,8 @@ struct CustomerBillingView: View {
                         print("Successfully Got Contracts")
                     } catch{
                         print("No Contracts")
-                        print(error)
+                        VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
+                            print(error)
                     }
                 } else {
                     if let customer = customer {
@@ -190,6 +215,7 @@ struct CustomerBillingView: View {
                             print("Successfully Got Contracts")
                         } catch{
                             print("No Contracts")
+                            VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
                             print(error)
                         }
                     } else {
@@ -216,6 +242,7 @@ struct CustomerBillingView: View {
                             print("Successfully Got Contracts")
                         } catch{
                             print("No Contracts")
+                            VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
                             print(error)
                         }
                     } else {
@@ -226,7 +253,8 @@ struct CustomerBillingView: View {
                                 print("Successfully Got Contracts")
                             } catch{
                                 print("No Contracts")
-                                print(error)
+                                VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
+                            print(error)
                             }
                         } else {
                             print("No Selected Customer")
@@ -243,7 +271,8 @@ struct CustomerBillingView: View {
                             do {
                                 try await VM.onChangeBillingNotes(companyId: currentCompany.id, customerId: customer.id)
                             } catch {
-                                print(error)
+                                VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
+                            print(error)
                             }
                         }
                     } else {
@@ -252,7 +281,8 @@ struct CustomerBillingView: View {
                                 do {
                                     try await VM.onChangeBillingNotes(companyId: currentCompany.id, customerId: customer.id)
                                 } catch {
-                                    print(error)
+                                    VM.loadError = "Billing could not load completely. Please retry before relying on these totals."
+                            print(error)
                                 }
                             }
                         }
@@ -626,6 +656,8 @@ extension CustomerBillingView {
                         .foregroundStyle(.primary)
                         .lineLimit(2)
 
+                    Button("Review invoice") { selectedBillingInvoice = invoice }.font(.caption)
+
                     Text(invoice.dueDate?.formatted(date: .abbreviated, time: .omitted) ?? "No due date")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -662,7 +694,7 @@ extension CustomerBillingView {
                 Spacer(minLength: 8)
 
                 VStack(alignment: .trailing, spacing: 5) {
-                    Text("\(Double(payment.amountCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
+                    Text("\(Double(payment.netCollectedCents) / 100, format: .currency(code: "USD").precision(.fractionLength(2)))")
                         .font(.subheadline.weight(.semibold))
 
                     statusChip(payment.status.rawValue.capitalized)

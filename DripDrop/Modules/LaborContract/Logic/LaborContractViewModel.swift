@@ -192,7 +192,7 @@ final class LaborContractViewModel:ObservableObject{
             try await dataService.updateLaborContractTaskReceiverJobId(laborContractId: laborContract.id, laborContractTaskId: task.id, jobIdInfo: IdInfo(id: job.id, internalId: job.internalId))
                 //Update Sender Job?
             //Devloper
-            try dataService.updateJobTaskStatus(companyId: laborContract.senderId, jobId: laborContract.senderJobId.id, taskId: task.senderJobTaskId, status: .accepted)
+            try await dataService.updateJobTaskStatus(companyId: laborContract.senderId, jobId: laborContract.senderJobId.id, taskId: task.senderJobTaskId, status: .accepted)
             print("successfully Updated Labor Contract")
 
         }
@@ -350,7 +350,7 @@ final class LaborContractViewModel:ObservableObject{
             try dataService.updateJobTaskWorkerId(companyId: laborContract.senderId, jobId: laborContract.senderJobId.id, taskId: task.id, workerId: "")
             try dataService.updateJobTaskWorkerName(companyId: laborContract.senderId, jobId: laborContract.senderJobId.id, taskId: task.id, workerName: "")
             try dataService.updateJobTaskWorkerType(companyId: laborContract.senderId, jobId: laborContract.senderJobId.id, taskId: task.id, workerType: .notAssigned)
-            try dataService.updateJobTaskStatus(companyId: laborContract.senderId, jobId: laborContract.senderJobId.id, taskId: task.id, status: .unassigned)
+            try await dataService.updateJobTaskStatus(companyId: laborContract.senderId, jobId: laborContract.senderJobId.id, taskId: task.id, status: .unassigned)
         }
 
         self.showAlert.toggle()

@@ -72,7 +72,11 @@ let templatePayJSON = #"{"id":"template-task","companyId":"company","templateId"
 let templateTask = try JSONDecoder().decode(JobTemplateTask.self, from: Data(templatePayJSON.utf8))
 let templateRoundTrip = try JSONDecoder().decode(JobTemplateTask.self, from: JSONEncoder().encode(templateTask))
 assert(templateRoundTrip.payTypeId == "filter" && templateRoundTrip.manualPayOverrideCents == 0 && templateRoundTrip.payQuantity == 2)
-print("17 Swift billing, tax, history attribution, backward compatibility, and link-remapping checks passed")
+let templateOrigin = try JSONDecoder().decode(JobTask.self, from: Data(#"{"id":"copied","sourceTemplateId":"template","sourceTemplateTaskId":"template-task"}"#.utf8))
+assert(templateOrigin.sourceTemplateId == "template" && templateOrigin.sourceTemplateTaskId == "template-task")
+let originRoundTrip = try JSONDecoder().decode(JobTask.self, from: JSONEncoder().encode(templateOrigin))
+assert(originRoundTrip.sourceTemplateTaskId == "template-task" && originRoundTrip.sourceTemplateId == "template")
+print("19 Swift billing, tax, history, template provenance, compatibility, and link-remapping checks passed")
 '''
 with tempfile.TemporaryDirectory(prefix='dripdrop-job-billing-') as directory:
     fixture = Path(directory) / 'main.swift'

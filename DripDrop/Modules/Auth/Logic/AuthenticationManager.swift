@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseAuth
 import Firebase
+import FirebaseFunctions
 
 struct AuthDataResultModel {
     let uid:String
@@ -99,21 +100,14 @@ final class AuthenticationManager {
         try Auth.auth().signOut()
         print("Signed out Successfully")
     }
-    func resetPassword(email:String) throws {
-        Auth.auth().sendPasswordReset(withEmail: email) { error in
-          // ...
-        }
+    func resetPassword(email:String) async throws {
+        try await sendPasswordReset(email: email)
     }
     func sendPasswordReset(email:String) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            Auth.auth().sendPasswordReset(withEmail: email) { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: ())
-                }
-            }
-        }
+        _ = try await Functions.functions().httpsCallable("sendAccountEmail").call([
+            "kind": "passwordReset",
+            "email": email.trimmingCharacters(in: .whitespacesAndNewlines)
+        ])
     }
     func updateEmail(email:String) throws {
         

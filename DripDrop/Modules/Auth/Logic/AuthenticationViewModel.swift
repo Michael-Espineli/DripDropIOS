@@ -316,7 +316,7 @@ final class AuthenticationViewModel: ObservableObject{
         try AuthenticationManager.shared.signOut()
     }
     
-    func resetPassword() throws {
+    func resetPassword() async throws {
         let user = try AuthenticationManager.shared.getAuthenticatedUser()
         guard let email = user.email else {
             print("Email is Optional")
@@ -324,7 +324,7 @@ final class AuthenticationViewModel: ObservableObject{
         }
         if isValidEmail(email) {
             print("Is Valid Email")
-            try AuthenticationManager.shared.resetPassword(email: email)
+            try await AuthenticationManager.shared.resetPassword(email: email)
         } else {
             print("Is Not Valid Email")
             throw FireBasePublish.unableToPublish

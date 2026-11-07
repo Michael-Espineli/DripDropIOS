@@ -381,6 +381,7 @@ struct RepairRequestDetailView: View {
         })
         .toolbar{
             Button(action: {
+                guard masterDataManager.hasCompanyPermission("34") else { return }
                 showEdit.toggle()
 //                VM.alertMessage = "Confirm Delete"
 //                print(VM.alertMessage)
@@ -388,6 +389,7 @@ struct RepairRequestDetailView: View {
             }, label: {
                 Text("Edit")
             })
+            .disabled(!masterDataManager.hasCompanyPermission("34"))
         }
         .task{
             VM.onLoad(companyId: masterDataManager.currentCompany?.id)
@@ -420,17 +422,10 @@ struct RepairRequestDetailView: View {
 extension RepairRequestDetailView {
     var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Repair Request")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
+            WorkspaceIdentityHeader(title: "Repair Request", eyebrow: "Company operations", subtitle: "Customer: \(repairRequest.customerName) · Requester: \(repairRequest.requesterName)", systemImage: "wrench.and.screwdriver")
 
-                    Text("Customer: \(repairRequest.customerName) • Requester: \(repairRequest.requesterName)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            HStack(alignment: .top, spacing: 12) {
+
 
                 Spacer()
 
@@ -453,7 +448,7 @@ extension RepairRequestDetailView {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var formCard: some View {
@@ -487,7 +482,7 @@ extension RepairRequestDetailView {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .confirmationDialog("Change Status", isPresented: $showStatusPicker, titleVisibility: .visible) {
@@ -503,7 +498,7 @@ extension RepairRequestDetailView {
                 }
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             detailRow(
                 title: "Request Date",
@@ -531,13 +526,13 @@ extension RepairRequestDetailView {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var siteContextCard: some View {
@@ -586,11 +581,11 @@ extension RepairRequestDetailView {
                     .pickerStyle(.menu)
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var commentsCard: some View {
@@ -622,9 +617,9 @@ extension RepairRequestDetailView {
                         .frame(minHeight: 96)
                         .padding(8)
                         .scrollContentBackground(.hidden)
-                        .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(Color.listColor.opacity(0.65), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
                         }
 
@@ -665,12 +660,12 @@ extension RepairRequestDetailView {
                                 .font(.subheadline.weight(.semibold))
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
                     .disabled(VM.isAddingComment || VM.newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             if VM.commentsLoading {
                 HStack {
@@ -690,7 +685,7 @@ extension RepairRequestDetailView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var jobIdListView: some View {
@@ -707,7 +702,7 @@ extension RepairRequestDetailView {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color.blue, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(Color.blue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             })
             .buttonStyle(.plain)
             .confirmationDialog("Select Type", isPresented: self.$showJobConfirmation, actions: {
@@ -762,7 +757,7 @@ extension RepairRequestDetailView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var currentPhotos: some View {
@@ -793,7 +788,7 @@ extension RepairRequestDetailView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var statusChip: some View {
@@ -808,9 +803,7 @@ extension RepairRequestDetailView {
     }
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
 
     func contextChip(_ title: String, systemImage: String) -> some View {
@@ -844,7 +837,7 @@ extension RepairRequestDetailView {
             Spacer(minLength: 0)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func emptyState(_ title: String, systemImage: String) -> some View {
@@ -859,7 +852,7 @@ extension RepairRequestDetailView {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 22)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func commentRow(_ comment: JobComment) -> some View {
@@ -884,7 +877,7 @@ extension RepairRequestDetailView {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var currentUserDisplayName: String {

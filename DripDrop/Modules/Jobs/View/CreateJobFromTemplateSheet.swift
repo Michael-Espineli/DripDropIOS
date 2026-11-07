@@ -198,7 +198,7 @@ struct CreateJobFromTemplateSheet: View {
                     .foregroundStyle(.secondary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             createJobPickerRow(
                 title: "Admin / Owner",
@@ -320,13 +320,13 @@ struct CreateJobFromTemplateSheet: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 } else {
                     Label("Create Job", systemImage: "checkmark.circle")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
             .buttonStyle(.plain)
@@ -339,7 +339,7 @@ struct CreateJobFromTemplateSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -381,7 +381,7 @@ struct CreateJobFromTemplateSheet: View {
 
             dismiss()
         } catch {
-            alertMessage = "Could not create job. \(error.localizedDescription)"
+            alertMessage = "Could not create job. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -419,7 +419,7 @@ struct CreateJobFromTemplateSheet: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -473,6 +473,6 @@ private extension View {
     func createJobTemplateCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

@@ -515,7 +515,7 @@ final class AddNewJobFromRepairRequestViewModel: ObservableObject {
                     )
                 )
 
-                try dataService.updateJobTaskStatus(
+                try await dataService.updateJobTaskStatus(
                     companyId: companyId,
                     jobId: job.id,
                     taskId: task.id,
@@ -875,7 +875,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var viewPickerCard: some View {
@@ -909,7 +909,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var repairRequestPhotosCard: some View {
@@ -930,7 +930,7 @@ extension AddNewJobFromRepairRequest {
             DripDropStoredImageRow(images: VM.repairRequestPhotos)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var loadingOverlay: some View {
@@ -946,7 +946,7 @@ extension AddNewJobFromRepairRequest {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 }
@@ -1033,7 +1033,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1115,7 +1115,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1197,7 +1197,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1325,7 +1325,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func serviceStopScheduleRow(_ serviceStop: ServiceStop) -> some View {
@@ -1358,7 +1358,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1406,7 +1406,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1520,7 +1520,7 @@ extension AddNewJobFromRepairRequest {
                             .font(.caption.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 9)
-                            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -1537,14 +1537,14 @@ extension AddNewJobFromRepairRequest {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
             .disabled(!VM.canSubmitJob || VM.isSubmitting)
             .opacity(!VM.canSubmitJob || VM.isSubmitting ? 0.55 : 1)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }}
 
 // MARK: - Bottom Bar
@@ -1564,7 +1564,7 @@ extension AddNewJobFromRepairRequest {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -1582,7 +1582,7 @@ extension AddNewJobFromRepairRequest {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(VM.isSubmitting || (VM.chosenView == "Review" && !VM.canSubmitJob))
@@ -1661,7 +1661,7 @@ extension AddNewJobFromRepairRequest {
             }
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     func plannedServiceStopRow(_ stop: JobPlannedServiceStop) -> some View {
         HStack(alignment: .top, spacing: 12) {
@@ -1707,7 +1707,7 @@ extension AddNewJobFromRepairRequest {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     private struct RepairRequestJobMoneyRow: View {
         let title: String
@@ -1798,9 +1798,7 @@ extension AddNewJobFromRepairRequest {
 extension AddNewJobFromRepairRequest {
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
 
     func pickerButtonRow(
@@ -1854,7 +1852,7 @@ extension AddNewJobFromRepairRequest {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func textInputRow(
@@ -1873,7 +1871,7 @@ extension AddNewJobFromRepairRequest {
                 .font(.subheadline)
                 .keyboardType(keyboardType)
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -1903,7 +1901,7 @@ extension AddNewJobFromRepairRequest {
                 .font(.subheadline)
                 .lineLimit(5, reservesSpace: true)
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .focused($focusedField, equals: "Description")
                 .submitLabel(.return)
         }
@@ -1931,7 +1929,7 @@ extension AddNewJobFromRepairRequest {
             Spacer()
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func actionRow(title: String, subtitle: String, systemImage: String) -> some View {
@@ -1960,7 +1958,7 @@ extension AddNewJobFromRepairRequest {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func emptyState(title: String, message: String, systemImage: String) -> some View {
@@ -1980,7 +1978,7 @@ extension AddNewJobFromRepairRequest {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func nextButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
@@ -2023,6 +2021,6 @@ extension AddNewJobFromRepairRequest {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

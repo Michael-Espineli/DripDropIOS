@@ -68,7 +68,7 @@
                 } catch {
                     isLoading = false
                     showError = true
-                    errorMessage = error.localizedDescription
+                    errorMessage = error.userFacingMessage
                     print(error)
                 }
             }
@@ -109,7 +109,7 @@
                     )
                 } catch {
                     showError = true
-                    errorMessage = error.localizedDescription
+                    errorMessage = error.userFacingMessage
                     print(error)
                 }
             }
@@ -208,7 +208,7 @@
                 } catch {
                     isSubmitting = false
                     showError = true
-                    errorMessage = error.localizedDescription
+                    errorMessage = error.userFacingMessage
                     print(error)
 
                     #if os(iOS)
@@ -228,7 +228,7 @@
                     )
                 } catch {
                     showError = true
-                    errorMessage = error.localizedDescription
+                    errorMessage = error.userFacingMessage
                     print(error)
                 }
             }
@@ -297,7 +297,7 @@
                 } catch {
                     isSubmitting = false
                     showError = true
-                    errorMessage = error.localizedDescription
+                    errorMessage = error.userFacingMessage
                     print(error)
 
                     #if os(iOS)

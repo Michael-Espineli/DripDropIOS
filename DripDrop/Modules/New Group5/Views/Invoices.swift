@@ -1095,23 +1095,21 @@ private func salesCadenceLabel(_ agreement: SalesAgreement) -> String {
 
 private func salesAgreementTint(_ agreement: SalesAgreement) -> Color {
     switch agreement.status {
-    case .accepted:
+    case .accepted, .active:
         return .poolGreen
     case .sent, .revised:
         return .poolBlue
-    case .rejected, .expired, .canceled:
+    case .rejected, .expired, .canceled, .unknown:
         return .poolRed
     case .draft:
         return .orange
+    case .superseded:
+        return .secondary
     }
 }
 
 private func salesInvoiceBalanceCents(_ invoice: SalesInvoice) -> Int {
-    if let amountDue = invoice.amountDueCents {
-        return max(amountDue, 0)
-    }
-
-    return max(invoice.totalAmountCents - (invoice.amountPaidCents ?? 0), 0)
+    invoice.balanceCents
 }
 
 private func salesInvoiceNeedsAttention(_ invoice: SalesInvoice) -> Bool {
@@ -1129,9 +1127,9 @@ private func salesInvoiceTint(_ invoice: SalesInvoice) -> Color {
         return .poolGreen
     case .open, .partiallyPaid:
         return .poolBlue
-    case .overdue, .uncollectible:
+    case .overdue, .uncollectible, .paymentReview, .unknown:
         return .poolRed
-    case .void:
+    case .void, .partiallyRefunded, .refunded:
         return .secondary
     case .draft:
         return .orange
@@ -1166,13 +1164,13 @@ private func salesSubscriptionTint(_ subscription: SalesBillingSubscription) -> 
     switch subscription.status {
     case .active:
         return .poolGreen
-    case .pendingPaymentMethod, .pendingStripe, .notStarted:
+    case .pendingPaymentMethod, .pendingStripe, .notStarted, .cancellationPending:
         return .orange
-    case .pastDue:
+    case .pastDue, .unknown:
         return .poolRed
     case .paused:
         return .poolBlue
-    case .canceled:
+    case .canceled, .expired, .superseded:
         return .secondary
     }
 }

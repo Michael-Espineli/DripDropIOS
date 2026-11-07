@@ -195,7 +195,7 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
             rates = try await ratesTask
             ratePlans = try await plansTask
         } catch {
-            alertMessage = "Could not load technician rate matrix. \(error.localizedDescription)"
+            alertMessage = "Could not load technician rate matrix. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -288,7 +288,7 @@ final class TechnicianRateMatrixViewModel: ObservableObject {
             }
 
         } catch {
-            alertMessage = "Could not save technician rate. \(error.localizedDescription)"
+            alertMessage = "Could not save technician rate. \(error.userFacingMessage)"
             showAlert = true
         }
     }

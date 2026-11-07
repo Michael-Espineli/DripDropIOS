@@ -242,7 +242,7 @@ struct SaveJobAsTemplateSheet: View {
             print("  [SaveJobAsTemplateSheet][save] \(alertMessage)")
             dismiss()
         } catch {
-            alertMessage = "Could not save template. \(error.localizedDescription)"
+            alertMessage = "Could not save template. \(error.userFacingMessage)"
             showAlert = true
         }
     }

@@ -192,6 +192,7 @@ extension ServiceLocationDetailView {
         HStack{
             if let location = masterDataManager.selectedServiceLocation {
                 Button(action: {
+                    guard masterDataManager.hasCompanyPermission("44") else { return }
                     showEditSheet = true
                 }, label: {
                     Label("Edit", systemImage: "pencil")
@@ -202,6 +203,7 @@ extension ServiceLocationDetailView {
                         .background(Color.poolBlue, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 })
                 .buttonStyle(.plain)
+                .disabled(!masterDataManager.hasCompanyPermission("44"))
                 .sheet(isPresented: $showEditSheet, content: {
                     EditServiceLocationView(
                         dataService: dataService,

@@ -1,100 +1,109 @@
-//
-//  RootView.swift
-//  ThePoolApp
-//
-//  Created by Michael Espineli on 12/8/23.
-//
-
 import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var navigationManager: NavigationStateManager
     @EnvironmentObject var masterDataManager: MasterDataManager
+    @EnvironmentObject var dataService: ProductionDataService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State var layoutExperience: LayoutExperienceSetting = .threeColumn
-    @StateObject var userVM = TechViewModel()
-    @EnvironmentObject var dataService : ProductionDataService
-    
-    @StateObject private var VM : AuthenticationViewModel
-    init(dataService:any ProductionDataServiceProtocol) {
+    @StateObject private var loadingState = AppLoadingState()
+    @StateObject private var VM: AuthenticationViewModel
+    @State private var attemptedInitialLoad = false
+
+    init(dataService: any ProductionDataServiceProtocol) {
         _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
     }
+
     var body: some View {
-        ZStack{
-            if VM.isLoading {
-                WaterLevelLoading()
-            } else {
-                if masterDataManager.showSignInView {
-                    NavigationStack{
-                        SignInView(dataService: dataService)
-                    }
-                } else {
-                    // check if subscription // Moved it further into the app. so they have access to basic settings. Especially Logging in and Logging out
-//                    if masterDataManager.activeSubscription == nil {
-//                        SubscriptionPicker(dataService:dataService)
-//                    } else {
-                        Group {
-                            if UIDevice.isIPhone{
-                                MobileHome(dataService: dataService)
-                            } else {
-                                ThreeColumnMenuView(dataService:dataService,layoutExperience:$layoutExperience)
-                            }
-                        }
-                    
+        ZStack {
+            if loadingState.hasLoadedAccount && !masterDataManager.showSignInView {
+                home
+                    .allowsHitTesting(!loadingState.isVisible)
+                    .accessibilityHidden(loadingState.isVisible)
+            } else if !loadingState.isVisible {
+                NavigationStack {
+                    SignInView(dataService: dataService)
                 }
+            }
+
+            // Keep this exact view mounted while the home screen loads beneath it.
+            if loadingState.isVisible {
+                WaterLevelLoading(fillTarget: loadingState.fillTarget, message: loadingState.message)
+                    .transition(.opacity)
+                    .zIndex(1)
             }
             EnvironmentBanner()
+                .zIndex(2)
         }
-        .task{
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: loadingState.isVisible)
+        .task(id: masterDataManager.showSignInView) {
+            await updateSession()
+        }
+        .task(id: loadingState.phase) {
+            guard loadingState.phase == .finishing else { return }
+            // Let the last pour cover the screen before revealing the ready app.
             do {
-                print("[Root View][Task] - Initial Load")
-                try await VM.onInitialLoad()
-                print("[Root View][Task] - onInitialLoad successfully completed")
-                masterDataManager.checkForSubscriptionStatus()
-                print("[Root View][Task] - checkForSubscriptionStatus successfully completed")
-                masterDataManager.user = VM.user
-                masterDataManager.currentCompany = VM.company
-                masterDataManager.companyUser = VM.companyUser
-                VM.isLoading = false
-                masterDataManager.showSignInView = false
+                try await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 750))
+                loadingState.finish()
             } catch {
-                print("[RootView][task]Error Root View")
-                print(error)
-                VM.isLoading = false
-                masterDataManager.showSignInView = true
+                // A sign-out or a new session cancels this completion.
             }
         }
-        .onChange(of: masterDataManager.showSignInView, perform: { showSignIn in
-            Task{
-                print(showSignIn)
-                if !showSignIn {
-                    do {
-                        print("[Root View][Task] - Change of Show Sign In View")
-                        try await VM.onInitialLoad()
-                        print("[Root View][Task] - onInitialLoad successfully completed")
-                        masterDataManager.checkForSubscriptionStatus()
-                        print("[Root View][Task] - checkForSubscriptionStatus successfully completed")
-                        masterDataManager.user = VM.user
-                        masterDataManager.currentCompany = VM.company
-                        masterDataManager.companyUser = VM.companyUser
-                        VM.isLoading = false
-                        masterDataManager.showSignInView = false
-                    } catch {
-                        print("[RootView][OnChangeOfShowSigninView]Error Root View")
-                        print(error)
-                        VM.isLoading = false
-                        masterDataManager.showSignInView = true
-                    }
-                    
-                }
+    }
+
+    private var home: some View {
+        let session = loadingState.sessionID
+        let didLoad = { loadingState.workspaceLoaded(for: session) }
+        return Group {
+            if UIDevice.isIPhone || masterDataManager.currentCompany == nil {
+                MobileHome(dataService: dataService, onInitialLoadFinished: didLoad)
+            } else {
+                ThreeColumnMenuView(dataService: dataService, layoutExperience: $layoutExperience,
+                                    onInitialLoadFinished: didLoad)
             }
-        })
+        }
+    }
+
+    @MainActor
+    private func updateSession() async {
+        if !attemptedInitialLoad {
+            attemptedInitialLoad = true
+            await loadAccount()
+        } else if masterDataManager.showSignInView {
+            loadingState.showSignIn()
+        } else if !loadingState.hasLoadedAccount {
+            await loadAccount()
+        }
+    }
+
+    @MainActor
+    private func loadAccount() async {
+        loadingState.beginAccountLoad()
+        let session = loadingState.sessionID
+        do {
+            try await VM.onInitialLoad()
+            try Task.checkCancellation()
+            guard session == loadingState.sessionID else { return }
+            masterDataManager.user = VM.user
+            masterDataManager.currentCompany = VM.company
+            masterDataManager.companyUser = VM.companyUser
+            masterDataManager.checkForSubscriptionStatus()
+            // Mark the account ready before changing sign-in state. The task
+            // restarted by that change must not fetch the account a second time.
+            loadingState.accountLoaded(for: session)
+            masterDataManager.showSignInView = false
+        } catch {
+            guard !Task.isCancelled, session == loadingState.sessionID else { return }
+            print("[RootView][loadAccount] \(error)")
+            loadingState.showSignIn()
+            masterDataManager.showSignInView = true
+        }
     }
 }
 
 struct RootView_Previews: PreviewProvider {
-    static let dataService = MockDataService()
     static var previews: some View {
-        RootView(dataService:dataService)
+        RootView(dataService: MockDataService())
     }
 }

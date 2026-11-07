@@ -77,7 +77,7 @@ final class CameraDataModel: ObservableObject {
                 try await photoCollection.addImage(imageData)
                 logger.debug("Added image data to photo collection.")
             } catch let error {
-                logger.error("Failed to add image to photo collection: \(error.localizedDescription)")
+                logger.error("Failed to add image to photo collection: \(error.userFacingMessage)")
             }
         }
     }
@@ -96,7 +96,7 @@ final class CameraDataModel: ObservableObject {
                 try await self.photoCollection.load()
                 await self.loadThumbnail()
             } catch let error {
-                logger.error("Failed to load photo collection: \(error.localizedDescription)")
+                logger.error("Failed to load photo collection: \(error.userFacingMessage)")
             }
             self.isPhotosLoaded = true
         }
@@ -115,7 +115,7 @@ final class CameraDataModel: ObservableObject {
                 try await self.photoCollection.load()
                 await self.loadThumbnail()
             } catch let error {
-                logger.error("Failed to load photo collection: \(error.localizedDescription)")
+                logger.error("Failed to load photo collection: \(error.userFacingMessage)")
             }
             self.isPhotosLoaded = true
         }

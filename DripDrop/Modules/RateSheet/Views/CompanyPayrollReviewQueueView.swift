@@ -179,7 +179,7 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
                 endDate: endDate
             )
         } catch {
-            alertMessage = "Could not load payroll queue. \(error.localizedDescription)"
+            alertMessage = "Could not load payroll queue. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -268,7 +268,7 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
                 upsertLocal(updated)
             }
         } catch {
-            alertMessage = "Could not approve all visible items. \(error.localizedDescription)"
+            alertMessage = "Could not approve all visible items. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -280,7 +280,7 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
         do {
             try await clearZeroTaskLines(items)
         } catch {
-            alertMessage = "Could not clear these tasks. Reload and review their current amounts. \(error.localizedDescription)"
+            alertMessage = "Could not clear these tasks. Reload and review their current amounts. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -309,7 +309,7 @@ final class CompanyPayrollReviewQueueViewModel: ObservableObject {
             try await dataService.updateTechnicianPayLineItem(lineItem)
             upsertLocal(lineItem)
         } catch {
-            alertMessage = "Could not update payroll item. \(error.localizedDescription)"
+            alertMessage = "Could not update payroll item. \(error.userFacingMessage)"
             showAlert = true
         }
     }

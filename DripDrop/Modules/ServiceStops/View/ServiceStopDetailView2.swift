@@ -76,6 +76,7 @@ struct ServiceStopDetailView2: View {
     @State private var linkedJobCompletionFlow: FieldJobCompletionFlow? = nil
     @State private var shouldNavigateBackAfterLinkedJobFlowDismiss = false
     @State private var isCompletingLinkedJob = false
+    @State private var isLoadingLinkedJobReview = false
     
     private var serviceStop: ServiceStop? {
         vm.serviceStopList.first { $0.id == serviceStopId }
@@ -756,7 +757,10 @@ private extension ServiceStopDetailView2 {
             dataService: dataService,
             taskList: $VM.taskList,
             serviceStopId: serviceStopId,
-            isLoadingTasks: VM.isLoadingTasks
+            isLoadingTasks: VM.isLoadingTasks,
+            onPartApprovalCreated: {
+                await loadFollowUps()
+            }
         )
             .tabItem {
                 Image(systemName: "chart.bar.doc.horizontal")
@@ -791,7 +795,9 @@ private extension ServiceStopDetailView2 {
             testerStripScanImage: $testerStripScanImage,
             testerStripScanToken: testerStripScanToken,
             onScanTesterStrip: openTesterStripCamera
-        )
+        ) {
+            photos
+        }
             .tabItem {
                 Image(systemName: "spigot.fill")
                 Text("Water")
@@ -1021,20 +1027,6 @@ private struct LinkedJobCompletionDecisionSheet: View {
             .buttonStyle(.plain)
             .disabled(isFinishing)
 
-            Group {
-                Button {
-                    showCloseout = true
-                } label: {
-                    actionLabel(
-                        title: isFinishing ? "Finishing Job..." : "Finish Job",
-                        subtitle: "Review remaining tasks, services, products, and visits before closing the job.",
-                        systemImage: "checkmark.seal"
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isFinishing)
-            }
-
             Button {
                 onKeepJobOpen()
             } label: {
@@ -1042,6 +1034,20 @@ private struct LinkedJobCompletionDecisionSheet: View {
                     title: "Keep Job Open",
                     subtitle: "Leave the job active and return to the route.",
                     systemImage: "briefcase"
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(isFinishing)
+
+            Button {
+                showCloseout = true
+            } label: {
+                actionLabel(
+                    title: isFinishing ? "Finishing Job..." : "Finish Job",
+                    subtitle: "Review remaining tasks, services, products, and visits before closing the job.",
+                    systemImage: "checkmark.seal",
+                    tint: .poolGreen,
+                    emphasized: true
                 )
             }
             .buttonStyle(.plain)
@@ -1077,18 +1083,18 @@ private struct LinkedJobCompletionDecisionSheet: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private func actionLabel(title: String, subtitle: String, systemImage: String) -> some View {
+    private func actionLabel(title: String, subtitle: String, systemImage: String, tint: Color = .accentColor, emphasized: Bool = false) -> some View {
         HStack(spacing: 12) {
             Image(systemName: systemImage)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.accent)
+                .foregroundStyle(tint)
                 .frame(width: 36, height: 36)
-                .background(Color.accentColor.opacity(0.12), in: Circle())
+                .background(tint.opacity(0.12), in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(emphasized ? tint : Color.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
@@ -1102,10 +1108,17 @@ private struct LinkedJobCompletionDecisionSheet: View {
 
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(emphasized ? tint.opacity(0.7) : Color.secondary.opacity(0.6))
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(
+            emphasized ? AnyShapeStyle(tint.opacity(0.1)) : AnyShapeStyle(.thinMaterial),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(emphasized ? tint.opacity(0.25) : .clear, lineWidth: 1)
+        }
     }
 }
 
@@ -2622,8 +2635,8 @@ private struct ServiceStopJobCommentsView: View {
     let dataService: any ProductionDataServiceProtocol
     let serviceStop: ServiceStop
 
-    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var masterDataManager: MasterDataManager
+    @FocusState private var isCommentFocused: Bool
 
     @State private var comments: [JobComment] = []
     @State private var newComment: String = ""
@@ -2671,6 +2684,7 @@ private struct ServiceStopJobCommentsView: View {
                     .frame(maxWidth: 760)
                     .frame(maxWidth: .infinity)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .task(id: jobId) {
@@ -2680,15 +2694,17 @@ private struct ServiceStopJobCommentsView: View {
             await loadComments()
         }
         .safeAreaInset(edge: .bottom) {
-            dismissCommentsBar
+            if isCommentFocused {
+                dismissCommentsBar
+            }
         }
     }
 
     private var dismissCommentsBar: some View {
         Button {
-            dismiss()
+            isCommentFocused = false
         } label: {
-            Label("Dismiss Comments", systemImage: "xmark.circle")
+            Label("Dismiss Keyboard", systemImage: "keyboard.chevron.compact.down")
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -2749,6 +2765,7 @@ private struct ServiceStopJobCommentsView: View {
 
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $newComment)
+                    .focused($isCommentFocused)
                     .font(.subheadline)
                     .frame(minHeight: 112)
                     .padding(8)
@@ -3481,7 +3498,7 @@ private struct ServiceStopAgreementWorkflowView: View {
         additionalEmails: [String]
     ) async {
         guard canSendAgreement else {
-            message = "Your role does not have permission to send agreements."
+            message = "Drip Drop permission denied: Your company role does not allow you to send agreements. Ask a company administrator to review your access."
             return
         }
 
@@ -3501,7 +3518,7 @@ private struct ServiceStopAgreementWorkflowView: View {
             showSendSheet = false
             await reloadAgreements()
         } catch {
-            message = error.localizedDescription.isEmpty ? "Could not send service agreement" : error.localizedDescription
+            message = error.userFacingMessage.isEmpty ? "Could not send service agreement" : error.userFacingMessage
             print("[ServiceStopAgreementWorkflowView][sendAgreement] \(error)")
         }
     }
@@ -3542,13 +3559,13 @@ private struct ServiceStopAgreementWorkflowView: View {
 
     private func statusTint(_ status: SalesAgreementStatus) -> Color {
         switch status {
-        case .accepted:
+        case .accepted, .active:
             return Color.poolGreen
         case .sent, .revised:
             return Color.poolBlue
-        case .rejected, .expired, .canceled:
+        case .rejected, .expired, .canceled, .unknown:
             return Color.poolRed
-        case .draft:
+        case .draft, .superseded:
             return .secondary
         }
     }
@@ -5260,6 +5277,7 @@ private struct ServiceStopCustomerNotesSheet: View {
     @State private var isAddingNote = false
     @State private var resolvingNoteIds: Set<String> = []
     @State private var addMessage: String? = nil
+    @FocusState private var isNoteFocused: Bool
 
     private var fieldAudiences: [CustomerNoteAudience] {
         [.field, .all]
@@ -5327,7 +5345,9 @@ private struct ServiceStopCustomerNotesSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                dismissNotesBar
+                if isNoteFocused {
+                    dismissNotesBar
+                }
             }
             .task {
                 await onRefresh()
@@ -5338,9 +5358,9 @@ private struct ServiceStopCustomerNotesSheet: View {
 
     private var dismissNotesBar: some View {
         Button {
-            dismiss()
+            isNoteFocused = false
         } label: {
-            Label("Dismiss Notes", systemImage: "xmark.circle")
+            Label("Dismiss Keyboard", systemImage: "keyboard.chevron.compact.down")
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -5403,6 +5423,7 @@ private struct ServiceStopCustomerNotesSheet: View {
 
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $newNote)
+                    .focused($isNoteFocused)
                     .font(.subheadline)
                     .frame(minHeight: 104)
                     .padding(8)
@@ -6051,6 +6072,12 @@ extension ServiceStopDetailView2 {
             HStack(spacing: 12) {
                 switch opStatus {
                 case .finished:
+                    if let serviceStop, !linkedJobId(for: serviceStop).isEmpty {
+                        recapActionButton("Review Job", systemImage: "briefcase", tint: Color.poolBlue, foreground: .white) {
+                            reviewFinishedStopJob(serviceStop)
+                        }
+                    }
+
                     recapActionButton("Skip", systemImage: "forward", tint: Color.poolYellow, foreground: .black) {
                         showSkipReason = true
                     }
@@ -6100,7 +6127,7 @@ extension ServiceStopDetailView2 {
         action: @escaping () -> Void
     ) -> some View {
         Button {
-            guard !isFinishingOrSkippingStop else { return }
+            guard !isFinishingOrSkippingStop && !isLoadingLinkedJobReview else { return }
             action()
         } label: {
             Label(title, systemImage: systemImage)
@@ -6111,8 +6138,8 @@ extension ServiceStopDetailView2 {
                 .background(tint, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(isFinishingOrSkippingStop)
-        .opacity(isFinishingOrSkippingStop ? 0.65 : 1)
+        .disabled(isFinishingOrSkippingStop || isLoadingLinkedJobReview)
+        .opacity(isFinishingOrSkippingStop || isLoadingLinkedJobReview ? 0.65 : 1)
     }
 
     private var finishGateOverlay: some View {
@@ -6783,14 +6810,14 @@ extension ServiceStopDetailView2 {
             } catch {
                 print("Failed To Updated Finish Stops \(stop.id)")
                 print(error)
-                finishErrorMessage = error.localizedDescription
+                finishErrorMessage = error.userFacingMessage
                 if let previousStop {
                     vm.restoreServiceStopAfterOptimisticUpdate(previousStop)
                     opStatus = previousStop.operationStatus
                 } else {
                     opStatus = stop.operationStatus
                 }
-                vm.alertMessage = error.localizedDescription
+                vm.alertMessage = error.userFacingMessage
                 vm.showAlert = true
                 print("")
                 return
@@ -6801,12 +6828,54 @@ extension ServiceStopDetailView2 {
             } catch {
                 print("Finished service stop \(stop.id), but failed to save service notes")
                 print(error)
-                finishErrorMessage = error.localizedDescription
-                vm.alertMessage = "Stop finished, but service notes did not save: \(error.localizedDescription)"
+                finishErrorMessage = error.userFacingMessage
+                vm.alertMessage = "Stop finished, but service notes did not save: \(error.userFacingMessage)"
                 vm.showAlert = true
             }
 
-            shouldNavigateBack = true
+            guard finishErrorMessage == nil else { return }
+
+            // Keep the stop visible until its linked job has been reviewed.
+            // A stop-only completion never implicitly finishes the job/tasks.
+            do {
+                if try await presentLinkedJobReview(companyId: company.id, userId: user.id, stop: stop) {
+                    return
+                }
+            } catch {
+                finishErrorMessage = "Stop finished, but the linked job could not be loaded. Use Review Job to try again. \(error.userFacingMessage)"
+                return
+            }
+
+            shouldNavigateBack = finishErrorMessage == nil
+        }
+    }
+
+    @MainActor
+    private func presentLinkedJobReview(companyId: String, userId: String, stop: ServiceStop) async throws -> Bool {
+        guard let prompt = try await jobCompletionPromptIfEligible(companyId: companyId, userId: userId, stop: stop) else {
+            return false
+        }
+        shouldNavigateBackAfterLinkedJobFlowDismiss = true
+        linkedJobCompletionFlow = .decision(prompt)
+        return true
+    }
+
+    private func reviewFinishedStopJob(_ stop: ServiceStop) {
+        guard !isLoadingLinkedJobReview,
+              let companyId = masterDataManager.currentCompany?.id,
+              let userId = masterDataManager.user?.id else { return }
+        finishErrorMessage = nil
+        isLoadingLinkedJobReview = true
+        Task { @MainActor in
+            defer { isLoadingLinkedJobReview = false }
+            do {
+                let didPresent = try await presentLinkedJobReview(companyId: companyId, userId: userId, stop: stop)
+                if !didPresent {
+                    finishErrorMessage = "This job is already finished."
+                }
+            } catch {
+                finishErrorMessage = "Could not load the linked job. \(error.userFacingMessage)"
+            }
         }
     }
 
@@ -6848,7 +6917,7 @@ extension ServiceStopDetailView2 {
             } catch {
                 print("Failed To Updated Finish Stops \(stop.id)")
                 print(error)
-                finishErrorMessage = error.localizedDescription
+                finishErrorMessage = error.userFacingMessage
                 if let previousStop {
                     vm.restoreServiceStopAfterOptimisticUpdate(previousStop)
                     opStatus = previousStop.operationStatus
@@ -6901,14 +6970,14 @@ extension ServiceStopDetailView2 {
             } catch {
                 print("Failed To Skip Service Stop \(stop.id)")
                 print(error)
-                finishErrorMessage = error.localizedDescription
+                finishErrorMessage = error.userFacingMessage
                 if let previousStop {
                     vm.restoreServiceStopAfterOptimisticUpdate(previousStop)
                     opStatus = previousStop.operationStatus
                 } else {
                     opStatus = stop.operationStatus
                 }
-                vm.alertMessage = error.localizedDescription
+                vm.alertMessage = error.userFacingMessage
                 vm.showAlert = true
                 print("")
                 return
@@ -6923,8 +6992,8 @@ extension ServiceStopDetailView2 {
             } catch {
                 print("Skipped service stop \(stop.id), but failed to save skip reason")
                 print(error)
-                finishErrorMessage = error.localizedDescription
-                vm.alertMessage = "Stop skipped, but the skip reason did not save: \(error.localizedDescription)"
+                finishErrorMessage = error.userFacingMessage
+                vm.alertMessage = "Stop skipped, but the skip reason did not save: \(error.userFacingMessage)"
                 vm.showAlert = true
             }
 
@@ -6978,7 +7047,7 @@ extension ServiceStopDetailView2 {
 
                 linkedJobCompletionFlow = nil
             } catch {
-                finishErrorMessage = error.localizedDescription
+                finishErrorMessage = error.userFacingMessage
                 print("[ServiceStopDetailView2][completeLinkedJob] \(error)")
             }
         }

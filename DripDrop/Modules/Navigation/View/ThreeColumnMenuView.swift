@@ -8,7 +8,10 @@
 import SwiftUI
 
 struct ThreeColumnMenuView: View {
-    init(dataService:any ProductionDataServiceProtocol,layoutExperience:Binding<LayoutExperienceSetting>) {
+    private let onInitialLoadFinished: () -> Void
+
+    init(dataService:any ProductionDataServiceProtocol,layoutExperience:Binding<LayoutExperienceSetting>, onInitialLoadFinished: @escaping () -> Void = {}) {
+        self.onInitialLoadFinished = onInitialLoadFinished
         _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
         self._layoutExperience = layoutExperience
     }
@@ -77,10 +80,13 @@ struct ThreeColumnMenuView: View {
                 }
                 .navigationBarBackground()
             } else {
-                WaterLevelLoading()
+                ProgressView("Preparing your workspace…")
             }
         }
         .task {
+            defer {
+                if !Task.isCancelled { onInitialLoadFinished() }
+            }
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
                 do{
                     try await userAccessVM.getUserAccessCompanies(userId: user.id, companyId: company.id)
@@ -98,6 +104,7 @@ struct ThreeColumnMenuView: View {
                 } catch {
                     print("Error 1 Mobile Home")
                     print(error)
+                    masterDataManager.showSignInView = true
                 }
                 do {
                     try await userAccessVM.getAllUserAvailableCompanies(userId: user.id)
@@ -138,6 +145,7 @@ struct ThreeColumnMenuView: View {
                     } catch {
                         print("Error 1 Mobile Home")
                         print(error)
+                        masterDataManager.showSignInView = true
                     }
                     do {
                         try await userAccessVM.getAllUserAvailableCompanies(userId: user.id)

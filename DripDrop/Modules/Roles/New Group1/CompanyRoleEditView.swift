@@ -294,6 +294,7 @@ extension CompanyRoleEditView {
     }
 
     func saveRole() {
+        guard masterDataManager.hasCompanyPermission("864"), masterDataManager.currentCompany?.ownerId == masterDataManager.user?.id || masterDataManager.role?.canDelegate(role) == true else { return }
         Task {
             if let currentCompany = masterDataManager.currentCompany {
                 let pushDescription = description

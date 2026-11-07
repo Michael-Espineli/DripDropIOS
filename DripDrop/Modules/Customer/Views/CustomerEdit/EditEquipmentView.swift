@@ -234,7 +234,7 @@ extension EditEquipmentView {
                         .padding(.horizontal, 14)
                         .background(Color(.secondarySystemBackground))
                         .foregroundColor(.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
 
                 Button(action: save) {
@@ -244,7 +244,7 @@ extension EditEquipmentView {
                         .padding(.horizontal, 16)
                         .background(Color.blue)
                         .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
                 }
             }
@@ -457,7 +457,7 @@ extension EditEquipmentView {
                         .padding(.vertical, 12)
                         .background(Color.red)
                         .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
         }
@@ -543,7 +543,7 @@ private struct Card<Content: View>: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .shadow(color: Color.black.opacity(0.06), radius: 14, x: 0, y: 8)
     }
 }
@@ -569,7 +569,7 @@ private struct Field<Content: View>: View {
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 }

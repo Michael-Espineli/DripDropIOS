@@ -120,18 +120,15 @@ extension ProductionDataService {
     }
 
     func getAllCompanyToDoItems(companyId:String) async throws -> [ToDo]{
-        let snapshot = try await ToDoCollection(companyId: companyId).getDocuments()
-        return snapshot.documents
+        return try await ToDoManager.visibleDocuments(companyId: companyId)
             .map { ToDo(document: $0) }
             .filter { !$0.isArchived }
             .sorted(by: ToDo.sortByUrgency)
     }
     func getAllCompanyToDoItemsCount(companyId: String) async throws -> Int {
-        let query = ToDoCollection(companyId: companyId).whereField("status", isNotEqualTo: "archived")
-        let snapshot = try await query.count.getAggregation(source: .server)
-        return Int(truncating: snapshot.count)
+        return try await getAllCompanyToDoItems(companyId: companyId).count
     }
-    
+
     func getAllTechnicanToDoItemsCount(companyId: String, techId: String) async throws -> Int {
         //MEMORY LEAK
         let query = ToDoCollection(companyId: companyId).whereField("assignedToUserId", isEqualTo: techId).whereField("status", isNotEqualTo: "archived")

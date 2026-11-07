@@ -10,11 +10,25 @@ import SwiftUI
 
 struct JobActualWorkView: View {
 
+    let companyId: String
+    let currentUserId: String
+    let currentUserName: String
     let job: Job
     let jobTasks: [JobTask]
     let serviceStops: [ServiceStop]
+    let workOffers: [WorkOffer]
+    let serviceLocation: ServiceLocation?
     let payLineItems: [TechnicianPayLineItem]
     let dataService: any ProductionDataServiceProtocol
+    let onScheduleServiceStop: () -> Void
+    let onEditServiceStop: (ServiceStop) -> Void
+    let onDeleteServiceStop: (ServiceStop) -> Void
+    let onReload: () -> Void
+    var focusedSection = "offers"
+
+    @State private var showPreviousStops = false
+    @State private var showPayLines = false
+    @State private var didRevealInitialSection = false
 
     private var plannedLaborCents: Int {
         jobTasks.reduce(0) { $0 + $1.contractedRate }
@@ -42,16 +56,11 @@ struct JobActualWorkView: View {
         payLineItems.filter { $0.calculationStatus == .needsReview }.count
     }
 
-    private var finishedStops: [ServiceStop] {
-        serviceStops
-            .filter { $0.operationStatus == .finished }
-            .sorted { $0.serviceDate > $1.serviceDate }
+    private var openStops: [ServiceStop] {
+        serviceStops.filter { $0.operationStatus == .notFinished }.sorted { $0.serviceDate < $1.serviceDate }
     }
-
-    private var unfinishedStops: [ServiceStop] {
-        serviceStops
-            .filter { $0.operationStatus != .finished }
-            .sorted { $0.serviceDate > $1.serviceDate }
+    private var previousStops: [ServiceStop] {
+        serviceStops.filter { $0.operationStatus != .notFinished }.sorted { $0.serviceDate > $1.serviceDate }
     }
 
     private var actualMinutes: Int {
@@ -73,75 +82,115 @@ struct JobActualWorkView: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
-                headerCard
-                comparisonCard
-                payrollStatusCard
-                finishedStopsCard
-                unfinishedStopsCard
-                payLineItemsCard
-
-                Color.clear.frame(height: 90)
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    JobWorkOffersView(
+                        companyId: companyId, currentUserId: currentUserId, currentUserName: currentUserName,
+                        job: job, jobTasks: jobTasks, serviceLocation: serviceLocation, workOffers: workOffers,
+                        dataService: dataService, onReload: onReload
+                    )
+                    .id("offers")
+                    serviceStopsCard.id("serviceStops")
+                    recordedActualsCard
+                    comparisonCard
+                }
+                .padding(14)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
+            .onAppear {
+                guard !didRevealInitialSection else { return }
+                didRevealInitialSection = true
+                proxy.scrollTo(focusedSection, anchor: .top)
+            }
+            .onChange(of: focusedSection) { section in
+                withAnimation { proxy.scrollTo(section, anchor: .top) }
+            }
         }
         .background(Color.listColor.ignoresSafeArea())
     }
 
-    private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Actual Work")
-                    .font(.title3.weight(.semibold))
-
-                Text("Compare planned job labor against completed service stops and payroll generated from finished work.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+    private var serviceStopsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Label("Service Stops", systemImage: "calendar").font(.headline)
+                Text("\(serviceStops.count)").font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                Button(action: onScheduleServiceStop) {
+                    Label("Schedule", systemImage: "plus")
+                        .font(.caption.weight(.semibold))
+                        .frame(minHeight: 32)
+                }
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
+                .tint(.poolBlue)
             }
-
-            HStack(spacing: 10) {
-                JobActualSummaryChip(
-                    title: "Planned",
-                    value: JobActualMoneyFormatter.money(plannedLaborCents),
-                    systemImage: "doc.text"
-                )
-
-                JobActualSummaryChip(
-                    title: "Actual",
-                    value: JobActualMoneyFormatter.money(actualPayrollCents),
-                    systemImage: "dollarsign.circle"
-                )
-
-                JobActualSummaryChip(
-                    title: "Review",
-                    value: "\(needsReviewCount)",
-                    systemImage: "exclamationmark.triangle"
-                )
+            if openStops.isEmpty {
+                Text("No open service stops.").font(.subheadline).foregroundStyle(.secondary)
             }
-
-            HStack(spacing: 10) {
-                JobActualSummaryChip(
-                    title: "Finished",
-                    value: "\(finishedStops.count)",
-                    systemImage: "checkmark.seal"
-                )
-
-                JobActualSummaryChip(
-                    title: "Open",
-                    value: "\(unfinishedStops.count)",
-                    systemImage: "circle"
-                )
-
-                JobActualSummaryChip(
-                    title: "Pay Lines",
-                    value: "\(payLineItems.count)",
-                    systemImage: "list.bullet.rectangle"
-                )
+            ForEach(openStops) { stop in serviceStopRow(stop) }
+            if !previousStops.isEmpty {
+                DisclosureGroup("Previous stops (\(previousStops.count))", isExpanded: $showPreviousStops) {
+                    VStack(spacing: 10) {
+                        ForEach(previousStops) { stop in serviceStopRow(stop) }
+                    }
+                    .padding(.top, 8)
+                }
+                .font(.subheadline)
             }
         }
-        .jobActualCard()
+        .technicianPanel()
+    }
+
+    private func serviceStopRow(_ stop: ServiceStop) -> some View {
+        HStack(spacing: 8) {
+            NavigationLink(value: Route.serviceStop(serviceStop: stop, dataService: dataService)) {
+                JobActualServiceStopRow(serviceStop: stop, payLineItems: payLineItemsByStopId[stop.id] ?? [])
+            }
+            .buttonStyle(.plain)
+            if stop.operationStatus == .notFinished {
+                Button { onEditServiceStop(stop) } label: {
+                    Image(systemName: "square.and.pencil")
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.poolBlue)
+                .accessibilityLabel("Edit service stop \(stop.internalId.isEmpty ? stop.type : stop.internalId)")
+            }
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+        .contextMenu {
+            if stop.operationStatus == .notFinished {
+                Button("Edit service stop", systemImage: "pencil") { onEditServiceStop(stop) }
+                Button("Delete service stop", systemImage: "trash", role: .destructive) { onDeleteServiceStop(stop) }
+            }
+        }
+    }
+
+    private var recordedActualsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Recorded Actuals", systemImage: "dollarsign.circle").font(.headline)
+                Spacer()
+                Text(JobActualMoneyFormatter.money(actualPayrollCents)).font(.subheadline.weight(.semibold))
+            }
+            if needsReviewCount > 0 {
+                Label("\(needsReviewCount) pay lines need review", systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+            if payLineItems.isEmpty {
+                Text("No recorded payroll.").font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                DisclosureGroup("Payroll lines (\(payLineItems.count))", isExpanded: $showPayLines) {
+                    VStack(spacing: 10) {
+                        JobActualDetailRow(title: "Calculated / Approved / Paid", value: JobActualMoneyFormatter.money(calculatedPayrollCents))
+                        ForEach(payLineItems) { JobActualPayLineRow(lineItem: $0) }
+                    }
+                    .padding(.top, 8)
+                }
+                .font(.subheadline)
+            }
+        }
+        .technicianPanel()
     }
 
     private var comparisonCard: some View {
@@ -186,156 +235,6 @@ struct JobActualWorkView: View {
         .jobActualCard()
     }
 
-    private var payrollStatusCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Payroll Status")
-                .font(.headline.weight(.semibold))
-
-            JobActualDetailRow(
-                title: "Calculated / Approved / Paid",
-                value: JobActualMoneyFormatter.money(calculatedPayrollCents)
-            )
-
-            JobActualDetailRow(
-                title: "Needs Review",
-                value: "\(needsReviewCount)"
-            )
-
-            if needsReviewCount > 0 {
-                Text("Some pay lines need review because a pay type, rate, or calculation rule was missing when payroll was generated.")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-
-            if payLineItems.isEmpty {
-                Text("No payroll line items have been generated for this job yet. Finish a service stop to generate payroll.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .jobActualCard()
-    }
-
-    private var finishedStopsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Finished Service Stops", systemImage: "checkmark.seal")
-                    .font(.headline.weight(.semibold))
-
-                Spacer()
-
-                Text("\(finishedStops.count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
-            }
-
-            if finishedStops.isEmpty {
-                JobActualEmptyMiniState(
-                    title: "No finished stops yet.",
-                    message: "Completed service stops will appear here with their payroll results.",
-                    systemImage: "checkmark.seal"
-                )
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(finishedStops) { stop in
-                        NavigationLink(
-                            value: Route.serviceStop(
-                                serviceStop: stop,
-                                dataService: dataService
-                            )
-                        ) {
-                            JobActualServiceStopRow(
-                                serviceStop: stop,
-                                payLineItems: payLineItemsByStopId[stop.id] ?? []
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .jobActualCard()
-    }
-
-    private var unfinishedStopsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Open Service Stops", systemImage: "circle")
-                    .font(.headline.weight(.semibold))
-
-                Spacer()
-
-                Text("\(unfinishedStops.count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
-            }
-
-            if unfinishedStops.isEmpty {
-                JobActualEmptyMiniState(
-                    title: "No open stops.",
-                    message: "All scheduled stops for this job are finished or no stops have been scheduled.",
-                    systemImage: "circle"
-                )
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(unfinishedStops) { stop in
-                        NavigationLink(
-                            value: Route.serviceStop(
-                                serviceStop: stop,
-                                dataService: dataService
-                            )
-                        ) {
-                            JobActualServiceStopRow(
-                                serviceStop: stop,
-                                payLineItems: payLineItemsByStopId[stop.id] ?? []
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .jobActualCard()
-    }
-
-    private var payLineItemsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Payroll Line Items", systemImage: "list.bullet.rectangle")
-                    .font(.headline.weight(.semibold))
-
-                Spacer()
-
-                Text("\(payLineItems.count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
-            }
-
-            if payLineItems.isEmpty {
-                JobActualEmptyMiniState(
-                    title: "No pay lines yet.",
-                    message: "Pay lines are created when completed service stop work is processed by payroll.",
-                    systemImage: "list.bullet.rectangle"
-                )
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(payLineItems) { lineItem in
-                        JobActualPayLineRow(lineItem: lineItem)
-                    }
-                }
-            }
-        }
-        .jobActualCard()
-    }
 }
 
 // MARK: - Rows
@@ -349,51 +248,30 @@ struct JobActualServiceStopRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: serviceStop.operationStatus == .finished ? "checkmark.seal" : "circle")
-                .font(.body.weight(.semibold))
-                .frame(width: 34, height: 34)
-                .background(.thinMaterial, in: Circle())
-
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(serviceStop.internalId)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-
-                    Spacer()
-
-                    Text(JobActualMoneyFormatter.money(payTotalCents))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                }
-
-                Text(serviceStop.type.isEmpty ? "Service Stop" : serviceStop.type)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text("\(JobActualDateFormatter.shortDateTime(serviceStop.serviceDate)) • \(serviceStop.tech.isEmpty ? "Unassigned" : serviceStop.tech)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-
-                HStack(spacing: 8) {
-                    Label(serviceStop.operationStatus.rawValue, systemImage: "flag")
-                    Label("\(serviceStop.duration) min", systemImage: "clock")
-                    Label("\(payLineItems.count) pay lines", systemImage: "list.bullet")
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(serviceStop.internalId.isEmpty ? (serviceStop.type.isEmpty ? "Service Stop" : serviceStop.type) : serviceStop.internalId)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 6)
+                Text(serviceStop.operationStatus.rawValue)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(serviceStop.operationStatus == .finished ? Color.poolGreen : Color.poolBlue)
             }
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .padding(.top, 7)
+            if !serviceStop.type.isEmpty && !serviceStop.internalId.isEmpty {
+                Text(serviceStop.type).font(.caption).foregroundStyle(.secondary)
+            }
+            Text("\(JobActualDateFormatter.shortDateTime(serviceStop.serviceDate)) · \(serviceStop.tech.isEmpty ? "Unassigned" : serviceStop.tech)")
+                .font(.caption).foregroundStyle(.secondary)
+            if !payLineItems.isEmpty {
+                Text(JobActualMoneyFormatter.money(payTotalCents))
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            }
         }
-        .padding(12)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
     }
+
 }
 
 struct JobActualPayLineRow: View {
@@ -448,7 +326,7 @@ struct JobActualPayLineRow: View {
             }
         }
         .padding(12)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var sourceText: String {
@@ -508,7 +386,7 @@ struct JobActualSummaryChip: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -553,7 +431,7 @@ struct JobActualEmptyMiniState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -621,6 +499,6 @@ private extension View {
     func jobActualCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

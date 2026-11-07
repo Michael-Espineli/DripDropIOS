@@ -118,7 +118,7 @@ struct AddJobTemplateTaskSheet: View {
                     .modifier(PlainTextFieldModifier())
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Task Type")
@@ -134,7 +134,7 @@ struct AddJobTemplateTaskSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Description")
@@ -150,12 +150,12 @@ struct AddJobTemplateTaskSheet: View {
                 .modifier(PlainTextFieldModifier())
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Toggle("Requires Customer Approval", isOn: $customerApproval)
                 .font(.subheadline.weight(.semibold))
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .jobTemplateTaskSheetCard()
     }
@@ -179,7 +179,7 @@ struct AddJobTemplateTaskSheet: View {
                     .foregroundStyle(.secondary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Estimated Time")
@@ -189,7 +189,7 @@ struct AddJobTemplateTaskSheet: View {
                 Stepper("\(estimatedTime) min", value: $estimatedTime, in: 5...720, step: 5)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .jobTemplateTaskSheetCard()
     }
@@ -205,13 +205,13 @@ struct AddJobTemplateTaskSheet: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 } else {
                     Label("Save Task", systemImage: "checkmark.circle")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
             .buttonStyle(.plain)
@@ -224,7 +224,7 @@ struct AddJobTemplateTaskSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -261,7 +261,7 @@ struct AddJobTemplateTaskSheet: View {
             onSaved()
             dismiss()
         } catch {
-            alertMessage = "Could not save task. \(error.localizedDescription)"
+            alertMessage = "Could not save task. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -271,6 +271,6 @@ private extension View {
     func jobTemplateTaskSheetCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

@@ -62,7 +62,7 @@ final class CompanyServiceStopTypePickerViewModel: ObservableObject {
                 companyId: companyId
             )
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 

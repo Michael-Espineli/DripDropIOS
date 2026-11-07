@@ -1146,7 +1146,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateJobTaskWorkerType(companyId:String,jobId:String,taskId:String,workerType:WorkerTypeEnum) throws
     func updateJobTaskWorkerName(companyId:String,jobId:String,taskId:String,workerName:String) throws
     func updateJobTaskWorkerId(companyId:String,jobId:String,taskId:String,workerId:String) throws
-    func updateJobTaskStatus(companyId:String,jobId:String,taskId:String,status:JobTaskStatus) throws
+    func updateJobTaskStatus(companyId:String,jobId:String,taskId:String,status:JobTaskStatus) async throws
     func updateJobTaskServiceStopId(companyId:String,jobId:String,taskId:String,serviceStopId:IdInfo) throws
     func updateJobTaskLaborContractId(companyId:String,jobId:String,taskId:String,laborContractId:String) throws
     
@@ -1165,6 +1165,7 @@ protocol ProductionDataServiceProtocol: Equatable {
     func updateVehicalMilage(companyId:String,vehicalId:String,miles:Double) async throws
 
     func updateActiveRouteDate(companyId:String,activeRouteId:String,date:Date)
+    func startOrResumeActiveRoute(companyId: String, activeRouteId: String, startTime: Date) async throws -> ActiveRoute
     func updateActiveRouteStartTime(companyId:String,activeRouteId:String,startTime:Date)
     func updateActiveRouteEndTime(companyId:String,activeRouteId:String,endTime:Date)
     func updateActiveRouteDuration(companyId:String,activeRouteId:String,duration:Int)

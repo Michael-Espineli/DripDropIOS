@@ -223,7 +223,7 @@ final class TechnicianPayrollInfoViewModel: ObservableObject {
             workTypes = try await workTypesTask
 
         } catch {
-            alertMessage = "Could not load technician payroll info. \(error.localizedDescription)"
+            alertMessage = "Could not load technician payroll info. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -272,7 +272,15 @@ struct TechnicianPayrollInfoView: View {
         )
     }
 
+    @EnvironmentObject private var masterDataManager: MasterDataManager
     var body: some View {
+        Group {
+            if viewModel.companyUser.userId == masterDataManager.user?.id {
+                TechnicianPaysheetView(companyId: viewModel.companyId).id(viewModel.companyId + viewModel.companyUser.userId)
+            } else { managementBody }
+        }
+    }
+    private var managementBody: some View {
         ZStack {
             Color.listColor.ignoresSafeArea()
 
@@ -1127,11 +1135,15 @@ private struct TechnicianPayRequest: Decodable, Identifiable {
     var reason: String
     var decisionReason: String?
     var effectiveStartDate: Date?
+    var createdAt: Date?
 }
 struct TechnicianPayRequestSection: View {
     let companyId: String
     let workTypes: [CompanyWorkType]
     var initialRequestType = "rateChange"
+    var ownPayChoices: [OwnPaysheet.PayLine] = []
+    var initialPayLineItemId = ""
+    var initialReason = ""
     @EnvironmentObject private var masterDataManager: MasterDataManager
     @State private var requests: [TechnicianPayRequest] = []
     @State private var type = "rateChange"
@@ -1144,26 +1156,39 @@ struct TechnicianPayRequestSection: View {
     @State private var isSaving = false
     @State private var message = ""
     @State private var showForm = false
+    private var personalPayTypes: [OwnPaysheet.PayLine] {
+        var seen = Set(workTypes.map(\.id))
+        return ownPayChoices.filter { !$0.payTypeId.isEmpty && seen.insert($0.payTypeId).inserted }
+    }
+    private var requestCents: Int? {
+        guard let value = Double(amount), value.isFinite, value >= 0, value < Double(Int.max) / 100 else { return nil }
+        return Int((value * 100).rounded())
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack { Text("Pay Requests").font(.headline); Spacer(); Button("Refresh") { Task { await load() } }.font(.caption).disabled(isSaving) }
             Button(showForm ? "Hide Request Form" : "Request a Pay Change, Correction, or Payout") { showForm.toggle() }
             if showForm {
-                Picker("Request", selection: $type) { Text("Future Rate").tag("rateChange"); Text("Pay Correction").tag("payCorrection"); Text("Payout").tag("payout") }.pickerStyle(.menu)
+                Picker("Request", selection: $type) { Text("Future Rate").tag("rateChange"); Text("Pay Correction").tag("payCorrection"); Text("Payout / missing pay").tag("payout") }.pickerStyle(.menu)
                 if type == "rateChange" {
-                    Picker("Pay Item", selection: $payTypeId) { Text("General Hourly").tag(""); ForEach(workTypes) { item in Text(item.name).tag(item.id) } }
+                    Picker("Pay Item", selection: $payTypeId) { Text("General Hourly").tag(""); ForEach(workTypes) { item in Text(item.name).tag(item.id) }; ForEach(personalPayTypes, id: \.payTypeId) { item in Text(item.payTypeName).tag(item.payTypeId) } }
                     Picker("Pay Basis", selection: $basis) { Text("Per Task").tag("serviceStopTask"); Text("Per Visit").tag("serviceStop"); Text("Hourly").tag("technicianHourly") }
                     DatePicker("Effective Date", selection: $effectiveDate, in: Date()..., displayedComponents: .date)
                 }
-                if type == "payCorrection" { TextField("Earned-pay item ID", text: $payLineItemId).textFieldStyle(.roundedBorder) }
+                if type == "payCorrection" {
+                    Picker("Completed work", selection: $payLineItemId) {
+                        Text("Choose work to review").tag("")
+                        ForEach(ownPayChoices) { item in Text(item.title + " · " + OwnPaysheet.date(item.completedDate)).tag(item.id) }
+                    }
+                }
                 TextField(type == "payCorrection" ? "Correct total amount" : "Requested amount", text: $amount).keyboardType(.decimalPad).textFieldStyle(.roundedBorder)
                 TextField("Reason", text: $reason, axis: .vertical).textFieldStyle(.roundedBorder)
-                Button(isSaving ? "Submitting…" : "Submit Request") { Task { await submit() } }.disabled(isSaving || reason.trimmingCharacters(in: .whitespaces).isEmpty || Double(amount) == nil)
+                Button(isSaving ? "Submitting…" : "Submit Request") { Task { await submit() } }.disabled(isSaving || reason.trimmingCharacters(in: .whitespaces).isEmpty || requestCents == nil || (type == "payCorrection" && payLineItemId.isEmpty))
             }
             if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
             ForEach(requests) { request in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text((request.payTypeName?.isEmpty == false ? request.payTypeName! : request.type) + " · " + request.status).font(.subheadline.bold())
+                    Text((request.payTypeName?.isEmpty == false ? request.payTypeName! : (request.type == "payout" ? "Payout / missing pay" : request.type == "payCorrection" ? "Pay correction" : "Future rate")) + " · " + request.status).font(.subheadline.bold())
                     Text(Double(request.status == "Counteroffered" ? request.counterAmountCents ?? request.amountCents : request.amountCents) / 100, format: .currency(code: "USD"))
                     Text(request.reason).font(.caption)
                     if let decision = request.decisionReason, !decision.isEmpty { Text(decision).font(.caption) }
@@ -1174,31 +1199,372 @@ struct TechnicianPayRequestSection: View {
                 }.padding(10).frame(maxWidth: .infinity, alignment: .leading).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
             }
         }.padding(14).background(.background, in: RoundedRectangle(cornerRadius: 14))
-        .task { type = initialRequestType; if initialRequestType == "payout" { showForm = true }; await load() }
+        .task { type = initialRequestType; payLineItemId = initialPayLineItemId; reason = initialReason; if initialRequestType == "payout" || !initialPayLineItemId.isEmpty { showForm = true }; await load() }
         .onChange(of: payTypeId) { _, value in
             if value.isEmpty { basis = "technicianHourly" }
             else if let item = workTypes.first(where: { $0.id == value }) { basis = item.defaultRateType == .hourly ? "technicianHourly" : (item.category == .route || item.category == .estimate ? "serviceStop" : "serviceStopTask") }
+            else if let item = personalPayTypes.first(where: { $0.payTypeId == value }) { basis = item.rateType == "hourly" ? "technicianHourly" : item.payBasis }
         }
     }
     @MainActor private func load() async {
         guard let uid = masterDataManager.user?.id else { return }
         do {
             let snapshot = try await Firestore.firestore().collection("companies").document(companyId).collection("payChangeRequests").whereField("technicianId", isEqualTo: uid).getDocuments()
-            requests = snapshot.documents.compactMap { try? $0.data(as: TechnicianPayRequest.self) }
-        } catch { message = error.localizedDescription }
+            requests = try snapshot.documents.map { try $0.data(as: TechnicianPayRequest.self) }.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        } catch { message = error.userFacingMessage }
     }
     @MainActor private func submit() async {
+        guard let requestedCents = requestCents else { return }
         isSaving = true; defer { isSaving = false }
         do {
             let selectedBasis = payTypeId.isEmpty ? "technicianHourly" : basis
-            let rateType = selectedBasis == "technicianHourly" ? "hourly" : workTypes.first(where: { $0.id == payTypeId })?.defaultRateType.rawValue ?? (basis == "serviceStop" ? "flatPerStop" : "flatPerTask")
-            _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianPayRequest", payload: ["companyId":companyId,"action":"create","clientRequestId":UUID().uuidString,"type":type,"payTypeId":payTypeId,"payBasis":selectedBasis,"rateType":rateType,"amountCents":Int(((Double(amount) ?? 0) * 100).rounded()),"effectiveStartMillis":effectiveDate.timeIntervalSince1970 * 1000,"reason":reason,"payLineItemId":payLineItemId])
+            let rateType = selectedBasis == "technicianHourly" ? "hourly" : workTypes.first(where: { $0.id == payTypeId })?.defaultRateType.rawValue ?? personalPayTypes.first(where: { $0.payTypeId == payTypeId && $0.rateType != "manual" })?.rateType ?? (basis == "serviceStop" ? "flatPerStop" : "flatPerTask")
+            _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianPayRequest", payload: ["companyId":companyId,"action":"create","clientRequestId":UUID().uuidString,"type":type,"payTypeId":payTypeId,"payBasis":selectedBasis,"rateType":rateType,"amountCents":requestedCents,"effectiveStartMillis":effectiveDate.timeIntervalSince1970 * 1000,"reason":reason,"payLineItemId":payLineItemId])
             message = "Request submitted."; reason = ""; amount = ""; showForm = false; await load()
-        } catch { message = error.localizedDescription }
+        } catch { message = error.userFacingMessage }
     }
     @MainActor private func decide(_ request: TechnicianPayRequest, action: String) async {
         isSaving = true; defer { isSaving = false }
         do { _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianPayRequest", payload: ["companyId":companyId,"requestId":request.id,"action":action]); await load() }
-        catch { message = error.localizedDescription }
+        catch { message = error.userFacingMessage }
     }
 }
+
+// Personal paysheet contract. Money and coverage are resolved once on the server
+// for the auth UID; this screen never reads company-wide payroll or mutates pay.
+struct OwnPaysheet: Decodable {
+    struct Totals: Decodable {
+        let earnedCents, recordedPaidCents, remainingCents, olderUnpaidCents: Int
+        let olderReviewCount, reviewCount, completedStops, completedTasks: Int
+    }
+    struct Earning: Decodable, Identifiable { let id, label: String; let amountCents: Int }
+    struct PayLine: Decodable, Identifiable {
+        let id, technicianId, title, customerName, serviceLocationAddress: String
+        let completedDate: Double?
+        let totalAmountCents: Int
+        let rateDescription, statusLabel: String
+        let needsReview, isPaid: Bool
+        let paidAt: Double?
+        let paymentReference, payTypeId, payTypeName, rateType, payBasis: String
+    }
+    struct Task: Decodable, Identifiable { let id, title, coverageLabel: String; let lines: [PayLine] }
+    struct Stop: Decodable, Identifiable {
+        let id, title, subtitle, coverageLabel: String
+        let amountCents: Int
+        let lines: [PayLine]; let tasks: [Task]
+    }
+    struct Route: Decodable, Identifiable {
+        let id, name: String; let totalCents: Int; let stops: [Stop]; let lines: [PayLine]
+    }
+    struct Day: Decodable, Identifiable { let id: String; let routes: [Route] }
+    struct Statement: Decodable, Identifiable {
+        let id, reference, status: String
+        let startDate, endDate: Double?
+        let subtotalCents, adjustmentCents, totalCents: Int
+        let paidAt: Double?
+        let paymentReference, notes, paidNotes: String
+    }
+    let version: Int
+    let companyName, technicianName, timeZone, startDateKey, endDateKey: String
+    let summary: Totals
+    let earnings: [Earning]
+    let lineItems, olderItems: [PayLine]
+    let days: [Day]
+    let statements: [Statement]
+    let statement: Statement?
+    let missingCount: Int
+    let detailWarning: String?
+    var periodLabel: String { "\(Self.day(startDateKey)) – \(Self.day(endDateKey))" }
+    static func day(_ key: String) -> String {
+        let parser = DateFormatter(); parser.locale = Locale(identifier: "en_US_POSIX"); parser.dateFormat = "yyyy-MM-dd"; parser.timeZone = TimeZone(secondsFromGMT: 0)
+        guard let value = parser.date(from: key) else { return key }
+        let output = DateFormatter(); output.dateStyle = .medium; output.timeZone = TimeZone(secondsFromGMT: 0)
+        return output.string(from: value)
+    }
+    static func date(_ millis: Double?) -> String {
+        guard let millis else { return "Date not recorded" }
+        return Date(timeIntervalSince1970: millis / 1000).formatted(date: .abbreviated, time: .omitted)
+    }
+    static func key(_ date: Date) -> String {
+        let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+}
+
+@MainActor final class OwnPaysheetModel: ObservableObject {
+    @Published var sheet: OwnPaysheet?
+    @Published var loading = true
+    @Published var error: String?
+    private var generation = 0
+    func load(companyId: String, summary: Bool = false, start: String? = nil, end: String? = nil, statementId: String? = nil) async {
+        generation += 1; let request = generation
+        loading = true; error = nil; sheet = nil
+        do {
+            var payload: [String: Any] = ["companyId": companyId, "timeZone": TimeZone.current.identifier]
+            if summary { payload["mode"] = "summary" }
+            if let start { payload["startDateKey"] = start }
+            if let end { payload["endDateKey"] = end }
+            if let statementId { payload["statementId"] = statementId }
+            let result = try await FunctionsManager.shared.technicianWorkflow("getTechnicianPaysheet", payload: payload)
+            let decoded = try JSONDecoder().decode(OwnPaysheet.self, from: JSONSerialization.data(withJSONObject: result))
+            guard decoded.version == 1 else { throw FireBaseRead.unableToRead }
+            guard generation == request, !Task.isCancelled else { return }
+            sheet = decoded; loading = false
+        } catch {
+            guard generation == request, !Task.isCancelled else { return }
+            self.error = error.userFacingMessage; loading = false
+        }
+    }
+}
+
+struct OwnPayTotalsView: View {
+    let summary: OwnPaysheet.Totals?
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 8) { metrics }
+            VStack(alignment: .leading, spacing: 12) { metrics }
+        }
+    }
+    @ViewBuilder private var metrics: some View {
+        metric("Earned", value: summary?.earnedCents)
+        metric("Recorded paid", value: summary?.recordedPaidCents)
+        metric("Still owed", value: summary?.remainingCents)
+    }
+    private func metric(_ title: String, value: Int?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(value.map { ownPayMoney($0) } ?? "—").font(.headline).fixedSize(horizontal: true, vertical: false)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct OwnPayLineView: View {
+    let line: OwnPaysheet.PayLine
+    var hideTitle = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top) {
+                if hideTitle { Text(line.rateDescription).font(.caption).foregroundStyle(.secondary) }
+                else { Text(line.title).font(.subheadline.weight(.semibold)) }
+                Spacer(minLength: 8)
+                Text(line.needsReview ? "Pending" : ownPayMoney(line.totalAmountCents)).font(.subheadline.bold()).fixedSize(horizontal: true, vertical: false)
+            }
+            if !hideTitle { Text(line.rateDescription).font(.caption).foregroundStyle(.secondary) }
+            if !line.isPaid { Text(line.statusLabel).font(.caption).foregroundStyle(line.needsReview ? .orange : .secondary) }
+            if line.isPaid {
+                Text("Recorded paid \(OwnPaysheet.date(line.paidAt))\(line.paymentReference.isEmpty ? "" : " · " + line.paymentReference)").font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding(.vertical, 8)
+    }
+}
+struct OwnPayIssue: Identifiable { let id = UUID(); let title: String; let lineId: String }
+
+struct OwnPaysheetSummaryView: View {
+    let sheet: OwnPaysheet
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            WorkspaceSectionHeading(title: sheet.statement?.reference ?? "Earnings summary", systemImage: "doc.text")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(sheet.technicianName).font(.headline)
+                Text(sheet.companyName).font(.subheadline).foregroundStyle(.secondary)
+                Text(sheet.periodLabel).font(.subheadline.weight(.semibold))
+                Text(sheet.statement == nil ? "Live paysheet · work completed in this period" : "Saved statement").font(.caption).foregroundStyle(.secondary)
+            }
+            if let statement = sheet.statement {
+                totalRow("Work earnings", statement.subtotalCents)
+                totalRow("Statement adjustments", statement.adjustmentCents)
+                Divider(); totalRow("Total pay", statement.totalCents)
+                Text(statement.paidAt != nil || statement.status == "paid" ? "Recorded paid \(OwnPaysheet.date(statement.paidAt))" : "Approved · unpaid").font(.subheadline)
+                if !statement.paymentReference.isEmpty { Text(statement.paymentReference).font(.caption) }
+                if !statement.notes.isEmpty { Text(statement.notes).font(.caption) }
+                if !statement.paidNotes.isEmpty { Text(statement.paidNotes).font(.caption) }
+            } else {
+                OwnPayTotalsView(summary: sheet.summary)
+                ForEach(sheet.earnings) { earning in totalRow(earning.label, earning.amountCents) }
+                Divider(); totalRow("Total earnings", sheet.summary.earnedCents)
+                Text("Work uses completion dates; statement adjustments use the statement’s period-ending date. Amounts awaiting review are excluded.").font(.caption).foregroundStyle(.secondary)
+                OwnOlderPayNotice(sheet: sheet)
+            }
+            if sheet.summary.reviewCount > 0 {
+                Text("\(sheet.summary.reviewCount) \(sheet.summary.reviewCount == 1 ? "item needs" : "items need") pay review. The total may be incomplete.").font(.subheadline).foregroundStyle(.orange)
+            }
+            if let warning = sheet.detailWarning, !warning.isEmpty { Text(warning).font(.subheadline).foregroundStyle(.orange) }
+            if sheet.missingCount > 0 {
+                Text("\(sheet.missingCount) saved pay items could not be found. This work breakdown is incomplete; the saved statement total is shown above.").font(.subheadline).foregroundStyle(.orange)
+            }
+        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 8))
+    }
+    private func totalRow(_ label: String, _ value: Int) -> some View {
+        HStack(alignment: .firstTextBaseline) { Text(label); Spacer(minLength: 12); Text(ownPayMoney(value)).fontWeight(.semibold).fixedSize(horizontal: true, vertical: false) }.font(.subheadline)
+    }
+}
+struct OwnOlderPayNotice: View {
+    let sheet: OwnPaysheet
+    var body: some View {
+        if sheet.summary.olderUnpaidCents != 0 || sheet.summary.olderReviewCount > 0 {
+            Text("Before \(OwnPaysheet.day(sheet.startDateKey)): \(ownPayMoney(sheet.summary.olderUnpaidCents)) still owed\(sheet.summary.olderReviewCount > 0 ? " · \(sheet.summary.olderReviewCount) pay items need review" : ""). View older unpaid work in History.")
+                .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+struct OwnPaysheetWorkView: View {
+    let sheet: OwnPaysheet
+    var report: (OwnPayIssue) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            WorkspaceSectionHeading(title: "Verify your work", systemImage: "checklist")
+            Text("Day → route → stop → tasks. Included work stays visible without a separate earnings line.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if sheet.days.isEmpty { Text("No completed work or earnings found for this period.").font(.subheadline).foregroundStyle(.secondary) }
+            ForEach(sheet.days) { day in
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(OwnPaysheet.day(day.id)).font(.headline)
+                    ForEach(day.routes) { route in routeView(route, day: day.id) }
+                }
+            }
+        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 8))
+    }
+    private func routeView(_ route: OwnPaysheet.Route, day: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) { Text(route.name).font(.subheadline.bold()); Spacer(); Text(ownPayMoney(route.totalCents)).font(.subheadline.bold()) }
+            ForEach(route.stops) { stop in stopView(stop, day: day) }
+            ForEach(route.lines) { line in
+                DisclosureGroup {
+                    OwnPayLineView(line: line)
+                    issueButton(title: line.title + " · " + OwnPaysheet.day(day), lineId: line.id)
+                } label: { HStack { Text(line.title); Spacer(); Text(line.needsReview ? "Pending" : ownPayMoney(line.totalAmountCents)) }.font(.subheadline) }.padding(.vertical, 8)
+            }
+        }.padding(12).background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+    }
+    private func stopView(_ stop: OwnPaysheet.Stop, day: String) -> some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(stop.lines) { OwnPayLineView(line: $0) }
+                if !stop.tasks.isEmpty { Text("Completed tasks").font(.caption).foregroundStyle(.secondary) }
+                ForEach(stop.tasks) { task in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(task.title).font(.subheadline.weight(.semibold))
+                        if task.lines.isEmpty { coverage(task.coverageLabel) }
+                        ForEach(task.lines) { OwnPayLineView(line: $0, hideTitle: $0.title == task.title) }
+                        if task.coverageLabel == "Pay needs review" { issueButton(title: stop.title + " · " + task.title + " · " + OwnPaysheet.day(day), lineId: task.lines.first?.id ?? "") }
+                    }.padding(.leading, 10).padding(.vertical, 4)
+                }
+                if !stop.tasks.contains(where: { $0.coverageLabel == "Pay needs review" }) { issueButton(title: stop.title + " · " + OwnPaysheet.day(day), lineId: stop.lines.first?.id ?? "") }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(stop.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                if !stop.subtitle.isEmpty { Text(stop.subtitle).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                HStack(alignment: .firstTextBaseline) { coverage(stop.coverageLabel); Spacer(); if stop.amountCents != 0 { Text(ownPayMoney(stop.amountCents)).font(.subheadline.bold()).foregroundStyle(.primary) } }
+            }.padding(.vertical, 8)
+        }
+    }
+    private func coverage(_ label: String) -> some View { Text(label).font(.caption.weight(.semibold)).foregroundStyle(label == "Pay needs review" ? .orange : .secondary) }
+    private func issueButton(title: String, lineId: String) -> some View {
+        Button("Report a pay issue") { report(OwnPayIssue(title: title, lineId: lineId)) }.buttonStyle(WorkspaceOutlinedButtonStyle()).padding(.top, 4)
+    }
+}
+
+struct TechnicianPaysheetView: View {
+    let companyId: String
+    @StateObject private var model = OwnPaysheetModel()
+    @State private var section = "Paysheet"
+    @State private var start = Calendar.current.date(byAdding: .day, value: -29, to: Date()) ?? Date()
+    @State private var end = Date()
+    @State private var selectedPeriod = false
+    @State private var issue: OwnPayIssue?
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Picker("My Pay sections", selection: $section) { Text("Paysheet").tag("Paysheet"); Text("History").tag("History"); Text("Requests").tag("Requests") }.pickerStyle(.segmented)
+                if section != "Requests" { periodPicker }
+                if model.loading { ProgressView("Loading your paysheet…").frame(maxWidth: .infinity).padding() }
+                if let error = model.error {
+                    VStack(alignment: .leading, spacing: 12) { Text("Your pay is unavailable. " + error).foregroundStyle(.red); Button("Try Again") { Task { await load() } }.buttonStyle(WorkspaceOutlinedButtonStyle()) }.padding()
+                }
+                if let sheet = model.sheet {
+                    if section == "Paysheet" {
+                        OwnPaysheetSummaryView(sheet: sheet)
+                        OwnPaysheetWorkView(sheet: sheet) { issue = $0 }
+                    } else if section == "History" { history(sheet) }
+                }
+                if section == "Requests" {
+                    TechnicianPayRequestSection(companyId: companyId, workTypes: [], initialRequestType: "payout", ownPayChoices: (model.sheet?.lineItems ?? []) + (model.sheet?.olderItems ?? []))
+                }
+            }.padding(14)
+        }.background(Color.listColor).navigationTitle("Paysheet").navigationBarTitleDisplayMode(.inline)
+        .task(id: companyId) { await load() }.refreshable { await load() }
+        .sheet(item: $issue) { value in
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(value.title).font(.headline)
+                        TechnicianPayRequestSection(companyId: companyId, workTypes: [], initialRequestType: value.lineId.isEmpty ? "payout" : "payCorrection", ownPayChoices: (model.sheet?.lineItems ?? []) + (model.sheet?.olderItems ?? []), initialPayLineItemId: value.lineId, initialReason: "Please review pay for " + value.title + ". ")
+                    }.padding()
+                }.navigationTitle("Pay issue").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { issue = nil } } }
+            }
+        }
+    }
+    private var periodPicker: some View {
+        DisclosureGroup {
+            DatePicker("From", selection: $start, in: ...Date(), displayedComponents: .date)
+            DatePicker("Through", selection: $end, in: ...Date(), displayedComponents: .date)
+            Text("Choose up to 93 days. Use earlier dates to inspect previous work.").font(.caption).foregroundStyle(.secondary)
+            Button("View period") { selectedPeriod = true; section = "Paysheet"; Task { await load() } }.buttonStyle(WorkspaceOutlinedButtonStyle()).disabled(model.loading)
+            Button("Last 30 days") { selectedPeriod = false; Task { await load() } }.buttonStyle(WorkspaceOutlinedButtonStyle()).disabled(model.loading)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) { Text(selectedPeriod ? "Selected period" : "Last 30 days").font(.subheadline.bold()); if let sheet = model.sheet { Text(sheet.periodLabel).font(.caption).foregroundStyle(.secondary) } }
+        }.padding(14).background(.background, in: RoundedRectangle(cornerRadius: 8))
+    }
+    private func history(_ sheet: OwnPaysheet) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            WorkspaceSectionHeading(title: "Statements & history", systemImage: "clock.arrow.circlepath")
+            if sheet.statements.isEmpty { Text("No finalized statements yet. Your current earnings are available on Paysheet.").font(.subheadline).foregroundStyle(.secondary) }
+            ForEach(sheet.statements) { statement in
+                NavigationLink {
+                    OwnPayStatementView(companyId: companyId, statementId: statement.id)
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack { Text(statement.reference).fontWeight(.semibold); Spacer(); Text(ownPayMoney(statement.totalCents)).fontWeight(.bold) }
+                        Text("\(OwnPaysheet.date(statement.startDate)) – \(OwnPaysheet.date(statement.endDate))").font(.caption)
+                        Text(statement.paidAt != nil || statement.status == "paid" ? "Recorded paid" : "Approved · unpaid").font(.caption)
+                    }.padding(.vertical, 10)
+                }.buttonStyle(.plain)
+            }
+            if !sheet.olderItems.isEmpty {
+                Divider(); Text("Older unpaid work").font(.headline)
+                Text("Completed before \(OwnPaysheet.day(sheet.startDateKey)) · separate from this period’s totals").font(.caption).foregroundStyle(.secondary)
+                ForEach(sheet.olderItems) { line in
+                    VStack(alignment: .leading) {
+                        Text("\(OwnPaysheet.date(line.completedDate)) · \(line.customerName)").font(.caption).foregroundStyle(.secondary)
+                        OwnPayLineView(line: line)
+                        Button("Report a pay issue") { issue = OwnPayIssue(title: line.title, lineId: line.id) }.buttonStyle(WorkspaceOutlinedButtonStyle())
+                    }
+                }
+            }
+        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 8))
+    }
+    @MainActor private func load() async {
+        await model.load(companyId: companyId, start: selectedPeriod ? OwnPaysheet.key(start) : nil, end: selectedPeriod ? OwnPaysheet.key(end) : nil)
+    }
+}
+struct OwnPayStatementView: View {
+    let companyId, statementId: String
+    @StateObject private var model = OwnPaysheetModel()
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                if model.loading { ProgressView("Loading statement…") }
+                if let error = model.error { Text(error).foregroundStyle(.red); Button("Try Again") { Task { await load() } }.buttonStyle(WorkspaceOutlinedButtonStyle()) }
+                if let sheet = model.sheet { OwnPaysheetSummaryView(sheet: sheet); OwnPaysheetWorkView(sheet: sheet) { issue in selectedIssue = issue } }
+            }.padding(14)
+        }.background(Color.listColor).navigationTitle("Statement").task(id: statementId) { await load() }.refreshable { await load() }
+        .sheet(item: $selectedIssue) { issue in
+            NavigationStack { ScrollView { TechnicianPayRequestSection(companyId: companyId, workTypes: [], initialRequestType: issue.lineId.isEmpty ? "payout" : "payCorrection", ownPayChoices: (model.sheet?.lineItems ?? []) + (model.sheet?.olderItems ?? []), initialPayLineItemId: issue.lineId, initialReason: "Please review " + issue.title + ". ").padding() }.navigationTitle("Pay issue").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { selectedIssue = nil } } } }
+        }
+    }
+    @State private var selectedIssue: OwnPayIssue?
+    @MainActor private func load() async { await model.load(companyId: companyId, statementId: statementId) }
+}
+
+private func ownPayMoney(_ cents: Int) -> String { (Double(cents) / 100).formatted(.currency(code: "USD")) }

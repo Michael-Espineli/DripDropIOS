@@ -118,17 +118,23 @@ struct ShoppingListItemCardView: View {
     let dataService: any ProductionDataServiceProtocol
     let shoppingListItem: ShoppingListItem
     let compact: Bool
+    private let onOpenDetails: (() -> Void)?
+    private let onChangeStatus: (() -> Void)?
 
     @StateObject private var viewModel: ShoppingListItemCardViewModel
 
     init(
         dataService: any ProductionDataServiceProtocol,
         shoppingListItem: ShoppingListItem,
-        compact: Bool = false
+        compact: Bool = false,
+        onOpenDetails: (() -> Void)? = nil,
+        onChangeStatus: (() -> Void)? = nil
     ) {
         self.dataService = dataService
         self.shoppingListItem = shoppingListItem
         self.compact = compact
+        self.onOpenDetails = onOpenDetails
+        self.onChangeStatus = onChangeStatus
         _viewModel = StateObject(
             wrappedValue: ShoppingListItemCardViewModel(dataService: dataService)
         )
@@ -136,21 +142,25 @@ struct ShoppingListItemCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 7 : 12) {
-            topRow
-
-            if !shoppingListItem.description.isEmpty {
-                Text(shoppingListItem.description)
-                    .font(compact ? .caption2 : .caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(compact ? 1 : 2)
+            if let onOpenDetails {
+                Button(action: onOpenDetails) {
+                    cardContent
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens item details")
+            } else {
+                cardContent
             }
 
-            contextRows
-
-            moneyRows
-
-            if !compact {
-                footerBadges
+            if let onChangeStatus {
+                Button(action: onChangeStatus) {
+                    Label("Change Status", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
+                .accessibilityLabel("Change status for \(displayName)")
             }
         }
         .padding(compact ? 10 : 12)
@@ -173,6 +183,26 @@ struct ShoppingListItemCardView: View {
 // MARK: - Sections
 
 extension ShoppingListItemCardView {
+
+    private var cardContent: some View {
+        VStack(alignment: .leading, spacing: compact ? 7 : 12) {
+            topRow
+
+            if !shoppingListItem.description.isEmpty {
+                Text(shoppingListItem.description)
+                    .font(compact ? .caption2 : .caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(compact ? 1 : 2)
+            }
+
+            contextRows
+            moneyRows
+
+            if !compact {
+                footerBadges
+            }
+        }
+    }
 
     private var topRow: some View {
         HStack(alignment: .top, spacing: compact ? 9 : 12) {

@@ -50,7 +50,7 @@ enum DripDropPicker {
     struct CameraErrorType {
         let error: DripDropPicker.PickerError
         var message: String {
-            error.localizedDescription
+            error.userFacingMessage
         }
         let button = Button("OK", role: .cancel) {}
     }

@@ -31,8 +31,7 @@ struct JobScheduleWorkCenterView: View {
     private var acceptedOffersReadyToSchedule: [WorkOffer] {
         workOffers
             .filter {
-                $0.status == .accepted &&
-                $0.serviceStopId.isEmpty
+                $0.isReadyToSchedule
             }
             .sorted { $0.acceptedAt ?? $0.createdAt > $1.acceptedAt ?? $1.createdAt }
     }
@@ -262,7 +261,7 @@ struct JobScheduleWorkCenterView: View {
                                             .font(.caption.weight(.semibold))
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 9)
-                                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                                     }
                                     .buttonStyle(.plain)
 
@@ -273,7 +272,7 @@ struct JobScheduleWorkCenterView: View {
                                             .font(.caption.weight(.semibold))
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 9)
-                                            .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                            .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -435,7 +434,7 @@ struct JobScheduleOfferRow: View {
                 .padding(.top, 7)
         }
         .padding(12)
-        .background(backgroundOpacity, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(backgroundOpacity, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .contentShape(Rectangle())
     }
 
@@ -517,7 +516,7 @@ struct JobScheduleServiceStopRow: View {
                 .padding(.top, 7)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .contentShape(Rectangle())
     }
 }
@@ -552,7 +551,7 @@ struct JobScheduleActionRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -577,7 +576,7 @@ struct JobScheduleSummaryChip: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -602,7 +601,7 @@ struct JobScheduleEmptyMiniState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -630,6 +629,6 @@ private extension View {
     func jobScheduleCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

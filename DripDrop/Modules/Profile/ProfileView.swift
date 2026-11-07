@@ -7,108 +7,53 @@
 
 import SwiftUI
 import PhotosUI
-import Charts
 struct ProfileView: View {
-    @EnvironmentObject var navigationManager : NavigationStateManager
     @EnvironmentObject var masterDataManager : MasterDataManager
-
-    @EnvironmentObject var dataService : ProductionDataService
+    private let dataService: any ProductionDataServiceProtocol
     
-    @StateObject private var VM : AuthenticationViewModel
     @StateObject private var profileVM = ProfileViewModel()
-    @StateObject private var userAccessVM = UserAccessViewModel()
+    @State private var selectedPhoto: PhotosPickerItem?
 
-    init(dataService:any ProductionDataServiceProtocol) {
-        _VM = StateObject(wrappedValue: AuthenticationViewModel(dataService: dataService))
+    init(dataService: any ProductionDataServiceProtocol) {
+        self.dataService = dataService
     }
-    
-    @State private var selectedPhoto:PhotosPickerItem? = nil
-    #if os(iOS)
-    @State private var displayImage:UIImage? = nil
-    #endif
-    @State private var displayURL:URL? = nil
-    @State private var urlDisplayString:String? = nil
-
-    @State var level:Int = 0
-    @State var percentage:Double = 0
-    @State var expToNext:Double = 0
-    @State var showUserSettings:Bool  = false
-    @State var showEditUser:Bool = false
 
     var body: some View {
-        ZStack{
+        ZStack {
             Color.listColor.ignoresSafeArea()
             ScrollView {
-                LazyVStack(alignment: .center, pinnedViews: [.sectionHeaders]) {
-                    Section {
-                        VStack(spacing: 12) {
-                            Divider().opacity(0)
-                            personalVehicleLink
-                            if masterDataManager.isFeatureEnabled(.companyUserProfileHistory) {
-                                companyUserPaysheetLink
-                                companyUserHistoryLink
-                            }
-                                // ----------------------------------------
-                                // Add Back in During Roll out of Phase 2
-                                // ----------------------------------------
-                            
-//                              recentActivity
-                                // rateSheet
-                                // sendInvoice
-                                // chartStuff
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.horizontal)
-                        .padding(.bottom, 16)
-                        .foregroundStyle(.primary)
-                    } header: {
-                        VStack(spacing: 12) {
-//                            toolBar
-                            profile
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal)
+                VStack(spacing: 16) {
+                    profile
+                    if let company = masterDataManager.currentCompany,
+                       let user = masterDataManager.user {
+                        ProfilePayoutCard(companyId: company.id, technicianId: user.id, dataService: dataService).id(company.id + user.id)
+                            .id(company.id + ":" + user.id)
                     }
+                    accountInfo
+                    selectedCompany
+                    if masterDataManager.isFeatureEnabled(.companyUserProfileHistory) {
+                        companyUserHistoryLink
+                    }
+                    personalVehicleLink
+                    settingsLink
                 }
-                .background(Color.listColor.ignoresSafeArea())
+                .frame(maxWidth: 900)
+                .frame(maxWidth: .infinity)
+                .padding(16)
             }
         }
-        .navigationTitle("\(masterDataManager.user?.firstName ?? "First Name") \(masterDataManager.user?.lastName ?? "Last Name")")
+        .navigationTitle("My Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                editProfileButton
-            }
-        }
         .task {
-            if let user = masterDataManager.user {
-                print("Arrived at Profile Page")
-                do {
-                    try await profileVM.loadCurrentUser()
-                } catch {
-                    print(error)
-                }
-                do {
-                    try await userAccessVM.getAllUserAvailableCompanies(userId: user.id)
-                } catch {
-                    print(error)
-                }
-                print("Calculating Exp")
-                let thing = calculateLevel(exp: user.exp)
-                level = thing.level
-                percentage = thing.percentage
-                expToNext = thing.expToNextlevel
-            }
+            try? await profileVM.loadCurrentUser()
         }
         .onChange(of: selectedPhoto) { newValue in
             if let user = masterDataManager.user, let newValue {
-                Task {
-                    print("Save Profile Image")
-                    profileVM.saveProfileImage(user: user, item: newValue)
-                }
+                profileVM.saveProfileImage(user: user, item: newValue)
             }
         }
     }
+
 }
 
 @MainActor
@@ -193,7 +138,7 @@ final class CompanyUserProfileHistoryViewModel: ObservableObject {
                 $0.technicianId == companyUser.userId
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
         }
     }
 }
@@ -590,388 +535,396 @@ private extension PersonalVehicleDetailView {
         .environmentObject(ProductionDataService())
 }
 
-extension ProfileView {
-    var editProfileButton: some View {
-        Group {
-            if let user = masterDataManager.user {
-                NavigationLink(value: Route.editUser(user: user, dataService: dataService)) {
-                    Label("Edit", systemImage: "pencil")
-                        .labelStyle(.titleAndIcon)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.accentColor.opacity(0.16))
-                .foregroundStyle(Color.accentColor)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .accessibilityLabel("Edit Profile")
-            }
-        }
-    }
-
-    var toolBar: some View {
-        HStack {
-            Spacer(minLength: 0)
-            editProfileButton
-        }
-    }
-
-    var personalVehicleLink: some View {
-        Group {
-            if let companyUser = masterDataManager.companyUser {
-                NavigationLink {
-                    PersonalVehicleDetailView(
-                        companyUser: companyUser,
-                        companyName: masterDataManager.currentCompany?.name
-                    )
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: companyUser.personalVehicle == nil ? "car" : "car.fill")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 40, height: 40)
-                            .background(Color.poolBlue.opacity(0.14), in: Circle())
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("My Personal Vehicle")
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.primary)
-
-                            Text(personalVehicleSubtitle(for: companyUser))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(16)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    var companyUserHistoryLink: some View {
-        Group {
-            if let company = masterDataManager.currentCompany,
-               let companyUser = masterDataManager.companyUser {
-                NavigationLink {
-                    CompanyUserProfileHistoryView(
-                        company: company,
-                        companyUser: companyUser,
-                        dataService: dataService
-                    )
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 40, height: 40)
-                            .background(Color.accentColor.opacity(0.14), in: Circle())
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("My Work History")
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.primary)
-
-                            Text(company.name)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(16)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    var companyUserPaysheetLink: some View {
-        Group {
-            if let company = masterDataManager.currentCompany,
-               let companyUser = masterDataManager.companyUser {
-                NavigationLink {
-                    TechnicianPayrollInfoView(
-                        companyId: company.id,
-                        companyUser: companyUser,
-                        dataService: dataService
-                    )
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(width: 40, height: 40)
-                            .background(Color.poolGreen.opacity(0.16), in: Circle())
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Pay Sheet")
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(.primary)
-
-                            Text(company.name)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(16)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    func personalVehicleSubtitle(for companyUser: CompanyUser) -> String {
-        guard let personalVehicle = companyUser.personalVehicle else {
-            return "No personal vehicle saved"
-        }
-
-        let plate = personalVehicle.plate?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let accessNote = companyUser.canUsePersonalRouteVehicle ? "" : " - not enabled for routes"
-
-        if plate.isEmpty {
-            return "\(personalVehicle.displayName)\(accessNote)"
-        }
-
-        return "\(personalVehicle.displayName) - \(plate)\(accessNote)"
-    }
-
-    var rateSheet: some View {
-        VStack{
-            if let user = masterDataManager.user {
-                HStack{
-                    Spacer()
-             
-                        NavigationLink(value: Route.rateSheet(user: user, dataService: dataService), label: {
-
-                        HStack{
-                            Text("Rate Sheet")
-                            Image(systemName: "chevron.right")
-                        }
-                        .modifier(BlueButtonModifier())
-                    })
-                }
-            }
-        }
-    }
-    var recentActivityEmployee: some View {
-        VStack{
-            
-            HStack{
-                Spacer()
-                Button(action: {
-                    navigationManager.routes.append(Route.recentActivity(dataService: dataService))
-                }, label: {
-                    HStack{
-                        Text("Recent Activity")
-                        Image(systemName: "chevron.right")
-                    }
-                    .modifier(BlueButtonModifier())
-                })
-            }
-        }
-    }
-    var recentActivity: some View {
-        VStack{
-            
-            HStack{
-                Spacer()
-                    NavigationLink(value: Route.workLogList(dataService: dataService), label: {
-                    HStack{
-                        Text("Recent Activity")
-                        Image(systemName: "chevron.right")
-                    }
-                    .modifier(BlueButtonModifier())
-                })
-            }
-        }
-    }
-    var chartStuff: some View {
-        mockChart(numbers: [1,4,7,3,6,8,3,4,9,3,5,7,1,3,7,4,7])
-    }
-    var sendInvoice: some View {
-        VStack{
-            
-            HStack{
-                Spacer()
-      
-                    NavigationLink(value: Route.compileInvoice(dataService: dataService), label: {
-
-                    HStack{
-                        Text("Send Invoice")
-                        Image(systemName: "chevron.right")
-                    }
-                    .modifier(BlueButtonModifier())
-                })
-            }
-        }
-    }
-    var image: some View {
-        ZStack(alignment: .bottomTrailing) {
-            ZStack {
-                Circle()
-                    .fill(Color.accentColor.opacity(0.14))
-                    .frame(width: 100, height: 100)
-
-                if let urlString = profileVM.imageUrlString, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .frame(width: 100, height: 100)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(Circle())
-                        case .failure:
-                            Image(systemName: "person.circle")
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .foregroundStyle(.secondary)
-                        @unknown default:
-                            EmptyView()
+private extension ProfileView {
+    @MainActor var profile: some View {
+        let savedPhotoURL = profileVM.imageUrlString
+        let currentUserPhotoURL = masterDataManager.user?.photoUrl
+        let photoURL = URL(string: savedPhotoURL ?? currentUserPhotoURL ?? "")
+        return HStack(alignment: .center, spacing: 16) {
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                ZStack(alignment: .bottomTrailing) {
+                    AsyncImage(url: photoURL) { phase in
+                        if case .success(let image) = phase {
+                            image.resizable().scaledToFill()
+                        } else {
+                            Text(initials).font(.title2.weight(.bold)).foregroundStyle(Color.poolBlue)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.white)
                         }
                     }
-                } else {
-                    Image(systemName: "person.circle")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 100, height: 100)
-                        .foregroundStyle(.secondary)
+                    .frame(width: 72, height: 72).clipShape(Circle())
+                    .overlay(Circle().stroke(.white.opacity(0.7), lineWidth: 3))
+                    Image(systemName: "camera.fill").font(.caption2).padding(6)
+                        .background(Color.white, in: Circle()).foregroundStyle(Color.poolBlue)
                 }
             }
-            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-
-            PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .padding(6)
-                    .background(.regularMaterial, in: Circle())
-                    .overlay {
-                        Circle()
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    }
-            }
-            .padding(4)
+            .buttonStyle(.plain)
             .accessibilityLabel("Change profile photo")
-        }
-        .frame(width: 120, height: 120)
-        .padding(.top, 8)
-    }
-    var profile: some View {
-        VStack(spacing: 12) {
-            if let user = masterDataManager.user {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack{
-                        Text("\(user.firstName) \(user.lastName)")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Spacer(minLength: 0)
-                    }
-                    HStack(alignment: .center, spacing: 16) {
-                        image
-
-                        // Level ring
-                        ZStack {
-                            Circle()
-                                .stroke(Color.primary.opacity(0.14), style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                                .frame(width: 56, height: 56)
-                            Circle()
-                                .trim(from: 0, to: calculateLevel(exp: user.exp).percentage)
-                                .stroke(Color.poolGreen, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                                .frame(width: 56, height: 56)
-                            Text("\(calculateLevel(exp: user.exp).level)")
-                                .font(.headline.weight(.bold))
-                                .foregroundStyle(.primary)
-                                .frame(width: 56, height: 56)
-                                .background(.thinMaterial, in: Circle())
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Level \(calculateLevel(exp: user.exp).level)")
-                    }
-
-                    bio
+            VStack(alignment: .leading, spacing: 5) {
+                Text("MY PROFILE").font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(.white.opacity(0.75))
+                Text("\(masterDataManager.user?.firstName ?? "") \(masterDataManager.user?.lastName ?? "")")
+                    .font(.title2.weight(.bold)).foregroundStyle(.white)
+                Text(masterDataManager.user?.email ?? "").font(.caption).foregroundStyle(.white.opacity(0.85))
+                    .textSelection(.enabled)
+                if let user = masterDataManager.user {
+                    Label("Level \(calculateLevel(exp: user.exp).level)", systemImage: "sparkles")
+                        .font(.caption2.weight(.semibold)).foregroundStyle(.white.opacity(0.85))
                 }
-                .padding(16)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(20)
+        .background(Color(red: 14/255, green: 36/255, blue: 92/255), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    var initials: String {
+        [masterDataManager.user?.firstName, masterDataManager.user?.lastName]
+            .compactMap { $0?.first.map(String.init) }.joined().uppercased()
+    }
+
+    var accountInfo: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                profileHeading("Account Info", systemImage: "person.crop.circle")
+                Spacer(minLength: 8)
+                if let user = masterDataManager.user {
+                    NavigationLink(value: Route.editUser(user: user, dataService: dataService)) {
+                        Text("Edit Profile").font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(WorkspaceOutlinedButtonStyle())
+                }
+            }
+            if let user = masterDataManager.user {
+                VStack(spacing: 12) {
+                    profileDetail("Name", value: "\(user.firstName) \(user.lastName)")
+                    Divider()
+                    profileDetail("Email", value: user.email)
+                    Divider()
+                    profileDetail("Phone", value: user.phoneNumber ?? "")
+                    Divider()
+                    if let dateCreated = user.dateCreated {
+                        profileDetail("Member Since", value: dateCreated.formatted(date: .abbreviated, time: .omitted))
+                        Divider()
+                    }
+                    profileDetail("Bio", value: user.bio ?? "")
                 }
             }
         }
+        .profileCard()
     }
-    var bio: some View {
-        Group {
-            if let user = masterDataManager.user {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Email:").bold()
-                        Spacer()
+
+    var selectedCompany: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                profileHeading("Selected Company", systemImage: "building.2")
+                Spacer(minLength: 8)
+                NavigationLink(value: Route.userSettings(dataService: dataService)) {
+                    Text("Change").font(.caption.weight(.semibold))
+                }
+                .buttonStyle(WorkspaceOutlinedButtonStyle())
+            }
+            if let company = masterDataManager.currentCompany {
+                VStack(spacing: 12) {
+                    profileDetail("Company", value: company.name)
+                    if let companyUser = masterDataManager.companyUser {
+                        Divider()
+                        profileDetail("Role", value: companyUser.roleName)
+                        Divider()
+                        profileDetail("Worker Type", value: companyUser.workerType.rawValue)
+                        Divider()
+                        profileDetail("Status", value: companyUser.status.rawValue)
                     }
-                    Text(user.email)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                    HStack {
-                        Text("Phone Number:").bold()
-                        Spacer()
-                        Text(user.phoneNumber ?? "Not Set")
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack {
-                        Text("Date Created:").bold()
-                        Spacer()
-                        Text(fullDate(date: user.dateCreated))
-                            .foregroundStyle(.secondary)
-                    }
+                    Divider()
+                    profileDetail("Company Email", value: company.email)
+                    Divider()
+                    profileDetail("Company Phone", value: company.phoneNumber)
+                }
+            } else {
+                Text("Select a company to see your work history and paysheet.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .profileCard()
+    }
+
+    @ViewBuilder var companyUserHistoryLink: some View {
+        if let company = masterDataManager.currentCompany, let companyUser = masterDataManager.companyUser {
+            NavigationLink {
+                CompanyUserProfileHistoryView(company: company, companyUser: companyUser, dataService: dataService)
+            } label: {
+                profileNavigationRow("My Work History", subtitle: "Past routes, mileage, and completed stops", systemImage: "clock.arrow.circlepath")
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder var personalVehicleLink: some View {
+        if let companyUser = masterDataManager.companyUser {
+            NavigationLink {
+                PersonalVehicleDetailView(companyUser: companyUser, companyName: masterDataManager.currentCompany?.name)
+            } label: {
+                profileNavigationRow("Personal Vehicle", subtitle: companyUser.personalVehicle?.displayName ?? "No personal vehicle saved", systemImage: "car")
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    var settingsLink: some View {
+        NavigationLink(value: Route.userSettings(dataService: dataService)) {
+            profileNavigationRow("Settings", subtitle: "Account security and preferences", systemImage: "gearshape")
+        }
+        .buttonStyle(.plain)
+    }
+
+    func profileNavigationRow(_ title: String, subtitle: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                profileHeading(title, systemImage: systemImage)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+        }
+        .profileCard()
+    }
+
+    func profileDetail(_ title: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text(title).font(.caption).foregroundStyle(.secondary).frame(width: 94, alignment: .leading)
+            Text(value.isEmpty ? "Not set" : value).font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+        }
+    }
+}
+
+private func profileHeading(_ title: String, systemImage: String) -> some View {
+    Label {
+        Text(title).font(.headline)
+    } icon: {
+        Image(systemName: systemImage).font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.poolBlue).frame(width: 32, height: 32)
+            .background(Color.poolBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+    }
+    .foregroundStyle(.primary)
+}
+
+private extension View {
+    func profileCard() -> some View {
+        self.frame(maxWidth: .infinity, alignment: .leading).padding(16)
+            .background(.background, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+    }
+}
+
+private struct ProfilePayoutCard: View {
+    let companyId: String
+    let technicianId: String
+    let dataService: any ProductionDataServiceProtocol
+    @StateObject private var model = OwnPaysheetModel()
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            profileHeading("Payout Snapshot", systemImage: "wallet.pass")
+            Text(model.sheet.map { "Last 30 days · " + $0.periodLabel } ?? "Last 30 days").font(.caption).foregroundStyle(.secondary)
+            if let error = model.error {
+                Text("Pay is unavailable. " + error).font(.caption).foregroundStyle(.red)
+                Button("Try Again") { Task { await load() } }.buttonStyle(WorkspaceOutlinedButtonStyle())
+            } else {
+                OwnPayTotalsView(summary: model.sheet?.summary)
+                if let sheet = model.sheet {
+                    OwnOlderPayNotice(sheet: sheet)
+                    if sheet.summary.reviewCount > 0 { Text("\(sheet.summary.reviewCount) \(sheet.summary.reviewCount == 1 ? "pay item needs" : "pay items need") review.").font(.caption).foregroundStyle(.orange) }
+                }
+            }
+            NavigationLink {
+                TechnicianPaysheetView(companyId: companyId).id(companyId + technicianId)
+            } label: {
+                Text("Open Paysheet").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 32)
+            }.buttonStyle(WorkspaceOutlinedButtonStyle())
+        }.profileCard().task(id: companyId + technicianId) { await load() }
+    }
+    @MainActor private func load() async { await model.load(companyId: companyId, summary: true) }
+}
+
+private struct ProfilePayoutDetails: View {
+    let snapshot: ProfilePayoutSnapshot
+    let isLoading: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var showPaid = false
+    @State private var expanded = false
+    private var items: [ProfilePayoutWork] { showPaid ? snapshot.paidItems : snapshot.unpaidItems }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            metric("Still to be paid", value: isLoading ? "—" : profilePayoutMoney(snapshot.owedCents), helper: "Calculated pay awaiting payment", tone: .emerald, prominent: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 8) { secondaryMetrics }
+                VStack(spacing: 8) { secondaryMetrics }
+            }
+            if !isLoading {
+                if snapshot.reviewCount > 0 {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Bio:").bold()
-                        Text(user.bio ?? "")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(10)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        Label("\(snapshot.reviewCount) \(snapshot.reviewCount == 1 ? "pay item needs" : "pay items need") review", systemImage: "exclamationmark.triangle")
+                            .font(.subheadline.weight(.semibold))
+                        Text("These amounts are pending and are excluded from the unpaid total.").font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                    .foregroundStyle(WorkspaceTone.amber.foreground(in: colorScheme))
+                    .background(WorkspaceTone.amber.background(in: colorScheme), in: RoundedRectangle(cornerRadius: 8))
+                }
+                Text("Work & pay").font(.headline)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { filters }
+                    VStack(spacing: 8) { filters }
+                }
+                if items.isEmpty {
+                    Text(showPaid ? "No work marked paid in this period." : "No unpaid pay recorded in this period.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                } else {
+                    ForEach(expanded ? items : Array(items.prefix(5))) { item in
+                        Divider()
+                        workRow(item)
+                    }
+                    if items.count > 5 {
+                        Button(expanded ? "Show fewer" : "Show all \(items.count) \(showPaid ? "paid" : "unpaid") items") { expanded.toggle() }
+                            .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .slate))
                     }
                 }
-                .foregroundStyle(.primary)
+                Text("$0 pay items are hidden. Missing work or pay? Use Pay Requests to ask for a correction.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    @ViewBuilder private var filters: some View {
+        Button { showPaid = false; expanded = false } label: {
+            Text("Unpaid (\(snapshot.unpaidItems.count))").fixedSize().frame(maxWidth: .infinity)
+        }
+        .buttonStyle(WorkspaceOutlinedButtonStyle(tone: showPaid ? .slate : .blue))
+        .accessibilityAddTraits(showPaid ? [] : .isSelected)
+        Button { showPaid = true; expanded = false } label: {
+            Text("Paid (\(snapshot.paidItems.count))").fixedSize().frame(maxWidth: .infinity)
+        }
+        .buttonStyle(WorkspaceOutlinedButtonStyle(tone: showPaid ? .emerald : .slate))
+        .accessibilityAddTraits(showPaid ? .isSelected : [])
+    }
+
+    @ViewBuilder private var secondaryMetrics: some View {
+        metric("Marked paid", value: isLoading ? "—" : profilePayoutMoney(snapshot.paidCents), helper: "For work in this period", tone: .blue)
+        metric("Last payout", value: isLoading ? "—" : snapshot.lastPayoutDate?.formatted(date: .abbreviated, time: .omitted) ?? "None recorded", helper: nil, tone: .slate)
+    }
+
+    private func metric(_ title: String, value: String, helper: String?, tone: WorkspaceTone, prominent: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+            Text(value).font(prominent ? .title.weight(.bold) : .headline.weight(.bold))
+                .foregroundStyle(tone.foreground(in: colorScheme)).fixedSize(horizontal: false, vertical: true)
+            if let helper { Text(helper).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+        .background(tone.background(in: colorScheme), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(tone.border(in: colorScheme), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func workRow(_ item: ProfilePayoutWork) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(item.title).font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+            Text(item.completedDate.formatted(date: .abbreviated, time: .omitted) + (item.customer.isEmpty ? "" : " · " + item.customer))
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !item.needsReview && !item.rateDescription.isEmpty {
+                Text(item.rateDescription).font(.caption).foregroundStyle(.secondary)
+            }
+            if item.isPaid, let paidDate = item.paidDate {
+                Text("Paid \(paidDate.formatted(date: .abbreviated, time: .omitted))").font(.caption).foregroundStyle(.secondary)
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack { workAmount(item); Spacer(); workStatus(item) }
+                VStack(alignment: .leading, spacing: 6) { workAmount(item); workStatus(item) }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func workAmount(_ item: ProfilePayoutWork) -> some View {
+        Text(item.needsReview ? "Pending" : profilePayoutMoney(item.amountCents))
+            .font(.headline).monospacedDigit()
+    }
+
+    private func workStatus(_ item: ProfilePayoutWork) -> some View {
+        let tone: WorkspaceTone = item.isPaid ? .emerald : item.needsReview ? .amber : .slate
+        return Text(item.statusLabel).font(.caption.weight(.semibold))
+            .foregroundStyle(tone.foreground(in: colorScheme)).padding(.horizontal, 8).padding(.vertical, 4)
+            .background(tone.background(in: colorScheme), in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+private func profilePayoutMoney(_ cents: Int) -> String {
+    (Double(cents) / 100).formatted(.currency(code: "USD"))
+}
+
+private struct ProfilePayoutWork: Identifiable {
+    let lineItem: TechnicianPayLineItem
+    let isPaid: Bool
+    var id: String { lineItem.id }
+    var amountCents: Int { lineItem.totalAmountCents }
+    var completedDate: Date { lineItem.completedDate }
+    var paidDate: Date? { lineItem.paidAt }
+    var needsReview: Bool { !isPaid && [.pending, .needsReview].contains(lineItem.calculationStatus) }
+    var title: String {
+        firstText([lineItem.taskName, lineItem.workTypeName, lineItem.serviceStopTypeName, lineItem.displayTitle], fallback: "Completed work")
+    }
+    var customer: String {
+        firstText([lineItem.customerName, lineItem.serviceLocationAddress, lineItem.displaySubtitle])
+    }
+    var statusLabel: String {
+        isPaid ? "Marked paid" : needsReview ? "Pay needs review" : lineItem.calculationStatus == .approved ? "Approved · unpaid" : "Unpaid"
+    }
+    var rateDescription: String {
+        if lineItem.source == .manualAdjustment { return "Pay adjustment" }
+        if lineItem.rateType == .manual { return "Custom pay" }
+        if lineItem.rateType == .percentage { return "\((Double(lineItem.rateAmountCents) / 100).formatted())% rate" }
+        guard lineItem.quantity != 0, lineItem.rateAmountCents != 0 else { return "" }
+        let hourly = lineItem.rateType == .hourly
+        let quantity = hourly && lineItem.quantityUnit == .minutes ? lineItem.quantity / 60 : lineItem.quantity
+        let unit: String
+        switch lineItem.quantityUnit {
+        case .each, .percent: unit = ""
+        case .hours: unit = " hr"
+        case .minutes: unit = hourly ? " hr" : " min"
+        case .bodyOfWater: unit = " pool/spa"
+        case .serviceLocation: unit = " location"
+        }
+        return "\(quantity.formatted(.number.precision(.fractionLength(0...2))))\(unit) × \(profilePayoutMoney(lineItem.rateAmountCents))\(hourly ? "/hr" : "")"
+    }
+
+    private func firstText(_ values: [String?], fallback: String = "") -> String {
+        values.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty } ?? fallback
+    }
+}
+
+private struct ProfilePayoutSnapshot {
+    let unpaidItems: [ProfilePayoutWork]
+    let paidItems: [ProfilePayoutWork]
+    let lastPayoutDate: Date?
+    var owedCents: Int { unpaidItems.filter { !$0.needsReview }.reduce(0) { $0 + $1.amountCents } }
+    var paidCents: Int { paidItems.reduce(0) { $0 + $1.amountCents } }
+    var reviewCount: Int { unpaidItems.filter(\.needsReview).count }
+    static let empty = ProfilePayoutSnapshot(lineItems: [], statements: [])
+
+    init(lineItems: [TechnicianPayLineItem], statements: [TechnicianPayStatement]) {
+        let paidStatements = statements.filter { $0.status != .voided && ($0.status == .paid || $0.paidAt != nil) }
+        let paidStatementIds = Set(paidStatements.map(\.id))
+        let paidLineIds = Set(paidStatements.flatMap(\.lineItemIds))
+        let activeItems = lineItems.filter { $0.voidedAt == nil && $0.calculationStatus != .voided }
+        let items = activeItems.map { item in
+            ProfilePayoutWork(lineItem: item, isPaid: item.paidAt != nil || item.calculationStatus == .paid || paidStatementIds.contains(item.payStatementId ?? "") || paidLineIds.contains(item.id))
+        }.filter { $0.amountCents != 0 || $0.needsReview }.sorted {
+            if $0.needsReview != $1.needsReview { return $0.needsReview }
+            if $0.completedDate != $1.completedDate { return $0.completedDate > $1.completedDate }
+            return $0.id < $1.id
+        }
+        unpaidItems = items.filter { !$0.isPaid }
+        paidItems = items.filter(\.isPaid)
+        lastPayoutDate = (activeItems.compactMap(\.paidAt) + paidStatements.map { $0.paidAt ?? $0.endDate }).max()
     }
 }

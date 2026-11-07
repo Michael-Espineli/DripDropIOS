@@ -197,7 +197,7 @@
                 } catch {
                     isSubmitting = false
                     showError = true
-                    errorMessage = error.localizedDescription
+                    errorMessage = error.userFacingMessage
 
                     print(error)
 

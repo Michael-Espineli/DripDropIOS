@@ -62,8 +62,10 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             .whereField("customerId", isEqualTo: customerId)
             .getDocuments()
 
-        return snapshot.documents.compactMap { document in
-            try? document.data(as: T.self)
+        return try snapshot.documents.map { document in
+            var fields = document.data()
+            fields["id"] = document.documentID
+            return try Firestore.Decoder().decode(T.self, from: fields)
         }
     }
 
@@ -79,8 +81,10 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
             .whereField("companyId", isEqualTo: companyId)
             .getDocuments()
 
-        return snapshot.documents.compactMap { document in
-            try? document.data(as: T.self)
+        return try snapshot.documents.map { document in
+            var fields = document.data()
+            fields["id"] = document.documentID
+            return try Firestore.Decoder().decode(T.self, from: fields)
         }
     }
 
@@ -603,12 +607,12 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         companyId: String
     ) async throws -> [JobTemplate] {
         let snapshot = try await WorkOrderTemplateCollection(companyId: companyId)
-            .whereField("isActive", isEqualTo: true)
             .getDocuments()
 
         return try snapshot.documents.compactMap { document in
             try document.data(as: JobTemplate.self)
         }
+        .filter { $0.isActive }
         .sorted { $0.name < $1.name }
     }
 
@@ -623,8 +627,10 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
     func saveJobTemplate(
         _ template: JobTemplate
     ) async throws {
-        try WorkOrderDocument(workOrderTemplateId: template.id, companyId: template.companyId)
-        .setData(from: template, merge: true)
+        var data = try Firestore.Encoder().encode(template)
+        data["active"] = template.isActive
+        try await WorkOrderDocument(workOrderTemplateId: template.id, companyId: template.companyId)
+            .setData(data, merge: true)
     }
 
     func saveJobTemplatePlannedServiceStops(
@@ -2726,18 +2732,14 @@ final class ProductionDataService:ProductionDataServiceProtocol,ObservableObject
         userAccessCollection(userId: userId).document(accessId)
     }
     func addCurrentUserAccessListener(companyId: String, userId:String, onChange: @escaping ([UserAccess]) -> Void) {
-        currentCompanyUserListener?.remove()
-        currentCompanyUserListener = userAccessCollection(userId: userId)
-            .whereField("companyId", isEqualTo: companyId)
+        userAccessListener?.remove()
+        userAccessListener = UserAccessDocument(userId: userId, accessId: companyId)
             .addSnapshotListener { snapshot, error in
-                guard let docs = snapshot?.documents else {
+                guard error == nil, let snapshot, let access = try? snapshot.data(as: UserAccess.self), access.hasActiveAccess else {
                     onChange([])
                     return
                 }
-                let stops = docs.compactMap {
-                    try? $0.data(as: UserAccess.self)
-                }
-                onChange(stops)
+                onChange([access])
             }
     }
     private func CompanyUserCollection(companyId:String) -> CollectionReference{

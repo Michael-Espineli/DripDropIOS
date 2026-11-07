@@ -94,6 +94,8 @@ struct JobTaskGroupItem:Identifiable, Codable, Equatable{
 }
 struct JobTask: Identifiable, Codable, Hashable, TaskItem {
     var id : String = "comp_job_task_" + UUID().uuidString
+    var sourceTemplateId: String? = nil
+    var sourceTemplateTaskId: String? = nil
     
     var name : String
     var type : JobTaskType
@@ -132,6 +134,7 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
     var payQuantity: Double? = nil
 
     enum CodingKeys: String, CodingKey {
+        case sourceTemplateId, sourceTemplateTaskId
         case payrollMode, manualPayOverrideCents, manualPayOverrideNotes, payrollStackBehavior, payQuantity
         case billingLaborPriceCents, taxable
         case id
@@ -225,6 +228,8 @@ struct JobTask: Identifiable, Codable, Hashable, TaskItem {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        sourceTemplateId = try container.decodeIfPresent(String.self, forKey: .sourceTemplateId)
+        sourceTemplateTaskId = try container.decodeIfPresent(String.self, forKey: .sourceTemplateTaskId)
         payrollMode = try container.decodeIfPresent(String.self, forKey: .payrollMode)
         manualPayOverrideCents = try container.decodeIfPresent(Int.self, forKey: .manualPayOverrideCents)
         manualPayOverrideNotes = try container.decodeIfPresent(String.self, forKey: .manualPayOverrideNotes)

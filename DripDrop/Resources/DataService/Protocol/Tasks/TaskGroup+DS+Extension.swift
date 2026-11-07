@@ -33,6 +33,30 @@ struct JobTaskGroup: Identifiable, Codable, Equatable, Hashable {
         lhs.id == rhs.id
     }
 }
+// Defaults preserve historical groupName-only and web-created records.
+// Keep this initializer in an extension to retain the memberwise initializer used by forms.
+extension JobTaskGroup {
+    private enum StorageKeys: String, CodingKey {
+        case id, name, groupName, description, defaultServiceStopTypeId, defaultServiceStopTypeName
+        case numberOfTasks, estimatedMinutes, estimatedLaborCents, isActive, createdAt, createdByUserId
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: StorageKeys.self)
+        id = try values.decodeIfPresent(String.self, forKey: .id) ?? ""
+        name = try values.decodeIfPresent(String.self, forKey: .name)
+            ?? values.decodeIfPresent(String.self, forKey: .groupName) ?? "Task Group"
+        description = try values.decodeIfPresent(String.self, forKey: .description) ?? ""
+        defaultServiceStopTypeId = try values.decodeIfPresent(String.self, forKey: .defaultServiceStopTypeId)
+        defaultServiceStopTypeName = try values.decodeIfPresent(String.self, forKey: .defaultServiceStopTypeName)
+        numberOfTasks = try values.decodeIfPresent(Int.self, forKey: .numberOfTasks) ?? 0
+        estimatedMinutes = try values.decodeIfPresent(Int.self, forKey: .estimatedMinutes) ?? 0
+        estimatedLaborCents = try values.decodeIfPresent(Int.self, forKey: .estimatedLaborCents) ?? 0
+        isActive = try values.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        createdAt = try values.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date(timeIntervalSince1970: 0)
+        createdByUserId = try values.decodeIfPresent(String.self, forKey: .createdByUserId) ?? ""
+    }
+}
 extension ProductionDataService {
     func TaskGroupSettingsDocument(companyId:String) -> DocumentReference{
         db.collection("companies/\(companyId)/settings").document("taskGroup")
@@ -50,14 +74,19 @@ extension ProductionDataService {
     }
     //READ
     func getAllTaskGroupById(companyId:String,taskGroupId:String) async throws -> JobTaskGroup {
-        return try await TaskGroupDocument(companyId: companyId, taskGroupId: taskGroupId)
-            .getDocument(as: JobTaskGroup.self)
-
+        let document = try await TaskGroupDocument(companyId: companyId, taskGroupId: taskGroupId).getDocument()
+        var group = try document.data(as: JobTaskGroup.self)
+        group.id = document.documentID
+        return group
     }
     func getAllTaskGroups(companyId:String) async throws ->[JobTaskGroup] {
         print("trying to getAllTaskGroups")
-        return try await TaskGroupCollection(companyId: companyId)
-            .getDocuments(as:JobTaskGroup.self)
+        let snapshot = try await TaskGroupCollection(companyId: companyId).getDocuments()
+        return try snapshot.documents.map { document in
+            var group = try document.data(as: JobTaskGroup.self)
+            group.id = document.documentID
+            return group
+        }
     }
     //UPDATE
     func updateTaskGroupName(companyId: String, taskGroupId: String, name: String) async throws {

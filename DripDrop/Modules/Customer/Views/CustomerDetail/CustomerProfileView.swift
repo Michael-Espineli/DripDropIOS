@@ -58,7 +58,7 @@ struct CustomerProfileView: View {
         .toolbar{
             ToolbarItem(placement: .navigationBarTrailing){
                 if let role = masterDataManager.role {
-                    if role.permissionIdList.contains("16") {
+                    if masterDataManager.hasCompanyPermission("14") {
                         Button(action: {
                             showEditView.toggle()
                         }, label: {
@@ -104,6 +104,7 @@ struct CustomerProfileView: View {
 extension CustomerProfileView {
     private func mobileProfile(_ customer: Customer) -> some View {
         VStack(spacing: 12) {
+            WorkspaceIdentityHeader(title: customer.displayAsCompany ? (customer.company ?? "Customer") : "\(customer.firstName) \(customer.lastName)", eyebrow: "Customer profile", systemImage: "person.crop.circle")
             accountLinkCard(customer)
             contactCard(customer)
             addressCard(customer)

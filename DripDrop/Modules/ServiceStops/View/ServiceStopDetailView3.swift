@@ -752,7 +752,7 @@ extension ServiceStopDetailView3 {
                 try await dataService.deleteServiceStop(companyId: company.id, serviceStop: stop)
                 dismiss()
             } catch {
-                alertMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                alertMessage = (error as? LocalizedError)?.errorDescription ?? error.userFacingMessage
                 showAlert = true
                 print("ServiceStopDetailView3 delete error", error)
             }

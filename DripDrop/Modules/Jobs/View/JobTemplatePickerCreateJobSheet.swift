@@ -101,7 +101,7 @@ struct JobTemplatePickerCreateJobSheet: View {
                     Text("Create From Template")
                         .font(.title3.weight(.semibold))
 
-                    Text("Pick a reusable job plan to create a new draft job.")
+                    Text(isTechnicianCreateFlow ? "Choose a template, then assign the job and schedule its first visit." : "Choose a reusable template to start a new job.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -199,7 +199,7 @@ struct JobTemplatePickerCreateJobSheet: View {
                                 .foregroundStyle(.tertiary)
                         }
                         .padding(12)
-                        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -222,7 +222,7 @@ struct JobTemplatePickerCreateJobSheet: View {
                 templates = fetchedTemplates
             }
         } catch {
-            alertMessage = "Could not load job templates. \(error.localizedDescription)"
+            alertMessage = "Could not load job templates. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -243,6 +243,6 @@ private extension View {
     func jobTemplatePickerCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

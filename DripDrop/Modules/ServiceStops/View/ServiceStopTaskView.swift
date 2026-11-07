@@ -132,52 +132,20 @@ final class ServiceStopTaskViewModel: ObservableObject {
         task: ServiceStopTask,
         status: JobTaskStatus
     ) async throws {
-        try await dataService.updateServiceStopTaskStatus(
-            companyId: companyId,
-            serviceStopId: serviceStop.id,
-            taskId: task.id,
-            status: status
-        )
-
-        let historyCompanyId: String
-
-        if serviceStop.otherCompany {
-            if let mainCompanyId = serviceStop.mainCompanyId {
-                historyCompanyId = mainCompanyId
-                if serviceStop.jobId != "" {
-                    try dataService.updateJobTaskStatus(
-                        companyId: mainCompanyId,
-                        jobId: serviceStop.jobId,
-                        taskId: task.jobTaskId,
-                        status: .finished
-                    )
-                } else {
-                    // Update Sender RSS
-                }
-            } else {
-                historyCompanyId = companyId
-            }
-        } else {
-            historyCompanyId = companyId
-            if serviceStop.jobId != "" {
-                try dataService.updateJobTaskStatus(
-                    companyId: companyId,
-                    jobId: serviceStop.jobId,
-                    taskId: task.jobTaskId,
-                    status: .finished
-                )
-            } else {
-                // Update Sender RSS
-            }
-        }
+        try await saveTaskStatus(companyId: companyId, serviceStop: serviceStop, task: task, status: status)
+        let historyCompanyId = jobTaskCompanyId(companyId: companyId, serviceStop: serviceStop)
 
         if status == .finished {
-            try await EquipmentTaskHistoryService(dataService: dataService)
-                .recordServiceStopTaskCompletion(
-                    companyId: historyCompanyId,
-                    serviceStop: serviceStop,
-                    task: task
-                )
+            // Maintenance/repair history is recovered by server task triggers.
+            // Replacement installation still uses the existing native workflow.
+            if task.type == .replace {
+                try await EquipmentTaskHistoryService(dataService: dataService)
+                    .recordServiceStopTaskCompletion(
+                        companyId: historyCompanyId,
+                        serviceStop: serviceStop,
+                        task: task
+                    )
+            }
 
             try await BodyOfWaterTaskHistoryService(dataService: dataService)
                 .recordServiceStopTaskCompletion(
@@ -194,34 +162,33 @@ final class ServiceStopTaskViewModel: ObservableObject {
         task: ServiceStopTask,
         status: JobTaskStatus
     ) async throws {
+        try await saveTaskStatus(companyId: companyId, serviceStop: serviceStop, task: task, status: status)
+    }
+
+    private func saveTaskStatus(
+        companyId: String,
+        serviceStop: ServiceStop,
+        task: ServiceStopTask,
+        status: JobTaskStatus
+    ) async throws {
+        // Confirm the canonical job task first. Its server trigger can recover
+        // the scheduled copy if the second write is interrupted.
+        let jobId = serviceStop.jobId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let jobTaskId = task.jobTaskId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !jobId.isEmpty && !jobTaskId.isEmpty {
+            try await dataService.updateJobTaskStatus(
+                companyId: jobTaskCompanyId(companyId: companyId, serviceStop: serviceStop),
+                jobId: jobId,
+                taskId: jobTaskId,
+                status: status
+            )
+        }
         try await dataService.updateServiceStopTaskStatus(
             companyId: companyId,
             serviceStopId: serviceStop.id,
             taskId: task.id,
             status: status
         )
-
-        if serviceStop.otherCompany {
-            if let mainCompanyId = serviceStop.mainCompanyId {
-                if serviceStop.jobId != "" {
-                    try dataService.updateJobTaskStatus(
-                        companyId: mainCompanyId,
-                        jobId: serviceStop.jobId,
-                        taskId: task.jobTaskId,
-                        status: .scheduled
-                    )
-                }
-            }
-        } else {
-            if serviceStop.jobId != "" {
-                try dataService.updateJobTaskStatus(
-                    companyId: companyId,
-                    jobId: serviceStop.jobId,
-                    taskId: task.jobTaskId,
-                    status: .scheduled
-                )
-            }
-        }
     }
 
     private func jobTaskCompanyId(companyId: String, serviceStop: ServiceStop) -> String {
@@ -318,7 +285,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
                         taskId: jobTask.id,
                         serviceStopId: IdInfo(id: serviceStop.id, internalId: serviceStop.internalId)
                     )
-                    try dataService.updateJobTaskStatus(
+                    try await dataService.updateJobTaskStatus(
                         companyId: jobCompanyId,
                         jobId: serviceStop.jobId,
                         taskId: jobTask.id,
@@ -342,7 +309,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
                 #endif
             } catch {
                 isSavingNewTask = false
-                alertMessage = error.localizedDescription
+                alertMessage = error.userFacingMessage
                 showAlert = true
                 print(error)
 
@@ -399,7 +366,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
                 #endif
             } catch {
                 isSavingNewTask = false
-                alertMessage = error.localizedDescription
+                alertMessage = error.userFacingMessage
                 showAlert = true
                 print(error)
 
@@ -490,7 +457,7 @@ final class ServiceStopTaskViewModel: ObservableObject {
                 #endif
             } catch {
                 isSavingNewTask = false
-                alertMessage = error.localizedDescription
+                alertMessage = error.userFacingMessage
                 showAlert = true
                 print(error)
 
@@ -615,12 +582,14 @@ struct ServiceStopTaskView: View {
         dataService: any ProductionDataServiceProtocol,
         taskList: Binding<[ServiceStopTask]>,
         serviceStopId: String,
-        isLoadingTasks: Bool = false
+        isLoadingTasks: Bool = false,
+        onPartApprovalCreated: @escaping () async -> Void = {}
     ) {
         _VM = StateObject(wrappedValue: ServiceStopTaskViewModel(dataService: dataService))
         self._taskList = taskList
         _serviceStopId = State(wrappedValue: serviceStopId)
         self.isLoadingTasks = isLoadingTasks
+        self.onPartApprovalCreated = onPartApprovalCreated
     }
 
     @EnvironmentObject var dataService: ProductionDataService
@@ -632,8 +601,10 @@ struct ServiceStopTaskView: View {
 
     @State var serviceStopId: String
     @State private var showShoppingItemSheet: Bool = false
+    @State private var showPartApprovalSheet: Bool = false
     @Binding var taskList: [ServiceStopTask]
     let isLoadingTasks: Bool
+    let onPartApprovalCreated: () async -> Void
 
     private var serviceStop: ServiceStop? {
         vm.serviceStopList.first { $0.id == serviceStopId }
@@ -780,6 +751,16 @@ struct ServiceStopTaskView: View {
                     dataService: dataService,
                     serviceStop: serviceStop,
                     onCreated: {}
+                )
+            }
+        }
+        .sheet(isPresented: $showPartApprovalSheet) {
+            if let serviceStop {
+                ServiceStopPartApprovalSheet(
+                    dataService: dataService,
+                    serviceStop: serviceStop,
+                    equipment: nil,
+                    onCreated: onPartApprovalCreated
                 )
             }
         }
@@ -975,7 +956,7 @@ struct ServiceStopTaskView: View {
                                     )
                                     VM.showAttachJobTasks = true
                                 } catch {
-                                    VM.alertMessage = error.localizedDescription
+                                    VM.alertMessage = error.userFacingMessage
                                     VM.showAlert = true
                                     print(error)
                                 }
@@ -1019,6 +1000,14 @@ struct ServiceStopTaskView: View {
                         tint: Color.orange
                     ) {
                         VM.showAddRepairRequest.toggle()
+                    }
+
+                    taskQuickActionButton(
+                        title: "Add Part Approval",
+                        systemImage: "checkmark.seal",
+                        tint: Color.poolGreen
+                    ) {
+                        showPartApprovalSheet = true
                     }
                 }
                 .padding(.horizontal, 14)
@@ -1337,7 +1326,7 @@ extension ServiceStopTaskView {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                     #endif
                 } catch {
-                    VM.alertMessage = error.localizedDescription
+                    VM.alertMessage = error.userFacingMessage
                     VM.showAlert = true
                     print("Error")
                     print(error)
@@ -1367,7 +1356,7 @@ extension ServiceStopTaskView {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                     #endif
                 } catch {
-                    VM.alertMessage = error.localizedDescription
+                    VM.alertMessage = error.userFacingMessage
                     VM.showAlert = true
                     print("Error")
                     print(error)

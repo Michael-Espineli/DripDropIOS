@@ -85,6 +85,9 @@ struct WorkPreviewBasedOnCompany: View {
         .onDisappear {
             mobileDailyVM.stop()
         }
+        .alert(mobileDailyVM.alertMessage, isPresented: $mobileDailyVM.showAlert) {
+            Button("OK", role: .cancel) {}
+        }
     }
     private func loadPreviousWork() async {
         guard let company = masterDataManager.currentCompany else { return }
@@ -553,6 +556,7 @@ extension WorkPreviewBasedOnCompany {
 
             if let activeRoute = mobileDailyVM.activeRoute {
                 routeActionButtons(for: activeRoute)
+                    .disabled(mobileDailyVM.isChangingRouteState)
             } else {
                 noRouteControls
             }
@@ -766,7 +770,7 @@ extension WorkPreviewBasedOnCompany {
 
     @ViewBuilder
     private func routeActionButtons(for activeRoute: ActiveRoute) -> some View {
-        switch activeRoute.status {
+        switch activeRoute.needsReopening ? .finished : activeRoute.status {
         case .inProgress, .traveling:
             HStack(spacing: 12) {
                 Button {
@@ -847,7 +851,7 @@ extension WorkPreviewBasedOnCompany {
                         Text("Route Finished")
                             .font(.subheadline.weight(.semibold))
 
-                        Text("You can resume the route if more work needs to be completed.")
+                        Text("Reopen with the original start time, mileage, and vehicle if more work needs to be completed.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -863,12 +867,13 @@ extension WorkPreviewBasedOnCompany {
                     )
                 } label: {
                     routeControlButton(
-                        title: "Resume Route",
+                        title: mobileDailyVM.isChangingRouteState ? "Reopening Route…" : "Reopen Route",
                         systemImage: "arrow.clockwise.circle",
                         tint: .accentColor
                     )
                 }
                 .buttonStyle(.plain)
+                .disabled(mobileDailyVM.isChangingRouteState)
             }
         }
     }

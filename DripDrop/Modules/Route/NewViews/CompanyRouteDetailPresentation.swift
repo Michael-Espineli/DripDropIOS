@@ -116,30 +116,30 @@ final class CompanyRouteDetailViewModel: ObservableObject {
                 let eligible = Set(RouteManagerStopSelection.eligibleStops(in: stops, route: loadedRoute).map(\.id))
                 let previousSelection = Set(selectedStops.map(\.id))
                 selectedStops = stops.filter { eligible.contains($0.id) && previousSelection.contains($0.id) }
-            } catch { if generation == token { errors["stops"] = error.localizedDescription } }
+            } catch { if generation == token { errors["stops"] = error.userFacingMessage } }
             guard generation == token, !Task.isCancelled else { return }
             do {
                 let loaded = try await dataService.getActiveRouteLogs(companyId: target.companyId, activeRouteId: loadedRoute.id)
                 guard generation == token, !Task.isCancelled else { return }
                 logs = loaded
-            } catch { if generation == token { errors["logs"] = error.localizedDescription } }
+            } catch { if generation == token { errors["logs"] = error.userFacingMessage } }
             guard generation == token, !Task.isCancelled else { return }
             do {
                 let loaded = try await dataService.getActiveRouteLocations(companyId: target.companyId, activeRouteId: loadedRoute.id)
                 guard generation == token, !Task.isCancelled else { return }
                 locations = loaded.filter { $0.latitude.isFinite && $0.longitude.isFinite && abs($0.latitude) <= 90 && abs($0.longitude) <= 180 && !($0.latitude == 0 && $0.longitude == 0) }
-            } catch { if generation == token { errors["locations"] = error.localizedDescription } }
+            } catch { if generation == token { errors["locations"] = error.userFacingMessage } }
             guard generation == token, !Task.isCancelled else { return }
             do {
                 let loaded = try await dataService.getAllCompanyUsersByStatus(companyId: target.companyId, status: "Active")
                 guard generation == token, !Task.isCancelled else { return }
                 companyUsers = loaded.filter { $0.status == .active && !$0.userId.isEmpty }
                 if !companyUsers.contains(where: { $0.userId == selectedTechnicianId }) { selectedTechnicianId = "" }
-            } catch { if generation == token { errors["users"] = error.localizedDescription } }
+            } catch { if generation == token { errors["users"] = error.userFacingMessage } }
         } catch {
             guard generation == token, !Task.isCancelled else { return }
             route = nil
-            errors["route"] = error.localizedDescription
+            errors["route"] = error.userFacingMessage
         }
     }
 
@@ -163,7 +163,7 @@ final class CompanyRouteDetailViewModel: ObservableObject {
             selectedStops = []
             await load(target)
             notice = "Moved \(current.count) stop\(current.count == 1 ? "" : "s") to \(technician.userName)."
-        } catch { notice = error.localizedDescription }
+        } catch { notice = error.userFacingMessage }
     }
 
     func stop() { generation = UUID(); isLoading = false }

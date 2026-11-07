@@ -30,33 +30,17 @@ struct ServiceStopTaskCardView: View {
 
     @State var serviceStop : ServiceStop
     @Binding var task : ServiceStopTask
-    @State var finished:Bool = false
-    @State var timeFinished:Date? = nil
     var body: some View {
         HStack{
             Image(systemName: task.status == .finished ? "checkmark.circle.fill":"circle")
                 .font(.headline)
-                .foregroundColor(task.status == .finished ? Color.poolGreen : Color.black)
+                .foregroundColor(task.status == .finished ? Color.poolGreen : Color.primary)
                 .padding(3)
-            
-            VStack(alignment:.leading){
-                Text(task.name)
-                    .lineLimit(1)
-                HStack{
-                    Spacer()
-                    Text(task.type.rawValue)
-                        .lineLimit(1)
-                        .font(.footnote)
-                }
-                if let timeFinished {
-                    HStack{
-                        Spacer()
-                        Text("Finished : \(time(date: timeFinished))")
-                            .lineLimit(1)
-                            .font(.footnote)
-                    }
-                }
-            }
+
+            Text(task.name)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
         }
         .modifier(ListButtonModifier())
         .opacity(task.status == .finished  ? 0.75 : 1)

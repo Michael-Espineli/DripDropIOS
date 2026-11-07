@@ -92,7 +92,7 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
 
             syncStatementTotalsFromLineItems()
         } catch {
-            alertMessage = "Could not load statement details. \(error.localizedDescription)"
+            alertMessage = "Could not load statement details. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -145,7 +145,7 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
             alertMessage = "Statement marked paid."
             showAlert = true
         } catch {
-            alertMessage = "Could not mark statement paid. \(error.localizedDescription)"
+            alertMessage = "Could not mark statement paid. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -186,7 +186,7 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
             alertMessage = "Statement voided. Unpaid line items were released back to payroll review."
             showAlert = true
         } catch {
-            alertMessage = "Could not void statement. \(error.localizedDescription)"
+            alertMessage = "Could not void statement. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -212,7 +212,7 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
             alertMessage = successMessage
             showAlert = true
         } catch {
-            alertMessage = "Could not update statement. \(error.localizedDescription)"
+            alertMessage = "Could not update statement. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -259,7 +259,7 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
             exportedCSVURL = result.fileURL
             showShareSheet = true
         } catch {
-            alertMessage = "Could not export CSV. \(error.localizedDescription)"
+            alertMessage = "Could not export CSV. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -273,7 +273,7 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
             exportedCSVURL = result.fileURL
             showShareSheet = true
         } catch {
-            alertMessage = "Could not export summary CSV. \(error.localizedDescription)"
+            alertMessage = "Could not export summary CSV. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -288,7 +288,7 @@ final class TechnicianPayStatementDetailViewModel: ObservableObject {
             exportedCSVURL = result.fileURL
             showShareSheet = true
         } catch {
-            alertMessage = "Could not export line items CSV. \(error.localizedDescription)"
+            alertMessage = "Could not export line items CSV. \(error.userFacingMessage)"
             showAlert = true
         }
     }

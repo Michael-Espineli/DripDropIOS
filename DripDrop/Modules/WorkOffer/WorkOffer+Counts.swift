@@ -75,8 +75,7 @@ extension Array where Element == WorkOffer {
 
     var acceptedReadyToScheduleCount: Int {
         workOfferRecords.filter {
-            $0.status == .accepted &&
-            $0.serviceStopId.isEmpty
+            $0.isReadyToSchedule
         }
         .count
     }

@@ -224,7 +224,7 @@ extension AddNewScheduleServiceStopToNewJobView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var headerCard: some View {
@@ -275,7 +275,7 @@ extension AddNewScheduleServiceStopToNewJobView {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var scheduleDetailsCard: some View {
@@ -315,7 +315,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                 .font(.subheadline.weight(.semibold))
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             descriptionInputCard
 
@@ -326,7 +326,7 @@ extension AddNewScheduleServiceStopToNewJobView {
             )
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var routeSnapshotCard: some View {
@@ -375,7 +375,7 @@ extension AddNewScheduleServiceStopToNewJobView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var taskSelectionCard: some View {
@@ -408,7 +408,7 @@ extension AddNewScheduleServiceStopToNewJobView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -429,7 +429,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -440,7 +440,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(VM.isLoading)
@@ -529,7 +529,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                     Spacer()
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .opacity(0.55)
             )
 
@@ -573,9 +573,9 @@ extension AddNewScheduleServiceStopToNewJobView {
                     .padding(12)
                     .background(
                         isSelected ? Color.poolGreen.opacity(0.12) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             )
@@ -612,7 +612,7 @@ extension AddNewScheduleServiceStopToNewJobView {
         .padding(12)
         .background(
             isSelected ? Color.poolGreen.opacity(0.12) : Color.primary.opacity(0.035),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
         )
     }
 
@@ -635,7 +635,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                 .foregroundStyle(.secondary)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func detailDisplayRow(title: String, value: String, systemImage: String) -> some View {
@@ -660,7 +660,7 @@ extension AddNewScheduleServiceStopToNewJobView {
             Spacer()
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func pickerButtonRow(
@@ -696,7 +696,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -732,7 +732,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                 .font(.subheadline)
                 .lineLimit(4, reservesSpace: true)
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -766,7 +766,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                     .buttonStyle(.plain)
                 }
                 .padding(16)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 VStack(spacing: 8) {
                     routeMetricRow(
@@ -800,7 +800,7 @@ extension AddNewScheduleServiceStopToNewJobView {
                     )
                 }
                 .padding(16)
-                .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 Spacer()
             }
@@ -821,14 +821,12 @@ extension AddNewScheduleServiceStopToNewJobView {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
 
     func emptyState(title: String, message: String, systemImage: String) -> some View {
@@ -848,6 +846,6 @@ extension AddNewScheduleServiceStopToNewJobView {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

@@ -87,7 +87,7 @@ struct JobWorkflowHealthView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -134,7 +134,7 @@ struct JobWorkflowHealthIssueRow: View {
             }
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -142,6 +142,6 @@ private extension View {
     func jobWorkflowHealthCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

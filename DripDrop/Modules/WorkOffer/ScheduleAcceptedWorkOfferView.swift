@@ -63,103 +63,29 @@ struct ScheduleAcceptedWorkOfferView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                summarySection
-                scheduleSection
-                serviceStopTypeSection
-                taskSection
-                saveSection
+            WorkOfferScheduleContent(
+                offer: offer, dataService: dataService, workerName: resolvedWorkerName,
+                estimatedMinutes: estimatedMinutes, serviceDate: $serviceDate,
+                isLoading: isLoading, isSaving: isSaving,
+                canSchedule: job != nil && (!selectedTasks.isEmpty || offer.workPurpose == "diagnostic"),
+                scheduleAction: { Task { await schedule() } }
+            ) {
+                WorkOfferScheduleTasks(tasks: selectedTasks, isDiagnostic: offer.workPurpose == "diagnostic")
             }
-            .navigationTitle("Schedule Offer")
+            .navigationTitle("Schedule Work")
             .navigationBarTitleDisplayMode(.inline)
+            .interactiveDismissDisabled(isSaving)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }.disabled(isSaving)
                 }
             }
-            .task {
-                await load()
-            }
-            .alert("Schedule Offer", isPresented: $showAlert) {
+            .task { await load() }
+            .alert("Schedule Work", isPresented: $showAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
             }
-        }
-    }
-
-    private var summarySection: some View {
-        Section("Offer") {
-            WorkOfferDetailRow(title: "Title", value: offer.title)
-            WorkOfferDetailRow(title: "Worker", value: resolvedWorkerName)
-            WorkOfferDetailRow(title: "Customer", value: offer.customerName)
-            WorkOfferDetailRow(title: "Estimated Time", value: "\(estimatedMinutes) min")
-        }
-    }
-
-    private var scheduleSection: some View {
-        Section("Schedule") {
-            DatePicker(
-                "Service Date",
-                selection: $serviceDate,
-                displayedComponents: [.date, .hourAndMinute]
-            )
-            if let deadline = offer.completionDeadlineAt ?? offer.proposedEndDate {
-                WorkOfferDetailRow(title: "Completion deadline", value: WorkOfferDetailDateFormatter.shortDateTime(deadline))
-            }
-            if !offer.containsServiceDate(serviceDate) {
-                Text("Choose a time within the accepted offer window.").font(.caption).foregroundStyle(.red)
-            }
-        }
-    }
-
-    private var serviceStopTypeSection: some View {
-        Section {
-            Text(offer.serviceStopTypeName ?? (offer.workPurpose == "diagnostic" ? "Job Estimate" : "Job Visit"))
-            Text("The accepted offer's pay type and rate are preserved.").font(.caption).foregroundStyle(.secondary)
-        } header: {
-            Text("Pay Type")
-        }
-    }
-
-    private var taskSection: some View {
-        Section {
-            if selectedTasks.isEmpty {
-                ContentUnavailableView(
-                    "No Tasks",
-                    systemImage: "checklist",
-                    description: Text("This offer has no matching job tasks.")
-                )
-            } else {
-                ForEach(selectedTasks) { task in
-                    WorkOfferTaskRow(task: task)
-                }
-            }
-        } header: {
-            Text("Tasks")
-        }
-    }
-
-    private var saveSection: some View {
-        Section {
-            Button {
-                Task {
-                    await schedule()
-                }
-            } label: {
-                if isSaving {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Label("Create Service Stop", systemImage: "calendar.badge.plus")
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .disabled(isSaving || isLoading || job == nil || (selectedTasks.isEmpty && offer.workPurpose != "diagnostic") || !offer.containsServiceDate(serviceDate))
-        } footer: {
-            Text("This creates a service stop, copies the selected job tasks into the service stop, assigns them to the accepted worker, and marks the offer scheduled.")
         }
     }
 
@@ -201,12 +127,13 @@ struct ScheduleAcceptedWorkOfferView: View {
                 )
             }
         } catch {
-            alertMessage = "Could not load job details. \(error.localizedDescription)"
+            alertMessage = "Could not load job details. \(error.userFacingMessage)"
             showAlert = true
         }
     }
 
     private func schedule() async {
+        guard !isSaving, offer.containsServiceDate(serviceDate) else { return }
         guard let job else {
             alertMessage = "Missing job."
             showAlert = true
@@ -256,7 +183,7 @@ struct ScheduleAcceptedWorkOfferView: View {
             onScheduled()
             dismiss()
         } catch {
-            alertMessage = "Could not schedule work offer. \(error.localizedDescription)"
+            alertMessage = "Could not schedule work offer. \(error.userFacingMessage)"
             showAlert = true
         }
     }

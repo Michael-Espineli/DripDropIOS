@@ -148,7 +148,7 @@ struct AddNewTermsTemplate: View {
             alertMessage = "Terms template and its contract terms were successfully added."
             dismissOnSuccess = true
         } catch {
-            alertMessage = "Failed to add terms template: \(error.localizedDescription)"
+            alertMessage = "Failed to add terms template: \(error.userFacingMessage)"
         }
         
         showAlert = true

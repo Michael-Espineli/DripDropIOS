@@ -147,6 +147,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     
     @Published var showAlert: Bool = false
     @Published var alertMessage: String = ""
+    @Published private(set) var isChangingRouteState = false
     //Move Stops Variables
     @Published var selectedServiceStops:[ServiceStop] = []
     @Published var moveDate: Date = Date()
@@ -769,7 +770,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 clearServiceStopStartPrompt(serviceStopId: serviceStopId)
             } catch {
                 print("[MobileDailyRouteDisplayViewModel][finishServiceStop] Error \(error)")
-                alertMessage = error.localizedDescription
+                alertMessage = error.userFacingMessage
                 showAlert = true
             }
         }
@@ -789,73 +790,73 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
     }
     func startActiveRoute(
         companyId: String?,
-        companyName:String?,
-        user:DBUser?,
+        companyName: String?,
+        user: DBUser?,
         showMileageSheet: Bool = true
-    ){
-        Task{
+    ) {
+        guard let route = activeRoute else { return }
+        activateRoute(
+            companyId: companyId,
+            companyName: companyName,
+            user: user,
+            route: route,
+            showMileageSheet: showMileageSheet && !route.needsReopening && route.startMilage == nil
+        )
+    }
+
+    private func activateRoute(
+        companyId: String?,
+        companyName: String?,
+        user: DBUser?,
+        route: ActiveRoute,
+        showMileageSheet: Bool = false
+    ) {
+        guard let companyId, let companyName, let user,
+              !route.id.isEmpty, !isChangingRouteState else { return }
+        let selectedRouteId = activeRoute?.id
+        cachedCompanyId = companyId
+        cachedCompanyName = companyName
+        cachedUser = user
+        isChangingRouteState = true
+
+        Task {
+            defer { isChangingRouteState = false }
             do {
-                guard let companyId else {return}
-                guard let companyName else {return}
-                guard let user else {return}
-                guard let activeRoute else {return}
-                if activeRoute.id == "" {return}
-                
-                // Cache context for background uploads
-                self.cachedCompanyId = companyId
-                self.cachedCompanyName = companyName
-                self.cachedUser = user
-                
-                //Change Status
-                if showMileageSheet {
-                    self.showMilage = true
+                let savedRoute = try await dataService.startOrResumeActiveRoute(
+                    companyId: companyId,
+                    activeRouteId: route.id,
+                    startTime: Date()
+                )
+                // A response from a previously selected day/company must not
+                // replace the route now on screen or restart its tracking.
+                guard activeRoute?.id == selectedRouteId,
+                      cachedCompanyId == companyId, cachedUser?.id == user.id else { return }
+                activeRoute = savedRoute
+                startTime = savedRoute.startTime ?? startTime
+                startMilage = savedRoute.startMilage ?? 0
+                endMilage = 0
+                inputEndMilage = ""
+                showEndMilage = false
+                if showMileageSheet && savedRoute.startMilage == nil {
+                    showMilage = true
                 }
-                
-                
-                dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: .inProgress)
-                
-                //Update Milage
-                
-                dataService.updateActiveRouteStartTime(companyId: companyId, activeRouteId: activeRoute.id, startTime: Date())
-                
-                //Upload Location
                 routeLocationManager.startTracking()
                 Task {
                     _ = await NotificationViewModel.shared.requestAuthorizationIfNeeded()
                 }
-
-                if let location = self.currentRouteLocation {
-                    let log = ActiveRouteLog(
-                        id: "com_ar_log_" + UUID().uuidString,
-                        activeRouteId: activeRoute.id,
-                        startTime: Date(),
-                        startLatitude: location.coordinate.latitude,
-                        startLongitude: location.coordinate.longitude,
-                        type: .working,
-                        companyId: companyId,
-                        companyName: companyName,
-                        userId: user.id,
-                        userName: (user.firstName + " " + user.lastName),
-                        current: true
-                    )
-                    try await dataService.upLoadActiveRouteLog(companyId: companyId, activeRouteId: activeRoute.id, log: log)
-
-                    // Set current summary log state
-                    self.currentSummaryLogId = log.id
-                    self.currentSummaryType = .working
-                } else {
-                    self.currentSummaryLogId = nil
-                    self.currentSummaryType = .working
-                    print("[RouteLog] No usable current location at route start; deferring start location log")
-                }
-
-                startRouteLogTimer(companyId: companyId, activeRouteId: activeRoute.id, user: user, companyName: companyName)
+                await closeCurrentSummaryLog(companyId: companyId, activeRouteId: savedRoute.id)
+                await openSummaryLog(type: .working, companyId: companyId, companyName: companyName, activeRouteId: savedRoute.id, user: user)
+                guard activeRoute?.id == savedRoute.id,
+                      cachedCompanyId == companyId, cachedUser?.id == user.id else { return }
+                startRouteLogTimer(companyId: companyId, activeRouteId: savedRoute.id, user: user, companyName: companyName)
             } catch {
-                print("[MobileDailyRouteDisplayViewModel][startActiveRoute] Error \(error)")
+                guard activeRoute?.id == selectedRouteId,
+                      cachedCompanyId == companyId, cachedUser?.id == user.id else { return }
+                alertMessage = error.userFacingMessage
+                showAlert = true
             }
         }
     }
-    
 
     func stopActiveRoute(
         companyId: String?,
@@ -924,33 +925,10 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
         user: DBUser?,
         route routeToResume: ActiveRoute? = nil
     ) {
-        guard let companyId else {return}
-        guard let companyName else {return}
-        guard let user else {return}
-        guard var activeRoute = routeToResume ?? activeRoute else {return}
-        if activeRoute.id == "" { return }
-        
-        self.cachedCompanyId = companyId
-        self.cachedCompanyName = companyName
-        self.cachedUser = user
-            //Change Status
-        activeRoute.status = .inProgress
-        if let existingStartTime = activeRoute.startTime {
-            self.startTime = existingStartTime
-        }
-        self.activeRoute = activeRoute
-
-        dataService.updateActiveRouteStatus(companyId: companyId, activeRouteId: activeRoute.id, status: .inProgress)
-        // Resume location tracking when route resumes
-        routeLocationManager.startTracking()
-        
-        Task { @MainActor in
-            await closeCurrentSummaryLog(companyId: companyId, activeRouteId: activeRoute.id)
-            await openSummaryLog(type: .working, companyId: companyId, companyName: companyName, activeRouteId: activeRoute.id, user: user)
-            startRouteLogTimer(companyId: companyId, activeRouteId: activeRoute.id, user: user, companyName: companyName)
-        }
+        guard let route = routeToResume ?? activeRoute else { return }
+        activateRoute(companyId: companyId, companyName: companyName, user: user, route: route)
     }
-    
+
     // Ask for permissions from your UI or when starting a route
     func requestWhenInUseLocation() {
         routeLocationManager.requestWhenInUseAuthorization()
@@ -1226,7 +1204,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 alertMessage = "Successfully moved all selected stops."
                 showAlert = true
             } catch {
-                alertMessage = error.localizedDescription
+                alertMessage = error.userFacingMessage
                 showAlert = true
             }
         }
@@ -1243,7 +1221,7 @@ final class MobileDailyRouteDisplayViewModel:ObservableObject{
                 alertMessage = "Permanent move saved."
                 showAlert = true
             } catch {
-                alertMessage = error.localizedDescription
+                alertMessage = error.userFacingMessage
                 showAlert = true
             }
         }

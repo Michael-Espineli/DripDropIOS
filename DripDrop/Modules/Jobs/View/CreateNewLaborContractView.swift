@@ -144,7 +144,7 @@ final class CreateNewLaborContractViewModel:ObservableObject{
                 
                 try dataService.updateJobTaskLaborContractId(companyId: company.id, jobId: jobId, taskId: task.id, laborContractId: laborContract.id)
                 
-                try dataService.updateJobTaskStatus(companyId: company.id, jobId: jobId, taskId: task.id, status: .offered)
+                try await dataService.updateJobTaskStatus(companyId: company.id, jobId: jobId, taskId: task.id, status: .offered)
             }
             
             self.alertMessage = "Successfully Uploaded"

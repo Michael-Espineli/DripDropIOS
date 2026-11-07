@@ -73,7 +73,7 @@ struct RepairRequestCardView: View {
             .padding(14)
         }
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
         )

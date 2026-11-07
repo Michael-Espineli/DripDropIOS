@@ -42,7 +42,7 @@ final class JobTemplateSettingsViewModel: ObservableObject {
                 companyId: companyId
             )
         } catch {
-            alertMessage = "Could not load job templates. \(error.localizedDescription)"
+            alertMessage = "Could not load job templates. \(error.userFacingMessage)"
             showAlert = true
         }
     }

@@ -46,7 +46,7 @@ final class CompanyPaySettingsViewModel: ObservableObject {
                 settings = .defaultSettings(companyId: companyId)
             }
         } catch {
-            alertMessage = "Could not load pay settings. \(error.localizedDescription)"
+            alertMessage = "Could not load pay settings. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -64,7 +64,7 @@ final class CompanyPaySettingsViewModel: ObservableObject {
             alertMessage = "Pay settings saved."
             showAlert = true
         } catch {
-            alertMessage = "Could not save pay settings. \(error.localizedDescription)"
+            alertMessage = "Could not save pay settings. \(error.userFacingMessage)"
             showAlert = true
         }
     }

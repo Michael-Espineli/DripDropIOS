@@ -350,7 +350,7 @@ struct ReceiptDataBaseItemPicker: View {
 
             filterItems(searchTerm)
         } catch {
-            loadErrorMessage = error.localizedDescription
+            loadErrorMessage = error.userFacingMessage
             showLoadError = true
         }
     }

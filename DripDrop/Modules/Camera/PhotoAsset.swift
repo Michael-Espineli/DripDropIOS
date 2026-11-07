@@ -50,7 +50,7 @@ struct PhotoAsset: Identifiable {
                     request.isFavorite = isFavorite
                 }
             } catch (let error) {
-                logger.error("Failed to change isFavorite: \(error.localizedDescription)")
+                logger.error("Failed to change isFavorite: \(error.userFacingMessage)")
             }
         }
     }
@@ -63,7 +63,7 @@ struct PhotoAsset: Identifiable {
             }
             logger.debug("PhotoAsset asset deleted: \(index ?? -1)")
         } catch (let error) {
-            logger.error("Failed to delete photo: \(error.localizedDescription)")
+            logger.error("Failed to delete photo: \(error.userFacingMessage)")
         }
     }
 }

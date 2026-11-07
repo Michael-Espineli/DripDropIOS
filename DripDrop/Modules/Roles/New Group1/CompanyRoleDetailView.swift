@@ -118,7 +118,7 @@ extension CompanyRoleDetailView {
 
     var canEditRole: Bool {
         if let currentUserRole = masterDataManager.role {
-            return currentUserRole.permissionIdList.contains("864")
+            return masterDataManager.hasCompanyPermission("864") && (masterDataManager.currentCompany?.ownerId == masterDataManager.user?.id || currentUserRole.canDelegate(activeRole))
         }
 
         return false

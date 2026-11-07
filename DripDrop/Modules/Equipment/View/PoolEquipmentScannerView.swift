@@ -456,7 +456,7 @@ final class PoolEquipmentScannerViewModel: ObservableObject {
             showMessage(title: "Scan saved.", message: "Confirmed equipment and pipe feedback is ready for scanner learning.")
             resetAfterSave()
         } catch {
-            showMessage(title: "Scan could not save.", message: error.localizedDescription)
+            showMessage(title: "Scan could not save.", message: error.userFacingMessage)
         }
     }
 

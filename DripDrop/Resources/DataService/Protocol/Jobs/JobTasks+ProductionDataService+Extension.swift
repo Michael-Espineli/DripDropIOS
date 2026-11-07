@@ -106,17 +106,9 @@ extension ProductionDataService {
             }
         }
     }
-    func updateJobTaskStatus(companyId:String,jobId:String,taskId:String,status:JobTaskStatus) throws {
+    func updateJobTaskStatus(companyId:String,jobId:String,taskId:String,status:JobTaskStatus) async throws {
         let ref = workOrderTaskDocument(companyId: companyId, workOrderId: jobId, taskId: taskId)
-        ref.updateData([
-            "status": status.rawValue
-        ]) { err in
-            if let err = err {
-                print("Error updating document: \(err)")
-            } else {
-                print("Document successfully updated")
-            }
-        }
+        try await updateConfirmedTaskStatus(ref, status: status)
     }
     func updateJobTaskServiceStopId(companyId:String,jobId:String,taskId:String,serviceStopId:IdInfo) throws {
         let ref = workOrderTaskDocument(companyId: companyId, workOrderId: jobId, taskId: taskId)

@@ -24,6 +24,24 @@ struct UserAccess:Codable,Identifiable,Hashable{ // the Id of UserAccess Will Al
     var roleId: String
     var roleName: String
     var dateCreated : Date
+    var status: String? = nil
+    var userStatus: String? = nil
+    var companyUserStatus: String? = nil
+    var accessStatus: String? = nil
+    var userAccessStatus: String? = nil
+    var active: Bool? = nil
+    var isActive: Bool? = nil
+    var accessActive: Bool? = nil
+    var revoked: Bool? = nil
+
+    var hasActiveAccess: Bool {
+        let inactive = Set(["inactive", "revoked", "past", "deleted", "declined", "pending", "invited", "rejected", "canceled", "cancelled", "expired"])
+        return active != false && isActive != false && accessActive != false && revoked != true &&
+            [status, userStatus, companyUserStatus, accessStatus, userAccessStatus].allSatisfy {
+                !inactive.contains(($0 ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+            }
+    }
+
     
     init(
         id: String,
@@ -47,7 +65,9 @@ struct UserAccess:Codable,Identifiable,Hashable{ // the Id of UserAccess Will Al
         case companyName = "companyName"
         case roleId = "roleId"
         case roleName = "roleName"
-        case dateCreated = "dateCreated"
+        case dateCreated = "dateCreated" 
+        case status, userStatus, companyUserStatus, accessStatus, userAccessStatus, active, isActive, accessActive, revoked
+
     }
 }
 

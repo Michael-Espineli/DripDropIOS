@@ -31,7 +31,7 @@ enum ShoppingCenterTab: String, CaseIterable, Identifiable {
         case .jobs:
             return "briefcase"
         case .purchased:
-            return "cart.badge.checkmark"
+            return ShoppingListStatus.purchased.shoppingSystemImage
         }
     }
 }

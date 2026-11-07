@@ -563,7 +563,7 @@ extension EmployeeDailyDashboard {
                         dataService: dataService,
                         customerId: nil,
                         isTechnicianCreateFlow: true,
-                        canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                        canScheduleServiceStopsForOthers: masterDataManager.role?.canCreateCustomJobsForOthers == true
                     )
                 }
                 .sheet(isPresented: $showCreateFromTemplate) {
@@ -571,9 +571,9 @@ extension EmployeeDailyDashboard {
                         JobTemplatePickerCreateJobSheet(
                             companyId: company.id,
                             dataService: dataService,
-                            technicianCanAddOnly: true,
+                            technicianCanAddOnly: masterDataManager.role?.permissionIdList.contains("22") != true,
                             isTechnicianCreateFlow: true,
-                            canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                            canScheduleServiceStopsForOthers: masterDataManager.role?.canCreateTemplateJobsForOthers == true
                         )
                         .presentationDetents([.large])
                     } else {
@@ -600,7 +600,7 @@ extension EmployeeDailyDashboard {
                                 Text("Create Job")
                                     .font(.title3.weight(.semibold))
 
-                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Start blank or use a technician-enabled template." : "Use a technician-enabled job template.")
+                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Create and schedule a custom job or use an available template." : "Use a technician-enabled job template.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -625,8 +625,8 @@ extension EmployeeDailyDashboard {
                             }
                         } label: {
                             technicianJobCreateOptionRow(
-                                title: "Blank Job",
-                                subtitle: "Create a simplified blank job.",
+                                title: "Custom Job",
+                                subtitle: "Create a custom job and schedule its first visit.",
                                 systemImage: "doc.badge.plus"
                             )
                         }
@@ -1020,6 +1020,10 @@ extension EmployeeDailyDashboard {
 
                 routeMetricGrid(activeRoute)
 
+                if activeRoute.needsReopening {
+                    routeReopenCard
+                }
+
                 if routeNeedsStartMileage(activeRoute) {
                     Divider().opacity(0.25)
                     routeStartMileageCard(activeRoute)
@@ -1033,35 +1037,6 @@ extension EmployeeDailyDashboard {
                 }
 
                 routeActionButtons
-
-                if VM.serviceStopList.contains(where: { $0.operationStatus == .notFinished }) {
-                    Button {
-                        coverageRoute = activeRoute
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "person.2.badge.plus")
-                                .foregroundStyle(Color.poolBlue)
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Offer Route Coverage")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                Text("Choose all remaining stops or just a few.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(12)
-                        .background(Color.poolBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(VM.enableMove || enableReorder)
-                }
             }
         }
         .employeeDashCard(padding: 12)
@@ -1083,11 +1058,24 @@ extension EmployeeDailyDashboard {
                 }
                 .buttonStyle(.plain)
 
-                Button {
-                    VM.enableMove = true
+                Menu {
+                    Button {
+                        VM.enableMove = true
+                    } label: {
+                        Label("Move Stops", systemImage: "arrowshape.turn.up.right")
+                    }
+
+                    if let activeRoute = VM.activeRoute,
+                       VM.serviceStopList.contains(where: { $0.operationStatus == .notFinished }) {
+                        Button {
+                            coverageRoute = activeRoute
+                        } label: {
+                            Label("Offer Route Coverage", systemImage: "person.2.badge.plus")
+                        }
+                    }
                 } label: {
                     routeSummaryButton(
-                        title: "Move",
+                        title: "Move / Offer",
                         systemImage: "arrowshape.turn.up.right",
                         foreground: .accentColor,
                         background: Color.accentColor.opacity(0.12)
@@ -1174,9 +1162,33 @@ extension EmployeeDailyDashboard {
 
 // MARK: - Route Start
 extension EmployeeDailyDashboard {
+    private var routeReopenCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Continue this route using the original start time, mileage, and vehicle.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Button {
+                routeCloseoutPromptedRouteId = VM.activeRoute?.id
+                VM.resumeActiveRoute(
+                    companyId: masterDataManager.currentCompany?.id,
+                    companyName: masterDataManager.currentCompany?.name,
+                    user: masterDataManager.user
+                )
+            } label: {
+                actionButton(
+                    title: VM.isChangingRouteState ? "Reopening Route…" : "Reopen Route",
+                    systemImage: "arrow.clockwise.circle",
+                    tint: .accentColor
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(VM.isChangingRouteState)
+        }
+    }
+
     private func routeNeedsStartMileage(_ route: ActiveRoute) -> Bool {
-        route.status == .didNotStart ||
-        (route.status != .finished && route.startMilage == nil)
+        !route.needsReopening && (route.status == .didNotStart || route.startMilage == nil)
     }
 
     private func routeStartMileageCard(_ route: ActiveRoute) -> some View {
@@ -1459,6 +1471,7 @@ extension EmployeeDailyDashboard {
     }
 
     private func presentRouteCloseoutIfNeeded() {
+        guard !VM.isChangingRouteState else { return }
         guard let route = VM.activeRoute, routeNeedsCloseout(route) else { return }
         guard routeCloseoutPromptedRouteId != route.id else { return }
 

@@ -263,3 +263,11 @@ enum MainScreenDisplayType:String, CaseIterable {
     case preview = "Preview"
     case fullPreview = "Full Preview"
 }
+
+
+extension MasterDataManager {
+    func hasCompanyPermission(_ id: String) -> Bool {
+        if id != "300", currentCompany?.ownerId == user?.id { return true }
+        return role?.hasPermission(id) == true
+    }
+}

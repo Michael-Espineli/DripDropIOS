@@ -220,7 +220,7 @@ final class CompanyWorkTypesViewModel: ObservableObject {
         do {
             workTypes = try await dataService.fetchCompanyWorkTypes(companyId: companyId)
         } catch {
-            alertMessage = "Could not load company pay types. \(error.localizedDescription)"
+            alertMessage = "Could not load company pay types. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -241,7 +241,7 @@ final class CompanyWorkTypesViewModel: ObservableObject {
             try await dataService.saveCompanyWorkType(workType)
             upsertLocal(workType)
         } catch {
-            alertMessage = "Could not save pay type. \(error.localizedDescription)"
+            alertMessage = "Could not save pay type. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -324,7 +324,7 @@ final class CompanyWorkTypesViewModel: ObservableObject {
             alertMessage = "Added \(newWorkTypes.count) default pay types."
             showAlert = true
         } catch {
-            alertMessage = "Could not add default pay types. \(error.localizedDescription)"
+            alertMessage = "Could not add default pay types. \(error.userFacingMessage)"
             showAlert = true
         }
     }

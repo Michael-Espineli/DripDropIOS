@@ -370,7 +370,7 @@ extension EditTaskView {
                             if let myError = error as? AddNewTaskToJobError {
                                 VM.alertMessage = myError.errorDescription
                                 VM.showAlert.toggle()
-                            } else { VM.alertMessage = error.localizedDescription; VM.showAlert.toggle() }
+                            } else { VM.alertMessage = error.userFacingMessage; VM.showAlert.toggle() }
                         }
                     }
                 }

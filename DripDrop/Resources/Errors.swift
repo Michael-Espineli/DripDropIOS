@@ -8,6 +8,41 @@
 import Foundation
 import SwiftUI
 
+// Shared presentation for alerts and inline failures. Keep the NSError domain and
+// code so a database/storage denial is distinguishable from company role checks.
+enum PermissionErrorPresentation {
+    static func message(for error: Error) -> String {
+        let nsError = error as NSError
+        let details = nsError.userInfo["details"] as? [String: Any] ?? [:]
+        let original = error.localizedDescription
+        if details["permissionSource"] as? String == "drip-drop" {
+            let permission = details["permissionId"] as? String
+            let required = permission.map { " Required permission: \($0)." } ?? ""
+            return "Drip Drop permission denied: \(original) Ask a company administrator to review your access.\(required) [\(nsError.domain)/\(nsError.code)]"
+        }
+        if (nsError.domain == "FIRFirestoreErrorDomain" && nsError.code == 7)
+            || (nsError.domain == "FIRStorageErrorDomain" && nsError.code == -13021) {
+            let service = nsError.domain == "FIRFirestoreErrorDomain" ? "Firestore" : "Storage"
+            return "Firebase \(service) permission denied: Firebase blocked this request. Share this error with support so they can check Firebase security rules and your company access. [\(nsError.domain)/\(nsError.code)]"
+        }
+        if nsError.domain == "com.firebase.functions" && nsError.code == 7 {
+            return "Permission denied (source unconfirmed): \(original) This server response does not identify whether Firebase or Drip Drop denied access. [\(nsError.domain)/\(nsError.code)]"
+        }
+        return original
+    }
+
+    static func companyPermission(_ permissionId: String, action: String) -> Error {
+        NSError(domain: "DripDropPermission", code: 7, userInfo: [
+            NSLocalizedDescriptionKey: "Your company role does not allow you to \(action).",
+            "details": ["permissionSource": "drip-drop", "permissionId": permissionId]
+        ])
+    }
+}
+
+extension Error {
+    var userFacingMessage: String { PermissionErrorPresentation.message(for: self) }
+}
+
 enum CustomerError: Error {
     case invalidPhoneNumber
     case invalidAddress

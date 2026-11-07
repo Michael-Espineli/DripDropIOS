@@ -92,12 +92,15 @@ struct JobListView: View {
         }
         .sheet(isPresented: $showCreateBlankJob, onDismiss: reloadJobs) {
             AddNewJobView(dataService: dataService, customerId: nil,
-                          canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true)
+                          isTechnicianCreateFlow: masterDataManager.role?.permissionIdList.contains("22") != true,
+                          canScheduleServiceStopsForOthers: masterDataManager.role?.canCreateCustomJobsForOthers == true)
         }
         .sheet(isPresented: $showCreateFromTemplate, onDismiss: reloadJobs) {
             if let company = masterDataManager.currentCompany {
                 JobTemplatePickerCreateJobSheet(companyId: company.id, dataService: dataService,
-                    canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true)
+                    technicianCanAddOnly: masterDataManager.role?.permissionIdList.contains("22") != true,
+                    isTechnicianCreateFlow: masterDataManager.role?.permissionIdList.contains("22") != true,
+                    canScheduleServiceStopsForOthers: masterDataManager.role?.canCreateTemplateJobsForOthers == true)
                     .presentationDetents([.large])
             }
         }
@@ -143,7 +146,7 @@ struct JobListView: View {
                 .tint(listVM.filters.adminFilterActive ? .secondary : .poolBlue)
                 Spacer()
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .slate))
             .font(.caption.weight(.semibold))
 
             HStack {
@@ -311,7 +314,7 @@ struct JobListView: View {
                                 Text("Create Job")
                                     .font(.title3.weight(.semibold))
 
-                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Start blank or use a reusable template." : "Use a reusable job template.")
+                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Create a custom job or use an available template." : "Use an available job template.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -336,7 +339,7 @@ struct JobListView: View {
                             }
                         } label: {
                             jobCreateOptionRow(
-                                title: "Blank Job",
+                                title: "Custom Job",
                                 subtitle: "Build a job manually from scratch.",
                                 systemImage: "doc.badge.plus"
                             )

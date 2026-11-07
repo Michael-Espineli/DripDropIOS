@@ -212,7 +212,9 @@ final class AddNewJobViewModel:ObservableObject{
         admin.userId != "" &&
         admin.id != "" &&
         Double(rate) != nil &&
-        Double(laborCost) != nil
+        Double(laborCost) != nil &&
+        !isLoadingTemplate && (startingTemplate == nil || templateApplied) &&
+        (!isTechnicianCreateFlow || !serviceStops.isEmpty)
     }
     var plannedStopLaborCents: Int {
         plannedServiceStops.reduce(0) { total, stop in
@@ -380,6 +382,9 @@ final class AddNewJobViewModel:ObservableObject{
         }
     }
     func addNewJob(companyId:String) async throws {
+        guard canSubmitJob else {
+            throw NSError(domain: "JobCreation", code: 5, userInfo: [NSLocalizedDescriptionKey: isTechnicianCreateFlow ? "Choose the customer, location, and admin, wait for the template to load, and schedule the first visit before creating the job." : "Complete the job details and wait for the template to load before creating the job."])
+        }
         if customer.id == "" {
             throw JobError.invalidCustomer
         }
@@ -410,7 +415,7 @@ final class AddNewJobViewModel:ObservableObject{
             type: "",
             dateCreated: Date(),
             description: description,
-            operationStatus: operationStatus,
+            operationStatus: serviceStops.isEmpty ? operationStatus : .scheduled,
             billingStatus: billingStatus,
             customerId: customer.id,
             customerName: fullCustomerName,
@@ -491,6 +496,12 @@ final class AddNewJobViewModel:ObservableObject{
         isLoadingTemplate = true
         defer { isLoadingTemplate = false }
 
+        let currentTemplate = try await dataService.fetchJobTemplate(companyId: companyId, templateId: startingTemplate.id)
+        guard currentTemplate.isActive else {
+            throw NSError(domain: "JobCreation", code: 6, userInfo: [NSLocalizedDescriptionKey: "This template is inactive. Choose an active job template."])
+        }
+        self.startingTemplate = currentTemplate
+
         async let templateTasksTask = dataService.fetchJobTemplateTasks(
             companyId: companyId,
             templateId: startingTemplate.id
@@ -510,13 +521,13 @@ final class AddNewJobViewModel:ObservableObject{
         let templatePlannedStops = try await templatePlannedStopsTask
         let templateShoppingItems = try await templateShoppingItemsTask
 
-        description = startingTemplate.description
-        rate = String(Double(startingTemplate.defaultRateCents) / 100.0)
-        laborCost = String(Double(startingTemplate.defaultLaborCostCents) / 100.0)
-        issuePriority = startingTemplate.normalizedDefaultIssuePriority
+        description = currentTemplate.description
+        rate = String(Double(currentTemplate.defaultRateCents) / 100.0)
+        laborCost = String(Double(currentTemplate.defaultLaborCostCents) / 100.0)
+        issuePriority = currentTemplate.normalizedDefaultIssuePriority
 
         let copiedTasks = templateTasks.map { templateTask in
-            JobTask(
+            var task = JobTask(
                 id: "comp_job_task_" + UUID().uuidString,
                 name: templateTask.name,
                 type: templateTask.type,
@@ -537,6 +548,16 @@ final class AddNewJobViewModel:ObservableObject{
                 billingLaborPriceCents: templateTask.billingLaborPriceCents,
                 taxable: templateTask.taxable
             )
+            task.sourceTemplateId = startingTemplate.id
+            task.sourceTemplateTaskId = templateTask.id
+            task.payTypeId = templateTask.payTypeId
+            task.payTypeName = templateTask.payTypeName
+            task.payrollMode = templateTask.payrollMode
+            task.manualPayOverrideCents = templateTask.manualPayOverrideCents
+            task.manualPayOverrideNotes = templateTask.manualPayOverrideNotes
+            task.payrollStackBehavior = templateTask.payrollStackBehavior
+            task.payQuantity = templateTask.payQuantity
+            return task
         }
 
         let taskIdMap = Dictionary(
@@ -735,7 +756,7 @@ var body: some View {
                 )
             }
         } catch {
-            VM.alertMessage = "Could not load job. \(error.localizedDescription)"
+            VM.alertMessage = "Could not load job. \(error.userFacingMessage)"
             VM.showAlert = true
             print(error)
         }
@@ -746,7 +767,7 @@ var body: some View {
                 Button {
                     submitCurrentJob()
                 } label: {
-                    Text("Submit")
+                    Text(VM.isTechnicianCreateFlow ? "Create and Schedule" : "Create Job")
                         .font(.caption.weight(.semibold))
                 }
             } else if !UIDevice.isIPhone && !VM.isTechnicianCreateFlow {
@@ -843,24 +864,11 @@ extension AddNewJobView {
 
 var headerCard: some View {
     VStack(alignment: .leading, spacing: 14) {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Create Job")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
+        WorkspaceIdentityHeader(title: "Create Job", eyebrow: "Company operations",
+            subtitle: VM.startingTemplate.map { "Started from template: \($0.name)" } ?? "Build the job scope, shopping list, schedule, and review before submitting.", systemImage: "briefcase.badge.plus")
 
-                if let template = VM.startingTemplate {
-                    Text("Started from template: \(template.name)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    Text("Build the job scope, shopping list, schedule, and review before submitting.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+        HStack(alignment: .top) {
+
             if let template = VM.startingTemplate {
                 Label(template.name, systemImage: "square.stack.3d.up")
                     .font(.caption.weight(.semibold))
@@ -876,12 +884,8 @@ var headerCard: some View {
                 Button {
                     submitCurrentJob()
                 } label: {
-                    Text("Submit")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background(Color.accentColor, in: Capsule())
+                    Text(VM.isTechnicianCreateFlow ? "Create and Schedule" : "Create Job")
+                        .modifier(WorkspaceControlModifier())
                 }
                 .buttonStyle(.plain)
             } else {
@@ -937,7 +941,7 @@ var headerCard: some View {
         }
     }
     .padding(16)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var viewPickerCard: some View {
@@ -984,7 +988,7 @@ var viewPickerCard: some View {
         }
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var info: some View {
@@ -1059,7 +1063,7 @@ var info: some View {
         }
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var technicianCreateInfo: some View {
@@ -1122,7 +1126,7 @@ var technicianCreateInfo: some View {
         descriptionInputCard
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var technicianSchedule: some View {
@@ -1200,7 +1204,7 @@ var technicianSchedule: some View {
         }
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var taskView: some View {
@@ -1280,7 +1284,7 @@ var taskView: some View {
         }
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var shoppingListView: some View {
@@ -1356,7 +1360,7 @@ var shoppingListView: some View {
         }
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var schedule: some View {
@@ -1482,7 +1486,7 @@ var schedule: some View {
         }
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 var customerView: some View {
@@ -1525,7 +1529,7 @@ var customerView: some View {
         }
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
     var review: some View {
@@ -1549,7 +1553,7 @@ var customerView: some View {
                     }
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -1658,7 +1662,7 @@ var customerView: some View {
                             .font(.caption.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 9)
-                            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -1667,7 +1671,7 @@ var customerView: some View {
             submitButton
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 var simpleJobView: some View {
     VStack(alignment: .leading, spacing: 14) {
@@ -1710,7 +1714,7 @@ var simpleJobView: some View {
             .pickerStyle(.menu)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
         HStack(spacing: 12) {
             Image(systemName: "calendar")
@@ -1723,14 +1727,14 @@ var simpleJobView: some View {
                 .font(.subheadline)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
         descriptionInputCard
 
         submitButtonSimple
     }
     .padding(16)
-    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 }
 extension AddNewJobView {
@@ -1748,7 +1752,7 @@ var bottomActionBar: some View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -1762,13 +1766,13 @@ var bottomActionBar: some View {
                 }
             } label: {
                 Label(
-                    isSubmitAction ? "Submit" : "Next",
+                    isSubmitAction ? (VM.isTechnicianCreateFlow ? "Create and Schedule" : "Create Job") : "Next",
                     systemImage: isSubmitAction ? "checkmark" : "chevron.right"
                 )
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -1806,7 +1810,7 @@ func submitCurrentJob() {
 
                 dismiss()
             } catch {
-                VM.alertMessage = "Invalid Something"
+                VM.alertMessage = error.userFacingMessage
                 VM.showAlert = true
                 print(error)
 
@@ -1826,7 +1830,7 @@ var submitButton: some View {
             .font(.subheadline.weight(.semibold))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     .buttonStyle(.plain)
 }
@@ -1850,7 +1854,7 @@ var submitButtonSimple: some View {
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
 
@@ -1871,17 +1875,15 @@ var submitButtonSimple: some View {
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
 }
 
 func sectionHeader(_ title: String, systemImage: String) -> some View {
-    Label(title, systemImage: systemImage)
-        .font(.headline.weight(.semibold))
-        .foregroundStyle(.primary)
-}
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
+    }
 
 func pickerButtonRow(
     title: String,
@@ -1932,7 +1934,7 @@ func pickerRowLabel(
             .foregroundStyle(.tertiary)
     }
     .padding(12)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 func textInputRow(
@@ -1951,7 +1953,7 @@ func textInputRow(
             .font(.subheadline)
             .keyboardType(keyboardType)
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1981,7 +1983,7 @@ var descriptionInputCard: some View {
             .font(.subheadline)
             .lineLimit(5, reservesSpace: true)
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .focused($focusedField, equals: "Description")
             .submitLabel(.return)
     }
@@ -2009,7 +2011,7 @@ func detailDisplayRow(title: String, value: String, systemImage: String) -> some
         Spacer()
     }
     .padding(12)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 func actionRow(title: String, subtitle: String, systemImage: String) -> some View {
@@ -2038,7 +2040,7 @@ func actionRow(title: String, subtitle: String, systemImage: String) -> some Vie
             .foregroundStyle(.tertiary)
     }
     .padding(12)
-    .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 func emptyState(title: String, message: String, systemImage: String) -> some View {
@@ -2058,7 +2060,7 @@ func emptyState(title: String, message: String, systemImage: String) -> some Vie
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 24)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
 func nextButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
@@ -2101,7 +2103,7 @@ func reviewRow(title: String, value: String, action: @escaping () -> Void) -> so
         .buttonStyle(.plain)
     }
     .padding(12)
-    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 }
 
     func serviceStopScheduleRow(_ serviceStop: ServiceStop) -> some View {
@@ -2134,7 +2136,7 @@ func reviewRow(title: String, value: String, action: @escaping () -> Void) -> so
             }
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     var plannedServiceStopsPreviewCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -2186,12 +2188,12 @@ func reviewRow(title: String, value: String, action: @escaping () -> Void) -> so
                         Spacer()
                     }
                     .padding(12)
-                    .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
  

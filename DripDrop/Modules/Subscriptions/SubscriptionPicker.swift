@@ -63,7 +63,7 @@ struct SubscriptionPicker: View {
                             break
                         case .failed(let error):
                             print("Failed to pay: \(error.localizedDescription)")
-                            VM.alertMessage = error.localizedDescription
+                            VM.alertMessage = error.userFacingMessage
                             VM.showAlert = true
                             break
                             // Handle error

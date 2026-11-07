@@ -218,7 +218,7 @@ private extension ToDoListView {
             toDoVM.errorMessage = nil
             try await toDoVM.readToDoCompanyList(companyId: company.id)
         } catch {
-            toDoVM.errorMessage = error.localizedDescription
+            toDoVM.errorMessage = error.userFacingMessage
         }
     }
 }

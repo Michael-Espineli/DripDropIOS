@@ -145,7 +145,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             CompanyServiceStopTypePickerView(
                 companyId: companyId,
@@ -183,7 +183,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                     .foregroundStyle(.secondary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Estimated Minutes")
@@ -193,7 +193,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                 Stepper("\(estimatedMinutes) min", value: $estimatedMinutes, in: 5...720, step: 5)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Planned Labor Cost")
@@ -207,7 +207,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                     .foregroundStyle(.secondary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Labor Notes")
@@ -223,7 +223,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                 .modifier(PlainTextFieldModifier())
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Description")
@@ -239,7 +239,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                 .modifier(PlainTextFieldModifier())
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .jobTemplatePlannedStopSheetCard()
     }
@@ -332,7 +332,7 @@ struct AddJobTemplatePlannedStopSheet: View {
             .padding(12)
             .background(
                 isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.045),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
         }
         .buttonStyle(.plain)
@@ -349,13 +349,13 @@ struct AddJobTemplatePlannedStopSheet: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 } else {
                     Label("Save Planned Stop", systemImage: "checkmark.circle")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
             .buttonStyle(.plain)
@@ -368,7 +368,7 @@ struct AddJobTemplatePlannedStopSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -414,7 +414,7 @@ struct AddJobTemplatePlannedStopSheet: View {
             onSaved()
             dismiss()
         } catch {
-            alertMessage = "Could not save planned stop. \(error.localizedDescription)"
+            alertMessage = "Could not save planned stop. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -424,6 +424,6 @@ private extension View {
     func jobTemplatePlannedStopSheetCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

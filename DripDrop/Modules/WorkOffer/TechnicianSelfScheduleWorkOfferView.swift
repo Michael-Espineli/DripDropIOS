@@ -7,6 +7,138 @@
 
 import SwiftUI
 
+struct WorkOfferScheduleContent<Tasks: View>: View {
+    let offer: WorkOffer
+    let dataService: any ProductionDataServiceProtocol
+    let workerName: String
+    let estimatedMinutes: Int
+    @Binding var serviceDate: Date
+    let isLoading: Bool
+    let isSaving: Bool
+    let canSchedule: Bool
+    let scheduleAction: () -> Void
+    @ViewBuilder let tasks: () -> Tasks
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                VStack(spacing: 0) {
+                    WorkOfferAreaMap(offer: offer, dataService: dataService, height: 160, showsPanel: false)
+                    VStack(alignment: .leading, spacing: 16) {
+                        WorkOfferCardHeading(offer: offer)
+                        HStack(alignment: .top, spacing: 12) {
+                            WorkOfferSummaryFact(title: "Assigned technician", value: workerName, systemImage: "person.crop.circle")
+                            WorkOfferSummaryFact(title: "Estimated time", value: "\(estimatedMinutes) min", systemImage: "clock")
+                        }
+                    }
+                    .padding(16)
+                }
+                .workOfferSurface()
+
+                TechnicianWorkPanel(title: "Service time", systemImage: "calendar") {
+                    Text("Choose when this work will take place.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    DatePicker("Service date", selection: $serviceDate, displayedComponents: [.date, .hourAndMinute])
+                        .tint(.poolBlue)
+                        .disabled(isSaving)
+
+                    if let start = offer.proposedStartDate {
+                        TechnicianWorkDetailRow(title: "Available from", value: TechnicianWorkDateFormatter.shortDateTime(start))
+                    }
+                    if let deadline = offer.completionDeadlineAt ?? offer.proposedEndDate {
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Complete by").font(.caption.weight(.semibold))
+                                Text(TechnicianWorkDateFormatter.shortDateTime(deadline))
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                        } icon: {
+                            Image(systemName: "flag.checkered").foregroundStyle(Color.poolBlue)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Color.poolBlue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    if !offer.containsServiceDate(serviceDate) {
+                        Label("Choose a time within the offer’s available dates and deadline.", systemImage: "exclamationmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(Color.poolRed)
+                    }
+                }
+
+                TechnicianWorkPanel(title: "Accepted pay type", systemImage: "dollarsign.circle") {
+                    Text(offer.serviceStopTypeName ?? (offer.workPurpose == "diagnostic" ? "Job Estimate" : "Job Visit"))
+                        .font(.subheadline.weight(.semibold))
+                    Text("Your accepted pay type and rate carry over to the scheduled work.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                TechnicianWorkPanel(title: "Scope of work", systemImage: "checklist") {
+                    if isLoading {
+                        ProgressView("Loading work details…")
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        tasks()
+                    }
+                }
+            }
+            .padding(14)
+        }
+        .background(Color.listColor.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 8) {
+                Button(action: scheduleAction) {
+                    HStack(spacing: 8) {
+                        if isSaving { ProgressView().tint(.white) }
+                        Label(isSaving ? "Scheduling…" : "Schedule work", systemImage: "calendar.badge.plus")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
+                .buttonBorderShape(.capsule)
+                .tint(.poolGreen)
+                .disabled(!canSchedule || isLoading || isSaving || !offer.containsServiceDate(serviceDate))
+                Text("Creates a service stop for the accepted work and moves it to Scheduled.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(16)
+            .background(Color(.systemBackground))
+        }
+    }
+}
+
+struct WorkOfferScheduleTasks: View {
+    let tasks: [JobTask]
+    let isDiagnostic: Bool
+
+    var body: some View {
+        if tasks.isEmpty {
+            Text(isDiagnostic ? "Diagnostic / estimate visit. Execution tasks are added after the assessment." : "This offer has no matching job tasks.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        } else {
+            ForEach(tasks) { task in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "checkmark.circle")
+                        .foregroundStyle(Color.poolBlue)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(task.name).font(.subheadline.weight(.semibold))
+                        Text("\(task.type.rawValue) · \(task.estimatedTime) min")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+}
+
 struct TechnicianSelfScheduleWorkOfferView: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -52,102 +184,23 @@ struct TechnicianSelfScheduleWorkOfferView: View {
     }
 
     var body: some View {
-        Form {
-            offerSection
-            scheduleSection
-            serviceStopTypeSection
-            taskSection
-            saveSection
+        WorkOfferScheduleContent(
+            offer: offer, dataService: dataService, workerName: companyUser.userName,
+            estimatedMinutes: offer.estimatedMinutes, serviceDate: $serviceDate,
+            isLoading: isLoading, isSaving: isSaving,
+            canSchedule: job != nil && (!selectedTasks.isEmpty || offer.workPurpose == "diagnostic"),
+            scheduleAction: { Task { await schedule() } }
+        ) {
+            WorkOfferScheduleTasks(tasks: selectedTasks, isDiagnostic: offer.workPurpose == "diagnostic")
         }
         .navigationTitle("Schedule Work")
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled(isSaving)
-        .task {
-            await load()
-        }
+        .task { await load() }
         .alert("Schedule Work", isPresented: $showAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(alertMessage)
-        }
-    }
-
-    private var offerSection: some View {
-        Section("Offer") {
-            TechnicianWorkDetailRow(title: "Title", value: offer.title)
-            TechnicianWorkDetailRow(title: "Customer", value: offer.customerName)
-            TechnicianWorkDetailRow(title: "Worker", value: companyUser.userName)
-            TechnicianWorkDetailRow(title: "Estimated Time", value: "\(offer.estimatedMinutes) min")
-        }
-    }
-
-    private var scheduleSection: some View {
-        Section("Schedule") {
-            DatePicker(
-                "Service Date",
-                selection: $serviceDate,
-                displayedComponents: [.date, .hourAndMinute]
-            )
-            .disabled(isSaving)
-            if let start = offer.proposedStartDate {
-                TechnicianWorkDetailRow(title: "Available from", value: TechnicianWorkDateFormatter.shortDateTime(start))
-            }
-            if let deadline = offer.completionDeadlineAt ?? offer.proposedEndDate {
-                TechnicianWorkDetailRow(title: "Completion deadline", value: TechnicianWorkDateFormatter.shortDateTime(deadline))
-            }
-            if !offer.containsServiceDate(serviceDate) {
-                Text("Choose a time within the accepted offer window.").font(.caption).foregroundStyle(.red)
-            }
-        }
-    }
-
-    private var serviceStopTypeSection: some View {
-        Section {
-            Text(offer.serviceStopTypeName ?? (offer.workPurpose == "diagnostic" ? "Job Estimate" : "Job Visit"))
-            Text("The accepted offer's pay type and rate are preserved.").font(.caption).foregroundStyle(.secondary)
-        } header: {
-            Text("Pay Type")
-        }
-    }
-
-    private var taskSection: some View {
-        Section("Tasks") {
-            if selectedTasks.isEmpty {
-                Text(offer.workPurpose == "diagnostic" ? "Diagnostic / estimate visit. Execution tasks are added after the assessment." : "This offer has no matching job tasks.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(selectedTasks) { task in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(task.name)
-                            .font(.subheadline.weight(.semibold))
-
-                        Text("\(task.type.rawValue) • \(task.estimatedTime) min")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-    }
-
-    private var saveSection: some View {
-        Section {
-            Button {
-                Task {
-                    await schedule()
-                }
-            } label: {
-                if isSaving {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Label("Create Service Stop", systemImage: "calendar.badge.plus")
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .disabled(isSaving || isLoading || job == nil || (selectedTasks.isEmpty && offer.workPurpose != "diagnostic") || !offer.containsServiceDate(serviceDate))
-        } footer: {
-            Text("This will create a service stop assigned to you and move the offer to Scheduled.")
         }
     }
 
@@ -177,7 +230,7 @@ struct TechnicianSelfScheduleWorkOfferView: View {
             self.jobTasks = loadedTasks
             self.serviceLocation = loadedLocation
         } catch {
-            alertMessage = "Could not load offer details. \(error.localizedDescription)"
+            alertMessage = "Could not load offer details. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -223,7 +276,7 @@ struct TechnicianSelfScheduleWorkOfferView: View {
             onScheduled()
             dismiss()
         } catch {
-            alertMessage = "Could not schedule work. \(error.localizedDescription)"
+            alertMessage = "Could not schedule work. \(error.userFacingMessage)"
             showAlert = true
         }
     }

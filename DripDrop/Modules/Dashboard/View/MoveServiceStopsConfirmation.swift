@@ -103,7 +103,7 @@ extension MoveServiceStopsConfirmation {
                         }
                         dismiss()
                     } catch {
-                        moveError = error.localizedDescription
+                        moveError = error.userFacingMessage
                         showMoveError = true
                     }
                 }

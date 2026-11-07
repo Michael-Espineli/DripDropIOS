@@ -145,6 +145,11 @@ assert(sparse.rate == 5000 && sparse.issuePriorityLevel == 3 && sparse.invoiceRe
 assert(sparse.serviceStopIds.isEmpty && sparse.adminId.isEmpty && sparse.otherCompany == false)
 let roundTrip = try JSONDecoder().decode(Job.self, from: JSONEncoder().encode(sparse))
 assert(roundTrip.billingStatus == .customerResolved && roundTrip.issuePriorityLevel == 3 && roundTrip.invoiceRef == "I42")
+let equipmentJob = try decoder.decode(Job.self, from: Data(#"{"id":"equipment","equipmentId":"filter","equipmentName":"Main Filter","equipmentIds":["filter","pump"],"companyEquipmentIds":["filter","pump"],"jobIntent":"maintenance"}"#.utf8))
+let equipmentRoundTrip = try JSONDecoder().decode(Job.self, from: JSONEncoder().encode(equipmentJob))
+assert(equipmentRoundTrip.equipmentId == "filter" && equipmentRoundTrip.equipmentName == "Main Filter")
+assert(equipmentRoundTrip.equipmentIds == ["filter","pump"] && equipmentRoundTrip.companyEquipmentIds == ["filter","pump"] && equipmentRoundTrip.jobIntent == "maintenance")
+assert(sparse.equipmentId == nil && sparse.equipmentIds == nil && sparse.jobIntent == nil)
 var filters = JobListFilters()
 filters.adminFilterActive = true
 filters.adminIds = ["uid-alex"]

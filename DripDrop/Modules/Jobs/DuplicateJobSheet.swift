@@ -366,7 +366,7 @@ struct DuplicateJobSheet: View {
 
             dismiss()
         } catch {
-            alertMessage = "Could not duplicate job. \(error.localizedDescription)"
+            alertMessage = "Could not duplicate job. \(error.userFacingMessage)"
             showAlert = true
         }
     }

@@ -140,7 +140,7 @@ extension EquipmentPickerByServiceLocationId {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
-        .background(.background, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var equipmentList: some View {
@@ -169,7 +169,7 @@ extension EquipmentPickerByServiceLocationId {
                     .frame(width: 42, height: 42)
                     .background(
                         isSelected ? Color.poolGreen : Color.poolGreen.opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
                 
                 VStack(alignment: .leading, spacing: 8) {
@@ -208,9 +208,9 @@ extension EquipmentPickerByServiceLocationId {
                 }
             }
             .padding(12)
-            .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(isSelected ? Color.poolGreen : Color.clear, lineWidth: 1.5)
             }
             .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)

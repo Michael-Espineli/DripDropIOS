@@ -425,7 +425,7 @@ struct JobBillingSummaryChip: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -502,7 +502,7 @@ struct JobBillingActionRow: View {
             Spacer()
         }
         .padding(12)
-        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -536,7 +536,7 @@ struct JobBillingNavigationRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -564,6 +564,6 @@ private extension View {
     func jobBillingCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

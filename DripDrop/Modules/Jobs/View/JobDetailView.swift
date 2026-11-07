@@ -218,7 +218,7 @@ struct JobDetailView: View {
                 }
                 .padding(.vertical, 8)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(Color.poolGreen.opacity(0.95))
                 )
                 .padding(.horizontal, 12)
@@ -251,17 +251,6 @@ struct JobDetailView: View {
                         taskView
                     }
 
-                case "Offers":
-                    offersView
-                    
-
-                case "Schedule":
-                    if VM.isEdit {
-                        editSchedule
-                    } else {
-                        schedule
-                    }
-                    
                 case "Materials":
                     if VM.isEdit {
                         editShoppingListView
@@ -269,7 +258,7 @@ struct JobDetailView: View {
                         shoppingListView
                     }
 
-                case "Actual":
+                case "Actual", "Offers", "Schedule":
                     actualWorkView
                     
                 case "Billing":
@@ -289,6 +278,87 @@ struct JobDetailView: View {
                 commentsToolbarButton
             }
         }
+        .sheet(isPresented: $VM.isPresentServiceStop,
+               onDismiss: {
+            Task {
+                if let currentCompany = masterDataManager.currentCompany {
+                    do {
+                        try await VM.onDismissOfScheduleServiceStop(
+                            companyId: currentCompany.id,
+                            serviceLocationId: job.serviceLocationId,
+                            job: job
+                        )
+
+                        await VM.reloadWorkOffers(
+                            companyId: currentCompany.id,
+                            jobId: job.id
+                        )
+                    } catch {
+                        print(error)
+                    }
+                }
+
+                VM.scheduledServiceStopToEdit = nil
+            }
+        },
+               content: {
+            if let currentCompany = masterDataManager.currentCompany {
+                ScheduleServiceStopView(
+                    dataService: dataService,
+                    companyId: currentCompany.id,
+                    job: job,
+                    customerId: job.customerId,
+                    customerName: job.customerName,
+                    serviceLocationId: job.serviceLocationId,
+                    description: job.description,
+                    jobTaskList: VM.jobTaskList,
+                    plannedServiceStops: VM.plannedServiceStops,
+                    editingServiceStop: VM.scheduledServiceStopToEdit,
+                    serviceStopTypeUseCase: .jobVisit
+                )
+                .presentationDetents([.medium, .large])
+            } else {
+                Text("Missing company.")
+                    .presentationDetents([.medium])
+            }
+        })
+        .alert("Delete Scheduled Stop?", isPresented: $VM.showDeleteScheduledServiceStopConfirmation) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    guard let currentCompany = masterDataManager.currentCompany,
+                          let serviceStop = VM.scheduledServiceStopToDelete else {
+                        return
+                    }
+
+                    do {
+                        try await VM.deleteScheduledServiceStopFromJob(
+                            companyId: currentCompany.id,
+                            jobId: job.id,
+                            serviceStop: serviceStop
+                        )
+
+                        try await VM.onLoad(
+                            companyId: currentCompany.id,
+                            serviceLocationId: job.serviceLocationId,
+                            job: job
+                        )
+                    } catch {
+                        print("[][delete scheduled service stop] Error \(error)")
+                        VM.alertMessage = "Could not delete scheduled service stop."
+                        VM.showAlert = true
+                    }
+
+                    VM.scheduledServiceStopToDelete = nil
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                VM.scheduledServiceStopToDelete = nil
+            }
+        } message: {
+            Text("This deletes the scheduled stop and releases its selected job tasks back to Draft.")
+        }
+
         .alert(VM.alertMessage, isPresented: $VM.showAlert) {
             Button("OK", role: .cancel) { }
         }
@@ -407,7 +477,7 @@ struct JobDetailView: View {
                         dismiss()
                     } catch {
                         print(error)
-                        VM.alertMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                        VM.alertMessage = (error as? LocalizedError)?.errorDescription ?? error.userFacingMessage
                         VM.showAlert = true
                     }
                 }
@@ -499,46 +569,20 @@ struct JobDetailView: View {
 
 extension JobDetailView {
     private var jobDetailSummaryHeader: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "briefcase.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.poolBlue)
-                .frame(width: 36, height: 36)
-                .background(Color.poolBlue.opacity(0.14), in: Circle())
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(job.type.isEmpty ? "Job \(job.internalId)" : job.type)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-
-                Text(job.customerName.isEmpty ? job.internalId : "\(job.customerName) • \(job.internalId)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        compactJobDetailChip(
-                            title: job.operationStatus.rawValue,
-                            systemImage: operationStatusIcon(job.operationStatus),
-                            tint: jobDetailOperationTint(job.operationStatus)
-                        )
-
-                        compactJobDetailChip(
-                            title: job.billingStatus.rawValue,
-                            systemImage: billingStatusIcon(job.billingStatus),
-                            tint: jobDetailBillingTint(job.billingStatus)
-                        )
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            WorkspaceIdentityHeader(title: job.type.isEmpty ? "Job \(job.internalId)" : job.type,
+                eyebrow: "Job details", subtitle: job.customerName.isEmpty ? job.internalId : "\(job.customerName) · \(job.internalId)",
+                systemImage: "briefcase", compact: true)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    compactJobDetailChip(title: job.operationStatus.rawValue, systemImage: operationStatusIcon(job.operationStatus), tint: jobDetailOperationTint(job.operationStatus))
+                    compactJobDetailChip(title: job.billingStatus.rawValue, systemImage: billingStatusIcon(job.billingStatus), tint: jobDetailBillingTint(job.billingStatus))
                 }
+                .padding(.horizontal, 12)
             }
-
-            Spacer()
         }
-        .padding(12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.bottom, 10)
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var jobDetailTabs: some View {
@@ -570,17 +614,7 @@ extension JobDetailView {
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
             }
-            .foregroundStyle(isSelected ? Color.white : Color.primary)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background(
-                isSelected ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.background),
-                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.primary.opacity(0.08), lineWidth: 1)
-            )
+            .modifier(WorkspaceControlModifier(tone: isSelected ? .blue : .slate))
         }
         .buttonStyle(.plain)
     }
@@ -594,7 +628,9 @@ extension JobDetailView {
         case "Plans":
             return view == "Overview"
         case "Planned":
-            return ["Tasks", "Offers", "Schedule", "Materials"].contains(view)
+            return ["Tasks", "Materials"].contains(view)
+        case "Actual":
+            return ["Offers", "Schedule"].contains(view)
         default:
             return false
         }
@@ -670,29 +706,11 @@ extension JobDetailView {
     }
 
     private func jobDetailOperationTint(_ status: JobOperationStatus) -> Color {
-        switch status {
-        case .finished:
-            return .poolGreen
-        case .scheduled, .inProgress:
-            return .poolBlue
-        case .unscheduled:
-            return .orange
-        case .draft, .estimatePending, .waitingForParts, .canceled, .unspecified:
-            return .poolRed
-        }
+        WorkspaceTone.jobStatusTone(status.rawValue).accent
     }
 
     private func jobDetailBillingTint(_ status: JobBillingStatus) -> Color {
-        switch status {
-        case .paid, .accepted, .comped, .customerResolved:
-            return .poolGreen
-        case .estimate, .invoiced:
-            return .poolBlue
-        case .inProgress:
-            return .orange
-        case .draft, .expired, .rejected, .canceled, .unspecified:
-            return .poolRed
-        }
+        WorkspaceTone.jobStatusTone(status.rawValue).accent
     }
     
     // MARK: info
@@ -808,7 +826,7 @@ extension JobDetailView {
 //                    .font(.subheadline.weight(.semibold))
 //                    .frame(maxWidth: .infinity)
 //                    .padding(.vertical, 12)
-//                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+//                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 //            }
 //            .buttonStyle(.plain)
 
@@ -819,7 +837,7 @@ extension JobDetailView {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -846,7 +864,7 @@ extension JobDetailView {
                                 Text("Planned")
                                     .font(.title3.weight(.semibold))
 
-                                Text("Tasks, visits, work offers, and materials for \(job.internalId).")
+                                Text("Tasks and materials for \(job.internalId).")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -893,28 +911,6 @@ extension JobDetailView {
                                 title: "Tasks",
                                 subtitle: "\(VM.jobTaskList.count) task(s), \(VM.plannedLaborMinutes) planned minutes.",
                                 systemImage: "checklist"
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            view = "Schedule"
-                        } label: {
-                            JobDashboardNavigationRow(
-                                title: "Planned & Scheduled Visits",
-                                subtitle: "\(VM.plannedServiceStops.count) planned, \(VM.scheduledServiceStopCount) scheduled.",
-                                systemImage: "calendar.badge.clock"
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            view = "Offers"
-                        } label: {
-                            JobDashboardNavigationRow(
-                                title: "Work Offers",
-                                subtitle: "\(summary.openOfferCount) open, \(summary.acceptedOfferCount) accepted.",
-                                systemImage: "paperplane"
                             )
                         }
                         .buttonStyle(.plain)
@@ -973,7 +969,7 @@ extension JobDetailView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -984,7 +980,7 @@ extension JobDetailView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -1037,7 +1033,7 @@ extension JobDetailView {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(14)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                         }
                     }
                 }
@@ -1245,7 +1241,7 @@ extension JobDetailView {
                 MoneyTextField(cents: $rate)
             }
             .padding(12)
-            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             
             VStack(alignment: .leading, spacing: 8) {
                 Text("Planned Labor Cost")
@@ -1261,7 +1257,7 @@ extension JobDetailView {
                         .font(.caption.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 9)
-                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 
@@ -1270,7 +1266,7 @@ extension JobDetailView {
                     .foregroundStyle(.secondary)
             }
             .padding(12)
-            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             
             Divider().opacity(0.18)
             
@@ -1382,7 +1378,7 @@ extension JobDetailView {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
             
@@ -1394,7 +1390,7 @@ extension JobDetailView {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -1438,12 +1434,13 @@ extension JobDetailView {
                 return
             }
             
+            let reviewCompletion = operationStatus == .finished && job.operationStatus != .finished
             try await VM.updateJobInfo(
                 companyId: company.id,
                 updatingJob: job,
                 admin: admin,
                 jobTemplate: jobTemplate,
-                operationStatus: operationStatus,
+                operationStatus: reviewCompletion ? job.operationStatus : operationStatus,
                 billingStatus: billingStatus,
                 rate: rate,
                 laborCost: laborCost,
@@ -1457,6 +1454,7 @@ extension JobDetailView {
                 serviceLocationId: job.serviceLocationId,
                 job: job
             )
+            if reviewCompletion { showJobCloseout = true }
         } catch {
             print("[][Error Updating Job] Error: \(error)")
             VM.alertMessage = "Could not update job info."
@@ -1629,7 +1627,7 @@ extension JobDetailView {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
     var taskBottomActionBar: some View {
@@ -1645,18 +1643,18 @@ extension JobDetailView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 
                 Button {
-                    view = "Offers"
+                    view = "Actual"
                 } label: {
-                    Label("Offers", systemImage: "chevron.right")
+                    Label("Actual", systemImage: "chevron.right")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -1688,9 +1686,7 @@ extension JobDetailView {
     }
     
     func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
     var taskView: some View {
         ZStack {
@@ -1938,169 +1934,6 @@ extension JobDetailView {
         .ddBottomBar()
     }
     
-    var editSchedule: some View {
-        schedule
-    }
-    var schedule: some View {
-        ZStack {
-            if let currentCompany = masterDataManager.currentCompany {
-                JobScheduleWorkCenterView(
-                    companyId: currentCompany.id,
-                    currentUserId: masterDataManager.user?.id ?? "",
-                    currentUserName: currentUserDisplayName,
-                    job: job,
-                    jobTasks: VM.jobTaskList,
-                    serviceStops: VM.serviceStops,
-                    workOffers: VM.workOffers,
-                    serviceLocation: VM.serviceLocation,
-                    dataService: dataService,
-                    onScheduleServiceStop: {
-                        VM.scheduledServiceStopToEdit = nil
-                        VM.isPresentServiceStop.toggle()
-                    },
-                    onEditServiceStop: { serviceStop in
-                        VM.scheduledServiceStopToEdit = serviceStop
-                        VM.isPresentServiceStop = true
-                    },
-                    onDeleteServiceStop: { serviceStop in
-                        VM.scheduledServiceStopToDelete = serviceStop
-                        VM.showDeleteScheduledServiceStopConfirmation = true
-                    },
-                    onGoToOffers: {
-                        view = "Offers"
-                    },
-                    onReload: {
-                        Task {
-                            do {
-                                try await VM.onLoad(
-                                    companyId: currentCompany.id,
-                                    serviceLocationId: job.serviceLocationId,
-                                    job: job
-                                )
-                            } catch {
-                                print("[][JobDetailView schedule reload] Error \(error)")
-                            }
-                        }
-                    }
-                )
-            } else {
-                ContentUnavailableView(
-                    "Missing Company",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text("Select a company before scheduling work.")
-                )
-            }
-        }
-        .sheet(isPresented: $VM.isPresentServiceStop,
-               onDismiss: {
-            Task {
-                if let currentCompany = masterDataManager.currentCompany {
-                    do {
-                        try await VM.onDismissOfScheduleServiceStop(
-                            companyId: currentCompany.id,
-                            serviceLocationId: job.serviceLocationId,
-                            job: job
-                        )
-                        
-                        await VM.reloadWorkOffers(
-                            companyId: currentCompany.id,
-                            jobId: job.id
-                        )
-                    } catch {
-                        print(error)
-                    }
-                }
-
-                VM.scheduledServiceStopToEdit = nil
-            }
-        },
-               content: {
-            if let currentCompany = masterDataManager.currentCompany {
-                ScheduleServiceStopView(
-                    dataService: dataService,
-                    companyId: currentCompany.id,
-                    job: job,
-                    customerId: job.customerId,
-                    customerName: job.customerName,
-                    serviceLocationId: job.serviceLocationId,
-                    description: job.description,
-                    jobTaskList: VM.jobTaskList,
-                    plannedServiceStops: VM.plannedServiceStops,
-                    editingServiceStop: VM.scheduledServiceStopToEdit,
-                    serviceStopTypeUseCase: .jobVisit
-                )
-                .presentationDetents([.medium, .large])
-            } else {
-                Text("Missing company.")
-                    .presentationDetents([.medium])
-            }
-        })
-        .alert("Delete Scheduled Stop?", isPresented: $VM.showDeleteScheduledServiceStopConfirmation) {
-            Button("Delete", role: .destructive) {
-                Task {
-                    guard let currentCompany = masterDataManager.currentCompany,
-                          let serviceStop = VM.scheduledServiceStopToDelete else {
-                        return
-                    }
-
-                    do {
-                        try await VM.deleteScheduledServiceStopFromJob(
-                            companyId: currentCompany.id,
-                            jobId: job.id,
-                            serviceStop: serviceStop
-                        )
-
-                        try await VM.onLoad(
-                            companyId: currentCompany.id,
-                            serviceLocationId: job.serviceLocationId,
-                            job: job
-                        )
-                    } catch {
-                        print("[][delete scheduled service stop] Error \(error)")
-                        VM.alertMessage = "Could not delete scheduled service stop."
-                        VM.showAlert = true
-                    }
-
-                    VM.scheduledServiceStopToDelete = nil
-                }
-            }
-
-            Button("Cancel", role: .cancel) {
-                VM.scheduledServiceStopToDelete = nil
-            }
-        } message: {
-            Text("This deletes the scheduled stop and releases its selected job tasks back to Draft.")
-        }
-        
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                Button {
-                    view = "Offers"
-                } label: {
-                    Label("Offers", systemImage: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                
-                Button {
-                    view = "Materials"
-                } label: {
-                    Label("Materials", systemImage: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.regularMaterial)
-        }
-    }
     var review: some View {
         ZStack{
             ScrollView {
@@ -2178,7 +2011,7 @@ extension JobDetailView {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding(12)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Who Accepted / Notes")
@@ -2198,7 +2031,7 @@ extension JobDetailView {
                                     .foregroundStyle(.secondary)
                             }
                             .padding(12)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
                         .basicCard()
 
@@ -2266,7 +2099,7 @@ extension JobDetailView {
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
 
@@ -2277,7 +2110,7 @@ extension JobDetailView {
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -2343,7 +2176,7 @@ extension JobDetailView {
                                 .foregroundStyle(.secondary)
                         }
                         .padding(12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Invoice Notes")
@@ -2363,7 +2196,7 @@ extension JobDetailView {
                                 .foregroundStyle(.secondary)
                         }
                         .padding(12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .basicCard()
 
@@ -2458,7 +2291,7 @@ extension JobDetailView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -2469,7 +2302,7 @@ extension JobDetailView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -2535,9 +2368,9 @@ extension JobDetailView {
                     TextEditor(text: $VM.newComment)
                         .frame(minHeight: 92)
                         .padding(8)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .stroke(Color.primary.opacity(0.10), lineWidth: 1)
                         )
                     
@@ -2564,7 +2397,7 @@ extension JobDetailView {
                                 .padding(.vertical, 12)
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
                     .disabled(
                         VM.addingComment ||
                         VM.newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
@@ -2647,12 +2480,12 @@ extension JobDetailView {
                 )
                 .font(.caption.weight(.semibold))
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .slate))
         }
         .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
     }
@@ -2662,85 +2495,39 @@ extension JobDetailView {
         return date.formatted(date: .abbreviated, time: .shortened)
     }
     
-    var offersView: some View {
-        ZStack {
-            Color.listColor.ignoresSafeArea()
-            
-            ScrollView(showsIndicators: false) {
-                if let company = masterDataManager.currentCompany {
-                    JobWorkOffersView(
-                        companyId: company.id,
-                        currentUserId: masterDataManager.user?.id ?? "",
-                        currentUserName: currentUserDisplayName,
-                        job: job,
-                        jobTasks: VM.jobTaskList,
-                        serviceLocation: VM.serviceLocation,
-                        workOffers: VM.workOffers,
-                        dataService: dataService,
-                        onReload: {
-                            Task {
-                                do {
-                                    try await VM.onLoad(
-                                        companyId: company.id,
-                                        serviceLocationId: job.serviceLocationId,
-                                        job: job
-                                    )
-                                } catch {
-                                    print("[][JobDetailView offers reload] Error \(error)")
-                                }
-                            }
-                        }
-                    )
-                } else {
-                    ContentUnavailableView(
-                        "Missing Company",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text("Select a company before creating work offers.")
-                    )
-                    .padding()
-                }
-                
-                Color.clear.frame(height: 90)
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                Button {
-                    view = "Tasks"
-                } label: {
-                    Label("Plan", systemImage: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                
-                Button {
-                    view = "Schedule"
-                } label: {
-                    Label("Schedule", systemImage: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.regularMaterial)
-        }
-    }
     var actualWorkView: some View {
         ZStack {
             if let currentCompany = masterDataManager.currentCompany {
                 JobActualWorkView(
+                    companyId: currentCompany.id,
+                    currentUserId: masterDataManager.user?.id ?? "",
+                    currentUserName: currentUserDisplayName,
                     job: job,
                     jobTasks: VM.jobTaskList,
                     serviceStops: VM.serviceStops,
+                    workOffers: VM.workOffers,
+                    serviceLocation: VM.serviceLocation,
                     payLineItems: VM.actualPayLineItems,
-                    dataService: dataService
+                    dataService: dataService,
+                    onScheduleServiceStop: {
+                        VM.scheduledServiceStopToEdit = nil
+                        VM.isPresentServiceStop = true
+                    },
+                    onEditServiceStop: { stop in
+                        VM.scheduledServiceStopToEdit = stop
+                        VM.isPresentServiceStop = true
+                    },
+                    onDeleteServiceStop: { stop in
+                        VM.scheduledServiceStopToDelete = stop
+                        VM.showDeleteScheduledServiceStopConfirmation = true
+                    },
+                    onReload: {
+                        Task {
+                            do { try await VM.onLoad(companyId: currentCompany.id, serviceLocationId: job.serviceLocationId, job: job) }
+                            catch { VM.alertMessage = "Could not refresh job work. \(error.userFacingMessage)"; VM.showAlert = true }
+                        }
+                    },
+                    focusedSection: view == "Schedule" ? "serviceStops" : "offers"
                 )
                 .refreshable {
                     do {
@@ -2761,36 +2548,8 @@ extension JobDetailView {
                 )
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            HStack {
-                Button {
-                    view = "Materials"
-                } label: {
-                    Label("Materials", systemImage: "chevron.left")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                
-                Button {
-                    view = "Billing"
-                } label: {
-                    Label("Billing", systemImage: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.regularMaterial)
-        }
     }
-    
+
     var shoppingListView: some View {
         ZStack {
             JobMaterialsView(
@@ -2831,13 +2590,13 @@ extension JobDetailView {
                 
                 HStack {
                     Button {
-                        view = "Schedule"
+                        view = "Planned"
                     } label: {
-                        Label("Schedule", systemImage: "chevron.left")
+                        Label("Planned", systemImage: "chevron.left")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     
@@ -2848,7 +2607,7 @@ extension JobDetailView {
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -3060,7 +2819,7 @@ extension JobDetailView {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -3098,10 +2857,10 @@ extension JobDetailView {
                 isSelected
                 ? Color.accentColor.opacity(0.12)
                 : Color.primary.opacity(0.045),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(
                         isSelected ? Color.accentColor.opacity(0.35) : Color.primary.opacity(0.06),
                         lineWidth: 1
@@ -3564,7 +3323,7 @@ private struct JobEditInfoReadOnlyRow: View {
             Spacer()
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -3619,7 +3378,7 @@ private struct JobEditNavigationRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -3783,7 +3542,7 @@ extension JobDetailView {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     private var billingBottomBar: some View {
         HStack(spacing: 12) {
@@ -3794,7 +3553,7 @@ extension JobDetailView {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -3805,7 +3564,7 @@ extension JobDetailView {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -3816,7 +3575,7 @@ extension JobDetailView {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -3991,12 +3750,7 @@ extension JobDetailView {
                                                     job: job
                                                 )
                                             } else {
-                                                try await VM.markJobAsFinished(
-                                                    companyId: company.id,
-                                                    job: job,
-                                                    completedByUserId: masterDataManager.user?.id ?? "",
-                                                    completedByUserName: currentUserDisplayName
-                                                )
+                                                showJobCloseout = true
                                             }
                                         }
                                     } catch {
@@ -4063,7 +3817,7 @@ extension JobDetailView {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -4098,7 +3852,7 @@ extension JobDetailView {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(disabled)

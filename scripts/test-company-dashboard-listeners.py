@@ -37,18 +37,32 @@ final class FakeDocumentSubscription {
 }
 final class FakeQuerySubscription {
     let registration = FakeRegistration()
+    let lowerDateBounds: [String: Date]
+    let upperDateBounds: [String: Date]
     let callback: (QuerySnapshot?, Error?) -> Void
-    init(_ callback: @escaping (QuerySnapshot?, Error?) -> Void) { self.callback = callback }
+    init(lowerDateBounds: [String: Date], upperDateBounds: [String: Date], callback: @escaping (QuerySnapshot?, Error?) -> Void) {
+        self.lowerDateBounds = lowerDateBounds
+        self.upperDateBounds = upperDateBounds
+        self.callback = callback
+    }
 }
 class Query {
     let path: String
+    var lowerDateBounds: [String: Date] = [:]
+    var upperDateBounds: [String: Date] = [:]
     init(_ path: String) { self.path = path }
-    func whereField(_ name: String, isGreaterThanOrEqualTo value: Any) -> Query { self }
-    func whereField(_ name: String, isLessThan value: Any) -> Query { self }
+    func whereField(_ name: String, isGreaterThanOrEqualTo value: Any) -> Query {
+        lowerDateBounds[name] = value as? Date
+        return self
+    }
+    func whereField(_ name: String, isLessThan value: Any) -> Query {
+        upperDateBounds[name] = value as? Date
+        return self
+    }
     func whereField(_ name: String, isEqualTo value: Any) -> Query { self }
     func whereField(_ name: String, in values: [String]) -> Query { self }
     func addSnapshotListener(_ callback: @escaping (QuerySnapshot?, Error?) -> Void) -> ListenerRegistration {
-        let listener = FakeQuerySubscription(callback)
+        let listener = FakeQuerySubscription(lowerDateBounds: lowerDateBounds, upperDateBounds: upperDateBounds, callback: callback)
         Firestore.shared.queries[path, default: []].append(listener)
         return listener.registration
     }
@@ -165,6 +179,20 @@ checks = r'''
     let stopsOnly = CompanyDashboardAccess(userAccess: [:], role: ["permissionIdList": ["240"]], isOwner: false)
     model.start(companyId: "one", access: stopsOnly, date: date)
     check(db.queries["companies/one/workOrders"]!.count == jobsBefore, "Query only permitted company sections")
+    for components in [
+        DateComponents(year: 2026, month: 10, day: 30, hour: 15),
+        DateComponents(year: 2026, month: 3, day: 8, hour: 15),
+        DateComponents(year: 2026, month: 11, day: 1, hour: 15)
+    ] {
+        let calendar = Calendar.current
+        let selectedDate = calendar.date(from: components)!
+        model.start(companyId: "one", access: stopsOnly, date: selectedDate)
+        let workload = db.queries["companies/one/serviceStops"]!.last!
+        let yesterday = calendar.date(from: DateComponents(year: components.year, month: components.month, day: components.day! - 1))!
+        let sixthDay = calendar.date(from: DateComponents(year: components.year, month: components.month, day: components.day! + 6))!
+        check(workload.lowerDateBounds["serviceDate"] == yesterday, "Workload includes all of yesterday, even when the selected time is in the afternoon")
+        check(workload.upperDateBounds["serviceDate"] == sixthDay, "Workload includes today and the next five full calendar days, including daylight-saving transitions")
+    }
     model.stop()
     print("\(count) dashboard listener lifecycle, access-change, error, and stale-callback checks passed")
 }

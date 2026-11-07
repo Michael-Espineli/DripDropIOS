@@ -45,7 +45,7 @@ struct JobDashboardView: View {
                     Text("Remaining Work").font(.headline)
                     Text("\(summary.remainingTaskCount) tasks · \(summary.remainingServiceCount) services · \(summary.remainingProductUnits.formatted()) product units")
                     Text("\(summary.unassignedTaskCount) unassigned · \(summary.offeredTaskCount) offered · \(summary.unscheduledTaskCount) assigned, unscheduled · \(summary.scheduledTaskCount) scheduled · \(summary.blockedTaskCount) waiting for parts").font(.caption).foregroundStyle(.secondary)
-                }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(.background, in: RoundedRectangle(cornerRadius: 14))
+                }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(.background, in: RoundedRectangle(cornerRadius: 8))
                 healthCard
                 financialSnapshotCard
                 workPipelineCard

@@ -9,6 +9,7 @@
     import SwiftUI
     import StripePaymentSheet
     import FirebaseFunctions
+    import FirebaseFirestore
 
     @MainActor
     final class CompanySettingsViewModel: ObservableObject {
@@ -125,6 +126,11 @@
         @State var showChangeEmailScreen: Bool = false
         @State var isLoading = false
 
+        private var canManageInvoiceAutomation: Bool {
+            guard let currentCompany = masterDataManager.currentCompany else { return false }
+            return currentCompany.ownerId == masterDataManager.user?.id || masterDataManager.role?.permissionIdList.contains("900") == true
+        }
+
         var body: some View {
             ZStack {
                 Color.listColor.ignoresSafeArea()
@@ -138,6 +144,15 @@
                         }
 
                         displayPrefrences
+
+                        if canManageInvoiceAutomation {
+                            NavigationLink {
+                                PartInvoiceSettingsView()
+                            } label: {
+                                settingsRow(title: "Approved-Part Invoices", subtitle: "Choose automatic email or review drafts in Sales.", systemImage: "doc.text")
+                            }
+                            .buttonStyle(.plain)
+                        }
 
                         settings
 
@@ -665,3 +680,65 @@
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
+
+struct PartInvoiceSettingsView: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+    @State private var autoSend = false
+    @State private var loadedCompanyId = ""
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    @State private var saved = false
+
+    private var companyId: String { masterDataManager.currentCompany?.id ?? "" }
+
+    var body: some View {
+        Form {
+            Section("Approved-Part Invoices") {
+                Text("Invoice immediately creates an invoice on approval. Invoice on delivery and Request invoice wait until delivery or installation. Include on next bill waits for delivery, then uses the existing recurring bill and its payment method.")
+                Toggle("Automatically send invoices", isOn: $autoSend)
+                    .disabled(loadedCompanyId != companyId || isSaving)
+                Text("Separate invoices: Off keeps drafts in Sales; On emails them at the selected time. Include on next bill follows the recurring bill’s delivery and payment settings.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button(isSaving ? "Saving..." : "Save") { Task { await save() } }
+                    .buttonStyle(WorkspaceOutlinedButtonStyle())
+                    .disabled(companyId.isEmpty || loadedCompanyId != companyId || isSaving)
+                if saved { Text("Saved").foregroundStyle(.green) }
+                if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+            }
+        }
+        .navigationTitle("Part Invoices")
+        .task(id: companyId) {
+            let requestedCompany = companyId
+            loadedCompanyId = ""; saved = false; errorMessage = nil
+            guard !requestedCompany.isEmpty else { return }
+            do {
+                let snap = try await Firestore.firestore().collection("companies").document(requestedCompany).collection("settings").document("companyWide").getDocument()
+                guard requestedCompany == companyId else { return }
+                autoSend = snap.data()?["partApprovalAutoSendInvoices"] as? Bool ?? false
+                loadedCompanyId = requestedCompany
+            } catch {
+                guard requestedCompany == companyId else { return }
+                errorMessage = error.userFacingMessage
+            }
+        }
+    }
+
+    @MainActor private func save() async {
+        let requestedCompany = companyId
+        guard !requestedCompany.isEmpty, loadedCompanyId == requestedCompany, !isSaving else { return }
+        isSaving = true; saved = false; errorMessage = nil
+        defer { isSaving = false }
+        do {
+            try await Firestore.firestore().collection("companies").document(requestedCompany).collection("settings").document("companyWide").setData([
+                "partApprovalAutoSendInvoices": autoSend,
+                "updatedAt": FieldValue.serverTimestamp(),
+                "updatedByUserId": masterDataManager.user?.id ?? ""
+            ], merge: true)
+            guard requestedCompany == companyId else { return }
+            saved = true
+        } catch {
+            guard requestedCompany == companyId else { return }
+            errorMessage = error.userFacingMessage
+        }
+    }
+}

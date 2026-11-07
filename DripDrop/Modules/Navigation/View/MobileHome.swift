@@ -40,7 +40,10 @@ struct MobileHome: View {
 
     
 
-    init(dataService:any ProductionDataServiceProtocol) {
+    private let onInitialLoadFinished: () -> Void
+
+    init(dataService:any ProductionDataServiceProtocol, onInitialLoadFinished: @escaping () -> Void = {}) {
+        self.onInitialLoadFinished = onInitialLoadFinished
         _VM = StateObject(wrappedValue: MobileHomeViewModel(dataService: dataService))
         _mobileRouteVM = StateObject(wrappedValue: MobileDailyRouteDisplayViewModel(dataService: dataService))
         _fleetVM = StateObject(wrappedValue: FleetViewModel(dataService: dataService))
@@ -117,29 +120,13 @@ struct MobileHome: View {
 //        .toolbarBackground(.blue)
 
         .task {
-            #warning("Please add listeners to get user access and role")
-//            masterRoleManager.start(companyId: masterDataManager.currentCompany?.id, userId: masterDataManager.user?.id)
+            defer {
+                if !Task.isCancelled { onInitialLoadFinished() }
+            }
+            masterRoleManager.start(companyId: masterDataManager.currentCompany?.id, userId: masterDataManager.user?.id)
             await masterDataManager.loadFeatureFlags()
             
             if let company = masterDataManager.currentCompany, let user = masterDataManager.user {
-                do{
-                    try await userAccessVM.getUserAccessCompanies(userId: user.id, companyId: company.id)
-                    if let access = userAccessVM.userAccess{
-                        print("[MobileHome][task] \(access)")
-                        try await roleVM.getSpecificRole(companyId: company.id, roleId: access.roleId)
-                        if let role = roleVM.role {
-                            masterDataManager.role = role
-                        } else {
-                            masterDataManager.showSignInView = true
-                        }
-                    } else {
-                        masterDataManager.showSignInView = true
-                    }
-                } catch {
-                    print("[MobileHome][task]Error 1 Mobile Home")
-                    print(error)
-                    
-                }
                 do {
                     try await userAccessVM.getAllUserAvailableCompanies(userId: user.id)
                     try await userAccessVM.getCompaniesFromAccess(accessList: userAccessVM.allAvailableAccess)
@@ -153,9 +140,12 @@ struct MobileHome: View {
              
         }
         
+        .onChange(of: masterDataManager.currentCompany?.id) { _ in
+            masterDataManager.role = nil
+            masterRoleManager.start(companyId: masterDataManager.currentCompany?.id, userId: masterDataManager.user?.id)
+        }
         .onChange(of: masterRoleManager.role) { role in
             masterDataManager.role = role
-            
         }
         .onDisappear(perform: {
             masterRoleManager.stop()
@@ -239,15 +229,13 @@ private struct MobileReimaginedMainDashboard: View {
     @StateObject private var alertVM: CompanyAlertViewModel
     @State private var isLoading: Bool = false
     @State private var todoSnapshotItems: [MobileDashboardTodoSnapshotItem] = []
+    @State private var todoSnapshotGeneration = UUID()
     @State private var todoSnapshotListener: ListenerRegistration?
     @State private var todoSnapshotError: String?
     @State private var workOfferSnapshot: MobileDashboardWorkOfferSnapshot = .empty
     @State private var workOfferSnapshotError: String?
     @State private var purchaseReconciliationPreview: MobilePurchaseReconciliationPreview = .empty
     @State private var purchaseReconciliationPreviewError: String?
-    @State private var payrollSnapshot: MobileDashboardPayrollSnapshot = .empty
-    @State private var payrollSnapshotError: String?
-    @State private var showPayoutRequestAlert: Bool = false
 
     init(dataService: any ProductionDataServiceProtocol) {
         self.dataService = dataService
@@ -267,16 +255,6 @@ private struct MobileReimaginedMainDashboard: View {
                     workAreaSelector
                     selectedWorkAreaContent
                 }
-            }
-        }
-        .sheet(isPresented: $showPayoutRequestAlert) {
-            NavigationStack {
-                ScrollView {
-                    if let companyId = masterDataManager.currentCompany?.id {
-                        TechnicianPayRequestSection(companyId: companyId, workTypes: [], initialRequestType: "payout").padding()
-                    }
-                }.navigationTitle("Pay Requests")
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { showPayoutRequestAlert = false } } }
             }
         }
     }
@@ -331,7 +309,6 @@ private struct MobileReimaginedMainDashboard: View {
                     todoSnapshotSection
                     workOffersSnapshotSection
                     purchaseReconciliationSnapshotSection
-                    payoutSnapshotSection
 
                 Color.clear.frame(height: 90)
             }
@@ -343,6 +320,11 @@ private struct MobileReimaginedMainDashboard: View {
         }
         .task(id: dashboardLoadIdentity) {
             await startDashboardListeners()
+        }
+        .onChange(of: masterDataManager.role) { _ in
+            if let companyId = masterDataManager.currentCompany?.id {
+                startTodoSnapshotListener(companyId: companyId)
+            }
         }
         .onDisappear {
             repairRequestVM.removeListenerForRepairRequest()
@@ -570,60 +552,6 @@ private struct MobileReimaginedMainDashboard: View {
                 systemImage: "list.bullet.clipboard"
             )
         }
-    }
-
-    private var payoutSnapshotSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionLabel(
-                title: "Payout Snapshot",
-                subtitle: payrollSnapshot.subtitle,
-                systemImage: "dollarsign.circle"
-            )
-
-            HStack(spacing: 8) {
-                snapshotMetric(
-                    title: "Owed",
-                    value: MobileDashboardMoneyFormatter.money(payrollSnapshot.owedCents),
-                    tint: payrollSnapshot.owedCents > 0 ? .poolGreen : .gray
-                )
-                snapshotMetric(
-                    title: "Work Done",
-                    value: "\(payrollSnapshot.owedLineItemCount)",
-                    tint: .poolBlue
-                )
-                snapshotMetric(
-                    title: "Last Payout",
-                    value: payrollSnapshot.daysSinceLastPayoutText,
-                    tint: .orange
-                )
-            }
-
-            if let payrollSnapshotError {
-                Text("Payout unavailable: \(payrollSnapshotError)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Button {
-                showPayoutRequestAlert = true
-            } label: {
-                HStack {
-                    Image(systemName: "paperplane.fill")
-                    Text("Request payout")
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(Color.poolGreen, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            }
-            .buttonStyle(.plain)
-        }
-        .mobileMainCard()
     }
 
     private func workAreaButton(_ area: MobileHomeScreenCategories) -> some View {
@@ -1017,19 +945,19 @@ private struct MobileReimaginedMainDashboard: View {
         case .all, .routing:
             return true
         case .operations:
-            return role.permissionIdList.contains("0")
+            return role.canAccessArea("Operations")
         case .finance:
-            return role.permissionIdList.contains("400")
+            return role.canAccessArea("Finance")
         case .marketing:
             return masterDataManager.isFeatureEnabled(.marketing)
         case .managment:
-            return role.permissionIdList.contains("200")
+            return role.canAccessArea("Management")
         case .publicView, .myCompany:
             return true
         case .settings:
-            return role.permissionIdList.contains("800")
+            return role.canAccessArea("Settings")
         case .sales:
-            return role.permissionIdList.contains("400") && masterDataManager.isFeatureEnabled(.sales)
+            return role.canAccessArea("Finance") && masterDataManager.isFeatureEnabled(.sales)
         }
     }
 
@@ -1231,7 +1159,6 @@ private struct MobileReimaginedMainDashboard: View {
             }
         }
 
-        let payrollTechnicianId = masterDataManager.companyUser?.userId ?? user.id
         await loadWorkOfferSnapshot(companyId: company.id)
         if let purchaseTechnicianId = purchaseReconciliationTechnicianId {
             await loadPurchaseReconciliationPreview(companyId: company.id, technicianId: purchaseTechnicianId)
@@ -1239,7 +1166,6 @@ private struct MobileReimaginedMainDashboard: View {
             purchaseReconciliationPreview = .empty
             purchaseReconciliationPreviewError = "Company user profile not loaded."
         }
-        await loadPayrollSnapshot(companyId: company.id, technicianId: payrollTechnicianId)
 
         isLoading = false
     }
@@ -1321,7 +1247,7 @@ private struct MobileReimaginedMainDashboard: View {
             )
         } catch {
             workOfferSnapshot = .empty
-            workOfferSnapshotError = error.localizedDescription
+            workOfferSnapshotError = error.userFacingMessage
         }
     }
 
@@ -1372,85 +1298,32 @@ private struct MobileReimaginedMainDashboard: View {
             )
         } catch {
             purchaseReconciliationPreview = .empty
-            purchaseReconciliationPreviewError = error.localizedDescription
-        }
-    }
-
-    private func loadPayrollSnapshot(companyId: String, technicianId: String) async {
-        payrollSnapshotError = nil
-
-        do {
-            let endDate = Date()
-            let startDate = Calendar.current.date(byAdding: .day, value: -365, to: endDate) ?? endDate
-
-            async let lineItemsTask = dataService.fetchTechnicianPayLineItems(
-                companyId: companyId,
-                startDate: startDate,
-                endDate: endDate
-            )
-            async let statementsTask = dataService.fetchTechnicianPayStatements(
-                companyId: companyId,
-                startDate: startDate,
-                endDate: endDate
-            )
-
-            let fetchedLineItems = try await lineItemsTask
-            let fetchedStatements = try await statementsTask
-            let lineItems = fetchedLineItems.filter { $0.technicianId == technicianId }
-            let statements = fetchedStatements.filter { $0.technicianId == technicianId }
-
-            let lastPayoutDate = MobileDashboardPayrollSnapshot.mostRecentPayoutDate(
-                lineItems: lineItems,
-                statements: statements
-            )
-            let owedItems = lineItems.filter { lineItem in
-                MobileDashboardPayrollSnapshot.isOwedLineItem(lineItem) &&
-                (lastPayoutDate == nil || lineItem.completedDate >= lastPayoutDate!)
-            }
-
-            payrollSnapshot = MobileDashboardPayrollSnapshot(
-                owedCents: owedItems.reduce(0) { $0 + $1.totalAmountCents },
-                owedLineItemCount: owedItems.count,
-                lastPayoutDate: lastPayoutDate,
-                oldestUnpaidWorkDate: owedItems.map(\.completedDate).min()
-            )
-        } catch {
-            payrollSnapshot = .empty
-            payrollSnapshotError = error.localizedDescription
+            purchaseReconciliationPreviewError = error.userFacingMessage
         }
     }
 
     private func startTodoSnapshotListener(companyId: String) {
         stopTodoSnapshotListener()
+        guard let uid = masterDataManager.user?.id, masterDataManager.role != nil else { return }
         todoSnapshotError = nil
-
-        todoSnapshotListener = Firestore.firestore()
-            .collection("companies")
-            .document(companyId)
-            .collection("todoItems")
-            .addSnapshotListener { snapshot, error in
-                if let error {
-                    DispatchQueue.main.async {
-                        self.todoSnapshotItems = []
-                        self.todoSnapshotError = error.localizedDescription
-                    }
-                    return
-                }
-
-                let items = snapshot?.documents
-                    .map { MobileDashboardTodoSnapshotItem(document: $0) }
-                    .filter { !$0.isArchived } ?? []
-
-                DispatchQueue.main.async {
-                    self.todoSnapshotItems = items
-                    self.todoSnapshotError = nil
-                }
+        let token = todoSnapshotGeneration
+        let collection = Firestore.firestore().collection("companies").document(companyId).collection("todoItems")
+        let source: Query = masterDataManager.hasCompanyPermission("310") ? collection : collection.whereField("assignedToUserId", isEqualTo: uid)
+        todoSnapshotListener = source.addSnapshotListener { snapshot, error in
+            let items = snapshot?.documents.map { MobileDashboardTodoSnapshotItem(document: $0) }.filter { !$0.isArchived } ?? []
+            DispatchQueue.main.async {
+                guard self.todoSnapshotGeneration == token else { return }
+                self.todoSnapshotItems = error == nil ? items : []
+                self.todoSnapshotError = error?.localizedDescription
             }
+        }
     }
 
     private func stopTodoSnapshotListener() {
+        todoSnapshotGeneration = UUID()
         todoSnapshotListener?.remove()
         todoSnapshotListener = nil
+        todoSnapshotItems = []
     }
 
     private func todoSnapshotStatusColor(_ todo: MobileDashboardTodoSnapshotItem) -> Color {
@@ -1748,82 +1621,6 @@ private struct MobileDashboardWorkOfferSnapshot {
 
     var subtitle: String {
         "\(pendingOfferCount) pending, \(currentOfferCount) current, \(rejectedRecentOfferCount) rejected in 30d"
-    }
-}
-
-private struct MobileDashboardPayrollSnapshot {
-    let owedCents: Int
-    let owedLineItemCount: Int
-    let lastPayoutDate: Date?
-    let oldestUnpaidWorkDate: Date?
-
-    static let empty = MobileDashboardPayrollSnapshot(
-        owedCents: 0,
-        owedLineItemCount: 0,
-        lastPayoutDate: nil,
-        oldestUnpaidWorkDate: nil
-    )
-
-    var subtitle: String {
-        if let oldestUnpaidWorkDate {
-            return "Unpaid work since \(shortDate(date: oldestUnpaidWorkDate))"
-        }
-
-        if lastPayoutDate != nil {
-            return "No unpaid work since the last payout."
-        }
-
-        return "No payout history found."
-    }
-
-    var daysSinceLastPayoutText: String {
-        guard let lastPayoutDate else {
-            return "None"
-        }
-
-        let calendar = Calendar.current
-        let start = calendar.startOfDay(for: lastPayoutDate)
-        let end = calendar.startOfDay(for: Date())
-        let days = max(0, calendar.dateComponents([.day], from: start, to: end).day ?? 0)
-
-        if days == 0 {
-            return "Today"
-        }
-
-        if days == 1 {
-            return "1 day"
-        }
-
-        return "\(days) days"
-    }
-
-    static func isOwedLineItem(_ lineItem: TechnicianPayLineItem) -> Bool {
-        guard lineItem.voidedAt == nil, lineItem.paidAt == nil else {
-            return false
-        }
-
-        switch lineItem.calculationStatus {
-        case .pending, .calculated, .needsReview, .approved, .adjusted:
-            return true
-        case .paid, .voided:
-            return false
-        }
-    }
-
-    static func mostRecentPayoutDate(
-        lineItems: [TechnicianPayLineItem],
-        statements: [TechnicianPayStatement]
-    ) -> Date? {
-        let statementDates = statements.compactMap { statement -> Date? in
-            if let paidAt = statement.paidAt {
-                return paidAt
-            }
-
-            return statement.status == .paid ? statement.endDate : nil
-        }
-        let lineItemDates = lineItems.compactMap(\.paidAt)
-
-        return (statementDates + lineItemDates).max()
     }
 }
 
@@ -2191,13 +1988,20 @@ struct MobileReimaginedManagementSectionView: View {
     var body: some View {
         MobileReimaginedSectionHub(
             title: "Management",
-            subtitle: "Routing, users, vendors, work logs, and fleet operations.",
+            subtitle: "Work offers, routing, users, work logs, and fleet operations.",
             systemImage: "person.3.fill",
             tint: .purple,
             requiredPermissionId: "200",
             unavailableTitle: "No management access.",
             unavailableMessage: "Your role does not currently include management permissions.",
             items: [
+                MobileReimaginedSectionItem(
+                    title: "Work Offers",
+                    subtitle: "Create offers and track outstanding work by status",
+                    systemImage: "list.bullet.clipboard.fill",
+                    tint: .poolBlue,
+                    route: .offeredWork(dataService: dataService)
+                ),
                 MobileReimaginedSectionItem(
                     title: "Routes",
                     subtitle: "Route teams and assignments",
@@ -2600,7 +2404,7 @@ private struct MobileReimaginedSectionHub: View {
                 return false
             }
 
-            let hasPermission = item.permissionId.map { role.permissionIdList.contains($0) } ?? true
+            let hasPermission = item.permissionId.map { role.hasPermission($0) } ?? true
             let hasSalesFlag = !item.requiresSalesFlag || masterDataManager.isFeatureEnabled(.sales)
             let hasFeatureFlag = item.featureFlag.map { masterDataManager.isFeatureEnabled($0) } ?? true
             return hasPermission && hasSalesFlag && hasFeatureFlag
@@ -2620,7 +2424,9 @@ private struct MobileReimaginedSectionHub: View {
             return true
         }
 
-        return masterDataManager.role?.permissionIdList.contains(requiredPermissionId) == true
+        guard let role = masterDataManager.role else { return false }
+        let areas = ["0": "Operations", "200": "Management", "400": "Finance", "800": "Settings"]
+        return areas[requiredPermissionId].map { role.canAccessArea($0) } ?? role.hasPermission(requiredPermissionId)
     }
 
     private var isSalesFeatureAvailable: Bool {
@@ -2784,6 +2590,7 @@ private struct MobilePurchaseReconciliationView: View {
     @EnvironmentObject private var masterDataManager: MasterDataManager
 
     @State private var lookbackDays: Int = 30
+    @State private var showingDateRange = false
     @State private var purchases: [PurchasedItem] = []
     @State private var shoppingListItems: [ShoppingListItem] = []
     @State private var databaseItemsById: [String: MobilePurchaseDatabaseItem] = [:]
@@ -2810,7 +2617,6 @@ private struct MobilePurchaseReconciliationView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 14) {
                     summaryCard
-                    rangeSelector
                     purchaseList
 
                     Color.clear.frame(height: 24)
@@ -2833,6 +2639,38 @@ private struct MobilePurchaseReconciliationView: View {
         }
         .refreshable {
             await loadData()
+        }
+        .sheet(isPresented: $showingDateRange) {
+            NavigationStack {
+                List(rangeOptions) { option in
+                    Button {
+                        lookbackDays = option.days
+                        showingDateRange = false
+                    } label: {
+                        HStack {
+                            Text("Last \(option.days) days")
+                            Spacer()
+                            if lookbackDays == option.days {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                        }
+                        .foregroundStyle(.primary)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(lookbackDays == option.days ? .isSelected : [])
+                }
+                .navigationTitle("Date Range")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showingDateRange = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
         .sheet(item: $selectedPurchase) { purchase in
             MobilePurchaseReconciliationDetailSheet(
@@ -2898,7 +2736,14 @@ private struct MobilePurchaseReconciliationView: View {
             HStack(spacing: 8) {
                 metricPill(title: "Need review", value: "\(visiblePurchases.count)", tint: visiblePurchases.isEmpty ? .gray : .orange)
                 metricPill(title: "Showing", value: "Open", tint: .poolGreen)
-                metricPill(title: "Range", value: "\(lookbackDays)d", tint: .poolBlue)
+                Spacer(minLength: 0)
+                Button {
+                    showingDateRange = true
+                } label: {
+                    Label("\(lookbackDays)d", systemImage: "calendar")
+                }
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .slate))
+                .accessibilityLabel("Date range, last \(lookbackDays) days")
             }
 
             if let errorMessage {
@@ -2909,39 +2754,6 @@ private struct MobilePurchaseReconciliationView: View {
             }
         }
         .mobileMainCard(material: true)
-    }
-
-    private var rangeSelector: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Date Range")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-
-            HStack(spacing: 8) {
-                ForEach(rangeOptions) { option in
-                    Button {
-                        lookbackDays = option.days
-                    } label: {
-                        Text(option.label)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(lookbackDays == option.days ? .white : .primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
-                            .background(
-                                lookbackDays == option.days ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.background),
-                                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .mobileMainCard()
     }
 
     @ViewBuilder
@@ -3092,7 +2904,7 @@ private struct MobilePurchaseReconciliationView: View {
             purchases = []
             shoppingListItems = []
             databaseItemsById = [:]
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
             isLoading = false
         }
     }
@@ -3935,6 +3747,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
     @State private var showingCustomerPicker = false
     @State private var showingJobPicker = false
     @State private var showingSplitSheet = false
+    @State private var showingShoppingPicker = false
     @State private var showingAllShoppingCandidates = false
     @State private var selectedCustomer = MobilePurchaseReconciliationDefaults.emptyCustomer()
     @State private var selectedJob = MobilePurchaseReconciliationDefaults.emptyJob()
@@ -3982,6 +3795,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                     notesSection
                     actionsSection
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
             }
             .background(Color.listColor.ignoresSafeArea())
@@ -4003,6 +3817,15 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                 NavigationStack {
                     JobPickerScreen(dataService: dataService, job: $selectedJob)
                 }
+            }
+            .sheet(isPresented: $showingShoppingPicker) {
+                PurchaseShoppingListPickerSheet(dataService: dataService, purchaseId: purchase.id) { item in
+                    Task {
+                        await onConnectShoppingItem(purchase, item)
+                        dismiss()
+                    }
+                }
+                .presentationDetents([.medium, .large])
             }
             .sheet(isPresented: $showingSplitSheet) {
                 PurchasedItemSplitSheet(
@@ -4052,6 +3875,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                 statusChip(title: purchase.returned == true ? "Returned" : "Not returned", tint: purchase.returned == true ? .orange : .gray)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .mobileMainCard(material: true)
     }
 
@@ -4105,6 +3929,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .mobileMainCard()
     }
 
@@ -4115,24 +3940,16 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
             detailLine(title: "Customer", value: purchase.customerName.isEmpty ? "No customer connected" : purchase.customerName)
             detailLine(title: "Job", value: jobLabel)
 
-            HStack(spacing: 8) {
-                Button {
-                    showingCustomerPicker = true
-                } label: {
-                    Label(purchase.customerName.isEmpty ? "Add Customer" : "Change Customer", systemImage: "person.crop.circle.badge.plus")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    customerButton
+                    jobButton
                 }
-                .buttonStyle(.bordered)
-                .disabled(isUpdating)
-
-                Button {
-                    showingJobPicker = true
-                } label: {
-                    Label(jobLabel == "No job connected" ? "Add Job" : "Change Job", systemImage: "briefcase")
+                VStack(alignment: .leading, spacing: 8) {
+                    customerButton
+                    jobButton
                 }
-                .buttonStyle(.bordered)
-                .disabled(isUpdating)
             }
-            .font(.caption.weight(.semibold))
 
             Button {
                 Task {
@@ -4140,17 +3957,36 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                     dismiss()
                 }
             } label: {
-                HStack {
-                    Label("Mark Personal Purchase", systemImage: "person.crop.circle.badge.checkmark")
-                    Spacer()
-                }
-                .font(.subheadline.weight(.semibold))
-                .padding(.vertical, 6)
+                Label("Mark Personal Purchase", systemImage: "person.crop.circle.badge.checkmark")
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(WorkspaceOutlinedButtonStyle())
             .disabled(isUpdating || purchase.returned == true || purchase.invoiced)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .mobileMainCard()
+    }
+
+    private var customerButton: some View {
+        Button {
+            showingCustomerPicker = true
+        } label: {
+            Label(purchase.customerName.isEmpty ? "Add Customer" : "Change Customer", systemImage: "person.crop.circle.badge.plus")
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .buttonStyle(WorkspaceOutlinedButtonStyle())
+        .disabled(isUpdating)
+    }
+
+    private var jobButton: some View {
+        Button {
+            showingJobPicker = true
+        } label: {
+            Label(jobLabel == "No job connected" ? "Add Job" : "Change Job", systemImage: "briefcase")
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .buttonStyle(WorkspaceOutlinedButtonStyle())
+        .disabled(isUpdating)
     }
 
     private var shoppingSection: some View {
@@ -4160,7 +3996,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
             if let connectedShoppingItem {
                 shoppingItemSummary(connectedShoppingItem, connected: true)
             } else if shoppingCandidates.isEmpty {
-                Text("No matching shopping list item found. You can still update notes, customer, job, mark it personal, or mark it returned.")
+                Text("No suggested match. Search the shopping list to find the right item.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -4191,11 +4027,21 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                         .font(.caption.weight(.semibold))
                         .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(WorkspaceOutlinedButtonStyle())
                     .disabled(isUpdating)
                 }
             }
+
+            Button {
+                showingShoppingPicker = true
+            } label: {
+                Label(connectedShoppingItem == nil ? "Search Shopping List" : "Change Shopping Item", systemImage: "magnifyingglass")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .buttonStyle(WorkspaceOutlinedButtonStyle())
+            .disabled(isUpdating)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .mobileMainCard()
     }
 
@@ -4213,7 +4059,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                     Text("Save")
                         .font(.caption.weight(.semibold))
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .emerald))
                 .disabled(isUpdating || draftNotes.trimmingCharacters(in: .whitespacesAndNewlines) == purchase.notes.trimmingCharacters(in: .whitespacesAndNewlines))
             }
 
@@ -4226,6 +4072,7 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                         .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                 )
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .mobileMainCard()
     }
 
@@ -4239,29 +4086,22 @@ private struct MobilePurchaseReconciliationDetailSheet: View {
                     dismiss()
                 }
             } label: {
-                HStack {
-                    Label("Mark Item Returned", systemImage: "arrow.uturn.backward.circle")
-                    Spacer()
-                }
-                .font(.subheadline.weight(.semibold))
-                .padding(.vertical, 6)
+                Label("Mark Item Returned", systemImage: "arrow.uturn.backward.circle")
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .rose))
             .disabled(isUpdating || purchase.returned == true)
 
             Button {
                 showingSplitSheet = true
             } label: {
-                HStack {
-                    Label("Split Purchase", systemImage: "rectangle.split.2x1")
-                    Spacer()
-                }
-                .font(.subheadline.weight(.semibold))
-                .padding(.vertical, 6)
+                Label("Split Purchase", systemImage: "rectangle.split.2x1")
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(WorkspaceOutlinedButtonStyle())
             .disabled(isUpdating || purchase.returned == true || purchase.invoiced || purchase.quantity <= 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .mobileMainCard()
     }
 

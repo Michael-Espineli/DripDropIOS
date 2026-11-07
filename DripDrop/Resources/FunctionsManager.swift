@@ -116,6 +116,12 @@ final class FunctionsManager {
     static let shared = FunctionsManager()
     private init(){}
     
+    func billingCommand(_ name: String, payload: [String: Any]) async throws -> [String: Any] {
+        let commands: Set<String> = ["manageSalesInvoice", "manageStripeInvoice", "manageSalesPayment", "sendSalesPaymentReceipt", "createSavedPaymentSetup", "listSavedPaymentMethods", "chargeSavedInvoice"]
+        guard commands.contains(name) else { throw FireBaseRead.unableToRead }
+        return try await technicianWorkflow(name, payload: payload)
+    }
+
     func technicianWorkflow(_ name: String, payload: [String: Any]) async throws -> [String: Any] {
         let result = try await functions.httpsCallable(name).call(payload)
         guard let data = result.data as? [String: Any] else { throw FireBaseRead.unableToRead }

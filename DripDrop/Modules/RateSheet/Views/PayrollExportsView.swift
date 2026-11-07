@@ -122,7 +122,7 @@ final class PayrollExportsViewModel: ObservableObject {
                 endDate: endDate
             )
         } catch {
-            alertMessage = "Could not load payroll exports. \(error.localizedDescription)"
+            alertMessage = "Could not load payroll exports. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -137,7 +137,7 @@ final class PayrollExportsViewModel: ObservableObject {
             exportedCSVURL = result.fileURL
             showShareSheet = true
         } catch {
-            alertMessage = "Could not export statements CSV. \(error.localizedDescription)"
+            alertMessage = "Could not export statements CSV. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -148,7 +148,7 @@ final class PayrollExportsViewModel: ObservableObject {
             exportedCSVURL = result.fileURL
             showShareSheet = true
         } catch {
-            alertMessage = "Could not export line items CSV. \(error.localizedDescription)"
+            alertMessage = "Could not export line items CSV. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -178,7 +178,7 @@ final class PayrollExportsViewModel: ObservableObject {
             alertMessage = "Marked \(filteredStatements.count) statement(s) exported."
             showAlert = true
         } catch {
-            alertMessage = "Could not mark statements exported. \(error.localizedDescription)"
+            alertMessage = "Could not mark statements exported. \(error.userFacingMessage)"
             showAlert = true
         }
     }

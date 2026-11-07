@@ -48,6 +48,8 @@ struct ShoppingListView: View {
     @State private var includeAllOutstanding: Bool
     @State private var showOtherOutstandingItems: Bool
     @State private var showRecentlyPurchasedItems: Bool = false
+    @State private var statusItem: ShoppingListItem?
+    @State private var detailItem: ShoppingListItem?
 
     var body: some View {
         ZStack {
@@ -85,7 +87,7 @@ struct ShoppingListView: View {
                             itemSection(
                                 title: "Purchased",
                                 subtitle: "Items purchased but not yet installed or completed.",
-                                systemImage: "cart.badge.checkmark",
+                                systemImage: ShoppingListStatus.purchased.shoppingSystemImage,
                                 items: shoppingVM.purchasedButNotInstalledItems,
                                 emptyTitle: "No purchased items need action.",
                                 emptyMessage: "Purchased items that still need installation will appear here."
@@ -105,6 +107,9 @@ struct ShoppingListView: View {
         }
         .navigationTitle("Shopping Center")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $detailItem) { item in
+            ShoppingListItemDetailView(item: item, dataService: dataService)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Menu {
@@ -141,6 +146,15 @@ struct ShoppingListView: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .sheet(item: $statusItem, onDismiss: {
+            Task {
+                await reloadShoppingCenter()
+            }
+        }) { item in
+            ShoppingListItemStatusSheet(item: item, shoppingVM: shoppingVM)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .task {
             await startRouteContextIfNeeded()
             await reloadShoppingCenter()
@@ -157,6 +171,12 @@ struct ShoppingListView: View {
                 await reloadShoppingCenter()
             }
         }
+        .onChange(of: detailItem) { oldItem, newItem in
+            guard oldItem != nil, newItem == nil else { return }
+            Task {
+                await reloadShoppingCenter()
+            }
+        }
         .refreshable {
             await reloadShoppingCenter()
         }
@@ -165,27 +185,7 @@ struct ShoppingListView: View {
 extension ShoppingListView {
 
     private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: selectedTab.systemImage)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 52, height: 52)
-                    .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Shopping Center")
-                        .font(.title3.weight(.semibold))
-
-                    Text(headerSubtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer()
-            }
-
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 headerPill(
                     title: "\(shoppingVM.routePrepItems.count)",
@@ -210,7 +210,7 @@ extension ShoppingListView {
 
             timeScopePicker
         }
-        .shoppingCenterCard(material: true)
+        .shoppingCenterCard(material: true, padding: 12)
     }
 
     private var timeScopePicker: some View {
@@ -341,7 +341,7 @@ extension ShoppingListView {
                 }
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: showRecentlyPurchasedItems ? "chevron.up.circle" : "cart.badge.checkmark")
+                    Image(systemName: showRecentlyPurchasedItems ? "chevron.up.circle" : ShoppingListStatus.purchased.shoppingSystemImage)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 34, height: 34)
@@ -382,7 +382,7 @@ extension ShoppingListView {
                     emptyState(
                         title: "No recent purchases.",
                         message: "Purchased shopping items will appear here so mistakes are easier to fix.",
-                        systemImage: "cart.badge.checkmark"
+                        systemImage: ShoppingListStatus.purchased.shoppingSystemImage
                     )
                 } else {
                     VStack(spacing: 8) {
@@ -399,7 +399,7 @@ extension ShoppingListView {
         VStack(alignment: .leading, spacing: 14) {
             sectionHeader(
                 title: "Route Prep",
-                subtitle: "Your active shopping items needed \(selectedTimeScope.prepDescription), including route, job, customer, and personal items.",
+                subtitle: "Materials needed \(selectedTimeScope.prepDescription).",
                 systemImage: "map",
                 count: shoppingVM.routePrepItems.count
             )
@@ -685,23 +685,6 @@ extension ShoppingListView {
 }
 extension ShoppingListView {
 
-    private var headerSubtitle: String {
-        switch selectedTab {
-        case .routePrep:
-            return "Prep your assigned materials for \(selectedTimeScope.prepDescription)."
-        case .outstanding:
-            return "Plan ahead using active shopping actions."
-        case .myItems:
-            return "Shopping actions assigned to you."
-        case .customers:
-            return "Customer-specific items assigned to you."
-        case .jobs:
-            return "Approved job materials assigned to you."
-        case .purchased:
-            return "Purchased items that still need follow-up."
-        }
-    }
-
     private func sectionHeader(
         title: String,
         subtitle: String,
@@ -798,7 +781,23 @@ extension ShoppingListView {
 
     @ViewBuilder
     private func shoppingItemLink(_ item: ShoppingListItem) -> some View {
-        if UIDevice.isIPhone {
+        if selectedTab == .routePrep {
+            ShoppingListItemCardView(
+                dataService: dataService,
+                shoppingListItem: item,
+                compact: true,
+                onOpenDetails: {
+                    if UIDevice.isIPhone {
+                        detailItem = item
+                    } else {
+                        masterDataManager.selectedShoppingListItem = item
+                    }
+                },
+                onChangeStatus: {
+                    statusItem = item
+                }
+            )
+        } else if UIDevice.isIPhone {
             NavigationLink {
                 ShoppingListItemDetailView(
                     item: item,
@@ -927,7 +926,7 @@ private extension CompanyShoppingListView {
 
             HStack(spacing: 8) {
                 headerPill(title: "\(openItems.count)", label: "Open", systemImage: "tray.full")
-                headerPill(title: "\(purchasedItems.count)", label: "Purchased", systemImage: "cart.badge.checkmark")
+                headerPill(title: "\(purchasedItems.count)", label: "Purchased", systemImage: ShoppingListStatus.purchased.shoppingSystemImage)
                 headerPill(title: "\(companyItems.count)", label: "Total", systemImage: "number")
                 Spacer()
             }
@@ -1198,16 +1197,16 @@ private extension CompanyShoppingListView {
         do {
             try await shoppingVM.getAllShoppingListItemsByCompany(companyId: company.id)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = error.userFacingMessage
             print("[CompanyShoppingListView][reloadCompanyShoppingList] \(error)")
         }
     }
 }
 
 private extension View {
-    func shoppingCenterCard(material: Bool = false) -> some View {
+    func shoppingCenterCard(material: Bool = false, padding: CGFloat = 16) -> some View {
         self
-            .padding(16)
+            .padding(padding)
             .background(
                 material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
                 in: RoundedRectangle(cornerRadius: 22, style: .continuous)

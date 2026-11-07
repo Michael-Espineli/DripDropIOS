@@ -116,6 +116,10 @@ struct PurchaseDetailView: View {
                     }
                 }
                 purchaseView
+                if let companyId = masterDataManager.currentCompany?.id {
+                    PartInvoiceStatusCard(companyId: companyId, collection: "purchasedItems", recordId: purchase.id)
+                        .padding(.horizontal, 12)
+                }
                 search
             }
         }
@@ -235,178 +239,202 @@ extension PurchaseDetailView{
         }
     }
     var info: some View {
-        ZStack{
-                VStack(alignment: .leading, spacing: 14){
-                    
-                    VStack(alignment: .leading, spacing: 10){
-                        Label("Purchase Details", systemImage: "cart")
-                            .font(.headline.weight(.semibold))
-                        HStack{
-                            Text("Store")
-                                .foregroundStyle(.secondary)
-                            if let useablePurchaseItem {
-                                Text(useablePurchaseItem.venderName)
-                                    .fontWeight(.semibold)
-                                    .textSelection(.enabled)
-                            }
-                            Button(action: {
-                                showStoreInfo = true
-                            }, label: {
-                                Image(systemName: "info.circle")
-                            })
-                            .sheet(isPresented: $showStoreInfo, content: {
-                                VStack{
-                                    HStack{
-                                        Spacer()
-                                        Button(action: {
-                                            showStoreInfo = false
-                                        }, label: {
-                                            Image(systemName: "xmark")
-                                                .modifier(DismissButtonTextModifier())
-                                        })
-                                        .modifier(DismissButtonModifier())
-                                    }
-                                    Text("Store Info")
-                                    HStack{
-                                        Text("Store Name : ")
-                                        Text(storeVM.store?.name ?? "...Loading")
-                                    }
-                                    Text(storeVM.store?.address.streetAddress ?? "")
-                                    HStack{
-                                        Text(storeVM.store?.address.city ?? "")
-                                        Text(" ")
-                                        Text(storeVM.store?.address.state ?? "")
-                                        Text(" ")
-                                        Text(storeVM.store?.address.zip ?? "")
-                                    }
-                                }
-                                .background(Color.green)
-                                .cornerRadius(10)
-                                
-                            })
-                        }
-                        if let useablePurchaseItem {
-                            
-                            detailRow("Name", useablePurchaseItem.name)
-                            detailRow("Sku", useablePurchaseItem.sku)
-                            detailRow("Invoice", useablePurchaseItem.invoiceNum)
-                            detailRow("Tech", useablePurchaseItem.techName)
-                        }
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Purchase Details", systemImage: "cart")
+                .font(.headline.weight(.semibold))
+
+            if let useablePurchaseItem {
+                Text(useablePurchaseItem.name.isEmpty ? "Unnamed purchase" : useablePurchaseItem.name)
+                    .font(.subheadline.weight(.semibold))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(alignment: .top, spacing: 8) {
+                    detailRow("Store", useablePurchaseItem.venderName)
+                    Button {
+                        showStoreInfo = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .frame(minWidth: 44, minHeight: 44)
                     }
-                    VStack(alignment: .leading, spacing: 8){
-                        Text("Notes")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        TextEditor(text: $notes)
-                            .padding(8)
-                            .frame(minHeight: 110)
-                            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                            }
-                    }
-                    Spacer()
+                    .accessibilityLabel("Store information")
                 }
-                .purchaseSurface()
-            
-        }
-    }
-    var money: some View {
-        ZStack{
-                VStack(alignment: .leading, spacing: 14){
-                    Label("Money", systemImage: "dollarsign.circle")
-                        .font(.headline.weight(.semibold))
 
-                    if let useablePurchaseItem {
-                        VStack(alignment: .leading, spacing: 10){
-                            metricRow("Price", value: PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.price))
-                            metricRow("Quantity", value: useablePurchaseItem.quantityString)
-                            metricRow("Price After Tax", value: PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.totalAfterTax))
-                            metricRow("Date", value: fullDate(date: useablePurchaseItem.date))
-                            metricRow("Billable", value: useablePurchaseItem.billable ? "Yes" : "No")
-                            metricRow("Returned", value: useablePurchaseItem.returned == true ? "Yes" : "No")
-                        }
-                    }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), alignment: .leading)], alignment: .leading, spacing: 8) {
+                    purchaseFact("SKU", value: useablePurchaseItem.sku)
+                    purchaseFact("Invoice", value: useablePurchaseItem.invoiceNum)
+                    purchaseFact("Tech", value: useablePurchaseItem.techName)
+                    purchaseFact("Date", value: shortDate(date: useablePurchaseItem.date))
+                }
+            }
 
-                    Divider()
-
-                    HStack{
-                        Text("Invoiced")
-                            .font(.subheadline.weight(.semibold))
-                        Spacer()
-                        Button(action: {
-                            if invoiced {
-                                Task{
-                                    try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: false, companyId: masterDataManager.currentCompany!.id)
-                                    try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.currentCompany!.id)
-                                    invoiced = false
-                                }
-                            } else {
-                                Task{
-                                    try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: true, companyId: masterDataManager.currentCompany!.id)
-                                    try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.currentCompany!.id)
-                                    invoiced = true
-                                }
-                            }
-                        }, label: {
-                            Label(invoiced ? "Invoiced" : "Not Invoiced", systemImage: invoiced ? "checkmark.square.fill" : "square")
-                                .font(.caption.weight(.semibold))
-                        })
-                        .buttonStyle(.bordered)
-                    }
-
-                    if let purchaseWorkflowError {
-                        Text(purchaseWorkflowError)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    VStack(spacing: 8) {
-                        Button(role: .destructive) {
-                            Task {
-                                await markCurrentPurchaseReturned()
-                            }
-                        } label: {
-                            Label(isPurchaseWorkflowUpdating ? "Updating..." : "Mark Returned", systemImage: "arrow.uturn.backward.circle")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isPurchaseWorkflowUpdating || purchase.returned == true)
-
-                        Button {
-                            showSplitPurchaseSheet = true
-                        } label: {
-                            Label("Split Purchase", systemImage: "rectangle.split.2x1")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isPurchaseWorkflowUpdating || purchase.returned == true || purchase.invoiced || purchase.quantity <= 0)
-                    }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Notes")
                     .font(.caption.weight(.semibold))
-                    .sheet(isPresented: $showSplitPurchaseSheet) {
-                        PurchasedItemSplitSheet(
-                            dataService: dataService,
-                            purchase: purchase,
-                            isUpdating: isPurchaseWorkflowUpdating
-                        ) { quantity, customer, job, splitNotes in
-                            await splitCurrentPurchase(
-                                quantity: quantity,
-                                customer: customer,
-                                job: job,
-                                notes: splitNotes
-                            )
-                        }
-                        .presentationDetents([.medium, .large])
+                    .foregroundStyle(.secondary)
+                TextEditor(text: $notes)
+                    .font(.subheadline)
+                    .padding(6)
+                    .frame(height: 72)
+                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                     }
-
-                    Spacer()
+                    .accessibilityLabel("Purchase notes")
+            }
+        }
+        .purchaseSurface()
+        .sheet(isPresented: $showStoreInfo) {
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(storeVM.store?.name ?? "Loading...")
+                        .font(.headline)
+                    Text(storeVM.store?.address.streetAddress ?? "")
+                    Text([storeVM.store?.address.city, storeVM.store?.address.state, storeVM.store?.address.zip]
+                        .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", "))
                 }
-                .purchaseSurface()
-            
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .navigationTitle("Store Info")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showStoreInfo = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
+
+    var money: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Money", systemImage: "dollarsign.circle")
+                .font(.headline.weight(.semibold))
+
+            if let useablePurchaseItem {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), alignment: .leading)], alignment: .leading, spacing: 8) {
+                    purchaseFact("Unit Price", value: PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.price))
+                    purchaseFact("Quantity", value: useablePurchaseItem.quantityString)
+                    purchaseFact("Total After Tax", value: PurchaseMoneyFormatter.string(fromStoredCents: useablePurchaseItem.totalAfterTax))
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 16) {
+                        billingStatus(useablePurchaseItem)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        billingStatus(useablePurchaseItem)
+                    }
+                }
+            }
+
+            HStack {
+                Text("Invoiced")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(action: {
+                    if invoiced {
+                        Task{
+                            try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: false, companyId: masterDataManager.currentCompany!.id)
+                            try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.currentCompany!.id)
+                            invoiced = false
+                        }
+                    } else {
+                        Task{
+                            try? await vm.updateReciptBillingStatus(currentItem: purchase, newBillingStatus: true, companyId: masterDataManager.currentCompany!.id)
+                            try? await vm.getSinglePurchasedItem(itemId: purchase.id, companyId: masterDataManager.currentCompany!.id)
+                            invoiced = true
+                        }
+                    }
+                }, label: {
+                    Label(invoiced ? "Invoiced" : "Not Invoiced", systemImage: invoiced ? "checkmark.square.fill" : "square")
+                        .font(.caption.weight(.semibold))
+                })
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: invoiced ? .emerald : .slate))
+            }
+
+            if let purchaseWorkflowError {
+                Text(purchaseWorkflowError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    returnedButton
+                    splitButton
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    returnedButton
+                    splitButton
+                }
+            }
+            .sheet(isPresented: $showSplitPurchaseSheet) {
+                PurchasedItemSplitSheet(
+                    dataService: dataService,
+                    purchase: purchase,
+                    isUpdating: isPurchaseWorkflowUpdating
+                ) { quantity, customer, job, splitNotes in
+                    await splitCurrentPurchase(
+                        quantity: quantity,
+                        customer: customer,
+                        job: job,
+                        notes: splitNotes
+                    )
+                }
+                .presentationDetents([.medium, .large])
+            }
+        }
+        .purchaseSurface()
+    }
+
+    private var returnedButton: some View {
+        Button(role: .destructive) {
+            Task { await markCurrentPurchaseReturned() }
+        } label: {
+            Label(isPurchaseWorkflowUpdating ? "Updating..." : "Mark Returned", systemImage: "arrow.uturn.backward.circle")
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .rose))
+        .disabled(isPurchaseWorkflowUpdating || purchase.returned == true)
+    }
+
+    private var splitButton: some View {
+        Button {
+            showSplitPurchaseSheet = true
+        } label: {
+            Label("Split Purchase", systemImage: "rectangle.split.2x1")
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .buttonStyle(WorkspaceOutlinedButtonStyle())
+        .disabled(isPurchaseWorkflowUpdating || purchase.returned == true || purchase.invoiced || purchase.quantity <= 0)
+    }
+
+    @ViewBuilder
+    private func billingStatus(_ item: PurchasedItem) -> some View {
+        Text("Billable: \(item.billable ? "Yes" : "No")")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        Text("Returned: \(item.returned == true ? "Yes" : "No")")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    private func purchaseFact(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value.isEmpty ? "—" : value)
+                .font(.subheadline.weight(.semibold))
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     var oldMoneyUnused: some View {
         ZStack{
                 VStack{
@@ -651,7 +679,7 @@ extension PurchaseDetailView{
             }
             .buttonStyle(.plain)
             .sheet(isPresented: $selectedShoppingListPicker) {
-                PurchaseShoppingListPickerSheet(dataService: dataService) { item in
+                PurchaseShoppingListPickerSheet(dataService: dataService, purchaseId: purchase.id) { item in
                     Task {
                         await connectShoppingListItem(item)
                     }
@@ -724,7 +752,7 @@ private extension PurchaseDetailView {
             useablePurchaseItem = updatedPurchase
             displayJobName = ""
         } catch {
-            purchaseWorkflowError = error.localizedDescription
+            purchaseWorkflowError = error.userFacingMessage
             print("[PurchaseDetailView][markCurrentPurchaseReturned] \(error)")
         }
     }
@@ -758,7 +786,7 @@ private extension PurchaseDetailView {
             purchase = updatedPurchase
             useablePurchaseItem = updatedPurchase
         } catch {
-            purchaseWorkflowError = error.localizedDescription
+            purchaseWorkflowError = error.userFacingMessage
             print("[PurchaseDetailView][splitCurrentPurchase] \(error)")
         }
     }
@@ -818,7 +846,7 @@ private extension PurchaseDetailView {
             displayShoppingListItemName = item.name.isEmpty ? item.id : item.name
             selectedShoppingListPicker = false
         } catch {
-            purchaseWorkflowError = error.localizedDescription
+            purchaseWorkflowError = error.userFacingMessage
             print("[PurchaseDetailView][connectShoppingListItem] \(error)")
         }
     }
@@ -1227,11 +1255,12 @@ private extension View {
     }
 }
 
-private struct PurchaseShoppingListPickerSheet: View {
+struct PurchaseShoppingListPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var masterDataManager: MasterDataManager
 
     let dataService: any ProductionDataServiceProtocol
+    var purchaseId: String? = nil
     let onSelect: (ShoppingListItem) -> Void
 
     @State private var items: [ShoppingListItem] = []
@@ -1262,7 +1291,11 @@ private struct PurchaseShoppingListPickerSheet: View {
     }
 
     private var sortedItems: [ShoppingListItem] {
-        items.sorted {
+        items.filter { item in
+            guard let purchaseId else { return true }
+            let linkedPurchaseId = item.purchasedItem?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return linkedPurchaseId.isEmpty || linkedPurchaseId == purchaseId
+        }.sorted {
             if $0.status == $1.status {
                 return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
             }

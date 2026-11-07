@@ -7,8 +7,37 @@
 
 import Foundation
 
+enum WorkOfferTiming {
+    static func isValid(availableFrom: Date?, deadline: Date?) -> Bool {
+        guard let availableFrom, let deadline else { return true }
+        return deadline >= availableFrom
+    }
+
+    static func deadline(on day: Date, at time: Date, calendar: Calendar = .current) -> Date {
+        let components = calendar.dateComponents([.hour, .minute], from: time)
+        return calendar.date(bySettingHour: components.hour ?? 17, minute: components.minute ?? 0, second: 0, of: day) ?? day
+    }
+
+    static func changes(availableFrom: Date?, deadline: Date?, notes: String) -> [String: Any] {
+        func timestamp(_ date: Date?) -> Any {
+            guard let date else { return NSNull() }
+            return date.timeIntervalSince1970 * 1000
+        }
+        return [
+            "proposedStartDate": timestamp(availableFrom),
+            "proposedEndDate": timestamp(deadline),
+            "completionDeadlineAt": timestamp(deadline),
+            "timelineNotes": notes
+        ]
+    }
+}
+
 struct WorkOffer: Identifiable, Codable, Hashable {
     var id: String
+
+    var isReadyToSchedule: Bool {
+        status == .accepted && serviceStopId.isEmpty && routeId?.isEmpty != false && !jobId.isEmpty
+    }
 
     var companyId: String
 
@@ -107,6 +136,8 @@ struct WorkOffer: Identifiable, Codable, Hashable {
     var claims: [WorkOfferClaim]? = nil
     var acceptedTerms: WorkOfferTerms? = nil
     var incentive: WorkOfferIncentive? = nil
+    var routeSummary: WorkOfferRouteSummary? = nil
+    var isRouteOffer: Bool { routeId?.isEmpty == false }
     var routeId: String? = nil
     var routeSource: String? = nil
     var routeName: String? = nil
@@ -121,7 +152,7 @@ struct WorkOffer: Identifiable, Codable, Hashable {
     var coverageReason: String? = nil
 
     enum CodingKeys: String, CodingKey {
-        case id, companyId, jobId, jobInternalId, jobName, serviceStopId, serviceStopInternalId, offerType, status, title, description, offeredToUserId, offeredToUserName, offeredToWorkerType, postedToBoard, boardVisibility, boardPostId, boardIds, boardNames, boardName, boardMemberUserIds, jobTaskIds, serviceStopTaskIds, customerId, customerName, serviceLocationId, serviceLocationName, address, proposedStartDate, proposedEndDate, completionDeadlineAt, timelineNotes, estimatedMinutes, allowsTechnicianSelfScheduling, paySource, offeredAmountCents, estimatedLaborCents, createdAt, createdByUserId, createdByUserName, sentAt, postedAt, viewedAt, acceptedAt, rejectedAt, cancelledAt, completedAt, acceptedByUserId, acceptedByUserName, rejectionReason, adminNotes, workerNotes, sourceLaborContractId, externalCompanyId, externalCompanyName, serviceStopTypeId, serviceStopTypeName, serviceStopTypeImage, serviceStopTypeUseCaseRawValue, estimatedPayLines, estimatedPayTotalCents, estimatedPayNotes, schemaVersion, revision, workPurpose, scopeSnapshot, claims, acceptedTerms, incentive, routeId, routeSource, routeName, routeDate, routeTechId, routeServiceStopIds, remainingStopIds, routeSplitAllowed, routeOfferMode, workOfferCategory, originalTechnicianId, coverageReason
+        case id, companyId, jobId, jobInternalId, jobName, serviceStopId, serviceStopInternalId, offerType, status, title, description, offeredToUserId, offeredToUserName, offeredToWorkerType, postedToBoard, boardVisibility, boardPostId, boardIds, boardNames, boardName, boardMemberUserIds, jobTaskIds, serviceStopTaskIds, customerId, customerName, serviceLocationId, serviceLocationName, address, proposedStartDate, proposedEndDate, completionDeadlineAt, timelineNotes, estimatedMinutes, allowsTechnicianSelfScheduling, paySource, offeredAmountCents, estimatedLaborCents, createdAt, createdByUserId, createdByUserName, sentAt, postedAt, viewedAt, acceptedAt, rejectedAt, cancelledAt, completedAt, acceptedByUserId, acceptedByUserName, rejectionReason, adminNotes, workerNotes, sourceLaborContractId, externalCompanyId, externalCompanyName, serviceStopTypeId, serviceStopTypeName, serviceStopTypeImage, serviceStopTypeUseCaseRawValue, estimatedPayLines, estimatedPayTotalCents, estimatedPayNotes, schemaVersion, revision, workPurpose, scopeSnapshot, claims, acceptedTerms, incentive, routeSummary, routeId, routeSource, routeName, routeDate, routeTechId, routeServiceStopIds, remainingStopIds, routeSplitAllowed, routeOfferMode, workOfferCategory, originalTechnicianId, coverageReason
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -194,6 +225,7 @@ struct WorkOffer: Identifiable, Codable, Hashable {
         claims = try c.decodeIfPresent([WorkOfferClaim].self, forKey: .claims)
         acceptedTerms = try c.decodeIfPresent(WorkOfferTerms.self, forKey: .acceptedTerms)
         incentive = try c.decodeIfPresent(WorkOfferIncentive.self, forKey: .incentive)
+        routeSummary = try c.decodeIfPresent(WorkOfferRouteSummary.self, forKey: .routeSummary)
         routeId = try c.decodeIfPresent(String.self, forKey: .routeId)
         routeSource = try c.decodeIfPresent(String.self, forKey: .routeSource)
         routeName = try c.decodeIfPresent(String.self, forKey: .routeName)
@@ -529,6 +561,30 @@ enum WorkOfferIdFactory {
 
     static func boardPostId() -> String {
         "comp_work_board_" + UUID().uuidString
+    }
+}
+
+struct WorkOfferRouteSummary: Codable, Hashable {
+    var stopIds: [String]
+    var totalMinutes: Double?
+    var totalDistanceMiles: Double?
+    var serviceMinutes: Double?
+    var timeSampleCount: Int
+    var distanceSampleCount: Int
+
+    var totalTimeText: String { Self.duration(totalMinutes) }
+    var totalDistanceText: String {
+        guard let miles = totalDistanceMiles, miles.isFinite, miles >= 0 else { return "Not available" }
+        return miles.formatted(.number.precision(.fractionLength(0...1))) + " mi"
+    }
+    static func duration(_ value: Double?) -> String {
+        guard let value, value.isFinite, value >= 0, value < Double(Int.max) else { return "Not available" }
+        let minutes = Int(ceil(value)), hours = minutes / 60, remainder = minutes % 60
+        return hours > 0 ? "\(hours) hr" + (remainder > 0 ? " \(remainder) min" : "") : "\(minutes) min"
+    }
+    static func decode(_ value: Any?) -> WorkOfferRouteSummary? {
+        guard let value = value as? [String: Any], let data = try? JSONSerialization.data(withJSONObject: value) else { return nil }
+        return try? JSONDecoder().decode(Self.self, from: data)
     }
 }
 

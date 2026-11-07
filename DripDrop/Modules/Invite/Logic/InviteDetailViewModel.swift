@@ -107,7 +107,7 @@ final class InviteDetailViewModel: ObservableObject{
         } catch {
             print("Accept Invite Error: ")
             print(error)
-            self.alertMessage = error.localizedDescription
+            self.alertMessage = error.userFacingMessage
             self.showAlert.toggle()
         }
         
@@ -139,7 +139,7 @@ final class InviteDetailViewModel: ObservableObject{
             //Just Update Status
         } catch {
             print(error)
-            self.alertMessage = error.localizedDescription
+            self.alertMessage = error.userFacingMessage
             self.showAlert.toggle()
         }
         

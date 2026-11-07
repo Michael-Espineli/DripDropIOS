@@ -102,6 +102,11 @@ struct Job: Identifiable, Codable, Hashable{
     var createdByCompanyUserId: String? = nil
     var createdAt: Date? = nil
     var createdAtMillis: Int? = nil
+    var equipmentId: String? = nil
+    var equipmentName: String? = nil
+    var equipmentIds: [String]? = nil
+    var companyEquipmentIds: [String]? = nil
+    var jobIntent: String? = nil
 
     var cost: Int {
         laborCost // + installationPartsCost + auxiliaryPartsCost
@@ -203,6 +208,11 @@ extension Job {
         createdByCompanyUserId = try? container.decodeIfPresent(String.self, forKey: .createdByCompanyUserId)
         createdAt = container.jobDate(.createdAt)
         createdAtMillis = container.jobInteger(.createdAtMillis)
+        equipmentId = try? container.decodeIfPresent(String.self, forKey: .equipmentId)
+        equipmentName = try? container.decodeIfPresent(String.self, forKey: .equipmentName)
+        equipmentIds = try? container.decodeIfPresent([String].self, forKey: .equipmentIds)
+        companyEquipmentIds = try? container.decodeIfPresent([String].self, forKey: .companyEquipmentIds)
+        jobIntent = try? container.decodeIfPresent(String.self, forKey: .jobIntent)
     }
 }
 

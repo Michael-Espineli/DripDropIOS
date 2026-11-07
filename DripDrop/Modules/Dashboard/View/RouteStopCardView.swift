@@ -582,7 +582,9 @@ extension RouteStopCardView {
                     "Select Type",
                     isPresented: $showPhoneNumberPicker
                 ) {
-                    Button("In App") { phoneNumberPickerType = .inApp }
+                    if masterDataManager.featureFlagsLoaded && masterDataManager.isFeatureEnabled(.iosMessages) {
+                        Button("In App") { phoneNumberPickerType = .inApp }
+                    }
                     Button("Text Template") { showTextTemplatePicker = true }
                     Button("Call: \(routeTextPhoneNumber)") { phoneNumberPickerType = .call }
                     Button("Blank Message \(routeTextPhoneNumber)") { phoneNumberPickerType = .message }

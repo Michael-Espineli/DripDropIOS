@@ -464,7 +464,7 @@
                             Label(isSavingCustomerNote ? "Saving" : "Save Note", systemImage: "paperplane.fill")
                                 .font(.subheadline.weight(.semibold))
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
                         .disabled(isSavingCustomerNote || customerNoteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
 

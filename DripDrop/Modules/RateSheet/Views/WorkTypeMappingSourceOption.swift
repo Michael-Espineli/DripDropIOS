@@ -221,7 +221,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             workTypes = try await workTypesTask
             serviceStopTypes = try await serviceStopTypesTask
         } catch {
-            alertMessage = "Could not load pay type links. \(error.localizedDescription)"
+            alertMessage = "Could not load pay type links. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -242,7 +242,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             try await dataService.saveWorkTypeMapping(mapping)
             upsertLocal(mapping)
         } catch {
-            alertMessage = "Could not save pay type link. \(error.localizedDescription)"
+            alertMessage = "Could not save pay type link. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -259,7 +259,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
 
             mappings.removeAll { $0.id == mapping.id }
         } catch {
-            alertMessage = "Could not delete pay type link. \(error.localizedDescription)"
+            alertMessage = "Could not delete pay type link. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -390,7 +390,7 @@ final class WorkTypeMappingsViewModel: ObservableObject {
             alertMessage = "Added \(newMappings.count) suggested pay type links."
             showAlert = true
         } catch {
-            alertMessage = "Could not add suggested pay type links. \(error.localizedDescription)"
+            alertMessage = "Could not add suggested pay type links. \(error.userFacingMessage)"
             showAlert = true
         }
     }

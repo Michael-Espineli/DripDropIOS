@@ -1513,7 +1513,7 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     func updateJobTaskWorkerId(companyId:String,jobId:String,taskId:String,workerId:String) throws {
     }
-    func updateJobTaskStatus(companyId:String,jobId:String,taskId:String,status:JobTaskStatus) throws {
+    func updateJobTaskStatus(companyId:String,jobId:String,taskId:String,status:JobTaskStatus) async throws {
     }
     func updateJobTaskServiceStopId(companyId:String,jobId:String,taskId:String,serviceStopId:IdInfo) throws {
     }
@@ -1547,6 +1547,16 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     func updateActiveRouteName(companyId:String,activeRouteId:String,name:String){
     }
     func updateActiveRouteDate(companyId:String,activeRouteId:String,date:Date){
+    }
+    func startOrResumeActiveRoute(companyId: String, activeRouteId: String, startTime: Date) async throws -> ActiveRoute {
+        var route = try await getActiveRoute(companyId: companyId, activeRouteId: activeRouteId)
+        route.id = activeRouteId
+        route.startTime = route.startTime ?? startTime
+        route.endTime = nil
+        route.endMilage = nil
+        route.distanceMiles = 0
+        route.status = .inProgress
+        return route
     }
     func updateActiveRouteStartTime(companyId:String,activeRouteId:String,startTime:Date){
     }
@@ -3813,39 +3823,18 @@ final class MockDataService:ProductionDataServiceProtocol,ObservableObject {
     }
     
     func upLoadInitialGenericRoles(companyId:String) async throws {
-        let allPermissionIds = [
-            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
-            "40","42","44","46","50","52","54","56","60","62","64","66",
-            "200","210","220","230","232","234","236","240","242","244","246",
-            "250","252","254","256","260","262","264","266","280","282","284","286",
-            "290","292","294","296",
-            "400","410","412","414","416","430","432","434","436","438",
-            "600","610","612","614","616","620","622","624","626","627","628",
-            "800","810","812","814","816","820","822","824","826","830","832","834","836",
-            "840","842","844","846","850","852","854","856","860","862","864","866",
-            "870","872","874","876","880","882","884","886",
-            "890","892","894","896"
-        ]
-        let ownerPermissionIds = allPermissionIds + ["420", "900", "910"]
-        let adminPermissionIds = allPermissionIds + ["900", "910"]
-        let managerPermissionIds = [
-            "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
-            "200","210","220","230","232","234","236","240","242","244","246",
-            "250","252","254","256","260","262","264","266","280","282","284","286",
-            "290","292","294","296",
-            "400","430","432","434","436","438",
-            "600","610","612","614","616","620","622","624","626","627","628",
-            "800","810","812","814","816","820","822","824","826","830","832","834","836",
-            "840","842","844","846","850","852","854","856","860","862","864","866",
-            "870","872","874","876","880","882","884","886","900"
-        ]
+        let allPermissionIds = DefaultCompanyRolePermissions.ids(for: "Tech")
+        let ownerPermissionIds = DefaultCompanyRolePermissions.ids(for: "Owner")
+        let adminPermissionIds = DefaultCompanyRolePermissions.ids(for: "Admin")
+        let managerPermissionIds = DefaultCompanyRolePermissions.ids(for: "Manager")
+        let officePermissionIds = DefaultCompanyRolePermissions.ids(for: "Office")
         let roles:[Role] = [
             Role(id: "1", name: "Owner", permissionIdList: ownerPermissionIds, listOfUserIdsToManage: [], color: "red", description: "All Permissions Enabled"),
             
             Role(id: UUID().uuidString, name: "Tech", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Techs"),
             Role(id: UUID().uuidString, name: "Manager", permissionIdList: managerPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Manager"),
             Role(id: UUID().uuidString, name: "Admin", permissionIdList: adminPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Admin"),
-            Role(id: UUID().uuidString, name: "Office", permissionIdList: allPermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Office Personal")
+            Role(id: UUID().uuidString, name: "Office", permissionIdList: officePermissionIds, listOfUserIdsToManage: [], color: "red", description: "Basic Permissions For Office Personal")
         ]
         print("Adding Work Order Templates")
         for role in roles {

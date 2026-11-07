@@ -609,6 +609,45 @@ protocol ToDoManagerProtocol {
 }
 final class ToDoManager:ToDoManagerProtocol {
 
+    static func visibleDocuments(companyId: String) async throws -> [QueryDocumentSnapshot] {
+        guard let uid = Auth.auth().currentUser?.uid else { return [] }
+        let db = Firestore.firestore(), company = db.collection("companies").document(companyId)
+        let companySnapshot = try await company.getDocument()
+        let accessSnapshot = try await db.collection("users").document(uid).collection("userAccess").document(companyId).getDocument()
+        let access = accessSnapshot.data() ?? [:]
+        let owner = companySnapshot.data()?["ownerId"] as? String == uid
+        let inactive = Set(["inactive", "revoked", "past", "deleted", "declined", "pending", "invited", "rejected", "canceled", "cancelled", "expired"])
+        let active = ["active", "isActive", "accessActive"].allSatisfy { access[$0] as? Bool != false }
+            && access["revoked"] as? Bool != true
+            && ["status", "userStatus", "companyUserStatus", "accessStatus", "userAccessStatus"].allSatisfy { !inactive.contains((access[$0] as? String ?? "").lowercased()) }
+        guard owner || (accessSnapshot.exists && active) else { return [] }
+        var role: [String: Any] = [:]
+        if let roleId = access["roleId"] as? String, !roleId.isEmpty {
+            role = try await company.collection("roles").document(roleId).getDocument().data() ?? [:]
+        }
+        let permissions = role["permissionIdList"] as? [String] ?? []
+        let name = (role["name"] as? String ?? "").lowercased()
+        let admin = ["owner", "admin", "manager"].contains(name) && name == (access["roleName"] as? String ?? "").lowercased()
+        let todos = company.collection("todoItems")
+        if owner || admin || permissions.contains("310") { return try await todos.getDocuments().documents }
+        let ids = Array(Set([uid, access["companyUserId"] as? String, access["companyUserDocId"] as? String].compactMap { $0 }))
+        var documents: [String: QueryDocumentSnapshot] = [:]
+        var boards: Set<String> = []
+        let memberFields = ["memberUserIds", "memberCompanyUserDocIds", "boardMemberUserIds", "boardMemberCompanyUserDocIds", "boardMemberCompanyUserIds"]
+        for field in ["assignedToUserId", "assignedToCompanyUserDocId", "assignedTechId", "techId"] {
+            for document in try await todos.whereField(field, in: ids).getDocuments().documents { documents[document.documentID] = document }
+        }
+        for field in memberFields {
+            for document in try await todos.whereField(field, arrayContainsAny: ids).getDocuments().documents { documents[document.documentID] = document }
+            for document in try await company.collection("todoBoards").whereField(field, arrayContainsAny: ids).getDocuments().documents { boards.insert(document.documentID) }
+        }
+        for document in try await todos.whereField("scope", isEqualTo: "me").whereField("createdByUserId", isEqualTo: uid).getDocuments().documents { documents[document.documentID] = document }
+        for board in boards {
+            for document in try await todos.whereField("boardId", isEqualTo: board).getDocuments().documents { documents[document.documentID] = document }
+        }
+        return Array(documents.values)
+    }
+
     //Collections
     private func ToDoCollection(companyId:String) -> CollectionReference{
         Firestore.firestore().collection("companies/\(companyId)/todoItems")
@@ -630,18 +669,13 @@ final class ToDoManager:ToDoManagerProtocol {
     }
 
     func getAllCompanyToDoItems(companyId:String) async throws -> [ToDo]{
-        let snapshot = try await ToDoCollection(companyId: companyId).getDocuments()
-        return snapshot.documents
-            .map { ToDo(document: $0) }
-            .filter { !$0.isArchived }
-            .sorted(by: ToDo.sortByUrgency)
+        return try await ToDoManager.visibleDocuments(companyId: companyId)
+            .map { ToDo(document: $0) }.filter { !$0.isArchived }.sorted(by: ToDo.sortByUrgency)
     }
     func getAllCompanyToDoItemsCount(companyId: String) async throws -> Int {
-        let query = ToDoCollection(companyId: companyId).whereField("status", isNotEqualTo: "archived")
-        let snapshot = try await query.count.getAggregation(source: .server)
-        return Int(truncating: snapshot.count)
+        return try await getAllCompanyToDoItems(companyId: companyId).count
     }
-    
+
     func getAllTechnicanToDoItemsCount(companyId: String, techId: String) async throws -> Int {
 
         let query = ToDoCollection(companyId: companyId).whereField("assignedToUserId", isEqualTo: techId).whereField("status", isNotEqualTo: "archived")

@@ -379,7 +379,7 @@ struct JobShoppingMaterialRow: View {
             }
         }
         .padding(12)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var iconName: String {
@@ -466,7 +466,7 @@ struct JobPurchasedMaterialRow: View {
             }
         }
         .padding(12)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -493,7 +493,7 @@ struct JobMaterialsSummaryChip: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -538,7 +538,7 @@ struct JobMaterialsEmptyMiniState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -577,6 +577,6 @@ private extension View {
     func jobMaterialsCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

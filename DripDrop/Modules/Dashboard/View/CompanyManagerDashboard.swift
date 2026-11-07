@@ -58,7 +58,7 @@ struct MobileDashboardWorkspace<TechnicianContent: View>: View {
             if let access = accessVM.access {
                 if access.canViewManager || access.canViewTechnician {
                     Picker("Dashboard view", selection: Binding(get: { effectiveView }, set: { selectedView = $0 })) {
-                        if access.canViewTechnician { Text("Technician").tag("technician") }
+                        if access.canViewTechnician { Text("Personal").tag("technician") }
                         if access.canViewManager { Text("Manager").tag("manager") }
                     }
                     .pickerStyle(.segmented)
@@ -199,7 +199,7 @@ struct CompanyManagerDashboard: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Dashboard filters")
-                        .accessibilityValue("\(effectiveTag.isEmpty ? "All permitted areas" : effectiveTag), \(selectedDate.formatted(date: .abbreviated, time: .omitted))")
+                        .accessibilityValue("\(effectiveTag.isEmpty ? (access.fullRegionAccess ? "Everything" : "All permitted areas") : effectiveTag), \(selectedDate.formatted(date: .abbreviated, time: .omitted))")
                         .accessibilityIdentifier("managerDashboardFilterButton")
                     }
                     Text(masterDataManager.currentCompany?.name ?? "Drip Drop")
@@ -242,7 +242,7 @@ struct CompanyManagerDashboard: View {
                 Section("Customer area") {
                     Picker("Area", selection: Binding(get: { effectiveTag }, set: { selectedTag = $0 })) {
                         if access.canViewAllAreas {
-                            Text(access.fullRegionAccess ? "Whole company" : "All permitted areas").tag("")
+                            Text(access.fullRegionAccess ? "Everything" : "All permitted areas").tag("")
                         }
                         ForEach(availableTags, id: \.self) { tag in Text(tag).tag(tag) }
                     }
@@ -312,11 +312,11 @@ struct CompanyManagerDashboard: View {
 
     private var weeklyWorkload: some View {
         card {
-            sectionTitle("Next 7 days", subtitle: "Scheduled stops and completed work", image: "calendar")
+            sectionTitle("7-day workload", subtitle: "Scheduled stops and completed work", image: "calendar")
             if model.isReady("stops") {
                 ScrollView(.horizontal, showsIndicators: false) {
                   HStack(alignment: .bottom, spacing: 8) {
-                    ForEach(0..<7) { offset in
+                    ForEach(-1..<6) { offset in
                         let date = Calendar.current.date(byAdding: .day, value: offset, to: selectedDate) ?? selectedDate
                         let stops = snapshot.stops.filter { $0.serviceDate.map { Calendar.current.isDate($0, inSameDayAs: date) } == true }
                         let finished = stops.filter(\.isFinished).count

@@ -140,7 +140,7 @@ struct AddJobTemplateMaterialSheet: View {
             Toggle("Billable To Customer", isOn: $billable)
                 .font(.subheadline.weight(.semibold))
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Unit Cost")
@@ -154,7 +154,7 @@ struct AddJobTemplateMaterialSheet: View {
                     .foregroundStyle(.secondary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             if billable {
                 VStack(alignment: .leading, spacing: 8) {
@@ -169,7 +169,7 @@ struct AddJobTemplateMaterialSheet: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
         }
         .jobTemplateMaterialSheetCard()
@@ -218,13 +218,13 @@ struct AddJobTemplateMaterialSheet: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 } else {
                     Label("Save Material", systemImage: "checkmark.circle")
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
             .buttonStyle(.plain)
@@ -237,7 +237,7 @@ struct AddJobTemplateMaterialSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -279,7 +279,7 @@ struct AddJobTemplateMaterialSheet: View {
             onSaved()
             dismiss()
         } catch {
-            alertMessage = "Could not save material. \(error.localizedDescription)"
+            alertMessage = "Could not save material. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -306,6 +306,6 @@ private extension View {
     func jobTemplateMaterialSheetCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

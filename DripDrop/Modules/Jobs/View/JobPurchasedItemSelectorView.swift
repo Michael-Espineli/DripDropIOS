@@ -185,7 +185,7 @@ struct JobPurchasedItemSelectorView: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
             .disabled(isLoading || isAttaching)
@@ -273,7 +273,7 @@ struct JobPurchasedItemSelectorView: View {
                         .font(.caption.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(Color.primary.opacity(hasActiveFilters ? 0.08 : 0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(Color.primary.opacity(hasActiveFilters ? 0.08 : 0.04), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(!hasActiveFilters)
@@ -317,7 +317,7 @@ struct JobPurchasedItemSelectorView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func purchasedItemRow(_ item: PurchasedItem) -> some View {

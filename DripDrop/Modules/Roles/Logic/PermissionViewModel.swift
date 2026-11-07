@@ -242,25 +242,49 @@ enum PermissionSelectionHelper {
     }
 }
 
+// Generated alongside the web/backend responsibility lists; parity is tested.
+enum DefaultCompanyRolePermissions {
+    static func ids(for name: String) -> [String] {
+        switch name {
+        case "Owner": return ["100","102","104","106","268","274","408","920","0","10","12","14","16","20","22","23","24","26","27","28","29","30","31","32","34","36","40","42","44","46","50","52","54","56","60","62","64","66","72","74","200","210","220","230","232","234","236","240","242","244","246","250","252","254","256","260","262","264","266","280","282","284","286","290","292","294","296","310","320","322","324","326","328","330","332","334","400","404","410","412","414","416","420","424","430","432","434","436","438","600","610","612","614","616","620","622","624","626","627","628","630","632","634","800","810","812","814","816","820","822","824","826","830","832","834","836","840","842","844","846","850","852","854","856","860","862","864","866","870","872","874","876","880","882","884","886","890","892","894","896","900","910"]
+        case "Tech": return ["0","10","20","23","27","30","32","40","50","60","62","64","72","74","200","240","280","320","322","334"]
+        case "Manager": return ["100","102","104","106","268","274","408","920","0","10","12","14","16","20","22","23","24","26","27","28","29","30","31","32","34","36","40","42","44","46","50","52","54","56","60","62","64","66","72","74","200","210","220","230","232","234","236","240","242","244","246","250","252","254","256","260","262","264","266","280","282","284","286","290","292","294","296","310","320","322","324","326","328","330","332","334","400","404","410","412","414","416","420","424","430","432","434","436","438","600","610","612","614","616","620","622","624","626","627","628","630","632","634","800","810","812","814","816","820","822","824","826","830","832","834","836","840","842","844","846","850","852","854","856","860","862","864","866","870","872","874","876","880","882","884","886","890","892","894","896","900","910"]
+        case "Admin": return ["100","102","104","106","268","274","408","920","0","10","12","14","16","20","22","23","24","26","27","28","29","30","31","32","34","36","40","42","44","46","50","52","54","56","60","62","64","66","72","74","200","210","220","230","232","234","236","240","242","244","246","250","252","254","256","260","262","264","266","280","282","284","286","290","292","294","296","310","320","322","324","326","328","330","332","334","400","404","410","412","414","416","420","424","430","432","434","436","438","600","610","612","614","616","620","622","624","626","627","628","630","632","634","800","810","812","814","816","820","822","824","826","830","832","834","836","840","842","844","846","850","852","854","856","860","862","864","866","870","872","874","876","880","882","884","886","890","892","894","896","900","910"]
+        case "Office": return ["100","102","104","0","10","12","14","20","22","24","28","29","30","31","32","34","40","42","44","50","52","54","60","62","64","72","74","200","210","230","232","234","240","242","244","260","290","310","320","322","324","326","330","332","400","430","432","434","438","600","610","612","614","620","622","627","628","630","632","634","800","810","820","822","824","830","840","850","852","854","860","870","880","882","884"]
+        default: return []
+        }
+    }
+}
+
 @MainActor
 final class PermissionViewModel:ObservableObject{
     @Published private(set) var permission: PermissionModel? = nil
 
     @Published private(set) var permissionList: [PermissionModel] = []
     @Published private(set) var standrdPermissions: [PermissionModel] = [
-        
+        PermissionModel(id: "100", name: "Purchases and Receipts", description: "View purchasing requests, purchases, and receipts.", category: "Finance"),
+        PermissionModel(id: "102", name: "Create Purchases", description: "Create shopping requests, purchases, and receipts.", category: "Finance"),
+        PermissionModel(id: "104", name: "Update Purchases", description: "Update purchase records and reconcile receipts.", category: "Finance"),
+        PermissionModel(id: "106", name: "Delete Purchases", description: "Remove editable purchase records.", category: "Finance"),
+        PermissionModel(id: "268", name: "Private Personnel Files", description: "View private personnel documents.", category: "Management"),
+        PermissionModel(id: "274", name: "Manage Performance Reviews", description: "Create and update performance reviews and personnel attachments.", category: "Management"),
+        PermissionModel(id: "408", name: "Manage Connected Account", description: "Manage company Stripe connection and payout configuration.", category: "Finance"),
+        PermissionModel(id: "920", name: "Manage Job Templates", description: "Manage job templates, availability, and template pay setup.", category: "Settings"),
         PermissionModel(id: "0", name: "Operations", description: "Can See the Operations Tabs", category: "Operations"),
         PermissionModel(id: "10", name: "Customer", description: "", category: "Operations"),
         PermissionModel(id: "12", name: "Create Customer", description: "", category: "Operations"),
         PermissionModel(id: "14", name: "Update Customer", description: "", category: "Operations"),
         PermissionModel(id: "16", name: "Delete Customer", description: "", category: "Operations"),
         PermissionModel(id: "20", name: "Jobs", description: "", category: "Operations"),
-        PermissionModel(id: "22", name: "Create Jobs", description: "", category: "Operations"),
-        PermissionModel(id: "23", name: "Create Jobs From Templates", description: "Can create jobs from technician-enabled job templates.", category: "Operations"),
+        PermissionModel(id: "22", name: "Create Jobs", description: "Can use the full job creation workflow, including billing, labor, materials, and admin assignment fields.", category: "Operations"),
+        PermissionModel(id: "23", name: "Schedule Template Jobs For Self", description: "Can create and schedule available job templates for themselves from Create and Schedule Job.", category: "Operations"),
         PermissionModel(id: "24", name: "Update Jobs", description: "", category: "Operations"),
         PermissionModel(id: "26", name: "Delete Jobs", description: "", category: "Operations"),
-        PermissionModel(id: "27", name: "Create Blank Jobs", description: "Can create blank jobs without starting from a template.", category: "Operations"),
+        PermissionModel(id: "27", name: "Create Custom Jobs For Self", description: "Can create and schedule a custom job assigned to themselves.", category: "Operations"),
+        PermissionModel(id: "28", name: "Edit Template Jobs", description: "Can make basic scope and schedule edits to jobs that were created from templates.", category: "Operations"),
+        PermissionModel(id: "29", name: "Create Template Jobs For Others", description: "Can create and schedule available template jobs for another company user.", category: "Operations"),
         PermissionModel(id: "30", name: "Repair Requests", description: "", category: "Operations"),
+        PermissionModel(id: "31", name: "Create Custom Jobs For Others", description: "Can create and schedule a custom job assigned to another company user.", category: "Operations"),
         PermissionModel(id: "32", name: "Create Repair Requests", description: "", category: "Operations"),
         PermissionModel(id: "34", name: "Update Repair Requests", description: "", category: "Operations"),
         PermissionModel(id: "36", name: "Delete Repair Requests", description: "", category: "Operations"),
@@ -276,7 +300,8 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "62", name: "Create Equipment", description: "", category: "Operations"),
         PermissionModel(id: "64", name: "Update Equipment", description: "", category: "Operations"),
         PermissionModel(id: "66", name: "Delete Equipment", description: "", category: "Operations"),
-
+        PermissionModel(id: "72", name: "Build Field Job Estimate Plans", description: "Can save technician-built job estimate plans from a job estimate service stop without full job update access.", category: "Operations"),
+        PermissionModel(id: "74", name: "Send Field Job Estimates", description: "Can send a job estimate from field workflows after the plan is ready.", category: "Operations"),
         PermissionModel(id: "200", name: "Management", description: "", category: "Operations"),
         PermissionModel(id: "210", name: "Route Over View", description: "", category: "Management"),
         PermissionModel(id: "220", name: "Live Route Access", description: "", category: "Management"),
@@ -285,28 +310,37 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "234", name: "Update Routes", description: "", category: "Management"),
         PermissionModel(id: "236", name: "Delete Routes", description: "", category: "Management"),
         PermissionModel(id: "240", name: "ServiceStops", description: "", category: "Management"),
-        PermissionModel(id: "242", name: "Create Service Stops", description: "", category: "Management"),
-        PermissionModel(id: "244", name: "Update Service Stops", description: "", category: "Management"),
-        PermissionModel(id: "246", name: "Delete Service Stops", description: "", category: "Management"),
+        PermissionModel(id: "242", name: "Create ServiceStops", description: "", category: "Management"),
+        PermissionModel(id: "244", name: "Update ServiceStops", description: "", category: "Management"),
+        PermissionModel(id: "246", name: "Delete ServiceStops", description: "", category: "Management"),
         PermissionModel(id: "250", name: "ServiceStops For Others", description: "", category: "Management"),
-        PermissionModel(id: "252", name: "Create Service Stops For Others", description: "", category: "Management"),
-        PermissionModel(id: "254", name: "Update Service Stops For Others", description: "", category: "Management"),
-        PermissionModel(id: "256", name: "Delete Service Stops For Others", description: "", category: "Management"),
-        PermissionModel(id: "260", name: "Company Users", description: "", category: "Management"),
-        PermissionModel(id: "262", name: "Create Company Users", description: "", category: "Management"),
-        PermissionModel(id: "264", name: "Update Company Users", description: "", category: "Management"),
-        PermissionModel(id: "266", name: "Delete Company Users", description: "", category: "Management"),
+        PermissionModel(id: "252", name: "Create ServiceStops For Others", description: "", category: "Management"),
+        PermissionModel(id: "254", name: "Update ServiceStops For Others", description: "", category: "Management"),
+        PermissionModel(id: "256", name: "Delete ServiceStops For Others", description: "", category: "Management"),
+        PermissionModel(id: "260", name: "CompanyUsers", description: "", category: "Management"),
+        PermissionModel(id: "262", name: "Create CompanyUsers", description: "", category: "Management"),
+        PermissionModel(id: "264", name: "Update CompanyUsers", description: "", category: "Management"),
+        PermissionModel(id: "266", name: "Delete CompanyUsers", description: "", category: "Management"),
         PermissionModel(id: "280", name: "WorkLogs", description: "", category: "Management"),
-        PermissionModel(id: "282", name: "Create Work Logs", description: "", category: "Management"),
-        PermissionModel(id: "284", name: "Update Work Logs", description: "", category: "Management"),
-        PermissionModel(id: "286", name: "Delete Work Logs", description: "", category: "Management"),
+        PermissionModel(id: "282", name: "Create WorkLogs", description: "", category: "Management"),
+        PermissionModel(id: "284", name: "Update WorkLogs", description: "", category: "Management"),
+        PermissionModel(id: "286", name: "Delete WorkLogs", description: "", category: "Management"),
         PermissionModel(id: "290", name: "Fleet", description: "", category: "Management"),
         PermissionModel(id: "292", name: "Create Fleet", description: "", category: "Management"),
         PermissionModel(id: "294", name: "Update Fleet", description: "", category: "Management"),
         PermissionModel(id: "296", name: "Delete Fleet", description: "", category: "Management"),
         PermissionModel(id: "300", name: "View Other Messages", description: "Can view company and customer conversations they are not directly included in.", category: "Management"),
-
+        PermissionModel(id: "310", name: "View All Todo Boards", description: "Can view every todo board and todo task, even when not assigned or listed as a board member.", category: "Management"),
+        PermissionModel(id: "320", name: "Offered Work", description: "Can open the offered work board.", category: "Management"),
+        PermissionModel(id: "322", name: "Create Offered Work", description: "Can offer their own routes, route stops, or one-off work to a board or direct technician.", category: "Management"),
+        PermissionModel(id: "324", name: "Update Offered Work", description: "Can post work on behalf of another technician and manage work offer details.", category: "Management"),
+        PermissionModel(id: "326", name: "Split Offered Work", description: "Can break route coverage into partial route or individual-stop offers.", category: "Management"),
+        PermissionModel(id: "328", name: "Incentivize Offered Work", description: "Can add flat-rate or percentage incentives to work offers.", category: "Management"),
+        PermissionModel(id: "330", name: "Approve Offered Work", description: "Can approve work offers or accepted coverage when company settings require approval.", category: "Management"),
+        PermissionModel(id: "332", name: "View All Offered Work", description: "Can view every direct offer, board post, route coverage offer, and incentive.", category: "Management"),
+        PermissionModel(id: "334", name: "Accept Offered Work", description: "Can claim eligible board posts and direct work offers.", category: "Management"),
         PermissionModel(id: "400", name: "Finance", description: "", category: "Finance"),
+        PermissionModel(id: "404", name: "Manage Customer Billing", description: "Can create and change customer invoices, record external payments, send invoices, and manage customer billing subscriptions. Does not grant payroll management.", category: "Finance"),
         PermissionModel(id: "410", name: "Finished Jobs", description: "", category: "Finance"),
         PermissionModel(id: "412", name: "Create Finished Jobs", description: "", category: "Finance"),
         PermissionModel(id: "414", name: "Update Finished Jobs", description: "", category: "Finance"),
@@ -318,19 +352,20 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "434", name: "Update Service Agreements", description: "Can edit service agreements.", category: "Finance"),
         PermissionModel(id: "436", name: "Delete Service Agreements", description: "Can delete service agreements.", category: "Finance"),
         PermissionModel(id: "438", name: "Send Service Agreements", description: "Can send service agreements to customers.", category: "Finance"),
-        
         PermissionModel(id: "600", name: "Marketing", description: "", category: "Marketing"),
         PermissionModel(id: "610", name: "Leads", description: "", category: "Marketing"),
         PermissionModel(id: "612", name: "Respond Leads", description: "", category: "Marketing"),
         PermissionModel(id: "614", name: "Update Leads", description: "", category: "Marketing"),
         PermissionModel(id: "616", name: "Delete Leads", description: "", category: "Marketing"),
-        PermissionModel(id: "620", name: "Estiamtes", description: "", category: "Marketing"),
-        PermissionModel(id: "622", name: "Respond Estiamtes", description: "", category: "Marketing"),
-        PermissionModel(id: "624", name: "Update Estiamtes", description: "", category: "Marketing"),
-        PermissionModel(id: "626", name: "Delete Estiamtes", description: "", category: "Marketing"),
-        PermissionModel(id: "627", name: "Recommend Initial Survey Price", description: "Can save a recommended service agreement price from an initial survey service stop.", category: "Marketing"),
+        PermissionModel(id: "620", name: "Estimates", description: "", category: "Marketing"),
+        PermissionModel(id: "622", name: "Respond Estimates", description: "", category: "Marketing"),
+        PermissionModel(id: "624", name: "Update Estimates", description: "", category: "Marketing"),
+        PermissionModel(id: "626", name: "Delete Estimates", description: "", category: "Marketing"),
+        PermissionModel(id: "627", name: "Recommend Initial Survey Price", description: "Can save a technician's recommended service agreement price from an initial survey service stop.", category: "Marketing"),
         PermissionModel(id: "628", name: "Send Service Agreements From Field", description: "Can create and send a service agreement from an initial survey in the field.", category: "Finance"),
-
+        PermissionModel(id: "630", name: "Pipeline", description: "Can view the customer onboarding pipeline.", category: "Marketing"),
+        PermissionModel(id: "632", name: "Create Pipeline", description: "Can sync leads and customers into the pipeline and add manual pipeline rows.", category: "Marketing"),
+        PermissionModel(id: "634", name: "Update Pipeline", description: "Can update pipeline notes, manual signoffs, statuses, lead sources, and pipeline settings.", category: "Marketing"),
         PermissionModel(id: "800", name: "Settings", description: "", category: "Settings"),
         PermissionModel(id: "810", name: "Company Information", description: "", category: "Settings"),
         PermissionModel(id: "812", name: "Create Company Information", description: "", category: "Settings"),
@@ -371,19 +406,7 @@ final class PermissionViewModel:ObservableObject{
         PermissionModel(id: "900", name: "General Company Configuration", description: "Can manage general company setup and configuration tools.", category: "Settings"),
         PermissionModel(id: "910", name: "Data Uploads", description: "Can access company data import and upload tools.", category: "Settings"),
     ]
-    let permissionIds: [String] = [
-        "0","10","12","14","16","20","22","23","24","26","27","30","32","34","36",
-        "40","42","44","46","50","52","54","56","60","62","64","66",
-        "200","210","220","230","232","234","236","240","242","244","246",
-        "250","252","254","256","260","262","264","266","280","282","284","286",
-        "290","292","294","296","300",
-        "400","410","412","414","416","420","424","430","432","434","436","438",
-        "600","610","612","614","616","620","622","624","626","627","628",
-        "800","810","812","814","816","820","822","824","826","830","832","834","836",
-        "840","842","844","846","850","852","854","856","860","862","864","866",
-        "870","872","874","876","880","882","884","886",
-        "890","892","894","896","900","910"
-    ]
+    var permissionIds: [String] { standrdPermissions.map(\.id) }
     func getPermissionsByIdList(ids:[String]){
         var list:[PermissionModel] = []
         for permission in standrdPermissions {

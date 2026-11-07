@@ -8,39 +8,132 @@
 import Foundation
 import SwiftUI
 
+// Shared with the web workspace palette: Jobs controls + Profile headers.
+enum WorkspaceTone: String, CaseIterable {
+    case blue, emerald, amber, rose, slate, cyan, violet
+
+    static func jobStatusTone(_ value: String) -> WorkspaceTone {
+        let status = value.filter { $0.isLetter || $0.isNumber }.lowercased()
+        if ["draft", "unscheduled", "rejected", "unspecified"].contains(status) { return .rose }
+        if ["estimate", "estimatepending", "inprogress"].contains(status) { return .amber }
+        if ["accepted", "scheduled", "finished", "paid", "comped", "customerresolved", "completed", "complete"].contains(status) { return .emerald }
+        if ["invoiced", "sent", "open"].contains(status) { return .blue }
+        if ["waitingforparts", "blocked"].contains(status) { return .violet }
+        return .slate
+    }
+
+    private var colors: (light: (UInt32, UInt32, UInt32), dark: (UInt32, UInt32, UInt32)) {
+        switch self {
+        case .blue: return ((0xeff6ff, 0xbfdbfe, 0x1d4ed8), (0x203c58, 0x476b97, 0xbfdbfe))
+        case .emerald: return ((0xecfdf5, 0xa7f3d0, 0x047857), (0x163f38, 0x3f7667, 0xa7f3d0))
+        case .amber: return ((0xfffbeb, 0xfde68a, 0x92400e), (0x46391f, 0x8a7040, 0xfde68a))
+        case .rose: return ((0xfff1f2, 0xfecdd3, 0xbe123c), (0x452831, 0x875264, 0xfecdd3))
+        case .slate: return ((0xf8fafc, 0xcbd5e1, 0x334155), (0x374757, 0x708397, 0xe2e8f0))
+        case .cyan: return ((0xecfeff, 0xa5f3fc, 0x0e7490), (0x163d48, 0x427b88, 0xa5f3fc))
+        case .violet: return ((0xf5f3ff, 0xddd6fe, 0x6d28d9), (0x352e50, 0x75659a, 0xddd6fe))
+        }
+    }
+    private func color(_ hex: UInt32) -> Color {
+        Color(.sRGB, red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255, opacity: 1)
+    }
+    func background(in scheme: ColorScheme) -> Color { color((scheme == .dark ? colors.dark : colors.light).0) }
+    func border(in scheme: ColorScheme) -> Color { color((scheme == .dark ? colors.dark : colors.light).1) }
+    func foreground(in scheme: ColorScheme) -> Color { color((scheme == .dark ? colors.dark : colors.light).2) }
+    var accent: Color {
+        switch self {
+        case .blue: return .poolBlue
+        case .emerald: return .poolGreen
+        case .amber: return .orange
+        case .rose: return .poolRed
+        case .slate: return .gray
+        case .cyan: return .teal
+        case .violet: return .purple
+        }
+    }
+}
+
+struct WorkspaceControlModifier: ViewModifier {
+    var tone: WorkspaceTone = .blue
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.isEnabled) private var isEnabled
+
+    func body(content: Content) -> some View {
+        content
+            .buttonStyle(.plain)
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .foregroundColor(tone.foreground(in: colorScheme))
+            .background(tone.background(in: colorScheme), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).stroke(tone.border(in: colorScheme), lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.6)
+    }
+}
+
+struct WorkspaceOutlinedButtonStyle: ButtonStyle {
+    var tone: WorkspaceTone = .blue
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.modifier(WorkspaceControlModifier(tone: tone)).opacity(configuration.isPressed ? 0.8 : 1)
+    }
+}
+
+struct WorkspaceIdentityHeader: View {
+    let title: String
+    let eyebrow: String
+    var subtitle: String = ""
+    var systemImage: String = ""
+    var compact: Bool = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            if !systemImage.isEmpty {
+                Image(systemName: systemImage).font(.headline).foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+            }
+            VStack(alignment: .leading, spacing: 5) {
+                Text(eyebrow.uppercased()).font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.white.opacity(0.75))
+                Text(title).font(compact ? .headline.weight(.bold) : .title2.weight(.bold)).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(.white.opacity(0.85)).fixedSize(horizontal: false, vertical: true) }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).padding(compact ? 12 : 16)
+        .background(Color(.sRGB, red: 14/255, green: 36/255, blue: 92/255, opacity: 1), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct WorkspaceSectionHeading: View {
+    let title: String
+    let systemImage: String
+    @Environment(\.colorScheme) private var colorScheme
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage).font(.subheadline.weight(.semibold))
+                .foregroundStyle(WorkspaceTone.blue.foreground(in: colorScheme))
+                .frame(width: 32, height: 32)
+                .background(WorkspaceTone.blue.background(in: colorScheme), in: RoundedRectangle(cornerRadius: 6))
+            Text(title).font(.headline.weight(.semibold)).foregroundStyle(.primary)
+        }
+    }
+}
+
 // MARK: - Dismiss / Delete
 
 struct DismissButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color.poolRed)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-            .shadow(color: Color.poolRed.opacity(0.25), radius: 4, x: 0, y: 2)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .rose)) }
 }
 
 struct DeleteButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color.poolRed)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-            .shadow(color: Color.poolRed.opacity(0.25), radius: 4, x: 0, y: 2)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .rose)) }
 }
 
 struct DismissButtonTextModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     func body(content: Content) -> some View {
-        content
-            .foregroundColor(.white)
-            .font(.subheadline.weight(.semibold))
+        content.foregroundColor(WorkspaceTone.rose.foreground(in: colorScheme)).font(.subheadline.weight(.semibold))
     }
 }
 
@@ -59,23 +152,13 @@ struct KeyboardDismissButton: View {
 // MARK: - Edit
 
 struct EditButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.poolBlue)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-            .shadow(color: Color.poolBlue.opacity(0.25), radius: 4, x: 0, y: 2)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .blue)) }
 }
 
 struct EditButtonTextModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     func body(content: Content) -> some View {
-        content
-            .foregroundColor(.white)
-            .font(.subheadline.weight(.semibold))
+        content.foregroundColor(WorkspaceTone.blue.foreground(in: colorScheme)).font(.subheadline.weight(.semibold))
     }
 }
 
@@ -109,11 +192,11 @@ struct ListButtonModifier: ViewModifier {
         content
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(colorScheme == .dark ? Color.poolBlack : Color.white)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 8)
                     .stroke(Color.gray.opacity(0.15), lineWidth: 1)
             )
             .foregroundColor(Color.basicFontText)
@@ -128,7 +211,7 @@ struct BasicCardModifier: ViewModifier {
         content
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(Color.poolBlack)
             )
             .foregroundColor(Color.poolWhite)
@@ -142,7 +225,7 @@ struct HeaderModifier: ViewModifier {
             .font(.headline.weight(.semibold))
             .padding(.vertical, 10)
             .padding(.horizontal, 14)
-            .background(Color.darkGray)
+            .background(Color(.sRGB, red: 14/255, green: 36/255, blue: 92/255, opacity: 1))
             .foregroundColor(.white)
             .cornerRadius(10)
     }
@@ -159,16 +242,7 @@ struct ListButtonTextModifier: ViewModifier {
 // MARK: - Standard Buttons
 
 struct BasicButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.poolBlue)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-            .shadow(color: Color.poolBlue.opacity(0.25), radius: 4, x: 0, y: 2)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .blue)) }
 }
 
 struct MockButtonModifier: ViewModifier {
@@ -184,58 +258,19 @@ struct MockButtonModifier: ViewModifier {
 }
 
 struct SubmitButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.bold))
-            .padding(.vertical, 14)
-            .padding(.horizontal, 18)
-            .background(Color.poolGreen)
-            .foregroundColor(Color.poolWhite)
-            .cornerRadius(14)
-            .shadow(color: Color.poolGreen.opacity(0.3), radius: 6, x: 0, y: 3)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .emerald)) }
 }
 
 struct InvertedSubmitButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.listColor)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.poolGreen, lineWidth: 2)
-            )
-            .cornerRadius(12)
-            .foregroundColor(Color.poolGreen)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .emerald)) }
 }
 
 struct UploadButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.teal)
-            .foregroundColor(.black)
-            .cornerRadius(12)
-            .shadow(color: Color.teal.opacity(0.25), radius: 4, x: 0, y: 2)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .cyan)) }
 }
 
 struct AddButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.poolBlue)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-            .shadow(color: Color.poolBlue.opacity(0.25), radius: 4, x: 0, y: 2)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .blue)) }
 }
 
 struct CustomerCardModifier: ViewModifier {
@@ -243,7 +278,7 @@ struct CustomerCardModifier: ViewModifier {
         content
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(Color.orange.opacity(0.9))
             )
             .foregroundColor(.white)
@@ -252,27 +287,11 @@ struct CustomerCardModifier: ViewModifier {
 }
 
 struct YellowButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.realYellow)
-            .foregroundColor(.black)
-            .cornerRadius(12)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .amber)) }
 }
 
 struct OrangeButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.orange)
-            .foregroundColor(.black)
-            .cornerRadius(12)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .amber)) }
 }
 
 struct BlueButtonModifier: ViewModifier {
@@ -293,7 +312,7 @@ struct GreenCardModifier: ViewModifier {
         content
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(Color.green)
             )
             .foregroundColor(.white)
@@ -323,27 +342,11 @@ struct RedLinkModifier: ViewModifier {
 }
 
 struct FadedGreenButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.subheadline.weight(.semibold))
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.poolGreen.opacity(0.4))
-            .cornerRadius(12)
-            .foregroundColor(.black)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .emerald)) }
 }
 
 struct OutLineButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .padding(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.black.opacity(0.2), lineWidth: 2)
-            )
-            .cornerRadius(12)
-    }
+    func body(content: Content) -> some View { content.modifier(WorkspaceControlModifier(tone: .slate)) }
 }
 
 // MARK: - Filter Sheets

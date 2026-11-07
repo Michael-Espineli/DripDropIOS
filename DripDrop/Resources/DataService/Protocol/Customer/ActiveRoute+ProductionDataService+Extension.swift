@@ -44,6 +44,10 @@ struct ActiveRoute:Identifiable, Codable,Equatable{
     var vehicleMake: String?
     var vehicleModel: String?
     var personalVehicle: PersonalVehicle?
+
+    var needsReopening: Bool {
+        status == .finished || endTime != nil || endMilage != nil
+    }
     init(
         id: String,
         name :String,
@@ -420,6 +424,17 @@ extension ProductionDataService {
     }
 
     func uploadRoute(companyId: String,activeRoute:ActiveRoute) async throws -> ActiveRoute {
+        if Auth.auth().currentUser?.uid == activeRoute.techId {
+            let response = try await FunctionsManager.shared.technicianWorkflow("ensureOwnTechnicianRoute", payload: [
+                "companyId": companyId,
+                "techId": activeRoute.techId,
+                "serviceDateMillis": activeRoute.date.timeIntervalSince1970 * 1000,
+                "timeZone": TimeZone.current.identifier
+            ])
+            guard let routeId = response["routeId"] as? String else { throw FireBaseRead.unableToRead }
+            return try await getActiveRoute(companyId: companyId, activeRouteId: routeId)
+        }
+
         let existingRoutes = try await getActiveRoutesForDateAndTech(
             companyId: companyId,
             date: activeRoute.date,
@@ -616,6 +631,47 @@ extension ProductionDataService {
             }
         }
     }
+    func startOrResumeActiveRoute(companyId: String, activeRouteId: String, startTime: Date) async throws -> ActiveRoute {
+        let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
+        let result = try await db.runTransaction { transaction, errorPointer -> Any? in
+            do {
+                let snapshot = try transaction.getDocument(ref)
+                guard snapshot.exists else {
+                    throw NSError(domain: "ActiveRoute", code: 404, userInfo: [
+                        NSLocalizedDescriptionKey: "This route could not be found. Refresh your route and try again."
+                    ])
+                }
+                var route = try snapshot.data(as: ActiveRoute.self)
+                route.id = activeRouteId
+                // Read the saved route on every transaction retry; never replace its
+                // original start, vehicle, stop membership, or order with UI drafts.
+                var updates: [String: Any] = ["status": ActiveRouteStatus.inProgress.rawValue]
+                if route.startTime == nil {
+                    updates["startTime"] = startTime
+                    route.startTime = startTime
+                }
+                if route.needsReopening {
+                    updates["endTime"] = FieldValue.delete()
+                    updates["endMilage"] = FieldValue.delete()
+                    updates["endMileage"] = FieldValue.delete()
+                    updates["distance"] = FieldValue.delete()
+                    updates["distanceMiles"] = 0.0
+                    route.endTime = nil
+                    route.endMilage = nil
+                    route.distanceMiles = 0
+                }
+                route.status = .inProgress
+                transaction.updateData(updates, forDocument: ref)
+                return route
+            } catch {
+                errorPointer?.pointee = error as NSError
+                return nil
+            }
+        }
+        guard let route = result as? ActiveRoute else { throw FireBaseRead.unableToRead }
+        return route
+    }
+
     func updateActiveRouteStartTime(companyId:String,activeRouteId:String,startTime:Date){
         let ref = ActiveRouteDocument(companyId: companyId, activeRouteId: activeRouteId)
         ref.updateData([

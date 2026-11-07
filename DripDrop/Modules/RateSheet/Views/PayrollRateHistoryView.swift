@@ -151,7 +151,7 @@ final class PayrollRateHistoryViewModel: ObservableObject {
             workTypes = try await workTypesTask
             workers = try await workersTask
         } catch {
-            alertMessage = "Could not load rate history. \(error.localizedDescription)"
+            alertMessage = "Could not load rate history. \(error.userFacingMessage)"
             showAlert = true
         }
     }

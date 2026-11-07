@@ -3316,7 +3316,7 @@ struct CompanyLeadsView: View {
             .whereField("companyId", isEqualTo: companyId)
             .addSnapshotListener { snapshot, error in
                 if let error {
-                    errorMessage = "Could not load leads: \(error.localizedDescription)"
+                    errorMessage = "Could not load leads: \(error.userFacingMessage)"
                     leads = []
                     isLoading = false
                     return
@@ -3696,7 +3696,7 @@ struct CompanyLeadDetailView: View {
             savedStatus = nextStatus
         } catch {
             selectedStatus = savedStatus
-            alertMessage = "Could not update status: \(error.localizedDescription)"
+            alertMessage = "Could not update status: \(error.userFacingMessage)"
         }
         isSavingStatus = false
     }
@@ -3971,7 +3971,7 @@ struct CompanyLeadEditorView: View {
 
             dismiss()
         } catch {
-            alertMessage = "Could not save lead: \(error.localizedDescription)"
+            alertMessage = "Could not save lead: \(error.userFacingMessage)"
         }
 
         isSubmitting = false
@@ -4279,7 +4279,7 @@ struct CompanyLeadConversionView: View {
             conversionComplete = true
             alertMessage = "Converted to \(response["customerName"] as? String ?? "customer")."
         } catch {
-            alertMessage = error.localizedDescription
+            alertMessage = error.userFacingMessage
         }
 
         isSubmitting = false

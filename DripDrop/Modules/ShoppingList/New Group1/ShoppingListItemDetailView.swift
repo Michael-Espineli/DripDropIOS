@@ -6,22 +6,19 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
 
 struct ShoppingListItemDetailView: View {
     @EnvironmentObject var masterDataManager: MasterDataManager
-    @EnvironmentObject private var navigationManager: NavigationStateManager
+    @Environment(\.dismiss) private var dismiss
 
-    @StateObject var jobVM: JobViewModel
     @StateObject var shoppingVM: ShoppingListViewModel
-    @StateObject var customerVM: CustomerViewModel
 
     init(
         item: ShoppingListItem,
         dataService: any ProductionDataServiceProtocol
     ) {
-        _jobVM = StateObject(wrappedValue: JobViewModel(dataService: dataService))
         _shoppingVM = StateObject(wrappedValue: ShoppingListViewModel(dataService: dataService))
-        _customerVM = StateObject(wrappedValue: CustomerViewModel(dataService: dataService))
         _receivedItem = State(wrappedValue: item)
     }
 
@@ -32,7 +29,7 @@ struct ShoppingListItemDetailView: View {
 
     @State private var description: String = ""
     @State private var isSavingDescription: Bool = false
-    @State private var isUpdatingStatus: Bool = false
+    @State private var showStatusSheet: Bool = false
 
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
@@ -43,12 +40,15 @@ struct ShoppingListItemDetailView: View {
             Color.listColor.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
+                VStack(spacing: 10) {
                     if let item = shoppingListItem {
                         headerCard(item)
                         statusCard(item)
                         detailCard(item)
                         moneyCard(item)
+                        if let companyId = masterDataManager.currentCompany?.id {
+                            PartInvoiceStatusCard(companyId: companyId, collection: "shoppingList", recordId: item.id)
+                        }
                         descriptionCard
                         dangerZone
                     } else {
@@ -58,20 +58,17 @@ struct ShoppingListItemDetailView: View {
                     Color.clear.frame(height: 24)
                 }
                 .padding(.horizontal, 14)
-                .padding(.top, 12)
+                .padding(.top, 8)
                 .padding(.bottom, 24)
             }
         }
         .navigationTitle("Shopping Item")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem {
-                Button(role: .destructive) {
-                    alertMessage = "This will permanently delete this shopping list item."
-                    showDeleteConfirmation = true
-                } label: {
-                    Image(systemName: "trash")
-                }
+        .sheet(isPresented: $showStatusSheet) {
+            if let item = shoppingListItem {
+                ShoppingListItemStatusSheet(item: item, shoppingVM: shoppingVM)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
         }
         .task {
@@ -112,191 +109,95 @@ struct ShoppingListItemDetailView: View {
 extension ShoppingListItemDetailView {
 
     private func headerCard(_ item: ShoppingListItem) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(statusTint(item).opacity(0.14))
-                        .frame(width: 58, height: 58)
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: itemIcon(item))
+                .font(.body.weight(.semibold))
+                .foregroundStyle(statusTint(item))
+                .frame(width: 40, height: 40)
+                .background(statusTint(item).opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
 
-                    Image(systemName: itemIcon(item))
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(statusTint(item))
-                }
+            VStack(alignment: .leading, spacing: 5) {
+                Text(displayName(item))
+                    .font(.headline)
+                    .lineLimit(2)
 
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(displayName(item))
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
+                Text("\(item.subCategory.rawValue) • Qty: \(item.quantity ?? "-")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
-                    Text("\(item.subCategory.rawValue) • Qty: \(item.quantity ?? "-")")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    if !item.purchaserName.isEmpty {
-                        Label(item.purchaserName, systemImage: "person")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Spacer()
-            }
-
-            HStack(spacing: 8) {
-                statusBadge(item)
                 categoryBadge(item)
-
-                if item.needsAction {
-                    smallBadge(
-                        title: "Needs Action",
-                        systemImage: "exclamationmark.circle",
-                        tint: .orange
-                    )
-                }
-
-                Spacer()
             }
+            Spacer(minLength: 0)
         }
         .shoppingDetailCard(material: true)
     }
 
     private func statusCard(_ item: ShoppingListItem) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(
-                title: "Status",
-                subtitle: "Move this item through the shopping workflow.",
-                systemImage: "checklist"
-            )
+        Button {
+            showStatusSheet = true
+        } label: {
+            HStack(spacing: 10) {
+                Label(item.status.rawValue, systemImage: item.status.shoppingSystemImage)
+                    .foregroundStyle(statusTint(item))
+                    .font(.subheadline.weight(.semibold))
 
-            HStack(spacing: 8) {
-                statusActionButton(
-                    title: "Need",
-                    status: .needToPurchase,
-                    currentItem: item,
-                    systemImage: "cart.badge.plus"
-                )
+                Spacer(minLength: 8)
 
-                statusActionButton(
-                    title: "Purchased",
-                    status: .purchased,
-                    currentItem: item,
-                    systemImage: "cart.badge.checkmark"
-                )
-
-                statusActionButton(
-                    title: "Delivered",
-                    status: .delivered,
-                    currentItem: item,
-                    systemImage: "shippingbox"
-                )
-
-                statusActionButton(
-                    title: "Installed",
-                    status: .installed,
-                    currentItem: item,
-                    systemImage: "checkmark.seal"
-                )
+                Text("Change")
+                    .font(.caption.weight(.semibold))
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
             }
-
-            if item.status == .purchased {
-                Text("Purchased items still show in prep until they are installed.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if item.status == .installed {
-                Text("Installed items no longer need shopping action.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .shoppingDetailCard()
     }
 
+    @ViewBuilder
     private func detailCard(_ item: ShoppingListItem) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(
-                title: "Details",
-                subtitle: "Assignment and routing context.",
-                systemImage: "info.circle"
-            )
+        let rows = detailRows(item)
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                sectionHeader(title: "Details", systemImage: "info.circle")
 
-            VStack(spacing: 8) {
-                detailRow(
-                    title: "Category",
-                    value: item.category.rawValue,
-                    systemImage: categoryIcon(item)
-                )
-
-                detailRow(
-                    title: "Subcategory",
-                    value: item.subCategory.rawValue,
-                    systemImage: itemIcon(item)
-                )
-
-                if let customerName = item.customerName, !customerName.isEmpty {
-                    detailRow(
-                        title: "Customer",
-                        value: customerName,
-                        systemImage: "person.text.rectangle"
-                    )
-                }
-
-                if let jobId = item.jobId, !jobId.isEmpty {
-                    detailRow(
-                        title: "Job",
-                        value: jobId,
-                        systemImage: "briefcase"
-                    )
-                }
-
-                if let userName = item.userName, !userName.isEmpty {
-                    detailRow(
-                        title: "Assigned User",
-                        value: userName,
-                        systemImage: "person.crop.circle"
-                    )
-                }
-
-                if let serviceLocationName = item.serviceLocationName,
-                   !serviceLocationName.isEmpty {
-                    detailRow(
-                        title: "Service Location",
-                        value: serviceLocationName,
-                        systemImage: "mappin.and.ellipse"
-                    )
-                }
-
-                if let serviceStopInternalId = item.serviceStopInternalId,
-                   !serviceStopInternalId.isEmpty {
-                    detailRow(
-                        title: "Service Stop",
-                        value: serviceStopInternalId,
-                        systemImage: "calendar.badge.clock"
-                    )
-                }
-
-                if let datePurchased = item.datePurchased {
-                    detailRow(
-                        title: "Date Purchased",
-                        value: fullDate(date: datePurchased),
-                        systemImage: "calendar"
-                    )
+                ForEach(rows.indices, id: \.self) { index in
+                    let row = rows[index]
+                    detailRow(title: row.title, value: row.value, systemImage: row.systemImage)
                 }
             }
+            .shoppingDetailCard()
         }
-        .shoppingDetailCard()
+    }
+
+    private func detailRows(_ item: ShoppingListItem) -> [(title: String, value: String, systemImage: String)] {
+        var rows: [(title: String, value: String, systemImage: String)] = []
+        let context: [(String, String?, String)] = [
+            ("Customer", item.customerName, "person.text.rectangle"),
+            ("Job", item.jobId, "briefcase"),
+            ("Assigned to", item.userName, "person.crop.circle"),
+            ("Purchaser", item.purchaserName == item.userName ? nil : item.purchaserName, "person"),
+            ("Location", item.serviceLocationName, "mappin.and.ellipse"),
+            ("Stop", item.serviceStopInternalId, "calendar.badge.clock")
+        ]
+        for (title, value, systemImage) in context {
+            if let value, !value.isEmpty {
+                rows.append((title, value, systemImage))
+            }
+        }
+        if let datePurchased = item.datePurchased {
+            rows.append(("Purchased", fullDate(date: datePurchased), "calendar"))
+        }
+        return rows
     }
 
     @ViewBuilder
     private func moneyCard(_ item: ShoppingListItem) -> some View {
         if hasPlannedMoney(item) || hasCustomerPrice(item) || productItemId(for: item) != nil || databaseItemId(for: item) != nil {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 sectionHeader(
                     title: "Customer Price",
-                    subtitle: "Uses the linked product or vendor item sell price when available.",
                     systemImage: "dollarsign.circle"
                 )
 
@@ -336,10 +237,9 @@ extension ShoppingListItemDetailView {
     }
 
     private var descriptionCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionHeader(
                 title: "Description",
-                subtitle: "Add notes or details for this item.",
                 systemImage: "note.text"
             )
 
@@ -348,54 +248,43 @@ extension ShoppingListItemDetailView {
                 text: $description,
                 axis: .vertical
             )
-            .lineLimit(4...8)
+            .lineLimit(1...4)
+            .font(.subheadline)
             .padding(12)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            Button {
-                Task {
-                    await saveDescription()
-                }
-            } label: {
-                HStack {
-                    if isSavingDescription {
-                        ProgressView()
+            if description != shoppingListItem?.description {
+                Button {
+                    Task {
+                        await saveDescription()
                     }
+                } label: {
+                    HStack {
+                        if isSavingDescription {
+                            ProgressView()
+                        }
 
-                    Text(isSavingDescription ? "Saving..." : "Save Description")
-                        .font(.subheadline.weight(.semibold))
+                        Text(isSavingDescription ? "Saving..." : "Save Description")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
+                .disabled(isSavingDescription)
             }
-            .buttonStyle(.plain)
-            .disabled(isSavingDescription)
         }
         .shoppingDetailCard()
     }
 
     private var dangerZone: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(
-                title: "Danger Zone",
-                subtitle: "Delete this shopping list item permanently.",
-                systemImage: "trash"
-            )
-
-            Button(role: .destructive) {
-                alertMessage = "This will permanently delete this shopping list item."
-                showDeleteConfirmation = true
-            } label: {
-                Label("Delete Item", systemImage: "trash")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
+        Button(role: .destructive) {
+            alertMessage = "This will permanently delete this shopping list item."
+            showDeleteConfirmation = true
+        } label: {
+            Label("Delete Item", systemImage: "trash")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
         }
-        .shoppingDetailCard()
+        .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .rose))
     }
 
     private var emptyState: some View {
@@ -417,48 +306,6 @@ extension ShoppingListItemDetailView {
     }
 }
 extension ShoppingListItemDetailView {
-
-    private func updateStatus(_ status: ShoppingListStatus) async {
-        guard let company = masterDataManager.currentCompany,
-              var item = shoppingListItem else {
-            return
-        }
-
-        guard item.status != status else { return }
-
-        isUpdatingStatus = true
-        defer { isUpdatingStatus = false }
-
-        do {
-            let now = Date()
-
-            try await shoppingVM.updateShoppingListStatus(
-                companyId: company.id,
-                shoppingListItemId: item.id,
-                status: status
-            )
-
-            item.status = status
-            item.needsAction = status.needsShoppingAction
-            item.actionDate = now
-
-            if status == .purchased {
-                item.datePurchased = now
-            }
-
-            shoppingListItem = item
-            masterDataManager.selectedShoppingListItem = item
-
-            alertMessage = "Status updated to \(status.rawValue)."
-            showAlert = true
-        } catch {
-            print("[ShoppingListItemDetailView][updateStatus] Error")
-            print(error)
-
-            alertMessage = "Failed to update status."
-            showAlert = true
-        }
-    }
 
     private func saveDescription() async {
         guard let company = masterDataManager.currentCompany,
@@ -514,8 +361,8 @@ extension ShoppingListItemDetailView {
 
                 masterDataManager.selectedShoppingListItem = nil
 
-                if !navigationManager.routes.isEmpty {
-                    navigationManager.routes.removeLast()
+                if UIDevice.isIPhone {
+                    dismiss()
                 }
             } catch {
                 print("[ShoppingListItemDetailView][deleteItem] Error")
@@ -590,72 +437,13 @@ extension ShoppingListItemDetailView {
 
 extension ShoppingListItemDetailView {
 
-    private func statusActionButton(
-        title: String,
-        status: ShoppingListStatus,
-        currentItem: ShoppingListItem,
-        systemImage: String
-    ) -> some View {
-        let isSelected = currentItem.status == status
-
-        return Button {
-            Task {
-                await updateStatus(status)
-            }
-        } label: {
-            VStack(spacing: 7) {
-                Image(systemName: systemImage)
-                    .font(.body.weight(.semibold))
-
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(isSelected ? statusTint(currentItem) : .secondary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(
-                isSelected
-                ? statusTint(currentItem).opacity(0.14)
-                : Color.primary.opacity(0.045),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(
-                        isSelected ? statusTint(currentItem).opacity(0.28) : Color.primary.opacity(0.06),
-                        lineWidth: 1
-                    )
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(isUpdatingStatus)
-    }
-
     private func sectionHeader(
         title: String,
-        subtitle: String,
         systemImage: String
     ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 34, height: 34)
-                .background(.thinMaterial, in: Circle())
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.headline.weight(.semibold))
-
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer()
-        }
+        Label(title, systemImage: systemImage)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
     }
 
     private func detailRow(
@@ -663,28 +451,25 @@ extension ShoppingListItemDetailView {
         value: String,
         systemImage: String
     ) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
-                .background(.thinMaterial, in: Circle())
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 8) {
+                Label(title, systemImage: systemImage)
                     .foregroundStyle(.secondary)
-
+                    .fixedSize()
+                Spacer(minLength: 12)
                 Text(value)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 3) {
+                Label(title, systemImage: systemImage)
+                    .foregroundStyle(.secondary)
+                Text(value)
+            }
         }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .font(.subheadline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
     }
 
     private func moneyTile(
@@ -703,15 +488,6 @@ extension ShoppingListItemDetailView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-
-    private func statusBadge(_ item: ShoppingListItem) -> some View {
-        Text(item.status.rawValue)
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(statusTint(item))
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(statusTint(item).opacity(0.12), in: Capsule())
     }
 
     private func categoryBadge(_ item: ShoppingListItem) -> some View {
@@ -837,26 +613,72 @@ extension ShoppingListItemDetailView {
     }
 
     private func statusTint(_ item: ShoppingListItem) -> Color {
-        switch item.status {
-        case .delivered, .installed, .invoiced:
-            return .green
-
-        case .purchased:
-            return .blue
-
-        case .needToPurchase:
-            return .orange
-        }
+        item.status.shoppingTint
     }
 }
 
 private extension View {
     func shoppingDetailCard(material: Bool = false) -> some View {
         self
-            .padding(16)
+            .padding(12)
             .background(
                 material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
-                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
             )
+    }
+}
+
+// Reads live invoice links without coupling the shopping/purchase Codable models to billing.
+struct PartInvoiceStatusCard: View {
+    let companyId: String
+    let collection: String
+    let recordId: String
+    @State private var invoiceId = ""
+    @State private var status = ""
+    @State private var workflow = ""
+    @State private var message = ""
+    @State private var observedPath = ""
+    @State private var listener: ListenerRegistration?
+    private var path: String { "companies/\(companyId)/\(collection)/\(recordId)" }
+    private var invoiceURL: URL? {
+        let base = AppEnvironment.current == .dev ? "https://the-pool-app-dev.web.app" : "https://dripdrop-poolapp.com"
+        return URL(string: base)?.appendingPathComponent("company/sales/invoices").appendingPathComponent(invoiceId)
+    }
+    var body: some View {
+        Group {
+            if !invoiceId.isEmpty || !workflow.isEmpty || !message.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Invoice", systemImage: "doc.text").font(.headline)
+                    Text(workflow == "awaitingNextBill" ? "Queued for the next recurring service bill." : workflow == "nextBillAttached" ? "Included on the recurring service invoice." : workflow == "awaitingDelivery" ? "Invoice will be created after delivery or installation." : "Status: \(status.isEmpty ? workflow : status)")
+                        .font(.subheadline)
+                    if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.orange) }
+                    if !invoiceId.isEmpty, let invoiceURL {
+                        Link("Open Invoice in Sales", destination: invoiceURL)
+                            .buttonStyle(WorkspaceOutlinedButtonStyle())
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .task(id: path) {
+            listener?.remove()
+            let requestedPath = path
+            observedPath = requestedPath
+            invoiceId = ""; status = ""; workflow = ""; message = ""
+            listener = Firestore.firestore().document(requestedPath).addSnapshotListener { snapshot, error in
+                Task { @MainActor in
+                    guard observedPath == requestedPath else { return }
+                    if let error { message = error.userFacingMessage; return }
+                    let data = snapshot?.data() ?? [:]
+                    invoiceId = data["salesInvoiceId"] as? String ?? data["invoiceId"] as? String ?? ""
+                    status = data["invoiceStatus"] as? String ?? ""
+                    workflow = data["billingAutomationStatus"] as? String ?? ""
+                    message = data["billingAutomationError"] as? String ?? ""
+                }
+            }
+        }
+        .onDisappear { observedPath = ""; listener?.remove(); listener = nil }
     }
 }

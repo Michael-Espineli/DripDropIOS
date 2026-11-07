@@ -125,7 +125,7 @@ final class StripeViewModel:ObservableObject{
                 self.showAlert = true
                 print(alertMessage)
             case .failed(let error):
-                self.alertMessage = "Payment failed: \(error.localizedDescription)"
+                self.alertMessage = "Payment failed: \(error.userFacingMessage)"
                 self.showAlert = true
                 print(alertMessage)
             case .canceled:

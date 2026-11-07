@@ -399,7 +399,7 @@ final class RouteBoardViewModel: ObservableObject {
             resetAssignmentState(clearSelections: true)
             return true
         } catch {
-            alertMessage = error.localizedDescription
+            alertMessage = error.userFacingMessage
             showAlert = true
             return false
         }

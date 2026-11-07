@@ -34,7 +34,7 @@ final class WorkLogInViewModel: ObservableObject {
             availableOffers = try await dataService.fetchAcceptedWorkOffersForUser(companyId:company.id,userId:user.id).filter { offer in offer.id == currentLog?.workOfferId || (offer.claims ?? []).contains { $0.workerId == user.id && ["Accepted", "Scheduled", "In Progress"].contains($0.status) } }
             selectedOfferId = currentLog?.workOfferId ?? selectedOfferId
             tick()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { errorMessage = error.userFacingMessage }
         isLoading = false
     }
     func tick() {
@@ -50,7 +50,7 @@ final class WorkLogInViewModel: ObservableObject {
             do {
                 _ = try await FunctionsManager.shared.technicianWorkflow("manageTechnicianClock", payload: ["companyId": company.id, "action": action, "requestId": UUID().uuidString, "offerId": selectedOfferId])
                 await load(company: company, user: user)
-            } catch { errorMessage = error.localizedDescription; isLoading = false }
+            } catch { errorMessage = error.userFacingMessage; isLoading = false }
         }
     }
     func clockIn(company: Company, user: DBUser) { transition("clockIn", company: company, user: user) }

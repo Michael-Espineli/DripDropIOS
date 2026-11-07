@@ -23,47 +23,43 @@ final class MasterRoleManager:ObservableObject{
     @Published var role:Role? = nil
     @Published var isLoading:Bool = false
 
+    private var generation = UUID()
+    private var currentRoleId: String?
+
     func start(companyId:String?,userId:String?){
-        guard let userId, let companyId else {return}
-        //Get User Access
-        print("  [MasterRoleManager][start]")
-        dataService.addCurrentUserAccessListener(companyId: companyId, userId: userId) { [weak self] userAccess in
-            self?.userAccessList = userAccess
-            self?.compareOptions(companyId: companyId)
-        }
-        print("  [MasterRoleManager][start]")
-        //Get Company Access
-        dataService.addCurrentCompanyUserListener(companyId: companyId, userId: userId) { [weak self] userAccess in
-            self?.companyUserList = userAccess
-            self?.compareOptions(companyId: companyId)
-        }
-
-    }
-    func stop(){
-        dataService.removeUserAccessListener()
-        dataService.removeCompanyUserListener()
-        dataService.removeRoleListener()
-    }
-    private func compareOptions(companyId:String){
-        if !userAccessList.isEmpty && !companyUserList.isEmpty{
-            let accessRoleIds = Set(userAccessList.map { $0.roleId })
-
-            let matches = companyUserList
-                .map { $0.roleId }
-                .filter { accessRoleIds.contains($0) }
-                
-            if let firstMatch = matches.first , let companyUserAccess = companyUserList.first(where: {$0.roleId == firstMatch}){
-                recompute(companyId: companyId, roleId: firstMatch)
-                self.companyUser = companyUserAccess
+        stop()
+        guard let userId, let companyId else { return }
+        let token = generation
+        dataService.addCurrentUserAccessListener(companyId: companyId, userId: userId) { [weak self] accesses in
+            guard let self, self.generation == token else { return }
+            self.userAccessList = accesses
+            guard let access = accesses.first(where: { $0.hasActiveAccess }), !access.roleId.isEmpty else {
+                self.dataService.removeRoleListener()
+                self.currentRoleId = nil
+                self.userAccess = nil
+                self.role = nil
+                return
+            }
+            self.userAccess = access
+            guard self.currentRoleId != access.roleId else { return }
+            self.dataService.removeRoleListener()
+            self.role = nil
+            self.currentRoleId = access.roleId
+            self.dataService.addRoleListener(companyId: companyId, roleId: access.roleId) { [weak self] role in
+                guard let self, self.generation == token, self.currentRoleId == access.roleId else { return }
+                self.role = role
             }
         }
-        //compare companyUser and userAccess
     }
-    private func recompute(companyId:String,roleId:String){
-        
-        dataService.addRoleListener(companyId: companyId, roleId: roleId) { [weak self] role in
-            self?.role = role
-        }
-        //compare companyUser and userAccess
+    func stop(){
+        generation = UUID()
+        dataService.removeUserAccessListener()
+        dataService.removeRoleListener()
+        userAccessList = []
+        companyUserList = []
+        currentRoleId = nil
+        userAccess = nil
+        companyUser = nil
+        role = nil
     }
 }

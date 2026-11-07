@@ -128,7 +128,7 @@
                 repairRequests = []
                 pendingParts = []
                 invoices = []
-                errorMessage = error.localizedDescription
+                errorMessage = error.userFacingMessage
             }
 
             isLoading = false
@@ -324,7 +324,7 @@
                 return result.wasSent
             } catch {
                 serviceReportDeliveryTone = .error
-                serviceReportDeliveryMessage = error.localizedDescription
+                serviceReportDeliveryMessage = error.userFacingMessage
                 isSendingServiceReport = false
                 return false
             }
@@ -360,9 +360,9 @@
                 opStatus = serviceStop.operationStatus
                 routeVM.restoreServiceStopAfterOptimisticUpdate(previousStop ?? serviceStop)
                 serviceReportDeliveryTone = .error
-                serviceReportDeliveryMessage = error.localizedDescription
-                finishErrorMessage = error.localizedDescription
-                routeVM.alertMessage = error.localizedDescription
+                serviceReportDeliveryMessage = error.userFacingMessage
+                finishErrorMessage = error.userFacingMessage
+                routeVM.alertMessage = error.userFacingMessage
                 routeVM.showAlert = true
                 isFinishingAndSendingReport = false
                 isSendingServiceReport = false
@@ -401,9 +401,9 @@
                     opStatus = serviceStop.operationStatus
                     routeVM.restoreServiceStopAfterOptimisticUpdate(previousStop ?? serviceStop)
                     serviceReportDeliveryTone = .error
-                    serviceReportDeliveryMessage = error.localizedDescription
-                    finishErrorMessage = error.localizedDescription
-                    routeVM.alertMessage = error.localizedDescription
+                    serviceReportDeliveryMessage = error.userFacingMessage
+                    finishErrorMessage = error.userFacingMessage
+                    routeVM.alertMessage = error.userFacingMessage
                     routeVM.showAlert = true
                     return
                 }
@@ -413,8 +413,8 @@
                 } catch {
                     serviceReportDeliveryTone = .error
                     serviceReportDeliveryMessage = "Stop skipped, but the skip reason did not save."
-                    finishErrorMessage = error.localizedDescription
-                    routeVM.alertMessage = "Stop skipped, but the skip reason did not save: \(error.localizedDescription)"
+                    finishErrorMessage = error.userFacingMessage
+                    routeVM.alertMessage = "Stop skipped, but the skip reason did not save: \(error.userFacingMessage)"
                     routeVM.showAlert = true
                 }
             }

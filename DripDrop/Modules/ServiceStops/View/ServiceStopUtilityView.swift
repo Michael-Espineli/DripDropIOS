@@ -11,7 +11,7 @@ import SwiftUI
 import UIKit
 import FirebaseFunctions
 
-struct ServiceStopUtilityView: View {
+struct ServiceStopUtilityView<PhotoSection: View>: View {
     @EnvironmentObject private var masterDataManager : MasterDataManager
     @EnvironmentObject private var navigationManager: NavigationStateManager
     
@@ -24,6 +24,7 @@ struct ServiceStopUtilityView: View {
     @Binding private var testerStripScanImage: UIImage?
     let testerStripScanToken: UUID?
     let onScanTesterStrip: (() -> Void)?
+    private let photos: PhotoSection
     
     @State var finished:Bool = false
     @State var skipped:Bool = false
@@ -67,13 +68,15 @@ struct ServiceStopUtilityView: View {
         serviceStopId: String,
         testerStripScanImage: Binding<UIImage?> = .constant(nil),
         testerStripScanToken: UUID? = nil,
-        onScanTesterStrip: (() -> Void)? = nil
+        onScanTesterStrip: (() -> Void)? = nil,
+        @ViewBuilder photos: () -> PhotoSection
     ) {
         self._stopData = stopData
         self._serviceStopId = State(wrappedValue: serviceStopId)
         self._testerStripScanImage = testerStripScanImage
         self.testerStripScanToken = testerStripScanToken
         self.onScanTesterStrip = onScanTesterStrip
+        self.photos = photos()
     }
     
     private var serviceStop: ServiceStop? {
@@ -155,6 +158,8 @@ struct ServiceStopUtilityView: View {
                                 .padding(.vertical, 24)
                                 .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                             }
+
+                            photos
                         }
                         .padding(.horizontal, 8)
                         .padding(.bottom, 18)
@@ -589,7 +594,7 @@ extension ServiceStopUtilityView {
             return "AquaChek tester strip setup was not found. Seed or enable the AquaChek 7-in-1 profile, then try again."
         }
 
-        let message = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = error.userFacingMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         if message.uppercased() == "NOT_FOUND" || message.lowercased().contains("not found") {
             return "AquaChek tester strip setup was not found. Seed or enable the AquaChek 7-in-1 profile, then try again."
         }

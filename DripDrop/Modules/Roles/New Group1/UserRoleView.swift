@@ -89,7 +89,7 @@ struct UserRoleView: View {
 extension UserRoleView {
 
     var canCreateRole: Bool {
-        masterDataManager.role?.permissionIdList.contains("862") == true
+        masterDataManager.hasCompanyPermission("862")
     }
 
     var totalPermissionCount: Int {

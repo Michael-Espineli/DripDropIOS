@@ -176,20 +176,7 @@ struct StatusChip: View {
 
 extension JobCardView {
     func getColorOperation(status: JobOperationStatus) -> Color {
-        var color: Color = Color.gray
-        switch status {
-        case .draft, .estimatePending, .waitingForParts, .canceled, .unspecified:
-            color = Color.poolRed
-        case .unscheduled:
-            color = Color.orange
-        case .scheduled:
-            color = Color.yellow
-        case .inProgress:
-            color = Color.yellow
-        case .finished:
-            color = Color.poolGreen
-        }
-        return color
+        WorkspaceTone.jobStatusTone(status.rawValue).accent
     }
 
     func getForgroundColorOperation(status: JobOperationStatus) -> Color {
@@ -210,26 +197,7 @@ extension JobCardView {
     }
 
     func getColorBilling(status: JobBillingStatus) -> Color {
-        var color: Color = Color.gray
-        switch status {
-        case .draft:
-            color = Color.poolRed
-        case .estimate:
-            color = Color.poolBlue
-        case .accepted:
-            color = Color.poolGreen
-        case .inProgress:
-            color = Color.poolYellow
-        case .invoiced:
-            color = Color.poolBlue
-        case .paid:
-            color = Color.green
-        case .comped, .customerResolved:
-            color = Color.poolGreen
-        case .expired, .rejected, .canceled, .unspecified:
-            color = Color.poolRed
-        }
-        return color
+        WorkspaceTone.jobStatusTone(status.rawValue).accent
     }
 
     func getForgroundColorBilling(status: JobBillingStatus) -> Color {

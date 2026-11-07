@@ -253,7 +253,7 @@ extension AddEquipmentView {
                     .padding(.horizontal, 14)
                     .background(Color(.secondarySystemBackground))
                     .foregroundColor(.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
         }
     }
@@ -450,7 +450,7 @@ extension AddEquipmentView {
                         .padding(.vertical, 12)
                         .background(Color.blue)
                         .foregroundColor(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
                 }
             }
@@ -618,7 +618,7 @@ private struct RowButton: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
             .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 6)
         }
         .buttonStyle(.plain)
@@ -677,7 +677,7 @@ private struct Card<Content: View>: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .shadow(color: Color.black.opacity(0.06), radius: 14, x: 0, y: 8)
     }
 }
@@ -703,7 +703,7 @@ private struct Field<Content: View>: View {
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 }
@@ -818,7 +818,7 @@ struct EquipmentCatalogSelectionControl: View {
                 }
                 .padding(12)
                 .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
 
             if !manualPdfLink.isEmpty, let url = URL(string: manualPdfLink) {

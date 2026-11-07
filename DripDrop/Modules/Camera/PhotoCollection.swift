@@ -131,7 +131,7 @@ class PhotoCollection: NSObject, ObservableObject {
             await refreshPhotoAssets()
             
         } catch let error {
-            logger.error("Error adding image to photo library: \(error.localizedDescription)")
+            logger.error("Error adding image to photo library: \(error.userFacingMessage)")
             throw PhotoCollectionError.addImageError(error)
         }
     }
@@ -151,7 +151,7 @@ class PhotoCollection: NSObject, ObservableObject {
             await refreshPhotoAssets()
             
         } catch let error {
-            logger.error("Error removing all photos from the album: \(error.localizedDescription)")
+            logger.error("Error removing all photos from the album: \(error.userFacingMessage)")
             throw PhotoCollectionError.removeAllError(error)
         }
     }
@@ -172,7 +172,7 @@ class PhotoCollection: NSObject, ObservableObject {
             await refreshPhotoAssets()
             
         } catch let error {
-            logger.error("Error removing all photos from the album: \(error.localizedDescription)")
+            logger.error("Error removing all photos from the album: \(error.userFacingMessage)")
             throw PhotoCollectionError.removeAllError(error)
         }
     }
@@ -224,7 +224,7 @@ class PhotoCollection: NSObject, ObservableObject {
                 collectionPlaceholder = createAlbumRequest.placeholderForCreatedAssetCollection
             }
         } catch let error {
-            logger.error("Error creating album in photo library: \(error.localizedDescription)")
+            logger.error("Error creating album in photo library: \(error.userFacingMessage)")
             throw PhotoCollectionError.createAlbumError(error)
         }
         logger.log("Created photo album named: \(name)")

@@ -1,0 +1,381 @@
+{
+  "version": 1,
+  "companyName": "Bluewater Pool Co.",
+  "technicianName": "Alex Rivera",
+  "timeZone": "America/Los_Angeles",
+  "startDateKey": "2026-10-07",
+  "endDateKey": "2026-11-05",
+  "summary": {
+    "earnedCents": 15000,
+    "recordedPaidCents": 2500,
+    "remainingCents": 12500,
+    "olderUnpaidCents": 10500,
+    "olderReviewCount": 0,
+    "reviewCount": 1,
+    "completedStops": 3,
+    "completedTasks": 4
+  },
+  "earnings": [
+    {
+      "id": "Weekly pool service",
+      "label": "Weekly pool service",
+      "amountCents": 7500
+    },
+    {
+      "id": "Filter cleaning",
+      "label": "Filter cleaning",
+      "amountCents": 7500
+    }
+  ],
+  "lineItems": [
+    {
+      "id": "carter",
+      "technicianId": "alex",
+      "title": "Weekly pool service",
+      "customerName": "",
+      "serviceLocationAddress": "",
+      "completedDate": 1793908800000,
+      "totalAmountCents": 2500,
+      "rateDescription": "1 × $25.00",
+      "needsReview": false,
+      "isPaid": false,
+      "statusLabel": "Unpaid",
+      "paidAt": null,
+      "paymentReference": "",
+      "payTypeId": "weekly",
+      "payTypeName": "Weekly pool service",
+      "rateType": "flatPerStop",
+      "payBasis": "serviceStop",
+      "source": "serviceStop",
+      "serviceStopId": "carter",
+      "serviceStopTaskId": "",
+      "jobId": "",
+      "jobTaskId": "",
+      "activeRouteId": "",
+      "calculationStatus": "calculated"
+    },
+    {
+      "id": "filter",
+      "technicianId": "alex",
+      "title": "Clean cartridge filter",
+      "customerName": "",
+      "serviceLocationAddress": "",
+      "completedDate": 1793908800000,
+      "totalAmountCents": 7500,
+      "rateDescription": "1 × $75.00",
+      "needsReview": false,
+      "isPaid": false,
+      "statusLabel": "Unpaid",
+      "paidAt": null,
+      "paymentReference": "",
+      "payTypeId": "weekly",
+      "payTypeName": "Filter cleaning",
+      "rateType": "flatPerTask",
+      "payBasis": "serviceStopTask",
+      "source": "serviceStopTask",
+      "serviceStopId": "carter",
+      "serviceStopTaskId": "filter",
+      "jobId": "",
+      "jobTaskId": "",
+      "activeRouteId": "",
+      "calculationStatus": "calculated"
+    },
+    {
+      "id": "jones",
+      "technicianId": "alex",
+      "title": "Weekly pool service",
+      "customerName": "",
+      "serviceLocationAddress": "",
+      "completedDate": 1793908800000,
+      "totalAmountCents": 2500,
+      "rateDescription": "1 × $25.00",
+      "needsReview": false,
+      "isPaid": false,
+      "statusLabel": "Unpaid",
+      "paidAt": null,
+      "paymentReference": "",
+      "payTypeId": "weekly",
+      "payTypeName": "Weekly pool service",
+      "rateType": "flatPerStop",
+      "payBasis": "serviceStop",
+      "source": "serviceStop",
+      "serviceStopId": "jones",
+      "serviceStopTaskId": "",
+      "jobId": "",
+      "jobTaskId": "",
+      "activeRouteId": "",
+      "calculationStatus": "calculated"
+    },
+    {
+      "id": "morgan",
+      "technicianId": "alex",
+      "title": "Weekly pool service",
+      "customerName": "Taylor Morgan",
+      "serviceLocationAddress": "",
+      "completedDate": 1793822400000,
+      "totalAmountCents": 2500,
+      "rateDescription": "1 × $25.00",
+      "needsReview": false,
+      "isPaid": true,
+      "statusLabel": "Recorded paid",
+      "paidAt": 1793908800000,
+      "paymentReference": "ACH-1105-42",
+      "payTypeId": "weekly",
+      "payTypeName": "Weekly pool service",
+      "rateType": "flatPerStop",
+      "payBasis": "serviceStop",
+      "source": "serviceStop",
+      "serviceStopId": "morgan",
+      "serviceStopTaskId": "",
+      "jobId": "",
+      "jobTaskId": "",
+      "activeRouteId": "",
+      "calculationStatus": "paid"
+    }
+  ],
+  "statements": [
+    {
+      "id": "last",
+      "reference": "PS-000042",
+      "startDate": 1792652400000,
+      "endDate": 1793923199000,
+      "status": "paid",
+      "subtotalCents": 2500,
+      "adjustmentCents": 0,
+      "totalCents": 2500,
+      "paidAt": 1793908800000,
+      "paymentReference": "ACH-1105-42",
+      "notes": "",
+      "paidNotes": ""
+    }
+  ],
+  "statement": null,
+  "missingCount": 0,
+  "detailWarning": "",
+  "days": [
+    {
+      "id": "2026-11-05",
+      "routes": [
+        {
+          "id": "thursday",
+          "name": "Scottsdale · Thursday",
+          "stops": [
+            {
+              "id": "carter",
+              "title": "Alex Carter",
+              "subtitle": "Weekly pool service · 124 Poolside Lane",
+              "coverageLabel": "Unpaid",
+              "ownPayNeedsReview": false,
+              "amountCents": 10000,
+              "ownStop": true,
+              "order": 1,
+              "lines": [
+                {
+                  "id": "carter",
+                  "technicianId": "alex",
+                  "title": "Weekly pool service",
+                  "customerName": "",
+                  "serviceLocationAddress": "",
+                  "completedDate": 1793908800000,
+                  "totalAmountCents": 2500,
+                  "rateDescription": "1 × $25.00",
+                  "needsReview": false,
+                  "isPaid": false,
+                  "statusLabel": "Unpaid",
+                  "paidAt": null,
+                  "paymentReference": "",
+                  "payTypeId": "weekly",
+                  "payTypeName": "Weekly pool service",
+                  "rateType": "flatPerStop",
+                  "payBasis": "serviceStop",
+                  "source": "serviceStop",
+                  "serviceStopId": "carter",
+                  "serviceStopTaskId": "",
+                  "jobId": "",
+                  "jobTaskId": "",
+                  "activeRouteId": "",
+                  "calculationStatus": "calculated"
+                }
+              ],
+              "tasks": [
+                {
+                  "id": "filter",
+                  "title": "Clean cartridge filter",
+                  "coverageLabel": "Unpaid",
+                  "lines": [
+                    {
+                      "id": "filter",
+                      "technicianId": "alex",
+                      "title": "Clean cartridge filter",
+                      "customerName": "",
+                      "serviceLocationAddress": "",
+                      "completedDate": 1793908800000,
+                      "totalAmountCents": 7500,
+                      "rateDescription": "1 × $75.00",
+                      "needsReview": false,
+                      "isPaid": false,
+                      "statusLabel": "Unpaid",
+                      "paidAt": null,
+                      "paymentReference": "",
+                      "payTypeId": "weekly",
+                      "payTypeName": "Filter cleaning",
+                      "rateType": "flatPerTask",
+                      "payBasis": "serviceStopTask",
+                      "source": "serviceStopTask",
+                      "serviceStopId": "carter",
+                      "serviceStopTaskId": "filter",
+                      "jobId": "",
+                      "jobTaskId": "",
+                      "activeRouteId": "",
+                      "calculationStatus": "calculated"
+                    }
+                  ]
+                },
+                {
+                  "id": "test",
+                  "title": "Test and balance water",
+                  "coverageLabel": "Included in stop pay",
+                  "lines": []
+                }
+              ]
+            },
+            {
+              "id": "jones",
+              "title": "Jordan Jones",
+              "subtitle": "Weekly pool service · 124 Poolside Lane",
+              "coverageLabel": "Pay needs review",
+              "ownPayNeedsReview": false,
+              "amountCents": 2500,
+              "ownStop": true,
+              "order": 2,
+              "lines": [
+                {
+                  "id": "jones",
+                  "technicianId": "alex",
+                  "title": "Weekly pool service",
+                  "customerName": "",
+                  "serviceLocationAddress": "",
+                  "completedDate": 1793908800000,
+                  "totalAmountCents": 2500,
+                  "rateDescription": "1 × $25.00",
+                  "needsReview": false,
+                  "isPaid": false,
+                  "statusLabel": "Unpaid",
+                  "paidAt": null,
+                  "paymentReference": "",
+                  "payTypeId": "weekly",
+                  "payTypeName": "Weekly pool service",
+                  "rateType": "flatPerStop",
+                  "payBasis": "serviceStop",
+                  "source": "serviceStop",
+                  "serviceStopId": "jones",
+                  "serviceStopTaskId": "",
+                  "jobId": "",
+                  "jobTaskId": "",
+                  "activeRouteId": "",
+                  "calculationStatus": "calculated"
+                }
+              ],
+              "tasks": [
+                {
+                  "id": "brush",
+                  "title": "Brush walls and steps",
+                  "coverageLabel": "Included in stop pay",
+                  "lines": []
+                },
+                {
+                  "id": "repair",
+                  "title": "Replace salt cell",
+                  "coverageLabel": "Pay needs review",
+                  "lines": []
+                }
+              ]
+            }
+          ],
+          "lines": [],
+          "totalCents": 12500
+        }
+      ]
+    },
+    {
+      "id": "2026-11-04",
+      "routes": [
+        {
+          "id": "wednesday",
+          "name": "North Phoenix · Wednesday",
+          "stops": [
+            {
+              "id": "morgan",
+              "title": "Taylor Morgan",
+              "subtitle": "Weekly pool service · 124 Poolside Lane",
+              "coverageLabel": "Recorded paid",
+              "ownPayNeedsReview": false,
+              "amountCents": 2500,
+              "ownStop": true,
+              "order": 1,
+              "lines": [
+                {
+                  "id": "morgan",
+                  "technicianId": "alex",
+                  "title": "Weekly pool service",
+                  "customerName": "Taylor Morgan",
+                  "serviceLocationAddress": "",
+                  "completedDate": 1793822400000,
+                  "totalAmountCents": 2500,
+                  "rateDescription": "1 × $25.00",
+                  "needsReview": false,
+                  "isPaid": true,
+                  "statusLabel": "Recorded paid",
+                  "paidAt": 1793908800000,
+                  "paymentReference": "ACH-1105-42",
+                  "payTypeId": "weekly",
+                  "payTypeName": "Weekly pool service",
+                  "rateType": "flatPerStop",
+                  "payBasis": "serviceStop",
+                  "source": "serviceStop",
+                  "serviceStopId": "morgan",
+                  "serviceStopTaskId": "",
+                  "jobId": "",
+                  "jobTaskId": "",
+                  "activeRouteId": "",
+                  "calculationStatus": "paid"
+                }
+              ],
+              "tasks": []
+            }
+          ],
+          "lines": [],
+          "totalCents": 2500
+        }
+      ]
+    }
+  ],
+  "olderItems": [
+    {
+      "id": "older",
+      "technicianId": "alex",
+      "title": "Pump repair",
+      "customerName": "Jamie Brooks",
+      "serviceLocationAddress": "",
+      "completedDate": 1790798400000,
+      "totalAmountCents": 10500,
+      "rateDescription": "3 hr × $35.00/hr",
+      "needsReview": false,
+      "isPaid": false,
+      "statusLabel": "Unpaid",
+      "paidAt": null,
+      "paymentReference": "",
+      "payTypeId": "weekly",
+      "payTypeName": "Weekly pool service",
+      "rateType": "hourly",
+      "payBasis": "serviceStop",
+      "source": "serviceStop",
+      "serviceStopId": "",
+      "serviceStopTaskId": "",
+      "jobId": "",
+      "jobTaskId": "",
+      "activeRouteId": "",
+      "calculationStatus": "calculated"
+    }
+  ]
+}

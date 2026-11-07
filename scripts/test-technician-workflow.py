@@ -18,11 +18,25 @@ source = (root / 'DripDrop/Modules/WorkOffer.swift').read_text()
 review = (root / 'DripDrop/Modules/WorkOffer/TechnicianWorkCenterTab.swift').read_text()
 start = review.index('enum WorkOfferReviewSwipeAction {')
 source += review[start:review.index('\n}', start) + 2] + '\n'
+source += (root / 'DripDrop/Modules/WorkOffer/WorkOffer+Counts.swift').read_text()
+start = review.index('private enum CompanyOfferedWorkStatusFilter:')
+end = review.index('private enum CompanyOfferedWorkTypeFilter:', start)
+source += review[start:end].replace('private enum ', 'enum ', 1)
 checks = r'''
 let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .millisecondsSince1970
 func decode(_ json: String) throws -> WorkOffer { try decoder.decode(WorkOffer.self, from: Data(json.utf8)) }
 let legacy = try decode(#"{"id":"old","companyId":"company"}"#)
 assert(legacy.jobTaskIds.isEmpty && legacy.status == .draft && legacy.acceptedTerms == nil)
+let routeTotals = try decode(#"{"id":"route","routeId":"daily","routeSummary":{"stopIds":["one"],"totalMinutes":210,"totalDistanceMiles":24.5,"serviceMinutes":45,"timeSampleCount":3,"distanceSampleCount":3}}"#)
+assert(routeTotals.isRouteOffer && routeTotals.routeSummary?.totalTimeText == "3 hr 30 min" && routeTotals.routeSummary?.totalDistanceText == "24.5 mi")
+assert(!legacy.isRouteOffer && legacy.routeSummary == nil)
+let unknownTotals = try decode(#"{"id":"route","routeId":"daily","routeSummary":{"stopIds":["one"],"totalMinutes":null,"totalDistanceMiles":null,"serviceMinutes":45,"timeSampleCount":0,"distanceSampleCount":0}}"#)
+assert(unknownTotals.routeSummary?.totalTimeText == "Not available" && unknownTotals.routeSummary?.totalDistanceText == "Not available")
+assert(WorkOfferRouteSummary.duration(59.5) == "1 hr" && WorkOfferRouteSummary.duration(0) == "0 min")
+assert(WorkOfferRouteSummary.duration(-1) == "Not available" && WorkOfferRouteSummary.duration(Double.infinity) == "Not available")
+let routeEncoder = JSONEncoder()
+let routeRoundTrip = try JSONDecoder().decode(WorkOffer.self, from: routeEncoder.encode(routeTotals))
+assert(routeRoundTrip.routeSummary == routeTotals.routeSummary)
 let pending = try decode(#"{"id":"pending","status":"Acceptance Pending Approval","paySource":"Technician Rate","proposedStartDate":1793030400000}"#)
 assert(pending.status.rawValue == "Acceptance Pending Approval" && pending.paySource == .technicianRate)
 assert(pending.proposedStartDate == Date(timeIntervalSince1970: 1793030400))
@@ -73,6 +87,35 @@ assert(WorkOfferReviewSwipeAction.resolve(horizontal: 0, vertical: 150) == .none
 assert(WorkOfferReviewSwipeAction.resolve(horizontal: -100, vertical: -100) == .none)
 assert(WorkOfferReviewSwipeAction.resolve(horizontal: 15, vertical: -30) == .none)
 assert(WorkOfferReviewSwipeAction.resolve(horizontal: -120, vertical: 150) == .none)
+// Management filters show every outstanding status and only schedulable job work as Ready.
+var readyJob = legacy
+readyJob.id = "comp_work_offer_ready"
+readyJob.jobId = "job"
+readyJob.status = .accepted
+assert(readyJob.isReadyToSchedule)
+var webJob = readyJob
+webJob.routeId = ""
+assert(webJob.isReadyToSchedule, "Web job offers use an empty route ID for non-route work")
+var acceptedRoute = readyJob
+acceptedRoute.id = "comp_work_offer_route"
+acceptedRoute.routeId = "route"
+assert(!acceptedRoute.isReadyToSchedule)
+var scheduledJob = readyJob
+scheduledJob.serviceStopId = "stop"
+assert(!scheduledJob.isReadyToSchedule)
+var missingJob = readyJob
+missingJob.jobId = ""
+assert(!missingJob.isReadyToSchedule)
+assert([readyJob, acceptedRoute, scheduledJob, missingJob].acceptedReadyToScheduleCount == 1)
+for status in WorkOfferStatus.allCases {
+    var offer = readyJob
+    offer.status = status
+    assert(CompanyOfferedWorkStatusFilter.outstanding.includes(offer) == !status.isFinal)
+    assert(CompanyOfferedWorkStatusFilter.final.includes(offer) == status.isFinal)
+    assert(CompanyOfferedWorkStatusFilter.all.includes(offer))
+    assert(CompanyOfferedWorkStatusFilter.ready.includes(offer) == (status == .accepted))
+}
+assert(!CompanyOfferedWorkStatusFilter.ready.includes(acceptedRoute))
 // Attribution prefers the actual send/post date over creation.
 var attribution = legacy
 attribution.createdAt = Date(timeIntervalSince1970: 1)
@@ -95,13 +138,41 @@ window.completionDeadlineAt = nil
 window.proposedEndDate = Date(timeIntervalSince1970: 15)
 assert(!window.containsServiceDate(Date(timeIntervalSince1970: 16)))
 assert(legacy.containsServiceDate(Date()))
+// Creation and editing share the same optional deadline and time ordering rules.
+let timingStart = Date(timeIntervalSince1970: 100)
+let timingDeadline = Date(timeIntervalSince1970: 200)
+assert(WorkOfferTiming.isValid(availableFrom: timingStart, deadline: timingDeadline))
+assert(WorkOfferTiming.isValid(availableFrom: timingStart, deadline: timingStart))
+assert(!WorkOfferTiming.isValid(availableFrom: timingDeadline, deadline: timingStart))
+assert(WorkOfferTiming.isValid(availableFrom: nil, deadline: timingDeadline))
+assert(WorkOfferTiming.isValid(availableFrom: timingStart, deadline: nil))
+let updatedTiming = WorkOfferTiming.changes(availableFrom: timingStart, deadline: timingDeadline, notes: "Gate closes at five")
+assert(updatedTiming["proposedStartDate"] as? Double == 100_000)
+assert(updatedTiming["completionDeadlineAt"] as? Double == 200_000)
+assert(updatedTiming["proposedEndDate"] as? Double == 200_000)
+assert(updatedTiming["timelineNotes"] as? String == "Gate closes at five")
+let clearedTiming = WorkOfferTiming.changes(availableFrom: nil, deadline: nil, notes: "")
+for field in ["proposedStartDate", "proposedEndDate", "completionDeadlineAt"] {
+    assert(clearedTiming[field] is NSNull, "Clearing dates must send explicit nulls: \(field)")
+}
+assert(JSONSerialization.isValidJSONObject(clearedTiming) && JSONSerialization.isValidJSONObject(updatedTiming))
+// Multi-day route offers apply the selected local deadline time to each date across DST.
+var coverageCalendar = Calendar(identifier: .gregorian)
+coverageCalendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+let deadlineClock = coverageCalendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 17, minute: 30))!
+for day in [1, 2] {
+    let routeDate = coverageCalendar.date(from: DateComponents(year: 2026, month: 11, day: day))!
+    let routeDeadline = WorkOfferTiming.deadline(on: routeDate, at: deadlineClock, calendar: coverageCalendar)
+    let components = coverageCalendar.dateComponents([.day, .hour, .minute], from: routeDeadline)
+    assert(components.day == day && components.hour == 17 && components.minute == 30)
+}
 let returned = try decode(#"{"id":"return","status":"Posted","claims":[{"id":"mine","workerId":"tech","workerName":"Alex","stopIds":["one"],"taskIds":[],"status":"Rejected","withdrawnAt":60000,"withdrawalReason":"Conflict","agreement":{"workerId":"tech","paySource":"Offered Amount","totalCents":5000}}]}"#)
 assert(returned.isPreviousWork(for: "tech") && !returned.isCurrentWork(for: "tech"))
 assert(returned.claims?.first?.withdrawalReason == "Conflict")
 assert(returned.workOfferHistoryDate == Date(timeIntervalSince1970: 60))
 let returnedRoundTrip = try decoder.decode(WorkOffer.self, from: encoder.encode(returned))
 assert(returnedRoundTrip.claims?.first?.withdrawnAt == returned.claims?.first?.withdrawnAt)
-print("Swift workflow decoding, offer history, swipes, attribution, scheduling windows, and returned-work checks passed")
+print("Swift workflow decoding, offer history, swipes, attribution, scheduling windows, deadline updates, management filters, and returned-work checks passed")
 '''
 with tempfile.TemporaryDirectory(prefix='dripdrop-technician-work-') as directory:
     fixture = Path(directory) / 'main.swift'

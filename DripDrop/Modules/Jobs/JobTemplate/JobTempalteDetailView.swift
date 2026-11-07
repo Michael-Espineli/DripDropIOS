@@ -616,7 +616,7 @@ final class JobTemplateDetailViewModel: ObservableObject {
             tasks = try await tasksTask
             shoppingItems = try await shoppingItemsTask
         } catch {
-            alertMessage = "Could not load template. \(error.localizedDescription)"
+            alertMessage = "Could not load template. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -806,7 +806,7 @@ struct EditJobTemplateSheet: View {
                 .padding(12)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            Toggle("Technicians Can Add", isOn: $technicianCanAdd)
+            Toggle("Available to Technicians", isOn: $technicianCanAdd)
                 .font(.subheadline.weight(.semibold))
                 .padding(12)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -884,7 +884,7 @@ struct EditJobTemplateSheet: View {
             onSaved(updated)
             dismiss()
         } catch {
-            alertMessage = "Could not save template. \(error.localizedDescription)"
+            alertMessage = "Could not save template. \(error.userFacingMessage)"
             showAlert = true
         }
     }

@@ -853,122 +853,249 @@ extension Finance {
 
 struct SalesFinanceView: View {
     let dataService: any ProductionDataServiceProtocol
-
-    private let recurringItems = [
-        "Service agreements",
-        "Monthly billing runs",
-        "Draft invoice review",
-        "Payment status"
-    ]
-
-    private let oneOffItems = [
-        "Job billing lifecycle",
-        "Service stop labor",
-        "Assigned purchased items",
-        "Job-owned invoice totals"
-    ]
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    @State private var invoices: [SalesInvoice] = []
+    @State private var selectedInvoice: SalesInvoice?
+    @State private var loading = false
+    @State private var errorMessage: String?
 
     var body: some View {
-        ZStack {
-            Color.listColor.ignoresSafeArea()
-
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 14) {
-                    header
-                    billingSection(
-                        title: "Recurring Billing",
-                        subtitle: "Monthly pool service",
-                        systemImage: "calendar",
-                        tint: .green,
-                        items: recurringItems
-                    )
-                    billingSection(
-                        title: "One-Off Billing",
-                        subtitle: "Job detail billing",
-                        systemImage: "briefcase",
-                        tint: .blue,
-                        items: oneOffItems
-                    )
-                    roadmap
+        List {
+            Section("Customer invoices") {
+                if loading { ProgressView("Loading billing…") }
+                if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+                if !loading && invoices.isEmpty && errorMessage == nil { Text("No customer invoices.") }
+                ForEach(invoices) { invoice in
+                    Button { selectedInvoice = invoice } label: {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(invoice.invoiceNumber).font(.headline)
+                                Text(invoice.customerName ?? invoice.customerId).font(.caption)
+                                Text(invoice.status.rawValue).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(Double(invoice.balanceCents) / 100, format: .currency(code: invoice.currency.uppercased()))
+                        }
+                    }.foregroundStyle(.primary)
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 12)
-                .padding(.bottom, 24)
             }
         }
         .navigationTitle("Sales")
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Sales")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.primary)
-
-            Text("Customer billing starts here, split between monthly service agreements and one-off job invoices.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        .task(id: masterDataManager.currentCompany?.id) { await reload() }
+        .refreshable { await reload() }
+        .sheet(item: $selectedInvoice) { invoice in
+            NativeSalesInvoiceActions(invoice: invoice, dataService: dataService) { Task { await reload() } }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
+    @MainActor private func reload() async {
+        invoices = []; errorMessage = nil
+        guard let company = masterDataManager.currentCompany, masterDataManager.hasCompanyPermission("400") || masterDataManager.hasCompanyPermission("404") else { return }
+        loading = true
+        defer { loading = false }
+        do {
+            let rows = try await dataService.getSalesInvoices(companyId: company.id)
+            guard masterDataManager.currentCompany?.id == company.id else { return }
+            invoices = rows.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        } catch { errorMessage = "Billing could not load. Pull to refresh before relying on these totals." }
+    }
+}
 
-    private func billingSection(
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        tint: Color,
-        items: [String]
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 36, height: 36)
-                    .background(tint.opacity(0.12), in: Circle())
+private struct NativeSavedBillingMethod: Identifiable { let id: String; let label: String }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.headline.weight(.semibold))
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+struct NativeSalesInvoiceActions: View {
+    @EnvironmentObject var masterDataManager: MasterDataManager
+    @Environment(\.dismiss) private var dismiss
+    let dataService: any ProductionDataServiceProtocol
+    let onChanged: () -> Void
+    @State var invoice: SalesInvoice
+    @State private var payments: [SalesPayment] = []
+    @State private var action = "refresh"
+    @State private var amount = ""
+    @State private var reason = ""
+    @State private var method = "check"
+    @State private var paymentId = ""
+    @State private var methodId = ""
+    @State private var reference = ""
+    @State private var receivedAt = Date()
+    @State private var authorized = false
+    @State private var savedMethods: [NativeSavedBillingMethod] = []
+    @State private var setupURL: URL?
+    @State private var frozen: Data?
+    @State private var busy = false
+    @State private var errorMessage: String?
+    @State private var resultMessage: String?
+    @State private var lineAmounts: [String: String] = [:]
+    @State private var lineNames: [String: String] = [:]
+
+    init(invoice: SalesInvoice, dataService: any ProductionDataServiceProtocol, onChanged: @escaping () -> Void = {}) {
+        _invoice = State(initialValue: invoice)
+        self.dataService = dataService; self.onChanged = onChanged
+    }
+    private var storageKey: String { "native-sales-invoice:\(masterDataManager.user?.id ?? "unknown"):\(invoice.companyId):\(invoice.id)" }
+    private var stripeOwned: Bool { !invoice.stripeInvoiceId.isEmpty }
+    private var canManage: Bool { masterDataManager.currentCompany?.id == invoice.companyId && masterDataManager.hasCompanyPermission("404") }
+    private let actions = [("refresh", "Refresh invoice"), ("recordPayment", "Record external payment"), ("credit", "Credit unpaid balance"), ("void", "Void unpaid invoice"), ("refund", "Refund Stripe payment"), ("receipt", "Send payment receipt"), ("setupCard", "Create card setup link"), ("setupBank", "Create ACH setup link"), ("chargeSaved", "Collect with saved method"), ("pauseDraft", "Pause Stripe draft finalization"), ("editDraft", "Edit Stripe draft lines"), ("finalize", "Finalize Stripe draft")]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section(invoice.invoiceNumber) {
+                    Text(invoice.customerName ?? invoice.customerId)
+                    Text(invoice.status.rawValue)
+                    Text(Double(invoice.balanceCents) / 100, format: .currency(code: invoice.currency.uppercased()))
+                    if let url = invoice.stripeHostedInvoiceUrl.flatMap(URL.init(string:)) { Link("Open Stripe invoice", destination: url) }
                 }
-
-                Spacer()
-            }
-
-            ForEach(items, id: \.self) { item in
-                HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle")
-                        .foregroundStyle(tint)
-                    Text(item)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Spacer()
+                if let errorMessage { Section { Text(errorMessage).foregroundStyle(.red) } }
+                if let resultMessage { Section { Text(resultMessage) } }
+                if canManage {
+                    Section("Invoice action") {
+                        Picker("Action", selection: $action) {
+                            ForEach(actions.filter { stripeOwned ? !["setupCard", "setupBank", "chargeSaved"].contains($0.0) : !["pauseDraft", "editDraft", "finalize"].contains($0.0) }, id: \.0) { value in
+                                Text(value.1).tag(value.0)
+                            }
+                        }.disabled(busy || frozen != nil)
+                        if ["credit", "refund", "recordPayment"].contains(action) {
+                            TextField("Amount", text: $amount).keyboardType(.decimalPad).disabled(busy || frozen != nil)
+                        }
+                        if ["refund", "receipt"].contains(action) {
+                            Picker("Payment", selection: $paymentId) {
+                                Text("Choose payment").tag("")
+                                ForEach(payments.filter { $0.hasPostedMoney }) { payment in Text("\(payment.method.rawValue) · \(Double(payment.netCollectedCents) / 100, format: .currency(code: payment.currency.uppercased()))").tag(payment.id) }
+                            }.disabled(busy || frozen != nil)
+                        }
+                        if action == "recordPayment" {
+                            Picker("Payment method", selection: $method) { ForEach(["cash", "check", "bankTransfer", "externalCard", "other"], id: \.self) { Text($0).tag($0) } }.disabled(busy || frozen != nil)
+                            DatePicker("Received date", selection: $receivedAt, displayedComponents: .date).disabled(busy || frozen != nil)
+                            TextField("Payment reference", text: $reference).disabled(busy || frozen != nil)
+                            Text("Record money already received. This action does not debit the customer.").font(.caption)
+                        }
+                        if action == "editDraft" {
+                            ForEach(invoice.lineItems) { line in
+                                TextField("Line description", text: Binding(get: { lineNames[line.id] ?? line.name ?? "Service" }, set: { lineNames[line.id] = $0 })).disabled(busy || frozen != nil)
+                                TextField("Line total", text: Binding(get: { lineAmounts[line.id] ?? String(format: "%.2f", Double(line.totalAmountCents) / 100) }, set: { lineAmounts[line.id] = $0 })).keyboardType(.numbersAndPunctuation).disabled(busy || frozen != nil)
+                            }
+                        }
+                        if action == "chargeSaved" {
+                            Button("Refresh saved methods") { Task { await loadMethods() } }.disabled(busy || frozen != nil)
+                            Picker("Saved method", selection: $methodId) {
+                                Text("Choose method").tag("")
+                                ForEach(savedMethods) { row in Text(row.label).tag(row.id) }
+                            }.disabled(busy || frozen != nil)
+                            TextField("Agreement or authorization reference", text: $reference).disabled(busy || frozen != nil)
+                            Toggle("Customer authorized collection of this invoice", isOn: $authorized).disabled(busy || frozen != nil)
+                        }
+                        if !["refresh", "receipt", "setupCard", "setupBank", "chargeSaved"].contains(action) { TextField("Reason (at least 8 characters)", text: $reason).disabled(busy || frozen != nil) }
+                        Button(busy ? "Confirming…" : frozen == nil ? "Apply action" : "Confirm original request") { Task { await perform() } }.disabled(busy)
+                        if frozen != nil { Text("The original request is preserved. Confirm its result before starting another action.").font(.caption) }
+                    }
+                    if let setupURL { Section("Customer setup") { ShareLink("Share secure Stripe setup link", item: setupURL); Text("The customer enters their details on Stripe. No payment is collected during setup.").font(.caption) } }
                 }
-                .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
+            .navigationTitle("Invoice")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .task { restorePendingRequest(); await reload() }
         }
-        .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
-
-    private var roadmap: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Next Build Pieces", systemImage: "list.bullet.rectangle")
-                .font(.headline.weight(.semibold))
-
-            Text("Billing accounts, service agreements, billing runs, invoices, and invoice line items.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+    @MainActor private func reload() async {
+        do {
+            let rows = try await dataService.getSalesInvoices(companyId: invoice.companyId, customerId: invoice.customerId)
+            if let current = rows.first(where: { $0.id == invoice.id }) { invoice = current }
+            payments = try await dataService.getSalesPayments(companyId: invoice.companyId, customerId: invoice.customerId).filter { $0.invoiceId == invoice.id }
+        } catch { errorMessage = "Could not refresh invoice and payment history. Retry before collecting payment." }
+    }
+    private func restorePendingRequest() {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let payload = envelope["payload"] as? [String: Any] else { return }
+        frozen = data; action = envelope["uiAction"] as? String ?? "refresh"
+        reason = payload["reason"] as? String ?? ""
+        paymentId = payload["paymentId"] as? String ?? ""
+        methodId = payload["paymentMethodId"] as? String ?? ""
+        reference = payload["authorizationReference"] as? String ?? ""
+        authorized = payload["authorizationConfirmed"] as? Bool ?? false
+        if let amountCents = payload["amountCents"] as? Int { amount = String(format: "%.2f", Double(amountCents) / 100) }
+        if let payment = payload["payment"] as? [String: Any] {
+            if let amountCents = payment["amountCents"] as? Int { amount = String(format: "%.2f", Double(amountCents) / 100) }
+            method = payment["method"] as? String ?? "check"; reference = payment["referenceNumber"] as? String ?? ""
+            if let millis = payment["receivedAtMillis"] as? Double { receivedAt = Date(timeIntervalSince1970: millis / 1000) }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        for line in payload["lines"] as? [[String: Any]] ?? [] {
+            guard let id = line["id"] as? String else { continue }
+            lineNames[id] = line["description"] as? String
+            if let cents = line["amount"] as? Int { lineAmounts[id] = String(format: "%.2f", Double(cents) / 100) }
+        }
+    }
+    @MainActor private func loadMethods() async {
+        busy = true; errorMessage = nil
+        defer { busy = false }
+        do {
+            let response = try await FunctionsManager.shared.billingCommand("listSavedPaymentMethods", payload: ["companyId": invoice.companyId, "invoiceId": invoice.id])
+            savedMethods = (response["methods"] as? [[String: Any]] ?? []).map { row in
+                let bank = row["bankName"] as? String ?? ""
+                let brand = row["brand"] as? String ?? "Method"
+                let last4 = row["last4"] as? String ?? ""
+                return NativeSavedBillingMethod(id: row["id"] as? String ?? "", label: "\(bank.isEmpty ? brand : bank) ending \(last4)")
+            }
+        } catch { errorMessage = error.localizedDescription }
+    }
+    private func cents(_ value: String) throws -> Int {
+        guard let number = Double(value), number.isFinite, abs(number) <= 9999999999, abs(number * 100 - (number * 100).rounded()) < 0.0001 else { throw NSError(domain: "Billing", code: 1, userInfo: [NSLocalizedDescriptionKey: "Enter an amount with at most two decimal places."]) }
+        return Int((number * 100).rounded())
+    }
+    @MainActor private func perform() async {
+        busy = true; errorMessage = nil; resultMessage = nil
+        defer { busy = false }
+        do {
+            if action == "refresh" && !stripeOwned && frozen == nil { await reload(); onChanged(); return }
+            var envelope: [String: Any]
+            if let frozen { envelope = try JSONSerialization.jsonObject(with: frozen) as? [String: Any] ?? [:] }
+            else {
+                if ["credit", "void", "refund", "pauseDraft", "editDraft", "finalize"].contains(action) && reason.trimmingCharacters(in: .whitespacesAndNewlines).count < 8 { throw NSError(domain: "Billing", code: 2, userInfo: [NSLocalizedDescriptionKey: "Explain this change in at least 8 characters."]) }
+                if ["credit", "refund", "recordPayment"].contains(action) {
+                    let amountCents = try cents(amount)
+                    if amountCents <= 0 { throw NSError(domain: "Billing", code: 3, userInfo: [NSLocalizedDescriptionKey: "Enter a positive payment or credit amount."]) }
+                }
+                if ["refund", "receipt"].contains(action) && paymentId.isEmpty { throw NSError(domain: "Billing", code: 4, userInfo: [NSLocalizedDescriptionKey: "Choose a payment first."]) }
+                if action == "chargeSaved" && (!authorized || methodId.isEmpty || reference.trimmingCharacters(in: .whitespacesAndNewlines).count < 8) { throw NSError(domain: "Billing", code: 5, userInfo: [NSLocalizedDescriptionKey: "Choose a saved method and confirm the customer authorization with its reference."]) }
+                var payload: [String: Any] = ["companyId": invoice.companyId, "invoiceId": invoice.id, "requestId": UUID().uuidString, "reason": reason]
+                var name = stripeOwned ? "manageStripeInvoice" : "manageSalesInvoice"
+                switch action {
+                case "refresh", "void", "pauseDraft", "finalize": payload["action"] = action
+                case "editDraft":
+                    payload["action"] = "updateDraftLines"
+                    payload["lines"] = try invoice.lineItems.map { line -> [String: Any] in ["id": line.id, "description": lineNames[line.id] ?? line.name ?? "Service", "amount": try cents(lineAmounts[line.id] ?? String(format: "%.2f", Double(line.totalAmountCents) / 100))] }
+                case "credit":
+                    payload["action"] = stripeOwned ? "credit" : "applyCredit"
+                    if stripeOwned { payload["amountCents"] = try cents(amount) } else { payload["adjustment"] = ["amountCents": try cents(amount), "reason": reason] }
+                case "recordPayment":
+                    payload["action"] = stripeOwned ? "recordExternalPayment" : "recordPayment"
+                    payload["payment"] = ["amountCents": try cents(amount), "method": method, "receivedAtMillis": Int(receivedAt.timeIntervalSince1970 * 1000), "referenceNumber": reference, "memo": reason]
+                case "refund": name = "manageSalesPayment"; payload["action"] = "refund"; payload["paymentId"] = paymentId; payload["amountCents"] = try cents(amount)
+                case "receipt": name = "sendSalesPaymentReceipt"; payload["paymentId"] = paymentId
+                case "setupCard", "setupBank":
+                    name = "createSavedPaymentSetup"; payload["paymentMethodType"] = action == "setupBank" ? "ach" : "card"
+                    let base = FirebaseApp.app()?.options.projectID == "the-pool-app-dev" ? "https://the-pool-app-dev.web.app" : "https://dripdrop-poolapp.com"
+                    payload["returnUrl"] = "\(base)/company/sales/invoices/\(invoice.id)"
+                case "chargeSaved": name = "chargeSavedInvoice"; payload["paymentMethodId"] = methodId; payload["authorizationConfirmed"] = authorized; payload["authorizationReference"] = reference
+                default: return
+                }
+                if name == "manageStripeInvoice" { payload["expectedTotalAmountCents"] = invoice.totalAmountCents }
+                envelope = ["function": name, "payload": payload, "uiAction": action]
+                let serialized = try JSONSerialization.data(withJSONObject: envelope)
+                frozen = serialized; UserDefaults.standard.set(serialized, forKey: storageKey)
+            }
+            guard let name = envelope["function"] as? String, let payload = envelope["payload"] as? [String: Any] else { throw FireBaseRead.unableToRead }
+            let result = try await FunctionsManager.shared.billingCommand(name, payload: payload)
+            frozen = nil; UserDefaults.standard.removeObject(forKey: storageKey)
+            if let value = result["url"] as? String { setupURL = URL(string: value) }
+            let status = result["status"] as? String ?? "complete"
+            resultMessage = status == "processing" ? "Payment is processing. Wait for confirmation before collecting again." : status == "customerActionRequired" ? "The customer needs to complete payment using the invoice link." : "Request completed: \(status)."
+            await reload(); onChanged()
+        } catch {
+            let details = (error as NSError).userInfo["details"] as? [String: Any]
+            if details?["safeToRevise"] as? Bool == true { frozen = nil; UserDefaults.standard.removeObject(forKey: storageKey) }
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

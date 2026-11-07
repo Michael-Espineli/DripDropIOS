@@ -92,7 +92,7 @@ final class SubscriptionPickerViewModel: ObservableObject{
                 self.alertMessage = "Payment Completed"
                 self.showAlert = true
             case .failed(let error):
-                self.alertMessage = "Payment failed: \(error.localizedDescription)"
+                self.alertMessage = "Payment failed: \(error.userFacingMessage)"
                 self.showAlert = true
             case .canceled:
                 self.alertMessage = "Payment Canceled"

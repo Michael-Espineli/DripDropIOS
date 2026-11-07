@@ -75,7 +75,7 @@ final class CompanyActiveRouteOverviewViewModel: ObservableObject {
             activeRoutes = routes
         } catch {
             guard loadGeneration == token, !Task.isCancelled else { return }
-            alertMessage = error.localizedDescription
+            alertMessage = error.userFacingMessage
             showAlert = true
         }
     }

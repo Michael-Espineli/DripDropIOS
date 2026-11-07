@@ -169,11 +169,11 @@
             }
             .padding(14)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(isLocked ? Color.yellow.opacity(0.10) : Color.primary.opacity(0.045))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(isLocked ? Color.yellow.opacity(0.22) : Color.primary.opacity(0.08), lineWidth: 1)
             )
         }
@@ -353,7 +353,7 @@
             }
             .padding(10)
             .frame(maxWidth: .infinity)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
 
         var extraInfoRow: some View {

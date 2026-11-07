@@ -210,7 +210,7 @@ extension ContractorDailyDashboard {
                         dataService: dataService,
                         customerId: nil,
                         isTechnicianCreateFlow: true,
-                        canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                        canScheduleServiceStopsForOthers: masterDataManager.role?.canCreateCustomJobsForOthers == true
                     )
                 }
                 .sheet(isPresented: $showCreateFromTemplate) {
@@ -218,9 +218,9 @@ extension ContractorDailyDashboard {
                         JobTemplatePickerCreateJobSheet(
                             companyId: company.id,
                             dataService: dataService,
-                            technicianCanAddOnly: true,
+                            technicianCanAddOnly: masterDataManager.role?.permissionIdList.contains("22") != true,
                             isTechnicianCreateFlow: true,
-                            canScheduleServiceStopsForOthers: masterDataManager.role?.canScheduleServiceStopsForOthers == true
+                            canScheduleServiceStopsForOthers: masterDataManager.role?.canCreateTemplateJobsForOthers == true
                         )
                         .presentationDetents([.large])
                     } else {
@@ -245,7 +245,7 @@ extension ContractorDailyDashboard {
                                 Text("Create Job")
                                     .font(.title3.weight(.semibold))
 
-                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Start blank or use a technician-enabled template." : "Use a technician-enabled job template.")
+                                Text(masterDataManager.role?.canCreateBlankJob == true ? "Create and schedule a custom job or use an available template." : "Use a technician-enabled job template.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -271,8 +271,8 @@ extension ContractorDailyDashboard {
                             }
                         } label: {
                             contractorJobCreateOptionRow(
-                                title: "Blank Job",
-                                subtitle: "Create a simplified blank job.",
+                                title: "Custom Job",
+                                subtitle: "Create a custom job and schedule its first visit.",
                                 systemImage: "doc.badge.plus"
                             )
                         }

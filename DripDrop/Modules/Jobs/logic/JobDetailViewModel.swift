@@ -979,21 +979,9 @@ final class JobDetailViewModel:ObservableObject{
         switch task.type {
         case .basic, .clean:
             print("Do nothing")
-        case .cleanFilter:
-            if recordEquipmentHistory {
-                try await EquipmentTaskHistoryService(dataService: dataService)
-                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
-            }
-        case .maintenance:
-            if recordEquipmentHistory {
-                try await EquipmentTaskHistoryService(dataService: dataService)
-                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
-            }
-        case .repair:
-            if recordEquipmentHistory {
-                try await EquipmentTaskHistoryService(dataService: dataService)
-                    .recordJobTaskCompletion(companyId: companyId, task: task, jobId: jobId)
-            }
+        case .cleanFilter, .maintenance, .repair:
+            // Functions records history and equipment state from confirmed work.
+            break
         case .emptyWater:
             if recordEquipmentHistory {
                 try await BodyOfWaterTaskHistoryService(dataService: dataService)
@@ -1456,7 +1444,7 @@ final class JobDetailViewModel:ObservableObject{
                     let contract = try await dataService.getLaborContract(laborContractId: contractId)
                     //Update Job Info
                     for task in jobTaskList {
-                        try dataService.updateJobTaskStatus(companyId: senderId, jobId: contract.senderJobId.id, taskId: task.id, status: .finished)
+                        try await dataService.updateJobTaskStatus(companyId: senderId, jobId: contract.senderJobId.id, taskId: task.id, status: .finished)
                         try await updateTaskHelperFunction(companyId: senderId, task: task, jobId: contract.senderJobId.id, recordEquipmentHistory: false)
                     }
                 }
@@ -1707,7 +1695,7 @@ final class JobDetailViewModel:ObservableObject{
                 taskId: serviceStopTask.jobTaskId,
                 workerType: .notAssigned
             )
-            try dataService.updateJobTaskStatus(
+            try await dataService.updateJobTaskStatus(
                 companyId: companyId,
                 jobId: jobId,
                 taskId: serviceStopTask.jobTaskId,

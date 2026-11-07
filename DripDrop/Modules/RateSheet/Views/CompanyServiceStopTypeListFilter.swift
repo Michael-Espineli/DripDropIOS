@@ -208,7 +208,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             serviceStopTypes = try await serviceStopTypesTask
             workTypes = try await workTypesTask
         } catch {
-            alertMessage = "Could not load pay types. \(error.localizedDescription)"
+            alertMessage = "Could not load pay types. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -229,7 +229,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
             try await dataService.saveCompanyServiceStopType(serviceStopType)
             upsertLocal(serviceStopType)
         } catch {
-            alertMessage = "Could not save pay type. \(error.localizedDescription)"
+            alertMessage = "Could not save pay type. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -316,7 +316,7 @@ final class CompanyServiceStopTypesViewModel: ObservableObject {
 
             showAlert = true
         } catch {
-            alertMessage = "Could not add default pay types. \(error.localizedDescription)"
+            alertMessage = "Could not add default pay types. \(error.userFacingMessage)"
             showAlert = true
         }
     }

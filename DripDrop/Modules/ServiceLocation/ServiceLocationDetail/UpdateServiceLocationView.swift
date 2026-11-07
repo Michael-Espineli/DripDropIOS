@@ -121,6 +121,7 @@ struct EditServiceLocationView: View {
                 message: Text("\(serviceLocationVM.deleteConfirmationMessage)"),
                 primaryButton: .destructive(Text("Delete")) {
                     Task {
+                        guard masterDataManager.hasCompanyPermission("46") else { return }
                         do {
                             try await serviceLocationVM.deleteLocationAndWait(
                                 companyId: masterDataManager.currentCompany?.id,
@@ -371,6 +372,7 @@ extension EditServiceLocationView {
                 }
                 Button(action: {
                     serviceLocationVM.deleteConfirmationMessage = "Please confirm you want to delete this service location and all linked bodies of water, equipment, recurring service stops, and service stops."
+                    guard masterDataManager.hasCompanyPermission("46") else { return }
                     serviceLocationVM.showDeleteConfirmation.toggle()
                 }, label: {
                     Text("Delete")
@@ -487,6 +489,7 @@ extension EditServiceLocationView {
             Button(action: {
                 Task{
                     do {
+                        guard masterDataManager.hasCompanyPermission("44") else { return }
                         guard let company = masterDataManager.currentCompany else {
                             return
                         }

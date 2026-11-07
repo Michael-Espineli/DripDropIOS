@@ -213,17 +213,10 @@ extension AddNewRepairRequest {
 
     var headerCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Add Repair Request")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
+            WorkspaceIdentityHeader(title: "New Repair Request", eyebrow: "Company operations", subtitle: "Capture the issue, location, and any helpful photos.", systemImage: "wrench.and.screwdriver")
 
-                    Text("Capture the issue, location, and any helpful photos.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            HStack(alignment: .top) {
+
 
                 Spacer()
 
@@ -260,7 +253,7 @@ extension AddNewRepairRequest {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var customerCard: some View {
@@ -351,7 +344,7 @@ extension AddNewRepairRequest {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var photosCard: some View {
@@ -372,7 +365,7 @@ extension AddNewRepairRequest {
             PhotoContentView(selectedImages: $VM.selectedDripDropPhotos)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var descriptionCard: some View {
@@ -395,11 +388,11 @@ extension AddNewRepairRequest {
             .submitLabel(.return)
             .focused($descriptionField)
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var customerNoteCard: some View {
@@ -423,10 +416,10 @@ extension AddNewRepairRequest {
             .lineLimit(4, reservesSpace: true)
             .submitLabel(.return)
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -447,7 +440,7 @@ extension AddNewRepairRequest {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -476,7 +469,7 @@ extension AddNewRepairRequest {
                     .padding(.vertical, 12)
                     .background(
                         VM.screenLoading ? Color.blue.opacity(0.65) : Color.blue,
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
                 }
                 .buttonStyle(.plain)
@@ -514,7 +507,7 @@ extension AddNewRepairRequest {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 }
@@ -524,9 +517,7 @@ extension AddNewRepairRequest {
 extension AddNewRepairRequest {
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
 
     func pickerRow(
@@ -562,7 +553,7 @@ extension AddNewRepairRequest {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -659,7 +650,7 @@ private struct RepairRequestEquipmentStatusPicker: View {
                     .buttonStyle(.plain)
                 }
                 .padding(16)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 10) {
@@ -711,7 +702,7 @@ private struct RepairRequestEquipmentStatusPicker: View {
                 }
             }
             .padding(12)
-            .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }

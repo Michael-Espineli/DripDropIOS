@@ -10,6 +10,8 @@ import FirebaseFirestore
 import FirebaseFirestoreSwift
 
 struct JobWorkOffersView: View {
+    @EnvironmentObject private var masterDataManager: MasterDataManager
+
     let companyId: String
     let currentUserId: String
     let currentUserName: String
@@ -20,380 +22,285 @@ struct JobWorkOffersView: View {
     let dataService: any ProductionDataServiceProtocol
     let onReload: () -> Void
 
-    @State private var showCreateOffer: Bool = false
-    @State private var showAddTask: Bool = false
+    @State private var showCreateOffer = false
+    @State private var canCreateOffer = false
+    @State private var isCheckingCreatePermission = true
+    @State private var createPermissionError: String?
+    @State private var permissionCheckAttempt = 0
+    @State private var showCreateUnavailable = false
+    @State private var createUnavailableMessage = ""
+    @State private var schedulingOffer: WorkOffer?
+    @State private var showPreviousOffers = false
 
-    private var activeWorkOffers: [WorkOffer] {
-        workOffers.filter { offer in
-            switch offer.status {
-            case .rejected, .cancelled, .expired:
-                return false
-            case .pendingApproval, .acceptancePendingApproval, .draft, .sent, .posted, .viewed, .accepted, .scheduled, .inProgress, .completed:
-                return true
-            }
-        }
+    private var currentOffers: [WorkOffer] {
+        workOffers.filter { !$0.status.isFinal }.sorted { $0.createdAt > $1.createdAt }
     }
-
-    private var offeredTaskIds: Set<String> {
-        Set(activeWorkOffers.flatMap { $0.jobTaskIds })
+    private var previousOffers: [WorkOffer] {
+        workOffers.filter { $0.status.isFinal }.sorted { $0.workOfferHistoryDate > $1.workOfferHistoryDate }
     }
-
     private var availableTaskCount: Int {
-        jobTasks.filter { !offeredTaskIds.contains($0.id) }.count
+        let reserved = Set(workOffers.filter { ![WorkOfferStatus.rejected, .cancelled, .expired].contains($0.status) }.flatMap(\.jobTaskIds))
+        return jobTasks.filter { !reserved.contains($0.id) }.count
     }
 
-    private var alreadyOfferedTaskCount: Int {
-        jobTasks.filter { offeredTaskIds.contains($0.id) }.count
-    }
-
-    private var acceptedReadyToScheduleCount: Int {
-        workOffers.filter {
-            $0.status == .accepted &&
-            $0.serviceStopId.isEmpty
-        }.count
-    }
-
-    private var openOfferCount: Int {
-        workOffers.filter { $0.status.isOpen }.count
+    private var createUnavailableReason: String? {
+        var reasons: [String] = []
+        if isCheckingCreatePermission {
+            reasons.append("Your permission to create work offers is still being checked. Wait a moment, then try again.")
+        } else if let createPermissionError {
+            reasons.append("Could not check your permission to create work offers. \(createPermissionError)")
+        } else if !canCreateOffer {
+            reasons.append("Your company role does not allow you to create work offers. Ask a company owner or administrator to enable Create Offered Work for your role.")
+        }
+        if jobTasks.isEmpty {
+            reasons.append("This job has no tasks to offer. Add a task to the job before creating a work offer.")
+        } else if availableTaskCount == 0 {
+            reasons.append("All tasks on this job are already included in work offers. Review the existing offers or add another job task. Tasks become available again when their offers are rejected, cancelled, or expired.")
+        }
+        return reasons.isEmpty ? nil : reasons.joined(separator: "\n\n")
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
-                headerCard
-                offerActionsCard
-                taskCoverageCard
-                offersListCard
-
-                Color.clear.frame(height: 90)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Label("Work Offers", systemImage: "paperplane").font(.headline)
+                Text("\(workOffers.count)").font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                Button {
+                    if let reason = createUnavailableReason {
+                        createUnavailableMessage = reason
+                        showCreateUnavailable = true
+                    } else {
+                        showCreateOffer = true
+                    }
+                } label: {
+                    Label("Create", systemImage: createUnavailableReason == nil ? "plus" : "info.circle").font(.caption.weight(.semibold))
+                        .frame(minHeight: 32)
+                }
+                .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
+                .tint(.poolBlue)
+                .opacity(createUnavailableReason == nil ? 1 : 0.6)
+                .accessibilityLabel("Create work offer")
+                .accessibilityHint(createUnavailableReason == nil ? "Create an offer for this job." : "Unavailable. Double-tap to learn why.")
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
+            if currentOffers.isEmpty {
+                Text("No active offers.").font(.subheadline).foregroundStyle(.secondary)
+            }
+            ForEach(currentOffers) { offer in offerRow(offer) }
+            if !previousOffers.isEmpty {
+                DisclosureGroup("Previous offers (\(previousOffers.count))", isExpanded: $showPreviousOffers) {
+                    VStack(spacing: 10) {
+                        ForEach(previousOffers) { offer in offerRow(offer) }
+                    }
+                    .padding(.top, 8)
+                }
+                .font(.subheadline)
+            }
         }
-        .background(Color.listColor.ignoresSafeArea())
-        .sheet(isPresented: $showCreateOffer, onDismiss: {
-            onReload()
-        }) {
+        .technicianPanel()
+        .task(id: "\(companyId):\(currentUserId):\(permissionCheckAttempt)") {
+            await checkCreatePermission()
+        }
+        .alert("Cannot Create Work Offer", isPresented: $showCreateUnavailable) {
+            if createPermissionError != nil && !isCheckingCreatePermission {
+                Button("Retry") { permissionCheckAttempt += 1 }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(createUnavailableMessage)
+        }
+        .sheet(isPresented: $showCreateOffer, onDismiss: onReload) {
             CreateJobWorkOfferView(
-                companyId: companyId,
-                currentUserId: currentUserId,
-                currentUserName: currentUserName,
-                job: job,
-                jobTasks: jobTasks,
-                serviceLocation: serviceLocation,
-                workOffers: workOffers,
-                dataService: dataService,
-                onTasksChanged: {
-                    onReload()
-                }
+                companyId: companyId, currentUserId: currentUserId, currentUserName: currentUserName,
+                job: job, jobTasks: jobTasks, serviceLocation: serviceLocation, workOffers: workOffers,
+                dataService: dataService, onTasksChanged: {}
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
         }
-        .sheet(isPresented: $showAddTask, onDismiss: {
-            onReload()
-        }) {
-            AddNewTaskToJob(
-                dataService: dataService,
-                jobId: job.id,
-                taskTypes: [
-                    "Basic",
-                    "Clean",
-                    "Clean Filter",
-                    "Empty Water",
-                    "Fill Water",
-                    "Inspection",
-                    "Install",
-                    "Remove",
-                    "Replace",
-                    "Maintenance",
-                    "Repair"
-                ],
-                customerId: job.customerId,
-                serviceLocationId: job.serviceLocationId
+        .sheet(item: $schedulingOffer, onDismiss: onReload) { offer in
+            ScheduleAcceptedWorkOfferView(
+                companyId: companyId, currentUserId: currentUserId, currentUserName: currentUserName,
+                offer: offer, jobTasks: jobTasks, dataService: dataService,
+                onScheduled: { schedulingOffer = nil }
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
         }
     }
 
-    private var headerCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Work Offers")
-                        .font(.title3.weight(.semibold))
-
-                    Text("\(job.internalId) • \(job.customerName)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                Text("\(workOffers.count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.thinMaterial, in: Capsule())
+    @MainActor
+    private func checkCreatePermission() async {
+        canCreateOffer = false
+        isCheckingCreatePermission = true
+        createPermissionError = nil
+        do {
+            let capabilities = try await FunctionsManager.shared.technicianWorkflow(
+                "manageTechnicianWork", payload: ["companyId": companyId, "action": "capabilities"]
+            )
+            guard !Task.isCancelled else { return }
+            if let canPost = capabilities["canPost"] as? Bool {
+                canCreateOffer = canPost
+            } else {
+                createPermissionError = "The server did not return work-offer permissions. Please try again."
             }
-
-            Text("Offer planned job tasks to a contractor, post them to the internal board, or add more tasks before creating an offer.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 10) {
-                JobWorkOfferSummaryChip(
-                    title: "Open",
-                    value: "\(openOfferCount)",
-                    systemImage: "paperplane"
-                )
-
-                JobWorkOfferSummaryChip(
-                    title: "Ready",
-                    value: "\(acceptedReadyToScheduleCount)",
-                    systemImage: "calendar.badge.plus"
-                )
-
-                JobWorkOfferSummaryChip(
-                    title: "Available",
-                    value: "\(availableTaskCount)",
-                    systemImage: "checklist"
-                )
-            }
+        } catch {
+            guard !Task.isCancelled else { return }
+            createPermissionError = error.userFacingMessage
         }
-        .jobWorkOfferCard()
+        isCheckingCreatePermission = false
     }
 
-    private var offerActionsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Actions", systemImage: "plus.circle")
-
-            Button {
-                showCreateOffer = true
-            } label: {
-                JobWorkOfferActionRow(
-                    title: "Create Work Offer",
-                    subtitle: "Send available tasks to a contractor or post to the board.",
-                    systemImage: "person.crop.circle.badge.plus"
-                )
+    private func offerRow(_ offer: WorkOffer) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            NavigationLink { offerDestination(offer) } label: {
+                JobWorkOfferCardView(offer: offer)
             }
             .buttonStyle(.plain)
-            .disabled(availableTaskCount == 0)
-            .opacity(availableTaskCount == 0 ? 0.55 : 1)
-
-            Button {
-                showAddTask = true
-            } label: {
-                JobWorkOfferActionRow(
-                    title: "Add New Task",
-                    subtitle: "Create another task for this job, then offer it.",
-                    systemImage: "text.badge.plus"
-                )
-            }
-            .buttonStyle(.plain)
-        }
-        .jobWorkOfferCard()
-    }
-
-    private var taskCoverageCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                sectionHeader("Task Offer Coverage", systemImage: "checklist")
-
-                Spacer()
-
-                Text("\(alreadyOfferedTaskCount)/\(jobTasks.count) offered")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
-            }
-
-            if jobTasks.isEmpty {
-                JobWorkOfferEmptyMiniState(
-                    title: "No tasks yet.",
-                    message: "Add tasks before creating a work offer.",
-                    systemImage: "checklist.unchecked"
-                )
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(jobTasks) { task in
-                        JobWorkOfferTaskCoverageRow(
-                            task: task,
-                            offer: activeOfferForTask(task)
-                        )
-                    }
-                }
-            }
-        }
-        .jobWorkOfferCard()
-    }
-
-    private var offersListCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                sectionHeader("Offers", systemImage: "tray.full")
-
-                Spacer()
-
-                Text("\(openOfferCount) open")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
-            }
-
-            if workOffers.isEmpty {
-                JobWorkOfferEmptyMiniState(
-                    title: "No Work Offers",
-                    message: "Create an offer when you want a contractor to accept work or when you want to post this job to the internal board.",
-                    systemImage: "tray"
-                )
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(workOffers.sorted(by: { $0.createdAt > $1.createdAt })) { offer in
-                        NavigationLink {
-                            WorkOfferDetailView(
-                                companyId: companyId,
-                                currentUserId: currentUserId,
-                                currentUserName: currentUserName,
-                                offer: offer,
-                                jobTasks: jobTasks,
-                                dataService: dataService,
-                                onChanged: onReload
-                            )
-                        } label: {
-                            JobWorkOfferCardView(offer: offer)
+            if canEdit(offer) || offer.isReadyToSchedule {
+                HStack(spacing: 12) {
+                    Spacer()
+                    if canEdit(offer) {
+                        NavigationLink { offerDestination(offer, startsEditing: true) } label: {
+                            Label("Edit", systemImage: "pencil")
+                                .font(.caption.weight(.semibold))
+                                .frame(minHeight: 44)
                         }
-                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit work offer \(offer.title)")
+                    }
+                    if offer.isReadyToSchedule {
+                        Button { schedulingOffer = offer } label: {
+                            Label("Schedule", systemImage: "calendar.badge.plus")
+                                .font(.caption.weight(.semibold))
+                                .frame(minHeight: 44)
+                        }
+                        .accessibilityLabel("Schedule work offer \(offer.title)")
                     }
                 }
+                .buttonStyle(.plain)
+                .tint(.poolBlue)
+                .padding(.horizontal, 8)
             }
         }
-        .jobWorkOfferCard()
     }
 
-    private func activeOfferForTask(_ task: JobTask) -> WorkOffer? {
-        activeWorkOffers.first { offer in
-            offer.jobTaskIds.contains(task.id)
+    private func canEdit(_ offer: WorkOffer) -> Bool {
+        let permissions = masterDataManager.role?.permissionIdList ?? []
+        return masterDataManager.currentCompany?.ownerId == currentUserId || permissions.contains("324") ||
+            (permissions.contains("322") && offer.createdByUserId == currentUserId)
+    }
+
+    private func offerDestination(_ offer: WorkOffer, startsEditing: Bool = false) -> some View {
+        WorkOfferDetailView(
+            companyId: companyId, currentUserId: currentUserId, currentUserName: currentUserName,
+            offer: offer, jobTasks: jobTasks, dataService: dataService, onChanged: onReload,
+            startsEditing: startsEditing
+        )
+    }
+}
+
+struct CreateCompanyWorkOfferView: View {
+    @Environment(\.dismiss) private var dismiss
+    let companyId: String
+    let currentUserId: String
+    let currentUserName: String
+    let dataService: any ProductionDataServiceProtocol
+    let onCreated: () -> Void
+
+    @State private var jobs: [Job] = []
+    @State private var selectedJob: Job?
+    @State private var serviceLocation: ServiceLocation?
+    @State private var searchText = ""
+    @State private var isLoading = true
+    @State private var isSelecting = false
+    @State private var errorMessage = ""
+
+    private var visibleJobs: [Job] {
+        let term = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return jobs.filter {
+            term.isEmpty || [$0.internalId, $0.customerName, $0.type, $0.description].contains { $0.localizedCaseInsensitiveContains(term) }
         }
     }
 
-    private func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
-    }
-    struct JobWorkOfferSummaryChip: View {
-        var title: String
-        var value: String
-        var systemImage: String
-
-        var body: some View {
-            VStack(spacing: 5) {
-                Image(systemName: systemImage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(value)
-                    .font(.headline)
-                    .minimumScaleFactor(0.75)
-                    .lineLimit(1)
-
-                Text(title)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(.thinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-    }
-
-    struct JobWorkOfferTaskCoverageRow: View {
-        var task: JobTask
-        var offer: WorkOffer?
-
-        private var isOffered: Bool {
-            offer != nil
-        }
-
-        var body: some View {
-            HStack(spacing: 12) {
-                Image(systemName: isOffered ? "lock.fill" : "circle")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(isOffered ? .secondary : .tertiary)
-                    .frame(width: 28, height: 28)
-                    .background(.thinMaterial, in: Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(task.name)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+    var body: some View {
+        Group {
+            if let selectedJob {
+                CreateJobWorkOfferView(
+                    companyId: companyId, currentUserId: currentUserId, currentUserName: currentUserName,
+                    job: selectedJob, jobTasks: [], serviceLocation: serviceLocation, workOffers: [],
+                    dataService: dataService, onTasksChanged: {}, onCreated: onCreated
+                )
+            } else {
+                NavigationStack {
+                    List {
+                        Section {
+                            Text("Choose the job whose tasks you want to offer to a technician or work board.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        if isLoading {
+                            ProgressView("Loading jobs…")
+                        } else if visibleJobs.isEmpty {
+                            ContentUnavailableView("No matching jobs", systemImage: "briefcase", description: Text("Create a job or change your search to choose work for this offer."))
+                        } else {
+                            Section("Jobs") {
+                                ForEach(visibleJobs) { job in
+                                    Button { Task { await select(job) } } label: {
+                                        VStack(alignment: .leading, spacing: 5) {
+                                            Text("\(job.internalId) · \(job.customerName)")
+                                                .font(.headline).foregroundStyle(.primary)
+                                            Text(job.type.isEmpty ? job.description : job.type)
+                                                .font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                                        }
+                                        .padding(.vertical, 4)
+                                    }
+                                    .disabled(isSelecting)
+                                }
+                            }
+                        }
+                        if !errorMessage.isEmpty {
+                            Text(errorMessage).font(.subheadline).foregroundStyle(Color.poolRed)
+                            Button("Retry loading jobs") { Task { await load() } }
+                        }
+                    }
+                    .navigationTitle("Create Work Offer")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .searchable(text: $searchText, prompt: "Job, customer, or work")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { dismiss() }.disabled(isSelecting)
+                        }
+                    }
+                    .overlay { if isSelecting { ProgressView("Loading job…").padding().technicianPanel().padding(24) } }
                 }
-
-                Spacer()
-
-                Text(isOffered ? "Offered" : "Available")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
             }
-            .padding(12)
-            .background(
-                isOffered ? Color.primary.opacity(0.035) : Color.accentColor.opacity(0.08),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .opacity(isOffered ? 0.7 : 1)
         }
+        .task(id: companyId) { await load() }
+    }
 
-        private var subtitle: String {
-            if let offer {
-                return "\(task.type.rawValue) • \(offer.status.title) offer"
-            }
-
-            return "\(task.type.rawValue) • \(task.estimatedTime) min"
+    private func load() async {
+        isLoading = true
+        errorMessage = ""
+        defer { isLoading = false }
+        do {
+            jobs = try await dataService.getAllWorkOrders(companyId: companyId)
+                .filter { $0.operationStatus != .finished }
+                .sorted { $0.dateCreated > $1.dateCreated }
+        } catch {
+            errorMessage = "Could not load jobs. \(error.userFacingMessage)"
         }
     }
 
-    struct JobWorkOfferEmptyMiniState: View {
-        var title: String
-        var message: String
-        var systemImage: String
-
-        var body: some View {
-            VStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 20)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    private func select(_ job: Job) async {
+        guard !isSelecting else { return }
+        isSelecting = true
+        errorMessage = ""
+        defer { isSelecting = false }
+        do {
+            serviceLocation = job.serviceLocationId.isEmpty ? nil : try await dataService.getServiceLocationById(companyId: companyId, locationId: job.serviceLocationId)
+            selectedJob = job
+        } catch {
+            errorMessage = "Could not load the job’s location. \(error.userFacingMessage)"
         }
     }
 }
-// MARK: - Create Offer View
 
 struct CreateJobWorkOfferView: View {
 
@@ -409,6 +316,7 @@ struct CreateJobWorkOfferView: View {
     let workOffers: [WorkOffer]
     let dataService: any ProductionDataServiceProtocol
     let onTasksChanged: () -> Void
+    var onCreated: (() -> Void)? = nil
     
     @State private var selectedCompanyServiceStopType: CompanyServiceStopType?
     @State private var serviceStopTypeUseCase: ServiceStopTypeUseCase = .jobVisit
@@ -445,6 +353,7 @@ struct CreateJobWorkOfferView: View {
     @State private var notes: String = ""
     @State private var proposedStartDate: Date = Date()
     @State private var includeDate: Bool = true
+    @State private var includeDeadline = true
     @State private var completionDeadlineAt: Date = Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()) ?? Date()
     @State private var timelineNotes: String = ""
 
@@ -474,7 +383,7 @@ struct CreateJobWorkOfferView: View {
             let data = try JSONSerialization.data(withJSONObject: result["lines"] as? [[String:Any]] ?? [])
             serverPayLines = try JSONDecoder().decode([WorkOfferPayEstimateLine].self, from: data)
             payQuoteMessage = result["personal"] as? Bool == false ? "The recipient reviews their personal rate before accepting." : ""
-        } catch { serverPayLines = []; payQuoteMessage = error.localizedDescription }
+        } catch { serverPayLines = []; payQuoteMessage = error.userFacingMessage }
     }
 
     private var estimatedLaborCents: Int {
@@ -492,7 +401,7 @@ struct CreateJobWorkOfferView: View {
     private var canSave: Bool {
         guard serviceStopTypeUseCase == .jobEstimate || !availableSelectedTaskIds.isEmpty else { return false }
         guard unavailableSelectedTaskCount == 0 else { return false }
-        guard !includeDate || completionDeadlineAt >= proposedStartDate else { return false }
+        guard WorkOfferTiming.isValid(availableFrom: includeDate ? proposedStartDate : nil, deadline: includeDeadline ? completionDeadlineAt : nil) else { return false }
 
         switch offerType {
         case .directUser:
@@ -654,9 +563,9 @@ struct CreateJobWorkOfferView: View {
             .padding(12)
             .background(
                 isSelected ? Color.poolGreen.opacity(0.12) : Color.clear,
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -693,7 +602,7 @@ struct CreateJobWorkOfferView: View {
             Spacer()
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .opacity(0.6)
     }
 
@@ -743,7 +652,7 @@ struct CreateJobWorkOfferView: View {
                 )
             }
         } catch {
-            alertMessage = "Could not reload tasks or offers. \(error.localizedDescription)"
+            alertMessage = "Could not reload tasks or offers. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -873,7 +782,7 @@ struct CreateJobWorkOfferView: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -904,20 +813,9 @@ struct CreateJobWorkOfferView: View {
 
     private var scheduleSection: some View {
         Section {
-            Toggle("Include available-from time", isOn: $includeDate)
-
-            if includeDate {
-                DatePicker(
-                    "Available From",
-                    selection: $proposedStartDate,
-                    displayedComponents: [.date, .hourAndMinute]
-                )
-            }
-
-            DatePicker(
-                "Completion deadline",
-                selection: $completionDeadlineAt,
-                displayedComponents: [.date, .hourAndMinute]
+            WorkOfferTimingFields(
+                includeAvailableFrom: $includeDate, availableFrom: $proposedStartDate,
+                includeDeadline: $includeDeadline, deadline: $completionDeadlineAt
             )
 
             TextField("Timeline notes", text: $timelineNotes, axis: .vertical)
@@ -983,7 +881,7 @@ struct CreateJobWorkOfferView: View {
             return "External company offers are not supported yet."
         }
 
-        if includeDate && completionDeadlineAt < proposedStartDate {
+        if includeDeadline && includeDate && completionDeadlineAt < proposedStartDate {
             return "The completion deadline must be after the available-from time."
         }
 
@@ -1031,7 +929,7 @@ struct CreateJobWorkOfferView: View {
 
             await reloadLocalOfferData()
         } catch {
-            alertMessage = "Could not load company users. \(error.localizedDescription)"
+            alertMessage = "Could not load company users. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -1094,8 +992,8 @@ struct CreateJobWorkOfferView: View {
                 serviceLocationName: serviceLocation?.nickName ?? "",
                 address: serviceLocation?.address,
                 proposedStartDate: includeDate ? proposedStartDate : nil,
-                proposedEndDate: completionDeadlineAt,
-                completionDeadlineAt: completionDeadlineAt,
+                proposedEndDate: includeDeadline ? completionDeadlineAt : nil,
+                completionDeadlineAt: includeDeadline ? completionDeadlineAt : nil,
                 timelineNotes: timelineNotes,
                 estimatedMinutes: estimatedMinutes,
                 allowsTechnicianSelfScheduling: allowsTechnicianSelfScheduling,
@@ -1119,9 +1017,10 @@ struct CreateJobWorkOfferView: View {
             offer.workPurpose = serviceStopTypeUseCase == .jobEstimate ? "diagnostic" : "execution"
             try await dataService.saveWorkOffer(offer)
             onTasksChanged()
+            onCreated?()
             dismiss()
         } catch {
-            alertMessage = "Could not create work offer. \(error.localizedDescription)"
+            alertMessage = "Could not create work offer. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -1254,67 +1153,58 @@ struct CreateJobWorkOfferView: View {
 struct JobWorkOfferCardView: View {
     var offer: WorkOffer
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .top) {
-                Image(systemName: offer.offerType.systemImage)
-                    .frame(width: 28, height: 28)
-                    .background(.thinMaterial, in: Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(offer.title)
-                        .font(.subheadline.weight(.semibold))
-
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Text(offer.status.title)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
-            }
-
-            HStack {
-                Label("\(offer.jobTaskIds.count) task(s)", systemImage: "checklist")
-                Spacer()
-                Label("\(offer.estimatedMinutes) min", systemImage: "clock")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            if offer.offeredAmountCents > 0 {
-                Text("Offered: \(money(offer.offeredAmountCents))")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
+    private var statusTint: Color {
+        switch offer.status {
+        case .draft: return .secondary
+        case .sent, .posted, .viewed: return .orange
+        case .pendingApproval, .acceptancePendingApproval: return .orange
+        case .accepted: return .poolGreen
+        case .scheduled, .inProgress: return .poolBlue
+        case .completed: return .secondary
+        case .rejected, .cancelled, .expired: return .poolRed
         }
-        .padding(12)
-        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private var subtitle: String {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 8) {
+                Text(offer.title.isEmpty ? "Work Offer" : offer.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 4)
+                Text(offer.status.title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(statusTint)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(statusTint.opacity(0.12), in: Capsule())
+            }
+            Text("\(recipient) · \(offer.estimatedMinutes) min")
+                .font(.caption).foregroundStyle(.secondary)
+            if let deadline = offer.completionDeadlineAt ?? offer.proposedEndDate {
+                Label(WorkOfferDetailDateFormatter.shortDateTime(deadline), systemImage: "flag.checkered")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            if offer.offeredAmountCents > 0 {
+                Text(WorkOfferDetailMoneyFormatter.money(offer.offeredAmountCents))
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+        .contentShape(Rectangle())
+    }
+
+    private var recipient: String {
         switch offer.offerType {
         case .directUser:
-            return offer.offeredToUserName.isEmpty ? "Direct offer" : "Offered to \(offer.offeredToUserName)"
+            return offer.offeredToUserName.isEmpty ? "Direct offer" : offer.offeredToUserName
         case .internalBoard:
-            return "Posted to board • \(offer.boardVisibility.title)"
+            return offer.boardName.flatMap { $0.isEmpty ? nil : $0 } ?? "Work board"
         case .externalCompany:
-            return offer.externalCompanyName.isEmpty ? "External company offer" : offer.externalCompanyName
+            return offer.externalCompanyName.isEmpty ? "External company" : offer.externalCompanyName
         }
-    }
-
-    private func money(_ cents: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-
-        return formatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? "$0.00"
     }
 }
 
@@ -1348,7 +1238,7 @@ struct JobWorkOfferActionRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1370,7 +1260,7 @@ private extension View {
     func jobWorkOfferCard() -> some View {
         self
             .padding(16)
-            .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1397,57 +1287,240 @@ struct JobCloseoutSheet: View {
     private var remainingProducts: [ShoppingListItem] { products.filter { $0.status != .installed } }
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text(job.internalId + " · " + job.type).font(.headline)
-                    Text("Review what was completed. Select individual entries or quick-finish all remaining work.")
-                    Toggle("Finish the entire job", isOn: $finishJob)
-                    if finishJob { Toggle("Cancel unused visits and unaccepted offers", isOn: $cancelRemainingVisits) }
-                    Button("Quick Finish All Remaining Work") {
-                        selectedTasks = Set(remainingTasks.map(\.id)); selectedProducts = Set(remainingProducts.map(\.id)); selectedServices = Set(services.map(\.id))
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    summaryCard
+                    if isLoading {
+                        ProgressView("Loading remaining work…")
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                            .technicianPanel()
+                    } else {
+                        optionsSection
+                        servicesSection
+                        tasksSection
+                        productsSection
                     }
                 }
-                Section("Service items") {
-                    ForEach(services) { service in
-                        Toggle(service.name ?? "Service", isOn: Binding(get: { selectedServices.contains(service.id) }, set: { value in
-                            if value { selectedServices.insert(service.id); selectedTasks.formUnion(service.linkedTaskIds) }
-                            else { selectedServices.remove(service.id) }
-                        }))
-                    }
-                }
-                Section("Remaining tasks") {
-                    ForEach(remainingTasks) { task in
-                        Toggle(isOn: Binding(get: { selectedTasks.contains(task.id) }, set: { value in if value { selectedTasks.insert(task.id) } else { selectedTasks.remove(task.id) } })) {
-                            VStack(alignment: .leading) { Text(task.name); if !task.workerName.isEmpty { Text(task.workerName).font(.caption).foregroundStyle(.secondary) } }
-                        }
-                    }
-                }
-                Section("Products to mark installed") {
-                    ForEach(remainingProducts) { item in
-                        Toggle(item.name + " · " + (item.quantity ?? "1"), isOn: Binding(get: { selectedProducts.contains(item.id) }, set: { value in
-                            if value { selectedProducts.insert(item.id); if let taskId = item.linkedTaskId { selectedTasks.insert(taskId) } }
-                            else { selectedProducts.remove(item.id) }
-                        }))
-                    }
-                }
-                if !error.isEmpty { Section { Text(error).foregroundStyle(.red) } }
-                Section {
-                    Button(isSaving ? "Completing…" : finishJob ? "Finish Selected Work and Job" : "Finish Selected Work") { Task { await complete() } }
-                        .disabled(isLoading || isSaving)
+                .padding(14)
+                .disabled(isSaving)
+            }
+            .background(Color.listColor.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom, spacing: 0) { completionBar }
+            .navigationTitle("Job Closeout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.disabled(isSaving)
                 }
             }
-            .disabled(isSaving)
-            .overlay { if isLoading { ProgressView("Loading remaining work…") } }
-            .navigationTitle("Job Closeout")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(isSaving) } }
+            .interactiveDismissDisabled(isSaving)
             .task { await load() }
         }
     }
+
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "checkmark.seal")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.poolGreen)
+                    .frame(width: 42, height: 42)
+                    .background(Color.poolGreen.opacity(0.12), in: Circle())
+                VStack(alignment: .leading, spacing: 5) {
+                    Text([job.internalId, job.type].filter { !$0.isEmpty }.joined(separator: " · "))
+                        .font(.headline)
+                    if !job.customerName.isEmpty {
+                        Text(job.customerName).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    Text("Review the completed work and choose how to close out this job.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            if !isLoading {
+                HStack(spacing: 10) {
+                    summaryCount("Services", count: services.count)
+                    summaryCount("Tasks", count: remainingTasks.count)
+                    summaryCount("Products", count: remainingProducts.count)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .workOfferSurface(tint: .poolGreen)
+    }
+
+    private func summaryCount(_ title: String, count: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(count)").font(.headline)
+            Text(title).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color.poolGreen.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var optionsSection: some View {
+        TechnicianWorkPanel(title: "Closeout options", systemImage: "checkmark.seal") {
+            Toggle(isOn: $finishJob) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Finish the entire job").font(.subheadline.weight(.semibold))
+                    Text("Turn off to save completed work and keep the job open.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if finishJob {
+                Toggle(isOn: $cancelRemainingVisits) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Cancel unused visits").font(.subheadline.weight(.semibold))
+                        Text("Also cancels unaccepted work offers.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityLabel("Cancel unused visits and unaccepted offers")
+            }
+            Divider()
+            Button {
+                selectedTasks = Set(remainingTasks.map(\.id))
+                selectedProducts = Set(remainingProducts.map(\.id))
+                selectedServices = Set(services.map(\.id))
+            } label: {
+                Label("Select all remaining work", systemImage: "checklist")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .slate))
+            .tint(.poolBlue)
+        }
+        .tint(.poolGreen)
+    }
+
+    private var servicesSection: some View {
+        TechnicianWorkPanel(title: "Service items", systemImage: "wrench.and.screwdriver") {
+            if services.isEmpty {
+                emptySection("No service items to review.")
+            } else {
+                ForEach(services) { service in
+                    selectionRow(
+                        service.name ?? "Service",
+                        subtitle: service.description,
+                        isSelected: Binding(get: { selectedServices.contains(service.id) }, set: { value in
+                            if value { selectedServices.insert(service.id); selectedTasks.formUnion(service.linkedTaskIds) }
+                            else { selectedServices.remove(service.id) }
+                        })
+                    )
+                }
+            }
+        }
+    }
+
+    private var tasksSection: some View {
+        TechnicianWorkPanel(title: "Remaining tasks", systemImage: "checklist") {
+            if remainingTasks.isEmpty {
+                emptySection("No remaining tasks to finish.")
+            } else {
+                ForEach(remainingTasks) { task in
+                    selectionRow(
+                        task.name,
+                        subtitle: task.workerName,
+                        isSelected: Binding(get: { selectedTasks.contains(task.id) }, set: { value in
+                            if value { selectedTasks.insert(task.id) } else { selectedTasks.remove(task.id) }
+                        })
+                    )
+                }
+            }
+        }
+    }
+
+    private var productsSection: some View {
+        TechnicianWorkPanel(title: "Products to install", systemImage: "shippingbox") {
+            if remainingProducts.isEmpty {
+                emptySection("No products left to mark installed.")
+            } else {
+                ForEach(remainingProducts) { item in
+                    selectionRow(
+                        item.name,
+                        subtitle: "Quantity: " + (item.quantity ?? "1"),
+                        isSelected: Binding(get: { selectedProducts.contains(item.id) }, set: { value in
+                            if value { selectedProducts.insert(item.id); if let taskId = item.linkedTaskId { selectedTasks.insert(taskId) } }
+                            else { selectedProducts.remove(item.id) }
+                        })
+                    )
+                }
+            }
+        }
+    }
+
+    private func emptySection(_ message: String) -> some View {
+        Label(message, systemImage: "checkmark.circle")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 4)
+    }
+
+    private func selectionRow(_ title: String, subtitle: String? = nil, isSelected: Binding<Bool>) -> some View {
+        Button { isSelected.wrappedValue.toggle() } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: isSelected.wrappedValue ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected.wrappedValue ? Color.poolGreen : Color.secondary)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(isSelected.wrappedValue ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected.wrappedValue ? .isSelected : [])
+    }
+
+    private var completionBar: some View {
+        VStack(spacing: 8) {
+            if !error.isEmpty {
+                Label(error, systemImage: "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(Color.poolRed)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if !isLoading {
+                Text("\(selectedServices.count) services · \(remainingTasks.filter { selectedTasks.contains($0.id) }.count) tasks · \(selectedProducts.count) products selected")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            Button { Task { await complete() } } label: {
+                HStack(spacing: 8) {
+                    if isSaving { ProgressView().tint(.white) }
+                    Label(isSaving ? "Completing…" : finishJob ? "Finish Job" : "Save Completed Work", systemImage: finishJob ? "checkmark.seal" : "checkmark.circle")
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 52)
+            }
+            .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
+            .buttonBorderShape(.capsule)
+            .tint(.poolGreen)
+            .disabled(isLoading || isSaving)
+            Text(finishJob ? "Completes the selected work and closes this job." : "Saves the selected work and keeps this job open.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(16)
+        .background(Color(.systemBackground))
+    }
+
     @MainActor private func load() async {
         do {
             tasks = try await dataService.getJobTasks(companyId: companyId, jobId: job.id)
             products = try await dataService.getAllShoppingListItemsByUserForJob(companyId: companyId, jobId: job.id, category: ShoppingListCategory.job.rawValue)
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = error.userFacingMessage }
         isLoading = false
     }
     @MainActor private func complete() async {
@@ -1466,7 +1539,7 @@ struct JobCloseoutSheet: View {
                 "productIds":Array(selectedProducts),"serviceIds":Array(selectedServices)
             ])
             onComplete(); dismiss()
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = error.userFacingMessage }
     }
 }
 
@@ -1516,6 +1589,8 @@ struct RouteCoverageOfferSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var masterDataManager: MasterDataManager
+    @State private var includeDeadline = true
+    @State private var completionDeadlineAt: Date
     @State private var reason = "Scheduling conflict"
     @State private var throughDate: Date
     @State private var loadedThroughDate: Date
@@ -1544,6 +1619,7 @@ struct RouteCoverageOfferSheet: View {
         self.route = route
         self.dataService = dataService
         self.initialSelectedStopIds = initialSelectedStopIds
+        _completionDeadlineAt = State(initialValue: Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: route.date) ?? route.date)
         _reason = State(initialValue: initialReason)
         _throughDate = State(initialValue: route.date)
         _loadedThroughDate = State(initialValue: route.date)
@@ -1564,6 +1640,17 @@ struct RouteCoverageOfferSheet: View {
     private var canOfferRoute: Bool {
         canPost && (route.techId == masterDataManager.user?.id || canPostForOthers)
     }
+    private var validDeadline: Bool {
+        unpostedRoutes.allSatisfy {
+            WorkOfferTiming.isValid(availableFrom: Calendar.current.startOfDay(for: $0.date), deadline: deadline(for: $0))
+        }
+    }
+    private func deadline(for datedRoute: ActiveRoute) -> Date? {
+        guard includeDeadline else { return nil }
+        if Calendar.current.isDate(throughDate, inSameDayAs: route.date) { return completionDeadlineAt }
+        return WorkOfferTiming.deadline(on: datedRoute.date, at: completionDeadlineAt)
+    }
+
     private var validPay: Bool {
         (!canSetPay || RouteCoverageSelection.cents(from: fixedPay) != nil) &&
         (!canIncentivize || RouteCoverageSelection.cents(from: incentivePay) != nil)
@@ -1580,6 +1667,7 @@ struct RouteCoverageOfferSheet: View {
                             .padding()
                     } else if canOfferRoute {
                         stopSelection
+                        deadlineSection
                         offerOptions
                     } else {
                         Text("Your company has not enabled coverage offers for this route.")
@@ -1656,7 +1744,7 @@ struct RouteCoverageOfferSheet: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var stopSelection: some View {
@@ -1721,11 +1809,34 @@ struct RouteCoverageOfferSheet: View {
             }
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .padding(12)
-            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected.contains(stop.id) ? .isSelected : [])
+    }
+
+    private var deadlineSection: some View {
+        TechnicianWorkPanel(title: "Completion deadline", systemImage: "flag.checkered") {
+            Toggle("Set completion deadline", isOn: $includeDeadline)
+            if includeDeadline {
+                DatePicker(
+                    Calendar.current.isDate(throughDate, inSameDayAs: route.date) ? "Complete by" : "Complete each day by",
+                    selection: $completionDeadlineAt,
+                    displayedComponents: Calendar.current.isDate(throughDate, inSameDayAs: route.date) ? [.date, .hourAndMinute] : [.hourAndMinute]
+                )
+                Text("For multiple coverage days, each offer uses its own route date and this deadline time.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if !validDeadline {
+                Text("The completion deadline must follow the route’s available date.")
+                    .font(.caption)
+                    .foregroundStyle(Color.poolRed)
+            }
+        }
+        .tint(.poolBlue)
+        .disabled(hasUnloadedDates)
     }
 
     private var offerOptions: some View {
@@ -1793,9 +1904,9 @@ struct RouteCoverageOfferSheet: View {
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: 48)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(WorkspaceOutlinedButtonStyle(tone: .blue))
             .tint(.poolBlue)
-            .disabled(!canOfferRoute || isSaving || isLoading || hasUnloadedDates || selectedIds.isEmpty || !validPay)
+            .disabled(!canOfferRoute || isSaving || isLoading || hasUnloadedDates || selectedIds.isEmpty || !validPay || !validDeadline)
         }
         .padding(14)
         .background(.regularMaterial)
@@ -1854,12 +1965,12 @@ struct RouteCoverageOfferSheet: View {
             loadedThroughDate = throughDate
         } catch {
             stops = []
-            message = error.localizedDescription
+            message = error.userFacingMessage
         }
     }
 
     @MainActor private func post() async {
-        guard canOfferRoute, !isLoading, !isSaving, !hasUnloadedDates, validPay, !selectedIds.isEmpty else { return }
+        guard canOfferRoute, !isLoading, !isSaving, !hasUnloadedDates, validPay, validDeadline, !selectedIds.isEmpty else { return }
         isSaving = true
         message = ""
         defer { isSaving = false }
@@ -1879,7 +1990,7 @@ struct RouteCoverageOfferSheet: View {
                 guard !ids.isEmpty else { continue }
                 let name = datedRoute.name.isEmpty ? "Daily Route" : datedRoute.name
                 let start = Calendar.current.startOfDay(for: datedRoute.date)
-                let deadline = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start
+                let completionDeadline = deadline(for: datedRoute)
                 let minutes = stops.filter { ids.contains($0.id) }.reduce(0) { $0 + $1.estimatedDuration }
                 var offer = WorkOffer(
                     id: offerId + "_" + datedRoute.id, companyId: companyId, jobId: "", jobInternalId: "", jobName: "",
@@ -1889,7 +2000,7 @@ struct RouteCoverageOfferSheet: View {
                     offeredToUserId: directWorkerId, offeredToUserName: worker?.userName ?? "",
                     postedToBoard: directWorkerId.isEmpty, boardVisibility: .employeesAndContractors,
                     jobTaskIds: [], customerId: "", customerName: "", serviceLocationId: "",
-                    proposedStartDate: start, completionDeadlineAt: deadline, estimatedMinutes: minutes,
+                    proposedStartDate: start, proposedEndDate: completionDeadline, completionDeadlineAt: completionDeadline, estimatedMinutes: minutes,
                     paySource: fixedCents > 0 ? .offeredAmount : .technicianRate,
                     offeredAmountCents: fixedCents, estimatedLaborCents: 0,
                     createdByUserId: masterDataManager.user?.id ?? "", createdByUserName: ""
@@ -1916,7 +2027,7 @@ struct RouteCoverageOfferSheet: View {
             dismiss()
         } catch {
             let posted = postedRouteIds.count
-            message = (posted > 0 ? "\(posted) daily offer(s) already posted. Retry to post the remaining selection. " : "") + error.localizedDescription
+            message = (posted > 0 ? "\(posted) daily offer(s) already posted. Retry to post the remaining selection. " : "") + error.userFacingMessage
         }
     }
 }

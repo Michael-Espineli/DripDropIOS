@@ -87,7 +87,7 @@ extension JobPickerScreen {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(Color.accentColor.opacity(0.14))
                         .frame(width: 58, height: 58)
 
@@ -239,10 +239,10 @@ extension JobPickerScreen {
                 datum == job
                 ? Color.accentColor.opacity(0.10)
                 : Color.primary.opacity(0.035),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .stroke(
                         datum == job
                         ? Color.accentColor.opacity(0.28)
@@ -370,7 +370,7 @@ extension JobPickerScreen {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var loadingOverlay: some View {
@@ -386,7 +386,7 @@ extension JobPickerScreen {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 }
@@ -397,7 +397,7 @@ private extension View {
             .padding(16)
             .background(
                 material ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.background),
-                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
             )
     }
 }

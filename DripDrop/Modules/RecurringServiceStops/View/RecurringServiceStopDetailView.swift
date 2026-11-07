@@ -150,7 +150,7 @@
                 } catch {
                     isLoading = false
                     showSaveError = true
-                    saveErrorMessage = error.localizedDescription
+                    saveErrorMessage = error.userFacingMessage
 
                     print(error)
 
@@ -236,7 +236,7 @@
                 } catch {
                     isLoading = false
                     showSaveError = true
-                    saveErrorMessage = error.localizedDescription
+                    saveErrorMessage = error.userFacingMessage
 
                     print(error)
 

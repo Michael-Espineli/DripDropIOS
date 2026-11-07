@@ -48,6 +48,10 @@ extension ProductionDataService {
                         if let value = original[key] { record[key] = value }
                         else { record.removeValue(forKey: key) }
                     }
+                    // Retain web context not represented by the native Job model.
+                    for key in ["equipmentContext", "equipmentId", "equipmentName", "equipmentIds", "companyEquipmentIds", "jobIntent"] where record[key] == nil {
+                        record[key] = original[key]
+                    }
                 } else {
                     record["createdByUserId"] = actor.userId
                     record["createdByUserName"] = actor.userName
@@ -529,6 +533,13 @@ extension ProductionDataService {
     }
     
     func updateJobOperationStatus(companyId:String,jobId:String,operationStatus:JobOperationStatus) async throws{
+        if operationStatus == .finished {
+            _ = try await FunctionsManager.shared.technicianWorkflow("finalizeTechnicianJob", payload: [
+                "companyId": companyId, "jobId": jobId, "requestId": UUID().uuidString,
+                "finishJob": true, "taskIds": [String](), "productIds": [String](), "serviceIds": [String]()
+            ])
+            return
+        }
         let ref = workOrderDocument(workOrderId: jobId, companyId: companyId)
         try await ref.updateData([
             "operationStatus": operationStatus.rawValue,
@@ -780,6 +791,13 @@ extension ProductionDataService {
             do {
                 let existing = try transaction.getDocument(ref)
                 if existing.exists { return try existing.data(as: Job.self) }
+                if let templateId = job.sourceTemplateId, !templateId.isEmpty {
+                    let template = try transaction.getDocument(company.collection("jobTemplates").document(templateId))
+                    guard template.exists, template.data()?["isActive"] as? Bool != false,
+                          template.data()?["active"] as? Bool != false else {
+                        throw NSError(domain: "JobCreation", code: 6, userInfo: [NSLocalizedDescriptionKey: "This template is inactive or no longer available. Choose an active template."])
+                    }
+                }
                 let snapshot = try transaction.getDocument(counter)
                 let next = (snapshot.data()?["increment"] as? Int ?? 0) + 1
                 var nextStop = 0
@@ -869,6 +887,11 @@ extension ProductionDataService {
                         let linkedId = task["jobTaskId"] as? String ?? ""
                         if linkedId.isEmpty, let id = task["id"] as? String, tasks.contains(where: { $0.id == id }) { task["jobTaskId"] = id }
                         task["workOrderTaskId"] = task["jobTaskId"]
+                        if let source = savedTasks.first(where: { $0["id"] as? String == task["jobTaskId"] as? String }) {
+                            for key in ["sourceTemplateId", "sourceTemplateTaskId", "payTypeId", "payTypeName", "payrollMode", "manualPayOverrideCents", "manualPayOverrideNotes", "payrollStackBehavior", "payQuantity", "contractedRate"] {
+                                if let value = source[key] { task[key] = value } else { task.removeValue(forKey: key) }
+                            }
+                        }
                         transaction.setData(task, forDocument: stopRef.collection("tasks").document(task["id"] as? String ?? UUID().uuidString))
                     }
                 }

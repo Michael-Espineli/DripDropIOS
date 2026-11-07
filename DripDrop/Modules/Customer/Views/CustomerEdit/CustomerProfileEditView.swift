@@ -75,6 +75,7 @@ struct CustomerProfileEditView: View {
         ZStack{
             Color.listColor.ignoresSafeArea()
             ScrollView(showsIndicators: false){
+                WorkspaceIdentityHeader(title: "Edit Customer", eyebrow: "Company relationships", systemImage: "person.crop.circle")
                 buttons
                 Divider()
                 info
@@ -94,6 +95,7 @@ struct CustomerProfileEditView: View {
                     
                     Task{
                         do {
+                                guard masterDataManager.hasCompanyPermission("16") else { return }
                                 try await customerVM.deleteCustomer(companyId:masterDataManager.currentCompany!.id,customer:customer)
                                 alertMessage = "Successfully Deleted"
                             print(alertMessage)
@@ -160,6 +162,7 @@ extension CustomerProfileEditView {
     }
     var deleteButton: some View {
         Button(action: {
+            guard masterDataManager.hasCompanyPermission("16") else { return }
             showDeleteAlert.toggle()
         }, label: {
             Text("Delete")
@@ -170,6 +173,7 @@ extension CustomerProfileEditView {
     var saveButton: some View {
         Button(action: {
             Task{
+                guard masterDataManager.hasCompanyPermission("14") else { return }
                 do {
                     if let company = masterDataManager.currentCompany { 
                         //DEVELPER ADD THE REST OF THE UPDATABLE FIELDS FOR CUSTOMERS

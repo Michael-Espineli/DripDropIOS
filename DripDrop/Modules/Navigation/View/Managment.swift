@@ -160,6 +160,23 @@ extension Managment {
             }
 
             if let role = masterDataManager.role {
+                NavigationLink(value: Route.offeredWork(dataService: dataService)) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "list.bullet.clipboard.fill")
+                            .font(.title2).foregroundStyle(Color.poolBlue)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Work Offers").font(.headline)
+                            Text("Create offers, manage assignments, and track outstanding work by status.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(.secondary)
+                    }
+                    .padding(16)
+                    .workOfferSurface()
+                }
+                .buttonStyle(.plain)
+
                 if role.permissionIdList.contains("210") {
                     internalRoutes
                     routeOverview

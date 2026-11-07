@@ -175,6 +175,14 @@ enum SalesAgreementStatus: String, Codable, CaseIterable, Identifiable {
     case rejected = "rejected"
     case expired = "expired"
     case canceled = "canceled"
+    case active = "active"
+    case superseded = "superseded"
+    case unknown = "unknown"
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
 }
 
 enum SalesAgreementSourceType: String, Codable, CaseIterable, Identifiable {
@@ -198,6 +206,16 @@ enum SalesBillingSubscriptionStatus: String, Codable, CaseIterable, Identifiable
     case pastDue = "pastDue"
     case paused = "paused"
     case canceled = "canceled"
+    case cancellationPending = "cancellationPending"
+    case expired = "expired"
+    case superseded = "superseded"
+    case unknown = "unknown"
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
+
 }
 
 enum SalesInvoiceStatus: String, Codable, CaseIterable, Identifiable {
@@ -210,6 +228,16 @@ enum SalesInvoiceStatus: String, Codable, CaseIterable, Identifiable {
     case overdue = "overdue"
     case void = "void"
     case uncollectible = "uncollectible"
+    case paymentReview = "paymentReview"
+    case partiallyRefunded = "partiallyRefunded"
+    case refunded = "refunded"
+    case unknown = "unknown"
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
+
 }
 
 enum SalesInvoiceType: String, Codable, CaseIterable, Identifiable {
@@ -239,6 +267,17 @@ enum SalesPaymentStatus: String, Codable, CaseIterable, Identifiable {
     case failed = "failed"
     case refunded = "refunded"
     case void = "void"
+    case processing = "processing"
+    case partiallyRefunded = "partiallyRefunded"
+    case disputed = "disputed"
+    case reversed = "reversed"
+    case unknown = "unknown"
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .unknown
+    }
+
 }
 
 enum SalesPaymentMethod: String, Codable, CaseIterable, Identifiable {
@@ -251,6 +290,11 @@ enum SalesPaymentMethod: String, Codable, CaseIterable, Identifiable {
     case externalCard = "externalCard"
     case bankTransfer = "bankTransfer"
     case other = "other"
+
+    init(from decoder: Decoder) throws {
+        let value = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: value) ?? .other
+    }
 }
 
 enum SalesBillingMode: String, Codable, CaseIterable, Identifiable {
@@ -490,7 +534,7 @@ struct SalesInvoiceLineItem: Identifiable, Codable, Hashable {
     var sourceId: String
     var description: String
     var name: String?
-    var quantity: Int
+    var quantity: Double
     var unitAmountCents: Int
     var totalAmountCents: Int
     var taxable: Bool
@@ -542,6 +586,16 @@ struct SalesInvoice: Identifiable, Codable, Hashable {
     var sentAt: Date?
     var paidAt: Date?
     var lastPaymentAt: Date?
+    var stripeCreditAmountCents: Int? = nil
+    var creditAmountCents: Int? = nil
+    var refundCreditCents: Int? = nil
+    var disputeCreditCents: Int? = nil
+
+    var balanceCents: Int {
+        if [.void, .uncollectible].contains(status) { return 0 }
+        return max(0, amountDueCents ?? (totalAmountCents - (amountPaidCents ?? 0) - (writeOffAmountCents ?? 0)
+            - (creditAmountCents ?? 0) - (stripeCreditAmountCents ?? 0) - (refundCreditCents ?? 0) - (disputeCreditCents ?? 0)))
+    }
 }
 
 struct SalesPayment: Identifiable, Codable, Hashable {
@@ -572,6 +626,22 @@ struct SalesPayment: Identifiable, Codable, Hashable {
     var createdAt: Date?
     var updatedAt: Date?
     var voidedAt: Date?
+    var grossPosted: Bool? = nil
+    var refundedAmountCents: Int? = nil
+    var reversedAmountCents: Int? = nil
+    var netAmountCents: Int? = nil
+
+    var netCollectedCents: Int {
+        guard ![.pending, .processing, .failed, .void, .unknown].contains(status) else { return 0 }
+        if status == .refunded && refundedAmountCents == nil { return 0 }
+        if [.disputed, .reversed].contains(status) && reversedAmountCents == nil { return 0 }
+        return max(0, amountCents - (refundedAmountCents ?? 0) - (reversedAmountCents ?? 0))
+    }
+
+    var hasPostedMoney: Bool {
+        grossPosted == true || [.posted, .partiallyRefunded, .refunded, .disputed, .reversed].contains(status)
+    }
+
 }
 
 struct SalesPaymentEvent: Identifiable, Codable, Hashable {
@@ -1505,3 +1575,151 @@ struct mapCoordinates{
     var long:Double
 }
 //??
+
+// Sales documents also come from server commands that omit unused Stripe fields.
+extension SalesInvoiceLineItem {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
+        catalogItemId = try c.decodeIfPresent(String.self, forKey: .catalogItemId)
+        sourceType = try c.decodeIfPresent(String.self, forKey: .sourceType) ?? ""
+        sourceId = try c.decodeIfPresent(String.self, forKey: .sourceId) ?? ""
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        quantity = try c.decodeIfPresent(Double.self, forKey: .quantity) ?? 1
+        unitAmountCents = try c.decodeIfPresent(Int.self, forKey: .unitAmountCents) ?? 0
+        totalAmountCents = try c.decode(Int.self, forKey: .totalAmountCents)
+        taxable = try c.decodeIfPresent(Bool.self, forKey: .taxable) ?? false
+        type = try c.decodeIfPresent(String.self, forKey: .type)
+        stripeProductId = try c.decodeIfPresent(String.self, forKey: .stripeProductId)
+        stripePriceId = try c.decodeIfPresent(String.self, forKey: .stripePriceId)
+        metadata = try c.decodeIfPresent([String: String].self, forKey: .metadata)
+    }
+}
+
+extension SalesInvoice {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
+        companyId = try c.decode(String.self, forKey: .companyId)
+        companyName = try c.decodeIfPresent(String.self, forKey: .companyName)
+        customerId = try c.decode(String.self, forKey: .customerId)
+        customerUserId = try c.decodeIfPresent(String.self, forKey: .customerUserId)
+        relationshipId = try c.decodeIfPresent(String.self, forKey: .relationshipId)
+        customerCompanyRelationshipId = try c.decodeIfPresent(String.self, forKey: .customerCompanyRelationshipId)
+        customerName = try c.decodeIfPresent(String.self, forKey: .customerName)
+        email = try c.decodeIfPresent(String.self, forKey: .email)
+        serviceLocationIds = try c.decodeIfPresent([String].self, forKey: .serviceLocationIds)
+        serviceLocationSnapshots = try c.decodeIfPresent([SalesAgreementServiceLocationSnapshot].self, forKey: .serviceLocationSnapshots)
+        agreementId = try c.decodeIfPresent(String.self, forKey: .agreementId) ?? ""
+        jobId = try c.decodeIfPresent(String.self, forKey: .jobId) ?? ""
+        billingSubscriptionId = try c.decodeIfPresent(String.self, forKey: .billingSubscriptionId) ?? ""
+        stripeConnectedAccountId = try c.decodeIfPresent(String.self, forKey: .stripeConnectedAccountId) ?? ""
+        stripeInvoiceId = try c.decodeIfPresent(String.self, forKey: .stripeInvoiceId) ?? ""
+        stripePaymentIntentId = try c.decodeIfPresent(String.self, forKey: .stripePaymentIntentId) ?? ""
+        stripeHostedInvoiceUrl = try c.decodeIfPresent(String.self, forKey: .stripeHostedInvoiceUrl)
+        stripeInvoicePdfUrl = try c.decodeIfPresent(String.self, forKey: .stripeInvoicePdfUrl)
+        invoiceNumber = try c.decodeIfPresent(String.self, forKey: .invoiceNumber) ?? ""
+        type = try c.decodeIfPresent(SalesInvoiceType.self, forKey: .type)
+        status = try c.decodeIfPresent(SalesInvoiceStatus.self, forKey: .status) ?? .unknown
+        deliveryMethod = try c.decodeIfPresent(SalesInvoiceDeliveryMethod.self, forKey: .deliveryMethod)
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "usd"
+        billingPeriodStart = try c.decodeIfPresent(Date.self, forKey: .billingPeriodStart)
+        billingPeriodEnd = try c.decodeIfPresent(Date.self, forKey: .billingPeriodEnd)
+        dueDate = try c.decodeIfPresent(Date.self, forKey: .dueDate)
+        subtotalAmountCents = try c.decodeIfPresent(Int.self, forKey: .subtotalAmountCents) ?? 0
+        discountAmountCents = try c.decodeIfPresent(Int.self, forKey: .discountAmountCents) ?? 0
+        taxAmountCents = try c.decodeIfPresent(Int.self, forKey: .taxAmountCents) ?? 0
+        totalAmountCents = try c.decode(Int.self, forKey: .totalAmountCents)
+        amountPaidCents = try c.decodeIfPresent(Int.self, forKey: .amountPaidCents)
+        amountDueCents = try c.decodeIfPresent(Int.self, forKey: .amountDueCents)
+        writeOffAmountCents = try c.decodeIfPresent(Int.self, forKey: .writeOffAmountCents)
+        memo = try c.decodeIfPresent(String.self, forKey: .memo)
+        lineItems = try c.decodeIfPresent([SalesInvoiceLineItem].self, forKey: .lineItems) ?? []
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        sentAt = try c.decodeIfPresent(Date.self, forKey: .sentAt)
+        paidAt = try c.decodeIfPresent(Date.self, forKey: .paidAt)
+        lastPaymentAt = try c.decodeIfPresent(Date.self, forKey: .lastPaymentAt)
+        stripeCreditAmountCents = try c.decodeIfPresent(Int.self, forKey: .stripeCreditAmountCents)
+        creditAmountCents = try c.decodeIfPresent(Int.self, forKey: .creditAmountCents)
+        refundCreditCents = try c.decodeIfPresent(Int.self, forKey: .refundCreditCents)
+        disputeCreditCents = try c.decodeIfPresent(Int.self, forKey: .disputeCreditCents)
+    }
+}
+
+extension SalesPayment {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
+        companyId = try c.decode(String.self, forKey: .companyId)
+        customerId = try c.decode(String.self, forKey: .customerId)
+        customerUserId = try c.decodeIfPresent(String.self, forKey: .customerUserId)
+        relationshipId = try c.decodeIfPresent(String.self, forKey: .relationshipId)
+        customerCompanyRelationshipId = try c.decodeIfPresent(String.self, forKey: .customerCompanyRelationshipId)
+        customerName = try c.decodeIfPresent(String.self, forKey: .customerName)
+        email = try c.decodeIfPresent(String.self, forKey: .email)
+        invoiceId = try c.decodeIfPresent(String.self, forKey: .invoiceId) ?? ""
+        billingProfileId = try c.decodeIfPresent(String.self, forKey: .billingProfileId) ?? ""
+        billingSubscriptionId = try c.decodeIfPresent(String.self, forKey: .billingSubscriptionId) ?? ""
+        stripeConnectedAccountId = try c.decodeIfPresent(String.self, forKey: .stripeConnectedAccountId) ?? ""
+        stripePaymentIntentId = try c.decodeIfPresent(String.self, forKey: .stripePaymentIntentId) ?? ""
+        stripeChargeId = try c.decodeIfPresent(String.self, forKey: .stripeChargeId) ?? ""
+        stripeInvoiceId = try c.decodeIfPresent(String.self, forKey: .stripeInvoiceId) ?? ""
+        method = try c.decodeIfPresent(SalesPaymentMethod.self, forKey: .method) ?? .other
+        status = try c.decodeIfPresent(SalesPaymentStatus.self, forKey: .status) ?? .unknown
+        amountCents = try c.decode(Int.self, forKey: .amountCents)
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "usd"
+        referenceNumber = try c.decodeIfPresent(String.self, forKey: .referenceNumber) ?? ""
+        memo = try c.decodeIfPresent(String.self, forKey: .memo) ?? ""
+        receiptUrl = try c.decodeIfPresent(String.self, forKey: .receiptUrl) ?? ""
+        recordedByUserId = try c.decodeIfPresent(String.self, forKey: .recordedByUserId) ?? ""
+        receivedAt = try c.decodeIfPresent(Date.self, forKey: .receivedAt)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        voidedAt = try c.decodeIfPresent(Date.self, forKey: .voidedAt)
+        grossPosted = try c.decodeIfPresent(Bool.self, forKey: .grossPosted)
+        refundedAmountCents = try c.decodeIfPresent(Int.self, forKey: .refundedAmountCents)
+        reversedAmountCents = try c.decodeIfPresent(Int.self, forKey: .reversedAmountCents)
+        netAmountCents = try c.decodeIfPresent(Int.self, forKey: .netAmountCents)
+    }
+}
+
+extension SalesBillingSubscription {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
+        companyId = try c.decode(String.self, forKey: .companyId)
+        customerId = try c.decode(String.self, forKey: .customerId)
+        customerUserId = try c.decodeIfPresent(String.self, forKey: .customerUserId)
+        relationshipId = try c.decodeIfPresent(String.self, forKey: .relationshipId)
+        customerCompanyRelationshipId = try c.decodeIfPresent(String.self, forKey: .customerCompanyRelationshipId)
+        customerName = try c.decodeIfPresent(String.self, forKey: .customerName)
+        email = try c.decodeIfPresent(String.self, forKey: .email)
+        serviceLocationIds = try c.decodeIfPresent([String].self, forKey: .serviceLocationIds)
+        agreementId = try c.decodeIfPresent(String.self, forKey: .agreementId) ?? ""
+        billingProfileId = try c.decodeIfPresent(String.self, forKey: .billingProfileId) ?? ""
+        stripeConnectedAccountId = try c.decodeIfPresent(String.self, forKey: .stripeConnectedAccountId) ?? ""
+        stripeCustomerId = try c.decodeIfPresent(String.self, forKey: .stripeCustomerId) ?? ""
+        stripeProductId = try c.decodeIfPresent(String.self, forKey: .stripeProductId) ?? ""
+        stripePriceId = try c.decodeIfPresent(String.self, forKey: .stripePriceId) ?? ""
+        stripeSubscriptionId = try c.decodeIfPresent(String.self, forKey: .stripeSubscriptionId) ?? ""
+        stripeSubscriptionItemId = try c.decodeIfPresent(String.self, forKey: .stripeSubscriptionItemId) ?? ""
+        stripeLatestInvoiceId = try c.decodeIfPresent(String.self, forKey: .stripeLatestInvoiceId) ?? ""
+        stripeDefaultPaymentMethodId = try c.decodeIfPresent(String.self, forKey: .stripeDefaultPaymentMethodId) ?? ""
+        billingMode = try c.decodeIfPresent(SalesBillingMode.self, forKey: .billingMode) ?? .connectedAccountDirectCharge
+        status = try c.decodeIfPresent(SalesBillingSubscriptionStatus.self, forKey: .status) ?? .unknown
+        stripeStatus = try c.decodeIfPresent(String.self, forKey: .stripeStatus) ?? ""
+        amountCents = try c.decode(Int.self, forKey: .amountCents)
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "usd"
+        interval = try c.decodeIfPresent(String.self, forKey: .interval) ?? "month"
+        intervalCount = try c.decodeIfPresent(Int.self, forKey: .intervalCount) ?? 1
+        currentPeriodStart = try c.decodeIfPresent(Date.self, forKey: .currentPeriodStart)
+        currentPeriodEnd = try c.decodeIfPresent(Date.self, forKey: .currentPeriodEnd)
+        cancelAtPeriodEnd = try c.decodeIfPresent(Bool.self, forKey: .cancelAtPeriodEnd) ?? false
+        canceledAt = try c.decodeIfPresent(Date.self, forKey: .canceledAt)
+        applicationFeePercent = try c.decodeIfPresent(Double.self, forKey: .applicationFeePercent)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+}

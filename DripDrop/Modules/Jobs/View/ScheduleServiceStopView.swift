@@ -427,7 +427,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                     )
                 )
 
-                try dataService.updateJobTaskStatus(
+                try await dataService.updateJobTaskStatus(
                     companyId: companyId,
                     jobId: jobId,
                     taskId: task.id,
@@ -531,7 +531,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                         taskId: existingTask.jobTaskId,
                         workerType: .notAssigned
                     )
-                    try dataService.updateJobTaskStatus(
+                    try await dataService.updateJobTaskStatus(
                         companyId: companyId,
                         jobId: jobId,
                         taskId: existingTask.jobTaskId,
@@ -583,7 +583,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                     taskId: task.id,
                     serviceStopId: IdInfo(id: serviceStop.id, internalId: serviceStop.internalId)
                 )
-                try dataService.updateJobTaskStatus(
+                try await dataService.updateJobTaskStatus(
                     companyId: companyId,
                     jobId: jobId,
                     taskId: task.id,
@@ -945,7 +945,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
                     )
                 )
 
-                try dataService.updateJobTaskStatus(
+                try await dataService.updateJobTaskStatus(
                     companyId: companyId,
                     jobId: job.id,
                     taskId: task.id,
@@ -981,7 +981,7 @@ final class ScheduleServiceStopViewModel: ObservableObject {
 
             for laborTask in senderLaborTasks {
                 if selectedJobTaskList.contains(where: { $0.laborContractId == laborContract.id }) {
-                    try dataService.updateJobTaskStatus(
+                    try await dataService.updateJobTaskStatus(
                         companyId: senderId,
                         jobId: laborContract.senderJobId.id,
                         taskId: laborTask.senderJobTaskId,
@@ -1261,7 +1261,7 @@ extension ScheduleServiceStopView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var serviceStopTypeCard: some View {
@@ -1279,7 +1279,7 @@ extension ScheduleServiceStopView {
                         .foregroundStyle(.secondary)
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             } else {
                 CompanyServiceStopTypePickerView(
                     companyId: resolvedCompanyId,
@@ -1295,7 +1295,7 @@ extension ScheduleServiceStopView {
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var resolvedCompanyId: String {
@@ -1349,7 +1349,7 @@ extension ScheduleServiceStopView {
                             .font(.subheadline)
                             .lineLimit(3, reservesSpace: true)
                             .padding(12)
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                         Text("This amount replaces automatic service stop pay. Additional Task pay is added separately.")
                             .font(.caption)
@@ -1359,7 +1359,7 @@ extension ScheduleServiceStopView {
                 }
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             if !VM.manualPayOverrideEnabled {
                 detailDisplayRow(
@@ -1373,7 +1373,7 @@ extension ScheduleServiceStopView {
                 .foregroundStyle(.secondary)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
     
@@ -1436,7 +1436,7 @@ extension ScheduleServiceStopView {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var detailsCard: some View {
@@ -1468,7 +1468,7 @@ extension ScheduleServiceStopView {
                 .font(.subheadline.weight(.semibold))
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             descriptionInputCard
 
@@ -1479,7 +1479,7 @@ extension ScheduleServiceStopView {
             )
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var routeSnapshotCard: some View {
@@ -1528,7 +1528,7 @@ extension ScheduleServiceStopView {
 //                }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var tasksCard: some View {
@@ -1572,7 +1572,7 @@ extension ScheduleServiceStopView {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1593,7 +1593,7 @@ extension ScheduleServiceStopView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -1604,7 +1604,7 @@ extension ScheduleServiceStopView {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(VM.isLoading)
@@ -1685,7 +1685,7 @@ extension ScheduleServiceStopView {
                 } catch {
                     print(error)
 
-                    VM.alertMessage = "Could not schedule service stop. \(error.localizedDescription)"
+                    VM.alertMessage = "Could not schedule service stop. \(error.userFacingMessage)"
                     VM.showAlert = true
 
                     #if os(iOS)
@@ -1728,7 +1728,7 @@ extension ScheduleServiceStopView {
                     Spacer()
                 }
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .opacity(0.55)
             )
 
@@ -1780,9 +1780,9 @@ extension ScheduleServiceStopView {
                     .padding(12)
                     .background(
                         isSelected ? Color.poolGreen.opacity(0.12) : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                     )
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             )
@@ -1819,7 +1819,7 @@ extension ScheduleServiceStopView {
         .padding(12)
         .background(
             isSelected ? Color.poolGreen.opacity(0.12) : Color.primary.opacity(0.035),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
         )
     }
 
@@ -1843,7 +1843,7 @@ extension ScheduleServiceStopView {
                 .lineLimit(1)
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func detailDisplayRow(title: String, value: String, systemImage: String) -> some View {
@@ -1868,7 +1868,7 @@ extension ScheduleServiceStopView {
             Spacer()
         }
         .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     func pickerButtonRow(
@@ -1904,7 +1904,7 @@ extension ScheduleServiceStopView {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -1935,7 +1935,7 @@ extension ScheduleServiceStopView {
                 .foregroundStyle(.tertiary)
         }
         .padding(12)
-        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
@@ -1969,7 +1969,7 @@ extension ScheduleServiceStopView {
                 .font(.subheadline)
                 .lineLimit(4, reservesSpace: true)
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -2004,7 +2004,7 @@ extension ScheduleServiceStopView {
                         .buttonStyle(.plain)
                     }
                     .padding(16)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 14) {
                         sectionHeader("Today", systemImage: "calendar")
@@ -2036,7 +2036,7 @@ extension ScheduleServiceStopView {
                         }
                     }
                     .padding(16)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 14) {
                         sectionHeader("Time & Distance", systemImage: "clock")
@@ -2074,7 +2074,7 @@ extension ScheduleServiceStopView {
                         }
                     }
                     .padding(16)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .padding(14)
             }
@@ -2094,14 +2094,12 @@ extension ScheduleServiceStopView {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
 
     func payrollMoney(_ cents: Int) -> String {
@@ -2130,7 +2128,7 @@ extension ScheduleServiceStopView {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
     
 }

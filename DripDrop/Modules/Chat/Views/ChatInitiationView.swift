@@ -152,7 +152,7 @@ struct ChatInitiationView: View {
             
             isLoading = false
         } catch {
-            errorText = "Failed to prepare message: \(error.localizedDescription)"
+            errorText = "Failed to prepare message: \(error.userFacingMessage)"
             isLoading = false
         }
     }
@@ -209,7 +209,7 @@ struct ChatInitiationView: View {
             print("Created First Chat: \(chat.id)")
             navigationManager.replaceLast(new: Route.chat(chat: chat, dataService: dataService))
         } catch {
-            errorText = "Failed to start message: \(error.localizedDescription)"
+            errorText = "Failed to start message: \(error.userFacingMessage)"
         }
     }
 

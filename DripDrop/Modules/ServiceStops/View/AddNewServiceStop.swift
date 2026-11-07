@@ -224,7 +224,7 @@ extension AddNewServiceStop {
             Button(action: {
                 Task {
                     if let currentCompany = masterDataManager.currentCompany {
-                        do { try await VM.createServiceStop(companyId: currentCompany.id) } catch { VM.alertMessage = error.localizedDescription; VM.showAlert = true }
+                        do { try await VM.createServiceStop(companyId: currentCompany.id) } catch { VM.alertMessage = error.userFacingMessage; VM.showAlert = true }
                     }
                 }
             }) {

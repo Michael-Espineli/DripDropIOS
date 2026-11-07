@@ -199,7 +199,7 @@ class Camera: NSObject {
         do {
             return try AVCaptureDeviceInput(device: validDevice)
         } catch let error {
-            logger.error("Error getting capture device input: \(error.localizedDescription)")
+            logger.error("Error getting capture device input: \(error.userFacingMessage)")
             return nil
         }
     }
@@ -335,7 +335,7 @@ extension Camera: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         
         if let error = error {
-            logger.error("Error capturing photo: \(error.localizedDescription)")
+            logger.error("Error capturing photo: \(error.userFacingMessage)")
             return
         }
         

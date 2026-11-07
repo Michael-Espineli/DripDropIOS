@@ -158,7 +158,7 @@ final class CompanyPayStatementsViewModel: ObservableObject {
             lineItems = try await lineItemsTask
             statements = try await statementsTask
         } catch {
-            alertMessage = "Could not load pay statements. \(error.localizedDescription)"
+            alertMessage = "Could not load pay statements. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -223,7 +223,7 @@ final class CompanyPayStatementsViewModel: ObservableObject {
             alertMessage = "Created pay statement for \(group.technicianName)."
             showAlert = true
         } catch {
-            alertMessage = "Could not create pay statement. \(error.localizedDescription)"
+            alertMessage = "Could not create pay statement. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -274,7 +274,7 @@ final class CompanyPayStatementsViewModel: ObservableObject {
             alertMessage = "Marked statement paid."
             showAlert = true
         } catch {
-            alertMessage = "Could not mark statement paid. \(error.localizedDescription)"
+            alertMessage = "Could not mark statement paid. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -318,7 +318,7 @@ final class CompanyPayStatementsViewModel: ObservableObject {
             alertMessage = "Voided pay statement."
             showAlert = true
         } catch {
-            alertMessage = "Could not void pay statement. \(error.localizedDescription)"
+            alertMessage = "Could not void pay statement. \(error.userFacingMessage)"
             showAlert = true
         }
     }
@@ -343,7 +343,7 @@ final class CompanyPayStatementsViewModel: ObservableObject {
             try await dataService.saveTechnicianPayStatement(statement)
             upsertLocalStatement(statement)
         } catch {
-            alertMessage = "Could not update statement. \(error.localizedDescription)"
+            alertMessage = "Could not update statement. \(error.userFacingMessage)"
             showAlert = true
         }
     }

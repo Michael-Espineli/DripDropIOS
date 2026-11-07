@@ -369,7 +369,7 @@ final class EquipmentServiceActionViewModel: ObservableObject {
             )
         }
 
-        let finalJob = Job(
+        var finalJob = Job(
             id: job.id,
             internalId: job.internalId,
             type: job.type,
@@ -399,6 +399,12 @@ final class EquipmentServiceActionViewModel: ObservableObject {
             invoiceType: job.invoiceType,
             invoiceNotes: job.invoiceNotes
         )
+
+        finalJob.equipmentId = equipment.id
+        finalJob.equipmentName = equipment.name
+        finalJob.equipmentIds = [equipment.id]
+        finalJob.companyEquipmentIds = [equipment.id]
+        finalJob.jobIntent = jobType == .maintenance ? "maintenance" : "repair"
 
         try await dataService.uploadWorkOrder(
             companyId: companyId,
@@ -627,7 +633,7 @@ struct RecordEquipmentMaintenanceView: View {
                 dismiss()
             } catch {
                 VM.isSaving = false
-                VM.alertMessage = error.localizedDescription
+                VM.alertMessage = error.userFacingMessage
                 VM.showAlert = true
             }
         }
@@ -710,7 +716,7 @@ struct RecordEquipmentRepairView: View {
                 dismiss()
             } catch {
                 VM.isSaving = false
-                VM.alertMessage = error.localizedDescription
+                VM.alertMessage = error.userFacingMessage
                 VM.showAlert = true
             }
         }
@@ -789,7 +795,7 @@ struct ScheduleEquipmentMaintenanceJobView: View {
                 dismiss()
             } catch {
                 VM.isSaving = false
-                VM.alertMessage = error.localizedDescription
+                VM.alertMessage = error.userFacingMessage
                 VM.showAlert = true
             }
         }
@@ -868,7 +874,7 @@ struct ScheduleEquipmentRepairJobView: View {
                 dismiss()
             } catch {
                 VM.isSaving = false
-                VM.alertMessage = error.localizedDescription
+                VM.alertMessage = error.userFacingMessage
                 VM.showAlert = true
             }
         }
@@ -978,7 +984,7 @@ struct EquipmentServiceRecordShell: View {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var detailsCard: some View {
@@ -1002,7 +1008,7 @@ struct EquipmentServiceRecordShell: View {
                     .font(.subheadline.weight(.semibold))
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Picker("Performed By", selection: $VM.performedBy) {
                 Text("Company").tag(ServicePerformaceType.company)
@@ -1030,7 +1036,7 @@ struct EquipmentServiceRecordShell: View {
             descriptionInputCard
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var partsCard: some View {
@@ -1043,7 +1049,7 @@ struct EquipmentServiceRecordShell: View {
                     .focused($focusedInput)
                     .submitLabel(.done)
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 Button {
                     VM.addPartName()
@@ -1051,7 +1057,7 @@ struct EquipmentServiceRecordShell: View {
                     Image(systemName: "plus")
                         .font(.subheadline.weight(.semibold))
                         .frame(width: 42, height: 42)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
@@ -1081,13 +1087,13 @@ struct EquipmentServiceRecordShell: View {
                             .buttonStyle(.plain)
                         }
                         .padding(12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                 }
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var descriptionInputCard: some View {
@@ -1102,7 +1108,7 @@ struct EquipmentServiceRecordShell: View {
                 .submitLabel(.done)
                 .lineLimit(4, reservesSpace: true)
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -1118,7 +1124,7 @@ struct EquipmentServiceRecordShell: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -1129,7 +1135,7 @@ struct EquipmentServiceRecordShell: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(VM.isSaving)
@@ -1143,9 +1149,7 @@ struct EquipmentServiceRecordShell: View {
     }
 
     func sectionHeader(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.primary)
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
     }
 
     func textInputRow(title: String, systemImage: String, text: Binding<String>) -> some View {
@@ -1159,7 +1163,7 @@ struct EquipmentServiceRecordShell: View {
                 .focused($focusedInput)
                 .submitLabel(.done)
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -1194,7 +1198,7 @@ struct EquipmentServiceRecordShell: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -1210,7 +1214,7 @@ struct EquipmentServiceRecordShell: View {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 }
@@ -1316,7 +1320,7 @@ struct EquipmentScheduleJobShell: View {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var jobCard: some View {
@@ -1335,7 +1339,7 @@ struct EquipmentScheduleJobShell: View {
             Toggle("Schedule a service stop now", isOn: $VM.shouldScheduleServiceStop)
                 .font(.subheadline.weight(.semibold))
                 .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 8) {
                 Label("Description", systemImage: "text.alignleft")
@@ -1348,11 +1352,11 @@ struct EquipmentScheduleJobShell: View {
                     .submitLabel(.done)
                     .lineLimit(4, reservesSpace: true)
                     .padding(12)
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var scheduleCard: some View {
@@ -1378,10 +1382,10 @@ struct EquipmentScheduleJobShell: View {
                     .font(.subheadline.weight(.semibold))
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .padding(16)
-        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     var bottomBar: some View {
@@ -1396,7 +1400,7 @@ struct EquipmentScheduleJobShell: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -1407,7 +1411,7 @@ struct EquipmentScheduleJobShell: View {
                         .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color.accentColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(VM.isSaving)
@@ -1457,7 +1461,7 @@ struct EquipmentScheduleJobShell: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(12)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -1473,7 +1477,7 @@ struct EquipmentScheduleJobShell: View {
                     .foregroundStyle(.secondary)
             }
             .padding(22)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 }

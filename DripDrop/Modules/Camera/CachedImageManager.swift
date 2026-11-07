@@ -71,7 +71,7 @@ actor CachedImageManager {
         
         let requestID = imageManager.requestImage(for: phAsset, targetSize: targetSize, contentMode: imageContentMode, options: requestOptions) { image, info in
             if let error = info?[PHImageErrorKey] as? Error {
-                logger.error("CachedImageManager requestImage error: \(error.localizedDescription)")
+                logger.error("CachedImageManager requestImage error: \(error.userFacingMessage)")
                 completion(nil)
             } else if let cancelled = (info?[PHImageCancelledKey] as? NSNumber)?.boolValue, cancelled {
                 logger.debug("CachedImageManager request canceled")

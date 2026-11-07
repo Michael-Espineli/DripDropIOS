@@ -287,6 +287,9 @@
         var equipmentContent: some View {
             if UIDevice.isIPhone {
                 VStack(spacing: equipmentSectionSpacing) {
+                    if !embeddedInCustomerDetail {
+                        WorkspaceIdentityHeader(title: activeEquipment.name.isEmpty ? "Equipment" : activeEquipment.name, eyebrow: "Equipment details", systemImage: "gearshape.2")
+                    }
                     if embeddedInCustomerDetail {
                         compactInfo
                     } else {
@@ -1163,7 +1166,7 @@
                 .minimumScaleFactor(0.78)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 11)
-                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -1172,10 +1175,8 @@
     extension EquipmentDetailView {
 
         func sectionHeader(_ title: String, systemImage: String) -> some View {
-            Label(title, systemImage: systemImage)
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.primary)
-        }
+        WorkspaceSectionHeading(title: title, systemImage: systemImage)
+    }
 
         func detailRow(title: String, value: String, systemImage: String) -> some View {
             HStack(spacing: 12) {
@@ -1452,7 +1453,7 @@
                         .foregroundStyle(.secondary)
                 }
                 .padding(22)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
         }
     }
@@ -1498,7 +1499,7 @@ extension EquipmentDetailView {
                         .buttonStyle(.plain)
                     }
                     .padding(16)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     
                     if items.isEmpty {
                         emptyState(
@@ -1513,7 +1514,7 @@ extension EquipmentDetailView {
                             }
                         }
                         .padding(16)
-                        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                 }
                 .padding(14)
@@ -1571,11 +1572,11 @@ extension EquipmentDetailView {
                                 .foregroundStyle(history.description.isEmpty ? .secondary : .primary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(12)
-                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         }
                     }
                     .padding(16)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .background(.background, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .padding(14)
             }
